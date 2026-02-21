@@ -662,18 +662,26 @@ const LEVELS = {
       { type: 'deli_table', tx: 28, ty: 4, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 27, ty: 4, solid: false },
       { type: 'deli_chair', tx: 31, ty: 4, solid: false },
+      { type: 'deli_chair', tx: 29, ty: 3, solid: false },
+      { type: 'deli_chair', tx: 29, ty: 6, solid: false },
 
       { type: 'deli_table', tx: 40, ty: 4, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 39, ty: 4, solid: false },
       { type: 'deli_chair', tx: 43, ty: 4, solid: false },
+      { type: 'deli_chair', tx: 41, ty: 3, solid: false },
+      { type: 'deli_chair', tx: 41, ty: 6, solid: false },
 
       { type: 'deli_table', tx: 28, ty: 17, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 27, ty: 17, solid: false },
       { type: 'deli_chair', tx: 31, ty: 17, solid: false },
+      { type: 'deli_chair', tx: 29, ty: 16, solid: false },
+      { type: 'deli_chair', tx: 29, ty: 19, solid: false },
 
       { type: 'deli_table', tx: 40, ty: 17, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 39, ty: 17, solid: false },
       { type: 'deli_chair', tx: 43, ty: 17, solid: false },
+      { type: 'deli_chair', tx: 41, ty: 16, solid: false },
+      { type: 'deli_chair', tx: 41, ty: 19, solid: false },
 
       // === CONDIMENT TABLE (center of dining area) ===
       { type: 'deli_condiment_table', tx: 34, ty: 11, w: 3, h: 2, solid: true },
