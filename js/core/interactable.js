@@ -60,6 +60,18 @@ function isNearStation() {
 }
 // Shop managed by UI Panel Manager
 
+// Register fish vendor interactable (lobby only, near the dock)
+registerInteractable({
+  id: 'fish_vendor',
+  get x() { return 45 * TILE + TILE; },   // center of 2x2 entity at tx:45
+  get y() { return 40 * TILE + TILE; },   // center of 2x2 entity at ty:40
+  range: 120,
+  get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Fish Vendor'; },
+  type: 'fishVendor',
+  canInteract() { return Scene.inLobby && !fishingState.active; },
+  onInteract() { UI.open('fishVendor'); },
+});
+
 let fireRateBonus = 0;
 const GUN_DEFAULTS = { damage: 20 };
 const MELEE_DEFAULTS = { damage: 15, critChance: 0.10 };

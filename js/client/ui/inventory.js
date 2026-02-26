@@ -1876,8 +1876,9 @@ function update() {
 
   // --- Movement: compute held direction from keysDown, write to InputIntent ---
   // When authority-driven, commands.js already set moveX/moveY via translateIntentsToCommands.
+  const fishingActive = typeof fishingState !== 'undefined' && fishingState.active;
   if (!_authorityDriven) {
-    if (!isTyping && !panelBlocksMovement) {
+    if (!isTyping && !panelBlocksMovement && !fishingActive) {
       let mdx = 0, mdy = 0;
       if (keysDown[keybinds.moveLeft]) mdx -= 1;
       if (keysDown[keybinds.moveRight]) mdx += 1;
@@ -1896,7 +1897,7 @@ function update() {
   const dy = InputIntent.moveY;
 
   // --- One-frame intent dispatch (consumed once, cleared at end of frame) ---
-  if (!isTyping && !panelBlocksMovement) {
+  if (!isTyping && !panelBlocksMovement && !fishingActive) {
     // Reload
     if (InputIntent.reloadPressed && !gun.reloading && gun.ammo < gun.magSize) {
       gun.reloading = true;
@@ -1923,6 +1924,9 @@ function update() {
       }
       else if (UI.isOpen('shop')) { UI.close(); }
       else if (UI.isOpen('inventory')) { UI.close(); }
+      else if (nearFishingSpot && typeof fishingState !== 'undefined' && !fishingState.active) {
+        startFishing();
+      }
       else {
         const nearby = getNearestInteractable();
         if (nearby) { nearby.onInteract(); }
@@ -2117,6 +2121,7 @@ function update() {
   }
   updateBullets();
   if (typeof updateMining === 'function') updateMining();
+  if (typeof updateFishing === 'function') updateFishing();
   if (typeof updateCooking === 'function') updateCooking();
   if (typeof updateDeliNPCs === 'function') updateDeliNPCs();
   updateDeathEffects();

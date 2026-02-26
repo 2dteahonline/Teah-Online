@@ -800,7 +800,9 @@ function draw() {
   if (showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
   drawHotbar();
   if (typeof drawCookingHUD === 'function') drawCookingHUD();
-  
+  if (typeof drawFishingHUD === 'function') drawFishingHUD();
+  if (typeof drawFishVendorPanel === 'function') drawFishVendorPanel();
+
   // Malevolent Shrine charge bar (only when War Cleaver equipped)
   if (melee.special === 'cleave' && Scene.inDungeon) {
     const barW = 120, barH = 12;

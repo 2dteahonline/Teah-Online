@@ -137,6 +137,7 @@ let queueSpawnTX = 0;
 let queueSpawnTY = 0;
 let nearQueue = false;
 let nearStairs = false;
+let nearFishingSpot = false;
 let queueLockX = 0;
 let queueLockY = 0;
 let queueCirclePositions = []; // world positions of the 4 sigils
@@ -144,6 +145,7 @@ let queueCirclePositions = []; // world positions of the 4 sigils
 function checkPortals() {
   if (transitioning) return;
   nearQueue = false;
+  nearFishingSpot = false;
   for (const e of levelEntities) {
     const ew = e.w || 1, eh = e.h || 1;
     const px = player.x / TILE, py = player.y / TILE;
@@ -181,6 +183,9 @@ function checkPortals() {
       queueDungeonId = e.dungeonId;
       queueSpawnTX = e.spawnTX;
       queueSpawnTY = e.spawnTY;
+    }
+    if (e.type === 'fishing_spot' && Scene.inLobby && inZone) {
+      nearFishingSpot = true;
     }
   }
   // Staircase interaction — dungeon only, stairs must be open, press E to enter

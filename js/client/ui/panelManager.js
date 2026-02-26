@@ -70,6 +70,9 @@ UI.register('customize', {
 UI.register('toolbox', {
   onClose() { /* keep activePlaceTool */ },
 });
+UI.register('fishVendor', {
+  onOpen() { fishVendorTab = 0; },
+});
 
 let playerStatus = ""; // player's status message
 let statusEditActive = false;
@@ -426,6 +429,11 @@ window.addEventListener("keydown", e => {
 
   // Escape closes any panel
   if (e.key === "Escape") {
+    // Cancel active fishing
+    if (typeof fishingState !== 'undefined' && fishingState.active) {
+      cancelFishing();
+      return;
+    }
     // Chat: Escape closes without sending, clears input
     if (chatInputActive) { chatInput = ""; UI.close(); return; }
     if (nameEditActive) { nameEditActive = false; return; }
@@ -613,6 +621,14 @@ window.addEventListener("keydown", e => {
     return;
   }
 
+  // Fishing reel input (Space key during active fishing)
+  if (key === " " && typeof fishingState !== 'undefined' && fishingState.active) {
+    e.preventDefault();
+    InputIntent.reelPressed = true;
+    InputIntent.reelHeld = true;
+    return;
+  }
+
   // Normal game input — always works when not typing
   keysDown[key] = true;
   const allBound = Object.values(keybinds);
@@ -703,6 +719,10 @@ window.addEventListener("keydown", e => {
 window.addEventListener("keyup", e => {
   const key = e.key.toLowerCase();
   keysDown[key] = false;
+  // Fishing reel release
+  if (key === " " && typeof fishingState !== 'undefined') {
+    InputIntent.reelHeld = false;
+  }
   if (key === keybinds.shootUp || key === keybinds.shootDown || key === keybinds.shootLeft || key === keybinds.shootRight) {
     arrowShooting = false;
     // Clear arrow shooting intent if no arrow keys held

@@ -57,6 +57,11 @@ window.InputIntent = {
   // ---- Wave skip (pressed) ----
   skipWavePressed: false, // N key OP mode (ONE-FRAME)
   readyWavePressed: false,// G key skip countdown (ONE-FRAME)
+
+  // ---- Fishing (pressed + held) ----
+  fishCastPressed: false, // one-frame: E key near fishing spot (ONE-FRAME)
+  reelPressed: false,     // one-frame: Space pressed during bite/reel (ONE-FRAME)
+  reelHeld: false,        // held: Space held during reel phase
 };
 
 // ===================== CLEAR ONE-FRAME INTENTS =====================
@@ -78,4 +83,6 @@ function clearOneFrameIntents() {
   InputIntent.ultimatePressed = false;
   InputIntent.skipWavePressed = false;
   InputIntent.readyWavePressed = false;
+  InputIntent.fishCastPressed = false;
+  InputIntent.reelPressed = false;
 }

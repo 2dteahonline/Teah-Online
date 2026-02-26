@@ -6,7 +6,7 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 
 const SaveLoad = {
   // Cosmetic keys to persist from player object
@@ -37,6 +37,13 @@ const SaveLoad = {
         playerLevel: playerLevel,
         playerXP: playerXP,
         skillData: JSON.parse(JSON.stringify(skillData)),
+      };
+      // Fishing state (v3+)
+      data.fishing = {
+        rodTier: fishingState.equippedRod ? fishingState.equippedRod.tier : -1,
+        rodDurability: fishingState.rodDurability,
+        baitCount: fishingState.baitCount,
+        stats: { ...fishingState.stats },
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
@@ -99,6 +106,25 @@ const SaveLoad = {
           }
         }
         // Gold, inventory, equipment are session-only (dungeon roguelike design)
+      }
+
+      // Fishing state (v3+)
+      if (data.fishing && typeof fishingState !== 'undefined') {
+        const f = data.fishing;
+        if (f.rodTier >= 0 && f.rodTier < ROD_TIERS.length) {
+          fishingState.equippedRod = ROD_TIERS[f.rodTier];
+          fishingState.rodDurability = f.rodDurability || 0;
+        } else {
+          fishingState.equippedRod = null;
+          fishingState.rodDurability = 0;
+        }
+        fishingState.baitCount = f.baitCount || 0;
+        if (f.stats) {
+          fishingState.stats.totalCaught = f.stats.totalCaught || 0;
+          fishingState.stats.biggestFish = f.stats.biggestFish || '';
+          fishingState.stats.biggestFishValue = f.stats.biggestFishValue || 0;
+          fishingState.stats.totalCasts = f.stats.totalCasts || 0;
+        }
       }
 
       return true;

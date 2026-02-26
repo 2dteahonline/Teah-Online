@@ -665,6 +665,11 @@ canvas.addEventListener("mousedown", e => {
   // Inventory panel clicks
   if (UI.isOpen('inventory') && handleInventoryClick(mx, my)) return;
 
+  // Fish vendor panel clicks
+  if (UI.isOpen('fishVendor') && typeof handleFishVendorClick === 'function') {
+    if (handleFishVendorClick(mx, my)) return;
+  }
+
   // Shop panel clicks
   if (UI.isOpen('shop')) {
     const items = getShopItems();

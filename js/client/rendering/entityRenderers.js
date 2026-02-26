@@ -1919,6 +1919,129 @@ if (typeof DELI_INGREDIENTS !== 'undefined') {
   }
 }
 
+// === FISHING RENDERERS ===
+ENTITY_RENDERERS.fishing_spot = (e, ctx, ex, ey, w, h) => {
+  const dw = (w || 4) * TILE, dh = (h || 2) * TILE;
+  const t = Date.now() / 1000;
+
+  // Water underneath the dock
+  const waterAlpha = 0.35 + Math.sin(t * 1.5) * 0.08;
+  ctx.fillStyle = `rgba(30,80,140,${waterAlpha})`;
+  ctx.fillRect(ex - 8, ey + dh * 0.3, dw + 16, dh * 0.9);
+  // Water ripple highlights
+  for (let r = 0; r < 5; r++) {
+    const rx = ex + 10 + (r * 38 + Math.sin(t * 2 + r) * 8);
+    const ry = ey + dh * 0.5 + Math.sin(t * 1.2 + r * 1.5) * 6;
+    ctx.fillStyle = `rgba(80,160,220,${0.15 + Math.sin(t * 2.5 + r) * 0.05})`;
+    ctx.beginPath(); ctx.ellipse(rx, ry, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Dock planks
+  const plankH = dh / 3;
+  for (let p = 0; p < 3; p++) {
+    const py = ey + p * plankH;
+    // Plank body
+    ctx.fillStyle = p % 2 === 0 ? '#8a6a3a' : '#7a5a2a';
+    ctx.fillRect(ex, py, dw, plankH - 2);
+    // Plank edge highlight
+    ctx.fillStyle = '#9a7a4a';
+    ctx.fillRect(ex, py, dw, 2);
+    // Plank dark edge
+    ctx.fillStyle = '#5a4020';
+    ctx.fillRect(ex, py + plankH - 3, dw, 1);
+    // Wood grain
+    for (let g = 0; g < 4; g++) {
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      ctx.fillRect(ex + 12 + g * (dw / 4), py + 4, dw / 6, 1);
+    }
+  }
+
+  // Support posts (left and right)
+  ctx.fillStyle = '#5a4020';
+  ctx.fillRect(ex + 4, ey + dh - 4, 8, 12);
+  ctx.fillRect(ex + dw - 12, ey + dh - 4, 8, 12);
+  // Rope/railing
+  ctx.strokeStyle = '#a08050';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(ex + 8, ey - 2);
+  ctx.lineTo(ex + dw - 8, ey - 2);
+  ctx.stroke();
+
+  // "[E] Fish" label when near
+  if (typeof nearFishingSpot !== 'undefined' && nearFishingSpot) {
+    const labelX = ex + dw / 2;
+    const labelY = ey + dh + 18;
+    // Background pill
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.beginPath(); ctx.roundRect(labelX - 40, labelY - 12, 80, 20, 6); ctx.fill();
+    ctx.strokeStyle = '#4a8ac0';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(labelX - 40, labelY - 12, 80, 20, 6); ctx.stroke();
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#80c0ff';
+    ctx.fillText('[E] Fish', labelX, labelY + 2);
+    ctx.textAlign = 'left';
+  }
+};
+
+ENTITY_RENDERERS.fish_vendor = (e, ctx, ex, ey, w, h) => {
+  const cw = (w || 2) * TILE, ch = (h || 2) * TILE;
+  const t = Date.now() / 1000;
+
+  // Fish barrel/stand base
+  ctx.fillStyle = '#6a5030';
+  ctx.beginPath(); ctx.roundRect(ex + 4, ey + ch * 0.45, cw - 8, ch * 0.55, 4); ctx.fill();
+  ctx.strokeStyle = '#4a3020';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(ex + 4, ey + ch * 0.45, cw - 8, ch * 0.55, 4); ctx.stroke();
+  // Barrel bands
+  ctx.strokeStyle = '#8a7040';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(ex + 6, ey + ch * 0.55); ctx.lineTo(ex + cw - 6, ey + ch * 0.55); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ex + 6, ey + ch * 0.75); ctx.lineTo(ex + cw - 6, ey + ch * 0.75); ctx.stroke();
+  // Fish inside barrel (little colored blobs)
+  const fishColors = ['#8ab4c8', '#5a8a5a', '#d08060'];
+  for (let f = 0; f < 3; f++) {
+    ctx.fillStyle = fishColors[f];
+    const fx = ex + 14 + f * 22, fy = ey + ch * 0.48;
+    ctx.beginPath(); ctx.ellipse(fx, fy, 8, 4, 0.3 * f, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // NPC body
+  const bx = ex + cw / 2, by = ey + ch * 0.3;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath(); ctx.ellipse(bx, by + 18, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+  // Torso (blue overalls)
+  ctx.fillStyle = '#3060a0';
+  ctx.fillRect(bx - 10, by, 20, 20);
+  // Head
+  ctx.fillStyle = '#d4a070';
+  ctx.beginPath(); ctx.arc(bx, by - 6, 10, 0, Math.PI * 2); ctx.fill();
+  // Hat (fisherman cap)
+  ctx.fillStyle = '#c0a040';
+  ctx.fillRect(bx - 12, by - 15, 24, 6);
+  ctx.fillRect(bx - 8, by - 18, 16, 6);
+  // Eyes
+  ctx.fillStyle = '#222';
+  ctx.fillRect(bx - 4, by - 7, 3, 3);
+  ctx.fillRect(bx + 2, by - 7, 3, 3);
+
+  // Idle bob
+  const bob = Math.sin(t * 1.5) * 1.5;
+
+  // Name label
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#000';
+  ctx.fillText('Fish Vendor', bx + 1, ey - 4 + bob + 1);
+  ctx.fillStyle = '#e0d080';
+  ctx.fillText('Fish Vendor', bx, ey - 4 + bob);
+  ctx.textAlign = 'left';
+};
+
 function drawLevelEntities(camX, camY) {
   for (const e of levelEntities) {
     const w = e.w ?? 1;
