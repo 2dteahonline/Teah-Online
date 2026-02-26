@@ -51,7 +51,7 @@ const FISHING_CONFIG = {
   // Reel tension: how fast tension builds when holding reel
   tensionFillRate: 0.012,
   // Reel: progress must reach this to catch
-  tensionCatchThreshold: 0.70,
+  tensionCatchThreshold: 0.45,
   // Level bonus cap
   maxLevelBonus: 0.25,
   levelBonusPerLevel: 0.005,
