@@ -6,7 +6,7 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 
 const SaveLoad = {
   // Cosmetic keys to persist from player object
@@ -32,6 +32,12 @@ const SaveLoad = {
       for (const k of this._cosmeticKeys) {
         data.cosmetics[k] = player[k];
       }
+      // Persistent progression (survives page refresh)
+      data.progression = {
+        playerLevel: playerLevel,
+        playerXP: playerXP,
+        skillData: JSON.parse(JSON.stringify(skillData)),
+      };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('Save failed:', e);
@@ -43,7 +49,7 @@ const SaveLoad = {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return false;
       const data = JSON.parse(raw);
-      if (!data || data.version !== SAVE_VERSION) return false;
+      if (!data || !data.version || data.version < 1) return false;
 
       // Keybinds
       if (data.keybinds) {
@@ -77,6 +83,22 @@ const SaveLoad = {
         for (const k of this._cosmeticKeys) {
           if (data.cosmetics[k] !== undefined) player[k] = data.cosmetics[k];
         }
+      }
+
+      // Progression (v2+) — persistent levels & skills
+      if (data.progression) {
+        const p = data.progression;
+        if (p.playerLevel !== undefined) playerLevel = p.playerLevel;
+        if (p.playerXP !== undefined) playerXP = p.playerXP;
+        if (p.skillData) {
+          for (const skill in p.skillData) {
+            if (skillData[skill]) {
+              skillData[skill].level = p.skillData[skill].level || 1;
+              skillData[skill].xp = p.skillData[skill].xp || 0;
+            }
+          }
+        }
+        // Gold, inventory, equipment are session-only (dungeon roguelike design)
       }
 
       return true;

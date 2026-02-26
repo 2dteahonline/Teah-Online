@@ -2,6 +2,14 @@
 // Client input: mouse handlers, click routing
 // Extracted from index_2.html — Phase E
 
+// Apply cosmetic change to player — centralizes all color/visual mutations from input.
+// In multiplayer, this is where we'd emit a cosmetic-change event to the server.
+function applyCosmetic(key, value) {
+  player[key] = value;
+  // Note: autoSave is NOT called here because the customize panel has
+  // explicit Save/Cancel buttons. The caller decides when to persist.
+}
+
 // ===================== MOUSE =====================
 const mouse = { x: BASE_W / 2, y: BASE_H / 2, down: false };
 canvas.addEventListener("mousemove", e => {
@@ -42,11 +50,11 @@ canvas.addEventListener("mousemove", e => {
     if (draggingSV) {
       pickerSat = Math.max(0, Math.min(1, (mx - svX) / svW));
       pickerVal = Math.max(0, Math.min(1, 1 - (my - svY) / svH));
-      player[CUSTOMIZE_CATS[customizeCat].key] = hsvToHex(pickerHue, pickerSat, pickerVal);
+      applyCosmetic(CUSTOMIZE_CATS[customizeCat].key, hsvToHex(pickerHue, pickerSat, pickerVal));
     }
     if (draggingHue) {
       pickerHue = Math.max(0, Math.min(359, ((mx - hueX) / hueW) * 360));
-      player[CUSTOMIZE_CATS[customizeCat].key] = hsvToHex(pickerHue, pickerSat, pickerVal);
+      applyCosmetic(CUSTOMIZE_CATS[customizeCat].key, hsvToHex(pickerHue, pickerSat, pickerVal));
     }
   }
 });
@@ -260,6 +268,7 @@ canvas.addEventListener("mousedown", e => {
       const idx = Math.floor(relY / rowH);
       if (idx >= 0 && idx < items.length) {
         const item = items[idx];
+        // UI state: settings are client-only, no need for command queue
         if (item.type === "toggle") {
           gameSettings[item.key] = !gameSettings[item.key];
           if (item.key === "spriteMode") useSpriteMode = gameSettings.spriteMode;
@@ -365,7 +374,7 @@ canvas.addEventListener("mousedown", e => {
       for (let fi2 = 0; fi2 < fOpts.length; fi2++) {
         const optY = popY + 42 + fi2 * 42;
         if (mx >= popX + 8 && mx <= popX + popW - 8 && my >= optY && my <= optY + 36) {
-          playerFaction = fOpts[fi2].label;
+          playerFaction = fOpts[fi2].label; // TODO(multiplayer): route through command queue
           factionPopupOpen = false;
           SaveLoad.autoSave();
           return;
@@ -395,7 +404,7 @@ canvas.addEventListener("mousedown", e => {
           if (idx >= COUNTRIES.length) break;
           const cx2 = gridX + c * cellW, cy2 = gridY + r * cellH;
           if (mx >= cx2 && mx <= cx2 + cellW && my >= cy2 && my <= cy2 + cellH) {
-            playerCountry = COUNTRIES[idx].n;
+            playerCountry = COUNTRIES[idx].n; // TODO(multiplayer): route through command queue
             countryPopupOpen = false;
             SaveLoad.autoSave();
             return;
@@ -427,7 +436,7 @@ canvas.addEventListener("mousedown", e => {
           if (idx >= LANGUAGES.length) break;
           const cx2 = gridX + c * cellW, cy2 = gridY + r * cellH;
           if (mx >= cx2 && mx <= cx2 + cellW && my >= cy2 && my <= cy2 + cellH) {
-            gameSettings.language = LANGUAGES[idx].n;
+            gameSettings.language = LANGUAGES[idx].n; // TODO(multiplayer): route through command queue
             languagePopupOpen = false;
             SaveLoad.autoSave();
             return;
@@ -447,7 +456,7 @@ canvas.addEventListener("mousedown", e => {
       for (let ri = 0; ri < rOpts.length; ri++) {
         const optY = popY + 30 + ri * 38;
         if (mx >= popX + 8 && mx <= popX + popW - 8 && my >= optY && my <= optY + 32) {
-          gameSettings.relationshipStatus = rOpts[ri];
+          gameSettings.relationshipStatus = rOpts[ri]; // TODO(multiplayer): route through command queue
           relationshipPopupOpen = false;
           SaveLoad.autoSave();
           return;
@@ -528,7 +537,7 @@ canvas.addEventListener("mousedown", e => {
     // Gender click (index 5) — toggle Male/Female
     const genderRowY = statsStartY2 + 5 * lineH2;
     if (mx >= statsX && mx <= statsX + 300 && my >= genderRowY - 14 && my <= genderRowY + 8) {
-      playerGender = playerGender === "Male" ? "Female" : "Male";
+      playerGender = playerGender === "Male" ? "Female" : "Male"; // TODO(multiplayer): route through command queue
       SaveLoad.autoSave();
       return;
     }
@@ -557,6 +566,8 @@ canvas.addEventListener("mousedown", e => {
     const cpW = BASE_W * 0.48;
 
     // Cancel button — restore original colors, close ALL panels
+    // Note: uses direct assignment (not applyCosmetic) because this is a bulk restore,
+    // not a new user-initiated cosmetic change.
     const btnY = BASE_H - 56;
     if (mx >= cpX && mx <= cpX + 120 && my >= btnY && my <= btnY + 40) {
       if (customizeBackup) {
@@ -603,7 +614,7 @@ canvas.addEventListener("mousedown", e => {
     const abx = hfx + hfw + 8, aby = rowY, abw = 70, abh = 32;
     if (mx >= abx && mx <= abx + abw && my >= aby && my <= aby + abh) {
       if (/^#[0-9a-fA-F]{6}$/.test(hexInputValue)) {
-        player[CUSTOMIZE_CATS[customizeCat].key] = hexInputValue.toLowerCase();
+        applyCosmetic(CUSTOMIZE_CATS[customizeCat].key, hexInputValue.toLowerCase());
         hexInputActive = false; hexInputError = false;
       } else { hexInputError = true; }
       return;
@@ -615,13 +626,13 @@ canvas.addEventListener("mousedown", e => {
     if (mx >= svX && mx <= svX + svW && my >= svY && my <= svY + svH) {
       pickerSat = Math.max(0, Math.min(1, (mx - svX) / svW));
       pickerVal = Math.max(0, Math.min(1, 1 - (my - svY) / svH));
-      player[CUSTOMIZE_CATS[customizeCat].key] = hsvToHex(pickerHue, pickerSat, pickerVal);
+      applyCosmetic(CUSTOMIZE_CATS[customizeCat].key, hsvToHex(pickerHue, pickerSat, pickerVal));
       draggingSV = true; return;
     }
     // Hue bar
     if (mx >= hueX && mx <= hueX + hueW && my >= hueY && my <= hueY + hueH) {
       pickerHue = Math.max(0, Math.min(359, ((mx - hueX) / hueW) * 360));
-      player[CUSTOMIZE_CATS[customizeCat].key] = hsvToHex(pickerHue, pickerSat, pickerVal);
+      applyCosmetic(CUSTOMIZE_CATS[customizeCat].key, hsvToHex(pickerHue, pickerSat, pickerVal));
       draggingHue = true; return;
     }
 
@@ -631,7 +642,7 @@ canvas.addEventListener("mousedown", e => {
       const sx = palX + col * (swatchS + swatchGap);
       const sy = palY + row * (swatchS + swatchGap);
       if (mx >= sx && mx <= sx + swatchS && my >= sy && my <= sy + swatchS) {
-        player[CUSTOMIZE_CATS[customizeCat].key] = COLOR_PALETTE[i]; return;
+        applyCosmetic(CUSTOMIZE_CATS[customizeCat].key, COLOR_PALETTE[i]); return;
       }
     }
     return;
@@ -693,9 +704,11 @@ canvas.addEventListener("mousedown", e => {
         const isMaxed = item.maxBuy !== undefined && item.bought >= item.maxBuy;
         const isLocked = item.isLocked;
         if (!isOwned && !isMaxed && !isLocked && gold >= item.cost) {
+          // item.action() handles stat application via centralized helpers
+          // (applyGunStats/applyMeleeStats for equipment, direct for buffs)
           const success = item.action();
           if (success) {
-            gold -= item.cost;
+            gold -= item.cost; // TODO(multiplayer): server-authoritative gold deduction
             if (window._opMode) gold = 999999; // keep infinite in OP mode
             if (item.bought !== undefined) item.bought++;
             hitEffects.push({ x: player.x, y: player.y - 30, life: 20, type: "heal", dmg: item.name });

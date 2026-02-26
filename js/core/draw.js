@@ -2,9 +2,12 @@
 // Core: main render loop, camera, HUD, game loop
 // Extracted from index_2.html — Phase E
 
+let renderTime = 0;
+
 // ===================== DRAW =====================
 function draw() {
   try {
+  renderTime = Date.now();
   ctx.fillStyle = "#2a2a3a";
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
@@ -63,14 +66,14 @@ function draw() {
       } else if (playerDead) {
         // During countdown, don't draw player (they're dead)
       } else {
-        const flashAlpha = contactCooldown > 0 && Math.floor(Date.now() / 80) % 2 === 0;
+        const flashAlpha = contactCooldown > 0 && Math.floor(renderTime / 80) % 2 === 0;
         if (flashAlpha) ctx.globalAlpha = 0.5;
         // Phase visual — semi-transparent + cyan glow
-        if (phaseTimer > 0) ctx.globalAlpha = 0.4 + Math.sin(Date.now() * 0.015) * 0.1;
+        if (phaseTimer > 0) ctx.globalAlpha = 0.4 + Math.sin(renderTime * 0.015) * 0.1;
         if (queueActive) {
           // Battle stance: face up, slight bob, weapon ready
-          const stanceBob = Math.sin(Date.now() * 0.004) * 1.5;
-          const stanceFrame = Math.floor(Date.now() / 400) % 2; // alternating stance
+          const stanceBob = Math.sin(renderTime * 0.004) * 1.5;
+          const stanceFrame = Math.floor(renderTime / 400) % 2; // alternating stance
           ctx.save();
           ctx.translate(0, stanceBob);
           drawChar(player.x, player.y, 1, stanceFrame, false,
@@ -86,7 +89,7 @@ function draw() {
         if (phaseTimer > 0) {
           const sx = player.x;
           const sy = player.y;
-          const pPulse = 0.5 + Math.sin(Date.now() * 0.012) * 0.2;
+          const pPulse = 0.5 + Math.sin(renderTime * 0.012) * 0.2;
           ctx.strokeStyle = `rgba(80,220,255,${pPulse})`;
           ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(sx, sy - 10, 32, 0, Math.PI * 2); ctx.stroke();
@@ -95,12 +98,11 @@ function draw() {
         }
       }
       
-      // Ninja dash afterimage trail
+      // Ninja dash afterimage trail (render only — ticking moved to updateMelee)
       if (melee.special === 'ninja' && melee.dashTrail.length > 0) {
         for (let ti = melee.dashTrail.length - 1; ti >= 0; ti--) {
           const t = melee.dashTrail[ti];
-          t.life--;
-          if (t.life <= 0) { melee.dashTrail.splice(ti, 1); continue; }
+          if (t.life <= 0) continue;
           const ta = t.life / 12 * 0.35;
           // Dark silhouette ghost
           ctx.fillStyle = `rgba(15,10,25,${ta})`;
@@ -114,7 +116,7 @@ function draw() {
       
       // Storm Blade passive lightning aura — subtle crackling sparks
       if (melee.special === 'storm' && !playerDead && activeSlot === 1) {
-        const lt = Date.now();
+        const lt = renderTime;
         const px = player.x, py = player.y - 25; // center on upper body
         
         // Soft ambient glow around torso
@@ -186,7 +188,7 @@ function draw() {
       
       // War Cleaver passive cursed energy aura — Sukuna dark red/black swirl
       if (melee.special === 'cleave' && !playerDead && activeSlot === 1) {
-        const lt = Date.now();
+        const lt = renderTime;
         const px = player.x, py = player.y - 25;
         
         // Dark pulsing aura glow
@@ -306,7 +308,7 @@ function draw() {
         ctx.fillStyle = `rgba(150,220,255,${fAlpha * 0.4})`;
         ctx.beginPath(); ctx.arc(m.x, m.y - 15, 16, 0, Math.PI * 2); ctx.fill();
         // Orbiting ice crystals
-        const t = Date.now() / 300;
+        const t = renderTime / 300;
         for (let ip = 0; ip < 5; ip++) {
           const ia = t + ip * Math.PI * 2 / 5;
           const ix = m.x + Math.cos(ia) * 20;
@@ -333,7 +335,7 @@ function draw() {
         ctx.fillStyle = `rgba(255,100,20,${bAlpha * 0.35})`;
         ctx.beginPath(); ctx.arc(m.x, m.y - 15, 22, 0, Math.PI * 2); ctx.fill();
         // Animated flame particles rising up
-        const t = Date.now() / 100;
+        const t = renderTime / 100;
         for (let fp = 0; fp < 6; fp++) {
           const phase = t + fp * 1.1;
           const fLife = (phase % 3) / 3; // 0 to 1 cycle
@@ -361,7 +363,7 @@ function draw() {
         ctx.fillStyle = `rgba(255,160,40,${sAlpha * 0.3})`;
         ctx.beginPath(); ctx.arc(m.x, m.y - 15, 22, 0, Math.PI * 2); ctx.fill();
         // Stun stars orbiting
-        const st = Date.now() / 200;
+        const st = renderTime / 200;
         for (let sp = 0; sp < 3; sp++) {
           const sa = st + sp * Math.PI * 2 / 3;
           const starX = m.x + Math.cos(sa) * 18;
@@ -397,7 +399,7 @@ function draw() {
   // Godspeed while active — DRAMATIC Killua lightning aura + Kashimo ground strikes
   if (godspeed.active && !playerDead) {
     const gsp = godspeed.timer / godspeed.duration;
-    const gt = Date.now();
+    const gt = renderTime;
     const gpx = player.x, gpy = player.y - 15;
     const gr = godspeed.range;
     const gPulse = 0.6 + 0.4 * Math.sin(gt * 0.01);
@@ -591,8 +593,8 @@ function draw() {
     const sp = shrine.timer / shrine.duration; // 1 → 0
     const sr = shrine.range;
     const cx3 = player.x, cy3 = player.y - 15;
-    const pulse = 0.6 + 0.3 * Math.sin(Date.now() * 0.006);
-    const rot = Date.now() * 0.0008; // slow rotation
+    const pulse = 0.6 + 0.3 * Math.sin(renderTime * 0.006);
+    const rot = renderTime * 0.0008; // slow rotation
     
     // === DOMAIN SEAL ON GROUND ===
     // Outer crimson circle
@@ -642,8 +644,8 @@ function draw() {
       ctx.strokeStyle = `rgba(200,20,10,${0.25 * sp * pulse})`;
       ctx.lineWidth = 0.8;
       for (let v = 0; v < 4; v++) {
-        const va = (v / 4) * Math.PI * 2 + Date.now() * 0.001;
-        const vLen = 6 + Math.sin(Date.now() * 0.003 + v) * 3;
+        const va = (v / 4) * Math.PI * 2 + renderTime * 0.001;
+        const vLen = 6 + Math.sin(renderTime * 0.003 + v) * 3;
         ctx.beginPath();
         ctx.moveTo(eyeX, eyeY);
         ctx.lineTo(eyeX + Math.cos(va) * vLen, eyeY + Math.sin(va) * vLen);
@@ -670,7 +672,7 @@ function draw() {
     for (let rm = 0; rm < 12; rm++) {
       const ra = rm * Math.PI / 6 + rot * 0.5;
       const rr = sr * 0.92;
-      const rl = 8 + Math.sin(Date.now() * 0.004 + rm) * 3;
+      const rl = 8 + Math.sin(renderTime * 0.004 + rm) * 3;
       ctx.strokeStyle = `rgba(160,15,15,${0.3 * sp * pulse})`;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -684,7 +686,7 @@ function draw() {
     // === SLASHES FILLING THE RADIUS ===
     
     // HEAVY animated slashes filling the entire shrine radius
-    const t = Date.now();
+    const t = renderTime;
     
     // 30 slashes filling the zone — constantly cycling, cutting through everything
     for (let ss = 0; ss < 30; ss++) {
@@ -787,7 +789,7 @@ function draw() {
   if (poisonTimer > 0 && !playerDead) {
     ctx.save();
     ctx.translate(-cx, -cy);
-    const pGlow = 0.2 + 0.1 * Math.sin(Date.now() * 0.008);
+    const pGlow = 0.2 + 0.1 * Math.sin(renderTime * 0.008);
     ctx.fillStyle = `rgba(60,200,30,${pGlow})`;
     ctx.beginPath(); ctx.arc(player.x, player.y - 15, 22, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -812,9 +814,9 @@ function draw() {
     
     // Fill bar
     if (shrine.active) {
-      ctx.fillStyle = `rgba(255,30,30,${0.6 + 0.3 * Math.sin(Date.now() * 0.01)})`;
+      ctx.fillStyle = `rgba(255,30,30,${0.6 + 0.3 * Math.sin(renderTime * 0.01)})`;
     } else if (ready) {
-      ctx.fillStyle = `rgba(255,40,40,${0.7 + 0.3 * Math.sin(Date.now() * 0.008)})`;
+      ctx.fillStyle = `rgba(255,40,40,${0.7 + 0.3 * Math.sin(renderTime * 0.008)})`;
     } else {
       ctx.fillStyle = "rgba(180,30,30,0.6)";
     }
@@ -832,7 +834,7 @@ function draw() {
       ctx.fillStyle = "#ff4040";
       ctx.fillText("⛩ MALEVOLENT SHRINE ⛩", barX + barW / 2, barY - 4);
     } else if (ready) {
-      ctx.fillStyle = `rgba(255,80,80,${0.7 + 0.3 * Math.sin(Date.now() * 0.008)})`;
+      ctx.fillStyle = `rgba(255,80,80,${0.7 + 0.3 * Math.sin(renderTime * 0.008)})`;
       ctx.fillText("⛩ PRESS F — SHRINE READY ⛩", barX + barW / 2, barY - 4);
     } else {
       ctx.fillStyle = "#884444";
@@ -851,9 +853,9 @@ function draw() {
     ctx.beginPath(); ctx.roundRect(gBarX - 2, gBarY - 2, gBarW + 4, gBarH + 4, 4); ctx.fill();
     
     if (godspeed.active) {
-      ctx.fillStyle = `rgba(180,220,255,${0.6 + 0.3 * Math.sin(Date.now() * 0.01)})`;
+      ctx.fillStyle = `rgba(180,220,255,${0.6 + 0.3 * Math.sin(renderTime * 0.01)})`;
     } else if (gReady) {
-      ctx.fillStyle = `rgba(200,230,255,${0.7 + 0.3 * Math.sin(Date.now() * 0.008)})`;
+      ctx.fillStyle = `rgba(200,230,255,${0.7 + 0.3 * Math.sin(renderTime * 0.008)})`;
     } else {
       ctx.fillStyle = "rgba(140,180,220,0.6)";
     }
@@ -869,7 +871,7 @@ function draw() {
       ctx.fillStyle = "#d0e8ff";
       ctx.fillText("⚡ GODSPEED ⚡", gBarX + gBarW / 2, gBarY - 4);
     } else if (gReady) {
-      ctx.fillStyle = `rgba(210,235,255,${0.7 + 0.3 * Math.sin(Date.now() * 0.008)})`;
+      ctx.fillStyle = `rgba(210,235,255,${0.7 + 0.3 * Math.sin(renderTime * 0.008)})`;
       ctx.fillText("⚡ PRESS F — GODSPEED ⚡", gBarX + gBarW / 2, gBarY - 4);
     } else {
       ctx.fillStyle = "#8aabbf";
@@ -899,7 +901,7 @@ function draw() {
       ctx.fillStyle = "rgba(40,25,60,0.6)";
       ctx.beginPath(); ctx.roundRect(nBarX, nBarY, nBarW * pct, nBarH, 3); ctx.fill();
     } else {
-      const pulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.006);
+      const pulse = 0.7 + 0.3 * Math.sin(renderTime * 0.006);
       ctx.fillStyle = `rgba(120,60,180,${pulse})`;
       ctx.beginPath(); ctx.roundRect(nBarX, nBarY, nBarW, nBarH, 3); ctx.fill();
     }
@@ -908,11 +910,11 @@ function draw() {
     ctx.beginPath(); ctx.roundRect(nBarX, nBarY, nBarW, nBarH, 3); ctx.stroke();
     ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
     if (melee.dashActive) {
-      ctx.fillStyle = melee.dashing ? "#e0b0ff" : `rgba(210,160,250,${0.7 + 0.3 * Math.sin(Date.now() * 0.01)})`;
+      ctx.fillStyle = melee.dashing ? "#e0b0ff" : `rgba(210,160,250,${0.7 + 0.3 * Math.sin(renderTime * 0.01)})`;
       const dLeft = melee.dashesLeft + (melee.dashing ? 0 : 0);
       ctx.fillText("\u{1F5E1} SLASH x" + dLeft + " \u{1F5E1}", nBarX + nBarW / 2, nBarY - 4);
     } else if (dashReady) {
-      ctx.fillStyle = `rgba(200,160,240,${0.7 + 0.3 * Math.sin(Date.now() * 0.008)})`;
+      ctx.fillStyle = `rgba(200,160,240,${0.7 + 0.3 * Math.sin(renderTime * 0.008)})`;
       ctx.fillText("\u{1F5E1} SHIFT \u2014 DASH \u{1F5E1}", nBarX + nBarW / 2, nBarY - 4);
     } else {
       ctx.fillStyle = "#8060a0";
@@ -962,7 +964,7 @@ function draw() {
   if (hpPct > 0.5) ctx.fillStyle = "#e22";
   else if (hpPct > 0.25) ctx.fillStyle = "#e80";
   else ctx.fillStyle = "#f44";
-  if (hpPct <= 0.25 && Math.floor(Date.now() / 300) % 2 === 0) ctx.fillStyle = "#f66";
+  if (hpPct <= 0.25 && Math.floor(renderTime / 300) % 2 === 0) ctx.fillStyle = "#f66";
   ctx.fillRect(hpBarX, hpBarY, hpBarW * hpPct, hpBarH);
 
   // Border
@@ -1115,7 +1117,7 @@ function draw() {
         ctx.fillText('Respawning in', BASE_W / 2, BASE_H / 2 - 40);
       }
       // Big countdown number
-      const pulse = 1 + Math.sin(Date.now() / 150) * 0.08;
+      const pulse = 1 + Math.sin(renderTime / 150) * 0.08;
       ctx.save();
       ctx.translate(BASE_W / 2, BASE_H / 2 + 20);
       ctx.scale(pulse, pulse);

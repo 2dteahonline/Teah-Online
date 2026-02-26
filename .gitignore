@@ -7,6 +7,9 @@ index_2_backup*.html
 # Node (just in case)
 node_modules/
 
+# Auto-sync script (local only)
+auto-sync.ps1
+
 # Logs
 *.log
 

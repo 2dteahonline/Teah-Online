@@ -65,8 +65,7 @@ function resetCombatState(mode) {
     reviveUsed = false;
     recalcMaxHp(); player.hp = player.maxHp;
     contactCooldown = 60;
-    for (const item of SHOP_ITEMS.Buffs) item.bought = 0;
-    lifestealPerKill = 25;
+    // Shop runtime state lives in shopState; _resetShopPrices handles all of it
     if (window._resetShopPrices) window._resetShopPrices();
   }
 

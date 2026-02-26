@@ -300,10 +300,11 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     ctx.fillRect(l2x, l2y, l2w, lh);
   } else if (pantsTier === 1) {
     // T1 Leather — warm brown with stitch
-    ctx.fillStyle = "#6a5030";
+    const tv = ARMOR_VISUALS[1];
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(l1x, l1y, l1w, lh);
     ctx.fillRect(l2x, l2y, l2w, lh);
-    ctx.fillStyle = "#7a6040";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(l1x + 2, l1y + 3, l1w - 4, 1);
     ctx.fillRect(l1x + 2, l1y + 7, l1w - 4, 1);
     ctx.fillRect(l1x + 2, l1y + 11, l1w - 4, 1);
@@ -312,10 +313,11 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     ctx.fillRect(l2x + 2, l2y + 11, l2w - 4, 1);
   } else if (pantsTier === 2) {
     // T2 Iron/Chain — steel grey-blue chainmail
-    ctx.fillStyle = "#4a5a64";
+    const tv = ARMOR_VISUALS[2];
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(l1x, l1y, l1w, lh);
     ctx.fillRect(l2x, l2y, l2w, lh);
-    ctx.fillStyle = "#6a7a84";
+    ctx.fillStyle = tv.secondary;
     for (let cy2 = 0; cy2 < lh; cy2 += 3) {
       const offset = (cy2 % 6 === 0) ? 0 : 2;
       for (let cx2 = offset; cx2 < l1w - 1; cx2 += 4) {
@@ -323,45 +325,49 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         ctx.fillRect(l2x + cx2 + 1, l2y + cy2, 1, 1);
       }
     }
-    ctx.fillStyle = "#3a4a54";
+    ctx.fillStyle = tv.dark;
     ctx.fillRect(l1x, l1y, 1, lh); ctx.fillRect(l1x + l1w - 1, l1y, 1, lh);
     ctx.fillRect(l2x, l2y, 1, lh); ctx.fillRect(l2x + l2w - 1, l2y, 1, lh);
   } else if (pantsTier === 3) {
     // T3 Plate/Warden — dark green-grey plate
-    ctx.fillStyle = "#3a4a3a";
+    const tv = ARMOR_VISUALS[3];
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(l1x, l1y, l1w, lh);
     ctx.fillRect(l2x, l2y, l2w, lh);
-    ctx.fillStyle = "#4a5a4a";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(l1x + 1, l1y + 1, l1w - 2, 4);
     ctx.fillRect(l1x + 1, l1y + 7, l1w - 2, 4);
     ctx.fillRect(l2x + 1, l2y + 1, l2w - 2, 4);
     ctx.fillRect(l2x + 1, l2y + 7, l2w - 2, 4);
     // Knee guards
-    ctx.fillStyle = "#5a6a5a";
+    ctx.fillStyle = tv.highlight;
     ctx.fillRect(l1x - 1, l1y, l1w + 2, 3);
     ctx.fillRect(l2x - 1, l2y, l2w + 2, 3);
     // Subtle ember glow
-    const tPulse = 0.3 + Math.sin(Date.now() * 0.005) * 0.15;
-    ctx.fillStyle = `rgba(220,140,50,${tPulse})`;
+    const tPulse = tierGlow(3, renderTime);
+    const g = tv.glow.color;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${tPulse})`;
     ctx.fillRect(l1x, l1y + lh - 2, 1, 2); ctx.fillRect(l1x + l1w - 1, l1y + lh - 2, 1, 2);
     ctx.fillRect(l2x, l2y + lh - 2, 1, 2); ctx.fillRect(l2x + l2w - 1, l2y + lh - 2, 1, 2);
   } else if (pantsTier === 4) {
     // T4 Void — black with purple trim
-    const vGlow = 0.4 + Math.sin(Date.now() * 0.006) * 0.2;
-    ctx.fillStyle = "#1a1020";
+    const tv = ARMOR_VISUALS[4];
+    const vGlow = tierGlow(4, renderTime);
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(l1x, l1y, l1w, lh);
     ctx.fillRect(l2x, l2y, l2w, lh);
-    ctx.fillStyle = "#2a1a30";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(l1x + 1, l1y + 1, l1w - 2, 5);
     ctx.fillRect(l1x + 1, l1y + 8, l1w - 2, 5);
     ctx.fillRect(l2x + 1, l2y + 1, l2w - 2, 5);
     ctx.fillRect(l2x + 1, l2y + 8, l2w - 2, 5);
     // Knee guards — dark
-    ctx.fillStyle = "#2a1a30";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(l1x - 1, l1y - 1, l1w + 2, 4);
     ctx.fillRect(l2x - 1, l2y - 1, l2w + 2, 4);
     // Purple glow edges
-    ctx.fillStyle = `rgba(140,50,220,${vGlow})`;
+    const g = tv.glow.color;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${vGlow})`;
     ctx.fillRect(l1x, l1y, l1w, 1); ctx.fillRect(l1x, l1y + lh - 1, l1w, 1);
     ctx.fillRect(l2x, l2y, l2w, 1); ctx.fillRect(l2x, l2y + lh - 1, l2w, 1);
     ctx.fillRect(l1x - 1, l1y + 4, 1, 6); ctx.fillRect(l1x + l1w, l1y + 4, 1, 6);
@@ -369,7 +375,6 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   }
   // Boots — tier-aware visuals
   const bootTier = (playerEquip.boots && playerEquip.boots.tier) || 0;
-  const bootSpecial = playerEquip.boots ? playerEquip.boots.special : null;
   // Boot positions per direction
   const bFront = (dir === 0 || dir === 1);
   const b1x = bFront ? x + 4 : x + 8;
@@ -386,73 +391,80 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     ctx.fillRect(b2x, b2y, b2w, bh);
   } else if (bootTier === 1) {
     // T1 Leather — warm brown
-    ctx.fillStyle = "#5a4028";
+    const tv = ARMOR_VISUALS[1];
+    ctx.fillStyle = tv.dark;
     ctx.fillRect(b1x, b1y, b1w, bh);
     ctx.fillRect(b2x, b2y, b2w, bh);
-    ctx.fillStyle = "#3a2a18";
+    ctx.fillStyle = tv.darker;
     ctx.fillRect(b1x, b1y + bh - 2, b1w, 2);
     ctx.fillRect(b2x, b2y + bh - 2, b2w, 2);
-    ctx.fillStyle = "#7a6040";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(b1x + 2, b1y + 1, b1w - 4, 1);
     ctx.fillRect(b2x + 2, b2y + 1, b2w - 4, 1);
   } else if (bootTier === 2) {
     // T2 Iron — steel grey-blue
-    ctx.fillStyle = "#4a5a64";
+    const tv = ARMOR_VISUALS[2];
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(b1x, b1y, b1w, bh);
     ctx.fillRect(b2x, b2y, b2w, bh);
-    ctx.fillStyle = "#3a4a54";
+    ctx.fillStyle = tv.dark;
     ctx.fillRect(b1x, b1y + bh - 2, b1w, 2);
     ctx.fillRect(b2x, b2y + bh - 2, b2w, 2);
     // Silver accent stripe
-    ctx.fillStyle = "#7a8a94";
+    ctx.fillStyle = tv.bootStripe;
     ctx.fillRect(b1x + 1, b1y + 2, b1w - 2, 1);
     ctx.fillRect(b2x + 1, b2y + 2, b2w - 2, 1);
     // Ankle cuff
-    ctx.fillStyle = "#5a6a74";
+    ctx.fillStyle = tv.highlight;
     ctx.fillRect(b1x + 1, b1y - 2, b1w - 2, 2);
     ctx.fillRect(b2x + 1, b2y - 2, b2w - 2, 2);
   } else if (bootTier === 3) {
     // T3 Warden — dark green-grey
-    ctx.fillStyle = "#3a4a3a";
+    const tv = ARMOR_VISUALS[3];
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(b1x, b1y, b1w, bh);
     ctx.fillRect(b2x, b2y, b2w, bh);
-    ctx.fillStyle = "#2a3a2a";
+    ctx.fillStyle = tv.dark;
     ctx.fillRect(b1x, b1y + bh - 2, b1w, 2);
     ctx.fillRect(b2x, b2y + bh - 2, b2w, 2);
     // Ember glow edges
-    const ePulse = 0.3 + Math.sin(Date.now() * 0.006) * 0.15;
-    ctx.fillStyle = `rgba(220,140,50,${ePulse})`;
+    const ePulse = tierGlow(3, renderTime, 0.006);
+    const g = tv.glow.color;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${ePulse})`;
     ctx.fillRect(b1x, b1y, 1, bh); ctx.fillRect(b1x + b1w - 1, b1y, 1, bh);
     ctx.fillRect(b2x, b2y, 1, bh); ctx.fillRect(b2x + b2w - 1, b2y, 1, bh);
     // Tall ankle cuff
-    ctx.fillStyle = "#4a5a4a";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(b1x + 1, b1y - 3, b1w - 2, 3);
     ctx.fillRect(b2x + 1, b2y - 3, b2w - 2, 3);
-    ctx.fillStyle = "#5a6a5a";
+    ctx.fillStyle = tv.highlight;
     ctx.fillRect(b1x + 2, b1y - 2, b1w - 4, 1);
     ctx.fillRect(b2x + 2, b2y - 2, b2w - 4, 1);
   } else if (bootTier === 4) {
     // T4 Void — black with purple glow
-    const vGlow = 0.4 + Math.sin(Date.now() * 0.008) * 0.2;
-    ctx.fillStyle = "#1a1020";
+    const tv = ARMOR_VISUALS[4];
+    const vGlow = tierGlow(4, renderTime, 0.008);
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(b1x, b1y, b1w, bh);
     ctx.fillRect(b2x, b2y, b2w, bh);
-    ctx.fillStyle = "#0a0810";
+    ctx.fillStyle = tv.bootSole;
     ctx.fillRect(b1x, b1y + bh - 2, b1w, 2);
     ctx.fillRect(b2x, b2y + bh - 2, b2w, 2);
     // Purple glow border
-    ctx.fillStyle = `rgba(140,50,220,${vGlow})`;
+    const g = tv.glow.color;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${vGlow})`;
     ctx.fillRect(b1x, b1y, 1, bh); ctx.fillRect(b1x + b1w - 1, b1y, 1, bh);
     ctx.fillRect(b1x, b1y, b1w, 1); ctx.fillRect(b1x, b1y + bh - 1, b1w, 1);
     ctx.fillRect(b2x, b2y, 1, bh); ctx.fillRect(b2x + b2w - 1, b2y, 1, bh);
     ctx.fillRect(b2x, b2y, b2w, 1); ctx.fillRect(b2x, b2y + bh - 1, b2w, 1);
     // Tall ankle cuff — void
-    ctx.fillStyle = "#2a1a30";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(b1x + 1, b1y - 4, b1w - 2, 4);
     ctx.fillRect(b2x + 1, b2y - 4, b2w - 2, 4);
     // Shimmer
-    const shimX = Math.floor(Date.now() / 120) % (b1w - 4);
-    ctx.fillStyle = `rgba(180,100,255,${vGlow})`;
+    const shimX = Math.floor(renderTime / 120) % (b1w - 4);
+    const s = tv.shimmer;
+    ctx.fillStyle = `rgba(${s[0]},${s[1]},${s[2]},${vGlow})`;
     ctx.fillRect(b1x + 2 + shimX, b1y - 3, 2, 1);
     ctx.fillRect(b2x + 2 + shimX, b2y - 3, 2, 1);
   }
@@ -471,43 +483,46 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     ctx.fillRect(x + 12, bodyY, 16, 3);
   } else if (chestTier === 1) {
     // T1 Leather — warm brown vest
-    ctx.fillStyle = "#6a5030";
+    const tv = ARMOR_VISUALS[1];
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
-    ctx.fillStyle = "#7a6040";
+    ctx.fillStyle = tv.secondary;
     for (let cy2 = 0; cy2 < bodyH; cy2 += 4) {
       ctx.fillRect(bodyX + 2, bodyY + cy2, bodyW - 4, 1);
     }
-    ctx.fillStyle = "#5a4020";
+    ctx.fillStyle = tv.belt;
     ctx.fillRect(bodyX, bodyY + bodyH - 2, bodyW, 2);
-    ctx.fillStyle = "#7a6040";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(x + 12, bodyY, 16, 3);
   } else if (chestTier === 2) {
     // T2 Iron Plate — steel grey-blue with rivets
-    ctx.fillStyle = "#4a5a64";
+    const tv = ARMOR_VISUALS[2];
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
-    ctx.fillStyle = "#5a6a74";
+    ctx.fillStyle = tv.highlight;
     ctx.fillRect(bodyX + 2, bodyY + 2, bodyW - 4, 7);
     ctx.fillRect(bodyX + 2, bodyY + 11, bodyW - 4, 7);
-    ctx.fillStyle = "#3a4a54";
+    ctx.fillStyle = tv.dark;
     ctx.fillRect(bodyX + bodyW / 2 - 1, bodyY + 2, 2, bodyH - 4);
     // Rivets — silver
-    ctx.fillStyle = "#8a9aa4";
+    ctx.fillStyle = tv.accent;
     ctx.fillRect(bodyX + 4, bodyY + 3, 2, 2);
     ctx.fillRect(bodyX + bodyW - 6, bodyY + 3, 2, 2);
     ctx.fillRect(bodyX + 4, bodyY + 13, 2, 2);
     ctx.fillRect(bodyX + bodyW - 6, bodyY + 13, 2, 2);
     // Collar
-    ctx.fillStyle = "#5a6a74";
+    ctx.fillStyle = tv.highlight;
     ctx.fillRect(x + 10, bodyY - 1, 20, 4);
     // Shoulder pads
-    ctx.fillStyle = "#4a5a64";
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(bodyX - 2, bodyY, 4, 6);
     ctx.fillRect(bodyX + bodyW - 2, bodyY, 4, 6);
   } else if (chestTier === 3) {
     // T3 Warden Plate — dark green-grey with ember core
-    ctx.fillStyle = "#3a4a3a";
+    const tv = ARMOR_VISUALS[3];
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
-    ctx.fillStyle = "#4a5a4a";
+    ctx.fillStyle = tv.secondary;
     for (let row = 0; row < 4; row++) {
       const off = (row % 2 === 0) ? 0 : 5;
       for (let col = off; col < bodyW - 2; col += 10) {
@@ -517,46 +532,50 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
       }
     }
     // Ember emblem center
-    const emPulse = 0.3 + Math.sin(Date.now() * 0.004) * 0.15;
-    ctx.fillStyle = "#8a6030";
+    const emPulse = tierGlow(3, renderTime, 0.004);
+    const g = tv.glow.color;
+    ctx.fillStyle = tv.emberEmblem;
     ctx.fillRect(bodyX + bodyW / 2 - 2, bodyY + 7, 4, 4);
-    ctx.fillStyle = `rgba(220,140,50,${emPulse + 0.2})`;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${emPulse + 0.2})`;
     ctx.fillRect(bodyX + bodyW / 2 - 1, bodyY + 8, 2, 2);
     // Shoulder pads
-    ctx.fillStyle = "#2a3a2a";
+    ctx.fillStyle = tv.dark;
     ctx.fillRect(bodyX - 3, bodyY - 1, 5, 8);
     ctx.fillRect(bodyX + bodyW - 2, bodyY - 1, 5, 8);
-    ctx.fillStyle = "#4a5a4a";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(x + 10, bodyY - 1, 20, 3);
   } else if (chestTier === 4) {
     // T4 Void — black plate with purple glow
-    const vGlow = 0.4 + Math.sin(Date.now() * 0.005) * 0.15;
-    ctx.fillStyle = "#1a1020";
+    const tv = ARMOR_VISUALS[4];
+    const vGlow = tierGlow(4, renderTime, 0.005);
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
-    ctx.fillStyle = "#2a1a30";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(bodyX + 2, bodyY + 2, bodyW - 4, 7);
     ctx.fillRect(bodyX + 2, bodyY + 11, bodyW - 4, 7);
     // Purple trim borders
-    ctx.fillStyle = `rgba(140,50,220,${vGlow})`;
+    const g = tv.glow.color;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${vGlow})`;
     ctx.fillRect(bodyX, bodyY, bodyW, 1);
     ctx.fillRect(bodyX, bodyY + bodyH - 1, bodyW, 1);
     ctx.fillRect(bodyX, bodyY, 1, bodyH);
     ctx.fillRect(bodyX + bodyW - 1, bodyY, 1, bodyH);
     // Void core emblem
-    ctx.fillStyle = "#3a1a4a";
+    ctx.fillStyle = tv.voidCore;
     ctx.fillRect(bodyX + bodyW / 2 - 1, bodyY + 5, 2, 10);
     ctx.fillRect(bodyX + bodyW / 2 - 4, bodyY + 9, 8, 2);
-    ctx.fillStyle = `rgba(180,80,255,${vGlow * 0.6})`;
+    const cg = tv.coreGlow;
+    ctx.fillStyle = `rgba(${cg[0]},${cg[1]},${cg[2]},${vGlow * 0.6})`;
     ctx.beginPath(); ctx.arc(bodyX + bodyW / 2, bodyY + 10, 5, 0, Math.PI * 2); ctx.fill();
     // Shoulder pads — black with purple edge
-    ctx.fillStyle = "#1a1020";
+    ctx.fillStyle = tv.primary;
     ctx.fillRect(bodyX - 3, bodyY - 2, 6, 9);
     ctx.fillRect(bodyX + bodyW - 3, bodyY - 2, 6, 9);
-    ctx.fillStyle = `rgba(140,50,220,${vGlow * 0.5})`;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${vGlow * 0.5})`;
     ctx.fillRect(bodyX - 3, bodyY - 2, 6, 1);
     ctx.fillRect(bodyX + bodyW - 3, bodyY - 2, 6, 1);
     // Collar
-    ctx.fillStyle = "#2a1a30";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(x + 10, bodyY - 2, 20, 4);
   }
 
@@ -773,7 +792,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         ctx.restore();
       } else {
         // Idle katana with gentle bob
-        const idleBob = Math.sin(Date.now() / 400) * 1.5;
+        const idleBob = Math.sin(renderTime / 400) * 1.5;
         drawKatanaBlade(rifleX, rifleY + idleBob, rifleDir);
       }
     } else {
@@ -1483,64 +1502,71 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   const helmetTier = (playerEquip.helmet && playerEquip.helmet.tier) || 0;
   if (helmetTier === 1) {
     // T1 Leather Cap — warm brown
-    ctx.fillStyle = "#6a5030";
+    const tv = ARMOR_VISUALS[1];
+    ctx.fillStyle = tv.primary;
     ctx.beginPath(); ctx.roundRect(hx + 2, hy - 2, 36, 12, 4); ctx.fill();
-    ctx.fillStyle = "#5a4028";
+    ctx.fillStyle = tv.dark;
     ctx.fillRect(hx - 1, hy + 8, 42, 3);
-    ctx.fillStyle = "#7a6040";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(hx + 8, hy + 1, 24, 1);
   } else if (helmetTier === 2) {
     // T2 Iron Helm — steel grey-blue
-    ctx.fillStyle = "#4a5a64";
+    const tv = ARMOR_VISUALS[2];
+    ctx.fillStyle = tv.primary;
     ctx.beginPath(); ctx.roundRect(hx + 1, hy - 4, 38, 14, 6); ctx.fill();
-    ctx.fillStyle = "#5a6a74";
+    ctx.fillStyle = tv.highlight;
     ctx.fillRect(hx + 1, hy + 6, 38, 3);
     if (dir === 0) {
-      ctx.fillStyle = "#4a5a64";
+      ctx.fillStyle = tv.primary;
       ctx.fillRect(hx + 17, hy + 9, 6, 8);
     }
-    ctx.fillStyle = "#8a9aa4";
+    ctx.fillStyle = tv.accent;
     ctx.fillRect(hx + 4, hy + 7, 2, 2);
     ctx.fillRect(hx + 34, hy + 7, 2, 2);
   } else if (helmetTier === 3) {
     // T3 Warden Helm — dark green-grey full helm
-    ctx.fillStyle = "#3a4a3a";
+    const tv = ARMOR_VISUALS[3];
+    ctx.fillStyle = tv.primary;
     ctx.beginPath(); ctx.roundRect(hx, hy - 5, 40, 16, 6); ctx.fill();
-    ctx.fillStyle = "#4a5a4a";
+    ctx.fillStyle = tv.secondary;
     ctx.fillRect(hx + 14, hy - 7, 12, 4);
     if (dir === 0) {
-      ctx.fillStyle = "#1a1a1a";
+      ctx.fillStyle = "#1a1a1a";  // visor slit darkness
       ctx.fillRect(hx + 6, hy + 4, 28, 3);
-      // Ember eye glow inside visor
-      const eGlow = 0.4 + Math.sin(Date.now() * 0.005) * 0.2;
-      ctx.fillStyle = `rgba(220,140,50,${eGlow})`;
+      // Ember eye glow inside visor (brighter than default tier glow)
+      const g = tv.glow.color;
+      const eGlow = 0.4 + Math.sin(renderTime * tv.animSpeed) * 0.2;
+      ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${eGlow})`;
       ctx.fillRect(hx + 10, hy + 4, 4, 2);
       ctx.fillRect(hx + 26, hy + 4, 4, 2);
     }
-    ctx.fillStyle = "#2a3a2a";
+    ctx.fillStyle = tv.dark;
     ctx.fillRect(hx, hy + 8, 5, 10);
     ctx.fillRect(hx + 35, hy + 8, 5, 10);
   } else if (helmetTier === 4) {
     // T4 Void Crown — black with purple crown spikes
-    const vGlow = 0.4 + Math.sin(Date.now() * 0.006) * 0.2;
-    ctx.fillStyle = "#1a1020";
+    const tv = ARMOR_VISUALS[4];
+    const vGlow = tierGlow(4, renderTime);
+    const g = tv.glow.color;
+    ctx.fillStyle = tv.primary;
     ctx.beginPath(); ctx.roundRect(hx + 1, hy - 4, 38, 14, 5); ctx.fill();
     // Crown spikes — dark with purple tips
-    ctx.fillStyle = "#2a1a30";
+    ctx.fillStyle = tv.secondary;
     ctx.beginPath(); ctx.moveTo(hx + 8, hy - 4); ctx.lineTo(hx + 12, hy - 14); ctx.lineTo(hx + 16, hy - 4); ctx.fill();
     ctx.beginPath(); ctx.moveTo(hx + 16, hy - 4); ctx.lineTo(hx + 20, hy - 18); ctx.lineTo(hx + 24, hy - 4); ctx.fill();
     ctx.beginPath(); ctx.moveTo(hx + 24, hy - 4); ctx.lineTo(hx + 28, hy - 14); ctx.lineTo(hx + 32, hy - 4); ctx.fill();
     // Purple glow on tips
-    ctx.fillStyle = `rgba(140,50,220,${vGlow})`;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${vGlow})`;
     ctx.beginPath(); ctx.arc(hx + 12, hy - 13, 3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(hx + 20, hy - 17, 3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(hx + 28, hy - 13, 3, 0, Math.PI * 2); ctx.fill();
     if (dir === 0) {
-      ctx.fillStyle = `rgba(160,60,255,${vGlow * 0.8})`;
+      const eg = tv.eyeGlow;
+      ctx.fillStyle = `rgba(${eg[0]},${eg[1]},${eg[2]},${vGlow * 0.8})`;
       ctx.fillRect(hx + 9, hy + 4, 5, 3);
       ctx.fillRect(hx + 26, hy + 4, 5, 3);
     }
-    ctx.fillStyle = `rgba(140,50,220,${vGlow * 0.5})`;
+    ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${vGlow * 0.5})`;
     ctx.fillRect(hx + 1, hy + 7, 38, 2);
   }
 }
@@ -1562,10 +1588,10 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
 
   // Healer floats above ground
   if (isHealer && !isPreview) {
-    const floatOff = -12 + Math.sin(Date.now() * 0.003) * 5;
+    const floatOff = -12 + Math.sin(renderTime * 0.003) * 5;
     y += floatOff;
     // Shadow on ground below
-    const shadowScale = 0.7 + Math.sin(Date.now() * 0.003) * 0.1;
+    const shadowScale = 0.7 + Math.sin(renderTime * 0.003) * 0.1;
     ctx.fillStyle = "rgba(0,0,0,0.2)";
     ctx.beginPath(); ctx.ellipse(sx, sy + 2, 16 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2); ctx.fill();
   }
@@ -1633,9 +1659,9 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
     ctx.fillRect(x + 6, y + 46 + bobY, 28, 10);
     // Wispy tattered robe tips
     ctx.fillStyle = "#ccc8bb";
-    ctx.fillRect(x + 4, y + 54 + bobY, 8, 6 + Math.sin(Date.now() * 0.004) * 2);
-    ctx.fillRect(x + 14, y + 55 + bobY, 6, 5 + Math.sin(Date.now() * 0.005 + 1) * 2);
-    ctx.fillRect(x + 24, y + 54 + bobY, 8, 6 + Math.sin(Date.now() * 0.004 + 2) * 2);
+    ctx.fillRect(x + 4, y + 54 + bobY, 8, 6 + Math.sin(renderTime * 0.004) * 2);
+    ctx.fillRect(x + 14, y + 55 + bobY, 6, 5 + Math.sin(renderTime * 0.005 + 1) * 2);
+    ctx.fillRect(x + 24, y + 54 + bobY, 8, 6 + Math.sin(renderTime * 0.004 + 2) * 2);
     // Gold trim at bottom
     ctx.fillStyle = "#c8a848";
     ctx.fillRect(x + 5, y + 53 + bobY, 30, 2);
@@ -1690,7 +1716,7 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
     ctx.beginPath(); ctx.moveTo(x + 10, y + 24 + bobY); ctx.lineTo(x + 18, y + 38 + bobY); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x + 28, y + 26 + bobY); ctx.lineTo(x + 22, y + 42 + bobY); ctx.stroke();
     // Glowing core
-    const t = Date.now() / 400;
+    const t = renderTime / 400;
     const coreGlow = 0.4 + 0.2 * Math.sin(t);
     ctx.fillStyle = `rgba(255,140,40,${coreGlow})`;
     ctx.beginPath(); ctx.arc(x + 20, y + 35 + bobY, 5, 0, Math.PI * 2); ctx.fill();
@@ -2235,7 +2261,7 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
     ctx.fillRect(hx + 8, hy + 12, 7, 5);
     ctx.fillRect(hx + 25, hy + 12, 7, 5);
     // Eye glow
-    const t2 = Date.now() / 300;
+    const t2 = renderTime / 300;
     const eyeGlow = 0.3 + 0.15 * Math.sin(t2);
     ctx.fillStyle = `rgba(255,140,40,${eyeGlow})`;
     ctx.beginPath(); ctx.arc(hx + 11, hy + 14, 6, 0, Math.PI * 2); ctx.fill();
@@ -2464,7 +2490,7 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
     ctx.closePath();
     ctx.fill();
     // Glow particles around witch
-    const t = Date.now() / 300;
+    const t = renderTime / 300;
     ctx.fillStyle = "rgba(120,60,180,0.4)";
     for (let p = 0; p < 3; p++) {
       const angle = t + p * 2.1;

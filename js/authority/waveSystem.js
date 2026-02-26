@@ -140,6 +140,8 @@ function addPlayerXP(amount) {
     playerLevel++;
   }
   if (playerLevel >= PLAYER_MAX_LEVEL) playerXP = 0;
+  // Auto-save progression on XP gain (debounced)
+  SaveLoad.autoSave();
 }
 
 // Stats panel open state
@@ -271,3 +273,390 @@ let showWeaponStats = false;
 // Extra hotbar item slot
 let extraSlotItem = null; // item equipped in slot 4
 
+// ===================== WAVE SCALING, COMPOSITION, SPAWNING =====================
+// Moved from inventorySystem.js — these belong with wave logic
+
+// Wave XP multiplier (for mob HP/speed scaling only)
+
+// Wave scaling — harder per wave since fewer mobs
+function getMobCountForWave(w) {
+  // More mobs on higher floors
+  const base = Math.min(5 + Math.floor(w * 1.0), 14);
+  const floorBonus = Math.floor((dungeonFloor - 1) * 2); // +2 mobs per floor
+  return Math.min(base + floorBonus, 22); // cap at 22
+}
+function getWaveHPMultiplier(w) {
+  // Exponential floor scaling: floor 1=1x, 2=2.2x, 3=5x, 4=11x, 5=25x
+  const floorMult = Math.pow(2.2, dungeonFloor - 1);
+  // +12% HP per wave within each floor
+  return (1 + (w - 1) * 0.12) * floorMult;
+}
+function getWaveSpeedMultiplier(w) {
+  // Speed also scales with floor (but capped by capMobSpeed)
+  const floorSpd = 1 + (dungeonFloor - 1) * 0.15;
+  return (1 + (w - 1) * 0.06) * floorSpd;
+}
+// Mob damage also scales with floor
+function getMobDamageMultiplier() {
+  // Floor 1=1x, 2=1.5x, 3=2.2x, 4=3.2x, 5=4.5x
+  return 1 + (dungeonFloor - 1) * 0.7 + Math.pow(dungeonFloor - 1, 1.5) * 0.2;
+}
+// Speed caps: runner max 1.5x player speed, everything else max 0.95x
+function capMobSpeed(type, speed) {
+  const playerSpeed = player.baseSpeed || 3.5; // base only — boots should NOT affect mob caps
+  if (type === "runner") return Math.min(speed, playerSpeed * 1.1);
+  return Math.min(speed, playerSpeed * 0.85);
+}
+
+// Themed wave compositions — each wave has a primary focus + minor support
+// Returns { primary: [{type, weight}], support: [{type, weight}], primaryPct: 0.6-0.8, theme: "name" }
+function getWaveComposition(w) {
+  const isBoss = w % 10 === 0 && w >= 10;
+  if (isBoss) return { primary: [{type:"golem",weight:1}], support: [{type:"tank",weight:2},{type:"witch",weight:1},{type:"grunt",weight:2}], primaryPct: 0.08, theme: "⚔ BOSS WAVE ⚔", forceGolem: true };
+
+  // Cycle through themed waves with some variety
+  const cycle = ((w - 1) % 8);
+  switch(cycle) {
+    case 0: // Grunt rush
+      return { primary: [{type:"grunt",weight:1}], support: [], primaryPct: 1.0, theme: "Grunt Rush" };
+    case 1: // Archer Ambush — archers snipe from back, grunts + runners push you in
+      return { primary: [{type:"archer",weight:3},{type:"grunt",weight:2}], support: [{type:"runner",weight:2}], primaryPct: 0.6, theme: "Archer Ambush" };
+    case 2: // Runner swarm
+      return { primary: [{type:"runner",weight:3}], support: [{type:"grunt",weight:1}], primaryPct: 0.75, theme: "Speed Swarm" };
+    case 3: // Mummy ambush
+      return { primary: [{type:"mummy",weight:3}], support: [{type:"runner",weight:2},{type:"grunt",weight:1}], primaryPct: 0.5, theme: "Mummy Ambush" };
+    case 4: // Tank assault with healers keeping them alive
+      return { primary: [{type:"tank",weight:5}], support: [{type:"healer",weight:2},{type:"grunt",weight:1}], primaryPct: 0.6, theme: "Heavy Assault" };
+    case 5: // Witch coven
+      return { primary: [{type:"witch",weight:2}], support: [{type:"grunt",weight:2},{type:"tank",weight:1}], primaryPct: 0.3, theme: "Witch Coven" };
+    case 6: // Blitz wave
+      return { primary: [{type:"runner",weight:3},{type:"mummy",weight:2}], support: [{type:"grunt",weight:1}], primaryPct: 0.65, theme: "Blitz Wave" };
+    case 7: // Mixed elite — everything
+      return { primary: [{type:"tank",weight:2},{type:"witch",weight:2}], support: [{type:"healer",weight:1},{type:"archer",weight:1},{type:"mummy",weight:1},{type:"runner",weight:1}], primaryPct: 0.5, theme: "Elite Wave" };
+    default:
+      return { primary: [{type:"grunt",weight:1}], support: [], primaryPct: 1.0, theme: "Wave " + w };
+  }
+}
+
+function pickFromWeighted(entries) {
+  const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const e of entries) {
+    r -= e.weight;
+    if (r <= 0) return e.type;
+  }
+  return entries[entries.length - 1].type;
+}
+
+let waveTheme = ""; // current wave theme name
+
+// Spawn positions — edges of the map
+function getSpawnPos() {
+  // Try edge spawns up to 20 times to find a clear position
+  const margin = 4;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const edge = Math.floor(Math.random() * 4);
+    let tx, ty;
+    if (edge === 0) { tx = margin + Math.floor(Math.random() * (level.widthTiles - margin * 2)); ty = margin; }
+    else if (edge === 1) { tx = margin + Math.floor(Math.random() * (level.widthTiles - margin * 2)); ty = level.heightTiles - margin - 1; }
+    else if (edge === 2) { tx = margin; ty = margin + Math.floor(Math.random() * (level.heightTiles - margin * 2)); }
+    else { tx = level.widthTiles - margin - 1; ty = margin + Math.floor(Math.random() * (level.heightTiles - margin * 2)); }
+
+    if (!isSolid(tx, ty)) {
+      return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 };
+    }
+  }
+  // Fallback: scan for any walkable tile away from player
+  for (let ty = margin; ty < level.heightTiles - margin; ty++) {
+    for (let tx = margin; tx < level.widthTiles - margin; tx++) {
+      if (!isSolid(tx, ty)) {
+        const px = tx * TILE + TILE / 2, py = ty * TILE + TILE / 2;
+        const ddx = px - player.x, ddy = py - player.y;
+        if (ddx * ddx + ddy * ddy > 200 * 200) {
+          return { x: px, y: py };
+        }
+      }
+    }
+  }
+  return { x: 10 * TILE + TILE / 2, y: 10 * TILE + TILE / 2 };
+}
+
+let nextMobId = 1; // unique mob IDs for witch-skeleton linking
+
+function spawnWave() {
+  wave++;
+  waveState = "active";
+  const comp = getWaveComposition(wave);
+  waveTheme = comp.theme;
+
+  // Reset phase tracking
+  currentPhase = 1;
+  phaseMobsKilled = 0;
+  phaseTriggered = [true, false, false]; // phase 1 spawns immediately
+
+  // Clear leftover medpacks from previous wave
+  medpacks.length = 0;
+
+  // Boss waves (every 10th) have no phases — single spawn
+  const isBossWave = comp.forceGolem || false;
+  if (isBossWave) {
+    spawnMedpacks();
+    spawnMedpacks();
+    spawnPhase(comp, 1, isBossWave);
+    phaseTriggered = [true, true, true]; // no more phases
+    phaseMaxMobs = mobs.length;
+    // Tag all boss mobs as phase 1
+    for (const m of mobs) { if (!m.phase) m.phase = 1; }
+    Events.emit('wave_started', { wave, floor: dungeonFloor, isBoss: true, mobCount: mobs.length });
+    return;
+  }
+
+  // Phase 1: spawn normally
+  spawnMedpacks();
+  spawnPhase(comp, 1, false);
+  phaseMaxMobs = mobs.length;
+  // Tag phase 1 mobs
+  for (const m of mobs) { if (!m.phase) m.phase = 1; }
+  Events.emit('wave_started', { wave, floor: dungeonFloor, isBoss: false, mobCount: mobs.length });
+}
+
+// Spawn a single phase of mobs for the current wave
+function spawnPhase(comp, phase, isBossWave) {
+
+  // Farm waves get more mobs
+  const isFarmWave = (wave % 8 === 1 || wave % 8 === 3); // Grunt Rush & Speed Swarm
+  const farmMult = isFarmWave ? 1.6 : 1.0;
+  const count = Math.floor(getMobCountForWave(wave) * farmMult);
+
+  // Farm waves have slightly weaker mobs
+  const farmHPMult = isFarmWave ? 0.7 : 1.0;
+  // Phase scaling: +4% HP for phase 2, +8% HP for phase 3
+  const phaseHPMult = phase === 2 ? 1.04 : phase === 3 ? 1.08 : 1.0;
+  const phaseSpdMult = phase === 2 ? 1.02 : phase === 3 ? 1.04 : 1.0;
+  const hpMult = getWaveHPMultiplier(wave) * farmHPMult * phaseHPMult;
+  const spdMult = getWaveSpeedMultiplier(wave) * phaseSpdMult;
+
+  // Filter out mob types not yet unlocked
+  const unlocked = (type) => {
+    if (type === "archer") return wave >= 2;
+    if (type === "runner") return wave >= 3;
+    if (type === "tank") return wave >= 5;
+    if (type === "healer") return wave >= 5;
+    if (type === "mummy") return wave >= 4;
+    if (type === "witch") return wave >= 6;
+    if (type === "golem") return wave >= 10 && wave % 10 === 0;
+    return true; // grunt, skeleton always
+  };
+  const primary = comp.primary.filter(e => unlocked(e.type));
+  const support = comp.support.filter(e => unlocked(e.type));
+  // Fallback if nothing unlocked yet
+  if (primary.length === 0) primary.push({type:"grunt",weight:1});
+  if (support.length === 0) support.push({type:"grunt",weight:1});
+
+  const typeCounts = {};
+
+  // Boss waves: guarantee one of every support type first, then fill randomly
+  if (isBossWave) {
+    // Spawn the golem first
+    const golemPos = getSpawnPos();
+    const golemMt = MOB_TYPES.golem;
+    const golemId = nextMobId++;
+    const golemHp = Math.round(golemMt.hp * hpMult * 1.5);
+    mobs.push({
+      x: golemPos.x, y: golemPos.y, type: "golem", id: golemId,
+      hp: golemHp, maxHp: golemHp,
+      speed: capMobSpeed("golem", golemMt.speed * spdMult),
+      damage: Math.round(golemMt.damage * getMobDamageMultiplier()), contactRange: golemMt.contactRange,
+      skin: golemMt.skin, hair: golemMt.hair, shirt: golemMt.shirt, pants: golemMt.pants,
+      name: golemMt.name, dir: 0, frame: 0, attackCooldown: 0,
+      shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
+      summonRate: golemMt.summonRate || 0, summonMax: golemMt.summonMax || 0,
+      summonTimer: Math.floor((golemMt.summonRate || 0) * 0.5), witchId: 0,
+      boneSwing: 0, castTimer: 0,
+      scale: 1.6, spawnFrame: gameFrame,
+      boulderRate: golemMt.boulderRate || 0, boulderSpeed: golemMt.boulderSpeed || 0,
+      boulderRange: golemMt.boulderRange || 0,
+      boulderTimer: Math.floor((golemMt.boulderRate || 0) * 0.3), throwAnim: 0,
+      explodeRange: 0, explodeDamage: 0, fuseMin: 0, fuseMax: 0, mummyArmed: false, mummyFuse: 0,
+      arrowRate: 0, arrowSpeed: 0, arrowRange: 0, arrowBounces: 0, arrowLife: 0, bowDrawAnim: 0, arrowTimer: 0,
+      healRadius: 0, healRate: 0, healAmount: 0, healTimer: 0, healAnim: 0,
+    });
+    typeCounts["golem"] = 1;
+
+    // Guarantee spawns: tank, witch, grunt, runner, archer, healer, mummy
+    const guaranteedTypes = ["tank", "witch", "grunt", "runner", "archer", "healer", "mummy"];
+    const guaranteedCounts = { tank: 3, witch: 2, grunt: 4, runner: 3, archer: 2, healer: 2, mummy: 2 };
+    for (const gType of guaranteedTypes) {
+      const gCount = guaranteedCounts[gType] || 1;
+      const gMt = MOB_TYPES[gType];
+      if (!gMt) continue;
+      for (let gi = 0; gi < gCount; gi++) {
+        const gPos = getSpawnPos();
+        const gId = nextMobId++;
+        let gHp = Math.round(gMt.hp * hpMult);
+        if (gType === "witch") gHp = Math.round(MOB_TYPES.tank.hp * 1.2 * hpMult);
+        mobs.push({
+          x: gPos.x, y: gPos.y, type: gType, id: gId,
+          hp: gHp, maxHp: gHp,
+          speed: capMobSpeed(gType, gMt.speed * spdMult),
+          damage: Math.round(gMt.damage * getMobDamageMultiplier()), contactRange: gMt.contactRange,
+          skin: gMt.skin, hair: gMt.hair, shirt: gMt.shirt, pants: gMt.pants,
+          name: gMt.name, dir: 0, frame: 0, attackCooldown: 0,
+          shootRange: gMt.shootRange || 0, shootRate: gMt.shootRate || 0,
+          shootTimer: gMt.shootRate ? Math.floor(Math.random() * gMt.shootRate) : 0,
+          bulletSpeed: gMt.bulletSpeed || 0,
+          summonRate: gMt.summonRate || 0, summonMax: gMt.summonMax || 0,
+          summonTimer: gMt.summonRate ? Math.floor(gMt.summonRate * 0.5) : 0,
+          witchId: 0, boneSwing: 0, castTimer: 0,
+          scale: gType === "tank" ? 1.3 : gType === "witch" ? 1.1 : 1.0,
+          spawnFrame: gameFrame,
+          boulderRate: gMt.boulderRate || 0, boulderSpeed: gMt.boulderSpeed || 0,
+          boulderRange: gMt.boulderRange || 0,
+          boulderTimer: gMt.boulderRate ? Math.floor(gMt.boulderRate * 0.3) : 0, throwAnim: 0,
+          explodeRange: gMt.explodeRange || 0, explodeDamage: Math.round((gMt.explodeDamage || 0) * getMobDamageMultiplier()),
+          fuseMin: gMt.fuseMin || 0, fuseMax: gMt.fuseMax || 0, mummyArmed: false, mummyFuse: 0,
+          arrowRate: gMt.arrowRate || 0, arrowSpeed: gMt.arrowSpeed || 0,
+          arrowRange: gMt.arrowRange || 0, arrowBounces: gMt.arrowBounces || 0,
+          arrowLife: gMt.arrowLife || 0, bowDrawAnim: 0,
+          arrowTimer: gMt.arrowRate ? Math.floor(Math.random() * gMt.arrowRate) : 0,
+          healRadius: gMt.healRadius || 0, healRate: gMt.healRate || 0,
+          healAmount: gMt.healAmount || 0,
+          healTimer: gMt.healRate ? Math.floor(gMt.healRate * 0.5) : 0, healAnim: 0,
+        });
+        typeCounts[gType] = (typeCounts[gType] || 0) + 1;
+      }
+    }
+    // Boss wave spawning done — skip normal loop
+  } else {
+
+  for (let i = 0; i < count; i++) {
+    let typeKey;
+    // Force first mob to be golem on boss waves
+    if (isBossWave && i === 0) {
+      typeKey = "golem";
+    } else {
+      // Pick from primary or support pool based on primaryPct
+      const usePrimary = Math.random() < comp.primaryPct || support.length === 0;
+      typeKey = usePrimary ? pickFromWeighted(primary) : pickFromWeighted(support);
+    }
+    // Enforce per-type caps
+    const cap = MOB_CAPS[typeKey] || 99;
+    if ((typeCounts[typeKey] || 0) >= cap) {
+      const allTypes = [...primary, ...support];
+      const available = allTypes.filter(e => (typeCounts[e.type] || 0) < (MOB_CAPS[e.type] || 99));
+      if (available.length > 0) {
+        typeKey = pickFromWeighted(available);
+      } else {
+        continue;
+      }
+    }
+    typeCounts[typeKey] = (typeCounts[typeKey] || 0) + 1;
+    const mt = MOB_TYPES[typeKey];
+    const pos = getSpawnPos();
+
+    // Special HP: witch and golem
+    let mobHp = Math.round(mt.hp * hpMult);
+    if (typeKey === "witch") mobHp = Math.round(MOB_TYPES.tank.hp * 1.2 * hpMult);
+    if (typeKey === "golem") mobHp = Math.round(mt.hp * hpMult * 1.5); // boss scaling
+
+    const mobId = nextMobId++;
+    mobs.push({
+      x: pos.x, y: pos.y,
+      type: typeKey,
+      id: mobId,
+      hp: mobHp,
+      maxHp: mobHp,
+      speed: capMobSpeed(typeKey, mt.speed * spdMult),
+      damage: Math.round(mt.damage * getMobDamageMultiplier()),
+      contactRange: mt.contactRange,
+      skin: mt.skin, hair: mt.hair, shirt: mt.shirt, pants: mt.pants,
+      name: mt.name,
+      dir: 0, frame: 0, attackCooldown: 0,
+      // Shooter ranged attack
+      shootRange: mt.shootRange || 0,
+      shootRate: mt.shootRate || 0,
+      shootTimer: mt.shootRate ? Math.floor(Math.random() * mt.shootRate) : 0,
+      bulletSpeed: mt.bulletSpeed || 0,
+      // Witch summoning
+      summonRate: mt.summonRate || 0,
+      summonMax: mt.summonMax || 0,
+      summonTimer: mt.summonRate ? Math.floor(mt.summonRate * 0.5) : 0,
+      // Skeleton ownership
+      witchId: 0, // if skeleton, which witch spawned it
+      boneSwing: 0, // skeleton attack animation timer
+      castTimer: 0, // witch casting animation timer
+      // Visual scale for tanks
+      scale: typeKey === "tank" ? 1.3 : typeKey === "witch" ? 1.1 : typeKey === "golem" ? 1.6 : 1.0,
+      spawnFrame: gameFrame,
+      // Golem boulder throwing
+      boulderRate: mt.boulderRate || 0,
+      boulderSpeed: mt.boulderSpeed || 0,
+      boulderRange: mt.boulderRange || 0,
+      boulderTimer: mt.boulderRate ? Math.floor(mt.boulderRate * 0.3) : 0,
+      throwAnim: 0, // golem throw animation timer
+      // Mummy explosion
+      explodeRange: mt.explodeRange || 0,
+      explodeDamage: Math.round((mt.explodeDamage || 0) * getMobDamageMultiplier()),
+      mummyFuse: 0, // counts down when near player, explodes at 0
+      mummyArmed: false, // becomes true when close to player
+      mummyFlash: 0, // visual flash timer
+      // Archer fields
+      arrowRate: mt.arrowRate || 0,
+      arrowSpeed: mt.arrowSpeed || 0,
+      arrowRange: mt.arrowRange || 0,
+      arrowTimer: mt.arrowRate ? Math.floor(Math.random() * mt.arrowRate) : 0,
+      arrowBounces: mt.arrowBounces || 0,
+      arrowLife: mt.arrowLife || 0,
+      bowDrawAnim: 0, // bow draw animation timer
+      // Healer fields
+      healRadius: mt.healRadius || 0,
+      healRate: mt.healRate || 0,
+      healAmount: mt.healAmount || 0,
+      healTimer: mt.healRate ? Math.floor(Math.random() * mt.healRate) : 0,
+      healAnim: 0, // healing pulse animation
+      healZoneX: 0, healZoneY: 0, // projected heal zone center
+    });
+  }
+  } // end non-boss else block
+}
+
+// Check if next phase should trigger (called when a mob dies)
+function checkPhaseAdvance(deadMobPhase) {
+  if (waveState !== "active") return;
+  // Boss waves have no phases
+  if (phaseTriggered[0] && phaseTriggered[1] && phaseTriggered[2]) return;
+
+  // Only count kills of mobs from the current phase
+  if (deadMobPhase === currentPhase) {
+    phaseMobsKilled++;
+  }
+
+  const nextPhase = currentPhase + 1;
+  if (nextPhase > 3) return;
+  if (phaseTriggered[nextPhase - 1]) return;
+
+  // Trigger next phase when 75% of current phase's mobs are killed
+  if (phaseMaxMobs > 0 && phaseMobsKilled >= Math.floor(phaseMaxMobs * 0.75)) {
+    currentPhase = nextPhase;
+    phaseTriggered[nextPhase - 1] = true;
+    phaseMobsKilled = 0;
+
+    // Spawn next phase mobs
+    const comp = getWaveComposition(wave);
+    spawnMedpacks();
+    const mobsBefore = mobs.length;
+    spawnPhase(comp, nextPhase, false);
+    // Tag new mobs with their phase number
+    for (let mi = mobsBefore; mi < mobs.length; mi++) {
+      mobs[mi].phase = nextPhase;
+    }
+    phaseMaxMobs = mobs.length - mobsBefore; // only count NEW mobs for next threshold
+
+    // Phase announcement
+    const phaseNames = ["", "Phase 1", "Phase 2", "Phase 3"];
+    hitEffects.push({ x: player.x, y: player.y - 60, life: 35, maxLife: 35, type: "heal", dmg: phaseNames[nextPhase] + " incoming!" });
+  }
+}
+
+// Track player velocity for prediction
+let playerVelX = 0, playerVelY = 0;

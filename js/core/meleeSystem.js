@@ -366,20 +366,26 @@ function updateMelee() {
         if (dist < godspeed.range) {
           const isExecute = m.hp <= m.maxHp * 0.15;
           const dmg = isExecute ? m.hp : godspeed.damagePerStrike;
-          
+
           // Kashimo-style ground lightning bolt shooting up from below
           hitEffects.push({ x: m.x + (Math.random() - 0.5) * 16, y: m.y, life: 16, type: "ground_lightning" });
-          
+
           if (isExecute) {
             hitEffects.push({ x: m.x, y: m.y - 25, life: 20, type: "hit", dmg: "ZAP" });
           } else {
             hitEffects.push({ x: m.x, y: m.y - 20 - Math.random() * 10, life: 12, type: "hit", dmg: dmg });
           }
-          
+
           dealDamageToMob(m, dmg, "godspeed");
         }
       }
     }
+  }
+
+  // Tick dash trail lifetime (moved from draw.js — render should not mutate state)
+  for (let ti = melee.dashTrail.length - 1; ti >= 0; ti--) {
+    melee.dashTrail[ti].life--;
+    if (melee.dashTrail[ti].life <= 0) melee.dashTrail.splice(ti, 1);
   }
 }
 
@@ -746,8 +752,8 @@ function drawKatanaSwing(camX, camY) {
     ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI * 2); ctx.fill();
     // Dark energy wisps
     for (let w = 0; w < 3; w++) {
-      const wa = bladeAngle + (w - 1) * 0.3 + Math.sin(Date.now() * 0.01 + w) * 0.2;
-      const wd = bLen * (0.85 + Math.sin(Date.now() * 0.008 + w * 2) * 0.08);
+      const wa = bladeAngle + (w - 1) * 0.3 + Math.sin(renderTime * 0.01 + w) * 0.2;
+      const wd = bLen * (0.85 + Math.sin(renderTime * 0.008 + w * 2) * 0.08);
       ctx.fillStyle = `rgba(80,5,5,${0.4 * fadeAlpha})`;
       ctx.beginPath(); ctx.arc(Math.cos(wa) * wd, Math.sin(wa) * wd, 2, 0, Math.PI * 2); ctx.fill();
     }
@@ -961,7 +967,7 @@ function drawBullets() {
     }
     if (b.isBoulder) {
       // Boulder — MASSIVE spinning rock
-      const spin = Date.now() * 0.006;
+      const spin = renderTime * 0.006;
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(spin);

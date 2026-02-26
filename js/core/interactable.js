@@ -285,18 +285,13 @@ function rollChest(type) {
       if (t.tier <= currentTier) {
         return { success: false, msg: 'ALREADY HAVE T' + currentTier, item: t, downgrade: true };
       }
-      playerEquip[type] = t;
-      // Apply stats
+      // Apply stats via centralized helpers
       if (type === 'gun') {
-        gun.damage = t.damage;
-        gun.magSize = t.magSize;
-        gun.ammo = t.magSize;
-        gun.fireCooldownMax = t.fireRate;
+        applyGunStats(t);
       } else if (type === 'melee') {
-        melee.damage = t.damage;
-        melee.range = t.range;
-        melee.cooldownMax = t.cooldown;
-        melee.critChance = t.critChance || MELEE_DEFAULTS.critChance;
+        applyMeleeStats(t);
+      } else {
+        playerEquip[type] = t;
       }
       return { success: true, msg: t.name, item: t };
     }
@@ -306,31 +301,43 @@ function rollChest(type) {
 
 const ROLL_SPIN_TIME = 90; // legacy, unused
 
+// ---- Shop runtime state (mutable) ----
+// Separated from static SHOP_ITEMS definitions so resets are robust.
+// Tracks per-buff purchase counts; reset on dungeon re-entry via _resetShopPrices().
+const shopState = {
+  buffsBought: [0, 0, 0, 0, 0], // one counter per Buffs item (indexed 0-4)
+};
+
 let lifestealPerKill = 25;
 let shopCategory = 0;
 const SHOP_CATEGORIES = ["Buffs", "Guns", "Melees", "Boots", "Pants", "Chest", "Helmets"];
 
 const SHOP_ITEMS = {
   Buffs: [
-    { name: "Gun Damage +3", desc: "Permanent boost", baseCost: 15, priceIncrease: 8, bought: 0,
-      get cost() { return this.baseCost + this.bought * this.priceIncrease; },
+    { name: "Gun Damage +3", desc: "Permanent boost", baseCost: 15, priceIncrease: 8,
+      get bought() { return shopState.buffsBought[0]; }, set bought(v) { shopState.buffsBought[0] = v; },
+      get cost() { return this.baseCost + shopState.buffsBought[0] * this.priceIncrease; },
       action: () => { gun.damage += 3; return true; }
     },
-    { name: "Melee Damage +3", desc: "Permanent boost", baseCost: 15, priceIncrease: 9, bought: 0,
-      get cost() { return this.baseCost + this.bought * this.priceIncrease; },
+    { name: "Melee Damage +3", desc: "Permanent boost", baseCost: 15, priceIncrease: 9,
+      get bought() { return shopState.buffsBought[1]; }, set bought(v) { shopState.buffsBought[1] = v; },
+      get cost() { return this.baseCost + shopState.buffsBought[1] * this.priceIncrease; },
       action: () => { melee.damage += 3; return true; }
     },
-    { name: "Melee Speed +", desc: "Faster swing", baseCost: 20, priceIncrease: 11, bought: 0, maxBuy: 6,
-      get cost() { return this.baseCost + this.bought * this.priceIncrease; },
-      action() { if (this.bought >= this.maxBuy) return false; melee.cooldownMax = Math.max(10, melee.cooldownMax - 2); return true; }
+    { name: "Melee Speed +", desc: "Faster swing", baseCost: 20, priceIncrease: 11, maxBuy: 6,
+      get bought() { return shopState.buffsBought[2]; }, set bought(v) { shopState.buffsBought[2] = v; },
+      get cost() { return this.baseCost + shopState.buffsBought[2] * this.priceIncrease; },
+      action() { if (shopState.buffsBought[2] >= this.maxBuy) return false; melee.cooldownMax = Math.max(10, melee.cooldownMax - 2); return true; }
     },
-    { name: "Health Potion", desc: "+1 Potion", baseCost: 15, priceIncrease: 4, bought: 0,
-      get cost() { return this.baseCost + this.bought * this.priceIncrease; },
+    { name: "Health Potion", desc: "+1 Potion", baseCost: 15, priceIncrease: 4,
+      get bought() { return shopState.buffsBought[3]; }, set bought(v) { shopState.buffsBought[3] = v; },
+      get cost() { return this.baseCost + shopState.buffsBought[3] * this.priceIncrease; },
       action: () => { potion.count++; addToInventory(createConsumable('potion', 'Health Potion', 1)); return true; }
     },
-    { name: "Lifesteal +5", desc: "+5 HP per kill", baseCost: 10, priceIncrease: 4, bought: 0, maxBuy: 10,
-      get cost() { return this.baseCost + this.bought * this.priceIncrease; },
-      action() { if (this.bought >= this.maxBuy) return false; lifestealPerKill += 5; return true; }
+    { name: "Lifesteal +5", desc: "+5 HP per kill", baseCost: 10, priceIncrease: 4, maxBuy: 10,
+      get bought() { return shopState.buffsBought[4]; }, set bought(v) { shopState.buffsBought[4] = v; },
+      get cost() { return this.baseCost + shopState.buffsBought[4] * this.priceIncrease; },
+      action() { if (shopState.buffsBought[4] >= this.maxBuy) return false; lifestealPerKill += 5; return true; }
     },
   ],
   Guns: GUN_TIERS.map((g, idx) => ({
@@ -349,12 +356,7 @@ const SHOP_ITEMS = {
       if (this.isOwned || this.isLocked) return false;
       const invItem = createItem('gun', this.equipData);
       if (!addToInventory(invItem)) return false; // inventory full
-      playerEquip.gun = this.equipData;
-      gun.damage = this.equipData.damage;
-      gun.magSize = this.equipData.magSize;
-      gun.ammo = this.equipData.magSize;
-      gun.fireCooldownMax = this.equipData.fireRate;
-      gun.special = this.equipData.special || null;
+      applyGunStats(this.equipData);
       return true;
     }
   })),
@@ -374,12 +376,7 @@ const SHOP_ITEMS = {
       if (this.isOwned || this.isLocked) return false;
       const invItem = createItem('melee', this.equipData);
       if (!addToInventory(invItem)) return false; // inventory full
-      playerEquip.melee = this.equipData;
-      melee.damage = this.equipData.damage;
-      melee.range = this.equipData.range;
-      melee.cooldownMax = this.equipData.cooldown;
-      melee.critChance = this.equipData.critChance || 0.20;
-      melee.special = this.equipData.special || null;
+      applyMeleeStats(this.equipData);
       return true;
     }
   })),
@@ -465,6 +462,6 @@ const SHOP_ITEMS = {
 function getShopItems() { return SHOP_ITEMS[SHOP_CATEGORIES[shopCategory]] || []; }
 
 window._resetShopPrices = () => {
-  for (const item of SHOP_ITEMS.Buffs) item.bought = 0;
+  shopState.buffsBought.fill(0);
   lifestealPerKill = 25;
 };
