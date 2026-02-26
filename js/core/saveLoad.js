@@ -6,7 +6,7 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 
 const SaveLoad = {
   // Cosmetic keys to persist from player object
@@ -43,6 +43,13 @@ const SaveLoad = {
         baitCount: fishingState.baitCount,
         stats: { ...fishingState.stats },
       };
+      // Farming state (v5: persist stats + landLevel only; tiles are session-only)
+      if (typeof farmingState !== 'undefined') {
+        data.farming = {
+          landLevel: farmingState.landLevel,
+          stats: { ...farmingState.stats },
+        };
+      }
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('Save failed:', e);
@@ -123,6 +130,18 @@ const SaveLoad = {
             const rodData = { ...ROD_TIERS[tier], currentDurability: f.rodDurability || ROD_TIERS[tier].durability };
             addToInventory(createItem('melee', rodData));
           }
+        }
+      }
+
+      // Farming state (v5+)
+      if (data.farming && typeof farmingState !== 'undefined') {
+        const fm = data.farming;
+        if (fm.landLevel !== undefined) farmingState.landLevel = fm.landLevel;
+        if (fm.stats) {
+          farmingState.stats.totalHarvested = fm.stats.totalHarvested || 0;
+          farmingState.stats.totalEarned = fm.stats.totalEarned || 0;
+          farmingState.stats.bestCrop = fm.stats.bestCrop || null;
+          farmingState.stats.bestCropValue = fm.stats.bestCropValue || 0;
         }
       }
 

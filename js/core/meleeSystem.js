@@ -60,6 +60,13 @@ function meleeSwing() {
     return; // Skip melee damage — swing animation already started above
   }
 
+  // Farming hoe intercept: if inside farm and hoe equipped, do farm action instead of combat
+  if (melee.special === 'farming' && typeof Scene !== 'undefined' && Scene.inFarm
+      && typeof handleFarmSwing === 'function') {
+    handleFarmSwing();
+    return; // Skip melee damage — swing animation already started above
+  }
+
   // Ninja dash-attack: swing triggers a dash in the attack direction
   if (melee.special === 'ninja' && melee.dashActive && melee.dashesLeft > 0 && !melee.dashing) {
     melee.dashing = true;
@@ -764,6 +771,44 @@ function drawKatanaSwing(camX, camY) {
       ctx.fillStyle = `rgba(80,5,5,${0.4 * fadeAlpha})`;
       ctx.beginPath(); ctx.arc(Math.cos(wa) * wd, Math.sin(wa) * wd, 2, 0, Math.PI * 2); ctx.fill();
     }
+
+  } else if (mId && mId.endsWith('_hoe')) {
+    // === FARMING HOE — short shaft + flat blade head sweep ===
+    const bLen = melee.range * 0.8;
+    const bx = Math.cos(bladeAngle) * bLen;
+    const by = Math.sin(bladeAngle) * bLen;
+    // Wooden shaft
+    ctx.strokeStyle = `rgba(140,100,50,${0.9 * fadeAlpha})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bx * 0.6, by * 0.6); ctx.stroke();
+    // Shaft highlight
+    ctx.strokeStyle = `rgba(170,130,70,${0.5 * fadeAlpha})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bx * 0.6, by * 0.6); ctx.stroke();
+    // Hoe blade (flat rectangle perpendicular to shaft)
+    const perpAng = bladeAngle + Math.PI / 2;
+    const bladeW = 12;
+    const bladeH = 8;
+    const bCX = bx * 0.7;
+    const bCY = by * 0.7;
+    ctx.fillStyle = `rgba(160,160,170,${0.9 * fadeAlpha})`;
+    ctx.beginPath();
+    ctx.moveTo(bCX + Math.cos(perpAng) * bladeW - Math.cos(bladeAngle) * bladeH, bCY + Math.sin(perpAng) * bladeW - Math.sin(bladeAngle) * bladeH);
+    ctx.lineTo(bCX + Math.cos(perpAng) * bladeW, bCY + Math.sin(perpAng) * bladeW);
+    ctx.lineTo(bCX - Math.cos(perpAng) * bladeW, bCY - Math.sin(perpAng) * bladeW);
+    ctx.lineTo(bCX - Math.cos(perpAng) * bladeW - Math.cos(bladeAngle) * bladeH, bCY - Math.sin(perpAng) * bladeW - Math.sin(bladeAngle) * bladeH);
+    ctx.closePath(); ctx.fill();
+    // Blade edge highlight
+    ctx.strokeStyle = `rgba(200,200,210,${0.6 * fadeAlpha})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bCX + Math.cos(perpAng) * bladeW - Math.cos(bladeAngle) * bladeH, bCY + Math.sin(perpAng) * bladeW - Math.sin(bladeAngle) * bladeH);
+    ctx.lineTo(bCX - Math.cos(perpAng) * bladeW - Math.cos(bladeAngle) * bladeH, bCY - Math.sin(perpAng) * bladeW - Math.sin(bladeAngle) * bladeH);
+    ctx.stroke();
+    // Trail arc — earthy brown
+    ctx.strokeStyle = `rgba(140,110,60,${0.35 * fadeAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, melee.range * 0.5, startAngle, bladeAngle); ctx.stroke();
 
   } else if (mId && mId.endsWith('_rod')) {
     // === FISHING ROD CAST — rod shaft + line whip ===

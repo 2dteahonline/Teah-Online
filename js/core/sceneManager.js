@@ -40,6 +40,7 @@ const Scene = {
     else if (level.isCave) this._current = 'cave';
     else if (level.isMine) this._current = 'mine';
     else if (level.isCooking) this._current = 'cooking';
+    else if (level.isFarm) this._current = 'farm';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -53,6 +54,7 @@ const Scene = {
   get inCave() { return this._current === 'cave'; },
   get inMine() { return this._current === 'mine'; },
   get inCooking() { return this._current === 'cooking'; },
+  get inFarm() { return this._current === 'farm'; },
 };
 
 // ---- ZONE TRANSITIONS ----
@@ -84,6 +86,9 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
     } else if (targetLevel.isCooking) {
       resetCombatState('cooking');
       if (typeof initDeliNPCs === 'function') initDeliNPCs();
+    } else if (targetLevel.isFarm) {
+      resetCombatState('farm');
+      if (typeof initFarmState === 'function') initFarmState();
     } else {
       resetCombatState('dungeon');
     }
@@ -171,6 +176,14 @@ function checkPortals() {
       return;
     }
     if (e.type === 'deli_exit' && Scene.inCooking && inZone) {
+      startTransition(e.target, e.spawnTX, e.spawnTY);
+      return;
+    }
+    if (e.type === 'house_entrance' && Scene.inLobby && inZone) {
+      startTransition(e.target, e.spawnTX, e.spawnTY);
+      return;
+    }
+    if (e.type === 'house_exit' && Scene.inFarm && inZone) {
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }

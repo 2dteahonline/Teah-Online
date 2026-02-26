@@ -715,6 +715,13 @@ window.addEventListener("keydown", e => {
   if (key === keybinds.slot4) {
     InputIntent.slot4Pressed = true;
   }
+  // Farming seed selection — number keys 1-9 when in farm
+  if (!chatInputActive && !nameEditActive && !statusEditActive) {
+    const numMatch = key.match(/^[1-9]$/);
+    if (numMatch && typeof handleFarmSeedSelect === 'function') {
+      handleFarmSeedSelect(parseInt(key));
+    }
+  }
 });
 window.addEventListener("keyup", e => {
   const key = e.key.toLowerCase();

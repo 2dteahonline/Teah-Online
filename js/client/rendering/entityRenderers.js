@@ -1209,6 +1209,149 @@ const ENTITY_RENDERERS = {
       ctx.textAlign = "left";
   },
 
+  // === HOUSE / FARM ENTITIES ===
+  house_entrance: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      // Dark doorway
+      ctx.fillStyle = '#1a1410';
+      ctx.fillRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
+      ctx.fillStyle = '#2a2018';
+      ctx.fillRect(ex + cw * 0.15, ey + 2, cw * 0.7, ch * 0.85);
+      // Warm glow from inside
+      ctx.fillStyle = `rgba(255,200,120,${0.15 + 0.06 * Math.sin(t * 1.5)})`;
+      ctx.fillRect(ex + cw * 0.2, ey + 4, cw * 0.6, ch * 0.6);
+      // Wooden frame
+      ctx.strokeStyle = '#5a4a30'; ctx.lineWidth = 3;
+      ctx.strokeRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
+      // Enter label
+      ctx.font = "bold 10px monospace"; ctx.fillStyle = '#8ac060'; ctx.textAlign = "center";
+      ctx.fillText("ENTER HOUSE", ex + cw / 2, ey + ch + 10);
+      ctx.textAlign = "left";
+  },
+  house_exit: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      // Dark doorway
+      ctx.fillStyle = '#1a1410';
+      ctx.fillRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
+      ctx.fillStyle = '#2a2018';
+      ctx.fillRect(ex + cw * 0.15, ey + 2, cw * 0.7, ch * 0.85);
+      // Daylight glow from exit
+      ctx.fillStyle = `rgba(180,220,140,${0.15 + 0.05 * Math.sin(t)})`;
+      ctx.fillRect(ex + cw * 0.2, ey + 4, cw * 0.6, ch * 0.6);
+      // Frame
+      ctx.strokeStyle = '#5a4a30'; ctx.lineWidth = 3;
+      ctx.strokeRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
+      // Exit label
+      ctx.font = "bold 10px monospace"; ctx.fillStyle = '#90c090'; ctx.textAlign = "center";
+      ctx.fillText("⌂ EXIT HOUSE", ex + cw / 2, ey + ch + 10);
+      ctx.textAlign = "left";
+  },
+  farm_vendor: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      const bob = Math.sin(t * 2) * 1.5;
+      const cx = ex + cw / 2, cy = ey + ch / 2 + bob;
+      // Body
+      ctx.fillStyle = '#5a8040';
+      ctx.fillRect(cx - 10, cy - 4, 20, 20);
+      // Overalls
+      ctx.fillStyle = '#4a6830';
+      ctx.fillRect(cx - 8, cy + 4, 16, 12);
+      // Head
+      ctx.fillStyle = '#dab080';
+      ctx.beginPath(); ctx.arc(cx, cy - 10, 10, 0, Math.PI * 2); ctx.fill();
+      // Straw hat
+      ctx.fillStyle = '#c0a040';
+      ctx.fillRect(cx - 14, cy - 22, 28, 6);
+      ctx.fillStyle = '#d0b050';
+      ctx.fillRect(cx - 8, cy - 28, 16, 10);
+      // Eyes
+      ctx.fillStyle = '#333';
+      ctx.fillRect(cx - 4, cy - 12, 2, 2);
+      ctx.fillRect(cx + 2, cy - 12, 2, 2);
+      // Smile
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cy - 7, 4, 0.1, Math.PI - 0.1); ctx.stroke();
+      // Label
+      ctx.font = "bold 10px monospace"; ctx.fillStyle = '#8ac060'; ctx.textAlign = "center";
+      ctx.fillText("FARM SHOP", cx, ey + ch + 10);
+      ctx.textAlign = "left";
+  },
+  farm_well: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const cx = ex + cw / 2, cy = ey + ch / 2;
+      // Stone base (circle)
+      ctx.fillStyle = '#6a6a70';
+      ctx.beginPath(); ctx.ellipse(cx, cy + 8, cw / 2 - 4, ch / 2 - 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7a7a80';
+      ctx.beginPath(); ctx.ellipse(cx, cy + 4, cw / 2 - 8, ch / 2 - 6, 0, 0, Math.PI * 2); ctx.fill();
+      // Water inside
+      ctx.fillStyle = 'rgba(60,120,200,0.5)';
+      ctx.beginPath(); ctx.ellipse(cx, cy + 2, cw / 2 - 12, ch / 2 - 10, 0, 0, Math.PI * 2); ctx.fill();
+      // Roof posts
+      ctx.fillStyle = '#5a3a20';
+      ctx.fillRect(cx - cw / 2 + 8, cy - 20, 4, 28);
+      ctx.fillRect(cx + cw / 2 - 12, cy - 20, 4, 28);
+      // Roof
+      ctx.fillStyle = '#8a5a30';
+      ctx.beginPath(); ctx.moveTo(cx, cy - 30); ctx.lineTo(cx - cw / 2 + 4, cy - 16); ctx.lineTo(cx + cw / 2 - 4, cy - 16); ctx.closePath(); ctx.fill();
+  },
+  farm_table: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      // Table top
+      ctx.fillStyle = '#8b5e3c';
+      ctx.beginPath(); ctx.roundRect(ex + 4, ey + 4, cw - 8, ch - 8, 4); ctx.fill();
+      ctx.fillStyle = '#a06e44';
+      ctx.beginPath(); ctx.roundRect(ex + 6, ey + 6, cw - 12, ch - 12, 3); ctx.fill();
+      // Edge shadow
+      ctx.strokeStyle = '#6a4028'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(ex + 4, ey + 4, cw - 8, ch - 8, 4); ctx.stroke();
+      // Legs
+      ctx.fillStyle = '#5a3820';
+      ctx.fillRect(ex + 6, ey + 6, 4, 4);
+      ctx.fillRect(ex + cw - 10, ey + 6, 4, 4);
+      ctx.fillRect(ex + 6, ey + ch - 10, 4, 4);
+      ctx.fillRect(ex + cw - 10, ey + ch - 10, 4, 4);
+  },
+  farm_bed: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      // Bed frame
+      ctx.fillStyle = '#5a3a18';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+      // Mattress
+      ctx.fillStyle = '#e8e0d0';
+      ctx.fillRect(ex + 6, ey + 6, cw - 12, ch - 12);
+      // Pillow
+      ctx.fillStyle = '#f0f0e8';
+      ctx.beginPath(); ctx.roundRect(ex + 8, ey + 8, cw - 16, ch * 0.25, 4); ctx.fill();
+      // Blanket
+      ctx.fillStyle = '#406080';
+      ctx.fillRect(ex + 6, ey + ch * 0.4, cw - 12, ch * 0.45);
+      ctx.fillStyle = '#4a6a8a';
+      ctx.fillRect(ex + 8, ey + ch * 0.4, cw - 16, 4);
+  },
+  farm_chest: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      // Chest body
+      ctx.fillStyle = '#6a4a20';
+      ctx.beginPath(); ctx.roundRect(ex + 4, ey + 8, cw - 8, ch - 12, 3); ctx.fill();
+      // Chest lid
+      ctx.fillStyle = '#7a5a30';
+      ctx.beginPath(); ctx.roundRect(ex + 2, ey + 4, cw - 4, ch * 0.4, [4, 4, 0, 0]); ctx.fill();
+      // Metal bands
+      ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ex + 8, ey + 4); ctx.lineTo(ex + 8, ey + ch - 4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex + cw - 8, ey + 4); ctx.lineTo(ex + cw - 8, ey + ch - 4); ctx.stroke();
+      // Lock
+      ctx.fillStyle = '#c0a030';
+      ctx.beginPath(); ctx.arc(ex + cw / 2, ey + ch * 0.4 + 4, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#a08020';
+      ctx.fillRect(ex + cw / 2 - 2, ey + ch * 0.4 + 4, 4, 6);
+  },
+  farm_zone: () => {}, // Invisible — defines tillable bounds only
+
   bread_station: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;
       // Wooden shelf background

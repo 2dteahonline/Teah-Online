@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inCooking ? '#c0b898' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inLobby ? '#1a4a18' : '#1e1e26';
+  ctx.fillStyle = Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inLobby ? '#1a4a18' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -50,6 +50,60 @@ function drawLevelBackground(camX, camY) {
             ctx.moveTo(x + 12, y + TILE - 4); ctx.lineTo(x + 14, y + TILE - 14);
             ctx.moveTo(x + 30, y + TILE - 6); ctx.lineTo(x + 28, y + TILE - 16);
             ctx.stroke();
+          }
+        }
+        continue;
+      }
+
+      // === FARM / HOUSE TILES ===
+      if (Scene.inFarm) {
+        const ascii = level.collisionAscii[ty]?.[tx];
+        if (ascii === '@') {
+          // Stone wall border
+          ctx.fillStyle = '#4a4038';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#5a5048';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Brick pattern
+          if ((tx + ty) % 3 === 0) {
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 4, y + 4, TILE / 2 - 4, TILE / 2 - 4);
+          }
+        } else if (ty >= 20) {
+          // Indoor area — wooden floor planks
+          const plankShade = ((tx * 3 + ty * 7) % 3);
+          const pr = 130 + plankShade * 8, pg = 100 + plankShade * 6, pb = 60 + plankShade * 4;
+          ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Plank lines (horizontal)
+          ctx.strokeStyle = 'rgba(80,60,30,0.15)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, y + TILE / 3); ctx.lineTo(x + TILE, y + TILE / 3);
+          ctx.moveTo(x, y + TILE * 2 / 3); ctx.lineTo(x + TILE, y + TILE * 2 / 3);
+          ctx.stroke();
+          // Vertical joint
+          if ((tx + ty) % 2 === 0) {
+            ctx.strokeStyle = 'rgba(60,40,20,0.1)';
+            ctx.beginPath(); ctx.moveTo(x + TILE / 2, y); ctx.lineTo(x + TILE / 2, y + TILE); ctx.stroke();
+          }
+        } else {
+          // Farm area — brown dirt
+          const sv = ((tx * 5 + ty * 11) % 5);
+          ctx.fillStyle = `rgb(${90 + sv * 3},${70 + sv * 2},${45 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Dirt speckles
+          if ((tx + ty * 3) % 5 === 0) {
+            ctx.fillStyle = 'rgba(110,85,55,0.3)';
+            ctx.beginPath(); ctx.arc(x + 16, y + 20, 2, 0, Math.PI * 2); ctx.fill();
+          }
+          if ((tx * 7 + ty) % 7 === 0) {
+            ctx.fillStyle = 'rgba(80,60,35,0.25)';
+            ctx.beginPath(); ctx.arc(x + 34, y + 12, 3, 0, Math.PI * 2); ctx.fill();
           }
         }
         continue;

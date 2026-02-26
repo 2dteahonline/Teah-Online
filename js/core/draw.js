@@ -395,6 +395,9 @@ function draw() {
   // Katana swing effect (in world space)
   drawKatanaSwing(cx, cy);
 
+  // Farm tiles (world space — tilled soil, crops, water tint)
+  if (typeof drawFarmTiles === 'function') drawFarmTiles();
+
   // Fishing world effects (line, bobber, fish) — in world space
   if (typeof drawFishingWorldEffects === 'function') drawFishingWorldEffects();
 
@@ -806,6 +809,8 @@ function draw() {
   if (typeof drawCookingHUD === 'function') drawCookingHUD();
   if (typeof drawFishingHUD === 'function') drawFishingHUD();
   if (typeof drawFishVendorPanel === 'function') drawFishVendorPanel();
+  if (typeof drawFarmingHUD === 'function') drawFarmingHUD();
+  if (typeof drawFarmVendorPanel === 'function') drawFarmVendorPanel();
 
   // Malevolent Shrine charge bar (only when War Cleaver equipped)
   if (melee.special === 'cleave' && Scene.inDungeon) {

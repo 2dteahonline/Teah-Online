@@ -845,6 +845,11 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
       iron_rod:    { blade: "#8a8a9a", bladeD: "#5a5a6a", handle: "#5a4a20", handleD: "#3a2a10", guard: "#666",    bladeLen: 34, tipLen: 0, isFishingRod: true },
       gold_rod:    { blade: "#d4a030", bladeD: "#a07820", handle: "#8a6a30", handleD: "#5a4010", guard: "#c0a040", bladeLen: 36, tipLen: 0, isFishingRod: true },
       mythic_rod:  { blade: "#9070c0", bladeD: "#6850a0", handle: "#4a3a6a", handleD: "#2a1a4a", guard: "#b090d0", bladeLen: 38, tipLen: 0, isFishingRod: true },
+      // Farming hoes
+      bronze_hoe:  { blade: "#8a6a3a", bladeD: "#6a4a1a", handle: "#6a4a20", handleD: "#4a3010", guard: "#5a5a5a", bladeLen: 26, tipLen: 0, isFarmingHoe: true },
+      iron_hoe:    { blade: "#8a8a9a", bladeD: "#5a5a6a", handle: "#5a4a20", handleD: "#3a2a10", guard: "#666",    bladeLen: 28, tipLen: 0, isFarmingHoe: true },
+      gold_hoe:    { blade: "#d4a030", bladeD: "#a07820", handle: "#8a6a30", handleD: "#5a4010", guard: "#c0a040", bladeLen: 30, tipLen: 0, isFarmingHoe: true },
+      mythic_hoe:  { blade: "#9070c0", bladeD: "#6850a0", handle: "#4a3a6a", handleD: "#2a1a4a", guard: "#b090d0", bladeLen: 32, tipLen: 0, isFarmingHoe: true },
     };
     const c = configs[meleeId] || configs.knife;
 
@@ -989,6 +994,18 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         // Dangling line at tip
         ctx.strokeStyle = "rgba(200,200,200,0.5)"; ctx.lineWidth = 0.8;
         ctx.beginPath(); ctx.moveTo(rx - bL, ry); ctx.lineTo(rx - bL - 2, ry + 6); ctx.stroke();
+      } else if (c.isFarmingHoe) {
+        // Farming hoe (LEFT): shaft extends left, flat blade perpendicular at end
+        const bL = c.bladeLen;
+        // Wooden shaft
+        ctx.fillStyle = c.handle; ctx.fillRect(rx + 2, ry - 2, 10, 4);
+        ctx.fillStyle = c.handleD; ctx.fillRect(rx + 3, ry + 1, 8, 1);
+        ctx.fillStyle = c.blade;
+        ctx.fillRect(rx - bL + 6, ry - 1, bL - 6, 2);
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx - bL + 6, ry + 0.5, bL - 6, 0.5);
+        // Flat hoe blade at end (perpendicular)
+        ctx.fillStyle = c.blade; ctx.fillRect(rx - bL, ry - 6, 6, 12);
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx - bL, ry + 2, 6, 4);
       } else {
         ctx.fillStyle = c.blade; ctx.fillRect(rx - c.bladeLen, ry - 2, c.bladeLen, 4);
         ctx.fillStyle = c.bladeD; ctx.fillRect(rx - c.bladeLen, ry + 1, c.bladeLen, 1);
@@ -1117,6 +1134,17 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         for (let g = 0; g < 3; g++) { const gx = rx + bL * (0.3 + g * 0.25); ctx.beginPath(); ctx.arc(gx, ry - 1, 1, 0, Math.PI * 2); ctx.fill(); }
         ctx.strokeStyle = "rgba(200,200,200,0.5)"; ctx.lineWidth = 0.8;
         ctx.beginPath(); ctx.moveTo(rx + bL, ry); ctx.lineTo(rx + bL + 2, ry + 6); ctx.stroke();
+      } else if (c.isFarmingHoe) {
+        // Farming hoe (RIGHT): shaft extends right, flat blade at end
+        const bL = c.bladeLen;
+        ctx.fillStyle = c.handle; ctx.fillRect(rx - 12, ry - 2, 10, 4);
+        ctx.fillStyle = c.handleD; ctx.fillRect(rx - 11, ry + 1, 8, 1);
+        ctx.fillStyle = c.blade;
+        ctx.fillRect(rx, ry - 1, bL - 6, 2);
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx, ry + 0.5, bL - 6, 0.5);
+        // Flat hoe blade
+        ctx.fillStyle = c.blade; ctx.fillRect(rx + bL - 6, ry - 6, 6, 12);
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx + bL - 6, ry + 2, 6, 4);
       } else {
         ctx.fillStyle = c.blade; ctx.fillRect(rx, ry - 2, c.bladeLen, 4);
         ctx.fillStyle = c.bladeD; ctx.fillRect(rx, ry + 1, c.bladeLen, 1);
@@ -1241,6 +1269,17 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         for (let g = 0; g < 3; g++) { const gy = ry + bL * (0.3 + g * 0.25); ctx.beginPath(); ctx.arc(rx - 1, gy, 1, 0, Math.PI * 2); ctx.fill(); }
         ctx.strokeStyle = "rgba(200,200,200,0.5)"; ctx.lineWidth = 0.8;
         ctx.beginPath(); ctx.moveTo(rx, ry + bL); ctx.lineTo(rx - 4, ry + bL + 4); ctx.stroke();
+      } else if (c.isFarmingHoe) {
+        // Farming hoe (DOWN): shaft extends down, flat blade at end
+        const bL = c.bladeLen;
+        ctx.fillStyle = c.handle; ctx.fillRect(rx - 2, ry - 12, 4, 10);
+        ctx.fillStyle = c.handleD; ctx.fillRect(rx + 1, ry - 11, 1, 8);
+        ctx.fillStyle = c.blade;
+        ctx.fillRect(rx - 1, ry, 2, bL - 6);
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 0.5, ry, 0.5, bL - 6);
+        // Flat hoe blade (horizontal)
+        ctx.fillStyle = c.blade; ctx.fillRect(rx - 6, ry + bL - 6, 12, 6);
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 2, ry + bL - 6, 4, 6);
       } else {
         ctx.fillStyle = c.blade; ctx.fillRect(rx - 2, ry, 4, c.bladeLen);
         ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 1, ry, 1, c.bladeLen);
@@ -1364,6 +1403,17 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         for (let g = 0; g < 3; g++) { const gy = ry - bL * (0.3 + g * 0.25); ctx.beginPath(); ctx.arc(rx - 1, gy, 1, 0, Math.PI * 2); ctx.fill(); }
         ctx.strokeStyle = "rgba(200,200,200,0.5)"; ctx.lineWidth = 0.8;
         ctx.beginPath(); ctx.moveTo(rx, ry - bL); ctx.lineTo(rx - 4, ry - bL - 4); ctx.stroke();
+      } else if (c.isFarmingHoe) {
+        // Farming hoe (UP): shaft extends up, flat blade at end
+        const bL = c.bladeLen;
+        ctx.fillStyle = c.handle; ctx.fillRect(rx - 2, ry + 2, 4, 10);
+        ctx.fillStyle = c.handleD; ctx.fillRect(rx + 1, ry + 3, 1, 8);
+        ctx.fillStyle = c.blade;
+        ctx.fillRect(rx - 1, ry - bL + 6, 2, bL - 6);
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 0.5, ry - bL + 6, 0.5, bL - 6);
+        // Flat hoe blade (horizontal)
+        ctx.fillStyle = c.blade; ctx.fillRect(rx - 6, ry - bL, 12, 6);
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 2, ry - bL, 4, 6);
       } else {
         ctx.fillStyle = c.blade; ctx.fillRect(rx - 2, ry - c.bladeLen, 4, c.bladeLen);
         ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 1, ry - c.bladeLen, 1, c.bladeLen);

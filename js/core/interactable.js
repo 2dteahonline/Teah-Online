@@ -72,6 +72,18 @@ registerInteractable({
   onInteract() { UI.open('fishVendor'); },
 });
 
+// Register farm vendor interactable (farm/house only)
+registerInteractable({
+  id: 'farm_vendor',
+  get x() { return 30 * TILE + TILE; },   // center of 2x2 entity at tx:30
+  get y() { return 21 * TILE + TILE; },   // center of 2x2 entity at ty:21
+  range: 120,
+  get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Farm Shop'; },
+  type: 'farmVendor',
+  canInteract() { return Scene.inFarm; },
+  onInteract() { UI.open('farmVendor'); },
+});
+
 let fireRateBonus = 0;
 const GUN_DEFAULTS = { damage: 20 };
 const MELEE_DEFAULTS = { damage: 15, critChance: 0.10 };
@@ -276,6 +288,9 @@ const ROLL_CHANCES = { 1: 0.20, 2: 0.10, 3: 0.05 }; // 65% = nothing
   // Starter fishing rod — create with durability tracking
   const starterRod = { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability };
   addToInventory(createItem('melee', starterRod));
+  // Starter farming hoe
+  const starterHoe = { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability };
+  addToInventory(createItem('melee', starterHoe));
   addToInventory(createConsumable('potion', 'Health Potion', 3));
   playerEquip.gun = DEFAULT_GUN;
   playerEquip.melee = DEFAULT_MELEE;

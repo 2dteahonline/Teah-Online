@@ -19,11 +19,13 @@ function resetCombatState(mode) {
 
   // --- Reset cooking state ---
   if (typeof resetCookingState === 'function') resetCookingState();
+  // --- Reset farming state ---
+  if (typeof resetFarmingState === 'function') resetFarmingState();
   // --- Clear deli NPCs ---
   if (typeof deliNPCs !== 'undefined') deliNPCs.length = 0;
 
   // --- Reset inventory + equipment (everything except 'floor', 'mine', and 'cooking') ---
-  if (mode !== 'floor' && mode !== 'mine' && mode !== 'cooking') {
+  if (mode !== 'floor' && mode !== 'mine' && mode !== 'cooking' && mode !== 'farm') {
     inventory.length = 0;
     addToInventory(createItem('gun', DEFAULT_GUN));
     addToInventory(createItem('gun', CT_X_GUN));
@@ -664,6 +666,27 @@ function drawEquipItem(cx2, cy2, item, size) {
     ctx.lineTo(-s * 0.6, -s * 0.25);
     ctx.lineTo(-s * 0.4, -s * 0.3);
     ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else if (item.id && item.id.endsWith('_hoe')) {
+    ctx.save(); ctx.translate(cx2, cy2); ctx.rotate(-0.3);
+    // Handle — brown wooden shaft
+    ctx.fillStyle = '#8a6040';
+    ctx.fillRect(-s * 0.06, -s * 0.15, s * 0.12, s * 1.05);
+    ctx.fillStyle = '#5a3a20';
+    ctx.fillRect(s * 0.02, -s * 0.15, s * 0.04, s * 1.05);
+    // Grip wraps
+    ctx.fillStyle = '#5a3a18';
+    ctx.fillRect(-s * 0.08, s * 0.5, s * 0.16, s * 0.1);
+    ctx.fillRect(-s * 0.08, s * 0.7, s * 0.16, s * 0.1);
+    // Flat hoe blade at top (perpendicular to shaft)
+    ctx.fillStyle = item.color || '#a0aab8';
+    ctx.fillRect(-s * 0.5, -s * 0.4, s * 1.0, s * 0.22);
+    // Blade highlight
+    ctx.fillStyle = '#b8bcc8';
+    ctx.fillRect(-s * 0.45, -s * 0.4, s * 0.9, s * 0.06);
+    // Blade shadow
+    ctx.fillStyle = '#6a7080';
+    ctx.fillRect(-s * 0.45, -s * 0.22, s * 0.9, s * 0.04);
     ctx.restore();
   }
 }

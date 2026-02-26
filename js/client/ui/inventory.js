@@ -2120,6 +2120,7 @@ function update() {
   if (typeof updateMining === 'function') updateMining();
   if (typeof updateFishing === 'function') updateFishing();
   if (typeof updateCooking === 'function') updateCooking();
+  if (typeof updateFarming === 'function') updateFarming();
   if (typeof updateDeliNPCs === 'function') updateDeliNPCs();
   updateDeathEffects();
   updateMobAmbientEffects();

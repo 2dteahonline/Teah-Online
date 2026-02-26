@@ -143,9 +143,69 @@ const LEVELS = {
       // === DELI BUILDING (left side, below shops) ===
       { type: 'building_deli', tx: 2, ty: 8, w: 7, h: 7, solid: true },
       { type: 'deli_entrance', tx: 4, ty: 14, w: 3, h: 2, solid: false, target: 'deli_01', spawnTX: 14, spawnTY: 27 },
+      // === HOUSE ENTRANCE (below building_house) ===
+      { type: 'house_entrance', tx: 10, ty: 6, w: 3, h: 2, solid: false, target: 'house_01', spawnTX: 10, spawnTY: 26 },
       // === FISHING DOCK (bottom-center, end of south path) ===
       { type: 'fishing_spot', tx: 26, ty: 42, w: 4, h: 2, solid: false },
       { type: 'fish_vendor', tx: 23, ty: 40, w: 2, h: 2, solid: true },
+    ]
+  },
+  // === HOUSE / FARM INTERIOR ===
+  // Top rows 0-2: stone walls (border)
+  // Rows 3-18, cols 3-17: farm plot zone (open dirt, tillable)
+  // Rows 3-18, cols 19-36: farm plot zone (open dirt, tillable) — right side
+  // Rows 20-26: indoor wooden floor area (vendor, furniture)
+  // Row 27: exit portal at bottom center
+  house_01: {
+    id: 'house_01',
+    widthTiles: 40,
+    heightTiles: 30,
+    isFarm: true,
+    spawns: { p1: { tx: 10, ty: 26 } },
+    collisionAscii: [
+      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@......................................@",
+      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+    ],
+    entities: [
+      // === EXIT (bottom center, back to lobby) ===
+      { type: 'house_exit', tx: 8, ty: 27, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 11, spawnTY: 8 },
+      // === FARM ZONE (defines tillable area — rows 1-18, cols 1-38) ===
+      { type: 'farm_zone', tx: 1, ty: 1, w: 38, h: 18, solid: false },
+      // === INDOOR AREA ENTITIES (rows 20-28) ===
+      { type: 'farm_vendor', tx: 30, ty: 21, w: 2, h: 2, solid: true },
+      // Furniture (cosmetic / solid)
+      { type: 'farm_table', tx: 22, ty: 21, w: 3, h: 2, solid: true },
+      { type: 'farm_bed', tx: 35, ty: 22, w: 2, h: 3, solid: true },
+      { type: 'farm_chest', tx: 26, ty: 21, w: 2, h: 2, solid: true },
+      { type: 'farm_well', tx: 2, ty: 21, w: 2, h: 2, solid: true },
     ]
   },
   cave_01: {
