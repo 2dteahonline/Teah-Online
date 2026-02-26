@@ -110,6 +110,18 @@ function updateFishing() {
 
   const cfg = FISHING_CONFIG;
 
+  // Max leash: cancel fishing if player walks too far from the bobber
+  if (fishingState.phase !== 'result' && fishingState.phase !== 'cooldown') {
+    const dx = player.x - fishingState.bobberX;
+    const dy = player.y - fishingState.bobberY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > cfg.maxLineDistance) {
+      hitEffects.push({ x: player.x, y: player.y - 30, life: 40, type: 'text_popup', text: 'Line snapped!', color: '#ff6060' });
+      cancelFishing();
+      return;
+    }
+  }
+
   switch (fishingState.phase) {
     case 'casting':
       fishingState.timer--;

@@ -47,14 +47,16 @@ const FISHING_CONFIG = {
   resultFrames: 30,      // 0.5s — show result
   cooldownFrames: 60,    // 1.0s — rest between casts
   // Reel tension: how fast tension decays when not holding reel
-  tensionDecayRate: 0.012,
+  tensionDecayRate: 0.008,
   // Reel tension: how fast tension builds when holding reel
-  tensionFillRate: 0.025,
+  tensionFillRate: 0.012,
   // Reel: progress must reach this to catch
   tensionCatchThreshold: 0.70,
   // Level bonus cap
   maxLevelBonus: 0.25,
   levelBonusPerLevel: 0.005,
+  // Max distance (px) player can walk from bobber before line snaps
+  maxLineDistance: 160,
   // Overweight penalty per point above rod strength
   overweightPenalty: 0.25,
 };
