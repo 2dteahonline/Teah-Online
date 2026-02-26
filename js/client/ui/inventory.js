@@ -1813,6 +1813,8 @@ function update() {
   try {
   gameFrame++;
   const isTyping = InputIntent.chatActive || nameEditActive;
+  // Block movement when a UI panel is open (except toolbox — needs movement for tile placement)
+  const panelBlocksMovement = UI.anyOpen() && !UI.isOpen('toolbox');
 
   // Zone system
   checkPortals();
@@ -1875,7 +1877,7 @@ function update() {
   // --- Movement: compute held direction from keysDown, write to InputIntent ---
   // When authority-driven, commands.js already set moveX/moveY via translateIntentsToCommands.
   if (!_authorityDriven) {
-    if (!isTyping) {
+    if (!isTyping && !panelBlocksMovement) {
       let mdx = 0, mdy = 0;
       if (keysDown[keybinds.moveLeft]) mdx -= 1;
       if (keysDown[keybinds.moveRight]) mdx += 1;
@@ -1894,7 +1896,7 @@ function update() {
   const dy = InputIntent.moveY;
 
   // --- One-frame intent dispatch (consumed once, cleared at end of frame) ---
-  if (!isTyping) {
+  if (!isTyping && !panelBlocksMovement) {
     // Reload
     if (InputIntent.reloadPressed && !gun.reloading && gun.ammo < gun.magSize) {
       gun.reloading = true;

@@ -40,9 +40,10 @@ window.enqueueCommand = function(cmd) {
 function translateIntentsToCommands() {
   const I = InputIntent;
   const isTyping = I.chatActive || nameEditActive;
+  const panelBlocksMovement = UI.anyOpen() && !UI.isOpen('toolbox');
 
   // --- Movement (every frame, even if stationary) ---
-  if (!isTyping) {
+  if (!isTyping && !panelBlocksMovement) {
     // Compute direction from keysDown → InputIntent (held state)
     let mdx = 0, mdy = 0;
     if (keysDown[keybinds.moveLeft]) mdx -= 1;
