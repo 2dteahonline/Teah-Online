@@ -886,6 +886,25 @@ const HIT_EFFECT_RENDERERS = {
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(h.x, h.y, 8 + prog * 25, 0, Math.PI * 2); ctx.stroke();
   },
+  text_popup: (h, ctx, alpha) => {
+      // Generic floating text popup — used by farming, vendors, etc.
+      if (!h.text) return;
+      if (!h.maxLife) h.maxLife = h.life;
+      const floatY = h.y - (h.maxLife - h.life) * 1.5;
+      ctx.save();
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'center';
+      // Outline
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,' + alpha + ')';
+      ctx.strokeText(h.text, h.x, floatY);
+      // Fill
+      const c = h.color || '#ffffff';
+      ctx.fillStyle = c;
+      ctx.globalAlpha = alpha;
+      ctx.fillText(h.text, h.x, floatY);
+      ctx.restore();
+  },
   _default: (h, ctx, alpha) => {
       ctx.fillStyle = `rgba(255,200,100,${alpha})`;
       ctx.beginPath(); ctx.arc(h.x, h.y, 6 * (1 - alpha) + 3, 0, Math.PI * 2); ctx.fill();

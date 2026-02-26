@@ -269,9 +269,11 @@ function updateQueue() {
 
 // ---- COLLISION ----
 function isSolid(col, row) {
-  if (!level) return true;
-  if (col < 0 || row < 0 || col >= level.widthTiles || row >= level.heightTiles) return true;
-  if (collisionGrid[row][col] === 1) return true;
+  if (!level || !collisionGrid) return true;
+  if (!(col >= 0) || !(row >= 0) || col >= level.widthTiles || row >= level.heightTiles) return true;
+  const gridRow = collisionGrid[row];
+  if (!gridRow) return true;
+  if (gridRow[col] === 1) return true;
   for (const e of levelEntities) {
     if (!e.solid) continue;
     const w = e.w ?? 1;

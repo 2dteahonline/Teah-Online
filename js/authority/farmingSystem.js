@@ -207,25 +207,31 @@ function getEquippedHoe() {
 
 // Find the farm tile the player is swinging at
 function getFarmTileAtSwing() {
-  const cfg = FARMING_CONFIG;
   // Player facing direction → tile offset
   const dir = player.dir; // 0=down, 1=up, 2=left, 3=right
-  let checkTX = Math.floor(player.x / TILE);
-  let checkTY = Math.floor(player.y / TILE);
-
-  if (dir === 0) checkTY += 1;
-  else if (dir === 1) checkTY -= 1;
-  else if (dir === 2) checkTX -= 1;
-  else if (dir === 3) checkTX += 1;
-
-  // Find matching tile
-  for (const tile of farmingState.tiles) {
-    if (tile.tx === checkTX && tile.ty === checkTY) return tile;
-  }
-
-  // Also check tile the player is standing on
   const standTX = Math.floor(player.x / TILE);
   const standTY = Math.floor(player.y / TILE);
+
+  // Check up to 2 tiles in facing direction (so center of 3x3 is reachable)
+  const range = 2;
+
+  // Direction offsets
+  let dx = 0, dy = 0;
+  if (dir === 0) dy = 1;
+  else if (dir === 1) dy = -1;
+  else if (dir === 2) dx = -1;
+  else if (dir === 3) dx = 1;
+
+  // Check tiles along facing direction (1 to range), then standing tile
+  for (let r = 1; r <= range; r++) {
+    const checkTX = standTX + dx * r;
+    const checkTY = standTY + dy * r;
+    for (const tile of farmingState.tiles) {
+      if (tile.tx === checkTX && tile.ty === checkTY) return tile;
+    }
+  }
+
+  // Check tile the player is standing on
   for (const tile of farmingState.tiles) {
     if (tile.tx === standTX && tile.ty === standTY) return tile;
   }
