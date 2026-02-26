@@ -350,79 +350,80 @@ function drawFarmingHUD() {
   const farmLevel = typeof skillData !== 'undefined' && skillData['Farming'] ? skillData['Farming'].level : 1;
   const crops = getUnlockedCrops(farmLevel);
 
-  // Seed selection bar (bottom-left)
-  const barX = 20;
-  const barY = BASE_H - 120;
-  const seedW = 44;
-  const seedH = 44;
-  const gap = 6;
+  // === SELECTED SEED DISPLAY (bottom-center, always visible) ===
+  const selCrop = farmingState.selectedSeed ? CROP_TYPES[farmingState.selectedSeed] : null;
+  const panelW = 280;
+  const panelH = 72;
+  const panelX = BASE_W / 2 - panelW / 2;
+  const panelY = BASE_H - panelH - 16;
 
-  // Background
-  const totalW = crops.length * (seedW + gap) + 20;
-  ctx.fillStyle = 'rgba(10,10,10,0.7)';
-  ctx.beginPath(); ctx.roundRect(barX - 10, barY - 28, totalW, seedH + 48, 8); ctx.fill();
-  ctx.strokeStyle = 'rgba(100,180,80,0.3)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.roundRect(barX - 10, barY - 28, totalW, seedH + 48, 8); ctx.stroke();
+  // Solid dark panel background
+  ctx.fillStyle = '#0a0e08';
+  ctx.fillRect(panelX, panelY, panelW, panelH);
+  // Green border
+  ctx.strokeStyle = '#5a9a40';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(panelX, panelY, panelW, panelH);
 
-  // Title
-  ctx.font = 'bold 11px monospace';
-  ctx.fillStyle = '#8ac060';
-  ctx.textAlign = 'left';
-  ctx.fillText('🌱 SEEDS (1-9 to select)', barX, barY - 14);
+  if (selCrop) {
+    // Crop color square
+    ctx.fillStyle = selCrop.color;
+    ctx.fillRect(panelX + 10, panelY + 10, 52, 52);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(panelX + 10, panelY + 10, 52, 52);
 
-  // Gold display
-  ctx.font = 'bold 11px monospace';
-  ctx.fillStyle = '#ffd700';
-  ctx.textAlign = 'right';
-  ctx.fillText('🪙 ' + gold + 'g', barX + totalW - 14, barY - 14);
-  ctx.textAlign = 'left';
+    // Crop name (large)
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = '#d0ffa0';
+    ctx.textAlign = 'left';
+    ctx.fillText(selCrop.name, panelX + 72, panelY + 28);
 
-  for (let i = 0; i < crops.length; i++) {
-    const crop = crops[i];
-    const sx = barX + i * (seedW + gap);
-    const sy = barY;
-    const selected = farmingState.selectedSeed === crop.id;
+    // Seed cost + grow time
+    ctx.font = '13px monospace';
+    ctx.fillStyle = gold >= selCrop.seedCost ? '#ffd700' : '#aa4444';
+    ctx.fillText('Cost: ' + selCrop.seedCost + 'g', panelX + 72, panelY + 46);
+    ctx.fillStyle = '#8a8a8a';
+    ctx.fillText('Grows: ' + (selCrop.growthFrames / 60).toFixed(0) + 's', panelX + 170, panelY + 46);
 
-    // Seed slot background
-    ctx.fillStyle = selected ? 'rgba(80,160,60,0.25)' : 'rgba(30,30,30,0.6)';
-    ctx.beginPath(); ctx.roundRect(sx, sy, seedW, seedH, 6); ctx.fill();
-    if (selected) {
-      ctx.strokeStyle = '#8ac060'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.roundRect(sx, sy, seedW, seedH, 6); ctx.stroke();
-    }
-
-    // Crop color dot
-    ctx.fillStyle = crop.color;
-    ctx.beginPath(); ctx.arc(sx + seedW / 2, sy + 16, 8, 0, Math.PI * 2); ctx.fill();
-
-    // Crop name (tiny)
-    ctx.font = '8px monospace';
-    ctx.fillStyle = selected ? '#cfc' : '#888';
-    ctx.textAlign = 'center';
-    ctx.fillText(crop.name, sx + seedW / 2, sy + 34);
-
-    // Cost
-    ctx.font = '7px monospace';
-    ctx.fillStyle = gold >= crop.seedCost ? '#ffd700' : '#664422';
-    ctx.fillText(crop.seedCost + 'g', sx + seedW / 2, sy + 42);
-
-    // Hotkey number
-    ctx.font = 'bold 9px monospace';
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.fillText(String(i + 1), sx + seedW / 2, sy - 2);
+    // Sell price
+    ctx.fillStyle = '#70b050';
+    ctx.fillText('Sells: ' + selCrop.sellPrice + 'g', panelX + 72, panelY + 62);
+  } else {
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = '#666';
+    ctx.textAlign = 'left';
+    ctx.fillText('No seed selected', panelX + 20, panelY + 40);
   }
+
+  // Hotkey hint (right side)
+  ctx.font = 'bold 12px monospace';
+  ctx.fillStyle = '#5a8a40';
+  ctx.textAlign = 'right';
+  ctx.fillText('[1-' + crops.length + '] Switch', panelX + panelW - 10, panelY + 62);
+
+  // Gold display (top-right of panel)
+  ctx.font = 'bold 14px monospace';
+  ctx.fillStyle = '#ffd700';
+  ctx.fillText(gold + 'g', panelX + panelW - 10, panelY + 18);
   ctx.textAlign = 'left';
 
-  // Farming level display (top-left corner)
-  ctx.font = 'bold 13px monospace';
-  ctx.fillStyle = '#8ac060';
-  ctx.fillText('🌾 Farming Lv.' + farmLevel, 20, 30);
+  // === FARMING INFO (top-left) ===
+  ctx.fillStyle = '#0a0e08';
+  ctx.fillRect(12, 10, 280, 52);
+  ctx.strokeStyle = '#5a9a40';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(12, 10, 280, 52);
 
-  // Stats display
-  ctx.font = '11px monospace';
-  ctx.fillStyle = '#888';
-  ctx.fillText('Harvested: ' + farmingState.stats.totalHarvested + '  Earned: ' + farmingState.stats.totalEarned + 'g', 20, 48);
+  // Farming level
+  ctx.font = 'bold 16px monospace';
+  ctx.fillStyle = '#8ac060';
+  ctx.fillText('Farming Lv.' + farmLevel, 22, 34);
+
+  // Stats
+  ctx.font = '12px monospace';
+  ctx.fillStyle = '#999';
+  ctx.fillText('Harvested: ' + farmingState.stats.totalHarvested + '  |  Earned: ' + farmingState.stats.totalEarned + 'g', 22, 52);
 }
 
 // ===================== SEED SELECTION (keyboard) =====================
