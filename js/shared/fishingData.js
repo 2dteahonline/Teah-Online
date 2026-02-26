@@ -42,8 +42,8 @@ const FISHING_CONFIG = {
   waitFramesMin: 180,    // 3.0s — shortest wait before bite
   waitFramesMax: 480,    // 8.0s — longest wait before bite
   biteWindowFrames: 120, // 2.0s — time to react to bite
-  reelFramesMin: 180,    // 3.0s — easiest fish reel time
-  reelFramesMax: 360,    // 6.0s — hardest fish reel time
+  reelFramesMin: 60,     // 1.0s — easiest fish reel time
+  reelFramesMax: 120,    // 2.0s — hardest fish reel time
   resultFrames: 30,      // 0.5s — show result
   cooldownFrames: 60,    // 1.0s — rest between casts
   // Reel tension: how fast tension decays when not holding reel
