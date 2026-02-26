@@ -143,9 +143,9 @@ const LEVELS = {
       // === DELI BUILDING (left side, below shops) ===
       { type: 'building_deli', tx: 2, ty: 8, w: 7, h: 7, solid: true },
       { type: 'deli_entrance', tx: 4, ty: 14, w: 3, h: 2, solid: false, target: 'deli_01', spawnTX: 14, spawnTY: 27 },
-      // === FISHING DOCK (bottom-right, near water edge) ===
-      { type: 'fishing_spot', tx: 48, ty: 42, w: 4, h: 2, solid: false },
-      { type: 'fish_vendor', tx: 45, ty: 40, w: 2, h: 2, solid: true },
+      // === FISHING DOCK (bottom-center, end of south path) ===
+      { type: 'fishing_spot', tx: 26, ty: 42, w: 4, h: 2, solid: false },
+      { type: 'fish_vendor', tx: 23, ty: 40, w: 2, h: 2, solid: true },
     ]
   },
   cave_01: {
