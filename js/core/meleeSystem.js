@@ -53,6 +53,13 @@ function meleeSwing() {
   else if (aimDir === 2) melee.swingDir = Math.PI;
   else melee.swingDir = 0;
 
+  // Fishing rod intercept: if near fishing_spot and rod equipped, start fishing instead of combat
+  if (melee.special === 'fishing' && typeof nearFishingSpot !== 'undefined' && nearFishingSpot
+      && typeof fishingState !== 'undefined' && !fishingState.active) {
+    startFishingCast();
+    return; // Skip melee damage — swing animation already started above
+  }
+
   // Ninja dash-attack: swing triggers a dash in the attack direction
   if (melee.special === 'ninja' && melee.dashActive && melee.dashesLeft > 0 && !melee.dashing) {
     melee.dashing = true;
@@ -757,6 +764,37 @@ function drawKatanaSwing(camX, camY) {
       ctx.fillStyle = `rgba(80,5,5,${0.4 * fadeAlpha})`;
       ctx.beginPath(); ctx.arc(Math.cos(wa) * wd, Math.sin(wa) * wd, 2, 0, Math.PI * 2); ctx.fill();
     }
+
+  } else if (mId && mId.endsWith('_rod')) {
+    // === FISHING ROD CAST — rod shaft + line whip ===
+    const bLen = melee.range * 0.9;
+    const bx = Math.cos(bladeAngle) * bLen;
+    const by = Math.sin(bladeAngle) * bLen;
+    // Rod shaft during swing
+    ctx.strokeStyle = `rgba(140,110,60,${0.9 * fadeAlpha})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bx * 0.45, by * 0.45); ctx.stroke();
+    // Thin rod tip
+    ctx.strokeStyle = `rgba(120,100,50,${0.8 * fadeAlpha})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(bx * 0.45, by * 0.45); ctx.lineTo(bx, by); ctx.stroke();
+    // Fishing line whip (curves outward)
+    ctx.strokeStyle = `rgba(200,200,200,${0.6 * fadeAlpha})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    const perpAng = bladeAngle + Math.PI / 2;
+    const curveX = bx * 1.2 + Math.cos(perpAng) * 15 * (1 - progress);
+    const curveY = by * 1.2 + Math.sin(perpAng) * 15 * (1 - progress);
+    ctx.quadraticCurveTo(curveX, curveY, bx * 1.3, by * 1.3);
+    ctx.stroke();
+    // Bobber at line end
+    ctx.fillStyle = `rgba(255,60,30,${0.8 * fadeAlpha})`;
+    ctx.beginPath(); ctx.arc(bx * 1.3, by * 1.3, 3, 0, Math.PI * 2); ctx.fill();
+    // Faint trail arc
+    ctx.strokeStyle = `rgba(180,160,120,${0.3 * fadeAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, melee.range * 0.5, startAngle, bladeAngle); ctx.stroke();
 
   } else {
     // === FISTS / default — simple white arc ===

@@ -105,10 +105,7 @@ function translateIntentsToCommands() {
     if (I.slot4Pressed) enqueueCommand({ t: 'useExtra',  ts: Date.now(), data: {} });
   }
 
-  // --- Fishing ---
-  if (I.fishCastPressed) {
-    enqueueCommand({ t: 'fish_cast', ts: Date.now(), data: {} });
-  }
+  // --- Fishing reel ---
   if (I.reelPressed || I.reelHeld) {
     enqueueCommand({ t: 'fish_reel', ts: Date.now(), data: { held: I.reelHeld } });
   }

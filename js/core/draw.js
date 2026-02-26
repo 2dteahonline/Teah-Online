@@ -394,6 +394,10 @@ function draw() {
 
   // Katana swing effect (in world space)
   drawKatanaSwing(cx, cy);
+
+  // Fishing world effects (line, bobber, fish) — in world space
+  if (typeof drawFishingWorldEffects === 'function') drawFishingWorldEffects();
+
   // Grab effect removed — mechanic still works, just no visual overlay
 
   // Godspeed while active — DRAMATIC Killua lightning aura + Kashimo ground strikes

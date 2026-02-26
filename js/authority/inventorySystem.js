@@ -67,6 +67,14 @@ function isInInventory(id) {
   return false;
 }
 
+// Find inventory item by ID (returns item object or null)
+function findInventoryItemById(id) {
+  for (let i = 0; i < inventory.length; i++) {
+    if (inventory[i] && inventory[i].id === id) return inventory[i];
+  }
+  return null;
+}
+
 // Remove item from inventory slot
 function removeFromInventory(slot) {
   const item = inventory[slot];

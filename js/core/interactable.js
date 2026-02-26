@@ -273,6 +273,9 @@ const ROLL_CHANCES = { 1: 0.20, 2: 0.10, 3: 0.05 }; // 65% = nothing
   addToInventory(createItem('gun', CT_X_GUN));
   addToInventory(createItem('melee', DEFAULT_MELEE));
   addToInventory(createItem('melee', DEFAULT_PICKAXE));
+  // Starter fishing rod — create with durability tracking
+  const starterRod = { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability };
+  addToInventory(createItem('melee', starterRod));
   addToInventory(createConsumable('potion', 'Health Potion', 3));
   playerEquip.gun = DEFAULT_GUN;
   playerEquip.melee = DEFAULT_MELEE;

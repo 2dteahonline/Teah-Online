@@ -840,6 +840,11 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
       war_cleaver: { blade: "#1a0808", bladeD: "#0a0000", handle: "#2a0808", handleD: "#180505", guard: "#801010", bladeLen: 40, tipLen: 6, isCleaver: true },
       pickaxe:     { blade: "#8a9aaa", bladeD: "#5a6878", handle: "#9a7040", handleD: "#6a4420", guard: "#5a4a30", bladeLen: 28, tipLen: 0, isPickaxe: true },
       spatula:     { blade: "#d0d0d8", bladeD: "#a0a0a8", handle: "#4a3a20", handleD: "#3a2a10", guard: "#808080", bladeLen: 24, tipLen: 0, isSpatula: true },
+      // Fishing rods
+      bronze_rod:  { blade: "#8a6a3a", bladeD: "#6a4a1a", handle: "#6a4a20", handleD: "#4a3010", guard: "#5a5a5a", bladeLen: 32, tipLen: 0, isFishingRod: true },
+      iron_rod:    { blade: "#8a8a9a", bladeD: "#5a5a6a", handle: "#5a4a20", handleD: "#3a2a10", guard: "#666",    bladeLen: 34, tipLen: 0, isFishingRod: true },
+      gold_rod:    { blade: "#d4a030", bladeD: "#a07820", handle: "#8a6a30", handleD: "#5a4010", guard: "#c0a040", bladeLen: 36, tipLen: 0, isFishingRod: true },
+      mythic_rod:  { blade: "#9070c0", bladeD: "#6850a0", handle: "#4a3a6a", handleD: "#2a1a4a", guard: "#b090d0", bladeLen: 38, tipLen: 0, isFishingRod: true },
     };
     const c = configs[meleeId] || configs.knife;
 
@@ -964,6 +969,26 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         ctx.moveTo(hx, ry - 4); ctx.lineTo(hx - 5, ry - 6); ctx.lineTo(hx - 12, ry - 5);
         ctx.lineTo(hx - 5, ry - 5); ctx.lineTo(hx, ry - 3.5);
         ctx.closePath(); ctx.fill();
+      } else if (c.isFishingRod) {
+        // Fishing rod (LEFT): handle right, rod extends left, reel near handle
+        const bL = c.bladeLen;
+        // Cork grip handle
+        ctx.fillStyle = c.handle; ctx.fillRect(rx + 2, ry - 2, 10, 4);
+        ctx.fillStyle = c.handleD; ctx.fillRect(rx + 3, ry + 1, 8, 1);
+        // Reel (small circle at handle base)
+        ctx.fillStyle = c.guard; ctx.beginPath(); ctx.arc(rx + 1, ry + 4, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#444"; ctx.beginPath(); ctx.arc(rx + 1, ry + 4, 1.5, 0, Math.PI * 2); ctx.fill();
+        // Rod shaft — thin tapered pole
+        ctx.fillStyle = c.blade;
+        ctx.beginPath(); ctx.moveTo(rx, ry - 1); ctx.lineTo(rx - bL, ry - 0.5); ctx.lineTo(rx - bL, ry + 0.5); ctx.lineTo(rx, ry + 1); ctx.closePath(); ctx.fill();
+        // Shadow on rod
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx - bL, ry + 0.5, bL, 0.5);
+        // Line guides (small dots along rod)
+        ctx.fillStyle = "#888";
+        for (let g = 0; g < 3; g++) { const gx = rx - bL * (0.3 + g * 0.25); ctx.beginPath(); ctx.arc(gx, ry - 1, 1, 0, Math.PI * 2); ctx.fill(); }
+        // Dangling line at tip
+        ctx.strokeStyle = "rgba(200,200,200,0.5)"; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(rx - bL, ry); ctx.lineTo(rx - bL - 2, ry + 6); ctx.stroke();
       } else {
         ctx.fillStyle = c.blade; ctx.fillRect(rx - c.bladeLen, ry - 2, c.bladeLen, 4);
         ctx.fillStyle = c.bladeD; ctx.fillRect(rx - c.bladeLen, ry + 1, c.bladeLen, 1);
@@ -1078,6 +1103,20 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         ctx.moveTo(hx, ry - 4); ctx.lineTo(hx + 5, ry - 6); ctx.lineTo(hx + 12, ry - 5);
         ctx.lineTo(hx + 5, ry - 5); ctx.lineTo(hx, ry - 3.5);
         ctx.closePath(); ctx.fill();
+      } else if (c.isFishingRod) {
+        // Fishing rod (RIGHT): handle left, rod extends right
+        const bL = c.bladeLen;
+        ctx.fillStyle = c.handle; ctx.fillRect(rx - 12, ry - 2, 10, 4);
+        ctx.fillStyle = c.handleD; ctx.fillRect(rx - 11, ry + 1, 8, 1);
+        ctx.fillStyle = c.guard; ctx.beginPath(); ctx.arc(rx - 1, ry + 4, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#444"; ctx.beginPath(); ctx.arc(rx - 1, ry + 4, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = c.blade;
+        ctx.beginPath(); ctx.moveTo(rx, ry - 1); ctx.lineTo(rx + bL, ry - 0.5); ctx.lineTo(rx + bL, ry + 0.5); ctx.lineTo(rx, ry + 1); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx, ry + 0.5, bL, 0.5);
+        ctx.fillStyle = "#888";
+        for (let g = 0; g < 3; g++) { const gx = rx + bL * (0.3 + g * 0.25); ctx.beginPath(); ctx.arc(gx, ry - 1, 1, 0, Math.PI * 2); ctx.fill(); }
+        ctx.strokeStyle = "rgba(200,200,200,0.5)"; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(rx + bL, ry); ctx.lineTo(rx + bL + 2, ry + 6); ctx.stroke();
       } else {
         ctx.fillStyle = c.blade; ctx.fillRect(rx, ry - 2, c.bladeLen, 4);
         ctx.fillStyle = c.bladeD; ctx.fillRect(rx, ry + 1, c.bladeLen, 1);
@@ -1188,6 +1227,20 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         ctx.moveTo(rx + 4, hy - 1); ctx.lineTo(rx + 6, hy + 5); ctx.lineTo(rx + 5, hy + 12);
         ctx.lineTo(rx + 5, hy + 5); ctx.lineTo(rx + 3.5, hy);
         ctx.closePath(); ctx.fill();
+      } else if (c.isFishingRod) {
+        // Fishing rod (DOWN): handle up, rod extends down
+        const bL = c.bladeLen;
+        ctx.fillStyle = c.handle; ctx.fillRect(rx - 2, ry - 12, 4, 10);
+        ctx.fillStyle = c.handleD; ctx.fillRect(rx + 1, ry - 11, 1, 8);
+        ctx.fillStyle = c.guard; ctx.beginPath(); ctx.arc(rx + 4, ry - 1, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#444"; ctx.beginPath(); ctx.arc(rx + 4, ry - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = c.blade;
+        ctx.beginPath(); ctx.moveTo(rx - 1, ry); ctx.lineTo(rx - 0.5, ry + bL); ctx.lineTo(rx + 0.5, ry + bL); ctx.lineTo(rx + 1, ry); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 0.5, ry, 0.5, bL);
+        ctx.fillStyle = "#888";
+        for (let g = 0; g < 3; g++) { const gy = ry + bL * (0.3 + g * 0.25); ctx.beginPath(); ctx.arc(rx - 1, gy, 1, 0, Math.PI * 2); ctx.fill(); }
+        ctx.strokeStyle = "rgba(200,200,200,0.5)"; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(rx, ry + bL); ctx.lineTo(rx - 4, ry + bL + 4); ctx.stroke();
       } else {
         ctx.fillStyle = c.blade; ctx.fillRect(rx - 2, ry, 4, c.bladeLen);
         ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 1, ry, 1, c.bladeLen);
@@ -1297,6 +1350,20 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         ctx.moveTo(rx - 4, hy + 1); ctx.lineTo(rx - 6, hy - 5); ctx.lineTo(rx - 5, hy - 12);
         ctx.lineTo(rx - 5, hy - 5); ctx.lineTo(rx - 3.5, hy);
         ctx.closePath(); ctx.fill();
+      } else if (c.isFishingRod) {
+        // Fishing rod (UP): handle down, rod extends up
+        const bL = c.bladeLen;
+        ctx.fillStyle = c.handle; ctx.fillRect(rx - 2, ry + 2, 4, 10);
+        ctx.fillStyle = c.handleD; ctx.fillRect(rx + 1, ry + 3, 1, 8);
+        ctx.fillStyle = c.guard; ctx.beginPath(); ctx.arc(rx + 4, ry + 1, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#444"; ctx.beginPath(); ctx.arc(rx + 4, ry + 1, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = c.blade;
+        ctx.beginPath(); ctx.moveTo(rx - 1, ry); ctx.lineTo(rx - 0.5, ry - bL); ctx.lineTo(rx + 0.5, ry - bL); ctx.lineTo(rx + 1, ry); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 0.5, ry - bL, 0.5, bL);
+        ctx.fillStyle = "#888";
+        for (let g = 0; g < 3; g++) { const gy = ry - bL * (0.3 + g * 0.25); ctx.beginPath(); ctx.arc(rx - 1, gy, 1, 0, Math.PI * 2); ctx.fill(); }
+        ctx.strokeStyle = "rgba(200,200,200,0.5)"; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(rx, ry - bL); ctx.lineTo(rx - 4, ry - bL - 4); ctx.stroke();
       } else {
         ctx.fillStyle = c.blade; ctx.fillRect(rx - 2, ry - c.bladeLen, 4, c.bladeLen);
         ctx.fillStyle = c.bladeD; ctx.fillRect(rx + 1, ry - c.bladeLen, 1, c.bladeLen);

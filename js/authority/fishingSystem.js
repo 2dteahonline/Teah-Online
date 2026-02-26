@@ -7,15 +7,21 @@ const fishingState = {
   phase: 'idle',     // idle, casting, waiting, bite, reeling, result, cooldown
   timer: 0,
   targetFish: null,  // FISH_SPECIES entry for current catch attempt
-  // Rod + Bait
-  equippedRod: null,      // ROD_TIERS entry (null = no rod)
-  rodDurability: 0,       // current durability remaining
   baitCount: 0,           // worm bait count
   // Reel mechanics
   reelTension: 0,         // 0-1 tension bar
   reelProgress: 0,        // 0-1 reel progress
   caught: false,          // result of last attempt
   resultMessage: '',      // "Caught Sardine!" or "The fish got away!"
+  // World-space visual state
+  castDir: 0,             // direction player faced when casting
+  bobberX: 0,             // world X of bobber
+  bobberY: 0,             // world Y of bobber
+  fishX: 0,               // world X of swimming fish (animated)
+  fishY: 0,               // world Y of swimming fish
+  fishVisible: false,     // whether fish sprite is visible
+  fishColor: '#4080a0',   // color of current target fish
+  waitTotal: 0,           // total wait frames for fish approach timing
   // Stats (persisted)
   stats: {
     totalCaught: 0,
@@ -25,34 +31,69 @@ const fishingState = {
   },
 };
 
-// Starter rod + bait — overwritten by save/load if save data exists
-fishingState.equippedRod = ROD_TIERS[0]; // Bronze Rod
-fishingState.rodDurability = ROD_TIERS[0].durability;
+// Starter bait — overwritten by save/load if save data exists
 fishingState.baitCount = 10;
 
-function startFishing() {
+// Get the equipped rod data from playerEquip.melee (returns null if not a fishing rod)
+function getEquippedRod() {
+  const eq = typeof playerEquip !== 'undefined' ? playerEquip.melee : null;
+  if (!eq || eq.special !== 'fishing') return null;
+  return eq;
+}
+
+// Get the rod inventory item (for durability tracking)
+function getRodInventoryItem() {
+  const eq = getEquippedRod();
+  if (!eq) return null;
+  return typeof findInventoryItemById === 'function' ? findInventoryItemById(eq.id) : null;
+}
+
+// Called from meleeSwing() when rod is swung near fishing_spot
+function startFishingCast() {
   if (fishingState.active) return;
-  if (!fishingState.equippedRod || fishingState.rodDurability <= 0) {
-    // Show "You need a rod!" message
-    hitEffects.push({ x: player.x, y: player.y - 30, life: 40, type: 'text_popup', text: 'Need a rod!', color: '#ff6060' });
+  const rod = getEquippedRod();
+  if (!rod) return;
+
+  // Check rod durability from inventory item
+  const rodItem = getRodInventoryItem();
+  if (rodItem && rodItem.data.currentDurability !== undefined && rodItem.data.currentDurability <= 0) {
+    hitEffects.push({ x: player.x, y: player.y - 30, life: 40, type: 'text_popup', text: 'Rod is broken!', color: '#ff6060' });
     return;
   }
   if (fishingState.baitCount <= 0) {
     hitEffects.push({ x: player.x, y: player.y - 30, life: 40, type: 'text_popup', text: 'No bait!', color: '#ff6060' });
     return;
   }
+
   fishingState.active = true;
   fishingState.phase = 'casting';
   fishingState.timer = FISHING_CONFIG.castFrames;
   fishingState.baitCount--;
-  fishingState.rodDurability--;
   fishingState.stats.totalCasts++;
   fishingState.targetFish = null;
   fishingState.reelTension = 0;
   fishingState.reelProgress = 0;
   fishingState.caught = false;
   fishingState.resultMessage = '';
+  fishingState.fishVisible = false;
+
+  // Consume rod durability
+  if (rodItem && rodItem.data.currentDurability !== undefined) {
+    rodItem.data.currentDurability--;
+  }
+
+  // Calculate bobber landing position based on player facing direction
+  const castDir = typeof shootFaceDir !== 'undefined' ? shootFaceDir : (player.dir || 0);
+  fishingState.castDir = castDir;
+  const castDist = 80 + (rod.tier || 0) * 10;
+  const dirVecs = [[0, 1], [0, -1], [-1, 0], [1, 0]]; // down, up, left, right
+  const dv = dirVecs[castDir] || [0, 1];
+  fishingState.bobberX = player.x + dv[0] * castDist;
+  fishingState.bobberY = player.y + dv[1] * castDist;
 }
+
+// Legacy alias for backward compatibility
+function startFishing() { startFishingCast(); }
 
 function cancelFishing() {
   fishingState.active = false;
@@ -61,6 +102,7 @@ function cancelFishing() {
   fishingState.targetFish = null;
   fishingState.reelTension = 0;
   fishingState.reelProgress = 0;
+  fishingState.fishVisible = false;
 }
 
 function updateFishing() {
@@ -76,15 +118,38 @@ function updateFishing() {
         fishingState.phase = 'waiting';
         fishingState.timer = cfg.waitFramesMin + Math.floor(Math.random() * (cfg.waitFramesMax - cfg.waitFramesMin));
         // Pre-pick the fish that will bite
-        fishingState.targetFish = pickRandomFish(fishingState.equippedRod.tier);
+        const rod = getEquippedRod();
+        fishingState.targetFish = pickRandomFish(rod ? rod.tier : 0);
+        // Store total wait for fish approach timing
+        fishingState.waitTotal = fishingState.timer;
+        fishingState.fishVisible = false;
       }
       break;
 
     case 'waiting':
       fishingState.timer--;
+      // Fish approach animation: start showing fish when ~40% of wait remains
+      if (!fishingState.fishVisible && fishingState.waitTotal > 0 && fishingState.timer < fishingState.waitTotal * 0.4) {
+        fishingState.fishVisible = true;
+        fishingState.fishColor = fishingState.targetFish ? fishingState.targetFish.color : '#4080a0';
+        // Spawn fish at random position 100-140px from bobber
+        const spawnAngle = Math.random() * Math.PI * 2;
+        const spawnDist = 100 + Math.random() * 40;
+        fishingState.fishX = fishingState.bobberX + Math.cos(spawnAngle) * spawnDist;
+        fishingState.fishY = fishingState.bobberY + Math.sin(spawnAngle) * spawnDist;
+      }
+      // Lerp fish toward bobber
+      if (fishingState.fishVisible) {
+        const lerpSpeed = 0.02;
+        fishingState.fishX += (fishingState.bobberX - fishingState.fishX) * lerpSpeed;
+        fishingState.fishY += (fishingState.bobberY - fishingState.fishY) * lerpSpeed;
+      }
       if (fishingState.timer <= 0) {
         fishingState.phase = 'bite';
         fishingState.timer = cfg.biteWindowFrames;
+        // Snap fish to bobber position
+        fishingState.fishX = fishingState.bobberX;
+        fishingState.fishY = fishingState.bobberY;
       }
       break;
 
@@ -141,7 +206,8 @@ function updateFishing() {
       if (fishingState.reelProgress >= cfg.tensionCatchThreshold) {
         // Calculate catch chance
         const fishingLevel = skillData['Fishing'] ? skillData['Fishing'].level : 1;
-        const catchChance = calculateCatchChance(fishingState.targetFish, fishingState.equippedRod, fishingLevel);
+        const rodForCalc = getEquippedRod() || ROD_TIERS[0];
+        const catchChance = calculateCatchChance(fishingState.targetFish, rodForCalc, fishingLevel);
         if (Math.random() < catchChance) {
           // CAUGHT!
           awardFish(fishingState.targetFish);
@@ -168,10 +234,10 @@ function updateFishing() {
     case 'result':
       fishingState.timer--;
       if (fishingState.timer <= 0) {
-        // Check rod durability
-        if (fishingState.rodDurability <= 0) {
+        // Check rod durability from inventory item
+        const rodItem = getRodInventoryItem();
+        if (rodItem && rodItem.data.currentDurability !== undefined && rodItem.data.currentDurability <= 0) {
           hitEffects.push({ x: player.x, y: player.y - 30, life: 50, type: 'text_popup', text: 'Your rod broke!', color: '#ff4040' });
-          fishingState.equippedRod = null;
         }
         fishingState.phase = 'cooldown';
         fishingState.timer = cfg.cooldownFrames;
@@ -210,6 +276,91 @@ function awardFish(fish) {
 
   // Visual feedback
   hitEffects.push({ x: player.x, y: player.y - 40, life: 50, type: 'text_popup', text: '+' + fish.xp + ' Fishing XP', color: '#40c0ff' });
+}
+
+// --- WORLD-SPACE FISHING EFFECTS (line, bobber, fish) ---
+// Called inside ctx.save/translate block in draw.js (world coordinates)
+function drawFishingWorldEffects() {
+  if (!fishingState.active) return;
+  const phase = fishingState.phase;
+  if (phase === 'idle' || phase === 'cooldown') return;
+
+  // Fishing line: from player to bobber (sagging bezier)
+  if (phase !== 'result') {
+    ctx.strokeStyle = 'rgba(200,200,200,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y - 20);
+    const midX = (player.x + fishingState.bobberX) / 2;
+    const midY = (player.y - 20 + fishingState.bobberY) / 2 + 15; // sag
+    ctx.quadraticCurveTo(midX, midY, fishingState.bobberX, fishingState.bobberY);
+    ctx.stroke();
+  }
+
+  // Bobber
+  if (phase === 'waiting' || phase === 'bite' || phase === 'reeling') {
+    const t = typeof renderTime !== 'undefined' ? renderTime : Date.now();
+    const bob = Math.sin(t * 0.005) * 2;
+    const bx = fishingState.bobberX;
+    const by = fishingState.bobberY + bob;
+    // Water ripples
+    ctx.strokeStyle = 'rgba(80,160,220,0.25)';
+    ctx.lineWidth = 1;
+    const rippleR = 8 + Math.sin(t * 0.003) * 3;
+    ctx.beginPath(); ctx.ellipse(bx, by + 2, rippleR, rippleR * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+    // Red/white bobber
+    ctx.fillStyle = '#ff3020';
+    ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(bx, by - 1.5, 2.5, Math.PI, 0); ctx.fill();
+  }
+
+  // Fish swimming toward bobber
+  if (fishingState.fishVisible && (phase === 'waiting' || phase === 'bite')) {
+    const fx = fishingState.fishX;
+    const fy = fishingState.fishY;
+    const fc = fishingState.fishColor || '#4080a0';
+    const t = typeof renderTime !== 'undefined' ? renderTime : Date.now();
+    const swimBob = Math.sin(t * 0.008) * 2;
+    // Body (ellipse)
+    ctx.fillStyle = fc;
+    ctx.beginPath(); ctx.ellipse(fx, fy + swimBob, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // Tail (pointing away from bobber)
+    const dx = fishingState.bobberX - fx;
+    const dy = fishingState.bobberY - fy;
+    const ang = Math.atan2(dy, dx);
+    const tailAng = ang + Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(fx + Math.cos(tailAng) * 8, fy + swimBob + Math.sin(tailAng) * 8);
+    ctx.lineTo(fx + Math.cos(tailAng + 0.5) * 14, fy + swimBob + Math.sin(tailAng + 0.5) * 14);
+    ctx.lineTo(fx + Math.cos(tailAng - 0.5) * 14, fy + swimBob + Math.sin(tailAng - 0.5) * 14);
+    ctx.closePath(); ctx.fill();
+    // Eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(fx + Math.cos(ang) * 4, fy + swimBob + Math.sin(ang) * 4 - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(fx + Math.cos(ang) * 4, fy + swimBob + Math.sin(ang) * 4 - 1, 0.8, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Bite indicator: yellow "!" above bobber
+  if (phase === 'bite') {
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText('!', fishingState.bobberX, fishingState.bobberY - 16);
+    ctx.textAlign = 'left';
+    // Splash effect
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.5;
+    const t = typeof renderTime !== 'undefined' ? renderTime : Date.now();
+    for (let s = 0; s < 4; s++) {
+      const sa = s * Math.PI / 2 + t * 0.01;
+      const sd = 10 + Math.sin(t * 0.008 + s) * 4;
+      ctx.beginPath();
+      ctx.arc(fishingState.bobberX + Math.cos(sa) * sd, fishingState.bobberY + Math.sin(sa) * sd * 0.4, 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
 }
 
 // --- FISHING HUD (called from draw.js) ---
@@ -320,8 +471,11 @@ function drawFishingHUD() {
   ctx.textAlign = 'left';
   ctx.font = '11px monospace';
   ctx.fillStyle = '#b0c0d0';
-  if (fishingState.equippedRod) {
-    ctx.fillText(fishingState.equippedRod.name + ' [' + fishingState.rodDurability + '/' + fishingState.equippedRod.durability + ']', px + 8, py + panelH - 8);
+  const _hudRod = getEquippedRod();
+  const _hudRodItem = getRodInventoryItem();
+  if (_hudRod) {
+    const durLeft = _hudRodItem && _hudRodItem.data.currentDurability !== undefined ? _hudRodItem.data.currentDurability : '?';
+    ctx.fillText(_hudRod.name + ' [' + durLeft + '/' + _hudRod.durability + ']', px + 8, py + panelH - 8);
   }
   ctx.textAlign = 'right';
   ctx.fillStyle = '#a0b060';
@@ -361,19 +515,21 @@ function getFishVendorBuyItems() {
     isLocked: false,
     action() { fishingState.baitCount += 10; return true; }
   });
-  // Rods
+  // Rods (now creates melee weapon inventory items)
   for (const rod of ROD_TIERS) {
-    const owned = fishingState.equippedRod && fishingState.equippedRod.id === rod.id && fishingState.rodDurability > 0;
+    const owned = isInInventory(rod.id);
     items.push({
       id: rod.id, name: rod.name,
-      desc: 'Durability: ' + rod.durability + ' | Str: ' + rod.strength,
+      desc: 'Durability: ' + rod.durability + ' | Str: ' + rod.strength + ' | Dmg: ' + rod.damage,
       cost: rod.cost,
       isLocked: fishingLevel < rod.levelReq,
       lockReason: 'Fishing Lv.' + rod.levelReq,
       isOwned: owned,
       action() {
-        fishingState.equippedRod = rod;
-        fishingState.rodDurability = rod.durability;
+        // Create a melee weapon item with durability tracking
+        const rodData = { ...rod, currentDurability: rod.durability };
+        const rodItem = createItem('melee', rodData);
+        if (!addToInventory(rodItem)) return false;
         return true;
       }
     });
@@ -480,8 +636,11 @@ function drawFishVendorPanel() {
   ctx.fillStyle = '#a0b060';
   ctx.fillText('Bait: ' + fishingState.baitCount, px + 230, tabY + 19);
   ctx.fillStyle = '#b0c0d0';
-  if (fishingState.equippedRod) {
-    ctx.fillText('Rod: ' + fishingState.equippedRod.name + ' [' + fishingState.rodDurability + ']', px + 300, tabY + 19);
+  const _vRod = getEquippedRod();
+  const _vRodItem = _vRod ? getRodInventoryItem() : null;
+  if (_vRod) {
+    const durLeft = _vRodItem && _vRodItem.data.currentDurability !== undefined ? _vRodItem.data.currentDurability : '?';
+    ctx.fillText('Rod: ' + _vRod.name + ' [' + durLeft + ']', px + 300, tabY + 19);
   } else {
     ctx.fillText('Rod: None', px + 300, tabY + 19);
   }

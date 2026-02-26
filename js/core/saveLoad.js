@@ -6,7 +6,7 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
 const SaveLoad = {
   // Cosmetic keys to persist from player object
@@ -38,10 +38,8 @@ const SaveLoad = {
         playerXP: playerXP,
         skillData: JSON.parse(JSON.stringify(skillData)),
       };
-      // Fishing state (v3+)
+      // Fishing state (v4: rod is now an inventory item, only persist bait + stats)
       data.fishing = {
-        rodTier: fishingState.equippedRod ? fishingState.equippedRod.tier : -1,
-        rodDurability: fishingState.rodDurability,
         baitCount: fishingState.baitCount,
         stats: { ...fishingState.stats },
       };
@@ -108,22 +106,23 @@ const SaveLoad = {
         // Gold, inventory, equipment are session-only (dungeon roguelike design)
       }
 
-      // Fishing state (v3+)
+      // Fishing state (v4: rod is inventory item, only load bait + stats)
       if (data.fishing && typeof fishingState !== 'undefined') {
         const f = data.fishing;
-        if (f.rodTier >= 0 && f.rodTier < ROD_TIERS.length) {
-          fishingState.equippedRod = ROD_TIERS[f.rodTier];
-          fishingState.rodDurability = f.rodDurability || 0;
-        } else {
-          fishingState.equippedRod = null;
-          fishingState.rodDurability = 0;
-        }
         fishingState.baitCount = f.baitCount || 0;
         if (f.stats) {
           fishingState.stats.totalCaught = f.stats.totalCaught || 0;
           fishingState.stats.biggestFish = f.stats.biggestFish || '';
           fishingState.stats.biggestFishValue = f.stats.biggestFishValue || 0;
           fishingState.stats.totalCasts = f.stats.totalCasts || 0;
+        }
+        // v3→v4 migration: old saves stored rodTier — add a bronze rod to inventory
+        if (data.version < 4 && f.rodTier !== undefined && f.rodTier >= 0) {
+          if (typeof addToInventory === 'function' && typeof createItem === 'function') {
+            const tier = Math.min(f.rodTier, ROD_TIERS.length - 1);
+            const rodData = { ...ROD_TIERS[tier], currentDurability: f.rodDurability || ROD_TIERS[tier].durability };
+            addToInventory(createItem('melee', rodData));
+          }
         }
       }
 

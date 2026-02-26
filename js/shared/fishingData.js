@@ -7,10 +7,14 @@
 // Unlocked by Fishing skill level (NOT fish caught).
 // Strength = max fish weight rod can reliably hold.
 const ROD_TIERS = [
-  { id: 'bronze_rod', name: 'Bronze Rod', tier: 0, levelReq: 1,  cost: 20,  durability: 25,  strength: 1, catchBonus: 0.00, escapeReduction: 0.00 },
-  { id: 'iron_rod',   name: 'Iron Rod',   tier: 1, levelReq: 5,  cost: 80,  durability: 40,  strength: 2, catchBonus: 0.10, escapeReduction: 0.10 },
-  { id: 'gold_rod',   name: 'Gold Rod',   tier: 2, levelReq: 12, cost: 200, durability: 60,  strength: 3, catchBonus: 0.20, escapeReduction: 0.20 },
-  { id: 'mythic_rod', name: 'Mythic Rod', tier: 3, levelReq: 25, cost: 500, durability: 100, strength: 5, catchBonus: 0.35, escapeReduction: 0.35 },
+  { id: 'bronze_rod', name: 'Bronze Rod', tier: 0, levelReq: 1,  cost: 20,  durability: 25,  strength: 1, catchBonus: 0.00, escapeReduction: 0.00,
+    damage: 8,  range: 80,  cooldown: 34, critChance: 0, special: 'fishing', color: '#8a6a3a', desc: '8 dmg · fishing rod · equip to fish', waveReq: 0 },
+  { id: 'iron_rod',   name: 'Iron Rod',   tier: 1, levelReq: 5,  cost: 80,  durability: 40,  strength: 2, catchBonus: 0.10, escapeReduction: 0.10,
+    damage: 12, range: 85,  cooldown: 30, critChance: 0.05, special: 'fishing', color: '#8a8a8a', desc: '12 dmg · iron fishing rod', waveReq: 0 },
+  { id: 'gold_rod',   name: 'Gold Rod',   tier: 2, levelReq: 12, cost: 200, durability: 60,  strength: 3, catchBonus: 0.20, escapeReduction: 0.20,
+    damage: 16, range: 90,  cooldown: 26, critChance: 0.08, special: 'fishing', color: '#ffd700', desc: '16 dmg · gold fishing rod', waveReq: 0 },
+  { id: 'mythic_rod', name: 'Mythic Rod', tier: 3, levelReq: 25, cost: 500, durability: 100, strength: 5, catchBonus: 0.35, escapeReduction: 0.35,
+    damage: 22, range: 95,  cooldown: 22, critChance: 0.12, special: 'fishing', color: '#d4a030', desc: '22 dmg · mythic fishing rod', waveReq: 0 },
 ];
 
 // --- FISH SPECIES ---

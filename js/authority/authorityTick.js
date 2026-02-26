@@ -100,9 +100,6 @@ window.authorityTick = function() {
         InputIntent.slot4Pressed = true;
         break;
 
-      case 'fish_cast':
-        InputIntent.fishCastPressed = true;
-        break;
       case 'fish_reel':
         InputIntent.reelPressed = true;
         if (cmd.data.held) InputIntent.reelHeld = true;

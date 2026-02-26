@@ -1968,20 +1968,23 @@ ENTITY_RENDERERS.fishing_spot = (e, ctx, ex, ey, w, h) => {
   ctx.lineTo(ex + dw - 8, ey - 2);
   ctx.stroke();
 
-  // "[E] Fish" label when near
-  if (typeof nearFishingSpot !== 'undefined' && nearFishingSpot) {
+  // Context-aware fishing label when near
+  if (typeof nearFishingSpot !== 'undefined' && nearFishingSpot && (!fishingState || !fishingState.active)) {
+    const hasRod = typeof playerEquip !== 'undefined' && playerEquip.melee && playerEquip.melee.special === 'fishing';
+    const labelText = hasRod ? 'Attack to Cast' : 'Equip a Rod';
+    const labelColor = hasRod ? '#80c0ff' : '#ff8060';
+    const pillW = hasRod ? 100 : 90;
     const labelX = ex + dw / 2;
     const labelY = ey + dh + 18;
-    // Background pill
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.beginPath(); ctx.roundRect(labelX - 40, labelY - 12, 80, 20, 6); ctx.fill();
-    ctx.strokeStyle = '#4a8ac0';
+    ctx.beginPath(); ctx.roundRect(labelX - pillW / 2, labelY - 12, pillW, 20, 6); ctx.fill();
+    ctx.strokeStyle = hasRod ? '#4a8ac0' : '#8a4a30';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(labelX - 40, labelY - 12, 80, 20, 6); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(labelX - pillW / 2, labelY - 12, pillW, 20, 6); ctx.stroke();
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#80c0ff';
-    ctx.fillText('[E] Fish', labelX, labelY + 2);
+    ctx.fillStyle = labelColor;
+    ctx.fillText(labelText, labelX, labelY + 2);
     ctx.textAlign = 'left';
   }
 };

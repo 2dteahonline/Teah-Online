@@ -1924,9 +1924,6 @@ function update() {
       }
       else if (UI.isOpen('shop')) { UI.close(); }
       else if (UI.isOpen('inventory')) { UI.close(); }
-      else if (nearFishingSpot && typeof fishingState !== 'undefined' && !fishingState.active) {
-        startFishing();
-      }
       else {
         const nearby = getNearestInteractable();
         if (nearby) { nearby.onInteract(); }
