@@ -45,6 +45,11 @@ function draw() {
   // Ore nodes (under characters)
   if (typeof drawOreNodes === 'function') drawOreNodes();
 
+  // Telegraph ground markers (under characters, over ground)
+  if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.draw(ctx, cx, cy);
+  // Hazard system ground effects (under characters)
+  if (typeof HazardSystem !== 'undefined') HazardSystem.draw(ctx, cx, cy);
+
   // Ground effects UNDER characters
   drawMobGroundEffects();
   // Ambient particles UNDER characters
@@ -295,9 +300,21 @@ function draw() {
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(m.x, m.y - 20, 30 + urgency * 20, 0, Math.PI * 2); ctx.stroke();
       }
+      // Cloaked mobs (cloak_backstab) — nearly invisible
+      if (m._cloaked) {
+        ctx.globalAlpha = 0.08;
+        hitEffects.push({ x: m.x + (Math.random()-0.5)*20, y: m.y - 20 + (Math.random()-0.5)*10, life: 5, type: "smoke_puff" });
+      }
+      // Boss scale glow
+      if (m.isBoss) {
+        const bPulse = 0.15 + 0.08 * Math.sin(renderTime * 0.005);
+        ctx.fillStyle = `rgba(255,120,40,${bPulse})`;
+        ctx.beginPath(); ctx.arc(m.x, m.y - 15, 35 * (m.scale || 1), 0, Math.PI * 2); ctx.fill();
+      }
       drawChar(m.x, m.y, m.dir, Math.floor(m.frame), true,
         m.skin, m.hair, m.shirt, m.pants, m.name, m.hp, false, m.type, m.maxHp, m.boneSwing || 0, m.scale || 1, m.castTimer || m.throwAnim || m.bowDrawAnim || m.healAnim || 0);
-      
+      if (m._cloaked) ctx.globalAlpha = 1.0;
+
       // Frost effect overlay — obvious blue tint on frozen mobs
       if (m.frostTimer > 0) {
         const fAlpha = Math.min(0.5, m.frostTimer / 150 * 0.5);

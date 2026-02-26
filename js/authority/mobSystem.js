@@ -112,11 +112,13 @@ function updateMobs() {
         const isCrowded = nearbyCount >= 2;
 
         // MOB AI dispatch — registry-based movement targeting
+        // Look up AI by mob type first, then by the 'ai' field from MOB_TYPES (for Floor mobs that reuse existing AI)
         const aiCtx = { player, dist, dx, dy, targetX, targetY, playerVelX, playerVelY, mapCenterX, mapCenterY, amBetween, isCrowded, mobs };
+        const aiKey = MOB_AI[m.type] ? m.type : (MOB_TYPES[m.type] && MOB_TYPES[m.type].ai ? MOB_TYPES[m.type].ai : null);
         if (isCrowded && !CROWD_EXEMPT_TYPES.has(m.type) && dist > 60) {
           ({ targetX, targetY } = MOB_AI.crowded(m, aiCtx));
-        } else if (MOB_AI[m.type]) {
-          ({ targetX, targetY } = MOB_AI[m.type](m, aiCtx));
+        } else if (aiKey && MOB_AI[aiKey]) {
+          ({ targetX, targetY } = MOB_AI[aiKey](m, aiCtx));
         }
 
         const tdx = targetX - m.x;
@@ -127,7 +129,8 @@ function updateMobs() {
 
         // Dynamic speed cap — base speed only, boots should NOT make mobs faster
         const pSpd = player.baseSpeed || 3.5;
-        const maxSpd = m.type === "runner" ? pSpd * 1.1 : pSpd * 0.85;
+        const isRunnerAI = m.type === "runner" || (MOB_TYPES[m.type] && MOB_TYPES[m.type].ai === 'runner');
+        const maxSpd = isRunnerAI ? pSpd * 1.1 : pSpd * 0.85;
         let effSpeed = Math.min(m.speed, maxSpd);
 
         // Apply status effect speed multiplier (frost slow etc.)
@@ -321,9 +324,99 @@ function updateMobs() {
 
     // MOB SPECIALS dispatch — registry-based special attacks
     if (MOB_SPECIALS[m.type]) {
+      // Legacy mob types (witch, golem, etc.) keyed by type name
       const specCtx = { dist, dx, dy, player, mobs, hitEffects, bullets, wave, playerDead };
       const specResult = MOB_SPECIALS[m.type](m, specCtx);
       if (specResult.skip) continue;
+    } else if (m._specials && m._specials.length > 0) {
+      // Floor 1+ mobs: specials keyed by ability name in _specials array
+      const specCtx = { dist, dx, dy, player, mobs, hitEffects, bullets, wave, playerDead };
+      let skipMovement = false;
+      if (m._specials.length === 1) {
+        // Single-special mob: call the named special every frame (CD managed internally)
+        const handler = MOB_SPECIALS[m._specials[0]];
+        if (handler) {
+          const specResult = handler(m, specCtx);
+          if (specResult && specResult.skip) skipMovement = true;
+        }
+      } else {
+        // Multi-special boss: ability rotation system
+        // 1) Always tick persistent entities (mines, bombs) by calling those handlers
+        //    that need per-frame updates even when on CD
+        if (m._mines && m._mines.length > 0) {
+          // Tick mines every frame (proximity check + arming)
+          for (let mi = m._mines.length - 1; mi >= 0; mi--) {
+            const mine = m._mines[mi];
+            if (!mine.armed) {
+              mine.armTimer--;
+              if (mine.armTimer <= 0) mine.armed = true;
+              continue;
+            }
+            const mdx = player.x - mine.x, mdy = player.y - mine.y;
+            if (mdx * mdx + mdy * mdy <= mine.radius * mine.radius) {
+              StatusFX.applyToPlayer('root', { duration: 42 });
+              const dmg = Math.round(m.damage * getMobDamageMultiplier());
+              const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+              hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+              hitEffects.push({ x: mine.x, y: mine.y, life: 20, type: "explosion" });
+              m._mines.splice(mi, 1);
+            }
+          }
+        }
+
+        // 2) If an ability is actively executing (multi-frame), continue it
+        if (m._activeAbility) {
+          const handler = MOB_SPECIALS[m._activeAbility];
+          if (handler) {
+            const specResult = handler(m, specCtx);
+            if (specResult && specResult.skip) skipMovement = true;
+            // Check if ability is still active (has ongoing state)
+            const stillActive = m._laserTelegraph > 0 || m._tommyFiring ||
+              m._phaseDashing || m._blinkDashing || m._blinkTelegraph > 0 ||
+              m._stunTelegraph > 0 || m._poundTelegraph > 0 ||
+              m._barrageResolving;
+            if (!stillActive) {
+              m._activeAbility = null;
+            }
+          }
+        }
+
+        // 3) If no active ability, tick CDs and find next ready ability
+        if (!m._activeAbility) {
+          if (m._abilityIndex === undefined) m._abilityIndex = 0;
+          if (!m._abilityCDs || Object.keys(m._abilityCDs).length === 0) {
+            m._abilityCDs = {};
+            for (const s of m._specials) {
+              m._abilityCDs[s] = Math.floor(120 + Math.random() * 120);
+            }
+          }
+          // Tick all CDs
+          for (const abilKey of m._specials) {
+            if (m._abilityCDs[abilKey] > 0) m._abilityCDs[abilKey]--;
+          }
+          // Find next ready ability (round-robin from current index)
+          for (let ai = 0; ai < m._specials.length; ai++) {
+            const abilIdx = (m._abilityIndex + ai) % m._specials.length;
+            const abilKey = m._specials[abilIdx];
+            if (m._abilityCDs[abilKey] > 0) continue;
+            const handler = MOB_SPECIALS[abilKey];
+            if (!handler) continue;
+            const specResult = handler(m, specCtx);
+            // Reset CD
+            m._abilityCDs[abilKey] = m._specialCD || 300;
+            // Advance rotation
+            m._abilityIndex = (abilIdx + 1) % m._specials.length;
+            // Track active multi-frame abilities
+            const isMultiFrame = m._laserTelegraph > 0 || m._tommyFiring ||
+              m._phaseDashing || m._blinkDashing || m._blinkTelegraph > 0 ||
+              m._barrageResolving;
+            if (isMultiFrame) m._activeAbility = abilKey;
+            if (specResult && specResult.skip) skipMovement = true;
+            break;
+          }
+        }
+      }
+      if (skipMovement) continue;
     }
 
     } // end if (!m._testDummy) movement block

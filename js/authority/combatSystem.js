@@ -59,6 +59,112 @@ const StatusFX = {
         return null;
       },
     },
+    root: {
+      apply(mob, params) {
+        mob.rootTimer = params.duration || 42; // ~0.7s default
+      },
+      tick(mob) {
+        if (mob.rootTimer > 0) { mob.rootTimer--; return { skip: true }; }
+        return null;
+      },
+    },
+    mark: {
+      apply(mob, params) {
+        mob.markTimer = params.duration || 240; // 4s default
+        mob.markBonus = params.bonus || 0.15;   // +15% dmg taken
+      },
+      tick(mob) {
+        if (mob.markTimer > 0) {
+          mob.markTimer--;
+          return { dmgMult: 1 + (mob.markBonus || 0.15) };
+        }
+        return null;
+      },
+    },
+    silence: {
+      apply(mob, params) {
+        mob.silenceTimer = params.duration || 90; // 1.5s default
+      },
+      tick(mob) {
+        if (mob.silenceTimer > 0) { mob.silenceTimer--; return { silence: true }; }
+        return null;
+      },
+    },
+  },
+
+  // ---- PLAYER STATUS EFFECTS ----
+  // Player-targeted effects from mob specials (separate from mob effects above)
+  playerEffects: {
+    _slow: 0,      // speed multiplier reduction (0 = none)
+    _slowTimer: 0,
+    _root: false,
+    _rootTimer: 0,
+    _mark: false,
+    _markTimer: 0,
+    _markBonus: 0,
+    _silence: false,
+    _silenceTimer: 0,
+  },
+
+  applyToPlayer(effectId, params = {}) {
+    const pe = this.playerEffects;
+    switch (effectId) {
+      case 'slow':
+        pe._slow = params.amount || 0.35;
+        pe._slowTimer = params.duration || 240;
+        break;
+      case 'root':
+        pe._root = true;
+        pe._rootTimer = params.duration || 42;
+        break;
+      case 'mark':
+        pe._mark = true;
+        pe._markTimer = params.duration || 240;
+        pe._markBonus = params.bonus || 0.15;
+        break;
+      case 'silence':
+        pe._silence = true;
+        pe._silenceTimer = params.duration || 90;
+        break;
+      case 'stun':
+        pe._root = true; // stun = root + no action
+        pe._rootTimer = params.duration || 36;
+        break;
+    }
+  },
+
+  tickPlayer() {
+    const pe = this.playerEffects;
+    let speedMult = 1.0;
+    let rooted = false;
+
+    if (pe._slowTimer > 0) {
+      pe._slowTimer--;
+      speedMult *= (1 - pe._slow);
+      if (pe._slowTimer <= 0) pe._slow = 0;
+    }
+    if (pe._rootTimer > 0) {
+      pe._rootTimer--;
+      rooted = pe._root;
+      if (pe._rootTimer <= 0) pe._root = false;
+    }
+    if (pe._markTimer > 0) {
+      pe._markTimer--;
+      if (pe._markTimer <= 0) { pe._mark = false; pe._markBonus = 0; }
+    }
+    if (pe._silenceTimer > 0) {
+      pe._silenceTimer--;
+      if (pe._silenceTimer <= 0) pe._silence = false;
+    }
+    return { speedMult, rooted, marked: pe._mark, markBonus: pe._markBonus, silenced: pe._silence };
+  },
+
+  clearPlayer() {
+    const pe = this.playerEffects;
+    pe._slow = 0; pe._slowTimer = 0;
+    pe._root = false; pe._rootTimer = 0;
+    pe._mark = false; pe._markTimer = 0; pe._markBonus = 0;
+    pe._silence = false; pe._silenceTimer = 0;
   },
 
   // Apply a status effect to a mob
@@ -86,6 +192,9 @@ const StatusFX = {
     mob.frostTimer = 0; mob.frostSlow = 0;
     mob.burnTimer = 0; mob.burnDmg = 0; mob.burnTick = 0;
     mob.staggerTimer = 0; mob.stunTimer = 0;
+    mob.rootTimer = 0;
+    mob.markTimer = 0; mob.markBonus = 0;
+    mob.silenceTimer = 0;
   },
 
   // ---- PLAYER EFFECTS ----
@@ -643,4 +752,757 @@ const MOB_SPECIALS = {
     }
     return {};
   },
+
+  // ===================== FLOOR 1: AZURINE CITY SPECIALS =====================
+
+  // --- Neon Pickpocket: Swipe Blink ---
+  // Telegraphed dash toward player, heal self on arrival
+  swipe_blink: (m, ctx) => {
+    const { dist, player, hitEffects } = ctx;
+
+    // Initialize timer on first call
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 420;
+
+    // Dashing phase
+    if (m._blinkDashing) {
+      m._blinkDashTimer = (m._blinkDashTimer || 0) - 1;
+      if (m._blinkDashTimer <= 0) {
+        // Arrive at target
+        m.x = m._blinkTargetX;
+        m.y = m._blinkTargetY;
+        // Heal 10% maxHp
+        const healAmt = Math.round(m.maxHp * 0.1);
+        m.hp = Math.min(m.maxHp, m.hp + healAmt);
+        hitEffects.push({ x: m.x, y: m.y - 20, life: 20, type: "heal", dmg: "+" + healAmt });
+        // Check if player is in the dash line — damage if so
+        if (typeof AttackShapes !== 'undefined') {
+          if (AttackShapes.playerInLine(m._blinkStartX, m._blinkStartY, m._blinkTargetX, m._blinkTargetY, 32)) {
+            const dmg = Math.round(m.damage * getMobDamageMultiplier());
+            const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+            hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+          }
+        }
+        m._blinkDashing = false;
+        m._specialTimer = m._specialCD || 420;
+      } else {
+        // Lerp toward target during dash
+        const t = 1 - (m._blinkDashTimer / 24);
+        m.x = m._blinkStartX + (m._blinkTargetX - m._blinkStartX) * t;
+        m.y = m._blinkStartY + (m._blinkTargetY - m._blinkStartY) * t;
+      }
+      return { skip: true };
+    }
+
+    // Telegraph phase
+    if (m._blinkTelegraph) {
+      m._blinkTelegraph--;
+      if (m._blinkTelegraph <= 0) {
+        // Start dash
+        m._blinkDashing = true;
+        m._blinkDashTimer = 24;
+        m._blinkStartX = m.x;
+        m._blinkStartY = m.y;
+      }
+      return { skip: true };
+    }
+
+    // Cooldown countdown
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Activate: create line telegraph toward player (6 tiles = 288px)
+    const dir = Math.atan2(player.y - m.y, player.x - m.x);
+    const dashDist = 288;
+    m._blinkTargetX = m.x + Math.cos(dir) * dashDist;
+    m._blinkTargetY = m.y + Math.sin(dir) * dashDist;
+
+    if (typeof TelegraphSystem !== 'undefined') {
+      TelegraphSystem.create({
+        shape: 'line',
+        params: { x1: m.x, y1: m.y, x2: m._blinkTargetX, y2: m._blinkTargetY, width: 32 },
+        delayFrames: 24,
+        color: [0, 200, 255],
+        owner: m.id,
+      });
+    }
+    m._blinkTelegraph = 24;
+    return { skip: true };
+  },
+
+  // --- Cyber Mugger: Stun Baton ---
+  // Cone telegraph followed by stun hit
+  stun_baton: (m, ctx) => {
+    const { dist, player, hitEffects } = ctx;
+
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 480;
+
+    // Telegraph phase
+    if (m._stunTelegraph) {
+      m._stunTelegraph--;
+      if (m._stunTelegraph <= 0) {
+        // Resolve: damage + stun if player in cone
+        if (typeof AttackShapes !== 'undefined') {
+          const dir = Math.atan2(player.y - m.y, player.x - m.x);
+          const halfAngle = Math.PI / 4; // 90° / 2
+          if (AttackShapes.playerInCone(m.x, m.y, dir, halfAngle, 96)) {
+            const dmg = Math.round(m.damage * getMobDamageMultiplier());
+            const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+            hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+            StatusFX.applyToPlayer('stun', { duration: 36 });
+            hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "stun" });
+          }
+        }
+        m._specialTimer = m._specialCD || 480;
+      }
+      return { skip: true };
+    }
+
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Activate: must be close enough
+    if (dist >= 120) {
+      m._specialTimer = 30; // retry soon
+      return {};
+    }
+
+    const dir = Math.atan2(player.y - m.y, player.x - m.x);
+    if (typeof TelegraphSystem !== 'undefined') {
+      TelegraphSystem.create({
+        shape: 'cone',
+        params: { cx: m.x, cy: m.y, direction: dir, angleDeg: 90, range: 96 },
+        delayFrames: 18,
+        color: [255, 200, 50],
+        owner: m.id,
+      });
+    }
+    m._stunTelegraph = 18;
+    return { skip: true };
+  },
+
+  // --- Drone Lookout: Spot Mark ---
+  // Circle telegraph on player, applies mark debuff
+  spot_mark: (m, ctx) => {
+    const { dist, player, hitEffects } = ctx;
+
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 600;
+
+    // Telegraph phase
+    if (m._markTelegraph) {
+      m._markTelegraph--;
+      if (m._markTelegraph <= 0) {
+        // Resolve: apply mark if player in circle
+        if (typeof AttackShapes !== 'undefined') {
+          if (AttackShapes.hitsPlayer(m._markX, m._markY, 72)) {
+            StatusFX.applyToPlayer('mark', { duration: 240, bonus: 0.15 });
+            hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "mark" });
+          }
+        }
+        m._specialTimer = m._specialCD || 600;
+      }
+      return {};
+    }
+
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Activate: must be in range
+    if (dist >= 400) {
+      m._specialTimer = 30;
+      return {};
+    }
+
+    // Target player's current position
+    m._markX = player.x;
+    m._markY = player.y;
+
+    if (typeof TelegraphSystem !== 'undefined') {
+      TelegraphSystem.create({
+        shape: 'circle',
+        params: { cx: m._markX, cy: m._markY, radius: 72 },
+        delayFrames: 36,
+        color: [255, 100, 100],
+        owner: m.id,
+      });
+    }
+    m._markTelegraph = 36;
+    return {};
+  },
+
+  // --- Street Chemist: Gas Canister ---
+  // Lob projectile that creates poison zone on landing
+  gas_canister: (m, ctx) => {
+    const { dist, player, hitEffects, bullets } = ctx;
+
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 540;
+
+    // Active projectile — tick it
+    if (m._gasProjectile) {
+      const proj = m._gasProjectile;
+      proj.x += proj.vx;
+      proj.y += proj.vy;
+      proj.vy += 0.15; // gravity arc
+      proj.timer--;
+
+      if (proj.timer <= 0) {
+        // Landed — create poison zone
+        if (typeof HazardSystem !== 'undefined') {
+          HazardSystem.createZone({
+            cx: proj.targetX, cy: proj.targetY,
+            radius: 144,
+            duration: 300,
+            tickRate: 60,
+            tickDamage: Math.round(m.damage * getMobDamageMultiplier()),
+            tickEffect: 'poison_tick',
+            color: [100, 200, 50],
+            slow: 0.3,
+          });
+        }
+        hitEffects.push({ x: proj.targetX, y: proj.targetY, life: 20, type: "poison_cloud" });
+        m._gasProjectile = null;
+        m._specialTimer = m._specialCD || 540;
+      }
+      return {};
+    }
+
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Activate: must be in range
+    if (dist >= 350) {
+      m._specialTimer = 30;
+      return {};
+    }
+
+    // Lob toward player's position
+    const targetX = player.x;
+    const targetY = player.y;
+    const travelFrames = 40;
+    const vx = (targetX - m.x) / travelFrames;
+    const vy = (targetY - m.y) / travelFrames - 2; // arc upward
+
+    m._gasProjectile = {
+      x: m.x, y: m.y - 10,
+      vx, vy,
+      targetX, targetY,
+      timer: travelFrames,
+    };
+
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
+    return {};
+  },
+
+  // --- Renegade Bruiser: Ground Pound ---
+  // Circle telegraph + knockback + slow
+  ground_pound: (m, ctx) => {
+    const { dist, player, hitEffects } = ctx;
+
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 540;
+
+    // Telegraph phase
+    if (m._poundTelegraph) {
+      m._poundTelegraph--;
+      if (m._poundTelegraph <= 0) {
+        // Resolve: damage + knockback + slow
+        if (typeof AttackShapes !== 'undefined') {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 96)) {
+            const dmg = Math.round(m.damage * getMobDamageMultiplier());
+            const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+            hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+            // Knockback 12px away from mob
+            const kDx = player.x - m.x, kDy = player.y - m.y;
+            const kDist = Math.sqrt(kDx * kDx + kDy * kDy) || 1;
+            player.knockVx = (kDx / kDist) * 12;
+            player.knockVy = (kDy / kDist) * 12;
+            // Slow
+            StatusFX.applyToPlayer('slow', { amount: 0.3, duration: 120 });
+          }
+        }
+        hitEffects.push({ x: m.x, y: m.y, life: 20, type: "stomp" });
+        m._specialTimer = m._specialCD || 540;
+      }
+      return { skip: true };
+    }
+
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Activate: must be close
+    if (dist >= 150) {
+      m._specialTimer = 30;
+      return {};
+    }
+
+    if (typeof TelegraphSystem !== 'undefined') {
+      TelegraphSystem.create({
+        shape: 'circle',
+        params: { cx: m.x, cy: m.y, radius: 96 },
+        delayFrames: 30,
+        color: [200, 100, 50],
+        owner: m.id,
+      });
+    }
+    m._poundTelegraph = 30;
+    return { skip: true };
+  },
+
+  // --- Renegade Shadowknife: Cloak Backstab ---
+  // Cloak, then teleport behind player for surprise attack
+  cloak_backstab: (m, ctx) => {
+    const { dist, player, hitEffects } = ctx;
+
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 600;
+
+    // Cloaked phase — count down then teleport behind player
+    if (m._cloaked) {
+      m._cloakTimer--;
+      if (m._cloakTimer <= 0) {
+        // Teleport behind player (opposite of player's facing or just behind)
+        const behindDist = 40;
+        const dir = Math.atan2(player.y - m.y, player.x - m.x);
+        // Behind = opposite side of player from mob's approach
+        m.x = player.x + Math.cos(dir) * behindDist;
+        m.y = player.y + Math.sin(dir) * behindDist;
+        // Deal damage
+        const dmg = Math.round(m.damage * 1.5 * getMobDamageMultiplier()); // backstab bonus
+        const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+        hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+        hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "backstab" });
+        m._cloaked = false;
+        m._specialTimer = m._specialCD || 600;
+      }
+      return { skip: true };
+    }
+
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Activate: must be within range
+    if (dist >= 250) {
+      m._specialTimer = 30;
+      return {};
+    }
+
+    m._cloaked = true;
+    m._cloakTimer = 60;
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cloak" });
+    return {};
+  },
+
+  // --- Renegade Demo: Sticky Bomb ---
+  // Place bomb at player position, explodes after delay
+  sticky_bomb: (m, ctx) => {
+    const { dist, player, hitEffects } = ctx;
+
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 720;
+    if (!m._bombs) m._bombs = [];
+
+    // Tick active bombs
+    for (let i = m._bombs.length - 1; i >= 0; i--) {
+      const bomb = m._bombs[i];
+      bomb.timer--;
+      if (bomb.timer <= 0) {
+        // Explode
+        if (typeof AttackShapes !== 'undefined') {
+          if (AttackShapes.hitsPlayer(bomb.x, bomb.y, bomb.radius)) {
+            const dmg = Math.round(m.damage * 1.5 * getMobDamageMultiplier());
+            const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+            hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+          }
+        }
+        hitEffects.push({ x: bomb.x, y: bomb.y, life: 25, type: "explosion" });
+        m._bombs.splice(i, 1);
+      }
+    }
+
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Activate: must be in range, max 2 bombs
+    if (dist >= 300 || m._bombs.length >= 2) {
+      m._specialTimer = 30;
+      return {};
+    }
+
+    m._bombs.push({
+      x: player.x, y: player.y,
+      timer: 120,
+      radius: 96,
+    });
+    hitEffects.push({ x: player.x, y: player.y, life: 15, type: "bomb_place" });
+    m._specialTimer = m._specialCD || 720;
+    return {};
+  },
+
+  // --- Renegade Sniper: Ricochet Round ---
+  // Alias to archer logic (sniper has arrowBounces: 1 in MOB_TYPES)
+  ricochet_round: null, // set after object creation (self-reference)
+
+  // --- The Don: Laser Snipe ---
+  // Long line telegraph + heavy damage
+  laser_snipe: (m, ctx) => {
+    const { dist, player, hitEffects } = ctx;
+
+    // Telegraph phase
+    if (m._laserTelegraph) {
+      m._laserTelegraph--;
+      if (m._laserTelegraph <= 0) {
+        // Resolve: heavy damage if player in line
+        if (typeof AttackShapes !== 'undefined') {
+          if (AttackShapes.playerInLine(m._laserX1, m._laserY1, m._laserX2, m._laserY2, 24)) {
+            const dmg = Math.round(m.damage * 3 * getMobDamageMultiplier());
+            const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+            hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+          }
+        }
+        hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "laser_fire" });
+      }
+      return { skip: true };
+    }
+
+    // Must be at range to snipe
+    if (dist <= 150) return {};
+
+    // Create telegraph
+    const dir = Math.atan2(player.y - m.y, player.x - m.x);
+    const range = 480; // 10 tiles
+    m._laserX1 = m.x;
+    m._laserY1 = m.y;
+    m._laserX2 = m.x + Math.cos(dir) * range;
+    m._laserY2 = m.y + Math.sin(dir) * range;
+
+    if (typeof TelegraphSystem !== 'undefined') {
+      TelegraphSystem.create({
+        shape: 'line',
+        params: { x1: m._laserX1, y1: m._laserY1, x2: m._laserX2, y2: m._laserY2, width: 24 },
+        delayFrames: 48,
+        color: [255, 50, 50],
+        owner: m.id,
+      });
+    }
+    m._laserTelegraph = 48;
+    return { skip: true };
+  },
+
+  // --- The Don: Tommy Burst ---
+  // Spread of 5 bullets in a cone
+  tommy_burst: (m, ctx) => {
+    const { dist, player, hitEffects, bullets } = ctx;
+
+    // Firing phase — stagger shots over 10 frames
+    if (m._tommyFiring) {
+      m._tommyFrame = (m._tommyFrame || 0) + 1;
+      if (m._tommyFrame % 2 === 0 && m._tommyShotsFired < 5) {
+        const baseDir = m._tommyDir;
+        const spreadAngle = Math.PI / 6; // 30° total
+        const shotAngle = baseDir - spreadAngle / 2 + (m._tommyShotsFired / 4) * spreadAngle;
+        const speed = 7;
+        bullets.push({
+          id: nextBulletId++,
+          x: m.x, y: m.y - 10,
+          vx: Math.cos(shotAngle) * speed,
+          vy: Math.sin(shotAngle) * speed,
+          fromPlayer: false, mobBullet: true,
+          damage: Math.round(m.damage * getMobDamageMultiplier()),
+          ownerId: m.id,
+        });
+        m._tommyShotsFired++;
+      }
+      if (m._tommyFrame >= 10) {
+        m._tommyFiring = false;
+      }
+      return { skip: true };
+    }
+
+    // Must be in range
+    if (dist >= 350) return {};
+
+    // Start burst
+    m._tommyFiring = true;
+    m._tommyFrame = 0;
+    m._tommyShotsFired = 0;
+    m._tommyDir = Math.atan2(player.y - m.y, player.x - m.x);
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
+    return { skip: true };
+  },
+
+  // --- The Don: Smart Mine ---
+  // Drop proximity mines that root + damage.
+  // For single-special mobs: ticks mines + drops new ones.
+  // For boss rotation: mine ticking is in the dispatch; this only drops.
+  smart_mine: (m, ctx) => {
+    const { player, hitEffects } = ctx;
+
+    if (!m._mines) m._mines = [];
+
+    // If used by a single-special mob, tick mines here
+    // (boss rotation ticks mines in the dispatch loop)
+    if (!m._specials || m._specials.length <= 1) {
+      for (let i = m._mines.length - 1; i >= 0; i--) {
+        const mine = m._mines[i];
+        if (!mine.armed) {
+          mine.armTimer--;
+          if (mine.armTimer <= 0) mine.armed = true;
+          continue;
+        }
+        const mdx = player.x - mine.x, mdy = player.y - mine.y;
+        if (mdx * mdx + mdy * mdy <= mine.radius * mine.radius) {
+          StatusFX.applyToPlayer('root', { duration: 42 });
+          const dmg = Math.round(m.damage * getMobDamageMultiplier());
+          const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+          hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+          hitEffects.push({ x: mine.x, y: mine.y, life: 20, type: "explosion" });
+          m._mines.splice(i, 1);
+        }
+      }
+    }
+
+    // Drop 2 mines near mob
+    for (let j = 0; j < 2; j++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dropDist = 40 + Math.random() * 60;
+      m._mines.push({
+        x: m.x + Math.cos(angle) * dropDist,
+        y: m.y + Math.sin(angle) * dropDist,
+        radius: 60,
+        armed: false,
+        armTimer: 60,
+      });
+    }
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "mine_drop" });
+    return {};
+  },
+
+  // --- The Don: Smoke Screen ---
+  // Create obscuring smoke zone centered on mob
+  smoke_screen: (m, ctx) => {
+    const { hitEffects } = ctx;
+    if (typeof HazardSystem !== 'undefined') {
+      HazardSystem.createZone({
+        cx: m.x, cy: m.y,
+        radius: 192,
+        duration: 240,
+        tickRate: 999, // no damage ticks
+        tickDamage: 0,
+        color: [80, 80, 80],
+        slow: 0,
+      });
+    }
+    hitEffects.push({ x: m.x, y: m.y, life: 20, type: "smoke" });
+    return {};
+  },
+
+  // --- Velocity: Phase Dash ---
+  // Fast dash through player position, damage along path
+  phase_dash: (m, ctx) => {
+    const { player, hitEffects } = ctx;
+
+    // Dashing phase
+    if (m._phaseDashing) {
+      m._phaseDashTimer = (m._phaseDashTimer || 0) - 1;
+      // Lerp toward target
+      const totalFrames = 16;
+      const t = 1 - (m._phaseDashTimer / totalFrames);
+      m.x = m._phaseDashStartX + (m._phaseDashTargetX - m._phaseDashStartX) * t;
+      m.y = m._phaseDashStartY + (m._phaseDashTargetY - m._phaseDashStartY) * t;
+      // Afterimage trail
+      if (m._phaseDashTimer % 3 === 0) {
+        hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
+      }
+      if (m._phaseDashTimer <= 0) {
+        // Check damage along path
+        if (typeof AttackShapes !== 'undefined') {
+          if (AttackShapes.playerInLine(m._phaseDashStartX, m._phaseDashStartY, m._phaseDashTargetX, m._phaseDashTargetY, 32)) {
+            const dmg = Math.round(m.damage * getMobDamageMultiplier());
+            const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+            hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+          }
+        }
+        m._phaseDashing = false;
+      }
+      return { skip: true };
+    }
+
+    // Start dash toward player (8 tiles = 384px)
+    const dir = Math.atan2(player.y - m.y, player.x - m.x);
+    m._phaseDashing = true;
+    m._phaseDashTimer = 16;
+    m._phaseDashStartX = m.x;
+    m._phaseDashStartY = m.y;
+    m._phaseDashTargetX = m.x + Math.cos(dir) * 384;
+    m._phaseDashTargetY = m.y + Math.sin(dir) * 384;
+
+    if (typeof TelegraphSystem !== 'undefined') {
+      TelegraphSystem.create({
+        shape: 'line',
+        params: { x1: m.x, y1: m.y, x2: m._phaseDashTargetX, y2: m._phaseDashTargetY, width: 32 },
+        delayFrames: 8,
+        color: [100, 100, 255],
+        owner: m.id,
+      });
+    }
+    hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
+    return { skip: true };
+  },
+
+  // --- Velocity: Bullet Time Field ---
+  // Slow zone centered on player
+  bullet_time_field: (m, ctx) => {
+    const { player, hitEffects } = ctx;
+
+    if (typeof HazardSystem !== 'undefined') {
+      HazardSystem.createZone({
+        cx: player.x, cy: player.y,
+        radius: 192,
+        duration: 240,
+        tickRate: 999,
+        tickDamage: 0,
+        color: [100, 100, 200],
+        slow: 0.35,
+      });
+    }
+    hitEffects.push({ x: player.x, y: player.y, life: 20, type: "time_field" });
+    return {};
+  },
+
+  // --- Velocity: Afterimage Barrage ---
+  // 3 converging line telegraphs from different angles
+  afterimage_barrage: (m, ctx) => {
+    const { player, hitEffects } = ctx;
+
+    // Resolving phase — check if any line hits
+    if (m._barrageResolving) {
+      m._barrageTimer = (m._barrageTimer || 0) - 1;
+      if (m._barrageTimer <= 0) {
+        m._barrageResolving = false;
+      }
+      return {};
+    }
+
+    // Create 3 line telegraphs from 3 angles (120deg apart) converging on player
+    const targetX = player.x, targetY = player.y;
+    const attackDist = 300;
+    const baseAngle = Math.random() * Math.PI * 2;
+
+    for (let i = 0; i < 3; i++) {
+      const angle = baseAngle + (i * Math.PI * 2 / 3);
+      const startX = targetX + Math.cos(angle) * attackDist;
+      const startY = targetY + Math.sin(angle) * attackDist;
+
+      if (typeof TelegraphSystem !== 'undefined') {
+        const capturedStartX = startX, capturedStartY = startY;
+        const capturedTargetX = targetX, capturedTargetY = targetY;
+        const capturedMob = m;
+        TelegraphSystem.create({
+          shape: 'line',
+          params: { x1: startX, y1: startY, x2: targetX, y2: targetY, width: 28 },
+          delayFrames: 36,
+          onResolve: () => {
+            if (typeof AttackShapes !== 'undefined') {
+              if (AttackShapes.playerInLine(capturedStartX, capturedStartY, capturedTargetX, capturedTargetY, 28)) {
+                const dmg = Math.round(capturedMob.damage * getMobDamageMultiplier());
+                const dealt = dealDamageToPlayer(dmg, 'mob_special', capturedMob);
+                hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+              }
+            }
+          },
+          color: [150, 100, 255],
+          owner: m.id,
+        });
+      }
+      hitEffects.push({ x: startX, y: startY - 10, life: 12, type: "afterimage" });
+    }
+
+    m._barrageResolving = true;
+    m._barrageTimer = 42;
+    return {};
+  },
+
+  // --- Velocity: Summon Renegades ---
+  // Spawn 2 random renegade mobs (like witch summon pattern)
+  summon_renegades: (m, ctx) => {
+    const { mobs, hitEffects, wave } = ctx;
+
+    // Count active renegade summons
+    const activeCount = mobs.filter(s => s._summonOwnerId === m.id && s.hp > 0).length;
+    if (activeCount >= 4) return {};
+
+    const renegadeTypes = ['renegade_bruiser', 'renegade_shadowknife', 'renegade_demo', 'renegade_sniper'];
+    const hpMult = getWaveHPMultiplier(wave);
+    const spdMult = getWaveSpeedMultiplier(wave);
+    const toSpawn = Math.min(2, 4 - activeCount);
+
+    for (let si = 0; si < toSpawn; si++) {
+      const typeKey = renegadeTypes[Math.floor(Math.random() * renegadeTypes.length)];
+      const mt = MOB_TYPES[typeKey];
+      if (!mt) continue;
+
+      let sx, sy, foundClear = false;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spawnDist = 80 + Math.random() * 60;
+        sx = m.x + Math.cos(angle) * spawnDist;
+        sy = m.y + Math.sin(angle) * spawnDist;
+        if (!positionClear(sx, sy)) continue;
+        let tooClose = false;
+        const minSep = 40;
+        for (const other of mobs) {
+          if (other.hp <= 0) continue;
+          const odx = sx - other.x, ody = sy - other.y;
+          if (odx * odx + ody * ody < minSep * minSep) { tooClose = true; break; }
+        }
+        if (!tooClose) { foundClear = true; break; }
+      }
+      if (!foundClear) {
+        const fallbackAngle = (si + 1) * Math.PI * 0.7;
+        sx = m.x + Math.cos(fallbackAngle) * 60;
+        sy = m.y + Math.sin(fallbackAngle) * 60;
+      }
+
+      const mobId = nextMobId++;
+      mobs.push({
+        x: sx, y: sy, type: typeKey, id: mobId,
+        hp: Math.round(mt.hp * hpMult), maxHp: Math.round(mt.hp * hpMult),
+        speed: capMobSpeed(typeKey, mt.speed * spdMult),
+        damage: Math.round(mt.damage * getMobDamageMultiplier()),
+        contactRange: mt.contactRange,
+        skin: mt.skin, hair: mt.hair, shirt: mt.shirt, pants: mt.pants,
+        name: mt.name, dir: 0, frame: 0, attackCooldown: 0,
+        shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
+        summonRate: 0, summonMax: 0, summonTimer: 0,
+        arrowRate: mt.arrowRate || 0, arrowSpeed: mt.arrowSpeed || 0,
+        arrowRange: mt.arrowRange || 0, arrowBounces: mt.arrowBounces || 0,
+        arrowLife: mt.arrowLife || 0, bowDrawAnim: 0,
+        arrowTimer: mt.arrowRate ? Math.floor(Math.random() * mt.arrowRate) : 0,
+        _specials: mt._specials || null,
+        _specialTimer: mt.specialCD || 0,
+        _specialCD: mt.specialCD || 0,
+        _abilityCDs: {},
+        _cloaked: false, _cloakTimer: 0,
+        _bombs: [], _mines: [],
+        _summonOwnerId: m.id,
+        scale: 0.85, spawnFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
+      });
+      hitEffects.push({ x: sx, y: sy - 20, life: 20, type: "summon" });
+    }
+
+    return {};
+  },
 };
+
+// Ricochet round reuses the archer arrow system (sniper has arrowBounces: 1)
+MOB_SPECIALS.ricochet_round = MOB_SPECIALS.archer;

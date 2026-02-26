@@ -14,8 +14,12 @@ function resetCombatState(mode) {
   waveState = "waiting"; waveTimer = 0;
   resetPhaseState();
   StatusFX.clearPoison();
+  if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
   freezeTimer = 0;
   contactCooldown = 0;
+  // --- Clear telegraph + hazard systems ---
+  if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+  if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
 
   // --- Reset cooking state ---
   if (typeof resetCookingState === 'function') resetCookingState();
@@ -69,6 +73,8 @@ function resetCombatState(mode) {
     contactCooldown = 60;
     // Shop runtime state lives in shopState; _resetShopPrices handles all of it
     if (window._resetShopPrices) window._resetShopPrices();
+    // Init hazards for floor 1
+    if (typeof HazardSystem !== 'undefined') HazardSystem.initForFloor(1);
   }
 
   // --- Death: also reset gold ---
@@ -84,6 +90,8 @@ function resetCombatState(mode) {
     recalcMaxHp(); player.hp = player.maxHp;
     potion.count += 2;
     reviveUsed = false;
+    // Init hazards for the new floor
+    if (typeof HazardSystem !== 'undefined') HazardSystem.initForFloor(dungeonFloor);
   }
 
   // --- Mine: spawn ores, keep everything else ---

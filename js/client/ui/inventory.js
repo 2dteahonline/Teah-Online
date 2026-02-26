@@ -2103,6 +2103,13 @@ function update() {
 
   updateMobs();
   updateMedpacks();
+  // Telegraph + Hazard systems (dungeon only)
+  if (Scene.inDungeon) {
+    if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.update();
+    if (typeof HazardSystem !== 'undefined') HazardSystem.update();
+  }
+  // Player status effects tick (slow/root/mark/silence from mob specials)
+  if (typeof StatusFX !== 'undefined' && StatusFX.tickPlayer) StatusFX.tickPlayer();
   // Poison damage tick (centralized in StatusFX)
   StatusFX.tickPlayerPoison();
   updateGun();
