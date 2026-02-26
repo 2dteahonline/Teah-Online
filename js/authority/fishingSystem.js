@@ -34,6 +34,9 @@ const fishingState = {
 // Starter bait — overwritten by save/load if save data exists
 fishingState.baitCount = 10;
 
+// Direction vectors: down=0, up=1, left=2, right=3 (matches shootFaceDir)
+const CAST_DIR_VECS = [[0, 1], [0, -1], [-1, 0], [1, 0]];
+
 // Get the equipped rod data from playerEquip.melee (returns null if not a fishing rod)
 function getEquippedRod() {
   const eq = typeof playerEquip !== 'undefined' ? playerEquip.melee : null;
@@ -86,14 +89,10 @@ function startFishingCast() {
   const castDir = typeof shootFaceDir !== 'undefined' ? shootFaceDir : (player.dir || 0);
   fishingState.castDir = castDir;
   const castDist = 80 + (rod.tier || 0) * 10;
-  const dirVecs = [[0, 1], [0, -1], [-1, 0], [1, 0]]; // down, up, left, right
-  const dv = dirVecs[castDir] || [0, 1];
+  const dv = CAST_DIR_VECS[castDir] || CAST_DIR_VECS[0];
   fishingState.bobberX = player.x + dv[0] * castDist;
   fishingState.bobberY = player.y + dv[1] * castDist;
 }
-
-// Legacy alias for backward compatibility
-function startFishing() { startFishingCast(); }
 
 function cancelFishing() {
   fishingState.active = false;
@@ -197,12 +196,12 @@ function updateFishing() {
       }
       fishingState.reelTension = Math.max(0, Math.min(1, fishingState.reelTension));
 
-      // Progress increases when tension is in the sweet spot (0.2-0.85)
-      if (fishingState.reelTension >= 0.2 && fishingState.reelTension <= 0.85) {
-        fishingState.reelProgress += 0.012 + (1 - fishingState.targetFish.difficulty) * 0.006;
+      // Progress increases when tension is in the sweet spot
+      if (fishingState.reelTension >= cfg.sweetSpotMin && fishingState.reelTension <= cfg.sweetSpotMax) {
+        fishingState.reelProgress += cfg.reelProgressBase + (1 - fishingState.targetFish.difficulty) * cfg.reelProgressEasyBonus;
       }
       // Fish fights back (reduces progress slightly)
-      fishingState.reelProgress -= fishingState.targetFish.difficulty * 0.0015;
+      fishingState.reelProgress -= fishingState.targetFish.difficulty * cfg.fishFightBack;
       fishingState.reelProgress = Math.max(0, Math.min(1, fishingState.reelProgress));
 
       // Line snaps if tension hits max
@@ -426,24 +425,28 @@ function drawFishingHUD() {
       break;
 
     case 'reeling': {
+      const fish = fishingState.targetFish;
+      if (!fish) break;
       ctx.fillStyle = '#60d0ff';
-      ctx.fillText('Reeling: ' + fishingState.targetFish.name, cx, baseY + 12);
+      ctx.fillText('Reeling: ' + fish.name, cx, baseY + 12);
 
       // Tension bar (vertical thermometer style)
       ctx.font = '10px monospace';
       ctx.fillStyle = '#aaa';
       ctx.fillText('TENSION', cx, baseY + 28);
       const t = fishingState.reelTension;
+      const ssMin = FISHING_CONFIG.sweetSpotMin;
+      const ssMax = FISHING_CONFIG.sweetSpotMax;
       let tensionColor = '#40c040'; // green = safe
-      if (t > 0.85) tensionColor = '#ff4040'; // red = danger (snap!)
-      else if (t > 0.7) tensionColor = '#ffaa20'; // orange = risky
-      else if (t < 0.2) tensionColor = '#6060a0'; // blue = too low
+      if (t > ssMax) tensionColor = '#ff4040'; // red = danger (snap!)
+      else if (t > ssMax - 0.15) tensionColor = '#ffaa20'; // orange = risky
+      else if (t < ssMin) tensionColor = '#6060a0'; // blue = too low
       drawFishingBar(cx - 80, baseY + 33, 160, 14, t, tensionColor, '#1a2a3a');
 
-      // Sweet spot indicators on tension bar (0.2 – 0.85)
+      // Sweet spot indicators on tension bar
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       const barX = cx - 80;
-      ctx.fillRect(barX + 160 * 0.2, baseY + 33, 160 * 0.65, 14);
+      ctx.fillRect(barX + 160 * ssMin, baseY + 33, 160 * (ssMax - ssMin), 14);
 
       // Reel progress bar
       ctx.fillStyle = '#aaa';

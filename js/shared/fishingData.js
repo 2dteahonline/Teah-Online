@@ -7,13 +7,13 @@
 // Unlocked by Fishing skill level (NOT fish caught).
 // Strength = max fish weight rod can reliably hold.
 const ROD_TIERS = [
-  { id: 'bronze_rod', name: 'Bronze Rod', tier: 0, levelReq: 1,  cost: 20,  durability: 25,  strength: 1, catchBonus: 0.00, escapeReduction: 0.00,
+  { id: 'bronze_rod', name: 'Bronze Rod', tier: 0, levelReq: 1,  cost: 20,  durability: 25,  strength: 1, catchBonus: 0.00,
     damage: 8,  range: 80,  cooldown: 34, critChance: 0, special: 'fishing', color: '#8a6a3a', desc: '8 dmg · fishing rod · equip to fish', waveReq: 0 },
-  { id: 'iron_rod',   name: 'Iron Rod',   tier: 1, levelReq: 5,  cost: 80,  durability: 40,  strength: 2, catchBonus: 0.10, escapeReduction: 0.10,
+  { id: 'iron_rod',   name: 'Iron Rod',   tier: 1, levelReq: 5,  cost: 80,  durability: 40,  strength: 2, catchBonus: 0.10,
     damage: 12, range: 85,  cooldown: 30, critChance: 0.05, special: 'fishing', color: '#8a8a8a', desc: '12 dmg · iron fishing rod', waveReq: 0 },
-  { id: 'gold_rod',   name: 'Gold Rod',   tier: 2, levelReq: 12, cost: 200, durability: 60,  strength: 3, catchBonus: 0.20, escapeReduction: 0.20,
+  { id: 'gold_rod',   name: 'Gold Rod',   tier: 2, levelReq: 12, cost: 200, durability: 60,  strength: 3, catchBonus: 0.20,
     damage: 16, range: 90,  cooldown: 26, critChance: 0.08, special: 'fishing', color: '#ffd700', desc: '16 dmg · gold fishing rod', waveReq: 0 },
-  { id: 'mythic_rod', name: 'Mythic Rod', tier: 3, levelReq: 25, cost: 500, durability: 100, strength: 5, catchBonus: 0.35, escapeReduction: 0.35,
+  { id: 'mythic_rod', name: 'Mythic Rod', tier: 3, levelReq: 25, cost: 500, durability: 100, strength: 5, catchBonus: 0.35,
     damage: 22, range: 95,  cooldown: 22, critChance: 0.12, special: 'fishing', color: '#d4a030', desc: '22 dmg · mythic fishing rod', waveReq: 0 },
 ];
 
@@ -29,11 +29,6 @@ const FISH_SPECIES = {
   tuna:       { id: 'tuna',       name: 'Tuna',             rarity: 10, sellPrice: 25,  difficulty: 0.65, minRodTier: 1, xp: 30,  weight: 3, color: '#4060a0' },
   swordfish:  { id: 'swordfish',  name: 'Swordfish',        rarity: 5,  sellPrice: 50,  difficulty: 0.80, minRodTier: 2, xp: 50,  weight: 4, color: '#607090' },
   leviathan:  { id: 'leviathan',  name: 'Golden Leviathan', rarity: 2,  sellPrice: 120, difficulty: 0.95, minRodTier: 3, xp: 100, weight: 5, color: '#d4a030' },
-};
-
-// --- BAIT ---
-const BAIT_TYPES = {
-  worm: { id: 'worm', name: 'Worm Bait', cost: 2, biteSpeedMod: 1.0 },
 };
 
 // --- TIMING CONFIG (frames at 60fps) ---
@@ -52,6 +47,15 @@ const FISHING_CONFIG = {
   tensionFillRate: 0.012,
   // Reel: progress must reach this to catch
   tensionCatchThreshold: 0.45,
+  // Sweet spot: tension range where reel progress increases
+  sweetSpotMin: 0.2,
+  sweetSpotMax: 0.85,
+  // Reel progress: base gain per frame when in sweet spot
+  reelProgressBase: 0.012,
+  // Reel progress: bonus per frame scaled by (1 - difficulty)
+  reelProgressEasyBonus: 0.006,
+  // Fish fight-back: progress lost per frame scaled by difficulty
+  fishFightBack: 0.0015,
   // Level bonus cap
   maxLevelBonus: 0.25,
   levelBonusPerLevel: 0.005,
