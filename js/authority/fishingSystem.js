@@ -185,12 +185,12 @@ function updateFishing() {
       }
       fishingState.reelTension = Math.max(0, Math.min(1, fishingState.reelTension));
 
-      // Progress increases when tension is in the sweet spot (0.3-0.8)
-      if (fishingState.reelTension >= 0.3 && fishingState.reelTension <= 0.8) {
-        fishingState.reelProgress += 0.008 + (1 - fishingState.targetFish.difficulty) * 0.005;
+      // Progress increases when tension is in the sweet spot (0.2-0.85)
+      if (fishingState.reelTension >= 0.2 && fishingState.reelTension <= 0.85) {
+        fishingState.reelProgress += 0.012 + (1 - fishingState.targetFish.difficulty) * 0.006;
       }
       // Fish fights back (reduces progress slightly)
-      fishingState.reelProgress -= fishingState.targetFish.difficulty * 0.003;
+      fishingState.reelProgress -= fishingState.targetFish.difficulty * 0.0015;
       fishingState.reelProgress = Math.max(0, Math.min(1, fishingState.reelProgress));
 
       // Line snaps if tension hits max
@@ -368,13 +368,13 @@ function drawFishingHUD() {
   if (!fishingState.active) return;
 
   const cx = BASE_W / 2;
-  const baseY = BASE_H - 180;
+  const panelW = 320, panelH = 120;
+  const px = cx - panelW / 2, py = BASE_H / 2 - panelH / 2;
+  const baseY = py + 10;
 
   // Background panel
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.beginPath();
-  const panelW = 320, panelH = 120;
-  const px = cx - panelW / 2, py = baseY - 10;
   ctx.roundRect(px, py, panelW, panelH, 8);
   ctx.fill();
   ctx.strokeStyle = '#4a6a8a';
@@ -423,15 +423,15 @@ function drawFishingHUD() {
       ctx.fillText('TENSION', cx, baseY + 28);
       const t = fishingState.reelTension;
       let tensionColor = '#40c040'; // green = safe
-      if (t > 0.8) tensionColor = '#ff4040'; // red = danger (snap!)
-      else if (t > 0.6) tensionColor = '#ffaa20'; // orange = risky
-      else if (t < 0.3) tensionColor = '#6060a0'; // blue = too low
+      if (t > 0.85) tensionColor = '#ff4040'; // red = danger (snap!)
+      else if (t > 0.7) tensionColor = '#ffaa20'; // orange = risky
+      else if (t < 0.2) tensionColor = '#6060a0'; // blue = too low
       drawFishingBar(cx - 80, baseY + 33, 160, 14, t, tensionColor, '#1a2a3a');
 
-      // Sweet spot indicators on tension bar
+      // Sweet spot indicators on tension bar (0.2 – 0.85)
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       const barX = cx - 80;
-      ctx.fillRect(barX + 160 * 0.3, baseY + 33, 160 * 0.5, 14);
+      ctx.fillRect(barX + 160 * 0.2, baseY + 33, 160 * 0.65, 14);
 
       // Reel progress bar
       ctx.fillStyle = '#aaa';
