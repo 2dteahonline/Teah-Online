@@ -870,55 +870,91 @@ const ENTITY_RENDERERS = {
       ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ddc090'; ctx.textAlign = "center";
       ctx.fillText("\u26EA Chapel", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
   },
-  building_warehouse: (e, ctx, ex, ey, w, h) => {
+  building_azurine: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;
       const t = Date.now() / 1000;
-      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.beginPath(); ctx.ellipse(ex+cw/2+6, ey+ch+7, cw*0.48, 9, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#7a4a30';
+      // Main structure — dark blue-gray
+      ctx.fillStyle = '#1a1a2a';
       ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
-      for (let r = 0; r < 6; r++) {
-        for (let c = 0; c < 6; c++) {
-          const off = r%2===0 ? 0 : cw*0.06;
-          ctx.fillStyle = (r+c)%3===0 ? '#6a3a20' : '#7a4a30';
-          ctx.fillRect(ex+6+off+c*cw*0.14, ey+ch*0.24+r*ch*0.12, cw*0.12, ch*0.1);
+      // Steel panel lines
+      ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1;
+      for (let r = 0; r < 5; r++) {
+        const ly = ey+ch*0.3+r*ch*0.14;
+        ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
+      }
+      // Roof — angular cyberpunk
+      ctx.fillStyle = '#22223a';
+      ctx.beginPath();
+      ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.3, ey+ch*0.04);
+      ctx.lineTo(ex+cw*0.7, ey+ch*0.04); ctx.lineTo(ex+cw+6, ey+ch*0.24);
+      ctx.closePath(); ctx.fill();
+      // Roof highlight
+      ctx.fillStyle = '#2a2a44';
+      ctx.beginPath();
+      ctx.moveTo(ex+cw*0.3, ey+ch*0.04); ctx.lineTo(ex+cw*0.7, ey+ch*0.04);
+      ctx.lineTo(ex+cw+6, ey+ch*0.24); ctx.lineTo(ex+cw*0.5, ey+ch*0.24);
+      ctx.closePath(); ctx.fill();
+      // Neon cyan trim on roof edge
+      ctx.strokeStyle = '#00ccff'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.3, ey+ch*0.04);
+      ctx.lineTo(ex+cw*0.7, ey+ch*0.04); ctx.lineTo(ex+cw+6, ey+ch*0.24);
+      ctx.stroke();
+      // Windows — glowing cyan
+      const glow = 0.5 + Math.sin(t * 1.5) * 0.15;
+      for (let wr = 0; wr < 2; wr++) {
+        for (let wc = 0; wc < 3; wc++) {
+          const wx = ex + cw*0.12 + wc*cw*0.28;
+          const wy = ey + ch*0.32 + wr*ch*0.24;
+          ctx.fillStyle = '#0a0a18';
+          ctx.fillRect(wx, wy, cw*0.18, ch*0.14);
+          ctx.fillStyle = `rgba(0,204,255,${glow * 0.25})`;
+          ctx.fillRect(wx+1, wy+1, cw*0.18-2, ch*0.14-2);
+          ctx.strokeStyle = `rgba(0,204,255,${glow * 0.6})`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(wx, wy, cw*0.18, ch*0.14);
         }
       }
-      ctx.fillStyle = '#606870';
-      ctx.beginPath();
-      ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw/2, ey+ch*0.02);
-      ctx.lineTo(ex+cw+6, ey+ch*0.24); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#505860'; ctx.lineWidth = 1;
-      for (let l = 0; l < 8; l++) {
-        const lx = ex+cw*0.08+l*cw*0.11;
-        ctx.beginPath(); ctx.moveTo(lx, ey+ch*0.24);
-        ctx.lineTo(ex+cw/2+(lx-ex-cw/2)*0.3, ey+ch*0.08); ctx.stroke();
-      }
-      ctx.fillStyle = '#707880';
-      ctx.beginPath();
-      ctx.moveTo(ex+cw/2, ey+ch*0.02); ctx.lineTo(ex+cw+6, ey+ch*0.24);
-      ctx.lineTo(ex+cw/2, ey+ch*0.24); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#484848';
-      ctx.fillRect(ex+cw*0.08, ey+ch*0.5, cw*0.38, ch*0.5);
-      ctx.strokeStyle = '#383838'; ctx.lineWidth = 1;
-      for (let d = 0; d < 5; d++) ctx.strokeRect(ex+cw*0.08, ey+ch*0.52+d*ch*0.09, cw*0.38, ch*0.08);
-      ctx.fillStyle = '#707070'; ctx.fillRect(ex+cw*0.22, ey+ch*0.95, cw*0.1, 3);
-      ctx.fillStyle = '#404040';
-      ctx.fillRect(ex+cw*0.6, ey+ch*0.6, cw*0.15, ch*0.4);
-      ctx.fillStyle = '#606060'; ctx.beginPath(); ctx.arc(ex+cw*0.72, ey+ch*0.8, 2, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#1a2030';
-      ctx.fillRect(ex+cw*0.55, ey+ch*0.3, cw*0.12, ch*0.12);
-      ctx.fillRect(ex+cw*0.72, ey+ch*0.3, cw*0.12, ch*0.12);
-      ctx.fillStyle = `rgba(150,170,190,${0.1+Math.sin(t*0.8)*0.05})`;
-      ctx.fillRect(ex+cw*0.56, ey+ch*0.31, cw*0.1, ch*0.1);
-      ctx.fillRect(ex+cw*0.73, ey+ch*0.31, cw*0.1, ch*0.1);
-      ctx.fillStyle = '#8a7040'; ctx.fillRect(ex+cw*0.82, ey+ch*0.75, cw*0.12, ch*0.15);
-      ctx.fillStyle = '#7a6030'; ctx.fillRect(ex+cw*0.85, ey+ch*0.65, cw*0.1, ch*0.12);
-      ctx.strokeStyle = '#5a4020'; ctx.lineWidth = 1;
-      ctx.strokeRect(ex+cw*0.82, ey+ch*0.75, cw*0.12, ch*0.15);
-      ctx.fillStyle = '#505858'; ctx.fillRect(ex+cw*0.92, ey+ch*0.25, cw*0.03, ch*0.65);
-      ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ddc090'; ctx.textAlign = "center";
-      ctx.fillText("\u{1F3ED} Warehouse", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
+      // Door area — dark opening
+      ctx.fillStyle = '#08081a';
+      ctx.fillRect(ex+cw*0.35, ey+ch*0.75, cw*0.3, ch*0.25);
+      // Door neon frame
+      ctx.strokeStyle = `rgba(255,0,170,${0.6 + Math.sin(t*2)*0.2})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ex+cw*0.35, ey+ch*0.75, cw*0.3, ch*0.25);
+      // Neon sign glow
+      const signGlow = 0.7 + Math.sin(t * 2.5) * 0.2;
+      ctx.font = "bold 9px monospace";
+      ctx.fillStyle = `rgba(0,204,255,${signGlow})`;
+      ctx.textAlign = "center";
+      ctx.fillText("AZURINE", ex+cw/2, ey+ch*0.16);
+      // Vertical neon strips on sides
+      ctx.fillStyle = `rgba(0,204,255,${0.15 + Math.sin(t*1.2)*0.08})`;
+      ctx.fillRect(ex+4, ey+ch*0.25, 3, ch*0.7);
+      ctx.fillRect(ex+cw-7, ey+ch*0.25, 3, ch*0.7);
+      // Label
+      ctx.font = "bold 11px monospace"; ctx.fillStyle = '#00ccff'; ctx.textAlign = "center";
+      ctx.fillText("Azurine City", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
+  },
+  azurine_entrance: (e, ctx, ex, ey, w, h) => {
+      const ew = w * TILE, eh = h * TILE;
+      const t = Date.now() / 1000;
+      const glow = 0.4 + Math.sin(t * 2) * 0.15;
+      // Glowing floor pad
+      ctx.fillStyle = `rgba(0,204,255,${glow * 0.15})`;
+      ctx.fillRect(ex, ey, ew, eh);
+      ctx.strokeStyle = `rgba(0,204,255,${glow * 0.5})`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
+      // Arrow hint
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = `rgba(0,204,255,${glow * 0.7})`;
+      ctx.textAlign = "center";
+      ctx.fillText("\u25B2 ENTER", ex + ew/2, ey + eh + 14);
+      ctx.textAlign = "left";
   },
   cave_exit: (e, ctx, ex, ey, w, h) => {
       const t = Date.now() / 1000;

@@ -90,6 +90,7 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
       resetCombatState('farm');
       if (typeof initFarmState === 'function') initFarmState();
     } else {
+      pendingDungeonFloor = queueFloorStart;
       resetCombatState('dungeon');
     }
     transitioning = true;
@@ -145,6 +146,8 @@ let nearStairs = false;
 let nearFishingSpot = false;
 let queueLockX = 0;
 let queueLockY = 0;
+let queueFloorStart = 0; // which dungeonFloor to set on entry (0=legacy, 1=Azurine City, etc.)
+let pendingDungeonFloor = null; // set by queue, consumed by resetCombatState
 let queueCirclePositions = []; // world positions of the 4 sigils
 
 function checkPortals() {
@@ -191,11 +194,12 @@ function checkPortals() {
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }
-    if (e.type === 'queue_zone' && Scene.inCave && inZone) {
+    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inLobby) && inZone) {
       nearQueue = true;
       queueDungeonId = e.dungeonId;
       queueSpawnTX = e.spawnTX;
       queueSpawnTY = e.spawnTY;
+      queueFloorStart = e.floorStart || 0;
     }
     if (e.type === 'fishing_spot' && Scene.inLobby && inZone) {
       nearFishingSpot = true;

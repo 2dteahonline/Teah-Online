@@ -66,15 +66,17 @@ function resetCombatState(mode) {
   // --- Dungeon fresh run or Death: full dungeon state reset ---
   if (mode === 'dungeon' || mode === 'death') {
     lives = 3; wave = 0; kills = 0;
-    dungeonFloor = 1; stairsOpen = false; stairsAppearTimer = 0;
+    dungeonFloor = (pendingDungeonFloor != null) ? pendingDungeonFloor : 0;
+    pendingDungeonFloor = null;
+    stairsOpen = false; stairsAppearTimer = 0;
     dungeonComplete = false; victoryTimer = 0;
     reviveUsed = false;
     recalcMaxHp(); player.hp = player.maxHp;
     contactCooldown = 60;
     // Shop runtime state lives in shopState; _resetShopPrices handles all of it
     if (window._resetShopPrices) window._resetShopPrices();
-    // Init hazards for floor 1
-    if (typeof HazardSystem !== 'undefined') HazardSystem.initForFloor(1);
+    // Init hazards for current floor
+    if (typeof HazardSystem !== 'undefined') HazardSystem.initForFloor(dungeonFloor);
   }
 
   // --- Death: also reset gold ---

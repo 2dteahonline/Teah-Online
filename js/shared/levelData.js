@@ -85,7 +85,9 @@ const LEVELS = {
       { type: 'building_mine', tx: 34, ty: 0, w: 7, h: 7, solid: true },
       { type: 'mine_entrance', tx: 36, ty: 6, w: 3, h: 2, solid: false, target: 'mine_01', spawnTX: 35, spawnTY: 44 },
       { type: 'building_chapel', tx: 41, ty: 0, w: 6, h: 7, solid: true },
-      { type: 'building_warehouse', tx: 47, ty: 0, w: 7, h: 7, solid: true },
+      { type: 'building_azurine', tx: 47, ty: 0, w: 7, h: 7, solid: true },
+      { type: 'azurine_entrance', tx: 49, ty: 6, w: 3, h: 2, solid: false },
+      { type: 'queue_zone', tx: 47, ty: 8, w: 7, h: 4, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1 },
       // === TREES (varied sizes: 0=large oak, 1=medium pine, 2=small birch) ===
       { type: 'tree', tx: 8, ty: 29, solid: true, variant: 1 },
       { type: 'tree', tx: 16, ty: 33, solid: true, variant: 0 },
@@ -243,7 +245,7 @@ const LEVELS = {
     entities: [
       { type: 'cave_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 28, spawnTY: 8 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4 },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 0 },
       // Left torches
       { type: 'torch', tx: 1, ty: 1, solid: false },
       { type: 'torch', tx: 1, ty: 4, solid: false },
