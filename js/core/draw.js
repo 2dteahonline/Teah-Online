@@ -409,6 +409,85 @@ function draw() {
   // Bullets (in world space)
   drawBullets();
 
+  // Mob-owned world objects: gas canisters, sticky bombs, smart mines
+  for (const m of mobs) {
+    if (m.hp <= 0) continue;
+    // Gas canister projectile (street_chemist) — green arcing vial
+    if (m._gasProjectile) {
+      const gp = m._gasProjectile;
+      const gpx = gp.x - cx, gpy = gp.y - cy;
+      // Green glow trail
+      ctx.fillStyle = 'rgba(100,200,50,0.25)';
+      ctx.beginPath(); ctx.arc(gpx, gpy, 10, 0, Math.PI * 2); ctx.fill();
+      // Vial body
+      ctx.fillStyle = '#60c830';
+      ctx.fillRect(gpx - 4, gpy - 6, 8, 12);
+      // Vial cap
+      ctx.fillStyle = '#404040';
+      ctx.fillRect(gpx - 3, gpy - 8, 6, 3);
+      // Bright green core
+      ctx.fillStyle = '#90ff50';
+      ctx.fillRect(gpx - 2, gpy - 4, 4, 8);
+      // Dripping trail particles
+      if (renderTime % 3 === 0) {
+        ctx.fillStyle = 'rgba(100,200,50,0.4)';
+        ctx.beginPath(); ctx.arc(gpx + (Math.random()-0.5)*6, gpy + 8, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Sticky bombs (renegade_demo) — orange pulsing bombs on ground
+    if (m._bombs && m._bombs.length > 0) {
+      for (const bomb of m._bombs) {
+        const bx = bomb.x - cx, by = bomb.y - cy;
+        const fuseProgress = 1 - bomb.timer / 120;
+        const flashRate = 3 + fuseProgress * 15;
+        const flash = 0.5 + 0.5 * Math.sin(renderTime * 0.05 * flashRate);
+        // Danger radius circle (grows more visible as timer runs out)
+        ctx.strokeStyle = `rgba(255,100,30,${fuseProgress * 0.25})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(bx, by, bomb.radius, 0, Math.PI * 2); ctx.stroke();
+        // Bomb glow
+        ctx.fillStyle = `rgba(255,100,30,${0.1 + flash * 0.15})`;
+        ctx.beginPath(); ctx.arc(bx, by, 14, 0, Math.PI * 2); ctx.fill();
+        // Bomb body
+        ctx.fillStyle = '#4a3a2a';
+        ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.fill();
+        // Orange band
+        ctx.fillStyle = '#ff6030';
+        ctx.fillRect(bx - 7, by - 2, 14, 4);
+        // Flashing light
+        ctx.fillStyle = `rgba(255,${Math.round(200 * flash)},0,${0.6 + flash * 0.4})`;
+        ctx.beginPath(); ctx.arc(bx, by - 6, 3, 0, Math.PI * 2); ctx.fill();
+        // Fuse spark
+        if (flash > 0.7) {
+          ctx.fillStyle = '#ffff80';
+          ctx.beginPath(); ctx.arc(bx + (Math.random()-0.5)*4, by - 9, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+    // Smart mines (the_don) — armed/unarmed proximity mines
+    if (m._mines && m._mines.length > 0) {
+      for (const mine of m._mines) {
+        const mx = mine.x - cx, my = mine.y - cy;
+        if (mine.armed) {
+          // Armed — red pulsing
+          const pulse = 0.5 + 0.5 * Math.sin(renderTime * 0.08);
+          ctx.fillStyle = `rgba(255,40,40,${0.1 + pulse * 0.1})`;
+          ctx.beginPath(); ctx.arc(mx, my, mine.radius * 0.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#3a2a2a';
+          ctx.beginPath(); ctx.arc(mx, my, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = `rgba(255,30,30,${0.5 + pulse * 0.5})`;
+          ctx.beginPath(); ctx.arc(mx, my - 4, 2.5, 0, Math.PI * 2); ctx.fill();
+        } else {
+          // Unarmed — dim gray
+          ctx.fillStyle = '#3a3a3a';
+          ctx.beginPath(); ctx.arc(mx, my, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#666';
+          ctx.beginPath(); ctx.arc(mx, my - 4, 2, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+  }
+
   // Katana swing effect (in world space)
   drawKatanaSwing(cx, cy);
 

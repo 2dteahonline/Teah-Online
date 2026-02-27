@@ -2103,8 +2103,8 @@ function update() {
 
   updateMobs();
   updateMedpacks();
-  // Telegraph + Hazard systems (dungeon only)
-  if (Scene.inDungeon) {
+  // Telegraph + Hazard systems (dungeon + test arena)
+  if (Scene.inDungeon || Scene.inTestArena) {
     if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.update();
     if (typeof HazardSystem !== 'undefined') HazardSystem.update();
   }

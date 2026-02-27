@@ -332,6 +332,12 @@ function updateMobs() {
       // Floor 1+ mobs: specials keyed by ability name in _specials array
       const specCtx = { dist, dx, dy, player, mobs, hitEffects, bullets, wave, playerDead };
       let skipMovement = false;
+
+      // Floor 1+ archer-type mobs: fire arrows alongside their specials
+      if (m.arrowRate > 0 && MOB_SPECIALS.archer) {
+        MOB_SPECIALS.archer(m, specCtx);
+      }
+
       if (m._specials.length === 1) {
         // Single-special mob: call the named special every frame (CD managed internally)
         const handler = MOB_SPECIALS[m._specials[0]];

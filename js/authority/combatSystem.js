@@ -1489,7 +1489,7 @@ const MOB_SPECIALS = {
         arrowRate: mt.arrowRate || 0, arrowSpeed: mt.arrowSpeed || 0,
         arrowRange: mt.arrowRange || 0, arrowBounces: mt.arrowBounces || 0,
         arrowLife: mt.arrowLife || 0, bowDrawAnim: 0,
-        arrowTimer: mt.arrowRate ? Math.floor(Math.random() * mt.arrowRate) : 0,
+        arrowTimer: mt.arrowRate ? Math.max(1, Math.floor(Math.random() * mt.arrowRate)) : 0,
         _specials: mt._specials || null,
         _specialTimer: mt.specialCD || 0,
         _specialCD: mt.specialCD || 0,

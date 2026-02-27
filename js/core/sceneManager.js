@@ -42,6 +42,7 @@ const Scene = {
     else if (level.isCooking) this._current = 'cooking';
     else if (level.isFarm) this._current = 'farm';
     else if (level.isAzurine) this._current = 'azurine';
+    else if (level.isTestArena) this._current = 'test_arena';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -57,6 +58,7 @@ const Scene = {
   get inCooking() { return this._current === 'cooking'; },
   get inFarm() { return this._current === 'farm'; },
   get inAzurine() { return this._current === 'azurine'; },
+  get inTestArena() { return this._current === 'test_arena'; },
 };
 
 // ---- ZONE TRANSITIONS ----
@@ -81,7 +83,15 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
     hitEffects.length = 0;
     medpacks.length = 0;
     queueActive = false; queuePlayers = 0; queueTimer = 0;
-    if (targetLevel.isLobby || targetLevel.isCave || targetLevel.isAzurine) {
+    if (targetLevel.isTestArena) {
+      // Test arena: clear mobs/effects but keep inventory/equipment
+      mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
+      deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
+      waveState = "idle"; waveTimer = 0;
+      if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+      if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+      if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
+    } else if (targetLevel.isLobby || targetLevel.isCave || targetLevel.isAzurine) {
       resetCombatState('lobby');
     } else if (targetLevel.isMine) {
       resetCombatState('mine');

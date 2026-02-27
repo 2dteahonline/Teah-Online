@@ -491,7 +491,7 @@ window.addEventListener("keydown", e => {
           if (fl > 0) { dungeonFloor = fl; resetCombatState('floor'); }
           chatMessages.push({ name: "SYSTEM", text: "Set to floor " + dungeonFloor, time: Date.now() });
         } else if (cmdLower === "/help") {
-          chatMessages.push({ name: "SYSTEM", text: "/spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /op | /stairs | /floor [n] | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "/test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /op | /stairs | /floor [n] | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
         } else if (cmdLower === "/save") {
           SaveLoad.save();
           chatMessages.push({ name: "SYSTEM", text: "Game saved!", time: Date.now() });
@@ -538,6 +538,45 @@ window.addEventListener("keydown", e => {
           const mob = createMob('grunt', player.x + 80, player.y, 1, 1);
           if (mob) mobs.push(mob);
           chatMessages.push({ name: "SYSTEM", text: "Spawned test grunt", time: Date.now() });
+        } else if (cmdLower.startsWith("/test")) {
+          const parts = cmd.trim().split(/\s+/);
+          const typeKey = parts[1];
+          const mode = parts[2]; // 'live' = unfrozen
+          if (!typeKey) {
+            // Enter test arena if not already there, show help
+            if (!Scene.inTestArena) {
+              enterLevel('test_arena', 10, 4);
+              dungeonFloor = 1;
+              window._opMode = true;
+              player.hp = player.maxHp = 10000;
+              gold = 999999;
+            }
+            const allTypes = Object.keys(MOB_TYPES).join(', ');
+            chatMessages.push({ name: "SYSTEM", text: "TEST ARENA — /test <type> [live]  Types: " + allTypes, time: Date.now() });
+          } else if (!MOB_TYPES[typeKey]) {
+            chatMessages.push({ name: "SYSTEM", text: "Unknown mob: " + typeKey + ". Types: " + Object.keys(MOB_TYPES).join(', '), time: Date.now() });
+          } else {
+            // Enter test arena if needed
+            if (!Scene.inTestArena) {
+              enterLevel('test_arena', 10, 4);
+              dungeonFloor = 1;
+              window._opMode = true;
+              player.hp = player.maxHp = 10000;
+              gold = 999999;
+            }
+            // Clear previous test mob
+            mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
+            if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+            if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+            player.hp = player.maxHp;
+            // Spawn single mob to the right of player
+            const mob = createMob(typeKey, player.x + 150, player.y, 1, 1);
+            if (mob) {
+              if (mode !== 'live') { mob.speed = 0; mob._specialTimer = 99999; }
+              mobs.push(mob);
+              chatMessages.push({ name: "SYSTEM", text: "Testing: " + mob.name + " (" + typeKey + ")" + (mode === 'live' ? " [LIVE]" : " [FROZEN] — /test " + typeKey + " live for AI"), time: Date.now() });
+            }
+          }
         } else if (cmdLower === "/sprites") {
           useSpriteMode = !useSpriteMode;
           chatMessages.push({ name: "SYSTEM", text: "Sprite mode: " + (useSpriteMode ? "ON" : "OFF"), time: Date.now() });

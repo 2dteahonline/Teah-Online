@@ -307,7 +307,8 @@ function getWaveSpeedMultiplier(w) {
 // Mob damage also scales with floor
 function getMobDamageMultiplier() {
   // Floor 1=1x, 2=1.5x, 3=2.2x, 4=3.2x, 5=4.5x
-  return 1 + (dungeonFloor - 1) * 0.7 + Math.pow(dungeonFloor - 1, 1.5) * 0.2;
+  const f = Math.max(1, dungeonFloor) - 1;
+  return 1 + f * 0.7 + Math.pow(f, 1.5) * 0.2;
 }
 // Speed caps: runner max 1.5x player speed, everything else max 0.95x
 function capMobSpeed(type, speed) {
@@ -402,7 +403,7 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     arrowRate: mt.arrowRate || 0, arrowSpeed: mt.arrowSpeed || 0,
     arrowRange: mt.arrowRange || 0, arrowBounces: mt.arrowBounces || 0,
     arrowLife: mt.arrowLife || 0, bowDrawAnim: 0,
-    arrowTimer: mt.arrowRate ? Math.floor(Math.random() * mt.arrowRate) : 0,
+    arrowTimer: mt.arrowRate ? Math.max(1, Math.floor(Math.random() * mt.arrowRate)) : 0,
     projectileStyle: mt.projectileStyle || null,
     bulletColor: mt.bulletColor || null,
     // Healer
