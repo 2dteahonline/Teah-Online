@@ -1929,7 +1929,7 @@ function update() {
     // Interact (E key): stairs, shop close, interactables, queue, inventory
     if (InputIntent.interactPressed) {
       if (nearStairs) {
-        if (dungeonComplete) { startTransition('cave_01', 20, 20); }
+        if (dungeonComplete) { startTransition(dungeonReturnLevel || 'cave_01', 20, 20); }
         else { goToNextFloor(); }
       }
       else if (UI.isOpen('shop')) { UI.close(); }

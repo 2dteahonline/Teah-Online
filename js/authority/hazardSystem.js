@@ -903,6 +903,8 @@ const HazardSystem = {
 
   initForFloor(floor) {
     this.clear();
+    // Cave dungeon has no floor hazards
+    if (typeof currentDungeon !== 'undefined' && currentDungeon === 'cave') return;
     if (typeof FLOOR_CONFIG === 'undefined') return;
     const config = FLOOR_CONFIG[floor];
     if (!config || !config.hazards) return;

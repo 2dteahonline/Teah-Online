@@ -467,7 +467,7 @@ window.addEventListener("keydown", e => {
           const parts = cmd.split(/\s+/);
           const w = parseInt(parts[1]);
           if (!isNaN(w) && w > 0) {
-            const newFloor = Math.min(MAX_FLOORS, Math.ceil(w / WAVES_PER_FLOOR));
+            const newFloor = Math.min(getDungeonMaxFloors(), Math.ceil(w / WAVES_PER_FLOOR));
             const localWave = w - (newFloor - 1) * WAVES_PER_FLOOR;
             dungeonFloor = newFloor;
             wave = localWave - 1;

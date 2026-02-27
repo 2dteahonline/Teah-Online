@@ -68,6 +68,15 @@ function resetCombatState(mode) {
     lives = 3; wave = 0; kills = 0;
     dungeonFloor = (pendingDungeonFloor != null) ? pendingDungeonFloor : 1;
     pendingDungeonFloor = null;
+    // Track which dungeon type + where to return after completion
+    if (pendingDungeonType != null) {
+      currentDungeon = pendingDungeonType;
+      pendingDungeonType = null;
+    }
+    if (pendingReturnLevel != null) {
+      dungeonReturnLevel = pendingReturnLevel;
+      pendingReturnLevel = null;
+    }
     stairsOpen = false; stairsAppearTimer = 0;
     dungeonComplete = false; victoryTimer = 0;
     reviveUsed = false;
@@ -75,7 +84,7 @@ function resetCombatState(mode) {
     contactCooldown = 60;
     // Shop runtime state lives in shopState; _resetShopPrices handles all of it
     if (window._resetShopPrices) window._resetShopPrices();
-    // Init hazards for current floor
+    // Init hazards for current floor (only for dungeons that have FLOOR_CONFIG hazards)
     if (typeof HazardSystem !== 'undefined') HazardSystem.initForFloor(dungeonFloor);
   }
 

@@ -34,6 +34,8 @@ window.GameState = {
   waveState: "waiting",
   kills: 0,
   dungeonFloor: 1,
+  currentDungeon: 'cave',        // 'cave' | 'azurine' | future dungeon types
+  dungeonReturnLevel: 'cave_01', // level to return to after dungeon completion
   gold: 0,
   medpacks: [],
 

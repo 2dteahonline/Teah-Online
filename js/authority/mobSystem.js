@@ -898,7 +898,7 @@ function updateMobs() {
     hitEffects.push({ x: player.x, y: player.y - 50, life: 25, maxLife: 25, type: "heal", dmg: "+2 Potions" });
     // Check if floor is complete
     if (wave >= WAVES_PER_FLOOR && !stairsOpen) {
-      if (dungeonFloor < MAX_FLOORS) {
+      if (dungeonFloor < getDungeonMaxFloors()) {
         stairsOpen = true;
         hitEffects.push({ x: player.x, y: player.y - 70, life: 40, maxLife: 40, type: "heal", dmg: "STAIRCASE OPENED!" });
       } else {

@@ -42,6 +42,7 @@ function _ensureTestArena() {
   if (!Scene.inTestArena) {
     enterLevel('test_arena', 10, 4);
     dungeonFloor = 1;
+    currentDungeon = 'azurine'; // default to azurine for FLOOR_CONFIG mobs
     window._opMode = true;
     player.hp = player.maxHp = 10000;
     gold = 999999;
@@ -86,6 +87,7 @@ window.testAllFloorMobs = function(floorNum) {
 
   _ensureTestArena();
   dungeonFloor = floorNum;
+  currentDungeon = 'azurine'; // ensure FLOOR_CONFIG mobs are used
   const results = [];
 
   for (const typeKey of mobTypes) {

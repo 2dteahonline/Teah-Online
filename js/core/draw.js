@@ -1373,13 +1373,13 @@ function draw() {
   ctx.textAlign = "center";
   const waveY = 56;
   const globalWave = (dungeonFloor - 1) * WAVES_PER_FLOOR + wave;
-  const totalWaves = MAX_FLOORS * WAVES_PER_FLOOR;
+  const totalWaves = getDungeonMaxFloors() * WAVES_PER_FLOOR;
   const floorStartWave = (dungeonFloor - 1) * WAVES_PER_FLOOR;
 
   // Floor indicator (top center)
   ctx.font = "bold 14px monospace";
   ctx.fillStyle = "#b090e0";
-  ctx.fillText("FLOOR " + dungeonFloor + " / " + MAX_FLOORS, BASE_W / 2, waveY);
+  ctx.fillText("FLOOR " + dungeonFloor + " / " + getDungeonMaxFloors(), BASE_W / 2, waveY);
 
   // Wave number
   ctx.font = "bold 30px monospace";

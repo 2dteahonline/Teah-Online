@@ -151,7 +151,11 @@ let statsScroll = 0; // scroll offset for skills list
 let gameFrame = 0; // global frame counter for quick-kill bonus
 // dungeonFloor → js/authority/gameState.js
 const WAVES_PER_FLOOR = 10;
-const MAX_FLOORS = 5;
+const MAX_FLOORS = 5; // legacy alias — use getDungeonMaxFloors() for multi-dungeon support
+const DUNGEON_MAX_FLOORS = { cave: 5, azurine: 5 };
+function getDungeonMaxFloors() {
+  return (DUNGEON_MAX_FLOORS[currentDungeon] || 5);
+}
 let stairsOpen = false; // true after completing WAVES_PER_FLOOR on current floor
 let stairsAppearTimer = 0; // 0-1 animation progress for rising from ground
 
@@ -344,12 +348,13 @@ function capMobSpeed(type, speed) {
 // ===================== FLOOR-AWARE WAVE COMPOSITION =====================
 // Uses FLOOR_CONFIG (from floorConfig.js) when available, falls back to legacy cycle.
 function getWaveComposition(w) {
-  // Check if current floor has a config
-  if (typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[dungeonFloor]) {
+  // Only use FLOOR_CONFIG for dungeons that have it (e.g. 'azurine')
+  // Cave dungeon always uses legacy wave compositions
+  if (currentDungeon !== 'cave' && typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[dungeonFloor]) {
     const floorComp = getFloorWaveComposition(FLOOR_CONFIG[dungeonFloor], w);
     if (floorComp) return floorComp;
   }
-  // Fallback to legacy composition
+  // Cave dungeon + fallback: use legacy compositions
   return getLegacyWaveComposition(w);
 }
 

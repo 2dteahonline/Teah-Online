@@ -103,6 +103,8 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
       if (typeof initFarmState === 'function') initFarmState();
     } else {
       pendingDungeonFloor = queueFloorStart;
+      pendingDungeonType = queueDungeonType;
+      pendingReturnLevel = queueReturnLevel;
       resetCombatState('dungeon');
     }
     transitioning = true;
@@ -159,7 +161,11 @@ let nearFishingSpot = false;
 let queueLockX = 0;
 let queueLockY = 0;
 let queueFloorStart = 0; // which dungeonFloor to set on entry (0=legacy, 1=Azurine City, etc.)
+let queueDungeonType = 'cave'; // 'cave' | 'azurine' | future dungeon types
+let queueReturnLevel = 'cave_01'; // level to return to after dungeon complete
 let pendingDungeonFloor = null; // set by queue, consumed by resetCombatState
+let pendingDungeonType = null; // set by queue, consumed by resetCombatState
+let pendingReturnLevel = null; // set by queue, consumed by resetCombatState
 let queueCirclePositions = []; // world positions of the 4 sigils
 
 function checkPortals() {
@@ -220,6 +226,8 @@ function checkPortals() {
       queueSpawnTX = e.spawnTX;
       queueSpawnTY = e.spawnTY;
       queueFloorStart = e.floorStart || 0;
+      queueDungeonType = e.dungeonType || 'cave';
+      queueReturnLevel = Scene.inCave ? 'cave_01' : Scene.inAzurine ? 'azurine_01' : 'cave_01';
     }
     if (e.type === 'fishing_spot' && Scene.inLobby && inZone) {
       nearFishingSpot = true;
@@ -239,7 +247,7 @@ function checkPortals() {
 
 function goToNextFloor() {
   if (transitioning) return;
-  if (typeof MAX_FLOORS !== 'undefined' && dungeonFloor >= MAX_FLOORS) return; // already at final floor
+  if (dungeonFloor >= getDungeonMaxFloors()) return; // already at final floor
   dungeonFloor++;
   resetCombatState('floor');
   // Re-enter same level layout, spawn at center

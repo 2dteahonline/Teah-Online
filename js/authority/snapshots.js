@@ -64,6 +64,8 @@ function serializeGameState() {
     stairsOpen: stairsOpen,
     dungeonComplete: dungeonComplete,
     reviveUsed: reviveUsed,
+    currentDungeon: currentDungeon,
+    dungeonReturnLevel: dungeonReturnLevel,
     fireRateBonus: fireRateBonus,
 
     // ---- Grab state ----
@@ -273,6 +275,8 @@ function applyGameStateSnapshot(snap) {
   stairsOpen = snap.stairsOpen;
   dungeonComplete = snap.dungeonComplete;
   reviveUsed = snap.reviveUsed;
+  if (snap.currentDungeon != null) currentDungeon = snap.currentDungeon;
+  if (snap.dungeonReturnLevel != null) dungeonReturnLevel = snap.dungeonReturnLevel;
   fireRateBonus = snap.fireRateBonus;
 
   // ---- Grab state ----
