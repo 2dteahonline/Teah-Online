@@ -253,6 +253,30 @@ function getGoldReward(type, waveNum) {
     renegade_bruiser: 6, renegade_shadowknife: 4, renegade_demo: 5, renegade_sniper: 5,
     // Floor 1: Bosses
     the_don: 25, velocity: 40,
+    // Floor 2: Tech District
+    circuit_thief: 4, arc_welder: 5, battery_drone: 3, coil_runner: 4,
+    // Floor 2: Corporate Core
+    suit_enforcer: 6, compliance_officer: 5, contract_assassin: 5, executive_handler: 6,
+    // Floor 2: Bosses
+    voltmaster: 30, e_mortis: 45,
+    // Floor 3: Junkyard
+    scrap_rat: 4, magnet_scavenger: 5, rust_sawman: 5, junkyard_pyro: 5,
+    // Floor 3: Swamp
+    toxic_leechling: 3, bog_stalker: 6, chem_frog: 5, mosquito_drone: 3,
+    // Floor 3: Bosses
+    mourn: 35, centipede: 50,
+    // Floor 4: Trap House
+    tripwire_tech: 5, gizmo_hound: 4, holo_jester: 5, time_prankster: 5,
+    // Floor 4: R.E.G.I.M.E
+    enforcer_drone: 6, synth_builder: 6, shock_trooper: 5, signal_jammer: 5,
+    // Floor 4: Bosses
+    game_master: 40, junz: 55,
+    // Floor 5: Waste Planet
+    rabid_hyenaoid: 5, spore_stag: 6, wasteland_raptor: 4, plague_batwing: 5,
+    // Floor 5: Slime/Dusk
+    gel_swordsman: 5, viscosity_mage: 5, core_guardian: 7, biolum_drone: 4,
+    // Floor 5: Bosses
+    lehvius: 45, jackman: 40, malric: 60, vale: 55,
   };
   const base = type in rewards ? rewards[type] : 2;
   const globalWave = (dungeonFloor - 1) * WAVES_PER_FLOOR + waveNum;
@@ -421,6 +445,25 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     _bombs: [],                       // for sticky_bomb
     _mines: [],                       // for smart_mine
     _summonOwnerId: 0,                // tracks boss summons
+    _shieldHp: 0,                     // shield absorb (scavenge_shield, nano_armor, golden_parachute)
+    _shieldExpireFrame: 0,            // auto-expire frame for timed shields
+    _invulnerable: false,             // invulnerability flag (mud_dive, etc.)
+    _submerged: false,                // for mud_dive
+    _canSplit: mt._canSplit || false,  // for core_guardian split mechanic
+    _splitDone: false,
+    _turrets: [],                     // for briefcase_turret
+    _drones: [],                      // for drone_swarm
+    _pillars: [],                     // for tesla_pillars
+    _eggs: [],                        // for toxic_nursery
+    _traps: [],                       // for tripwire
+    _seekMines: [],                   // for seek_mine
+    _fakeWalls: [],                   // for fake_wall
+    _lasers: [],                      // for puzzle_lasers
+    _baits: [],                       // for loot_bait
+    _staticOrbs: [],                  // for static_orbs
+    _summonedMinions: [],             // for summon_elite
+    _canSplit: mt._canSplit || false,  // for core_guardian split
+    _splitDone: false,                // tracks if split already happened
     isBoss: mt.isBoss || false,
   };
 
@@ -568,6 +611,13 @@ function spawnPhase(comp, phase, isBossWave) {
     const bossPos = getSpawnPos();
     const boss = createMob(bossKey, bossPos.x, bossPos.y, hpMult, spdMult, { bossHPMult: 1.5, phase });
     if (boss) { mobs.push(boss); typeCounts[bossKey] = 1; }
+
+    // Duo boss: spawn second boss alongside (Floor 5 Lehvius+Jackman, Malric+Vale)
+    if (comp.duoBoss) {
+      const duoPos = getSpawnPos();
+      const duoBoss = createMob(comp.duoBoss, duoPos.x, duoPos.y, hpMult, spdMult, { bossHPMult: 1.5, phase });
+      if (duoBoss) { mobs.push(duoBoss); typeCounts[comp.duoBoss] = 1; }
+    }
 
     // Spawn guaranteed support mobs from bossComp
     if (comp.support) {

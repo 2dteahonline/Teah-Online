@@ -171,6 +171,51 @@ function draw() {
             ctx.moveTo(px, py); ctx.lineTo(px, py + cl);
             ctx.stroke();
           }
+
+          // BLEED — red drip particles + "BLEEDING" text
+          if (pe._bleedTimer > 0) {
+            const bleedAlpha = Math.min(0.5, pe._bleedTimer / 100 * 0.5);
+            ctx.fillStyle = `rgba(180,30,30,${bleedAlpha + 0.2})`;
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('BLEEDING', px, py - 44);
+            if (renderTime % 4 === 0) {
+              ctx.fillStyle = `rgba(200,20,20,${bleedAlpha + 0.3})`;
+              ctx.beginPath();
+              ctx.arc(px + (Math.random()-0.5)*20, py - 5 + Math.random()*10, 2.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          // CONFUSE — swirling purple effect + "CONFUSED" text
+          if (pe._confuseTimer > 0) {
+            const confPulse = 0.5 + 0.3 * Math.sin(renderTime * 0.12);
+            ctx.strokeStyle = `rgba(180,60,220,${confPulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(px, py - 10, 24, renderTime * 0.1, renderTime * 0.1 + Math.PI * 1.5); ctx.stroke();
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(180,60,220,${confPulse})`;
+            ctx.fillText('CONFUSED', px, py - 44);
+          }
+
+          // DISORIENT — wavy green effect + "DISORIENTED" text
+          if (pe._disorientTimer > 0) {
+            const disPulse = 0.4 + 0.3 * Math.sin(renderTime * 0.1);
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(100,200,80,${disPulse})`;
+            ctx.fillText('DISORIENTED', px, py - 44);
+            // Wavy lines around player
+            ctx.strokeStyle = `rgba(100,200,80,${disPulse * 0.6})`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let wi = -15; wi <= 15; wi += 3) {
+              const wx = px + wi, wy = py - 10 + Math.sin((renderTime + wi) * 0.15) * 6;
+              if (wi === -15) ctx.moveTo(wx, wy); else ctx.lineTo(wx, wy);
+            }
+            ctx.stroke();
+          }
         }
       }
       

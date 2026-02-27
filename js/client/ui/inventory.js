@@ -2005,6 +2005,20 @@ function update() {
 
   // Normalize direction
   let mx = dx, my = dy;
+
+  // Confuse: swap/invert movement directions
+  if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._confuse) {
+    const tmp = mx; mx = -my; my = -tmp; // rotate 180° + swap axes
+  }
+  // Disorient: add small random drift to movement
+  if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._disorient && (mx !== 0 || my !== 0)) {
+    const drift = (Math.random() - 0.5) * 0.6; // small random angle offset
+    const cos = Math.cos(drift), sin = Math.sin(drift);
+    const omx = mx, omy = my;
+    mx = omx * cos - omy * sin;
+    my = omx * sin + omy * cos;
+  }
+
   const len = Math.sqrt(mx * mx + my * my);
   if (len > 0) { mx /= len; my /= len; }
 

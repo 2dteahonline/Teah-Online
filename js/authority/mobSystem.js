@@ -347,8 +347,12 @@ function updateMobs() {
         }
       } else {
         // Multi-special boss: ability rotation system
-        // 1) Always tick persistent entities (mines, bombs) by calling those handlers
-        //    that need per-frame updates even when on CD
+        // 1) Always tick persistent entities (mines, bombs, shield expire) every frame
+        // Auto-expire shields (golden_parachute)
+        if (m._shieldExpireFrame && typeof gameFrame !== 'undefined' && gameFrame >= m._shieldExpireFrame) {
+          m._shieldHp = 0;
+          m._shieldExpireFrame = 0;
+        }
         if (m._mines && m._mines.length > 0) {
           // Tick mines every frame (proximity check + arming)
           for (let mi = m._mines.length - 1; mi >= 0; mi--) {
@@ -369,6 +373,225 @@ function updateMobs() {
             }
           }
         }
+        // Tick persistent pillars (Voltmaster)
+        if (m._pillars && m._pillars.length > 0 && m._activeAbility !== 'tesla_pillars') {
+          for (let pi = m._pillars.length - 1; pi >= 0; pi--) {
+            const pillar = m._pillars[pi];
+            pillar.life--;
+            if (pillar.life <= 0) {
+              hitEffects.push({ x: pillar.x, y: pillar.y, life: 15, type: "fizzle" });
+              m._pillars.splice(pi, 1);
+              continue;
+            }
+            pillar.zapTimer = (pillar.zapTimer || 0) - 1;
+            if (pillar.zapTimer <= 0 && pillar.pairedWith !== undefined) {
+              const partner = m._pillars.find(p => p.id === pillar.pairedWith);
+              if (partner && partner.life > 0) {
+                if (typeof AttackShapes !== 'undefined') {
+                  if (AttackShapes.playerInLine(pillar.x, pillar.y, partner.x, partner.y, 24)) {
+                    const dmg = Math.round(m.damage * 0.8 * getMobDamageMultiplier());
+                    const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+                    hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+                  }
+                }
+                hitEffects.push({
+                  x: pillar.x, y: pillar.y - 10,
+                  x2: partner.x, y2: partner.y - 10,
+                  life: 12, type: "lightning_arc",
+                });
+              }
+              pillar.zapTimer = 120;
+            }
+          }
+        }
+        // Tick persistent turrets (Suit Enforcer summons via hostile_takeover adds)
+        if (m._turrets && m._turrets.length > 0 && m._activeAbility !== 'briefcase_turret') {
+          for (let ti = m._turrets.length - 1; ti >= 0; ti--) {
+            const turret = m._turrets[ti];
+            turret.life--;
+            if (turret.life <= 0) {
+              hitEffects.push({ x: turret.x, y: turret.y, life: 15, type: "fizzle" });
+              m._turrets.splice(ti, 1);
+              continue;
+            }
+            turret.fireTimer = (turret.fireTimer || 0) - 1;
+            if (turret.fireTimer <= 0) {
+              const tdx = player.x - turret.x, tdy = player.y - turret.y;
+              const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+              bullets.push({
+                id: nextBulletId++,
+                x: turret.x, y: turret.y - 10,
+                vx: (tdx / tDist) * 5, vy: (tdy / tDist) * 5,
+                fromPlayer: false, mobBullet: true,
+                damage: Math.round(m.damage * 0.6 * getMobDamageMultiplier()),
+                ownerId: m.id, bulletColor: null,
+              });
+              turret.fireTimer = 60;
+            }
+          }
+        }
+        // Tick persistent drones
+        if (m._drones && m._drones.length > 0 && m._activeAbility !== 'drone_swarm') {
+          for (let di = m._drones.length - 1; di >= 0; di--) {
+            const drone = m._drones[di];
+            drone.life--;
+            if (drone.diving) {
+              const ddx = player.x - drone.x, ddy = player.y - drone.y;
+              const dDist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+              drone.x += (ddx / dDist) * 8;
+              drone.y += (ddy / dDist) * 8;
+              if (dDist < 20) {
+                const dmg = Math.round(m.damage * 0.4 * getMobDamageMultiplier());
+                const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+                m._drones.splice(di, 1);
+              } else if (drone.life <= 0) {
+                m._drones.splice(di, 1);
+              }
+            } else {
+              drone.orbitTimer--;
+              drone.angle += 0.08;
+              drone.x = m.x + Math.cos(drone.angle) * drone.orbitRadius;
+              drone.y = m.y + Math.sin(drone.angle) * drone.orbitRadius;
+              if (drone.orbitTimer <= 0) { drone.diving = true; drone.life = 120; }
+              if (drone.life <= 0) { m._drones.splice(di, 1); }
+            }
+          }
+        }
+
+        // Tick persistent egg sacs (Centipede toxic_nursery)
+        if (m._eggs && m._eggs.length > 0 && m._activeAbility !== 'toxic_nursery') {
+          for (let ei = m._eggs.length - 1; ei >= 0; ei--) {
+            const egg = m._eggs[ei];
+            egg.hatchTimer--;
+            if (egg.hatchTimer <= 0) {
+              // Hatch: spawn 2 toxic_leechling mobs
+              const hpMult = getWaveHPMultiplier(wave);
+              const spdMult = getWaveSpeedMultiplier(wave);
+              const lmt = MOB_TYPES['toxic_leechling'];
+              if (lmt) {
+                for (let si = 0; si < 2; si++) {
+                  const angle = Math.random() * Math.PI * 2;
+                  const sx = egg.x + Math.cos(angle) * 40;
+                  const sy = egg.y + Math.sin(angle) * 40;
+                  const mobId = nextMobId++;
+                  mobs.push({
+                    x: sx, y: sy, type: 'toxic_leechling', id: mobId,
+                    hp: Math.round(lmt.hp * hpMult * 0.6), maxHp: Math.round(lmt.hp * hpMult * 0.6),
+                    speed: capMobSpeed('toxic_leechling', lmt.speed * spdMult),
+                    damage: Math.round(lmt.damage * getMobDamageMultiplier()),
+                    contactRange: lmt.contactRange, skin: lmt.skin, hair: lmt.hair,
+                    shirt: lmt.shirt, pants: lmt.pants, name: lmt.name,
+                    dir: 0, frame: 0, attackCooldown: 0,
+                    shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
+                    summonRate: 0, summonMax: 0, summonTimer: 0,
+                    arrowRate: 0, arrowSpeed: 0, arrowRange: 0, arrowBounces: 0,
+                    arrowLife: 0, bowDrawAnim: 0, arrowTimer: 0,
+                    _specials: lmt._specials || null,
+                    _specialTimer: lmt.specialCD || 0, _specialCD: lmt.specialCD || 0,
+                    _abilityCDs: {}, _cloaked: false, _cloakTimer: 0,
+                    _bombs: [], _mines: [], _summonOwnerId: m.id,
+                    scale: 0.75, spawnFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
+                  });
+                  hitEffects.push({ x: sx, y: sy - 20, life: 20, type: "summon" });
+                }
+              }
+              hitEffects.push({ x: egg.x, y: egg.y, life: 15, type: "poison_cloud" });
+              m._eggs.splice(ei, 1);
+            }
+          }
+        }
+
+        // Tick persistent lasers (Game Master puzzle_lasers)
+        if (m._lasers && m._lasers.length > 0 && m._activeAbility !== 'puzzle_lasers') {
+          for (let li = m._lasers.length - 1; li >= 0; li--) {
+            const laser = m._lasers[li];
+            laser.life--;
+            if (laser.life <= 0) { m._lasers.splice(li, 1); continue; }
+            laser.angle += laser.rotSpeed;
+            // Check player in beam every 10 frames
+            if (laser.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
+              const endX = laser.cx + Math.cos(laser.angle) * laser.length;
+              const endY = laser.cy + Math.sin(laser.angle) * laser.length;
+              if (AttackShapes.playerInLine(laser.cx, laser.cy, endX, endY, 20)) {
+                const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
+                dealDamageToPlayer(dmg, 'mob_special', m);
+                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
+              }
+            }
+          }
+        }
+        // Tick persistent baits (Game Master loot_bait)
+        if (m._baits && m._baits.length > 0 && m._activeAbility !== 'loot_bait') {
+          for (let bi = m._baits.length - 1; bi >= 0; bi--) {
+            const bait = m._baits[bi];
+            bait.life--;
+            if (bait.life <= 0) { m._baits.splice(bi, 1); continue; }
+            const bdx = player.x - bait.x, bdy = player.y - bait.y;
+            if (bdx * bdx + bdy * bdy <= 60 * 60) {
+              const dmg = Math.round(m.damage * getMobDamageMultiplier());
+              dealDamageToPlayer(dmg, 'mob_special', m);
+              StatusFX.applyToPlayer('root', { duration: 48 });
+              hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dmg });
+              hitEffects.push({ x: bait.x, y: bait.y, life: 20, type: "explosion" });
+              m._baits.splice(bi, 1);
+            }
+          }
+        }
+
+        // Tick persistent static orbs (Jackman static_orbs)
+        if (m._staticOrbs && m._staticOrbs.length > 0 && m._activeAbility !== 'static_orbs') {
+          for (let oi = m._staticOrbs.length - 1; oi >= 0; oi--) {
+            const orb = m._staticOrbs[oi];
+            orb.life--;
+            if (orb.life <= 0) { m._staticOrbs.splice(oi, 1); continue; }
+            if (!orb.diving) {
+              orb.orbitTimer--;
+              orb.angle += 0.08;
+              orb.x = m.x + Math.cos(orb.angle) * orb.orbitRadius;
+              orb.y = m.y + Math.sin(orb.angle) * orb.orbitRadius;
+              if (orb.orbitTimer <= 0) {
+                orb.diving = true;
+                orb.targetX = player.x;
+                orb.targetY = player.y;
+              }
+            } else {
+              const odx = orb.targetX - orb.x, ody = orb.targetY - orb.y;
+              const oDist = Math.sqrt(odx * odx + ody * ody) || 1;
+              const spd = 5;
+              orb.x += (odx / oDist) * spd;
+              orb.y += (ody / oDist) * spd;
+              const pdx = player.x - orb.x, pdy = player.y - orb.y;
+              if (pdx * pdx + pdy * pdy <= 40 * 40) {
+                const dmg = Math.round(m.damage * 0.35 * getMobDamageMultiplier());
+                dealDamageToPlayer(dmg, 'mob_special', m);
+                StatusFX.applyToPlayer('stun', { duration: 18 });
+                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
+                m._staticOrbs.splice(oi, 1);
+              } else if (oDist < 10) {
+                m._staticOrbs.splice(oi, 1);
+              }
+            }
+          }
+        }
+
+        // Tick adrenal surge timer (Lehvius)
+        if (m._adrenalBoost && m._adrenalBoost > 0 && m._activeAbility !== 'adrenal_surge') {
+          m._adrenalBoost--;
+          if (m._adrenalBoost <= 0 && m._origSpeed) {
+            m.speed = m._origSpeed;
+          }
+        }
+
+        // Tick regen veil (Vale)
+        if (m._regenVeil && m._regenVeil > 0 && m._activeAbility !== 'regen_veil') {
+          m._regenVeil--;
+          if (m._regenVeil % 60 === 0 && m._regenVeil > 0) {
+            const heal = Math.round(m.maxHp * 0.025);
+            m.hp = Math.min(m.maxHp, m.hp + heal);
+            hitEffects.push({ x: m.x, y: m.y - 30, life: 20, type: "heal" });
+          }
+        }
 
         // 2) If an ability is actively executing (multi-frame), continue it
         if (m._activeAbility) {
@@ -380,7 +603,29 @@ function updateMobs() {
             const stillActive = m._laserTelegraph > 0 || m._tommyFiring ||
               m._phaseDashing || m._blinkDashing || m._blinkTelegraph > 0 ||
               m._stunTelegraph > 0 || m._poundTelegraph > 0 ||
-              m._barrageResolving;
+              m._barrageResolving ||
+              // Floor 2
+              m._drainTelegraph > 0 || m._weldTelegraph > 0 ||
+              m._chargeDashing || m._chargeTelegraph > 0 || m._teslaSprinting ||
+              m._chainTelegraph > 0 || m._empTelegraph > 0 || m._magnetTelegraph > 0 ||
+              m._tapeTelegraph > 0 || m._penaltyTelegraph > 0 ||
+              m._dividendFiring || m._parachuteDashing ||
+              // Floor 3
+              m._magTelegraph > 0 || m._sawTelegraph > 0 ||
+              m._pileDriverTelegraph > 0 || m._grabTelegraph > 0 ||
+              m._latchDashing || m._latchTelegraph > 0 ||
+              m._submerged || m._siphonTelegraph > 0 || m._burrowSubmerged ||
+              // Floor 4
+              m._rewindTelegraph > 0 || m._rouletteTelegraph > 0 || m._hackTelegraph > 0 ||
+              m._suppressTelegraph > 0 || m._rocketDashing || m._rocketTelegraph > 0 ||
+              m._empDomeTelegraph > 0 || m._pulseTelegraph > 0 || m._repulsorTelegraph > 0 ||
+              // Floor 5
+              m._bleedDash || m._bleedTelegraph > 0 || m._goreDash || m._goreTelegraph > 0 ||
+              m._pounceTelegraph > 0 || m._screechTelegraph > 0 || m._slimeTelegraph > 0 ||
+              m._glowTelegraph > 0 || m._lashTelegraph > 0 || m._barrierTelegraph > 0 ||
+              m._orbTelegraph > 0 || m._overchargeTelegraph > 0 ||
+              m._oozeTelegraph > 0 || m._rampartTelegraph > 0 || m._meltTelegraph > 0 ||
+              m._shadowTeleport > 0 || m._puppetTelegraph > 0 || m._abyssTelegraph > 0;
             if (!stillActive) {
               m._activeAbility = null;
             }
@@ -415,7 +660,29 @@ function updateMobs() {
             // Track active multi-frame abilities
             const isMultiFrame = m._laserTelegraph > 0 || m._tommyFiring ||
               m._phaseDashing || m._blinkDashing || m._blinkTelegraph > 0 ||
-              m._barrageResolving;
+              m._barrageResolving ||
+              // Floor 2
+              m._drainTelegraph > 0 || m._weldTelegraph > 0 ||
+              m._chargeDashing || m._chargeTelegraph > 0 || m._teslaSprinting ||
+              m._chainTelegraph > 0 || m._empTelegraph > 0 || m._magnetTelegraph > 0 ||
+              m._tapeTelegraph > 0 || m._penaltyTelegraph > 0 ||
+              m._dividendFiring || m._parachuteDashing ||
+              // Floor 3
+              m._magTelegraph > 0 || m._sawTelegraph > 0 ||
+              m._pileDriverTelegraph > 0 || m._grabTelegraph > 0 ||
+              m._latchDashing || m._latchTelegraph > 0 ||
+              m._submerged || m._siphonTelegraph > 0 || m._burrowSubmerged ||
+              // Floor 4
+              m._rewindTelegraph > 0 || m._rouletteTelegraph > 0 || m._hackTelegraph > 0 ||
+              m._suppressTelegraph > 0 || m._rocketDashing || m._rocketTelegraph > 0 ||
+              m._empDomeTelegraph > 0 || m._pulseTelegraph > 0 || m._repulsorTelegraph > 0 ||
+              // Floor 5
+              m._bleedDash || m._bleedTelegraph > 0 || m._goreDash || m._goreTelegraph > 0 ||
+              m._pounceTelegraph > 0 || m._screechTelegraph > 0 || m._slimeTelegraph > 0 ||
+              m._glowTelegraph > 0 || m._lashTelegraph > 0 || m._barrierTelegraph > 0 ||
+              m._orbTelegraph > 0 || m._overchargeTelegraph > 0 ||
+              m._oozeTelegraph > 0 || m._rampartTelegraph > 0 || m._meltTelegraph > 0 ||
+              m._shadowTeleport > 0 || m._puppetTelegraph > 0 || m._abyssTelegraph > 0;
             if (isMultiFrame) m._activeAbility = abilKey;
             if (specResult && specResult.skip) skipMovement = true;
             break;

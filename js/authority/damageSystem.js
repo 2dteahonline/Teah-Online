@@ -28,7 +28,56 @@
 //   if (dealDamageToMob(m, 50, "gun")) { /* on-kill effects like frost nova */ }
 //
 function dealDamageToMob(mob, amount, source) {
+  // Invulnerability check (mud_dive, nano_armor, etc.)
+  if (mob._invulnerable) return false;
+
+  // Shield absorb — damage hits shield first, remainder goes to HP
+  if (mob._shieldHp > 0) {
+    if (amount <= mob._shieldHp) {
+      mob._shieldHp -= amount;
+      return false; // shield absorbed all damage
+    }
+    amount -= mob._shieldHp;
+    mob._shieldHp = 0;
+  }
+
   mob.hp -= amount;
+
+  // Split mechanic: Core Guardian splits into 2 smaller blobs at 50% HP
+  if (mob._canSplit && !mob._splitDone && mob.hp > 0 && mob.hp <= mob.maxHp * 0.5) {
+    mob._splitDone = true;
+    const mt = typeof MOB_TYPES !== 'undefined' ? MOB_TYPES[mob.type] : null;
+    if (mt && typeof mobs !== 'undefined') {
+      for (let si = 0; si < 2; si++) {
+        const angle = Math.random() * Math.PI * 2;
+        const sx = mob.x + Math.cos(angle) * 50;
+        const sy = mob.y + Math.sin(angle) * 50;
+        const mobId = typeof nextMobId !== 'undefined' ? nextMobId++ : Math.floor(Math.random() * 99999);
+        const splitMob = {
+          x: sx, y: sy, type: mob.type, id: mobId,
+          hp: Math.round(mob.maxHp * 0.35), maxHp: Math.round(mob.maxHp * 0.35),
+          speed: mob.speed * 1.3, damage: mob.damage,
+          contactRange: mob.contactRange, skin: mob.skin, hair: mob.hair,
+          shirt: mob.shirt, pants: mob.pants, name: mob.name + " Shard",
+          dir: 0, frame: 0, attackCooldown: 0,
+          shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
+          summonRate: 0, summonMax: 0, summonTimer: 0,
+          arrowRate: 0, arrowSpeed: 0, arrowRange: 0, arrowBounces: 0,
+          arrowLife: 0, bowDrawAnim: 0, arrowTimer: 0,
+          _specials: null, _specialTimer: 9999, _specialCD: 9999,
+          _abilityCDs: {}, _cloaked: false, _cloakTimer: 0,
+          _bombs: [], _mines: [], _canSplit: false, _splitDone: true,
+          scale: (mob.scale || 1) * 0.7,
+          spawnFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
+        };
+        mobs.push(splitMob);
+        if (typeof hitEffects !== 'undefined') {
+          hitEffects.push({ x: sx, y: sy - 20, life: 20, type: "summon" });
+        }
+      }
+    }
+  }
+
   if (mob.hp <= 0) {
     processKill(mob, source);
     return true; // died
