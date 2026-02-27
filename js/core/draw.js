@@ -433,9 +433,9 @@ function draw() {
       if (m._hidden) {
         ctx.globalAlpha = 0.0;
       }
-      // Submerged/burrowed mobs — very faint
+      // Submerged/burrowed mobs — completely invisible
       if (m._submerged || m._burrowSubmerged) {
-        ctx.globalAlpha = 0.15;
+        ctx.globalAlpha = 0.0;
       }
       drawChar(m.x, m.y, m.dir, Math.floor(m.frame), true,
         m.skin, m.hair, m.shirt, m.pants, m.name, m.hp, false, m.type, m.maxHp, m.boneSwing || 0, m.scale || 1, m.castTimer || m.throwAnim || m.bowDrawAnim || m.healAnim || 0);

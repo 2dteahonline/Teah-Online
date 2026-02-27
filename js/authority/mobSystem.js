@@ -593,6 +593,31 @@ function updateMobs() {
           }
         }
 
+        // Tick egg sacs (Centipede toxic_nursery) — must tick even when other abilities are active
+        if (m._eggs && m._eggs.length > 0 && m._activeAbility !== 'toxic_nursery') {
+          for (let ei = m._eggs.length - 1; ei >= 0; ei--) {
+            const egg = m._eggs[ei];
+            egg.timer--;
+            if (egg.timer <= 0) {
+              // Hatch: spawn 2 toxic_leechling mobs
+              const hpMult = getWaveHPMultiplier(wave) * 0.6;
+              const spdMult = getWaveSpeedMultiplier(wave);
+              for (let si = 0; si < 2; si++) {
+                const mt = MOB_TYPES['toxic_leechling'];
+                if (!mt) continue;
+                const angle = Math.random() * Math.PI * 2;
+                const sx = egg.x + Math.cos(angle) * (40 + Math.random() * 40);
+                const sy = egg.y + Math.sin(angle) * (40 + Math.random() * 40);
+                const mobId = nextMobId++;
+                mobs.push(createMob('toxic_leechling', sx, sy, hpMult, spdMult, { ownerId: m.id, scale: 0.8 }));
+                hitEffects.push({ x: sx, y: sy - 20, life: 20, type: "summon" });
+              }
+              hitEffects.push({ x: egg.x, y: egg.y, life: 20, type: "explosion" });
+              m._eggs.splice(ei, 1);
+            }
+          }
+        }
+
         // 2) If an ability is actively executing (multi-frame), continue it
         if (m._activeAbility) {
           const handler = MOB_SPECIALS[m._activeAbility];
@@ -612,7 +637,7 @@ function updateMobs() {
               m._dividendFiring || m._parachuteDashing ||
               // Floor 3
               m._magTelegraph > 0 || m._magPulling || m._sawTelegraph > 0 ||
-              m._pileDriverTelegraph > 0 || m._grabTelegraph > 0 || m._grabHolding > 0 ||
+              m._pileDriverTelegraph > 0 || m._grabTelegraph > 0 || m._grabHolding > 0 || m._grabPulling || m._grabTossing ||
               m._latchDashing || m._latchTelegraph > 0 ||
               m._submerged || m._siphonTelegraph > 0 || m._burrowSubmerged ||
               // Floor 4
@@ -669,7 +694,7 @@ function updateMobs() {
               m._dividendFiring || m._parachuteDashing ||
               // Floor 3
               m._magTelegraph > 0 || m._magPulling || m._sawTelegraph > 0 ||
-              m._pileDriverTelegraph > 0 || m._grabTelegraph > 0 || m._grabHolding > 0 ||
+              m._pileDriverTelegraph > 0 || m._grabTelegraph > 0 || m._grabHolding > 0 || m._grabPulling || m._grabTossing ||
               m._latchDashing || m._latchTelegraph > 0 ||
               m._submerged || m._siphonTelegraph > 0 || m._burrowSubmerged ||
               // Floor 4
