@@ -239,6 +239,7 @@ function checkPortals() {
 
 function goToNextFloor() {
   if (transitioning) return;
+  if (typeof MAX_FLOORS !== 'undefined' && dungeonFloor >= MAX_FLOORS) return; // already at final floor
   dungeonFloor++;
   resetCombatState('floor');
   // Re-enter same level layout, spawn at center

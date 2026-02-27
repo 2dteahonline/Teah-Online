@@ -244,7 +244,7 @@ const LEVELS = {
     entities: [
       { type: 'cave_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 28, spawnTY: 8 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 0 },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1 },
       // Left torches
       { type: 'torch', tx: 1, ty: 1, solid: false },
       { type: 'torch', tx: 1, ty: 4, solid: false },

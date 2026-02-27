@@ -429,9 +429,37 @@ function draw() {
         ctx.fillStyle = `rgba(255,120,40,${bPulse})`;
         ctx.beginPath(); ctx.arc(m.x, m.y - 15, 35 * (m.scale || 1), 0, Math.PI * 2); ctx.fill();
       }
+      // Hidden mobs (shadow_teleport) — fully invisible
+      if (m._hidden) {
+        ctx.globalAlpha = 0.0;
+      }
+      // Submerged/burrowed mobs — very faint
+      if (m._submerged || m._burrowSubmerged) {
+        ctx.globalAlpha = 0.15;
+      }
       drawChar(m.x, m.y, m.dir, Math.floor(m.frame), true,
         m.skin, m.hair, m.shirt, m.pants, m.name, m.hp, false, m.type, m.maxHp, m.boneSwing || 0, m.scale || 1, m.castTimer || m.throwAnim || m.bowDrawAnim || m.healAnim || 0);
       if (m._cloaked) ctx.globalAlpha = 1.0;
+      // Restore alpha for hidden/submerged
+      if (m._hidden || m._submerged || m._burrowSubmerged) ctx.globalAlpha = 1.0;
+      // Shield HP overlay — blue/gold hexagonal shield
+      if (m._shieldHp > 0) {
+        const shPulse = 0.4 + 0.2 * Math.sin(renderTime * 0.008);
+        const sc = m.scale || 1;
+        // Blue shield glow
+        ctx.strokeStyle = `rgba(80,180,255,${shPulse})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(m.x, m.y - 15 * sc, 22 * sc, 0, Math.PI * 2); ctx.stroke();
+        // Inner gold ring
+        ctx.strokeStyle = `rgba(255,215,0,${shPulse * 0.6})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(m.x, m.y - 15 * sc, 18 * sc, 0, Math.PI * 2); ctx.stroke();
+        // Shield HP text
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(80,200,255,${0.7 + shPulse * 0.3})`;
+        ctx.fillText('\u{1F6E1}' + m._shieldHp, m.x, m.y - 35 * sc);
+      }
 
       // Frost effect overlay — obvious blue tint on frozen mobs
       if (m.frostTimer > 0) {
@@ -601,6 +629,133 @@ function draw() {
           ctx.beginPath(); ctx.arc(mx, my, 7, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#666';
           ctx.beginPath(); ctx.arc(mx, my - 4, 2, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+    // Turret entities (suit_enforcer briefcase_turret) — small mounted gun
+    if (m._turrets && m._turrets.length > 0) {
+      for (const turret of m._turrets) {
+        const tx = turret.x - cx, ty = turret.y - cy;
+        // Base platform
+        ctx.fillStyle = '#3a3a4a';
+        ctx.fillRect(tx - 10, ty - 4, 20, 8);
+        // Turret body
+        ctx.fillStyle = '#5a5a6a';
+        ctx.fillRect(tx - 6, ty - 12, 12, 10);
+        // Gun barrel (points toward player)
+        const aDx = player.x - turret.x, aDy = player.y - turret.y;
+        const aAngle = Math.atan2(aDy, aDx);
+        ctx.strokeStyle = '#8a8a9a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty - 8);
+        ctx.lineTo(tx + Math.cos(aAngle) * 14, ty - 8 + Math.sin(aAngle) * 14);
+        ctx.stroke();
+        // Flashing light
+        const tFlash = 0.5 + 0.5 * Math.sin(renderTime * 0.1);
+        ctx.fillStyle = `rgba(255,60,30,${tFlash})`;
+        ctx.beginPath(); ctx.arc(tx, ty - 14, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Drone entities (executive_handler drone_swarm, junz drone_court) — small orbiting bots
+    if (m._drones && m._drones.length > 0) {
+      for (const drone of m._drones) {
+        const dx = drone.x - cx, dy = drone.y - cy;
+        // Drone body — small dark disc
+        ctx.fillStyle = drone.diving ? '#ff4040' : '#4a6a8a';
+        ctx.beginPath(); ctx.arc(dx, dy, 6, 0, Math.PI * 2); ctx.fill();
+        // Propeller flash
+        const prop = renderTime * 0.3 + drone.angle;
+        ctx.strokeStyle = 'rgba(150,200,255,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(dx + Math.cos(prop) * 8, dy + Math.sin(prop) * 8);
+        ctx.lineTo(dx - Math.cos(prop) * 8, dy - Math.sin(prop) * 8);
+        ctx.stroke();
+        // Eye glow
+        ctx.fillStyle = drone.diving ? '#ff8080' : '#80c0ff';
+        ctx.beginPath(); ctx.arc(dx, dy, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Static orbs (jackman static_orbs) — electric orbiting balls
+    if (m._staticOrbs && m._staticOrbs.length > 0) {
+      for (const orb of m._staticOrbs) {
+        const ox = orb.x - cx, oy = orb.y - cy;
+        // Electric glow
+        ctx.fillStyle = orb.diving ? 'rgba(255,220,80,0.3)' : 'rgba(80,180,255,0.3)';
+        ctx.beginPath(); ctx.arc(ox, oy, 12, 0, Math.PI * 2); ctx.fill();
+        // Orb core
+        ctx.fillStyle = orb.diving ? '#ffdd44' : '#50b0ff';
+        ctx.beginPath(); ctx.arc(ox, oy, 5, 0, Math.PI * 2); ctx.fill();
+        // Bright center
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(ox, oy, 2, 0, Math.PI * 2); ctx.fill();
+        // Sparks
+        ctx.strokeStyle = orb.diving ? 'rgba(255,220,80,0.5)' : 'rgba(80,180,255,0.5)';
+        ctx.lineWidth = 1;
+        for (let si = 0; si < 3; si++) {
+          const sa = renderTime * 0.05 + si * 2.1 + orb.angle;
+          ctx.beginPath();
+          ctx.moveTo(ox + Math.cos(sa) * 5, oy + Math.sin(sa) * 5);
+          ctx.lineTo(ox + Math.cos(sa + 0.4) * 11, oy + Math.sin(sa + 0.3) * 11);
+          ctx.stroke();
+        }
+      }
+    }
+    // Egg sac entities (centipede toxic_nursery) — green pulsing eggs
+    if (m._eggs && m._eggs.length > 0) {
+      for (const egg of m._eggs) {
+        const ex = egg.x - cx, ey = egg.y - cy;
+        const hatchProgress = 1 - egg.timer / 180;
+        const pulse = 0.5 + 0.3 * Math.sin(renderTime * 0.08 + hatchProgress * 10);
+        // Slime base
+        ctx.fillStyle = `rgba(80,160,40,${0.15 + hatchProgress * 0.15})`;
+        ctx.beginPath(); ctx.arc(ex, ey + 4, 16, 0, Math.PI * 2); ctx.fill();
+        // Egg body — oval
+        ctx.fillStyle = `rgba(${100 + hatchProgress * 80},${180 - hatchProgress * 60},${60},${0.7 + pulse * 0.2})`;
+        ctx.beginPath(); ctx.ellipse(ex, ey, 10, 14, 0, 0, Math.PI * 2); ctx.fill();
+        // Veins (more visible as hatching approaches)
+        if (hatchProgress > 0.3) {
+          ctx.strokeStyle = `rgba(60,120,30,${hatchProgress * 0.5})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(ex - 4, ey - 8); ctx.lineTo(ex - 2, ey + 4); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(ex + 3, ey - 6); ctx.lineTo(ex + 1, ey + 6); ctx.stroke();
+        }
+        // Pulsing glow when close to hatching
+        if (hatchProgress > 0.7) {
+          ctx.fillStyle = `rgba(120,255,40,${pulse * 0.2})`;
+          ctx.beginPath(); ctx.arc(ex, ey, 18, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+    // Tesla pillars (voltmaster tesla_pillars) — glowing energy pillars
+    if (m._pillars && m._pillars.length > 0) {
+      for (const pillar of m._pillars) {
+        const plx = pillar.x - cx, ply = pillar.y - cy;
+        // Pillar base
+        ctx.fillStyle = 'rgba(0,180,220,0.15)';
+        ctx.beginPath(); ctx.arc(plx, ply + 5, 14, 0, Math.PI * 2); ctx.fill();
+        // Pillar body
+        ctx.fillStyle = '#2a5a6a';
+        ctx.fillRect(plx - 5, ply - 20, 10, 25);
+        // Energy top
+        const ePulse = 0.5 + 0.5 * Math.sin(renderTime * 0.1 + pillar.x * 0.01);
+        ctx.fillStyle = `rgba(0,200,255,${ePulse})`;
+        ctx.beginPath(); ctx.arc(plx, ply - 20, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#aaeeff';
+        ctx.beginPath(); ctx.arc(plx, ply - 20, 3, 0, Math.PI * 2); ctx.fill();
+      }
+      // Draw zap lines between pillars
+      if (m._pillars.length >= 2) {
+        ctx.strokeStyle = 'rgba(0,200,255,0.4)';
+        ctx.lineWidth = 2;
+        for (let pi = 0; pi < m._pillars.length; pi++) {
+          const p1 = m._pillars[pi];
+          const p2 = m._pillars[(pi + 1) % m._pillars.length];
+          ctx.beginPath();
+          ctx.moveTo(p1.x - cx, p1.y - 20 - cy);
+          ctx.lineTo(p2.x - cx, p2.y - 20 - cy);
+          ctx.stroke();
         }
       }
     }

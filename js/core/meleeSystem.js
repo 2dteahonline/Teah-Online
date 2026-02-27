@@ -1105,6 +1105,34 @@ function drawBullets() {
       continue;
     }
 
+    if (b.projectileStyle === 'saw_blade') {
+      // Spinning saw blade — rust_sawman
+      const spin = renderTime * 0.02;
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(spin);
+      // Blade disc
+      ctx.fillStyle = '#6a6a6a';
+      ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+      // Inner ring
+      ctx.fillStyle = '#8a8a8a';
+      ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+      // Teeth notches
+      ctx.fillStyle = '#4a4a4a';
+      for (let t = 0; t < 8; t++) {
+        const ta = (t / 8) * Math.PI * 2;
+        ctx.fillRect(Math.cos(ta) * 10 - 2, Math.sin(ta) * 10 - 2, 4, 4);
+      }
+      // Center hole
+      ctx.fillStyle = '#3a3a3a';
+      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // Spark trail
+      ctx.fillStyle = 'rgba(255,200,100,0.3)';
+      ctx.beginPath(); ctx.arc(b.x - b.vx * 2, b.y - b.vy * 2, 4, 0, Math.PI * 2); ctx.fill();
+      continue;
+    }
+
     if (b.isArrow) {
       // Poison arrow — greenish-black, long and thin, rotated to velocity
       const angle = Math.atan2(b.vy, b.vx);

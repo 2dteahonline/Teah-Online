@@ -66,7 +66,7 @@ function resetCombatState(mode) {
   // --- Dungeon fresh run or Death: full dungeon state reset ---
   if (mode === 'dungeon' || mode === 'death') {
     lives = 3; wave = 0; kills = 0;
-    dungeonFloor = (pendingDungeonFloor != null) ? pendingDungeonFloor : 0;
+    dungeonFloor = (pendingDungeonFloor != null) ? pendingDungeonFloor : 1;
     pendingDungeonFloor = null;
     stairsOpen = false; stairsAppearTimer = 0;
     dungeonComplete = false; victoryTimer = 0;

@@ -243,7 +243,7 @@ function _testSingleMob(typeKey, frames) {
       '_teslaSprinting', '_chainTelegraph', '_empTelegraph', '_magnetTelegraph',
       '_tapeTelegraph', '_penaltyTelegraph', '_dividendFiring', '_parachuteDashing',
       // Floor 3
-      '_magTelegraph', '_sawTelegraph', '_pileDriverTelegraph', '_grabTelegraph',
+      '_magTelegraph', '_magPulling', '_sawTelegraph', '_pileDriverTelegraph', '_grabTelegraph', '_grabHolding',
       '_latchDashing', '_latchTelegraph', '_submerged', '_siphonTelegraph', '_burrowSubmerged',
       // Floor 4
       '_rewindTelegraph', '_rouletteTelegraph', '_hackTelegraph', '_suppressTelegraph',

@@ -2670,11 +2670,27 @@ const MOB_SPECIALS = {
 
     if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 660;
 
+    // Multi-frame pull phase (lerp player toward mob over 18 frames)
+    if (m._magPulling) {
+      m._magPullFrame = (m._magPullFrame || 0) + 1;
+      const t = m._magPullFrame / 18;
+      player.x = m._magPullStartX + (m._magPullEndX - m._magPullStartX) * t;
+      player.y = m._magPullStartY + (m._magPullEndY - m._magPullStartY) * t;
+      if (m._magPullFrame >= 18) {
+        m._magPulling = false;
+        const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
+        const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+        hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+        m._specialTimer = m._specialCD || 660;
+      }
+      return { skip: true };
+    }
+
     // Telegraph phase
     if (m._magTelegraph) {
       m._magTelegraph--;
       if (m._magTelegraph <= 0) {
-        // Resolve: pull player toward mob
+        // Resolve: start multi-frame pull toward mob
         const pullDist = Math.min(144, dist - 30); // don't pull into mob
         if (pullDist > 0) {
           const pdx = m.x - player.x, pdy = m.y - player.y;
@@ -2693,13 +2709,15 @@ const MOB_SPECIALS = {
               break;
             }
           }
-          player.x = finalX;
-          player.y = finalY;
-          const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
-          const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+          m._magPulling = true;
+          m._magPullFrame = 0;
+          m._magPullStartX = player.x;
+          m._magPullStartY = player.y;
+          m._magPullEndX = finalX;
+          m._magPullEndY = finalY;
+        } else {
+          m._specialTimer = m._specialCD || 660;
         }
-        m._specialTimer = m._specialCD || 660;
       }
       return { skip: true };
     }
@@ -2720,12 +2738,12 @@ const MOB_SPECIALS = {
       TelegraphSystem.create({
         shape: 'line',
         params: { x1: player.x, y1: player.y, x2: m.x, y2: m.y, width: 28 },
-        delayFrames: 24,
+        delayFrames: 42,
         color: [50, 200, 80],
         owner: m.id,
       });
     }
-    m._magTelegraph = 24;
+    m._magTelegraph = 42;
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
     return { skip: true };
   },
@@ -2911,15 +2929,18 @@ const MOB_SPECIALS = {
   grab_toss: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
-    // Telegraph phase
-    if (m._grabTelegraph) {
-      m._grabTelegraph--;
-      if (m._grabTelegraph <= 0) {
-        // Resolve: toss player in random direction
-        const tossAngle = Math.random() * Math.PI * 2;
+    // Hold phase — player frozen at mob position, then toss
+    if (m._grabHolding) {
+      m._grabHolding--;
+      // Keep player locked to mob position during hold
+      player.x = m.x;
+      player.y = m.y;
+      if (m._grabHolding <= 0) {
+        // Toss player 4 tiles away from mob
+        const tossAngle = Math.atan2(player.y - m.y, player.x - m.x) || (Math.random() * Math.PI * 2);
         const tossDist = 192; // 4 tiles
-        let tossX = player.x + Math.cos(tossAngle) * tossDist;
-        let tossY = player.y + Math.sin(tossAngle) * tossDist;
+        let tossX = m.x + Math.cos(tossAngle) * tossDist;
+        let tossY = m.y + Math.sin(tossAngle) * tossDist;
 
         // Clamp to map bounds
         const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
@@ -2931,12 +2952,12 @@ const MOB_SPECIALS = {
           let lo = 0, hi = tossDist;
           for (let bi = 0; bi < 8; bi++) {
             const mid = (lo + hi) / 2;
-            const tx = player.x + Math.cos(tossAngle) * mid;
-            const ty = player.y + Math.sin(tossAngle) * mid;
+            const tx = m.x + Math.cos(tossAngle) * mid;
+            const ty = m.y + Math.sin(tossAngle) * mid;
             if (positionClear(tx, ty)) lo = mid; else hi = mid;
           }
-          tossX = player.x + Math.cos(tossAngle) * lo;
-          tossY = player.y + Math.sin(tossAngle) * lo;
+          tossX = m.x + Math.cos(tossAngle) * lo;
+          tossY = m.y + Math.sin(tossAngle) * lo;
         }
 
         player.x = tossX;
@@ -2945,6 +2966,18 @@ const MOB_SPECIALS = {
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         StatusFX.applyToPlayer('stun', { duration: 36 }); // 0.6s
+        m._specialTimer = m._specialCD || 600;
+      }
+      return { skip: true };
+    }
+
+    // Telegraph phase
+    if (m._grabTelegraph) {
+      m._grabTelegraph--;
+      if (m._grabTelegraph <= 0) {
+        // Resolve: grab player — start hold phase
+        m._grabHolding = 36; // 0.6s hold at mob position
+        hitEffects.push({ x: m.x, y: m.y - 20, life: 20, type: "grab" });
       }
       return { skip: true };
     }
@@ -2952,18 +2985,18 @@ const MOB_SPECIALS = {
     // Must be close range
     if (dist > 100) return {};
 
-    // Telegraph circle at mob position, quick resolve
+    // Telegraph circle at mob position
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
         shape: 'circle',
         params: { cx: m.x, cy: m.y, radius: 100 },
-        delayFrames: 12,
+        delayFrames: 30,
         color: [200, 60, 60],
         owner: m.id,
       });
     }
-    m._grabTelegraph = 12;
-    hitEffects.push({ x: m.x, y: m.y - 20, life: 12, type: "cast" });
+    m._grabTelegraph = 30;
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
     return { skip: true };
   },
 
@@ -3176,7 +3209,7 @@ const MOB_SPECIALS = {
     // Activate: submerge
     m._invulnerable = true;
     m._submerged = true;
-    m._submergeTimer = 60;
+    m._submergeTimer = 90; // 1.5s underground
     hitEffects.push({ x: m.x, y: m.y, life: 15, type: "cast" });
     return { skip: true };
   },
@@ -3264,6 +3297,12 @@ const MOB_SPECIALS = {
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
             StatusFX.applyToPlayer('poison', { duration: 180, dmg: 3 });
+            // Siphon heal — mob recovers HP equal to damage dealt
+            const healAmt = Math.min(dealt, m.maxHp - m.hp);
+            if (healAmt > 0) {
+              m.hp += healAmt;
+              hitEffects.push({ x: m.x, y: m.y - 20, life: 20, type: "heal", dmg: "+" + healAmt });
+            }
           }
         }
         m._specialTimer = m._specialCD || 480;
@@ -3335,11 +3374,11 @@ const MOB_SPECIALS = {
       m._burrowTimer = (m._burrowTimer || 0) - 1;
 
       // Telegraph appears halfway through submerge
-      if (m._burrowTimer === 30 && typeof TelegraphSystem !== 'undefined') {
+      if (m._burrowTimer === 45 && typeof TelegraphSystem !== 'undefined') {
         TelegraphSystem.create({
           shape: 'circle',
           params: { cx: player.x, cy: player.y, radius: 120 },
-          delayFrames: 30,
+          delayFrames: 45,
           color: [100, 180, 50],
           owner: m.id,
         });
@@ -3374,7 +3413,7 @@ const MOB_SPECIALS = {
     // Activate: submerge
     m._invulnerable = true;
     m._burrowSubmerged = true;
-    m._burrowTimer = 60;
+    m._burrowTimer = 90; // 1.5s underground
     m._burrowTargetX = player.x;
     m._burrowTargetY = player.y;
     hitEffects.push({ x: m.x, y: m.y, life: 15, type: "cast" });
