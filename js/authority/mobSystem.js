@@ -459,49 +459,6 @@ function updateMobs() {
           }
         }
 
-        // Tick persistent egg sacs (Centipede toxic_nursery)
-        if (m._eggs && m._eggs.length > 0 && m._activeAbility !== 'toxic_nursery') {
-          for (let ei = m._eggs.length - 1; ei >= 0; ei--) {
-            const egg = m._eggs[ei];
-            egg.hatchTimer--;
-            if (egg.hatchTimer <= 0) {
-              // Hatch: spawn 2 toxic_leechling mobs
-              const hpMult = getWaveHPMultiplier(wave);
-              const spdMult = getWaveSpeedMultiplier(wave);
-              const lmt = MOB_TYPES['toxic_leechling'];
-              if (lmt) {
-                for (let si = 0; si < 2; si++) {
-                  const angle = Math.random() * Math.PI * 2;
-                  const sx = egg.x + Math.cos(angle) * 40;
-                  const sy = egg.y + Math.sin(angle) * 40;
-                  const mobId = nextMobId++;
-                  mobs.push({
-                    x: sx, y: sy, type: 'toxic_leechling', id: mobId,
-                    hp: Math.round(lmt.hp * hpMult * 0.6), maxHp: Math.round(lmt.hp * hpMult * 0.6),
-                    speed: capMobSpeed('toxic_leechling', lmt.speed * spdMult),
-                    damage: Math.round(lmt.damage * getMobDamageMultiplier()),
-                    contactRange: lmt.contactRange, skin: lmt.skin, hair: lmt.hair,
-                    shirt: lmt.shirt, pants: lmt.pants, name: lmt.name,
-                    dir: 0, frame: 0, attackCooldown: 0,
-                    shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
-                    summonRate: 0, summonMax: 0, summonTimer: 0,
-                    arrowRate: 0, arrowSpeed: 0, arrowRange: 0, arrowBounces: 0,
-                    arrowLife: 0, bowDrawAnim: 0, arrowTimer: 0,
-                    _specials: lmt._specials || null,
-                    _specialTimer: lmt.specialCD || 0, _specialCD: lmt.specialCD || 0,
-                    _abilityCDs: {}, _cloaked: false, _cloakTimer: 0,
-                    _bombs: [], _mines: [], _summonOwnerId: m.id,
-                    scale: 0.75, spawnFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
-                  });
-                  hitEffects.push({ x: sx, y: sy - 20, life: 20, type: "summon" });
-                }
-              }
-              hitEffects.push({ x: egg.x, y: egg.y, life: 15, type: "poison_cloud" });
-              m._eggs.splice(ei, 1);
-            }
-          }
-        }
-
         // Tick persistent lasers (Game Master puzzle_lasers)
         if (m._lasers && m._lasers.length > 0 && m._activeAbility !== 'puzzle_lasers') {
           for (let li = m._lasers.length - 1; li >= 0; li--) {
@@ -599,16 +556,21 @@ function updateMobs() {
             const egg = m._eggs[ei];
             egg.timer--;
             if (egg.timer <= 0) {
-              // Hatch: spawn 2 toxic_leechling mobs
+              // Hatch: spawn 2 toxic_leechling mobs on walkable tiles
               const hpMult = getWaveHPMultiplier(wave) * 0.6;
               const spdMult = getWaveSpeedMultiplier(wave);
               for (let si = 0; si < 2; si++) {
                 const mt = MOB_TYPES['toxic_leechling'];
                 if (!mt) continue;
-                const angle = Math.random() * Math.PI * 2;
-                const sx = egg.x + Math.cos(angle) * (40 + Math.random() * 40);
-                const sy = egg.y + Math.sin(angle) * (40 + Math.random() * 40);
-                const mobId = nextMobId++;
+                let sx, sy, foundClear = false;
+                for (let attempt = 0; attempt < 15; attempt++) {
+                  const angle = Math.random() * Math.PI * 2;
+                  const spawnDist = 40 + Math.random() * 40;
+                  sx = egg.x + Math.cos(angle) * spawnDist;
+                  sy = egg.y + Math.sin(angle) * spawnDist;
+                  if (positionClear(sx, sy)) { foundClear = true; break; }
+                }
+                if (!foundClear) { sx = egg.x; sy = egg.y; }
                 mobs.push(createMob('toxic_leechling', sx, sy, hpMult, spdMult, { ownerId: m.id, scale: 0.8 }));
                 hitEffects.push({ x: sx, y: sy - 20, life: 20, type: "summon" });
               }
@@ -677,6 +639,7 @@ function updateMobs() {
             if (m._abilityCDs[abilKey] > 0) continue;
             const handler = MOB_SPECIALS[abilKey];
             if (!handler) continue;
+            m._specialTimer = 0; // Reset shared timer so boss handler activates immediately
             const specResult = handler(m, specCtx);
             // Reset CD
             m._abilityCDs[abilKey] = m._specialCD || 300;

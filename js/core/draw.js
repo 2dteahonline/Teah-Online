@@ -1315,6 +1315,7 @@ function draw() {
   drawStatsPanel();
   drawToolboxPanel();
   drawModifyGunPanel();
+  if (typeof drawTestMobPanel === 'function') drawTestMobPanel();
 
   // Placement preview (draw after panels so it shows under them)
   if (activePlaceTool && !UI.isOpen('toolbox')) {

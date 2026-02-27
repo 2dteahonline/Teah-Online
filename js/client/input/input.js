@@ -662,6 +662,11 @@ canvas.addEventListener("mousedown", e => {
   // CT-X modify gun panel clicks
   if (handleModifyGunClick(mx, my)) return;
 
+  // Test mob panel clicks
+  if (UI.isOpen('testmob') && typeof handleTestMobClick === 'function') {
+    if (handleTestMobClick(mx, my)) return;
+  }
+
   // Inventory panel clicks
   if (UI.isOpen('inventory') && handleInventoryClick(mx, my)) return;
 
@@ -797,6 +802,11 @@ canvas.addEventListener("contextmenu", e => {
   }
 });
 canvas.addEventListener("wheel", e => {
+  if (UI.isOpen('testmob') && typeof handleTestMobScroll === 'function') {
+    handleTestMobScroll(e.deltaY);
+    e.preventDefault();
+    return;
+  }
   if (countryPopupOpen) {
     const cols = 6, cellH = 82, popH = 420;
     const visRows = Math.floor((popH - 90) / cellH);

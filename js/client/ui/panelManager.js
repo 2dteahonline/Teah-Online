@@ -491,7 +491,7 @@ window.addEventListener("keydown", e => {
           if (fl > 0) { dungeonFloor = fl; resetCombatState('floor'); }
           chatMessages.push({ name: "SYSTEM", text: "Set to floor " + dungeonFloor, time: Date.now() });
         } else if (cmdLower === "/help") {
-          chatMessages.push({ name: "SYSTEM", text: "/test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /op | /stairs | /floor [n] | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "/testmob (GUI) | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /op | /stairs | /floor [n] | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
         } else if (cmdLower === "/save") {
           SaveLoad.save();
           chatMessages.push({ name: "SYSTEM", text: "Game saved!", time: Date.now() });
@@ -538,6 +538,9 @@ window.addEventListener("keydown", e => {
           const mob = createMob('grunt', player.x + 80, player.y, 1, 1);
           if (mob) mobs.push(mob);
           chatMessages.push({ name: "SYSTEM", text: "Spawned test grunt", time: Date.now() });
+        } else if (cmdLower === "/testmob" || cmdLower === "/testmobs") {
+          UI.close();
+          UI.open('testmob');
         } else if (cmdLower.startsWith("/test")) {
           const parts = cmd.trim().split(/\s+/);
           const typeKey = parts[1];

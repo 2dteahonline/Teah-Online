@@ -2796,13 +2796,9 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Telegraph cross pattern (4 cardinal directions)
+    // Brief warning circle at mob position (blades fly in all 4 directions with no directional telegraph)
     if (typeof TelegraphSystem !== 'undefined') {
-      const reach = 336;
-      TelegraphSystem.create({ shape: 'line', params: { x1: m.x, y1: m.y, x2: m.x + reach, y2: m.y, width: 28 }, delayFrames: 20, color: [200, 120, 50], owner: m.id });
-      TelegraphSystem.create({ shape: 'line', params: { x1: m.x, y1: m.y, x2: m.x - reach, y2: m.y, width: 28 }, delayFrames: 20, color: [200, 120, 50], owner: m.id });
-      TelegraphSystem.create({ shape: 'line', params: { x1: m.x, y1: m.y, x2: m.x, y2: m.y + reach, width: 28 }, delayFrames: 20, color: [200, 120, 50], owner: m.id });
-      TelegraphSystem.create({ shape: 'line', params: { x1: m.x, y1: m.y, x2: m.x, y2: m.y - reach, width: 28 }, delayFrames: 20, color: [200, 120, 50], owner: m.id });
+      TelegraphSystem.create({ shape: 'circle', params: { cx: m.x, cy: m.y, radius: 60 }, delayFrames: 20, color: [200, 120, 50], owner: m.id });
     }
     m._sawTelegraph = 20;
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
@@ -2999,7 +2995,7 @@ const MOB_SPECIALS = {
       if (m._grabPullFrame >= 24) {
         m._grabPulling = false;
         // Now start hold phase
-        m._grabHolding = 48; // 0.8s hold at mob position
+        m._grabHolding = 90; // 1.5s hold at mob position
         hitEffects.push({ x: m.x, y: m.y - 20, life: 20, type: "grab" });
       }
       return { skip: true };
@@ -3530,16 +3526,20 @@ const MOB_SPECIALS = {
     }
 
     // Don't drop more eggs if at max
-    if (m._eggs.length >= 4) return {};
+    if (m._eggs.length >= 3) return {};
 
-    // Drop 2 egg sacs near mob position
-    for (let e = 0; e < 2; e++) {
-      if (m._eggs.length >= 4) break;
-      const eggAngle = Math.random() * Math.PI * 2;
-      const eggDist = 60 + Math.random() * 80;
-      const eggX = m.x + Math.cos(eggAngle) * eggDist;
-      const eggY = m.y + Math.sin(eggAngle) * eggDist;
-      m._eggs.push({ x: eggX, y: eggY, timer: 120 }); // 2s to hatch
+    // Drop 1 egg sac near mob on a walkable tile
+    const eggAngle = Math.random() * Math.PI * 2;
+    const eggDist = 60 + Math.random() * 80;
+    let eggX = m.x + Math.cos(eggAngle) * eggDist;
+    let eggY = m.y + Math.sin(eggAngle) * eggDist;
+    // Clamp to map bounds
+    const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
+    eggX = Math.max(TILE, Math.min(mapW - TILE, eggX));
+    eggY = Math.max(TILE, Math.min(mapH - TILE, eggY));
+    // Only spawn on walkable tiles
+    if (positionClear(eggX, eggY)) {
+      m._eggs.push({ x: eggX, y: eggY, timer: 240 }); // 4s to hatch (slower)
       hitEffects.push({ x: eggX, y: eggY - 10, life: 20, type: "cast" });
     }
 
