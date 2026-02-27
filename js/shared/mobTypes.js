@@ -37,7 +37,7 @@ const MOB_TYPES = {
     name: "Street Chemist", hp: 65, speed: 1.6, damage: 6, killHeal: 12,
     skin: "#8a8a7a", hair: "#3a3a2a", shirt: "#5a6a4a", pants: "#3a4a2a", contactRange: 76,
     ai: 'witch', _specials: ['gas_canister'], specialCD: 540, // 9s
-    kiteRange: 240, // keeps more distance than legacy witch (throws canisters)
+    kiteRange: 320, // keeps far distance — throws canisters from safety
   },
 
   // Levels 6-9: Renegade Members

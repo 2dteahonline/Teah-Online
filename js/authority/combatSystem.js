@@ -1105,7 +1105,7 @@ const MOB_SPECIALS = {
     }
 
     m._cloaked = true;
-    m._cloakTimer = 60;
+    m._cloakTimer = 105; // ~3.5s invisible before backstab
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cloak" });
     return {};
   },
@@ -1465,14 +1465,18 @@ const MOB_SPECIALS = {
   summon_renegades: (m, ctx) => {
     const { mobs, hitEffects, wave } = ctx;
 
-    // Count active renegade summons
+    // Internal cooldown — prevent summoning too often even when rotation picks this ability
+    if (!m._summonCD) m._summonCD = 0;
+    if (m._summonCD > 0) { m._summonCD--; return {}; }
+
+    // Count active renegade summons (max 2 at a time)
     const activeCount = mobs.filter(s => s._summonOwnerId === m.id && s.hp > 0).length;
-    if (activeCount >= 4) return {};
+    if (activeCount >= 2) return {};
 
     const renegadeTypes = ['renegade_bruiser', 'renegade_shadowknife', 'renegade_demo', 'renegade_sniper'];
     const hpMult = getWaveHPMultiplier(wave);
     const spdMult = getWaveSpeedMultiplier(wave);
-    const toSpawn = Math.min(2, 4 - activeCount);
+    const toSpawn = 1; // only spawn 1 renegade at a time
 
     for (let si = 0; si < toSpawn; si++) {
       const typeKey = renegadeTypes[Math.floor(Math.random() * renegadeTypes.length)];
@@ -1528,6 +1532,7 @@ const MOB_SPECIALS = {
       hitEffects.push({ x: sx, y: sy - 20, life: 20, type: "summon" });
     }
 
+    m._summonCD = 900; // 15s internal cooldown before next summon
     return {};
   },
 };

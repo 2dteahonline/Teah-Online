@@ -1870,6 +1870,16 @@ function update() {
     speedMult = 1.0 - maxPenalty; // flat penalty for entire freeze duration
   }
 
+  // Apply mob status effects (slow/root/stun) to player movement
+  if (typeof StatusFX !== 'undefined' && StatusFX.tickPlayer) {
+    const fxResult = StatusFX.tickPlayer();
+    if (fxResult.rooted) {
+      speedMult = 0; // stun/root = cannot move at all
+    } else if (fxResult.speedMult < 1.0) {
+      speedMult *= fxResult.speedMult; // slow reduces speed
+    }
+  }
+
   // ===================== APPLY INTENTS (Step 3) =====================
   // Authority reads InputIntent and dispatches gameplay actions.
   // Input handlers ONLY set intents; this is the ONLY place they are consumed.
@@ -2108,8 +2118,7 @@ function update() {
     if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.update();
     if (typeof HazardSystem !== 'undefined') HazardSystem.update();
   }
-  // Player status effects tick (slow/root/mark/silence from mob specials)
-  if (typeof StatusFX !== 'undefined' && StatusFX.tickPlayer) StatusFX.tickPlayer();
+  // Player status effects already ticked before movement (for speed/root to take effect)
   // Poison damage tick (centralized in StatusFX)
   StatusFX.tickPlayerPoison();
   updateGun();
