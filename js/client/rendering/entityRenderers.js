@@ -966,6 +966,16 @@ const ENTITY_RENDERERS = {
       ctx.fillText("\u27F5 EXIT \u27F6", ex + w * TILE / 2, ey + h * TILE + 14);
       ctx.textAlign = "left";
   },
+  azurine_exit: (e, ctx, ex, ey, w, h) => {
+      const t = Date.now() / 1000;
+      ctx.fillStyle = `rgba(0,204,255,${0.15 + Math.sin(t * 2) * 0.05})`;
+      ctx.fillRect(ex + 4, ey + 4, w * TILE - 8, h * TILE - 8);
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = `rgba(0,204,255,${0.6 + Math.sin(t * 3) * 0.2})`;
+      ctx.textAlign = "center";
+      ctx.fillText("\u27F5 EXIT \u27F6", ex + w * TILE / 2, ey + h * TILE + 14);
+      ctx.textAlign = "left";
+  },
   dungeon_door: (e, ctx, ex, ey, w, h) => {
       const dw = w * TILE, dh = h * TILE;
       const dcx = ex + dw/2, dcy = ey + dh/2;
@@ -1125,6 +1135,26 @@ const ENTITY_RENDERERS = {
       ctx.beginPath(); ctx.arc(tcx3, tcy3 - 10, 5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = `rgba(255,100,20,${flicker * 0.8})`;
       ctx.beginPath(); ctx.arc(tcx3, tcy3 - 13, 3, 0, Math.PI * 2); ctx.fill();
+  },
+  neon_light: (e, ctx, ex, ey, w, h) => {
+      const ncx = ex + TILE/2, ncy = ey + TILE/2;
+      const t = Date.now() / 1000;
+      const flicker = 0.6 + Math.sin(t * 3 + ex * 0.1) * 0.2 + Math.sin(t * 7 + ey * 0.1) * 0.1;
+      // Cyan glow aura
+      const ngrd = ctx.createRadialGradient(ncx, ncy, 2, ncx, ncy, 50);
+      ngrd.addColorStop(0, `rgba(0,204,255,${flicker * 0.2})`);
+      ngrd.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = ngrd;
+      ctx.fillRect(ncx - 50, ncy - 50, 100, 100);
+      // Fixture mount
+      ctx.fillStyle = '#333';
+      ctx.fillRect(ncx - 3, ncy - 4, 6, 10);
+      // Light bar
+      ctx.fillStyle = `rgba(0,204,255,${flicker})`;
+      ctx.fillRect(ncx - 5, ncy - 6, 10, 3);
+      // Hot center
+      ctx.fillStyle = `rgba(180,240,255,${flicker * 0.8})`;
+      ctx.fillRect(ncx - 3, ncy - 5, 6, 1);
   },
   rock: (e, ctx, ex, ey, w, h) => {
       const rcx = ex + TILE/2, rcy = ey + TILE/2;

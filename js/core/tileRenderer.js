@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inLobby ? '#1a4a18' : '#1e1e26';
+  ctx.fillStyle = Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inLobby ? '#1a4a18' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -134,6 +134,43 @@ function drawLevelBackground(camX, camY) {
           if ((tx + ty) % 8 === 0) {
             ctx.fillStyle = 'rgba(80,75,70,0.3)';
             ctx.beginPath(); ctx.arc(x + 20, y + 24, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === AZURINE CITY INTERIOR TILES ===
+      if (Scene.inAzurine) {
+        const isOuterEdge = tx === 0 || ty === 0 || tx === level.widthTiles - 1 || ty === level.heightTiles - 1;
+        if (collisionGrid[ty][tx] === 1 && isOuterEdge) {
+          // Dark steel wall with neon accent
+          ctx.fillStyle = '#0e0e1a';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#181828';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Cyan accent line on some wall tiles
+          if ((tx + ty) % 3 === 0) {
+            ctx.fillStyle = 'rgba(0,204,255,0.12)';
+            ctx.fillRect(x + 4, y + TILE - 4, TILE - 8, 2);
+          }
+        } else {
+          // Dark blue-gray floor
+          const sv = ((tx * 3 + ty * 7) % 5);
+          ctx.fillStyle = `rgb(${32 + sv},${32 + sv},${42 + sv * 2})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(0,204,255,0.03)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Occasional neon floor crack
+          if ((tx + ty * 3) % 11 === 0) {
+            ctx.strokeStyle = 'rgba(0,204,255,0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 8, y + 12); ctx.lineTo(x + 32, y + 36); ctx.stroke();
+          }
+          if ((tx * 7 + ty) % 13 === 0) {
+            ctx.strokeStyle = 'rgba(255,0,170,0.06)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 30, y + 8); ctx.lineTo(x + 10, y + 38); ctx.stroke();
           }
         }
         continue;

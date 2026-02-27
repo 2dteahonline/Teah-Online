@@ -41,6 +41,7 @@ const Scene = {
     else if (level.isMine) this._current = 'mine';
     else if (level.isCooking) this._current = 'cooking';
     else if (level.isFarm) this._current = 'farm';
+    else if (level.isAzurine) this._current = 'azurine';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -55,6 +56,7 @@ const Scene = {
   get inMine() { return this._current === 'mine'; },
   get inCooking() { return this._current === 'cooking'; },
   get inFarm() { return this._current === 'farm'; },
+  get inAzurine() { return this._current === 'azurine'; },
 };
 
 // ---- ZONE TRANSITIONS ----
@@ -79,7 +81,7 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
     hitEffects.length = 0;
     medpacks.length = 0;
     queueActive = false; queuePlayers = 0; queueTimer = 0;
-    if (targetLevel.isLobby || targetLevel.isCave) {
+    if (targetLevel.isLobby || targetLevel.isCave || targetLevel.isAzurine) {
       resetCombatState('lobby');
     } else if (targetLevel.isMine) {
       resetCombatState('mine');
@@ -194,7 +196,15 @@ function checkPortals() {
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }
-    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inLobby) && inZone) {
+    if (e.type === 'azurine_entrance' && Scene.inLobby && inZone) {
+      startTransition(e.target, e.spawnTX, e.spawnTY);
+      return;
+    }
+    if (e.type === 'azurine_exit' && Scene.inAzurine && inZone) {
+      startTransition(e.target, e.spawnTX, e.spawnTY);
+      return;
+    }
+    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine) && inZone) {
       nearQueue = true;
       queueDungeonId = e.dungeonId;
       queueSpawnTX = e.spawnTX;

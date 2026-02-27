@@ -1177,10 +1177,10 @@ function draw() {
     if (transitionAlpha > 0.5) {
       ctx.font = "bold 20px monospace"; ctx.fillStyle = `rgba(255,255,255,${(transitionAlpha - 0.5) * 2})`;
       ctx.textAlign = "center";
-      const getSceneLabel = (s) => s === 'lobby' ? "🌳 LOBBY" : s === 'cave' ? "⛰ CAVE" : "⚔ DUNGEON";
-      const zoneName = transitionPhase === 1
-        ? getSceneLabel(LEVELS[transitionTarget]?.isLobby ? 'lobby' : LEVELS[transitionTarget]?.isCave ? 'cave' : 'dungeon')
-        : getSceneLabel(Scene.current);
+      const getSceneLabel = (s) => s === 'lobby' ? "🌳 LOBBY" : s === 'cave' ? "⛰ CAVE" : s === 'azurine' ? "⚡ AZURINE CITY" : "⚔ DUNGEON";
+      const tgt = LEVELS[transitionTarget];
+      const tgtScene = tgt?.isLobby ? 'lobby' : tgt?.isCave ? 'cave' : tgt?.isAzurine ? 'azurine' : 'dungeon';
+      const zoneName = transitionPhase === 1 ? getSceneLabel(tgtScene) : getSceneLabel(Scene.current);
       ctx.fillText(zoneName, BASE_W / 2, BASE_H / 2);
       ctx.textAlign = "left";
     }
