@@ -491,7 +491,7 @@ window.addEventListener("keydown", e => {
           if (fl > 0) { dungeonFloor = fl; resetCombatState('floor'); }
           chatMessages.push({ name: "SYSTEM", text: "Set to floor " + dungeonFloor, time: Date.now() });
         } else if (cmdLower === "/help") {
-          chatMessages.push({ name: "SYSTEM", text: "/gold [amt] | /wave [n] | /heal | /dung | /op | /stairs | /floor [n] | /grunt | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "/spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /op | /stairs | /floor [n] | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
         } else if (cmdLower === "/save") {
           SaveLoad.save();
           chatMessages.push({ name: "SYSTEM", text: "Game saved!", time: Date.now() });
@@ -513,28 +513,31 @@ window.addEventListener("keydown", e => {
           UI.close();
           setTimeout(() => UI.open('modifygun'), 0);
           return;
+        } else if (cmdLower.startsWith("/spawn")) {
+          const parts = cmd.trim().split(/\s+/);
+          const typeKey = parts[1];
+          if (!typeKey) {
+            const allTypes = Object.keys(MOB_TYPES).join(', ');
+            chatMessages.push({ name: "SYSTEM", text: "Usage: /spawn <type>  Types: " + allTypes, time: Date.now() });
+          } else if (!MOB_TYPES[typeKey]) {
+            chatMessages.push({ name: "SYSTEM", text: "Unknown mob type: " + typeKey, time: Date.now() });
+          } else {
+            const mob = createMob(typeKey, player.x + 80, player.y, 1, 1);
+            if (mob) {
+              mobs.push(mob);
+              chatMessages.push({ name: "SYSTEM", text: "Spawned " + mob.name + " (" + typeKey + ")", time: Date.now() });
+            }
+          }
+        } else if (cmdLower === "/killall") {
+          const count = mobs.length;
+          mobs.length = 0;
+          bullets.length = 0;
+          chatMessages.push({ name: "SYSTEM", text: "Killed " + count + " mobs, cleared bullets", time: Date.now() });
         } else if (cmdLower === "/grunt") {
-          const cx = (level.widthTiles * TILE) / 2;
-          const cy = (level.heightTiles * TILE) / 2;
-          const mt = MOB_TYPES.grunt;
-          mobs.push({
-            x: cx, y: cy, type: "grunt", id: Math.random(),
-            hp: mt.hp, maxHp: mt.hp,
-            speed: 0, damage: mt.damage, contactRange: mt.contactRange,
-            skin: mt.skin, hair: mt.hair, shirt: mt.shirt, pants: mt.pants,
-            name: mt.name, dir: 0, frame: 0, attackCooldown: 0,
-            shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
-            summonRate: 0, summonMax: 0, summonTimer: 0,
-            witchId: 0, boneSwing: 0, castTimer: 0,
-            scale: 1.0, spawnFrame: gameFrame,
-            boulderRate: 0, boulderSpeed: 0, boulderRange: 0, boulderTimer: 0, throwAnim: 0,
-            explodeRange: 0, explodeDamage: 0, fuseMin: 0, fuseMax: 0, mummyArmed: false, mummyFuse: 0,
-            arrowRate: 0, arrowSpeed: 0, arrowRange: 0, arrowBounces: 0, arrowLife: 0, bowDrawAnim: 0, arrowTimer: 0,
-            healRadius: 0, healRate: 0, healAmount: 0, healTimer: 0, healAnim: 0,
-            auraParticles: [],
-            _testDummy: true
-          });
-          chatMessages.push({ name: "SYSTEM", text: "Spawned test grunt at map center", time: Date.now() });
+          // Legacy: spawn grunt via createMob
+          const mob = createMob('grunt', player.x + 80, player.y, 1, 1);
+          if (mob) mobs.push(mob);
+          chatMessages.push({ name: "SYSTEM", text: "Spawned test grunt", time: Date.now() });
         } else if (cmdLower === "/sprites") {
           useSpriteMode = !useSpriteMode;
           chatMessages.push({ name: "SYSTEM", text: "Sprite mode: " + (useSpriteMode ? "ON" : "OFF"), time: Date.now() });

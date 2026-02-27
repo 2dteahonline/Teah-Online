@@ -1703,6 +1703,19 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
   const isArcher = mobType === "archer";
   const isHealer = mobType === "healer";
 
+  // Floor 1: Azurine City mob flags
+  const isNeonPickpocket = mobType === 'neon_pickpocket';
+  const isCyberMugger = mobType === 'cyber_mugger';
+  const isDroneLookout = mobType === 'drone_lookout';
+  const isStreetChemist = mobType === 'street_chemist';
+  const isRenegadeBruiser = mobType === 'renegade_bruiser';
+  const isShadowknife = mobType === 'renegade_shadowknife';
+  const isRenegadeDemo = mobType === 'renegade_demo';
+  const isRenegadeSniper = mobType === 'renegade_sniper';
+  const isTheDon = mobType === 'the_don';
+  const isVelocity = mobType === 'velocity';
+  const isFloor1Mob = isNeonPickpocket || isCyberMugger || isDroneLookout || isStreetChemist || isRenegadeBruiser || isShadowknife || isRenegadeDemo || isRenegadeSniper || isTheDon || isVelocity;
+
   // Healer floats above ground
   if (isHealer && !isPreview) {
     const floatOff = -12 + Math.sin(renderTime * 0.003) * 5;
@@ -1799,6 +1812,71 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
     } else {
       ctx.fillRect(x + 11, y + 58 + bobY - legSwing * 0.3, 8, 4);
       ctx.fillRect(x + 21, y + 58 + bobY + legSwing * 0.3, 8, 4);
+    }
+  } else if (isRenegadeBruiser) {
+    // Extra-wide armored legs
+    ctx.fillStyle = "#3a2a2a";
+    if (dir === 0 || dir === 1) {
+      ctx.fillRect(x + 3, y + 44 + bobY - legSwing, 13, 16);
+      ctx.fillRect(x + 24, y + 44 + bobY + legSwing, 13, 16);
+    } else {
+      ctx.fillRect(x + 7, y + 44 + bobY - legSwing, 12, 16);
+      ctx.fillRect(x + 21, y + 44 + bobY + legSwing, 12, 16);
+    }
+    // Metal knee guards
+    ctx.fillStyle = "#5a4a4a";
+    ctx.fillRect(x + 5, y + 50 + bobY - legSwing, 9, 4);
+    ctx.fillRect(x + 26, y + 50 + bobY + legSwing, 9, 4);
+    // Heavy boots
+    ctx.fillStyle = "#2a1a1a";
+    ctx.fillRect(x + 2, y + 58 + bobY, 14, 5);
+    ctx.fillRect(x + 24, y + 58 + bobY, 14, 5);
+  } else if (isShadowknife) {
+    // Thin wrapped legs
+    ctx.fillStyle = "#0a0a1a";
+    if (dir === 0 || dir === 1) {
+      ctx.fillRect(x + 10, y + 46 + bobY - legSwing, 7, 14);
+      ctx.fillRect(x + 23, y + 46 + bobY + legSwing, 7, 14);
+    } else {
+      ctx.fillRect(x + 12, y + 46 + bobY - legSwing, 7, 14);
+      ctx.fillRect(x + 21, y + 46 + bobY + legSwing, 7, 14);
+    }
+    // Wrapping strips
+    ctx.fillStyle = "#1a1a2a";
+    ctx.fillRect(x + 9, y + 49 + bobY - legSwing, 9, 2);
+    ctx.fillRect(x + 22, y + 52 + bobY + legSwing, 9, 2);
+  } else if (isFloor1Mob) {
+    // Default Floor 1 legs — use defined pants color
+    if (dir === 0 || dir === 1) {
+      ctx.fillRect(x + 6, y + 46 + bobY - legSwing, 10, 14);
+      ctx.fillRect(x + 24, y + 46 + bobY + legSwing, 10, 14);
+    } else {
+      ctx.fillRect(x + 10, y + 46 + bobY - legSwing, 9, 14);
+      ctx.fillRect(x + 21, y + 46 + bobY + legSwing, 9, 14);
+    }
+    // Neon pickpocket: cyan stripe on legs
+    if (isNeonPickpocket) {
+      ctx.fillStyle = "#00ccff";
+      ctx.fillRect(x + 14, y + 48 + bobY - legSwing, 2, 10);
+      ctx.fillRect(x + 24, y + 48 + bobY + legSwing, 2, 10);
+    }
+    // Renegade demo: ammo pouches on thigh
+    if (isRenegadeDemo) {
+      ctx.fillStyle = "#6a5a4a";
+      ctx.fillRect(x + 4, y + 48 + bobY - legSwing, 4, 6);
+    }
+    // The Don: polished shoes
+    if (isTheDon) {
+      ctx.fillStyle = "#1a0a00";
+      ctx.fillRect(x + 4, y + 58 + bobY, 12, 4);
+      ctx.fillRect(x + 24, y + 58 + bobY, 12, 4);
+    }
+    // Velocity: blue energy lines on legs
+    if (isVelocity) {
+      const pulse = 0.5 + 0.5 * Math.sin(renderTime * 0.008);
+      ctx.fillStyle = `rgba(60,60,255,${0.4 + pulse * 0.4})`;
+      ctx.fillRect(x + 8, y + 47 + bobY - legSwing, 2, 12);
+      ctx.fillRect(x + 30, y + 47 + bobY + legSwing, 2, 12);
     }
   } else {
   if (dir === 0 || dir === 1) {
@@ -1926,6 +2004,207 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
     // Rib lines
     ctx.fillStyle = "#b0a890";
     for (let r = 0; r < 3; r++) ctx.fillRect(x + 10, y + 31 + bobY + r * 5, 20, 1);
+  } else if (isFloor1Mob) {
+    // --- Floor 1 torso rendering ---
+    if (isNeonPickpocket) {
+      // Dark hoodie body with cyan trim
+      ctx.fillStyle = "#1a1a3a";
+      ctx.fillRect(x + 4, y + 28 + bobY, 32, 20);
+      // Hoodie pocket
+      ctx.fillStyle = "#141430";
+      ctx.fillRect(x + 10, y + 38 + bobY, 20, 8);
+      // Cyan trim lines
+      ctx.fillStyle = "#00ccff";
+      ctx.fillRect(x + 4, y + 28 + bobY, 32, 2); // collar
+      ctx.fillRect(x + 19, y + 30 + bobY, 2, 16); // center zipper
+      // Faint cyan glow on hoodie
+      ctx.fillStyle = "rgba(0,204,255,0.08)";
+      ctx.fillRect(x + 4, y + 28 + bobY, 32, 20);
+    } else if (isCyberMugger) {
+      // Dark tactical vest with armor plates
+      ctx.fillStyle = "#2a2a3a";
+      ctx.fillRect(x + 4, y + 28 + bobY, 32, 20);
+      // Armor plate highlights
+      ctx.fillStyle = "#3a3a4a";
+      ctx.fillRect(x + 6, y + 30 + bobY, 12, 8);
+      ctx.fillRect(x + 22, y + 30 + bobY, 12, 8);
+      // Plate edges
+      ctx.fillStyle = "#4a4a5a";
+      ctx.fillRect(x + 6, y + 30 + bobY, 12, 1);
+      ctx.fillRect(x + 22, y + 30 + bobY, 12, 1);
+      // Utility belt
+      ctx.fillStyle = "#3a3020";
+      ctx.fillRect(x + 4, y + 42 + bobY, 32, 3);
+      ctx.fillStyle = "#5a5040"; // buckle
+      ctx.fillRect(x + 18, y + 42 + bobY, 4, 3);
+    } else if (isDroneLookout) {
+      // Light tactical vest with tech harness
+      ctx.fillStyle = "#4a4a5a";
+      ctx.fillRect(x + 4, y + 28 + bobY, 32, 20);
+      // Tech harness straps
+      ctx.fillStyle = "#3a3a4a";
+      ctx.fillRect(x + 14, y + 28 + bobY, 3, 18); // center strap
+      ctx.fillRect(x + 23, y + 28 + bobY, 3, 18); // right strap
+      // Receiver module on chest
+      ctx.fillStyle = "#2a2a3a";
+      ctx.fillRect(x + 10, y + 32 + bobY, 8, 6);
+      // Red indicator light (blinks)
+      const blink = Math.sin(renderTime * 0.005) > 0;
+      if (blink) {
+        ctx.fillStyle = "#ff3030";
+        ctx.fillRect(x + 12, y + 34 + bobY, 3, 3);
+        ctx.fillStyle = "rgba(255,48,48,0.3)";
+        ctx.beginPath(); ctx.arc(x + 13, y + 35 + bobY, 5, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (isStreetChemist) {
+      // Stained lab coat
+      ctx.fillStyle = "#5a6a4a";
+      ctx.fillRect(x + 2, y + 28 + bobY, 36, 22);
+      // Green acid stains
+      ctx.fillStyle = "#4a6a2a";
+      ctx.fillRect(x + 8, y + 34 + bobY, 5, 4);
+      ctx.fillRect(x + 24, y + 38 + bobY, 6, 3);
+      // Coat opening
+      ctx.fillStyle = "#3a4a2a";
+      ctx.fillRect(x + 18, y + 30 + bobY, 3, 18);
+      // Vial holder belt
+      ctx.fillStyle = "#3a3020";
+      ctx.fillRect(x + 4, y + 44 + bobY, 32, 3);
+      // Tiny vials on belt
+      ctx.fillStyle = "#60ff40";
+      ctx.fillRect(x + 8, y + 42 + bobY, 2, 4);
+      ctx.fillRect(x + 13, y + 42 + bobY, 2, 4);
+      ctx.fillStyle = "#ff6040";
+      ctx.fillRect(x + 26, y + 42 + bobY, 2, 4);
+    } else if (isRenegadeBruiser) {
+      // Heavy plate armor
+      ctx.fillStyle = "#4a3a3a";
+      ctx.fillRect(x + 2, y + 26 + bobY, 36, 22);
+      // Chest plate highlight
+      ctx.fillStyle = "#5a4a4a";
+      ctx.fillRect(x + 6, y + 28 + bobY, 28, 12);
+      // Red gang stripe across chest
+      ctx.fillStyle = "#cc2020";
+      ctx.fillRect(x + 4, y + 34 + bobY, 32, 3);
+      // Spiked shoulder pads
+      ctx.fillStyle = "#3a2a2a";
+      ctx.fillRect(x + 0, y + 26 + bobY, 10, 8);
+      ctx.fillRect(x + 30, y + 26 + bobY, 10, 8);
+      // Spikes
+      ctx.fillStyle = "#5a4a4a";
+      ctx.fillRect(x - 1, y + 24 + bobY, 3, 4);
+      ctx.fillRect(x + 5, y + 24 + bobY, 3, 4);
+      ctx.fillRect(x + 32, y + 24 + bobY, 3, 4);
+      ctx.fillRect(x + 38, y + 24 + bobY, 3, 4);
+    } else if (isShadowknife) {
+      // Slim dark stealth suit
+      ctx.fillStyle = "#0a0a1a";
+      ctx.fillRect(x + 6, y + 28 + bobY, 28, 20);
+      // Subtle purple trim
+      ctx.fillStyle = "rgba(100,40,140,0.4)";
+      ctx.fillRect(x + 6, y + 28 + bobY, 28, 2);
+      ctx.fillRect(x + 6, y + 46 + bobY, 28, 2);
+      // Cross-body sheath strap
+      ctx.fillStyle = "#1a1a2a";
+      ctx.save();
+      ctx.translate(x + 20, y + 38 + bobY);
+      ctx.rotate(-0.35);
+      ctx.fillRect(-16, -1, 32, 2);
+      ctx.restore();
+    } else if (isRenegadeDemo) {
+      // Tactical vest with explosive pouches
+      ctx.fillStyle = "#5a4a3a";
+      ctx.fillRect(x + 4, y + 28 + bobY, 32, 20);
+      // Bandolier across chest
+      ctx.fillStyle = "#3a3020";
+      ctx.save();
+      ctx.translate(x + 20, y + 36 + bobY);
+      ctx.rotate(-0.3);
+      ctx.fillRect(-16, -2, 32, 4);
+      ctx.restore();
+      // Explosive pouches (orange dots = charges)
+      ctx.fillStyle = "#ff6030";
+      ctx.beginPath(); ctx.arc(x + 10, y + 34 + bobY, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 18, y + 33 + bobY, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 26, y + 34 + bobY, 3, 0, Math.PI * 2); ctx.fill();
+      // Orange caps on charges
+      ctx.fillStyle = "#cc4020";
+      ctx.beginPath(); ctx.arc(x + 10, y + 34 + bobY, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 18, y + 33 + bobY, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 26, y + 34 + bobY, 1.5, 0, Math.PI * 2); ctx.fill();
+    } else if (isRenegadeSniper) {
+      // Long dark coat
+      ctx.fillStyle = "#3a3a4a";
+      ctx.fillRect(x + 2, y + 28 + bobY, 36, 24);
+      // Coat lapels
+      ctx.fillStyle = "#2a2a3a";
+      ctx.fillRect(x + 8, y + 28 + bobY, 8, 10);
+      ctx.fillRect(x + 24, y + 28 + bobY, 8, 10);
+      // Inner shirt
+      ctx.fillStyle = "#1a1a2a";
+      ctx.fillRect(x + 16, y + 30 + bobY, 8, 8);
+      // Coat flare bottom
+      ctx.fillStyle = "#2a2a3a";
+      ctx.fillRect(x + 0, y + 48 + bobY, 8, 6);
+      ctx.fillRect(x + 32, y + 48 + bobY, 8, 6);
+    } else if (isTheDon) {
+      // Pinstripe suit jacket
+      ctx.fillStyle = "#3a2a1a";
+      ctx.fillRect(x + 2, y + 26 + bobY, 36, 22);
+      // Pinstripes
+      ctx.fillStyle = "#4a3a2a";
+      for (let s = 0; s < 7; s++) {
+        ctx.fillRect(x + 4 + s * 5, y + 26 + bobY, 1, 22);
+      }
+      // Lapels
+      ctx.fillStyle = "#2a1a0a";
+      ctx.fillRect(x + 8, y + 26 + bobY, 7, 12);
+      ctx.fillRect(x + 25, y + 26 + bobY, 7, 12);
+      // White shirt V
+      ctx.fillStyle = "#c8c0b0";
+      ctx.beginPath();
+      ctx.moveTo(x + 15, y + 26 + bobY);
+      ctx.lineTo(x + 20, y + 36 + bobY);
+      ctx.lineTo(x + 25, y + 26 + bobY);
+      ctx.closePath();
+      ctx.fill();
+      // Tie
+      ctx.fillStyle = "#cc2020";
+      ctx.fillRect(x + 19, y + 28 + bobY, 3, 14);
+      // Gold chain across vest
+      ctx.fillStyle = "#ffd700";
+      ctx.fillRect(x + 12, y + 38 + bobY, 16, 1);
+      // Wide shoulders
+      ctx.fillStyle = "#3a2a1a";
+      ctx.fillRect(x + 0, y + 26 + bobY, 6, 8);
+      ctx.fillRect(x + 34, y + 26 + bobY, 6, 8);
+    } else if (isVelocity) {
+      // Sleek streamlined armor
+      ctx.fillStyle = "#2a2a5a";
+      ctx.fillRect(x + 4, y + 28 + bobY, 32, 20);
+      // Energy core in center chest
+      const pulse = 0.5 + 0.5 * Math.sin(renderTime * 0.008);
+      ctx.fillStyle = `rgba(60,60,255,${0.6 + pulse * 0.3})`;
+      ctx.beginPath(); ctx.arc(x + 20, y + 36 + bobY, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(100,100,255,${0.3 + pulse * 0.2})`;
+      ctx.beginPath(); ctx.arc(x + 20, y + 36 + bobY, 9, 0, Math.PI * 2); ctx.fill();
+      // Blue energy lines on torso
+      ctx.fillStyle = `rgba(80,80,255,${0.4 + pulse * 0.4})`;
+      ctx.fillRect(x + 8, y + 30 + bobY, 2, 16);
+      ctx.fillRect(x + 30, y + 30 + bobY, 2, 16);
+      ctx.fillRect(x + 10, y + 28 + bobY, 20, 2);
+      // Lightning crackling around body
+      if (Math.random() < 0.3) {
+        ctx.strokeStyle = "rgba(120,120,255,0.6)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const lx = x + 10 + Math.random() * 20;
+        const ly = y + 28 + bobY + Math.random() * 18;
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx + (Math.random() - 0.5) * 12, ly + (Math.random() - 0.5) * 12);
+        ctx.stroke();
+      }
+    }
   } else {
     ctx.fillRect(x + 4, y + 28 + bobY, 32, 20);
     ctx.fillStyle = "rgba(0,0,0,0.1)";
@@ -2526,6 +2805,39 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
     ctx.fillRect(hx + 0, hy, 40, 6);
     ctx.fillStyle = "#9a9590";
     ctx.fillRect(hx + 2, hy - 2, 36, 4);
+  } else if (isShadowknife) {
+    // Dark assassin hood — covers entire head
+    ctx.fillStyle = "#0a0a1a";
+    ctx.beginPath(); ctx.roundRect(hx - 1, hy - 1, 42, 32, 10); ctx.fill();
+    // Hood peak
+    ctx.beginPath();
+    ctx.moveTo(hx + 12, hy - 2);
+    ctx.lineTo(hx + 20, hy - 10);
+    ctx.lineTo(hx + 28, hy - 2);
+    ctx.closePath();
+    ctx.fill();
+    // Dark void face
+    ctx.fillStyle = "#050510";
+    ctx.beginPath(); ctx.roundRect(hx + 6, hy + 6, 28, 18, 6); ctx.fill();
+    // Glowing purple eyes
+    if (dir !== 1) {
+      ctx.fillStyle = "#8040c0";
+      if (dir === 0) {
+        ctx.beginPath(); ctx.arc(hx + 14, hy + 14, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx + 26, hy + 14, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(128,64,192,0.3)";
+        ctx.beginPath(); ctx.arc(hx + 14, hy + 14, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx + 26, hy + 14, 5, 0, Math.PI * 2); ctx.fill();
+      } else if (dir === 2) {
+        ctx.beginPath(); ctx.arc(hx + 12, hy + 14, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(128,64,192,0.3)";
+        ctx.beginPath(); ctx.arc(hx + 12, hy + 14, 5, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(hx + 28, hy + 14, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(128,64,192,0.3)";
+        ctx.beginPath(); ctx.arc(hx + 28, hy + 14, 5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
   } else {
   ctx.fillStyle = skin;
   ctx.beginPath(); ctx.roundRect(hx + 2, hy + 4, 36, 28, 8); ctx.fill();
@@ -2552,8 +2864,8 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
   }
   } // end golem head else
 
-  // Face (skip for golem — has its own eyes)
-  if (dir !== 1 && !isGolem && !isMummy && !isArcher && !isHealer) {
+  // Face (skip for golem — has its own eyes, skip for shadowknife — has hood)
+  if (dir !== 1 && !isGolem && !isMummy && !isArcher && !isHealer && !isShadowknife) {
     if (isSkeleton) {
       // Skeleton face — hollow eye sockets and teeth
       ctx.fillStyle = "#222";
@@ -2614,6 +2926,266 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
       const px2 = hx + 20 + Math.cos(angle) * 24;
       const py2 = hy + 15 + Math.sin(angle) * 18;
       ctx.beginPath(); ctx.arc(px2, py2, 2 + Math.sin(t + p) * 1, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ===================== FLOOR 1 OVERLAYS =====================
+  // Head accessories, weapons, and special effects drawn on top
+  if (isFloor1Mob) {
+    // --- Neon Pickpocket: hood up + blade glint ---
+    if (isNeonPickpocket) {
+      // Hood over hair
+      ctx.fillStyle = "#1a1a3a";
+      ctx.beginPath(); ctx.roundRect(hx - 1, hy - 2, 42, 14, 6); ctx.fill();
+      // Hood peak
+      ctx.beginPath();
+      ctx.moveTo(hx + 12, hy - 2);
+      ctx.lineTo(hx + 20, hy - 8);
+      ctx.lineTo(hx + 28, hy - 2);
+      ctx.closePath();
+      ctx.fill();
+      // Cyan hood trim
+      ctx.fillStyle = "#00ccff";
+      ctx.fillRect(hx + 2, hy + 10, 36, 1);
+      // Small blade glint in hand area
+      const bladeX = dir === 2 ? x - 4 : dir === 3 ? x + 38 : x + 34;
+      const bladeY = y + 44 + bobY;
+      ctx.fillStyle = "#a0d0ff";
+      ctx.fillRect(bladeX, bladeY, 2, 8);
+      ctx.fillStyle = "rgba(160,208,255,0.4)";
+      ctx.beginPath(); ctx.arc(bladeX + 1, bladeY, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // --- Cyber Mugger: face mask + electric baton ---
+    if (isCyberMugger) {
+      // Face mask/bandana
+      ctx.fillStyle = "#2a2a3a";
+      if (dir !== 1) {
+        ctx.fillRect(hx + 4, hy + 18, 32, 10);
+        // Metal studs on mask
+        ctx.fillStyle = "#5a5a6a";
+        ctx.fillRect(hx + 10, hy + 21, 2, 2);
+        ctx.fillRect(hx + 28, hy + 21, 2, 2);
+      }
+      // Electric baton
+      const batonX = dir === 2 ? x - 6 : dir === 3 ? x + 38 : x + 34;
+      const batonY = y + 38 + bobY;
+      ctx.fillStyle = "#3a3a40";
+      ctx.fillRect(batonX, batonY, 3, 14);
+      // Electric spark at tip
+      const spark = Math.sin(renderTime * 0.015) > 0;
+      if (spark) {
+        ctx.fillStyle = "#ffff40";
+        ctx.beginPath(); ctx.arc(batonX + 1, batonY - 1, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,60,0.3)";
+        ctx.beginPath(); ctx.arc(batonX + 1, batonY - 1, 6, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // --- Drone Lookout: tech visor + antenna ---
+    if (isDroneLookout) {
+      // Tech visor across eyes
+      ctx.fillStyle = "#1a1a2a";
+      if (dir !== 1) {
+        ctx.fillRect(hx + 2, hy + 10, 36, 8);
+        // Red lens
+        ctx.fillStyle = "#ff3030";
+        if (dir === 0) {
+          ctx.fillRect(hx + 8, hy + 12, 8, 4);
+          ctx.fillRect(hx + 24, hy + 12, 8, 4);
+        } else if (dir === 2) {
+          ctx.fillRect(hx + 4, hy + 12, 10, 4);
+        } else {
+          ctx.fillRect(hx + 26, hy + 12, 10, 4);
+        }
+        // Red glow
+        ctx.fillStyle = "rgba(255,48,48,0.15)";
+        ctx.fillRect(hx + 2, hy + 10, 36, 8);
+      }
+      // Antenna on back
+      if (dir === 0 || dir === 2 || dir === 3) {
+        ctx.fillStyle = "#3a3a4a";
+        ctx.fillRect(hx + 30, hy - 8, 2, 12);
+        // Antenna tip blink
+        const blink = Math.sin(renderTime * 0.006) > 0.3;
+        ctx.fillStyle = blink ? "#ff3030" : "#801010";
+        ctx.beginPath(); ctx.arc(hx + 31, hy - 9, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // --- Street Chemist: gas mask + goggles ---
+    if (isStreetChemist) {
+      // Gas mask/respirator
+      if (dir !== 1) {
+        ctx.fillStyle = "#3a3a3a";
+        ctx.fillRect(hx + 6, hy + 16, 28, 12);
+        // Filter canisters
+        ctx.fillStyle = "#4a4a4a";
+        ctx.beginPath(); ctx.arc(hx + 10, hy + 24, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx + 30, hy + 24, 4, 0, Math.PI * 2); ctx.fill();
+        // Eye pieces (green tint)
+        ctx.fillStyle = "#40aa30";
+        if (dir === 0) {
+          ctx.beginPath(); ctx.arc(hx + 14, hy + 18, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(hx + 26, hy + 18, 4, 0, Math.PI * 2); ctx.fill();
+        } else if (dir === 2) {
+          ctx.beginPath(); ctx.arc(hx + 12, hy + 18, 4, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.beginPath(); ctx.arc(hx + 28, hy + 18, 4, 0, Math.PI * 2); ctx.fill();
+        }
+        // Green lens glow
+        ctx.fillStyle = "rgba(64,170,48,0.2)";
+        ctx.fillRect(hx + 6, hy + 12, 28, 10);
+      }
+      // Goggles pushed up on forehead
+      ctx.fillStyle = "#5a5a5a";
+      ctx.fillRect(hx + 6, hy + 4, 28, 5);
+      ctx.fillStyle = "#80cc60";
+      ctx.beginPath(); ctx.arc(hx + 14, hy + 6, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(hx + 26, hy + 6, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // --- Renegade Bruiser: heavy brow + red stripe on face ---
+    if (isRenegadeBruiser) {
+      // Heavy brow ridge
+      ctx.fillStyle = "#4a3a30";
+      ctx.fillRect(hx + 2, hy + 8, 36, 4);
+      // Red war paint stripe
+      ctx.fillStyle = "#cc2020";
+      if (dir !== 1) {
+        ctx.fillRect(hx + 8, hy + 14, 4, 12);
+      }
+    }
+
+    // --- Renegade Demo: blast goggles ---
+    if (isRenegadeDemo) {
+      // Blast goggles
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(hx + 4, hy + 8, 32, 8);
+      // Orange tinted lenses
+      ctx.fillStyle = "#ff8040";
+      if (dir === 0) {
+        ctx.beginPath(); ctx.arc(hx + 14, hy + 12, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx + 26, hy + 12, 4, 0, Math.PI * 2); ctx.fill();
+      } else if (dir === 2) {
+        ctx.beginPath(); ctx.arc(hx + 11, hy + 12, 4, 0, Math.PI * 2); ctx.fill();
+      } else if (dir === 3) {
+        ctx.beginPath(); ctx.arc(hx + 29, hy + 12, 4, 0, Math.PI * 2); ctx.fill();
+      }
+      // Goggle glow
+      ctx.fillStyle = "rgba(255,128,64,0.15)";
+      ctx.fillRect(hx + 4, hy + 8, 32, 8);
+    }
+
+    // --- Renegade Sniper: hood/cap + scope ---
+    if (isRenegadeSniper) {
+      // Hood/cap
+      ctx.fillStyle = "#2a2a3a";
+      ctx.beginPath(); ctx.roundRect(hx, hy - 2, 40, 12, 4); ctx.fill();
+      // Cap brim
+      if (dir === 0) {
+        ctx.fillRect(hx + 4, hy + 8, 32, 4);
+      } else if (dir === 2) {
+        ctx.fillRect(hx - 4, hy + 6, 20, 4);
+      } else if (dir === 3) {
+        ctx.fillRect(hx + 24, hy + 6, 20, 4);
+      }
+      // Scope glint when facing player
+      if (dir === 0) {
+        const glint = Math.sin(renderTime * 0.004) > 0.5;
+        if (glint) {
+          ctx.fillStyle = "#ff2020";
+          ctx.beginPath(); ctx.arc(hx + 36, hy + 14, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "rgba(255,32,32,0.3)";
+          ctx.beginPath(); ctx.arc(hx + 36, hy + 14, 5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      // Rifle barrel
+      const rifleDir = dir;
+      if (rifleDir === 2) {
+        ctx.fillStyle = "#2a2a30";
+        ctx.fillRect(x - 18, y + 38 + bobY, 22, 3);
+        ctx.fillStyle = "#1a1a20";
+        ctx.fillRect(x - 22, y + 37 + bobY, 6, 5);
+      } else if (rifleDir === 3) {
+        ctx.fillStyle = "#2a2a30";
+        ctx.fillRect(x + 36, y + 38 + bobY, 22, 3);
+        ctx.fillStyle = "#1a1a20";
+        ctx.fillRect(x + 56, y + 37 + bobY, 6, 5);
+      } else if (rifleDir === 0) {
+        ctx.fillStyle = "#2a2a30";
+        ctx.fillRect(x + 30, y + 42 + bobY, 3, 18);
+        ctx.fillStyle = "#1a1a20";
+        ctx.fillRect(x + 29, y + 58 + bobY, 5, 4);
+      }
+    }
+
+    // --- The Don: fedora + cigar ---
+    if (isTheDon) {
+      // Fedora hat
+      ctx.fillStyle = "#2a1a0a";
+      // Hat brim
+      ctx.fillRect(hx - 4, hy + 2, 48, 5);
+      // Hat crown
+      ctx.fillRect(hx + 4, hy - 8, 32, 12);
+      // Hat band
+      ctx.fillStyle = "#cc2020";
+      ctx.fillRect(hx + 4, hy - 1, 32, 3);
+      // Hat top crease
+      ctx.fillStyle = "#1a0a00";
+      ctx.fillRect(hx + 10, hy - 8, 20, 2);
+      // Cigar (when facing forward/side)
+      if (dir === 0 || dir === 3) {
+        ctx.fillStyle = "#8a6040";
+        ctx.fillRect(hx + 32, hy + 22, 10, 3);
+        // Cigar ember
+        ctx.fillStyle = "#ff6020";
+        ctx.beginPath(); ctx.arc(hx + 43, hy + 23, 2, 0, Math.PI * 2); ctx.fill();
+        // Smoke
+        ctx.fillStyle = "rgba(180,180,180,0.2)";
+        ctx.beginPath(); ctx.arc(hx + 44, hy + 18, 3 + Math.sin(renderTime * 0.003) * 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx + 46, hy + 12, 2 + Math.sin(renderTime * 0.004) * 1.5, 0, Math.PI * 2); ctx.fill();
+      } else if (dir === 2) {
+        ctx.fillStyle = "#8a6040";
+        ctx.fillRect(hx - 2, hy + 22, 10, 3);
+        ctx.fillStyle = "#ff6020";
+        ctx.beginPath(); ctx.arc(hx - 3, hy + 23, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // --- Velocity: energy helmet + afterimage effect ---
+    if (isVelocity) {
+      // Sleek helmet overlay
+      ctx.fillStyle = "#1a1a4a";
+      ctx.beginPath(); ctx.roundRect(hx, hy - 2, 40, 14, 6); ctx.fill();
+      // Visor (bright blue)
+      if (dir !== 1) {
+        const pulse = 0.5 + 0.5 * Math.sin(renderTime * 0.008);
+        ctx.fillStyle = `rgba(80,80,255,${0.6 + pulse * 0.3})`;
+        if (dir === 0) {
+          ctx.fillRect(hx + 4, hy + 10, 32, 5);
+        } else if (dir === 2) {
+          ctx.fillRect(hx + 2, hy + 10, 18, 5);
+        } else {
+          ctx.fillRect(hx + 20, hy + 10, 18, 5);
+        }
+        // Visor bright center
+        ctx.fillStyle = `rgba(140,140,255,${0.4 + pulse * 0.3})`;
+        if (dir === 0) {
+          ctx.fillRect(hx + 10, hy + 11, 20, 3);
+        }
+      }
+      // Energy trail behind when moving
+      if (moving) {
+        const trailDir = dir === 0 ? 1 : dir === 1 ? -1 : dir === 2 ? 1 : -1;
+        for (let ti = 1; ti <= 3; ti++) {
+          const alpha = 0.15 / ti;
+          ctx.fillStyle = `rgba(60,60,255,${alpha})`;
+          const offX = dir === 2 ? ti * 8 : dir === 3 ? -ti * 8 : 0;
+          const offY = dir === 0 ? -ti * 8 : dir === 1 ? ti * 8 : 0;
+          ctx.fillRect(x + 4 + offX, y + 28 + bobY + offY, 32, 20);
+        }
+      }
     }
   }
 }

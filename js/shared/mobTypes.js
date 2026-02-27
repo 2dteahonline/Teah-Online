@@ -31,6 +31,7 @@ const MOB_TYPES = {
     skin: "#6a6a7a", hair: "#2a2a3a", shirt: "#4a4a5a", pants: "#3a3a4a", contactRange: 74,
     ai: 'archer', _specials: ['spot_mark'], specialCD: 600, // 10s
     arrowRate: 100, arrowSpeed: 6, arrowRange: 350, arrowBounces: 0, arrowLife: 400,
+    projectileStyle: 'neon_bolt',
   },
   street_chemist: {
     name: "Street Chemist", hp: 65, speed: 1.6, damage: 6, killHeal: 12,
@@ -59,6 +60,7 @@ const MOB_TYPES = {
     skin: "#6a6a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#2a2a3a", contactRange: 74,
     ai: 'archer', _specials: ['ricochet_round'], specialCD: 480, // 8s
     arrowRate: 90, arrowSpeed: 8, arrowRange: 450, arrowBounces: 1, arrowLife: 500,
+    projectileStyle: 'tracer',
   },
 
   // Level 5 Mini-Boss: The Don
@@ -68,6 +70,8 @@ const MOB_TYPES = {
     ai: 'archer', _specials: ['laser_snipe', 'tommy_burst', 'smart_mine', 'smoke_screen'],
     isBoss: true, bossScale: 1.4,
     arrowRate: 120, arrowSpeed: 7, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'golden',
+    bulletColor: { main: '#ffd700', core: '#fff8dc', glow: 'rgba(255,215,0,0.3)' },
   },
 
   // Level 10 Boss: Velocity

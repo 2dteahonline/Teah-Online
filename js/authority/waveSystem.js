@@ -403,6 +403,8 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     arrowRange: mt.arrowRange || 0, arrowBounces: mt.arrowBounces || 0,
     arrowLife: mt.arrowLife || 0, bowDrawAnim: 0,
     arrowTimer: mt.arrowRate ? Math.floor(Math.random() * mt.arrowRate) : 0,
+    projectileStyle: mt.projectileStyle || null,
+    bulletColor: mt.bulletColor || null,
     // Healer
     healRadius: mt.healRadius || 0, healRate: mt.healRate || 0,
     healAmount: mt.healAmount || 0,

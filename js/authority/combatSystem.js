@@ -669,6 +669,7 @@ const MOB_SPECIALS = {
           fromPlayer: false, mobBullet: true, isArrow: true,
           bouncesLeft: m.arrowBounces, arrowLife: m.arrowLife,
           damage: m.damage, ownerId: m.id,
+          projectileStyle: m.projectileStyle || null,
         });
       }
     }
@@ -1219,6 +1220,7 @@ const MOB_SPECIALS = {
           fromPlayer: false, mobBullet: true,
           damage: Math.round(m.damage * getMobDamageMultiplier()),
           ownerId: m.id,
+          bulletColor: m.bulletColor || null,
         });
         m._tommyShotsFired++;
       }

@@ -1006,6 +1006,105 @@ function updateBullets() {
 
 function drawBullets() {
   for (const b of bullets) {
+    // === Floor 1 custom projectile styles ===
+    if (b.projectileStyle === 'neon_bolt' && b.isArrow) {
+      // Cyan energy bolt — drone_lookout
+      const angle = Math.atan2(b.vy, b.vx);
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(angle);
+      // Outer glow
+      ctx.fillStyle = "rgba(0,204,255,0.2)";
+      ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+      // Energy core
+      ctx.fillStyle = "#00ccff";
+      ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+      // Bright center
+      ctx.fillStyle = "#aaeeff";
+      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+      // Electric crackle lines
+      ctx.strokeStyle = "#00ccff";
+      ctx.lineWidth = 1.5;
+      const t = renderTime * 0.02;
+      for (let i = 0; i < 3; i++) {
+        const a = (i * Math.PI * 2 / 3) + t;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 4, Math.sin(a) * 4);
+        ctx.lineTo(Math.cos(a + 0.5) * 10, Math.sin(a + 0.3) * 10);
+        ctx.stroke();
+      }
+      ctx.restore();
+      // Cyan trail
+      ctx.fillStyle = "rgba(0,204,255,0.3)";
+      ctx.beginPath(); ctx.arc(b.x - b.vx * 3, b.y - b.vy * 3, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(0,180,255,0.15)";
+      ctx.beginPath(); ctx.arc(b.x - b.vx * 6, b.y - b.vy * 6, 3, 0, Math.PI * 2); ctx.fill();
+      continue;
+    }
+    if (b.projectileStyle === 'tracer' && b.isArrow) {
+      // Red laser tracer — renegade_sniper
+      const angle = Math.atan2(b.vy, b.vx);
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(angle);
+      // Red glow trail
+      ctx.fillStyle = "rgba(255,30,30,0.15)";
+      ctx.fillRect(-24, -4, 32, 8);
+      // Tracer line
+      ctx.fillStyle = "#ff2020";
+      ctx.fillRect(-18, -1.5, 24, 3);
+      // Bright core
+      ctx.fillStyle = "#ff8080";
+      ctx.fillRect(-12, -0.5, 18, 1);
+      // Red tip glow
+      ctx.fillStyle = "rgba(255,60,60,0.4)";
+      ctx.beginPath(); ctx.arc(8, 0, 5, 0, Math.PI * 2); ctx.fill();
+      // Bright tip
+      ctx.fillStyle = "#ff4040";
+      ctx.beginPath(); ctx.arc(8, 0, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // Red trail particles
+      ctx.fillStyle = "rgba(255,40,40,0.25)";
+      ctx.beginPath(); ctx.arc(b.x - b.vx * 4, b.y - b.vy * 4, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,20,20,0.1)";
+      ctx.beginPath(); ctx.arc(b.x - b.vx * 8, b.y - b.vy * 8, 2, 0, Math.PI * 2); ctx.fill();
+      continue;
+    }
+    if (b.projectileStyle === 'golden' && b.isArrow) {
+      // Golden bullet — the_don
+      const angle = Math.atan2(b.vy, b.vx);
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(angle);
+      // Gold glow
+      ctx.fillStyle = "rgba(255,215,0,0.2)";
+      ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+      // Bullet casing
+      ctx.fillStyle = "#b8960a";
+      ctx.fillRect(-10, -3, 18, 6);
+      // Gold body
+      ctx.fillStyle = "#ffd700";
+      ctx.fillRect(-8, -2, 16, 4);
+      // Bright highlight
+      ctx.fillStyle = "#fff8dc";
+      ctx.fillRect(-6, -1, 12, 2);
+      // Tip
+      ctx.fillStyle = "#ffd700";
+      ctx.beginPath();
+      ctx.moveTo(10, 0);
+      ctx.lineTo(6, -3);
+      ctx.lineTo(6, 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // Gold sparkle trail
+      ctx.fillStyle = "rgba(255,215,0,0.3)";
+      ctx.beginPath(); ctx.arc(b.x - b.vx * 3, b.y - b.vy * 3, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,200,0,0.15)";
+      ctx.beginPath(); ctx.arc(b.x - b.vx * 6, b.y - b.vy * 6, 2, 0, Math.PI * 2); ctx.fill();
+      continue;
+    }
+
     if (b.isArrow) {
       // Poison arrow — greenish-black, long and thin, rotated to velocity
       const angle = Math.atan2(b.vy, b.vx);
