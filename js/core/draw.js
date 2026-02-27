@@ -101,6 +101,77 @@ function draw() {
           ctx.fillStyle = `rgba(80,200,255,${pPulse * 0.15})`;
           ctx.beginPath(); ctx.arc(sx, sy - 10, 30, 0, Math.PI * 2); ctx.fill();
         }
+
+        // === PLAYER STATUS EFFECT OVERLAYS ===
+        if (typeof StatusFX !== 'undefined') {
+          const pe = StatusFX.playerEffects;
+          const px = player.x, py = player.y;
+
+          // STUN / ROOT — pulsing yellow/orange ring + "STUNNED" text + stars
+          if (pe._rootTimer > 0 && pe._root) {
+            const stunPulse = 0.6 + 0.4 * Math.sin(renderTime * 0.15);
+            // Bright yellow ring
+            ctx.strokeStyle = `rgba(255,220,50,${stunPulse * 0.9})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(px, py - 10, 28, 0, Math.PI * 2); ctx.stroke();
+            // Orange inner glow
+            ctx.fillStyle = `rgba(255,180,30,${stunPulse * 0.2})`;
+            ctx.beginPath(); ctx.arc(px, py - 10, 26, 0, Math.PI * 2); ctx.fill();
+            // Orbiting stars
+            for (let si = 0; si < 3; si++) {
+              const sa = renderTime * 0.08 + si * (Math.PI * 2 / 3);
+              const starX = px + Math.cos(sa) * 18;
+              const starY = py - 28 + Math.sin(sa) * 8;
+              ctx.fillStyle = `rgba(255,255,100,${stunPulse})`;
+              ctx.beginPath(); ctx.arc(starX, starY, 3, 0, Math.PI * 2); ctx.fill();
+            }
+            // "STUNNED" text
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255,220,50,${stunPulse})`;
+            ctx.fillText('STUNNED', px, py - 44);
+          }
+
+          // SLOW — blue tint overlay + trailing frost particles
+          if (pe._slowTimer > 0) {
+            const slowAlpha = Math.min(0.35, pe._slowTimer / 100 * 0.35);
+            // Blue glow around player
+            ctx.fillStyle = `rgba(80,160,255,${slowAlpha})`;
+            ctx.beginPath(); ctx.arc(px, py - 10, 24, 0, Math.PI * 2); ctx.fill();
+            // Blue ring
+            ctx.strokeStyle = `rgba(100,180,255,${slowAlpha + 0.15})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(px, py - 10, 26, 0, Math.PI * 2); ctx.stroke();
+            // "SLOWED" text
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(100,180,255,${slowAlpha + 0.3})`;
+            ctx.fillText('SLOWED', px, py - 44);
+            // Frost particles
+            if (renderTime % 5 === 0) {
+              ctx.fillStyle = `rgba(180,220,255,${slowAlpha + 0.2})`;
+              ctx.beginPath();
+              ctx.arc(px + (Math.random()-0.5)*24, py - 10 + (Math.random()-0.5)*20, 2, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          // MARK — red crosshair / target indicator
+          if (pe._markTimer > 0) {
+            const markPulse = 0.5 + 0.3 * Math.sin(renderTime * 0.06);
+            ctx.strokeStyle = `rgba(255,60,60,${markPulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(px, py - 10, 22, 0, Math.PI * 2); ctx.stroke();
+            // Crosshair lines
+            const cl = 8;
+            ctx.beginPath();
+            ctx.moveTo(px - cl - 10, py - 10); ctx.lineTo(px - 10, py - 10);
+            ctx.moveTo(px + 10, py - 10); ctx.lineTo(px + cl + 10, py - 10);
+            ctx.moveTo(px, py - 10 - cl - 10); ctx.lineTo(px, py - 20);
+            ctx.moveTo(px, py); ctx.lineTo(px, py + cl);
+            ctx.stroke();
+          }
+        }
       }
       
       // Ninja dash afterimage trail (render only — ticking moved to updateMelee)
@@ -300,10 +371,12 @@ function draw() {
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(m.x, m.y - 20, 30 + urgency * 20, 0, Math.PI * 2); ctx.stroke();
       }
-      // Cloaked mobs (cloak_backstab) — nearly invisible
+      // Cloaked mobs (cloak_backstab) — fully invisible, only smoke puffs hint location
       if (m._cloaked) {
-        ctx.globalAlpha = 0.08;
-        hitEffects.push({ x: m.x + (Math.random()-0.5)*20, y: m.y - 20 + (Math.random()-0.5)*10, life: 5, type: "smoke_puff" });
+        ctx.globalAlpha = 0.0;
+        if (renderTime % 8 === 0) {
+          hitEffects.push({ x: m.x + (Math.random()-0.5)*30, y: m.y - 20 + (Math.random()-0.5)*15, life: 8, type: "smoke_puff" });
+        }
       }
       // Boss scale glow
       if (m.isBoss) {

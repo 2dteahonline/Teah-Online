@@ -37,6 +37,7 @@ const MOB_TYPES = {
     name: "Street Chemist", hp: 65, speed: 1.6, damage: 6, killHeal: 12,
     skin: "#8a8a7a", hair: "#3a3a2a", shirt: "#5a6a4a", pants: "#3a4a2a", contactRange: 76,
     ai: 'witch', _specials: ['gas_canister'], specialCD: 540, // 9s
+    kiteRange: 240, // keeps more distance than legacy witch (throws canisters)
   },
 
   // Levels 6-9: Renegade Members
@@ -48,7 +49,7 @@ const MOB_TYPES = {
   renegade_shadowknife: {
     name: "Renegade Shadowknife", hp: 55, speed: 2.8, damage: 18, killHeal: 6,
     skin: "#5a5a5a", hair: "#0a0a0a", shirt: "#1a1a2a", pants: "#0a0a1a", contactRange: 74,
-    ai: 'runner', _specials: ['cloak_backstab'], specialCD: 600, // 10s
+    ai: 'runner', _specials: ['cloak_backstab'], specialCD: 900, // 15s — less frequent cloak
   },
   renegade_demo: {
     name: "Renegade Demo", hp: 80, speed: 2.0, damage: 14, killHeal: 8,
@@ -59,7 +60,7 @@ const MOB_TYPES = {
     name: "Renegade Sniper", hp: 70, speed: 1.7, damage: 10, killHeal: 10,
     skin: "#6a6a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#2a2a3a", contactRange: 74,
     ai: 'archer', _specials: ['ricochet_round'], specialCD: 480, // 8s
-    arrowRate: 90, arrowSpeed: 8, arrowRange: 450, arrowBounces: 1, arrowLife: 500,
+    arrowRate: 90, arrowSpeed: 8, arrowRange: 650, arrowBounces: 1, arrowLife: 500,
     projectileStyle: 'tracer',
   },
 
@@ -79,7 +80,7 @@ const MOB_TYPES = {
     name: "Velocity", hp: 1500, speed: 2.5, damage: 20, killHeal: 50,
     skin: "#7a7a8a", hair: "#0a0a2a", shirt: "#2a2a5a", pants: "#1a1a4a", contactRange: 78,
     ai: 'runner', _specials: ['phase_dash', 'bullet_time_field', 'afterimage_barrage', 'summon_renegades'],
-    isBoss: true, bossScale: 1.5,
+    isBoss: true, bossScale: 1.5, specialCD: 480, // 8s between abilities (slower rotation = less summon spam)
   },
 };
 

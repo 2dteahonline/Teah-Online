@@ -319,7 +319,7 @@ const MOB_AI = {
     const { player, dist, dx, dy, playerVelX, playerVelY } = ctx;
     let targetX = player.x, targetY = player.y;
     if (dist > 70) {
-      const idealDist = 160;
+      const idealDist = (MOB_TYPES[m.type] && MOB_TYPES[m.type].kiteRange) || 160;
       if (dist > idealDist) {
         targetX = player.x; targetY = player.y;
       } else if (dist < idealDist * 0.5) {
@@ -851,8 +851,8 @@ const MOB_SPECIALS = {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-            StatusFX.applyToPlayer('stun', { duration: 36 });
-            hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "stun" });
+            StatusFX.applyToPlayer('stun', { duration: 72 });
+            hitEffects.push({ x: player.x, y: player.y - 30, life: 40, type: "stun" });
           }
         }
         m._specialTimer = m._specialCD || 480;
@@ -896,9 +896,10 @@ const MOB_SPECIALS = {
     if (m._markTelegraph) {
       m._markTelegraph--;
       if (m._markTelegraph <= 0) {
-        // Resolve: apply mark if player in circle
+        // Resolve: apply mark if player center is inside circle (tighter check — no edge grazes)
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m._markX, m._markY, 72)) {
+          const mdx = player.x - m._markX, mdy = player.y - m._markY;
+          if (mdx * mdx + mdy * mdy <= 48 * 48) {
             StatusFX.applyToPlayer('mark', { duration: 240, bonus: 0.15 });
             hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "mark" });
           }
@@ -1012,22 +1013,23 @@ const MOB_SPECIALS = {
     if (m._poundTelegraph) {
       m._poundTelegraph--;
       if (m._poundTelegraph <= 0) {
-        // Resolve: damage + knockback + slow
+        // Resolve: damage + knockback + slow (at the telegraphed position, not mob center)
+        const pcx = m._poundCX || m.x, pcy = m._poundCY || m.y;
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 96)) {
+          if (AttackShapes.hitsPlayer(pcx, pcy, 96)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-            // Knockback 12px away from mob
-            const kDx = player.x - m.x, kDy = player.y - m.y;
+            // Knockback away from pound center
+            const kDx = player.x - pcx, kDy = player.y - pcy;
             const kDist = Math.sqrt(kDx * kDx + kDy * kDy) || 1;
             player.knockVx = (kDx / kDist) * 12;
             player.knockVy = (kDy / kDist) * 12;
             // Slow
-            StatusFX.applyToPlayer('slow', { amount: 0.3, duration: 120 });
+            StatusFX.applyToPlayer('slow', { amount: 0.4, duration: 150 });
           }
         }
-        hitEffects.push({ x: m.x, y: m.y, life: 20, type: "stomp" });
+        hitEffects.push({ x: pcx, y: pcy, life: 20, type: "stomp" });
         m._specialTimer = m._specialCD || 540;
       }
       return { skip: true };
@@ -1044,10 +1046,16 @@ const MOB_SPECIALS = {
       return {};
     }
 
+    // Telegraph in front of mob (toward player), not centered on self
+    const poundDir = Math.atan2(player.y - m.y, player.x - m.x);
+    const poundDist = Math.min(dist, 72); // offset toward player, max 72px
+    m._poundCX = m.x + Math.cos(poundDir) * poundDist;
+    m._poundCY = m.y + Math.sin(poundDir) * poundDist;
+
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
         shape: 'circle',
-        params: { cx: m.x, cy: m.y, radius: 96 },
+        params: { cx: m._poundCX, cy: m._poundCY, radius: 96 },
         delayFrames: 30,
         color: [200, 100, 50],
         owner: m.id,
@@ -1339,14 +1347,32 @@ const MOB_SPECIALS = {
       return { skip: true };
     }
 
-    // Start dash toward player (8 tiles = 384px)
+    // Start dash toward player (8 tiles = 384px), clamped to map bounds
     const dir = Math.atan2(player.y - m.y, player.x - m.x);
+    let dashTargetX = m.x + Math.cos(dir) * 384;
+    let dashTargetY = m.y + Math.sin(dir) * 384;
+    // Clamp to map bounds (1 tile inset from walls)
+    const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
+    dashTargetX = Math.max(TILE, Math.min(mapW - TILE, dashTargetX));
+    dashTargetY = Math.max(TILE, Math.min(mapH - TILE, dashTargetY));
+    // Also check wall collision — shorten if target is inside a wall
+    if (!positionClear(dashTargetX, dashTargetY)) {
+      // Binary search for the farthest clear point
+      let lo = 0, hi = 384;
+      for (let bi = 0; bi < 8; bi++) {
+        const mid = (lo + hi) / 2;
+        const tx = m.x + Math.cos(dir) * mid, ty = m.y + Math.sin(dir) * mid;
+        if (positionClear(tx, ty)) lo = mid; else hi = mid;
+      }
+      dashTargetX = m.x + Math.cos(dir) * lo;
+      dashTargetY = m.y + Math.sin(dir) * lo;
+    }
     m._phaseDashing = true;
     m._phaseDashTimer = 16;
     m._phaseDashStartX = m.x;
     m._phaseDashStartY = m.y;
-    m._phaseDashTargetX = m.x + Math.cos(dir) * 384;
-    m._phaseDashTargetY = m.y + Math.sin(dir) * 384;
+    m._phaseDashTargetX = dashTargetX;
+    m._phaseDashTargetY = dashTargetY;
 
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
