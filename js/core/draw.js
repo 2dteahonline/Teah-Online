@@ -46,9 +46,9 @@ function draw() {
   if (typeof drawOreNodes === 'function') drawOreNodes();
 
   // Telegraph ground markers (under characters, over ground)
-  if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.draw(ctx, cx, cy);
+  if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.draw(ctx, 0, 0);
   // Hazard system ground effects (under characters)
-  if (typeof HazardSystem !== 'undefined') HazardSystem.draw(ctx, cx, cy);
+  if (typeof HazardSystem !== 'undefined') HazardSystem.draw(ctx, 0, 0);
 
   // Ground effects UNDER characters
   drawMobGroundEffects();
