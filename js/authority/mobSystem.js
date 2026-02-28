@@ -459,13 +459,18 @@ function updateMobs() {
           }
         }
 
-        // Tick persistent lasers (Game Master puzzle_lasers)
+        // Tick persistent lasers (Game Master puzzle_lasers) — track toward player
         if (m._lasers && m._lasers.length > 0 && m._activeAbility !== 'puzzle_lasers') {
           for (let li = m._lasers.length - 1; li >= 0; li--) {
             const laser = m._lasers[li];
             laser.life--;
             if (laser.life <= 0) { m._lasers.splice(li, 1); continue; }
-            laser.angle += laser.rotSpeed;
+            // Track toward player
+            const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx) + (laser.angleOffset || 0);
+            let diff = targetAngle - laser.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            laser.angle += diff * 0.03;
             // Check player in beam every 10 frames
             if (laser.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
               const endX = laser.cx + Math.cos(laser.angle) * laser.length;
@@ -496,31 +501,40 @@ function updateMobs() {
           }
         }
 
-        // Tick persistent repulsor beam visual (Junz repulsor_beam)
-        if (m._repulsorBeamActive && m._repulsorBeamActive > 0 && m._activeAbility !== 'repulsor_beam') {
-          m._repulsorBeamActive--;
-          // Beam sparks along the line
-          if (m._repulsorBeamLine) {
-            const bl = m._repulsorBeamLine;
-            const bLen = Math.sqrt((bl.x2 - bl.x1)**2 + (bl.y2 - bl.y1)**2);
-            const bDir = Math.atan2(bl.y2 - bl.y1, bl.x2 - bl.x1);
-            const sparkPos = Math.random() * bLen;
-            hitEffects.push({
-              x: bl.x1 + Math.cos(bDir) * sparkPos,
-              y: bl.y1 + Math.sin(bDir) * sparkPos,
-              life: 8, type: "spark"
-            });
-            // Damage player if still in beam (every 15 frames)
-            if (m._repulsorBeamActive % 15 === 0 && typeof AttackShapes !== 'undefined') {
-              if (AttackShapes.playerInLine(bl.x1, bl.y1, bl.x2, bl.y2, 40)) {
-                const dmg = Math.round(m.damage * 0.3 * getMobDamageMultiplier());
-                dealDamageToPlayer(dmg, 'mob_special', m);
-                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
-              }
+        // Tick persistent rocket drones (Junz drone_court, Enforcer suppress_cone)
+        if (m._rocketDrones && m._rocketDrones.length > 0 && m._activeAbility !== 'drone_court' && m._activeAbility !== 'suppress_cone') {
+          for (let rdi = m._rocketDrones.length - 1; rdi >= 0; rdi--) {
+            const drone = m._rocketDrones[rdi];
+            drone.life--;
+            if (drone.life <= 0) {
+              hitEffects.push({ x: drone.x, y: drone.y, life: 15, type: "fizzle" });
+              m._rocketDrones.splice(rdi, 1);
+              continue;
             }
-          }
-          if (m._repulsorBeamActive <= 0) {
-            m._repulsorBeamLine = null;
+            // Orbit if has orbitRadius (Junz drones orbit)
+            if (drone.orbitRadius) {
+              drone.angle += 0.04;
+              drone.x = m.x + Math.cos(drone.angle) * drone.orbitRadius;
+              drone.y = m.y + Math.sin(drone.angle) * drone.orbitRadius;
+            }
+            // Fire bullets
+            drone.fireTimer = (drone.fireTimer || 0) - 1;
+            if (drone.fireTimer <= 0) {
+              const ddx = player.x - drone.x, ddy = player.y - drone.y;
+              const dDist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+              const gunAngle = Math.atan2(ddy, ddx);
+              const bulletX = drone.x + Math.cos(gunAngle) * 12;
+              const bulletY = drone.y + 2 + Math.sin(gunAngle) * 12;
+              bullets.push({
+                id: nextBulletId++, x: bulletX, y: bulletY,
+                vx: (ddx / dDist) * 5, vy: (ddy / dDist) * 5,
+                fromPlayer: false, mobBullet: true,
+                damage: Math.round(m.damage * 0.3 * getMobDamageMultiplier()),
+                ownerId: m.id, bulletColor: null,
+              });
+              hitEffects.push({ x: bulletX, y: bulletY, life: 5, type: "spark" });
+              drone.fireTimer = 25;
+            }
           }
         }
         // Tick persistent holo clones (Holo Jester fake_wall — for boss rotation cases)

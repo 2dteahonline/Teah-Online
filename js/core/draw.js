@@ -734,29 +734,72 @@ function draw() {
     if (m._holoClones && m._holoClones.length > 0) {
       for (const clone of m._holoClones) {
         const clx = clone.x - cx, cly = clone.y - cy;
-        // Hologram shimmer — translucent blue-tinted
         const holoFlicker = 0.3 + 0.15 * Math.sin(renderTime * 0.12 + clone.angle * 3);
+        // Blue hologram glow BEHIND character (centered on body at y-20)
+        ctx.fillStyle = `rgba(100,180,255,${holoFlicker * 0.25})`;
+        ctx.beginPath(); ctx.arc(clx, cly - 20, 24, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = `rgba(100,200,255,${holoFlicker * 0.35})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(clx, cly - 20, 24, 0, Math.PI * 2); ctx.stroke();
+        // Draw clone character (translucent)
         ctx.globalAlpha = holoFlicker;
-        // Draw the clone as a character
         drawChar(clone.x, clone.y, clone.dir, Math.floor(clone.frame) % 4, true,
           clone.skin, clone.hair, clone.shirt, clone.pants,
           '', -1, false, null, 100, 0, 0.9, 0);
         ctx.globalAlpha = 1.0;
-        // Blue hologram glow
-        ctx.fillStyle = `rgba(100,180,255,${holoFlicker * 0.3})`;
-        ctx.beginPath(); ctx.arc(clx, cly - 15, 18, 0, Math.PI * 2); ctx.fill();
-        // Scanline effect
+        // Scanline effect over the character body area
         if (renderTime % 4 < 2) {
-          ctx.strokeStyle = `rgba(100,200,255,${holoFlicker * 0.4})`;
+          ctx.strokeStyle = `rgba(100,200,255,${holoFlicker * 0.3})`;
           ctx.lineWidth = 1;
-          const scanY = cly - 30 + (renderTime % 60);
-          if (scanY > cly - 35 && scanY < cly + 5) {
+          const scanY = cly - 40 + (renderTime % 50);
+          if (scanY > cly - 45 && scanY < cly) {
             ctx.beginPath();
-            ctx.moveTo(clx - 12, scanY);
-            ctx.lineTo(clx + 12, scanY);
+            ctx.moveTo(clx - 14, scanY);
+            ctx.lineTo(clx + 14, scanY);
             ctx.stroke();
           }
         }
+      }
+    }
+    // Rocket drones (enforcer_drone suppress_cone) — floating shooting drone
+    if (m._rocketDrones && m._rocketDrones.length > 0) {
+      for (const drone of m._rocketDrones) {
+        const rdx = drone.x - cx, rdy = drone.y - cy;
+        // Hover bob
+        const bob = Math.sin(renderTime * 0.08 + drone.x * 0.01) * 3;
+        const droneY = rdy + bob;
+        // Shadow on ground
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.beginPath(); ctx.ellipse(rdx, rdy + 8, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+        // Drone body — dark metallic disc
+        ctx.fillStyle = '#3a4a5a';
+        ctx.beginPath(); ctx.ellipse(rdx, droneY, 12, 7, 0, 0, Math.PI * 2); ctx.fill();
+        // Top dome
+        ctx.fillStyle = '#5a6a7a';
+        ctx.beginPath(); ctx.arc(rdx, droneY - 4, 7, Math.PI, 0); ctx.fill();
+        // Propeller arms
+        const propAngle = renderTime * 0.3;
+        ctx.strokeStyle = 'rgba(150,200,255,0.5)';
+        ctx.lineWidth = 1.5;
+        for (let pa = 0; pa < 4; pa++) {
+          const a = propAngle + pa * Math.PI / 2;
+          ctx.beginPath();
+          ctx.moveTo(rdx + Math.cos(a) * 4, droneY - 2 + Math.sin(a) * 2);
+          ctx.lineTo(rdx + Math.cos(a) * 14, droneY - 2 + Math.sin(a) * 5);
+          ctx.stroke();
+        }
+        // Gun barrel (points toward player)
+        const gunAngle = Math.atan2(player.y - drone.y, player.x - drone.x);
+        ctx.strokeStyle = '#8a8a9a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(rdx, droneY + 2);
+        ctx.lineTo(rdx + Math.cos(gunAngle) * 12, droneY + 2 + Math.sin(gunAngle) * 12);
+        ctx.stroke();
+        // Eye glow (red when firing)
+        const eyePulse = 0.5 + 0.5 * Math.sin(renderTime * 0.15);
+        ctx.fillStyle = `rgba(255,60,40,${eyePulse})`;
+        ctx.beginPath(); ctx.arc(rdx, droneY - 2, 3, 0, Math.PI * 2); ctx.fill();
       }
     }
     // Laser beams (game_master puzzle_lasers) — rotating energy beams
@@ -786,25 +829,6 @@ function draw() {
         ctx.fillStyle = `rgba(255,100,40,${pulse * 0.7})`;
         ctx.beginPath(); ctx.arc(endX, endY, 4, 0, Math.PI * 2); ctx.fill();
       }
-    }
-    // Repulsor beam line (junz repulsor_beam) — visible persistent beam
-    if (m._repulsorBeamLine) {
-      const bl = m._repulsorBeamLine;
-      const bx1 = bl.x1 - cx, by1 = bl.y1 - cy;
-      const bx2 = bl.x2 - cx, by2 = bl.y2 - cy;
-      const bPulse = 0.5 + 0.5 * Math.sin(renderTime * 0.15);
-      // Outer blue glow
-      ctx.strokeStyle = `rgba(60,140,255,${0.12 + bPulse * 0.08})`;
-      ctx.lineWidth = 20;
-      ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
-      // Mid beam
-      ctx.strokeStyle = `rgba(100,180,255,${0.3 + bPulse * 0.2})`;
-      ctx.lineWidth = 10;
-      ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
-      // Core beam
-      ctx.strokeStyle = `rgba(180,220,255,${0.5 + bPulse * 0.3})`;
-      ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
     }
     // Tesla pillars (voltmaster tesla_pillars) — glowing energy pillars
     if (m._pillars && m._pillars.length > 0) {

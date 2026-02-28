@@ -3617,7 +3617,7 @@ const MOB_SPECIALS = {
   },
 
   // --- Gizmo Hound: Charge Lunge ---
-  // Charges toward the player with a fast dash/lunge attack. Line telegraph, then dash.
+  // Charges toward the player with a fast dash/lunge from up to 500px away. Line telegraph, then dash.
   seek_mine: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
@@ -3667,14 +3667,14 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Activate: must be in range
-    if (dist >= 300) {
+    // Activate: can dash from far away
+    if (dist >= 500) {
       m._specialTimer = 30;
       return {};
     }
 
     const dir = Math.atan2(player.y - m.y, player.x - m.x);
-    let dashDist = Math.min(dist + 20, 200);
+    let dashDist = Math.min(dist + 20, 350);
     let dashTargetX = m.x + Math.cos(dir) * dashDist;
     let dashTargetY = m.y + Math.sin(dir) * dashDist;
     const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
@@ -3772,8 +3772,8 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Spawn 2-3 clones around the mob
-    const toSpawn = Math.min(3 - m._holoClones.length, 2 + Math.floor(Math.random() * 2));
+    // Always spawn 3 clones
+    const toSpawn = 3 - m._holoClones.length;
     for (let c = 0; c < toSpawn; c++) {
       const angle = Math.random() * Math.PI * 2;
       const spawnDist = 40 + Math.random() * 40;
@@ -3902,8 +3902,8 @@ const MOB_SPECIALS = {
   },
 
   // --- Game Master: Puzzle Lasers ---
-  // Creates 2 rotating beam entities that rotate for 8s. Damage if player touches beam.
-  // Beams are long (300px) and clearly visible.
+  // Creates 2 tracking beam entities aimed at the player. Beams slowly track player position.
+  // Beams are long (300px) and clearly visible. Last 8s.
   puzzle_lasers: (m, ctx) => {
     const { player, hitEffects } = ctx;
 
@@ -3913,7 +3913,14 @@ const MOB_SPECIALS = {
     for (let i = m._lasers.length - 1; i >= 0; i--) {
       const laser = m._lasers[i];
       laser.life--;
-      laser.angle += laser.rotSpeed;
+
+      // Track toward player — slowly turn toward player position
+      const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx) + laser.angleOffset;
+      let diff = targetAngle - laser.angle;
+      // Normalize angle difference to [-PI, PI]
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      laser.angle += diff * 0.03; // slow tracking speed
 
       // Calculate beam line endpoints
       const lx2 = laser.cx + Math.cos(laser.angle) * laser.length;
@@ -3942,8 +3949,8 @@ const MOB_SPECIALS = {
     for (let b = 0; b < 2; b++) {
       m._lasers.push({
         cx: m.x, cy: m.y,
-        angle: startAngle + b * Math.PI, // 180 degrees apart
-        rotSpeed: 0.025 * (b === 0 ? 1 : -1), // opposite rotation, slightly slower
+        angle: startAngle + b * Math.PI, // start 180 degrees apart
+        angleOffset: b * Math.PI, // one beam tracks player, other tracks opposite
         life: 480, // 8s
         length: 300, // 300px beam length
       });
@@ -4034,37 +4041,41 @@ const MOB_SPECIALS = {
   // ===================== FLOOR 4: R.E.G.I.M.E SPECIALS =====================
 
   // --- Enforcer Drone: Deploy Rocket Drone ---
-  // Spawns a stationary drone that fires rapid bullets at the player. Max 1 drone. Lasts 5s.
+  // Spawns a hovering drone that fires rapid bullets at the player. Max 1 drone. Lasts 6s.
   suppress_cone: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
     if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 600;
-    if (!m._turrets) m._turrets = [];
+    if (!m._rocketDrones) m._rocketDrones = [];
 
-    // Tick turrets for single-special mobs
+    // Tick drones for single-special mobs
     if (m._specials && m._specials.length === 1) {
-      for (let ti = m._turrets.length - 1; ti >= 0; ti--) {
-        const turret = m._turrets[ti];
-        turret.life--;
-        if (turret.life <= 0) {
-          hitEffects.push({ x: turret.x, y: turret.y, life: 15, type: "fizzle" });
-          m._turrets.splice(ti, 1);
+      for (let di = m._rocketDrones.length - 1; di >= 0; di--) {
+        const drone = m._rocketDrones[di];
+        drone.life--;
+        if (drone.life <= 0) {
+          hitEffects.push({ x: drone.x, y: drone.y, life: 15, type: "fizzle" });
+          m._rocketDrones.splice(di, 1);
           continue;
         }
-        turret.fireTimer = (turret.fireTimer || 0) - 1;
-        if (turret.fireTimer <= 0) {
-          const tdx = player.x - turret.x, tdy = player.y - turret.y;
-          const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+        drone.fireTimer = (drone.fireTimer || 0) - 1;
+        if (drone.fireTimer <= 0) {
+          const ddx = player.x - drone.x, ddy = player.y - drone.y;
+          const dDist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+          const gunAngle = Math.atan2(ddy, ddx);
+          // Bullet spawns from drone gun barrel tip
+          const bulletX = drone.x + Math.cos(gunAngle) * 12;
+          const bulletY = drone.y + 2 + Math.sin(gunAngle) * 12;
           bullets.push({
             id: nextBulletId++,
-            x: turret.x, y: turret.y - 10,
-            vx: (tdx / tDist) * 6, vy: (tdy / tDist) * 6,
+            x: bulletX, y: bulletY,
+            vx: (ddx / dDist) * 6, vy: (ddy / dDist) * 6,
             fromPlayer: false, mobBullet: true,
             damage: Math.round(m.damage * 0.4 * getMobDamageMultiplier()),
             ownerId: m.id, bulletColor: null,
           });
-          hitEffects.push({ x: turret.x, y: turret.y - 12, life: 5, type: "spark" });
-          turret.fireTimer = 20; // fires every 20 frames (~3 shots/sec)
+          hitEffects.push({ x: bulletX, y: bulletY, life: 5, type: "spark" });
+          drone.fireTimer = 18; // fires every 18 frames (~3.3 shots/sec)
         }
       }
     }
@@ -4075,7 +4086,7 @@ const MOB_SPECIALS = {
     }
 
     // Max 1 drone active
-    if (m._turrets.length >= 1) {
+    if (m._rocketDrones.length >= 1) {
       m._specialTimer = 30;
       return {};
     }
@@ -4085,9 +4096,9 @@ const MOB_SPECIALS = {
     const droneX = m.x + Math.cos(angle + Math.PI / 4) * 60;
     const droneY = m.y + Math.sin(angle + Math.PI / 4) * 60;
 
-    m._turrets.push({
+    m._rocketDrones.push({
       x: droneX, y: droneY,
-      life: 300, // 5s
+      life: 360, // 6s
       fireTimer: 10,
     });
     hitEffects.push({ x: droneX, y: droneY, life: 20, type: "cast" });
@@ -4117,14 +4128,19 @@ const MOB_SPECIALS = {
         if (turret.fireTimer <= 0) {
           const tdx = player.x - turret.x, tdy = player.y - turret.y;
           const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+          // Bullet spawns from barrel tip (barrel points from turret body toward player)
+          const barrelAngle = Math.atan2(tdy, tdx);
+          const bulletX = turret.x + Math.cos(barrelAngle) * 14;
+          const bulletY = turret.y - 8 + Math.sin(barrelAngle) * 14;
           bullets.push({
             id: nextBulletId++,
-            x: turret.x, y: turret.y - 10,
+            x: bulletX, y: bulletY,
             vx: (tdx / tDist) * 5, vy: (tdy / tDist) * 5,
             fromPlayer: false, mobBullet: true,
             damage: Math.round(m.damage * 0.5 * getMobDamageMultiplier()),
             ownerId: m.id, bulletColor: null,
           });
+          hitEffects.push({ x: bulletX, y: bulletY, life: 5, type: "spark" });
           turret.fireTimer = 45; // fires every 45 frames
         }
       }
@@ -4232,7 +4248,7 @@ const MOB_SPECIALS = {
   },
 
   // --- Signal Jammer: EMP Suppression Dome ---
-  // Ring telegraph centered on mob. On resolve: long silence + damage + persistent suppression zone.
+  // Single circle telegraph centered on mob. On resolve: long silence + damage.
   emp_dome: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
@@ -4242,28 +4258,15 @@ const MOB_SPECIALS = {
     if (m._empDomeTelegraph) {
       m._empDomeTelegraph--;
       if (m._empDomeTelegraph <= 0) {
-        // Resolve: long silence + damage if player inside ring
+        // Resolve: long silence + damage if player inside circle
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 200)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 180)) {
             StatusFX.applyToPlayer('silence', { duration: 240 }); // 4s suppression
             hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "silence" });
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
           }
-        }
-        // Create persistent suppression zone
-        if (typeof HazardSystem !== 'undefined') {
-          HazardSystem.createZone({
-            cx: m.x, cy: m.y,
-            radius: 160,
-            duration: 420, // 7s persistent zone
-            tickRate: 60, // damage every 1s
-            tickDamage: Math.round(m.damage * 0.2 * getMobDamageMultiplier()),
-            tickEffect: 'silence',
-            color: [160, 60, 220], // purple
-            slow: 0.3,
-          });
         }
         hitEffects.push({ x: m.x, y: m.y, life: 25, type: "emp_wave" });
         m._specialTimer = m._specialCD || 720;
@@ -4276,7 +4279,7 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Activate: player must be close enough for ring to matter
+    // Activate: player must be close enough
     if (dist >= 260) {
       m._specialTimer = 30;
       return {};
@@ -4284,8 +4287,8 @@ const MOB_SPECIALS = {
 
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
-        shape: 'ring',
-        params: { cx: m.x, cy: m.y, innerRadius: 60, outerRadius: 200 },
+        shape: 'circle',
+        params: { cx: m.x, cy: m.y, radius: 180 },
         delayFrames: 30,
         color: [160, 60, 220], // purple
         owner: m.id,
@@ -4340,35 +4343,9 @@ const MOB_SPECIALS = {
   },
 
   // --- J.U.N.Z: Repulsor Beam ---
-  // Wide line telegraph (7 tiles = 336px) toward player. Visible persistent beam. Push + damage.
+  // Single wide beam aimed directly at the player. Line telegraph → resolve: push + damage.
   repulsor_beam: (m, ctx) => {
     const { dist, dx, dy, player, hitEffects } = ctx;
-
-    // Beam active phase — visible persistent beam for 30 frames after telegraph
-    if (m._repulsorBeamActive) {
-      m._repulsorBeamActive--;
-      // Show beam sparks along the line
-      const bLen = Math.sqrt((m._repulsorX2 - m._repulsorX1)**2 + (m._repulsorY2 - m._repulsorY1)**2);
-      const bDir = Math.atan2(m._repulsorY2 - m._repulsorY1, m._repulsorX2 - m._repulsorX1);
-      const sparkPos = Math.random() * bLen;
-      hitEffects.push({
-        x: m._repulsorX1 + Math.cos(bDir) * sparkPos + (Math.random()-0.5)*20,
-        y: m._repulsorY1 + Math.sin(bDir) * sparkPos + (Math.random()-0.5)*20,
-        life: 8, type: "spark"
-      });
-      // Damage player if still in beam (every 15 frames)
-      if (m._repulsorBeamActive % 15 === 0 && typeof AttackShapes !== 'undefined') {
-        if (AttackShapes.playerInLine(m._repulsorX1, m._repulsorY1, m._repulsorX2, m._repulsorY2, 40)) {
-          const dmg = Math.round(m.damage * 0.3 * getMobDamageMultiplier());
-          dealDamageToPlayer(dmg, 'mob_special', m);
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
-        }
-      }
-      if (m._repulsorBeamActive <= 0) {
-        m._repulsorBeamLine = null;
-      }
-      return {};
-    }
 
     // Telegraph phase
     if (m._repulsorTelegraph) {
@@ -4384,12 +4361,12 @@ const MOB_SPECIALS = {
             const pushDist = 144;
             const pdx = player.x - m.x, pdy = player.y - m.y;
             const pDist = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
-            const ndx = pdx / pDist, ndy = pdy / pDist;
+            const ndx2 = pdx / pDist, ndy2 = pdy / pDist;
             let finalX = player.x, finalY = player.y;
             const steps = 6;
             for (let i = 1; i <= steps; i++) {
-              const testX = player.x + ndx * (pushDist * i / steps);
-              const testY = player.y + ndy * (pushDist * i / steps);
+              const testX = player.x + ndx2 * (pushDist * i / steps);
+              const testY = player.y + ndy2 * (pushDist * i / steps);
               if (positionClear(testX, testY)) {
                 finalX = testX;
                 finalY = testY;
@@ -4401,17 +4378,21 @@ const MOB_SPECIALS = {
             player.y = finalY;
           }
         }
-        // Keep beam visible for 30 more frames
-        m._repulsorBeamActive = 30;
-        m._repulsorBeamLine = {
-          x1: m._repulsorX1, y1: m._repulsorY1,
-          x2: m._repulsorX2, y2: m._repulsorY2,
-        };
+        // Visual spark burst along the beam line
+        const bDir = Math.atan2(m._repulsorY2 - m._repulsorY1, m._repulsorX2 - m._repulsorX1);
+        for (let sp = 0; sp < 6; sp++) {
+          const sparkDist = Math.random() * 336;
+          hitEffects.push({
+            x: m._repulsorX1 + Math.cos(bDir) * sparkDist + (Math.random()-0.5)*20,
+            y: m._repulsorY1 + Math.sin(bDir) * sparkDist + (Math.random()-0.5)*20,
+            life: 15, type: "spark"
+          });
+        }
       }
       return {};
     }
 
-    // Activate: line telegraph from mob toward player
+    // Activate: single line telegraph from mob directly at player
     const ndx = dx / (dist || 1), ndy = dy / (dist || 1);
     m._repulsorX1 = m.x;
     m._repulsorY1 = m.y;
@@ -4455,70 +4436,64 @@ const MOB_SPECIALS = {
   },
 
   // --- J.U.N.Z: Drone Court ---
-  // Spawn 4 micro-drones that orbit for 3s then dive at player. Max 4 drones. Longer lasting.
+  // Spawn 2 hovering gun-drones that orbit and shoot bullets at the player. Max 2 drones. Long lasting.
   drone_court: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
-    if (!m._drones) m._drones = [];
+    if (!m._rocketDrones) m._rocketDrones = [];
 
     // Tick active drones
-    for (let i = m._drones.length - 1; i >= 0; i--) {
-      const drone = m._drones[i];
+    for (let i = m._rocketDrones.length - 1; i >= 0; i--) {
+      const drone = m._rocketDrones[i];
       drone.life--;
 
-      if (drone.diving) {
-        // Dive toward player
+      if (drone.life <= 0) {
+        hitEffects.push({ x: drone.x, y: drone.y, life: 15, type: "fizzle" });
+        m._rocketDrones.splice(i, 1);
+        continue;
+      }
+
+      // Orbit around boss
+      drone.angle += 0.04;
+      drone.x = m.x + Math.cos(drone.angle) * drone.orbitRadius;
+      drone.y = m.y + Math.sin(drone.angle) * drone.orbitRadius;
+
+      // Fire bullets at player
+      drone.fireTimer = (drone.fireTimer || 0) - 1;
+      if (drone.fireTimer <= 0) {
         const ddx = player.x - drone.x, ddy = player.y - drone.y;
         const dDist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
-        const diveSpeed = 8;
-        drone.x += (ddx / dDist) * diveSpeed;
-        drone.y += (ddy / dDist) * diveSpeed;
-        // Check hit
-        if (dDist < 20) {
-          const dmg = Math.round(m.damage * 0.3 * getMobDamageMultiplier());
-          const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
-          hitEffects.push({ x: drone.x, y: drone.y, life: 12, type: "spark" });
-          m._drones.splice(i, 1);
-          continue;
-        }
-        // Expired without hitting
-        if (drone.life <= 0) {
-          hitEffects.push({ x: drone.x, y: drone.y, life: 10, type: "fizzle" });
-          m._drones.splice(i, 1);
-        }
-      } else {
-        // Orbiting phase
-        drone.orbitTimer--;
-        drone.angle += 0.08;
-        drone.x = m.x + Math.cos(drone.angle) * drone.orbitRadius;
-        drone.y = m.y + Math.sin(drone.angle) * drone.orbitRadius;
-        hitEffects.push({ x: drone.x, y: drone.y - 5, life: 3, type: "spark" });
-        if (drone.orbitTimer <= 0) {
-          drone.diving = true;
-          drone.life = 180; // 3s max dive time
-        }
-        if (drone.life <= 0) {
-          m._drones.splice(i, 1);
-        }
+        const gunAngle = Math.atan2(ddy, ddx);
+        const bulletX = drone.x + Math.cos(gunAngle) * 12;
+        const bulletY = drone.y + 2 + Math.sin(gunAngle) * 12;
+        bullets.push({
+          id: nextBulletId++,
+          x: bulletX, y: bulletY,
+          vx: (ddx / dDist) * 5, vy: (ddy / dDist) * 5,
+          fromPlayer: false, mobBullet: true,
+          damage: Math.round(m.damage * 0.3 * getMobDamageMultiplier()),
+          ownerId: m.id, bulletColor: null,
+        });
+        hitEffects.push({ x: bulletX, y: bulletY, life: 5, type: "spark" });
+        drone.fireTimer = 25; // fires every 25 frames (~2.4 shots/sec per drone)
       }
+      hitEffects.push({ x: drone.x, y: drone.y - 5, life: 3, type: "spark" });
     }
 
-    // Activate: max 4 drones active
-    if (m._drones.length >= 4) return {};
+    // Activate: max 2 drones active
+    if (m._rocketDrones.length >= 2) return {};
 
-    // Spawn 4 drones
-    const toSpawn = 4 - m._drones.length;
+    // Spawn 2 drones
+    const toSpawn = 2 - m._rocketDrones.length;
     for (let d = 0; d < toSpawn; d++) {
-      const angle = (d / 4) * Math.PI * 2;
-      m._drones.push({
-        x: m.x + Math.cos(angle) * 40,
-        y: m.y + Math.sin(angle) * 40,
+      const angle = d * Math.PI; // 180 degrees apart
+      m._rocketDrones.push({
+        x: m.x + Math.cos(angle) * 50,
+        y: m.y + Math.sin(angle) * 50,
         angle: angle,
-        orbitRadius: 40 + d * 10,
-        orbitTimer: 180, // 3s orbit then dive
-        diving: false,
-        life: 480, // 8s total max lifetime
+        orbitRadius: 50 + d * 15,
+        fireTimer: 10 + d * 12, // stagger first shots
+        life: 600, // 10s total lifetime
       });
     }
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
