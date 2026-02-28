@@ -96,6 +96,7 @@ function dealDamageToMob(mob, amount, source) {
 //
 function dealDamageToPlayer(rawDamage, source, attacker) {
   if (playerDead) return 0;
+  if (window._godMode) return 0; // /god — player invincibility
 
   // 1. Apply armor reduction
   let reduced = rawDamage;

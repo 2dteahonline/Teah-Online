@@ -23,6 +23,11 @@ function resetCombatState(mode) {
   if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
   freezeTimer = 0;
   contactCooldown = 0;
+  // --- Reset dev tool flags (clean slate per dungeon run) ---
+  window._mobsFrozen = false;
+  window._godMode = false;
+  window._mobsNoFire = false;
+  window._gameSpeed = 1;
   // --- Clear telegraph + hazard systems ---
   if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
   if (typeof HazardSystem !== 'undefined') HazardSystem.clear();

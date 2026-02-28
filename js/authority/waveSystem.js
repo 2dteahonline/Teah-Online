@@ -461,6 +461,14 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
   // Phase tagging
   mob.phase = opts.phase || 1;
 
+  // /freeze — auto-freeze newly spawned mobs when global freeze is active
+  if (window._mobsFrozen) {
+    mob._savedSpeed = mob.speed;
+    mob.speed = 0;
+    mob._specialTimer = 99999;
+    mob._frozen = true;
+  }
+
   return mob;
 }
 

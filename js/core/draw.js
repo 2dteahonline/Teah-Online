@@ -1564,6 +1564,43 @@ function draw() {
   ctx.textAlign = "left";
   } // end dungeon HUD
 
+  // ===== DEBUG FLAGS HUD — shows active dev tool indicators =====
+  {
+    const flags = [];
+    if (window._mobsFrozen)  flags.push({ label: 'FROZEN',  color: '#00e5ff' });
+    if (window._godMode)     flags.push({ label: 'GOD',     color: '#ffd700' });
+    if (window._mobsNoFire)  flags.push({ label: 'NOFIRE',  color: '#ff4444' });
+    if (window._gameSpeed && window._gameSpeed !== 1)
+      flags.push({ label: window._gameSpeed + 'x', color: '#66ff66' });
+    if (window._opMode)      flags.push({ label: 'OP',      color: '#ff80ff' });
+
+    if (flags.length > 0) {
+      ctx.font = "bold 11px monospace";
+      ctx.textAlign = "left";
+      let flagX = 10;
+      const flagY = Scene.inDungeon ? 130 : 20;
+      for (const f of flags) {
+        const tw = ctx.measureText(f.label).width + 10;
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.beginPath();
+        const r = 4, fh = 18, fy = flagY - 13;
+        ctx.moveTo(flagX + r, fy);
+        ctx.lineTo(flagX + tw - r, fy);
+        ctx.quadraticCurveTo(flagX + tw, fy, flagX + tw, fy + r);
+        ctx.lineTo(flagX + tw, fy + fh - r);
+        ctx.quadraticCurveTo(flagX + tw, fy + fh, flagX + tw - r, fy + fh);
+        ctx.lineTo(flagX + r, fy + fh);
+        ctx.quadraticCurveTo(flagX, fy + fh, flagX, fy + fh - r);
+        ctx.lineTo(flagX, fy + r);
+        ctx.quadraticCurveTo(flagX, fy, flagX + r, fy);
+        ctx.fill();
+        ctx.fillStyle = f.color;
+        ctx.fillText(f.label, flagX + 5, flagY);
+        flagX += tw + 4;
+      }
+    }
+  }
+
   // Gold display — dungeon only, centered below wave area
   if (Scene.inDungeon) {
     const goldY = 140;
@@ -1679,6 +1716,8 @@ function gameLoop(timestamp) {
   let elapsed = timestamp - lastTime;
   lastTime = timestamp;
   if (elapsed > 100) elapsed = 100;
+  // /speed — game speed multiplier (0.25x slow-mo to 2x fast-forward)
+  if (window._gameSpeed && window._gameSpeed !== 1) elapsed *= window._gameSpeed;
   accumulator += elapsed;
   let updates = 0;
   while (accumulator >= FIXED_DT && updates < 2) {

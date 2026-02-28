@@ -110,6 +110,13 @@ window.GameState = {
   },
 };
 
+// ===================== DEBUG / DEV TOOL FLAGS =====================
+// Toggled by slash commands: /freeze, /god, /nofire, /speed
+window._mobsFrozen = false;   // /freeze — all mobs stop moving + abilities
+window._godMode = false;      // /god — player takes 0 damage
+window._mobsNoFire = false;   // /nofire — mobs can't shoot or use abilities
+window._gameSpeed = 1;        // /speed — game speed multiplier (0.25, 0.5, 1, 2)
+
 // ===================== ENTITY ID COUNTERS =====================
 // Stable IDs for snapshot serialization. Every bullet/mob gets a unique id.
 let nextBulletId = 1;

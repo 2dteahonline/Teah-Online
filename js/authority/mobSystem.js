@@ -299,8 +299,8 @@ function updateMobs() {
       }
     }
 
-    // Shooter ranged attack
-    if (m.shootRange > 0 && dist < m.shootRange * 1.2) {
+    // Shooter ranged attack (/nofire disables mob shooting)
+    if (!window._mobsNoFire && m.shootRange > 0 && dist < m.shootRange * 1.2) {
       if (m.shootTimer > 0) {
         m.shootTimer--;
       } else {
@@ -322,8 +322,9 @@ function updateMobs() {
       }
     }
 
-    // MOB SPECIALS dispatch — registry-based special attacks
-    if (MOB_SPECIALS[m.type]) {
+    // MOB SPECIALS dispatch — registry-based special attacks (/nofire disables all)
+    if (window._mobsNoFire) { /* skip all specials */ }
+    else if (MOB_SPECIALS[m.type]) {
       // Legacy mob types (witch, golem, etc.) keyed by type name
       const specCtx = { dist, dx, dy, player, mobs, hitEffects, bullets, wave, playerDead };
       const specResult = MOB_SPECIALS[m.type](m, specCtx);

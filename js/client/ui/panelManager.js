@@ -511,7 +511,7 @@ window.addEventListener("keydown", e => {
           if (fl > 0) { dungeonFloor = fl; resetCombatState('floor'); }
           chatMessages.push({ name: "SYSTEM", text: "Set to floor " + dungeonFloor, time: Date.now() });
         } else if (cmdLower === "/help") {
-          chatMessages.push({ name: "SYSTEM", text: "/testmob (GUI) | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /leave | /op | /stairs | /floor [n] | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "/testmob | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /leave | /op | /stairs | /floor [n] | /freeze | /god | /nofire | /speed <n> | /hp <n|max> | /skipw | /info | /sprites | /export | /save | /resetsave | /mg", time: Date.now() });
         } else if (cmdLower === "/save") {
           SaveLoad.save();
           chatMessages.push({ name: "SYSTEM", text: "Game saved!", time: Date.now() });
@@ -611,6 +611,94 @@ window.addEventListener("keydown", e => {
           const name = parts[1] || 'player_body';
           exportSpriteTemplate(name);
           chatMessages.push({ name: "SYSTEM", text: "Exported " + name + " template. Layers: [name]_body, [name]_head, [name]_hat", time: Date.now() });
+
+        // ===================== DEV TOOLS =====================
+        } else if (cmdLower === "/freeze") {
+          window._mobsFrozen = !window._mobsFrozen;
+          if (window._mobsFrozen) {
+            for (const m of mobs) {
+              if (m.hp <= 0) continue;
+              m._savedSpeed = m.speed;
+              m.speed = 0;
+              m._specialTimer = 99999;
+              m._frozen = true;
+            }
+            chatMessages.push({ name: "SYSTEM", text: "FREEZE ON — all mobs frozen (move + abilities)", time: Date.now() });
+          } else {
+            for (const m of mobs) {
+              if (m.hp <= 0 || !m._frozen) continue;
+              m.speed = m._savedSpeed || 1;
+              m._specialTimer = 0;
+              delete m._frozen;
+              delete m._savedSpeed;
+            }
+            chatMessages.push({ name: "SYSTEM", text: "FREEZE OFF — mobs resumed", time: Date.now() });
+          }
+        } else if (cmdLower === "/god") {
+          window._godMode = !window._godMode;
+          chatMessages.push({ name: "SYSTEM", text: "GOD MODE " + (window._godMode ? "ON — player invincible" : "OFF"), time: Date.now() });
+        } else if (cmdLower === "/nofire") {
+          window._mobsNoFire = !window._mobsNoFire;
+          chatMessages.push({ name: "SYSTEM", text: "NOFIRE " + (window._mobsNoFire ? "ON — mobs can't shoot or use abilities" : "OFF — mobs attack normally"), time: Date.now() });
+        } else if (cmdLower.startsWith("/speed")) {
+          const parts = cmd.split(/\s+/);
+          const spd = parseFloat(parts[1]);
+          const valid = [0.25, 0.5, 1, 2];
+          if (valid.includes(spd)) {
+            window._gameSpeed = spd;
+            chatMessages.push({ name: "SYSTEM", text: "Game speed: " + spd + "x", time: Date.now() });
+          } else {
+            chatMessages.push({ name: "SYSTEM", text: "Usage: /speed <0.25|0.5|1|2>  Current: " + (window._gameSpeed || 1) + "x", time: Date.now() });
+          }
+        } else if (cmdLower.startsWith("/hp")) {
+          const parts = cmd.split(/\s+/);
+          const val = parts[1];
+          if (val === "max" || val === "full") {
+            player.hp = player.maxHp;
+            chatMessages.push({ name: "SYSTEM", text: "HP set to max (" + player.maxHp + ")", time: Date.now() });
+          } else {
+            const amt = parseInt(val);
+            if (!isNaN(amt) && amt > 0) {
+              player.hp = Math.min(amt, player.maxHp);
+              chatMessages.push({ name: "SYSTEM", text: "HP set to " + player.hp + "/" + player.maxHp, time: Date.now() });
+            } else {
+              chatMessages.push({ name: "SYSTEM", text: "Usage: /hp <amount|max>  Current: " + player.hp + "/" + player.maxHp, time: Date.now() });
+            }
+          }
+        } else if (cmdLower === "/skipw") {
+          if (!Scene.inDungeon) {
+            chatMessages.push({ name: "SYSTEM", text: "Not in a dungeon", time: Date.now() });
+          } else {
+            // Clear current wave
+            mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
+            deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
+            if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+            if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+            if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
+            // Advance to next wave
+            resetPhaseState();
+            spawnWave();
+            const globalWave = (dungeonFloor - 1) * WAVES_PER_FLOOR + wave;
+            chatMessages.push({ name: "SYSTEM", text: "Skipped to wave " + globalWave + " (floor " + dungeonFloor + ")", time: Date.now() });
+          }
+        } else if (cmdLower === "/info") {
+          if (!Scene.inDungeon) {
+            chatMessages.push({ name: "SYSTEM", text: "Dungeon: none | Scene: " + (Scene.currentLevel || 'lobby'), time: Date.now() });
+          } else {
+            const alive = mobs.filter(m => m.hp > 0);
+            const typeCounts = {};
+            for (const m of alive) { typeCounts[m.type] = (typeCounts[m.type] || 0) + 1; }
+            const typeStr = Object.entries(typeCounts).map(([t, c]) => t + ':' + c).join(' ');
+            const globalWave = (dungeonFloor - 1) * WAVES_PER_FLOOR + wave;
+            const hasBoss = alive.some(m => m.isBoss);
+            chatMessages.push({ name: "SYSTEM", text:
+              currentDungeon + " F" + dungeonFloor + " W" + globalWave +
+              " | " + alive.length + " mobs" + (hasBoss ? " [BOSS]" : "") +
+              " | " + (waveTheme || '') +
+              " | HP:" + player.hp + "/" + player.maxHp +
+              " | " + typeStr,
+              time: Date.now() });
+          }
         } else {
           chatMessages.push({ name: player.name, text: cmd, time: Date.now() });
         }
