@@ -6,6 +6,109 @@
 let testMobDungeon = 'azurine';  // 'cave' | 'azurine'
 let testMobFloor = 1;
 let testMobScroll = 0;
+let testMobAbilityPopup = null;  // { typeKey, mobName, abilities[], x, y }
+
+// ===================== MOB ABILITY DESCRIPTIONS =====================
+// Human-readable descriptions for every mob special ability.
+const MOB_ABILITY_DESCRIPTIONS = {
+  // --- Cave mobs (no specials — use built-in AI) ---
+
+  // --- Floor 1: City Streets ---
+  swipe_blink:          "Telegraphed dash toward player, heals self on arrival.",
+  stun_baton:           "Cone telegraph followed by a stunning melee hit.",
+  spot_mark:            "Circle telegraph on player, applies a mark debuff.",
+  gas_canister:         "Lobs a projectile that creates a poison zone on landing.",
+  ground_pound:         "Circle telegraph + knockback + slow.",
+  cloak_backstab:       "Cloaks, then teleports behind player for a surprise attack.",
+  sticky_bomb:          "Places a bomb at player position that explodes after a delay.",
+  ricochet_round:       "Fires a bouncing sniper shot that ricochets off walls.",
+  laser_snipe:          "Long line telegraph followed by heavy damage.",
+  tommy_burst:          "Fires a spread of 5 bullets in a cone.",
+  smart_mine:           "Drops proximity mines that root and damage on contact.",
+  smoke_screen:         "Creates an obscuring smoke zone centered on self.",
+  phase_dash:           "Fast dash through player position, dealing damage along the path.",
+  bullet_time_field:    "Creates a slow zone centered on the player.",
+  afterimage_barrage:   "3 converging line telegraphs from different angles.",
+  summon_renegades:     "Spawns 2 random renegade mobs as reinforcements.",
+
+  // --- Floor 2: Tech District ---
+  overload_drain:       "Short line telegraph toward player. Drains HP; heals self if player has debuffs.",
+  weld_beam:            "Line telegraph toward player that leaves a burning trail hazard.",
+  charge_pop:           "Short-range aura that explodes on timer. Knockback + stun.",
+  tesla_trail:          "Dash through map leaving an electrified trail that damages and stuns.",
+  chain_lightning:      "Lightning bolts jump between nearby targets, chaining root.",
+  emp_pulse:            "EMP burst that removes all active hazards and silences player.",
+  tesla_pillars:        "4 electric pillars circle the player, then chain lightning between them.",
+  magnet_snap:          "Pulls player and self toward each other. Damage on arrival.",
+  briefcase_turret:     "Deploys a turret that shoots at the player. Max 2.",
+  red_tape_lines:       "2-3 crossing line telegraphs that slow and entangle on contact.",
+  penalty_mark:         "Applies permanent mark to player: +25% damage taken. Stacks.",
+  drone_swarm:          "Spawns 3-4 attack drones that converge on player. Max 6.",
+  dividend_barrage:     "Spread attack telegraphs with money drops.",
+  hostile_takeover:     "Pulls player and takes control of their movement for 3 seconds.",
+  nda_field:            "Creates a silence zone. Player is silenced and slowed inside.",
+  golden_parachute:     "All summons explode; boss regains 30% HP.",
+
+  // --- Floor 3: Junkyard ---
+  scavenge_shield:      "Creates a shield zone. Inside: heals self, slows player.",
+  mag_pull:             "Pulls player and self toward each other. Knockback on arrival.",
+  saw_line:             "Circle telegraph on self, then spins dealing damage in a circle.",
+  oil_spill_ignite:     "Phase 1: oil puddle (slow). Phase 2: ignites into burn DoT zone.",
+  pile_driver:          "2-tile circle shockwave ahead. Knockback + damage.",
+  grab_toss:            "Short range grab, tosses player in a random direction + stun.",
+  rebuild:              "Removes half of scrap minions and heals 15% HP per minion removed.",
+  scrap_minions:        "Spawns 3-4 scrap minions. Max 6 total.",
+  latch_drain:          "Latches onto player, draining 5% HP per tick. Breaks at distance > 150px.",
+  mud_dive:             "Dives underground and tunnels toward player, emerging with knockback + stun.",
+  acid_spit_arc:        "Arc telegraph toward player. On resolve: acid zone with damage + melt.",
+  siphon_beam:          "Line telegraph toward player. Drains health.",
+  spore_cloud:          "Expanding poison cloud. Lingers 5 seconds. Damage + poison DoT.",
+  burrow_surge:         "Burrows and emerges under player. Shockwave + knockback + slow.",
+  toxic_nursery:        "Spawns 3-4 poisonous spore nodes that spread toxins. Max 5.",
+  regrowth:             "Heals self 20% HP and converts nearby hazards into healing zones.",
+
+  // --- Floor 4: Trap House ---
+  tripwire:             "Places a tripwire line. On contact: slow + entangle.",
+  seek_mine:            "Fast dash/lunge toward player from up to 500px away.",
+  fake_wall:            "Spawns 2-3 holographic decoy clones. On contact: damage + confuse. Max 3.",
+  rewind_tag:           "Marks player position, then after 2 seconds pulls player back to that spot.",
+  trap_roulette:        "Random trap effect telegraphs (spike, freeze, stun). Resolves randomly.",
+  puzzle_lasers:        "2 rotating laser beams that track the player. Heavy damage if hit.",
+  loot_bait:            "Spawns loot decoys. Player drawn toward them. On contact: damage + confuse.",
+  remote_hack:          "Remote-control missile. Aim phase then lock-on launch.",
+  suppress_cone:        "Cone telegraph followed by stun + silence.",
+  barrier_build:        "Creates a barrier wall that blocks movement.",
+  rocket_dash:          "Dashes backward leaving a rocket trail hazard. Damage + knockback.",
+  emp_dome:             "Large EMP dome. Removes active hazards + silences player inside.",
+  pulse_override:       "Overrides player input for 2 seconds with random movement commands.",
+  repulsor_beam:        "Persistent energy beam that tracks player. Pushes back on hit.",
+  nano_armor:           "Self-shield: reduces incoming damage by 50% for 5 seconds.",
+  drone_court:          "Summons 3 keeper drones that guard a zone. Max 6 total.",
+
+  // --- Floor 5: Waste Planet ---
+  bleed_maul:           "Melee swipe that applies bleed DoT.",
+  gore_spore_burst:     "Explodes into gore spore projectiles. Damage + poison on hit.",
+  pounce_pin:           "Leaps to player and pins them (stun for 1 second). Damage on land.",
+  screech_ring:         "Sonic wave around mob. Damage + disorient in ring.",
+  slime_wave_slash:     "Line slash that leaves a slime trail (slow zone).",
+  sticky_field:         "Sticky zone around mob. Slows player inside. Expands over time.",
+  split_response:       "Splits into 2 smaller versions (40% HP each, 70% speed).",
+  glow_mark:            "Marks player with bioluminescent glow. +20% damage taken for 5 seconds.",
+  symbiote_lash:        "Whip attack. On hit: drains 2% player HP per second, heals self.",
+  toxic_spikes:         "Spike protrusions. Damages + poisons on melee contact.",
+  adrenal_surge:        "Self-buff: +50% damage, +30% speed for 6 seconds.",
+  absorb_barrier:       "Shield that absorbs damage. Converts 50% of absorbed into heal.",
+  static_orbs:          "Summons 3-4 orbiting orbs. Stuns on contact. Max 6.",
+  overcharge_dump:      "AoE stun burst around self. Damages + stuns all in radius.",
+  ooze_blade_arc:       "Arc slash that leaves an ooze trail (slow + acid damage).",
+  slime_rampart:        "Builds a slime wall that blocks movement + damages on contact. Max 2.",
+  melt_floor:           "Heats floor in a circle. Becomes lava zone (high DoT + slow).",
+  summon_elite:         "Summons 1 elite minion with custom abilities (scales with wave).",
+  shadow_teleport:      "Blinks to player position, quick attack, then vanishes.",
+  puppet_shot:          "Fires projectile. On hit: player is briefly controlled.",
+  abyss_grasp:          "Dark circle telegraph at player. On resolve: pull + damage + slow.",
+  regen_veil:           "Self-heal over 4 seconds. Regenerates 10% max HP.",
+};
 
 // Dungeon → Floor → Mob mapping
 const TESTMOB_DUNGEONS = {
@@ -28,8 +131,8 @@ const TESTMOB_DUNGEONS = {
 };
 
 UI.register('testmob', {
-  onOpen() { testMobScroll = 0; },
-  onClose() { testMobScroll = 0; },
+  onOpen() { testMobScroll = 0; testMobAbilityPopup = null; },
+  onClose() { testMobScroll = 0; testMobAbilityPopup = null; },
 });
 
 // ===================== SPAWN TEST MOB =====================
@@ -273,11 +376,131 @@ function drawTestMobPanel() {
     ctx.fillStyle = "rgba(100,180,255,0.5)";
     ctx.beginPath(); ctx.roundRect(gridX + gridW - 10, thumbY, 6, thumbH, 3); ctx.fill();
   }
+
+  // ===== ABILITY INFO POPUP (right-click) =====
+  if (testMobAbilityPopup) {
+    const pop = testMobAbilityPopup;
+    const popPad = 12;
+    const lineH = 16;
+    const headerH = 28;
+    const abilityGap = 4;
+
+    // Measure popup height
+    let lines = [];
+    if (pop.abilities && pop.abilities.length > 0) {
+      for (const ab of pop.abilities) {
+        // Ability name line
+        const prettyName = ab.key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        lines.push({ type: 'name', text: prettyName });
+        // Wrap description to ~38 chars per line
+        const words = ab.desc.split(' ');
+        let cur = '';
+        for (const w of words) {
+          if ((cur + ' ' + w).trim().length > 38) {
+            lines.push({ type: 'desc', text: cur.trim() });
+            cur = w;
+          } else {
+            cur = cur ? cur + ' ' + w : w;
+          }
+        }
+        if (cur.trim()) lines.push({ type: 'desc', text: cur.trim() });
+        lines.push({ type: 'gap' });
+      }
+    } else if (pop.extraInfo) {
+      for (const info of pop.extraInfo) {
+        const words = info.split(' ');
+        let cur = '';
+        for (const w of words) {
+          if ((cur + ' ' + w).trim().length > 38) {
+            lines.push({ type: 'desc', text: cur.trim() });
+            cur = w;
+          } else {
+            cur = cur ? cur + ' ' + w : w;
+          }
+        }
+        if (cur.trim()) lines.push({ type: 'desc', text: cur.trim() });
+        lines.push({ type: 'gap' });
+      }
+    }
+    // Remove trailing gap
+    if (lines.length > 0 && lines[lines.length - 1].type === 'gap') lines.pop();
+
+    const popW = 280;
+    let popH = headerH + popPad * 2;
+    for (const ln of lines) {
+      popH += ln.type === 'gap' ? abilityGap : lineH;
+    }
+    popH = Math.min(popH, ph - 20); // cap to panel height
+
+    // Position: try to keep within panel bounds
+    let popX = pop.x + 8;
+    let popY = pop.y - 10;
+    if (popX + popW > px + pw - 6) popX = pop.x - popW - 8;
+    if (popY + popH > py + ph - 6) popY = py + ph - 6 - popH;
+    if (popY < py + 6) popY = py + 6;
+    if (popX < px + 6) popX = px + 6;
+
+    // Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.beginPath(); ctx.roundRect(popX + 3, popY + 3, popW, popH, 10); ctx.fill();
+
+    // Background
+    ctx.fillStyle = "#0c1220";
+    ctx.beginPath(); ctx.roundRect(popX, popY, popW, popH, 10); ctx.fill();
+    ctx.strokeStyle = pop.isBoss ? "rgba(255,120,60,0.6)" : "rgba(100,180,220,0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(popX, popY, popW, popH, 10); ctx.stroke();
+
+    // Header
+    ctx.fillStyle = pop.isBoss ? "rgba(60,25,15,0.7)" : "rgba(20,40,60,0.7)";
+    ctx.beginPath(); ctx.roundRect(popX + 2, popY + 2, popW - 4, headerH, [8,8,0,0]); ctx.fill();
+
+    ctx.font = "bold 13px monospace";
+    ctx.fillStyle = pop.isBoss ? "#ff9966" : "#66ccff";
+    ctx.textAlign = "left";
+    ctx.fillText("📋 " + pop.mobName, popX + popPad, popY + 19);
+
+    if (pop.isBoss) {
+      ctx.font = "bold 9px monospace";
+      ctx.fillStyle = "#ff7744";
+      ctx.textAlign = "right";
+      ctx.fillText("BOSS", popX + popW - popPad, popY + 18);
+    }
+
+    // Ability lines
+    let drawY = popY + headerH + popPad;
+    ctx.textAlign = "left";
+    for (const ln of lines) {
+      if (drawY > popY + popH - 6) break; // overflow guard
+      if (ln.type === 'gap') {
+        drawY += abilityGap;
+      } else if (ln.type === 'name') {
+        ctx.font = "bold 11px monospace";
+        ctx.fillStyle = "#eebb55";
+        ctx.fillText("▸ " + ln.text, popX + popPad, drawY);
+        drawY += lineH;
+      } else {
+        ctx.font = "10px monospace";
+        ctx.fillStyle = "#aabbcc";
+        ctx.fillText("  " + ln.text, popX + popPad, drawY);
+        drawY += lineH;
+      }
+    }
+
+    // Hint
+    ctx.font = "9px monospace";
+    ctx.fillStyle = "#556";
+    ctx.textAlign = "right";
+    ctx.fillText("right-click to close", popX + popW - 8, popY + popH - 5);
+  }
 }
 
 // ===================== CLICK HANDLER =====================
 function handleTestMobClick(mx, my) {
   if (!UI.isOpen('testmob')) return false;
+
+  // Dismiss ability popup on any left click
+  if (testMobAbilityPopup) { testMobAbilityPopup = null; }
 
   const pw = 700, ph = 520;
   const px = (BASE_W - pw) / 2, py = (BASE_H - ph) / 2;
@@ -390,4 +613,84 @@ function handleTestMobScroll(delta) {
     testMobScroll = Math.max(0, Math.min(testMobScroll, maxScroll));
   }
   return true;
+}
+
+// ===================== RIGHT-CLICK HANDLER =====================
+// Right-click on a mob card → show ability info popup
+function handleTestMobRightClick(mx, my) {
+  if (!UI.isOpen('testmob')) return false;
+
+  // If popup is already showing, dismiss it
+  if (testMobAbilityPopup) { testMobAbilityPopup = null; return true; }
+
+  const pw = 700, ph = 520;
+  const px = (BASE_W - pw) / 2, py = (BASE_H - ph) / 2;
+
+  // Only handle clicks inside panel
+  if (mx < px || mx > px + pw || my < py || my > py + ph) return false;
+
+  // Mob grid area
+  const sideW = 180;
+  const sideX = px + 12;
+  const sideY = py + 56;
+  const gridX = sideX + sideW + 12;
+  const gridY = sideY;
+  const gridW = pw - sideW - 36;
+  const gridH = ph - 68;
+  const cardW = (gridW - 30) / 2;
+  const cardH = 52;
+  const cardGap = 6;
+  const cardStartY = gridY + 30;
+
+  const dungData = TESTMOB_DUNGEONS[testMobDungeon];
+  const floorData = dungData ? dungData.floors[testMobFloor] : null;
+  if (!floorData) return true;
+
+  for (let i = 0; i < floorData.mobs.length; i++) {
+    const typeKey = floorData.mobs[i];
+    const mt = MOB_TYPES[typeKey];
+    if (!mt) continue;
+
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const cx = gridX + 8 + col * (cardW + 8);
+    const cy = cardStartY + (row - testMobScroll) * (cardH + cardGap);
+
+    if (cy + cardH < cardStartY || cy > gridY + gridH) continue;
+
+    // Hit test the card area
+    if (mx >= cx && mx <= cx + cardW && my >= cy && my <= cy + cardH) {
+      const specials = mt._specials || [];
+      const abilities = specials.map(key => ({
+        key,
+        desc: MOB_ABILITY_DESCRIPTIONS[key] || "Unknown ability.",
+      }));
+
+      // Cave mobs without specials — show their built-in AI info
+      let extraInfo = null;
+      if (specials.length === 0) {
+        const parts = [];
+        if (mt.summonRate)  parts.push("Summons minions every " + (mt.summonRate / 60).toFixed(1) + "s");
+        if (mt.boulderRate) parts.push("Throws boulders every " + (mt.boulderRate / 60).toFixed(1) + "s");
+        if (mt.arrowRate)   parts.push("Shoots arrows every " + (mt.arrowRate / 60).toFixed(1) + "s");
+        if (mt.healRadius)  parts.push("Heals nearby mobs within " + mt.healRadius + "px");
+        if (mt.explodeRange) parts.push("Suicide bomber: explodes for " + mt.explodeDamage + " damage");
+        if (parts.length === 0) parts.push("Basic melee attacker — no special abilities.");
+        extraInfo = parts;
+      }
+
+      testMobAbilityPopup = {
+        typeKey,
+        mobName: mt.name || typeKey,
+        abilities,
+        extraInfo,
+        isBoss: mt.isBoss || (specials.length > 1),
+        x: mx,
+        y: my,
+      };
+      return true;
+    }
+  }
+
+  return true; // consume right-click inside panel
 }

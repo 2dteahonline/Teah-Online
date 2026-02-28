@@ -767,6 +767,13 @@ canvas.addEventListener("mouseup", e => {
 });
 canvas.addEventListener("contextmenu", e => {
   e.preventDefault();
+  // Right-click on test mob panel → show ability info
+  if (UI.isOpen('testmob') && typeof handleTestMobRightClick === 'function') {
+    const rect = canvas.getBoundingClientRect();
+    const rmx = (e.clientX - rect.left) / scale;
+    const rmy = (e.clientY - rect.top) / scale;
+    if (handleTestMobRightClick(rmx, rmy)) return;
+  }
   // Right-click on inventory item → show card popup
   if (UI.isOpen('inventory') && invHover >= 0 && inventory[invHover]) {
     const rect = canvas.getBoundingClientRect();
