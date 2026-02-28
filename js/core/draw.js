@@ -547,6 +547,74 @@ function draw() {
 
         ctx.restore();
       }
+
+      // --- Vertical mood scale meter (patience bar) ---
+      // Shown for queued NPCs: green (happy) at top → red (angry) at bottom
+      const inQueueState = npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food';
+      if (inQueueState && typeof npc._moodProgress === 'number') {
+        const mp = npc._moodProgress; // 0 (happy) → 1 (raging)
+        const meterX = npc.x + 28;    // right of NPC
+        const meterY = npc.y - 105;   // top of meter (above head)
+        const meterW = 8;
+        const meterH = 48;
+        const meterR = 4;
+
+        // Color interpolation: green → yellow → orange → red
+        let mr, mg, mb;
+        if (mp < 0.33) {
+          const t = mp / 0.33;
+          mr = Math.round(80 + t * 140);    // 80 → 220
+          mg = Math.round(200 - t * 0);     // 200 → 200
+          mb = Math.round(80 - t * 40);     // 80 → 40
+        } else if (mp < 0.66) {
+          const t = (mp - 0.33) / 0.33;
+          mr = Math.round(220 + t * 20);    // 220 → 240
+          mg = Math.round(200 - t * 60);    // 200 → 140
+          mb = Math.round(40 - t * 0);      // 40 → 40
+        } else {
+          const t = (mp - 0.66) / 0.34;
+          mr = Math.round(240 - t * 20);    // 240 → 220
+          mg = Math.round(140 - t * 90);    // 140 → 50
+          mb = Math.round(40 - t * 0);      // 40 → 40
+        }
+        const meterColor = `rgb(${mr},${mg},${mb})`;
+
+        // Fill height = patience remaining (full at top when happy, drains downward)
+        const fillH = Math.round((1 - mp) * meterH);
+
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+
+        // Background track (dark)
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.roundRect(meterX - meterW / 2, meterY, meterW, meterH, meterR);
+        ctx.fill();
+
+        // Filled portion (from top, representing remaining patience)
+        if (fillH > 0) {
+          ctx.fillStyle = meterColor;
+          ctx.beginPath();
+          ctx.roundRect(meterX - meterW / 2, meterY, meterW, fillH, meterR);
+          ctx.fill();
+        }
+
+        // Border
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.roundRect(meterX - meterW / 2, meterY, meterW, meterH, meterR);
+        ctx.stroke();
+
+        // Face markers: happy at top, angry at bottom
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('😊', meterX, meterY - 7);
+        ctx.fillText('😡', meterX, meterY + meterH + 7);
+
+        ctx.restore();
+      }
     } else {
       const m = e.mob;
       // Mummy armed glow — flashes green faster as fuse runs down
