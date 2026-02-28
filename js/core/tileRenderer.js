@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inLobby ? '#1a4a18' : '#1e1e26';
+  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inLobby ? '#1a4a18' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -211,6 +211,39 @@ function drawLevelBackground(camX, camY) {
           if ((tx * 3 + ty) % 9 === 0) {
             ctx.fillStyle = 'rgba(90,75,50,0.2)';
             ctx.beginPath(); ctx.arc(x + 32, y + 12, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === GUNSMITH TILES ===
+      if (Scene.inGunsmith) {
+        if (collisionGrid[ty][tx] === 1) {
+          // Stone workshop walls
+          ctx.fillStyle = '#3a3238';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#443840';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Brick pattern
+          if ((tx + ty) % 3 === 0) {
+            ctx.strokeStyle = 'rgba(80,60,50,0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 4, y + 8, 20, 12);
+          }
+        } else {
+          // Workshop floor — dark wooden planks
+          const sv = ((tx * 3 + ty * 7) % 4);
+          ctx.fillStyle = `rgb(${58 + sv * 3},${42 + sv * 2},${28 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Plank lines (horizontal)
+          ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(x, y + TILE * 0.33); ctx.lineTo(x + TILE, y + TILE * 0.33); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x, y + TILE * 0.67); ctx.lineTo(x + TILE, y + TILE * 0.67); ctx.stroke();
+          // Occasional nail
+          if ((tx * 5 + ty) % 8 === 0) {
+            ctx.fillStyle = 'rgba(100,90,70,0.3)';
+            ctx.beginPath(); ctx.arc(x + 24, y + 16, 1.5, 0, Math.PI * 2); ctx.fill();
           }
         }
         continue;

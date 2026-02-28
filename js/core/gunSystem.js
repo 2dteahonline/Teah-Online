@@ -41,7 +41,10 @@ function getFreezePenalty() {
 }
 // Reload: faster base, still scales with firerate
 // firerate 0 = 40 frames (0.67sec), firerate 100 = 90 frames (~1.5sec). At 50: ~65 frames (~1.1sec)
-function getReloadTime() { return Math.round(40 + gunStats.firerate * 0.5); }
+function getReloadTime() {
+  if (playerEquip.gun && playerEquip.gun.reloadSpeed) return playerEquip.gun.reloadSpeed;
+  return Math.round(40 + gunStats.firerate * 0.5);
+}
 
 // gun → js/authority/gameState.js
 
@@ -448,10 +451,13 @@ function getMuzzlePos(aimDir) {
 }
 
 function shoot() {
-  if (gun.ammo <= 0 || gun.reloading || gun.fireCooldown > 0) return;
+  // neverReload guns (bow) skip ammo/reload checks — only fireCooldown matters
+  const isNeverReload = playerEquip.gun && playerEquip.gun.neverReload;
+  if (!isNeverReload && (gun.ammo <= 0 || gun.reloading)) return;
+  if (gun.fireCooldown > 0) return;
 
   const aimDir = getAimDir();
-  
+
   // Face the shoot direction temporarily
   shootFaceDir = aimDir;
   shootFaceTimer = SHOOT_FACE_DURATION;
@@ -460,51 +466,107 @@ function shoot() {
   let freezeMult = 1.0;
   if (playerEquip.gun && playerEquip.gun.tier >= 4) freezeMult = 0.3;
   else if (playerEquip.gun && playerEquip.gun.tier >= 3) freezeMult = 0.5;
+  // Main guns (no tier) get lighter freeze
+  if (playerEquip.gun && typeof MAIN_GUNS !== 'undefined' && MAIN_GUNS[playerEquip.gun.id]) freezeMult = 0.3;
   freezeTimer = Math.round(getFreezeDuration() * freezeMult);
 
+  // Determine bullet speed (custom for bow, default otherwise)
+  const bSpeed = (playerEquip.gun && playerEquip.gun.bulletSpeed) ? playerEquip.gun.bulletSpeed : BULLET_SPEED;
+
   let vx = 0, vy = 0;
-  if (aimDir === 0) vy = BULLET_SPEED;
-  else if (aimDir === 1) vy = -BULLET_SPEED;
-  else if (aimDir === 2) vx = -BULLET_SPEED;
-  else vx = BULLET_SPEED;
+  if (aimDir === 0) vy = bSpeed;
+  else if (aimDir === 1) vy = -bSpeed;
+  else if (aimDir === 2) vx = -bSpeed;
+  else vx = bSpeed;
 
   // Spawn from actual gun muzzle
   const muzzle = getMuzzlePos(aimDir);
 
-  // Stack: 0 = 1 bullet, higher = more bullets per shot
-  const stackCount = 1 + Math.floor(gunStats.stack / 10);
-  for (let s = 0; s < stackCount; s++) {
-    let bvx = vx, bvy = vy;
+  // Bullet color based on equipped gun — includes both shop guns and main guns
+  const bulletColorMap = {
+    smg: { main: "#80ff80", core: "#c0ffc0", glow: "rgba(80,255,80,0.2)" },
+    rifle: { main: "#ff80c0", core: "#ffc0e0", glow: "rgba(255,80,180,0.2)" },
+    frost_rifle: { main: "#80d0ff", core: "#c0e8ff", glow: "rgba(80,200,255,0.2)" },
+    inferno_cannon: { main: "#ff6030", core: "#ffa080", glow: "rgba(255,80,30,0.25)" },
+  };
+  const gunId = playerEquip.gun ? playerEquip.gun.id : null;
+  // Check for main gun bulletColor first (stored on the gun stats), then fallback to shop gun map
+  const bColor = (playerEquip.gun && playerEquip.gun.bulletColor) ? playerEquip.gun.bulletColor
+    : (gunId ? bulletColorMap[gunId] || null : null);
 
-    // Spread: add curve to extra bullets (0 = straight)
-    // When spread > 0 and stack > 1, bullets fan out
-    // For spread 0, all bullets go perfectly straight
+  // ---- SHOTGUN: pellet spread ----
+  const pelletCount = (playerEquip.gun && playerEquip.gun.pellets) ? playerEquip.gun.pellets : 0;
+  const spreadDeg = (playerEquip.gun && playerEquip.gun.spread) ? playerEquip.gun.spread : 0;
+  const maxRange = (playerEquip.gun && playerEquip.gun.maxRange) ? playerEquip.gun.maxRange : 0;
 
-    // Bullet color based on equipped gun
-    const bulletColorMap = {
-      smg: { main: "#80ff80", core: "#c0ffc0", glow: "rgba(80,255,80,0.2)" },
-      rifle: { main: "#ff80c0", core: "#ffc0e0", glow: "rgba(255,80,180,0.2)" },
-      frost_rifle: { main: "#80d0ff", core: "#c0e8ff", glow: "rgba(80,200,255,0.2)" },
-      inferno_cannon: { main: "#ff6030", core: "#ffa080", glow: "rgba(255,80,30,0.25)" },
-    };
-    const gunId = playerEquip.gun ? playerEquip.gun.id : null;
-    const bColor = gunId ? bulletColorMap[gunId] || null : null;
+  if (pelletCount > 0) {
+    // Shotgun mode: spawn N pellets in a cone
+    const spreadRad = spreadDeg * Math.PI / 180;
+    const baseAngle = Math.atan2(vy, vx);
+    for (let p = 0; p < pelletCount; p++) {
+      // Distribute pellets across the spread cone with some randomness
+      const offset = (p / (pelletCount - 1 || 1) - 0.5) * spreadRad + (Math.random() - 0.5) * (spreadRad * 0.2);
+      const angle = baseAngle + offset;
+      bullets.push({
+        id: nextBulletId++,
+        x: muzzle.x,
+        y: muzzle.y,
+        startX: muzzle.x,
+        startY: muzzle.y,
+        vx: Math.cos(angle) * bSpeed,
+        vy: Math.sin(angle) * bSpeed,
+        fromPlayer: true,
+        bulletColor: bColor,
+        maxRange: maxRange, // pellets despawn after this distance
+      });
+    }
+  } else {
+    // ---- STANDARD / SMG / BOW: single bullet (with optional random spread) ----
+    const stackCount = 1 + Math.floor(gunStats.stack / 10);
+    for (let s = 0; s < stackCount; s++) {
+      let bvx = vx, bvy = vy;
 
-    bullets.push({
-      id: nextBulletId++,
-      x: muzzle.x,
-      y: muzzle.y,
-      vx: bvx, vy: bvy,
-      fromPlayer: true,
-      bulletColor: bColor,
-    });
+      // SMG spread: add random angular offset per shot
+      if (spreadDeg > 0 && pelletCount === 0) {
+        const spreadRad = spreadDeg * Math.PI / 180;
+        const randOffset = (Math.random() - 0.5) * spreadRad;
+        const baseAngle = Math.atan2(bvy, bvx);
+        const newAngle = baseAngle + randOffset;
+        bvx = Math.cos(newAngle) * bSpeed;
+        bvy = Math.sin(newAngle) * bSpeed;
+      }
+
+      const bulletObj = {
+        id: nextBulletId++,
+        x: muzzle.x,
+        y: muzzle.y,
+        vx: bvx, vy: bvy,
+        fromPlayer: true,
+        bulletColor: bColor,
+      };
+
+      // Bow: pierce + arrow visual flag
+      if (playerEquip.gun && playerEquip.gun.pierce) {
+        bulletObj.pierce = true;
+        bulletObj.pierceCount = playerEquip.gun.pierceCount || 0;
+        bulletObj.hitMobs = []; // track mob IDs to avoid hitting same mob twice
+      }
+      if (playerEquip.gun && playerEquip.gun.isArrow) {
+        bulletObj.isMainArrow = true; // different from mob archer arrows
+      }
+
+      bullets.push(bulletObj);
+    }
   }
 
-  gun.ammo--;
+  // Ammo / reload (skip for neverReload guns like the bow)
+  if (!isNeverReload) {
+    gun.ammo--;
+  }
   gun.fireCooldown = getFireRate();
   gun.recoilTimer = 6; // recoil animation frames
 
-  if (gun.ammo <= 0) {
+  if (!isNeverReload && gun.ammo <= 0) {
     gun.reloading = true;
     gun.reloadTimer = getReloadTime();
   }

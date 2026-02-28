@@ -42,6 +42,7 @@ const Scene = {
     else if (level.isCooking) this._current = 'cooking';
     else if (level.isFarm) this._current = 'farm';
     else if (level.isAzurine) this._current = 'azurine';
+    else if (level.isGunsmith) this._current = 'gunsmith';
     else if (level.isTestArena) this._current = 'test_arena';
     else this._current = 'dungeon';
     if (prev !== this._current) {
@@ -58,6 +59,7 @@ const Scene = {
   get inCooking() { return this._current === 'cooking'; },
   get inFarm() { return this._current === 'farm'; },
   get inAzurine() { return this._current === 'azurine'; },
+  get inGunsmith() { return this._current === 'gunsmith'; },
   get inTestArena() { return this._current === 'test_arena'; },
 };
 
@@ -91,7 +93,7 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
       if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
       if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
       if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
-    } else if (targetLevel.isLobby || targetLevel.isCave || targetLevel.isAzurine) {
+    } else if (targetLevel.isLobby || targetLevel.isCave || targetLevel.isAzurine || targetLevel.isGunsmith) {
       resetCombatState('lobby');
     } else if (targetLevel.isMine) {
       resetCombatState('mine');
@@ -217,6 +219,14 @@ function checkPortals() {
       return;
     }
     if (e.type === 'azurine_exit' && Scene.inAzurine && inZone) {
+      startTransition(e.target, e.spawnTX, e.spawnTY);
+      return;
+    }
+    if (e.type === 'gunsmith_entrance' && Scene.inLobby && inZone) {
+      startTransition(e.target, e.spawnTX, e.spawnTY);
+      return;
+    }
+    if (e.type === 'gunsmith_exit' && Scene.inGunsmith && inZone) {
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }

@@ -1468,6 +1468,7 @@ function draw() {
   if (typeof drawFishVendorPanel === 'function') drawFishVendorPanel();
   if (typeof drawFarmingHUD === 'function') drawFarmingHUD();
   if (typeof drawFarmVendorPanel === 'function') drawFarmVendorPanel();
+  if (typeof drawGunsmithPanel === 'function') drawGunsmithPanel();
 
   // Malevolent Shrine charge bar (only when War Cleaver equipped)
   if (melee.special === 'cleave' && Scene.inDungeon) {

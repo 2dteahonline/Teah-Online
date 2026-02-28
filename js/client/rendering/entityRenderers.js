@@ -2254,6 +2254,165 @@ ENTITY_RENDERERS.fish_vendor = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = 'left';
 };
 
+// ===================== GUNSMITH BUILDING (lobby) =====================
+ENTITY_RENDERERS.building_gunsmith = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const t = Date.now() / 1000;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(ex + cw / 2 + 5, ey + ch + 6, cw * 0.42, 8, 0, 0, Math.PI * 2); ctx.fill();
+    // Main building body (dark metallic)
+    ctx.fillStyle = '#4a4a55';
+    ctx.fillRect(ex + 4, ey + ch * 0.2, cw - 8, ch * 0.8);
+    // Metal rivets pattern
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 5; c++) {
+        ctx.fillStyle = '#6a6a75';
+        ctx.beginPath(); ctx.arc(ex + 16 + c * cw * 0.18, ey + ch * 0.3 + r * ch * 0.15, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Foundation
+    ctx.fillStyle = '#3a3a40'; ctx.fillRect(ex + 2, ey + ch * 0.88, cw - 4, ch * 0.12);
+    // Roof (copper/bronze)
+    ctx.fillStyle = '#8a6a40';
+    ctx.beginPath(); ctx.moveTo(ex - 4, ey + ch * 0.2); ctx.lineTo(ex + cw / 2, ey - 10); ctx.lineTo(ex + cw + 4, ey + ch * 0.2); ctx.fill();
+    ctx.strokeStyle = '#6a4a28'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ex - 4, ey + ch * 0.2); ctx.lineTo(ex + cw / 2, ey - 10); ctx.lineTo(ex + cw + 4, ey + ch * 0.2); ctx.stroke();
+    // Window (forge glow)
+    ctx.fillStyle = '#1a1520';
+    ctx.fillRect(ex + cw * 0.1, ey + ch * 0.35, cw * 0.3, ch * 0.2);
+    ctx.strokeStyle = '#5a4a30'; ctx.lineWidth = 2;
+    ctx.strokeRect(ex + cw * 0.1, ey + ch * 0.35, cw * 0.3, ch * 0.2);
+    ctx.fillStyle = `rgba(255,140,40,${0.2 + Math.sin(t * 2) * 0.1})`;
+    ctx.fillRect(ex + cw * 0.11, ey + ch * 0.36, cw * 0.28, ch * 0.18);
+    // Window (right)
+    ctx.fillStyle = '#1a1520';
+    ctx.fillRect(ex + cw * 0.6, ey + ch * 0.35, cw * 0.3, ch * 0.2);
+    ctx.strokeStyle = '#5a4a30'; ctx.lineWidth = 2;
+    ctx.strokeRect(ex + cw * 0.6, ey + ch * 0.35, cw * 0.3, ch * 0.2);
+    ctx.fillStyle = `rgba(255,140,40,${0.2 + Math.sin(t * 2 + 1) * 0.1})`;
+    ctx.fillRect(ex + cw * 0.61, ey + ch * 0.36, cw * 0.28, ch * 0.18);
+    // Door
+    ctx.fillStyle = '#3a2818';
+    ctx.fillRect(ex + cw * 0.38, ey + ch * 0.55, cw * 0.24, ch * 0.45);
+    ctx.strokeStyle = '#5a4a30'; ctx.lineWidth = 2;
+    ctx.strokeRect(ex + cw * 0.38, ey + ch * 0.55, cw * 0.24, ch * 0.45);
+    ctx.fillStyle = '#c0a040';
+    ctx.beginPath(); ctx.arc(ex + cw * 0.55, ey + ch * 0.78, 3, 0, Math.PI * 2); ctx.fill();
+    // Sign — "GUNSMITH"
+    ctx.fillStyle = '#2a2020';
+    ctx.fillRect(ex + cw * 0.2, ey + ch * 0.22, cw * 0.6, 16);
+    ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 1;
+    ctx.strokeRect(ex + cw * 0.2, ey + ch * 0.22, cw * 0.6, 16);
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = '#ffa840';
+    ctx.textAlign = 'center';
+    ctx.fillText('GUNSMITH', ex + cw / 2, ey + ch * 0.22 + 12);
+    ctx.textAlign = 'left';
+    // Chimney with smoke
+    ctx.fillStyle = '#5a5a60';
+    ctx.fillRect(ex + cw * 0.75, ey - 6, 16, ch * 0.22);
+    for (let s = 0; s < 3; s++) {
+      const smokeY = ey - 12 - s * 12 - Math.sin(t * 0.8 + s) * 4;
+      const smokeA = 0.15 - s * 0.04;
+      ctx.fillStyle = `rgba(120,120,130,${smokeA})`;
+      ctx.beginPath(); ctx.arc(ex + cw * 0.75 + 8 + Math.sin(t + s) * 3, smokeY, 6 + s * 2, 0, Math.PI * 2); ctx.fill();
+    }
+};
+
+// ===================== GUNSMITH NPC (inside workshop) =====================
+ENTITY_RENDERERS.gunsmith_npc = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const bx = ex + cw / 2, by = ey + ch / 2;
+    const t = Date.now() / 1000;
+    const bob = Math.sin(t * 1.2) * 1.5;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.ellipse(bx, by + 30, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // Body (blacksmith apron)
+    ctx.fillStyle = '#5a3a20'; ctx.fillRect(bx - 10, by - 8 + bob, 20, 28);
+    // Apron
+    ctx.fillStyle = '#3a2a18'; ctx.fillRect(bx - 8, by + bob, 16, 18);
+    // Head
+    ctx.fillStyle = '#c8a888'; ctx.fillRect(bx - 7, by - 22 + bob, 14, 14);
+    // Hair (dark)
+    ctx.fillStyle = '#2a1a0a'; ctx.fillRect(bx - 8, by - 24 + bob, 16, 6);
+    // Eyes
+    ctx.fillStyle = '#222';
+    ctx.fillRect(bx - 4, by - 17 + bob, 3, 3);
+    ctx.fillRect(bx + 2, by - 17 + bob, 3, 3);
+    // Beard
+    ctx.fillStyle = '#4a3a28';
+    ctx.fillRect(bx - 4, by - 12 + bob, 8, 5);
+    // Hammer in hand
+    ctx.fillStyle = '#6a6a70'; ctx.fillRect(bx + 10, by - 6 + bob, 4, 18);
+    ctx.fillStyle = '#888'; ctx.fillRect(bx + 8, by - 8 + bob, 8, 6);
+    // Name label
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#000';
+    ctx.fillText('Gunsmith', bx + 1, ey - 4 + bob + 1);
+    ctx.fillStyle = '#ffa840';
+    ctx.fillText('Gunsmith', bx, ey - 4 + bob);
+    ctx.textAlign = 'left';
+};
+
+// ===================== WORKBENCH (gunsmith room) =====================
+ENTITY_RENDERERS.workbench = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    // Table body
+    ctx.fillStyle = '#5a4a30'; ctx.fillRect(ex + 4, ey + ch * 0.3, cw - 8, ch * 0.5);
+    ctx.fillStyle = '#4a3a20'; ctx.fillRect(ex + 4, ey + ch * 0.7, cw - 8, ch * 0.2);
+    // Table top
+    ctx.fillStyle = '#6a5a40'; ctx.fillRect(ex + 2, ey + ch * 0.25, cw - 4, 6);
+    // Tools on bench
+    ctx.fillStyle = '#888'; ctx.fillRect(ex + 10, ey + ch * 0.3, 20, 4); // wrench
+    ctx.fillStyle = '#666'; ctx.fillRect(ex + cw - 40, ey + ch * 0.3, 6, 16); // file
+    // Legs
+    ctx.fillStyle = '#3a2a18';
+    ctx.fillRect(ex + 6, ey + ch * 0.8, 4, ch * 0.2);
+    ctx.fillRect(ex + cw - 10, ey + ch * 0.8, 4, ch * 0.2);
+};
+
+// ===================== WEAPON RACK (gunsmith room) =====================
+ENTITY_RENDERERS.weapon_rack = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    // Back panel
+    ctx.fillStyle = '#3a2a18'; ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+    ctx.strokeStyle = '#5a4a30'; ctx.lineWidth = 2;
+    ctx.strokeRect(ex + 2, ey + 2, cw - 4, ch - 4);
+    // Horizontal bars
+    ctx.fillStyle = '#6a5a40';
+    ctx.fillRect(ex + 6, ey + ch * 0.2, cw - 12, 4);
+    ctx.fillRect(ex + 6, ey + ch * 0.5, cw - 12, 4);
+    ctx.fillRect(ex + 6, ey + ch * 0.8, cw - 12, 4);
+    // Gun silhouettes
+    ctx.fillStyle = '#555';
+    ctx.fillRect(ex + 10, ey + ch * 0.25, cw - 24, 6);
+    ctx.fillRect(ex + 14, ey + ch * 0.55, cw - 28, 6);
+    ctx.fillRect(ex + 10, ey + ch * 0.85, cw - 24, 5);
+};
+
+// ===================== ANVIL (gunsmith room) =====================
+ENTITY_RENDERERS.anvil = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const cx = ex + cw / 2, cy = ey + ch / 2;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(cx, cy + 20, 20, 6, 0, 0, Math.PI * 2); ctx.fill();
+    // Base
+    ctx.fillStyle = '#4a4a50'; ctx.fillRect(cx - 14, cy + 6, 28, 14);
+    // Waist (narrow)
+    ctx.fillStyle = '#5a5a60'; ctx.fillRect(cx - 8, cy - 2, 16, 10);
+    // Top face (wide)
+    ctx.fillStyle = '#6a6a72'; ctx.fillRect(cx - 18, cy - 10, 36, 10);
+    // Horn
+    ctx.fillStyle = '#5a5a60';
+    ctx.beginPath(); ctx.moveTo(cx + 18, cy - 8); ctx.lineTo(cx + 30, cy - 4); ctx.lineTo(cx + 18, cy); ctx.fill();
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(cx - 16, cy - 9, 32, 3);
+};
+
 function drawLevelEntities(camX, camY) {
   for (const e of levelEntities) {
     const w = e.w ?? 1;

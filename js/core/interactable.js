@@ -84,6 +84,18 @@ registerInteractable({
   onInteract() { UI.open('farmVendor'); },
 });
 
+// Register gunsmith NPC interactable (gunsmith room only)
+registerInteractable({
+  id: 'gunsmith_npc',
+  get x() { return 9 * TILE + TILE; },   // center of 2x2 entity at tx:9
+  get y() { return 5 * TILE + TILE; },   // center of 2x2 entity at ty:5
+  range: 120,
+  get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Gunsmith'; },
+  type: 'gunsmith',
+  canInteract() { return Scene.inGunsmith; },
+  onInteract() { UI.open('gunsmith'); },
+});
+
 let fireRateBonus = 0;
 const GUN_DEFAULTS = { damage: 20 };
 const MELEE_DEFAULTS = { damage: 15, critChance: 0.10 };

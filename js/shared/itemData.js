@@ -27,8 +27,13 @@ const PALETTE = {
 const ITEM_STAT_RENDERERS = {
   gun: (d, drawStat) => {
     drawStat("Damage", d.damage || "—", "#ff8866");
+    if (d.pellets) drawStat("Pellets", "x" + d.pellets, "#ffaa44");
     drawStat("Fire Rate", d.fireRate ? (60/d.fireRate).toFixed(1) + "/s" : "—", "#ffcc44");
-    drawStat("Mag Size", d.magSize || "—", "#66bbff");
+    if (d.neverReload) drawStat("Ammo", "Unlimited", "#66ffaa");
+    else drawStat("Mag Size", d.magSize || "—", "#66bbff");
+    if (d.pierce) drawStat("Pierce", (d.pierceCount || 0) + 1 + " mobs", "#88ddff");
+    if (d.spread && !d.pellets) drawStat("Spread", d.spread + "°", "#ccaa66");
+    if (d.maxRange) drawStat("Range", d.maxRange + "px", "#aabb88");
     if (d.special) drawStat("Special", d.special.charAt(0).toUpperCase() + d.special.slice(1), "#ff66cc");
   },
   melee: (d, drawStat) => {
