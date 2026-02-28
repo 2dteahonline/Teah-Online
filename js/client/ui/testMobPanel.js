@@ -377,130 +377,228 @@ function drawTestMobPanel() {
     ctx.beginPath(); ctx.roundRect(gridX + gridW - 10, thumbY, 6, thumbH, 3); ctx.fill();
   }
 
-  // ===== ABILITY INFO POPUP (right-click) =====
+  // ===== MOB CARD (right-click — matches inventory card style) =====
   if (testMobAbilityPopup) {
-    const pop = testMobAbilityPopup;
-    const popPad = 12;
-    const lineH = 16;
-    const headerH = 28;
-    const abilityGap = 4;
-
-    // Measure popup height
-    let lines = [];
-    if (pop.abilities && pop.abilities.length > 0) {
-      for (const ab of pop.abilities) {
-        // Ability name line
-        const prettyName = ab.key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        lines.push({ type: 'name', text: prettyName });
-        // Wrap description to ~38 chars per line
-        const words = ab.desc.split(' ');
-        let cur = '';
-        for (const w of words) {
-          if ((cur + ' ' + w).trim().length > 38) {
-            lines.push({ type: 'desc', text: cur.trim() });
-            cur = w;
-          } else {
-            cur = cur ? cur + ' ' + w : w;
-          }
-        }
-        if (cur.trim()) lines.push({ type: 'desc', text: cur.trim() });
-        lines.push({ type: 'gap' });
-      }
-    } else if (pop.extraInfo) {
-      for (const info of pop.extraInfo) {
-        const words = info.split(' ');
-        let cur = '';
-        for (const w of words) {
-          if ((cur + ' ' + w).trim().length > 38) {
-            lines.push({ type: 'desc', text: cur.trim() });
-            cur = w;
-          } else {
-            cur = cur ? cur + ' ' + w : w;
-          }
-        }
-        if (cur.trim()) lines.push({ type: 'desc', text: cur.trim() });
-        lines.push({ type: 'gap' });
-      }
-    }
-    // Remove trailing gap
-    if (lines.length > 0 && lines[lines.length - 1].type === 'gap') lines.pop();
-
-    const popW = 280;
-    let popH = headerH + popPad * 2;
-    for (const ln of lines) {
-      popH += ln.type === 'gap' ? abilityGap : lineH;
-    }
-    popH = Math.min(popH, ph - 20); // cap to panel height
-
-    // Position: try to keep within panel bounds
-    let popX = pop.x + 8;
-    let popY = pop.y - 10;
-    if (popX + popW > px + pw - 6) popX = pop.x - popW - 8;
-    if (popY + popH > py + ph - 6) popY = py + ph - 6 - popH;
-    if (popY < py + 6) popY = py + 6;
-    if (popX < px + 6) popX = px + 6;
-
-    // Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.beginPath(); ctx.roundRect(popX + 3, popY + 3, popW, popH, 10); ctx.fill();
-
-    // Background
-    ctx.fillStyle = "#0c1220";
-    ctx.beginPath(); ctx.roundRect(popX, popY, popW, popH, 10); ctx.fill();
-    ctx.strokeStyle = pop.isBoss ? "rgba(255,120,60,0.6)" : "rgba(100,180,220,0.5)";
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(popX, popY, popW, popH, 10); ctx.stroke();
-
-    // Header
-    ctx.fillStyle = pop.isBoss ? "rgba(60,25,15,0.7)" : "rgba(20,40,60,0.7)";
-    ctx.beginPath(); ctx.roundRect(popX + 2, popY + 2, popW - 4, headerH, [8,8,0,0]); ctx.fill();
-
-    ctx.font = "bold 13px monospace";
-    ctx.fillStyle = pop.isBoss ? "#ff9966" : "#66ccff";
-    ctx.textAlign = "left";
-    ctx.fillText("📋 " + pop.mobName, popX + popPad, popY + 19);
-
-    if (pop.isBoss) {
-      ctx.font = "bold 9px monospace";
-      ctx.fillStyle = "#ff7744";
-      ctx.textAlign = "right";
-      ctx.fillText("BOSS", popX + popW - popPad, popY + 18);
-    }
-
-    // Ability lines
-    let drawY = popY + headerH + popPad;
-    ctx.textAlign = "left";
-    for (const ln of lines) {
-      if (drawY > popY + popH - 6) break; // overflow guard
-      if (ln.type === 'gap') {
-        drawY += abilityGap;
-      } else if (ln.type === 'name') {
-        ctx.font = "bold 11px monospace";
-        ctx.fillStyle = "#eebb55";
-        ctx.fillText("▸ " + ln.text, popX + popPad, drawY);
-        drawY += lineH;
-      } else {
-        ctx.font = "10px monospace";
-        ctx.fillStyle = "#aabbcc";
-        ctx.fillText("  " + ln.text, popX + popPad, drawY);
-        drawY += lineH;
-      }
-    }
-
-    // Hint
-    ctx.font = "9px monospace";
-    ctx.fillStyle = "#556";
-    ctx.textAlign = "right";
-    ctx.fillText("right-click to close", popX + popW - 8, popY + popH - 5);
+    _drawMobCard(testMobAbilityPopup);
   }
+}
+
+// ===================== MOB CARD (item-card style) =====================
+function _drawMobCard(pop) {
+  const mt = MOB_TYPES[pop.typeKey];
+  if (!mt) return;
+
+  const accentCol = pop.isBoss ? "#ff9966" : "#66ccff";
+  const accentDim = pop.isBoss ? "rgba(255,140,80,0.35)" : "rgba(80,180,255,0.35)";
+
+  // Card dimensions — centered on screen
+  const cw = 260, ch = 420;
+  const cx = (BASE_W - cw) / 2;
+  const cy = (BASE_H - ch) / 2;
+
+  // Dim background
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  // Card background
+  ctx.fillStyle = "#1c1a16";
+  ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 12); ctx.fill();
+
+  // Outer border glow
+  ctx.shadowColor = accentCol;
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = accentCol;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 12); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Inner border
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(cx + 6, cy + 6, cw - 12, ch - 12, 8); ctx.stroke();
+
+  // === BOSS BADGE (top-left) ===
+  if (pop.isBoss) {
+    const badgeW = 50, badgeH = 22;
+    const bx = cx + 10, by = cy + 10;
+    ctx.fillStyle = "#ff7744";
+    ctx.beginPath(); ctx.roundRect(bx, by, badgeW, badgeH, 6); ctx.fill();
+    ctx.font = "bold 10px monospace";
+    ctx.fillStyle = "#000";
+    ctx.textAlign = "center";
+    ctx.fillText("BOSS", bx + badgeW / 2, by + 15);
+  }
+
+  // === HP BADGE (top-right) ===
+  const hpBadgeW = 60, hpBadgeH = 22;
+  const hbx = cx + cw - hpBadgeW - 10, hby = cy + 10;
+  ctx.fillStyle = "rgba(40,80,40,0.8)";
+  ctx.beginPath(); ctx.roundRect(hbx, hby, hpBadgeW, hpBadgeH, 6); ctx.fill();
+  ctx.strokeStyle = "rgba(80,200,80,0.4)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(hbx, hby, hpBadgeW, hpBadgeH, 6); ctx.stroke();
+  ctx.font = "bold 10px monospace";
+  ctx.fillStyle = "#88dd88";
+  ctx.textAlign = "center";
+  ctx.fillText("HP " + mt.hp, hbx + hpBadgeW / 2, hby + 15);
+
+  // === ART AREA (mob character portrait) ===
+  const artX = cx + 20, artY = cy + 44, artW = cw - 40, artH = 100;
+  const artGrad = ctx.createLinearGradient(artX, artY, artX, artY + artH);
+  artGrad.addColorStop(0, "rgba(30,28,40,0.9)");
+  artGrad.addColorStop(1, "rgba(20,18,30,0.9)");
+  ctx.fillStyle = artGrad;
+  ctx.beginPath(); ctx.roundRect(artX, artY, artW, artH, 6); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(artX, artY, artW, artH, 6); ctx.stroke();
+
+  // Draw mob character in art area
+  const charCx = artX + artW / 2;
+  const charCy = artY + artH / 2 + 16;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(artX, artY, artW, artH);
+  ctx.clip();
+  if (typeof drawChar === 'function') {
+    drawChar(charCx, charCy, 0, 0, false,
+      mt.skin || "#888", mt.hair || "#444", mt.shirt || "#666", mt.pants || "#555",
+      null, mt.hp, false, pop.typeKey, mt.hp, 0, mt.mobScale || 1, 0);
+  }
+  ctx.restore();
+
+  // === MOB NAME ===
+  const nameY = artY + artH + 22;
+  ctx.font = "bold 16px monospace";
+  ctx.fillStyle = accentCol;
+  ctx.textAlign = "center";
+  ctx.fillText(pop.mobName, cx + cw / 2, nameY);
+
+  // Type subtitle
+  ctx.font = "11px monospace";
+  ctx.fillStyle = "#777";
+  const roleLabel = pop.isBoss ? "BOSS" : "MOB";
+  const aiLabel = (mt.ai || 'melee').toUpperCase();
+  ctx.fillText(roleLabel + " · " + aiLabel, cx + cw / 2, nameY + 16);
+
+  // === DIVIDER ===
+  let divY = nameY + 26;
+  ctx.strokeStyle = "rgba(255,255,255,0.1)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx + 20, divY); ctx.lineTo(cx + cw - 20, divY); ctx.stroke();
+
+  // === STATS ===
+  ctx.textAlign = "left";
+  let statY = divY + 18;
+  const statX = cx + 22;
+  const valX = cx + cw - 22;
+  const lineH = 17;
+
+  function drawStat(label, value, color) {
+    ctx.font = "11px monospace";
+    ctx.fillStyle = "#999";
+    ctx.textAlign = "left";
+    ctx.fillText(label, statX, statY);
+    ctx.fillStyle = color || "#e0e0e0";
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(value, valX, statY);
+    statY += lineH;
+  }
+
+  drawStat("HP", String(mt.hp), "#88dd88");
+  drawStat("Speed", (mt.speed || 0).toFixed(1), "#88bbff");
+  drawStat("Damage", String(mt.damage || 0), "#ff8866");
+  if (mt.killHeal) drawStat("Kill Heal", String(mt.killHeal), "#aaddaa");
+
+  // === DIVIDER 2 ===
+  statY += 2;
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.beginPath(); ctx.moveTo(cx + 20, statY - 6); ctx.lineTo(cx + cw - 20, statY - 6); ctx.stroke();
+  statY += 4;
+
+  // === ABILITIES HEADER ===
+  ctx.font = "bold 11px monospace";
+  ctx.fillStyle = "#aaa";
+  ctx.textAlign = "center";
+  ctx.fillText("— ABILITIES —", cx + cw / 2, statY);
+  statY += 14;
+
+  // === ABILITIES LIST ===
+  const maxDescY = cy + ch - 24; // leave room for footer
+  ctx.textAlign = "left";
+  const descMaxW = cw - 44;
+
+  if (pop.abilities && pop.abilities.length > 0) {
+    for (const ab of pop.abilities) {
+      if (statY > maxDescY) break;
+      // Ability name
+      const prettyName = ab.key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      ctx.font = "bold 11px monospace";
+      ctx.fillStyle = "#eebb55";
+      ctx.fillText("▸ " + prettyName, statX, statY);
+      statY += 14;
+
+      // Ability description — word wrap
+      ctx.font = "10px monospace";
+      ctx.fillStyle = "#aabbcc";
+      const words = ab.desc.split(' ');
+      let line = '';
+      for (const word of words) {
+        if (statY > maxDescY) break;
+        const test = line + (line ? ' ' : '') + word;
+        if (ctx.measureText(test).width > descMaxW && line) {
+          ctx.fillText("  " + line, statX, statY);
+          statY += 13;
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      if (line && statY <= maxDescY) {
+        ctx.fillText("  " + line, statX, statY);
+        statY += 16;
+      }
+    }
+  } else if (pop.extraInfo) {
+    ctx.font = "10px monospace";
+    ctx.fillStyle = "#aabbcc";
+    for (const info of pop.extraInfo) {
+      if (statY > maxDescY) break;
+      const words = info.split(' ');
+      let line = '';
+      for (const word of words) {
+        if (statY > maxDescY) break;
+        const test = line + (line ? ' ' : '') + word;
+        if (ctx.measureText(test).width > descMaxW && line) {
+          ctx.fillText("  " + line, statX, statY);
+          statY += 13;
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      if (line && statY <= maxDescY) {
+        ctx.fillText("  " + line, statX, statY);
+        statY += 16;
+      }
+    }
+  }
+
+  // === FOOTER ===
+  ctx.font = "9px monospace";
+  ctx.fillStyle = "#444";
+  ctx.textAlign = "center";
+  ctx.fillText("Click anywhere to close", cx + cw / 2, cy + ch - 10);
+  ctx.textAlign = "left";
 }
 
 // ===================== CLICK HANDLER =====================
 function handleTestMobClick(mx, my) {
   if (!UI.isOpen('testmob')) return false;
 
-  // Dismiss ability popup on any left click
-  if (testMobAbilityPopup) { testMobAbilityPopup = null; }
+  // Dismiss mob card on any left click (consume the click — don't pass through)
+  if (testMobAbilityPopup) { testMobAbilityPopup = null; return true; }
 
   const pw = 700, ph = 520;
   const px = (BASE_W - pw) / 2, py = (BASE_H - ph) / 2;
