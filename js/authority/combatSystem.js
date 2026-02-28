@@ -3616,31 +3616,26 @@ const MOB_SPECIALS = {
     return {};
   },
 
-  // --- Gizmo Hound: Seek Mine ---
-  // Deploys a mine that chases player for 3s then pops in 2-tile AoE. Max 1 mine.
+  // --- Gizmo Hound: Charge Lunge ---
+  // Charges toward the player with a fast dash/lunge attack. Line telegraph, then dash.
   seek_mine: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
-    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 720;
-    if (!m._seekMines) m._seekMines = [];
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 480;
 
-    // Tick active mines
-    for (let i = m._seekMines.length - 1; i >= 0; i--) {
-      const mine = m._seekMines[i];
-      mine.life--;
-
-      // Chase player
-      const mdx = player.x - mine.x, mdy = player.y - mine.y;
-      const mDist = Math.sqrt(mdx * mdx + mdy * mdy) || 1;
-      mine.x += (mdx / mDist) * 3;
-      mine.y += (mdy / mDist) * 3;
-      hitEffects.push({ x: mine.x, y: mine.y - 5, life: 3, type: "spark" });
-
-      // Pop when expired or very close to player
-      if (mine.life <= 0 || mDist < 20) {
-        // AoE explosion (radius 96px = 2 tiles)
+    // Dashing phase
+    if (m._lungeDash) {
+      m._lungeDashTimer = (m._lungeDashTimer || 0) - 1;
+      const totalFrames = 14;
+      const t = 1 - (m._lungeDashTimer / totalFrames);
+      m.x = m._lungeStartX + (m._lungeTargetX - m._lungeStartX) * t;
+      m.y = m._lungeStartY + (m._lungeTargetY - m._lungeStartY) * t;
+      if (m._lungeDashTimer % 2 === 0) {
+        hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
+      }
+      if (m._lungeDashTimer <= 0) {
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(mine.x, mine.y, 96)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 48)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -3648,9 +3643,23 @@ const MOB_SPECIALS = {
             hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "stun" });
           }
         }
-        hitEffects.push({ x: mine.x, y: mine.y, life: 20, type: "explosion" });
-        m._seekMines.splice(i, 1);
+        hitEffects.push({ x: m.x, y: m.y, life: 15, type: "dust_cloud" });
+        m._lungeDash = false;
+        m._specialTimer = m._specialCD || 480;
       }
+      return { skip: true };
+    }
+
+    // Telegraph phase
+    if (m._lungeTelegraph) {
+      m._lungeTelegraph--;
+      if (m._lungeTelegraph <= 0) {
+        m._lungeDash = true;
+        m._lungeDashTimer = 14;
+        m._lungeStartX = m.x;
+        m._lungeStartY = m.y;
+      }
+      return { skip: true };
     }
 
     if (m._specialTimer > 0) {
@@ -3658,35 +3667,97 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Activate: max 1 mine active
-    if (m._seekMines.length >= 1) {
+    // Activate: must be in range
+    if (dist >= 300) {
       m._specialTimer = 30;
       return {};
     }
 
-    m._seekMines.push({
-      x: m.x, y: m.y,
-      life: 180, // 3s chase
-    });
+    const dir = Math.atan2(player.y - m.y, player.x - m.x);
+    let dashDist = Math.min(dist + 20, 200);
+    let dashTargetX = m.x + Math.cos(dir) * dashDist;
+    let dashTargetY = m.y + Math.sin(dir) * dashDist;
+    const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
+    dashTargetX = Math.max(TILE, Math.min(mapW - TILE, dashTargetX));
+    dashTargetY = Math.max(TILE, Math.min(mapH - TILE, dashTargetY));
+    if (!positionClear(dashTargetX, dashTargetY)) {
+      let lo = 0, hi = dashDist;
+      for (let bi = 0; bi < 8; bi++) {
+        const mid = (lo + hi) / 2;
+        const tx = m.x + Math.cos(dir) * mid, ty = m.y + Math.sin(dir) * mid;
+        if (positionClear(tx, ty)) lo = mid; else hi = mid;
+      }
+      dashTargetX = m.x + Math.cos(dir) * lo;
+      dashTargetY = m.y + Math.sin(dir) * lo;
+    }
+    m._lungeTargetX = dashTargetX;
+    m._lungeTargetY = dashTargetY;
+
+    if (typeof TelegraphSystem !== 'undefined') {
+      TelegraphSystem.create({
+        shape: 'line',
+        params: { x1: m.x, y1: m.y, x2: dashTargetX, y2: dashTargetY, width: 28 },
+        delayFrames: 20,
+        color: [255, 160, 40],
+        owner: m.id,
+      });
+    }
+    m._lungeTelegraph = 20;
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
-    m._specialTimer = m._specialCD || 720;
-    return {};
+    return { skip: true };
   },
 
-  // --- Holo Jester: Fake Wall ---
-  // Spawns a holographic wall between mob and player. Slow zone. Max 1 active.
+  // --- Holo Jester: Holographic Clones ---
+  // Spawns 2-3 holographic decoy clones that wander toward player. On contact: damage + confuse. Max 3.
   fake_wall: (m, ctx) => {
     const { dist, dx, dy, player, hitEffects } = ctx;
 
-    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 840;
-    if (!m._fakeWalls) m._fakeWalls = [];
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 600;
+    if (!m._holoClones) m._holoClones = [];
 
-    // Tick active walls — expire them
-    for (let i = m._fakeWalls.length - 1; i >= 0; i--) {
-      const wall = m._fakeWalls[i];
-      wall.life--;
-      if (wall.life <= 0) {
-        m._fakeWalls.splice(i, 1);
+    // Tick active clones
+    for (let i = m._holoClones.length - 1; i >= 0; i--) {
+      const clone = m._holoClones[i];
+      clone.life--;
+      clone.frame = (clone.frame || 0) + 0.08;
+
+      // Wander toward player slowly
+      const cdx = player.x - clone.x, cdy = player.y - clone.y;
+      const cDist = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
+      clone.x += (cdx / cDist) * 1.5;
+      clone.y += (cdy / cDist) * 1.5;
+      // Slight weave
+      clone.x += Math.sin(clone.life * 0.1 + clone.angle) * 0.8;
+      clone.y += Math.cos(clone.life * 0.12 + clone.angle) * 0.6;
+
+      // Face direction of movement
+      if (Math.abs(cdx) > Math.abs(cdy)) {
+        clone.dir = cdx > 0 ? 'right' : 'left';
+      } else {
+        clone.dir = cdy > 0 ? 'down' : 'up';
+      }
+
+      // Hologram flicker particles
+      if (clone.life % 6 === 0) {
+        hitEffects.push({ x: clone.x + (Math.random()-0.5)*16, y: clone.y - 15, life: 8, type: "spark" });
+      }
+
+      // Pop if close to player
+      if (cDist < 32) {
+        const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
+        const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+        hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+        StatusFX.applyToPlayer('confuse', { duration: 60 });
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "confuse" });
+        hitEffects.push({ x: clone.x, y: clone.y, life: 20, type: "explosion" });
+        m._holoClones.splice(i, 1);
+        continue;
+      }
+
+      // Expire
+      if (clone.life <= 0) {
+        hitEffects.push({ x: clone.x, y: clone.y, life: 15, type: "fizzle" });
+        m._holoClones.splice(i, 1);
       }
     }
 
@@ -3695,32 +3766,29 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Activate: max 1 active
-    if (m._fakeWalls.length >= 1) {
+    // Max 3 clones
+    if (m._holoClones.length >= 3) {
       m._specialTimer = 30;
       return {};
     }
 
-    // Place wall midpoint between mob and player
-    const midX = (m.x + player.x) / 2;
-    const midY = (m.y + player.y) / 2;
-
-    m._fakeWalls.push({ x: midX, y: midY, life: 240 });
-
-    // Create hazard zone that slows players walking through
-    if (typeof HazardSystem !== 'undefined') {
-      HazardSystem.createZone({
-        cx: midX, cy: midY,
-        radius: 60,
-        duration: 240,
-        tickRate: 999,
-        tickDamage: 0,
-        color: [100, 200, 255],
-        slow: 0.5,
+    // Spawn 2-3 clones around the mob
+    const toSpawn = Math.min(3 - m._holoClones.length, 2 + Math.floor(Math.random() * 2));
+    for (let c = 0; c < toSpawn; c++) {
+      const angle = Math.random() * Math.PI * 2;
+      const spawnDist = 40 + Math.random() * 40;
+      m._holoClones.push({
+        x: m.x + Math.cos(angle) * spawnDist,
+        y: m.y + Math.sin(angle) * spawnDist,
+        life: 360, // 6s
+        dir: m.dir || 'down',
+        frame: 0,
+        angle: angle,
+        skin: m.skin, hair: m.hair, shirt: m.shirt, pants: m.pants,
       });
     }
-    hitEffects.push({ x: midX, y: midY, life: 20, type: "cast" });
-    m._specialTimer = m._specialCD || 840;
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
+    m._specialTimer = m._specialCD || 600;
     return {};
   },
 
@@ -3834,49 +3902,50 @@ const MOB_SPECIALS = {
   },
 
   // --- Game Master: Puzzle Lasers ---
-  // Creates 2 rotating beam entities that rotate for 5s. Damage if player touches beam.
+  // Creates 2 rotating beam entities that rotate for 8s. Damage if player touches beam.
+  // Beams are long (300px) and clearly visible.
   puzzle_lasers: (m, ctx) => {
     const { player, hitEffects } = ctx;
 
     if (!m._lasers) m._lasers = [];
 
-    // Tick active lasers
+    // Tick active lasers (only when this is the active ability)
     for (let i = m._lasers.length - 1; i >= 0; i--) {
       const laser = m._lasers[i];
       laser.life--;
       laser.angle += laser.rotSpeed;
 
       // Calculate beam line endpoints
-      const beamLen = 240;
-      const lx2 = laser.cx + Math.cos(laser.angle) * beamLen;
-      const ly2 = laser.cy + Math.sin(laser.angle) * beamLen;
+      const lx2 = laser.cx + Math.cos(laser.angle) * laser.length;
+      const ly2 = laser.cy + Math.sin(laser.angle) * laser.length;
 
       // Check player hit (once per 10 frames to avoid rapid ticking)
       if (laser.life % 10 === 0) {
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(laser.cx, laser.cy, lx2, ly2, 20)) {
+          if (AttackShapes.playerInLine(laser.cx, laser.cy, lx2, ly2, 24)) {
             const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
           }
         }
       }
-      hitEffects.push({ x: lx2, y: ly2, life: 3, type: "spark" });
 
       if (laser.life <= 0) {
         m._lasers.splice(i, 1);
       }
     }
 
-    // Clear old lasers if any remain, then spawn 2 new ones
-    m._lasers = [];
+    // Only spawn new lasers if none active (don't reset existing)
+    if (m._lasers.length > 0) return {};
+
     const startAngle = Math.atan2(player.y - m.y, player.x - m.x);
     for (let b = 0; b < 2; b++) {
       m._lasers.push({
         cx: m.x, cy: m.y,
         angle: startAngle + b * Math.PI, // 180 degrees apart
-        rotSpeed: 0.03 * (b === 0 ? 1 : -1), // opposite rotation
-        life: 300, // 5s
+        rotSpeed: 0.025 * (b === 0 ? 1 : -1), // opposite rotation, slightly slower
+        life: 480, // 8s
+        length: 300, // 300px beam length
       });
     }
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
@@ -3964,32 +4033,40 @@ const MOB_SPECIALS = {
 
   // ===================== FLOOR 4: R.E.G.I.M.E SPECIALS =====================
 
-  // --- Enforcer Drone: Suppress Cone ---
-  // Cone telegraph (90 degrees, range 120px) toward player. Damage + silence on resolve.
+  // --- Enforcer Drone: Deploy Rocket Drone ---
+  // Spawns a stationary drone that fires rapid bullets at the player. Max 1 drone. Lasts 5s.
   suppress_cone: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
-    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 480;
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 600;
+    if (!m._turrets) m._turrets = [];
 
-    // Telegraph phase
-    if (m._suppressTelegraph) {
-      m._suppressTelegraph--;
-      if (m._suppressTelegraph <= 0) {
-        // Resolve: damage + silence if player in cone
-        if (typeof AttackShapes !== 'undefined') {
-          const dir = Math.atan2(player.y - m.y, player.x - m.x);
-          const halfAngle = Math.PI / 4; // 90 degrees / 2
-          if (AttackShapes.playerInCone(m.x, m.y, dir, halfAngle, 120)) {
-            const dmg = Math.round(m.damage * getMobDamageMultiplier());
-            const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-            hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-            StatusFX.applyToPlayer('silence', { duration: 60 }); // 1s
-            hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "silence" });
-          }
+    // Tick turrets for single-special mobs
+    if (m._specials && m._specials.length === 1) {
+      for (let ti = m._turrets.length - 1; ti >= 0; ti--) {
+        const turret = m._turrets[ti];
+        turret.life--;
+        if (turret.life <= 0) {
+          hitEffects.push({ x: turret.x, y: turret.y, life: 15, type: "fizzle" });
+          m._turrets.splice(ti, 1);
+          continue;
         }
-        m._specialTimer = m._specialCD || 480;
+        turret.fireTimer = (turret.fireTimer || 0) - 1;
+        if (turret.fireTimer <= 0) {
+          const tdx = player.x - turret.x, tdy = player.y - turret.y;
+          const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+          bullets.push({
+            id: nextBulletId++,
+            x: turret.x, y: turret.y - 10,
+            vx: (tdx / tDist) * 6, vy: (tdy / tDist) * 6,
+            fromPlayer: false, mobBullet: true,
+            damage: Math.round(m.damage * 0.4 * getMobDamageMultiplier()),
+            ownerId: m.id, bulletColor: null,
+          });
+          hitEffects.push({ x: turret.x, y: turret.y - 12, life: 5, type: "spark" });
+          turret.fireTimer = 20; // fires every 20 frames (~3 shots/sec)
+        }
       }
-      return { skip: true };
     }
 
     if (m._specialTimer > 0) {
@@ -3997,113 +4074,130 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Activate: must be in range
-    if (dist >= 150) {
+    // Max 1 drone active
+    if (m._turrets.length >= 1) {
       m._specialTimer = 30;
       return {};
     }
 
-    const dir = Math.atan2(player.y - m.y, player.x - m.x);
-    if (typeof TelegraphSystem !== 'undefined') {
-      TelegraphSystem.create({
-        shape: 'cone',
-        params: { cx: m.x, cy: m.y, direction: dir, angleDeg: 90, range: 120 },
-        delayFrames: 24,
-        color: [255, 120, 40],
-        owner: m.id,
-      });
-    }
-    m._suppressTelegraph = 24;
-    return { skip: true };
-  },
+    // Place drone offset from mob toward player
+    const angle = Math.atan2(player.y - m.y, player.x - m.x);
+    const droneX = m.x + Math.cos(angle + Math.PI / 4) * 60;
+    const droneY = m.y + Math.sin(angle + Math.PI / 4) * 60;
 
-  // --- Synth Builder: Barrier Build ---
-  // Creates a high-slow shield zone in front of mob toward player. Blocks movement.
-  barrier_build: (m, ctx) => {
-    const { dist, dx, dy, player, hitEffects } = ctx;
-
-    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 840;
-
-    if (m._specialTimer > 0) {
-      m._specialTimer--;
-      return {};
-    }
-
-    // Activate: place barrier midway toward player
-    const ndx = dx / (dist || 1), ndy = dy / (dist || 1);
-    const barrierDist = Math.min(dist * 0.5, 120);
-    const bcx = m.x + ndx * barrierDist;
-    const bcy = m.y + ndy * barrierDist;
-
-    if (typeof HazardSystem !== 'undefined') {
-      HazardSystem.createZone({
-        cx: bcx, cy: bcy,
-        radius: 80,
-        duration: 360, // 6s
-        tickRate: 999,
-        tickDamage: 0,
-        color: [180, 180, 220],
-        slow: 0.6,
-      });
-    }
-    hitEffects.push({ x: bcx, y: bcy, life: 20, type: "shield" });
-    m._specialTimer = m._specialCD || 840;
+    m._turrets.push({
+      x: droneX, y: droneY,
+      life: 300, // 5s
+      fireTimer: 10,
+    });
+    hitEffects.push({ x: droneX, y: droneY, life: 20, type: "cast" });
+    m._specialTimer = m._specialCD || 600;
     return {};
   },
 
-  // --- Shock Trooper: Rocket Dash ---
-  // Dash toward player (240px) + landing circle AoE explosion. Stun on hit.
+  // --- Synth Builder: Deploy Turret ---
+  // Deploys a visible turret that fires at the player. Max 2 turrets. Each lasts 8s.
+  barrier_build: (m, ctx) => {
+    const { dist, dx, dy, player, hitEffects } = ctx;
+
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 720;
+    if (!m._turrets) m._turrets = [];
+
+    // Tick turrets for single-special mobs
+    if (m._specials && m._specials.length === 1) {
+      for (let ti = m._turrets.length - 1; ti >= 0; ti--) {
+        const turret = m._turrets[ti];
+        turret.life--;
+        if (turret.life <= 0) {
+          hitEffects.push({ x: turret.x, y: turret.y, life: 15, type: "fizzle" });
+          m._turrets.splice(ti, 1);
+          continue;
+        }
+        turret.fireTimer = (turret.fireTimer || 0) - 1;
+        if (turret.fireTimer <= 0) {
+          const tdx = player.x - turret.x, tdy = player.y - turret.y;
+          const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+          bullets.push({
+            id: nextBulletId++,
+            x: turret.x, y: turret.y - 10,
+            vx: (tdx / tDist) * 5, vy: (tdy / tDist) * 5,
+            fromPlayer: false, mobBullet: true,
+            damage: Math.round(m.damage * 0.5 * getMobDamageMultiplier()),
+            ownerId: m.id, bulletColor: null,
+          });
+          turret.fireTimer = 45; // fires every 45 frames
+        }
+      }
+    }
+
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Max 2 turrets
+    if (m._turrets.length >= 2) {
+      m._specialTimer = 30;
+      return {};
+    }
+
+    // Place turret between mob and player
+    const ndx = dx / (dist || 1), ndy = dy / (dist || 1);
+    const turretDist = Math.min(dist * 0.6, 100);
+    let tx = m.x + ndx * turretDist;
+    let ty = m.y + ndy * turretDist;
+    const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
+    tx = Math.max(TILE, Math.min(mapW - TILE, tx));
+    ty = Math.max(TILE, Math.min(mapH - TILE, ty));
+
+    m._turrets.push({
+      x: tx, y: ty,
+      life: 480, // 8s
+      fireTimer: 30,
+    });
+    hitEffects.push({ x: tx, y: ty, life: 20, type: "cast" });
+    hitEffects.push({ x: tx, y: ty, life: 15, type: "shield" });
+    m._specialTimer = m._specialCD || 720;
+    return {};
+  },
+
+  // --- Shock Trooper: EMP Dome ---
+  // Creates a visible EMP dome zone on the ground. Players inside take damage + slow.
+  // Zone persists for 5s. Circle telegraph before activation.
   rocket_dash: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
-    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 660;
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 540;
 
-    // Dashing phase
-    if (m._rocketDashing) {
-      m._rocketDashTimer = (m._rocketDashTimer || 0) - 1;
-      const totalFrames = 16;
-      const t = 1 - (m._rocketDashTimer / totalFrames);
-      m.x = m._rocketStartX + (m._rocketTargetX - m._rocketStartX) * t;
-      m.y = m._rocketStartY + (m._rocketTargetY - m._rocketStartY) * t;
-      if (m._rocketDashTimer % 3 === 0) {
-        hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
-      }
-      if (m._rocketDashTimer <= 0) {
-        // Landing explosion (radius 80px)
+    // Telegraph phase
+    if (m._empTelegraph) {
+      m._empTelegraph--;
+      if (m._empTelegraph <= 0) {
+        // Resolve: create persistent EMP dome zone
+        if (typeof HazardSystem !== 'undefined') {
+          HazardSystem.createZone({
+            cx: m._empTargetX, cy: m._empTargetY,
+            radius: 120,
+            duration: 300, // 5s
+            tickRate: 30, // damage every 0.5s
+            tickDamage: Math.round(m.damage * 0.3 * getMobDamageMultiplier()),
+            tickEffect: 'burn_hit',
+            color: [80, 200, 255], // cyan
+            slow: 0.4,
+          });
+        }
+        // Immediate AoE damage on creation
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 80)) {
+          if (AttackShapes.hitsPlayer(m._empTargetX, m._empTargetY, 120)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-            StatusFX.applyToPlayer('stun', { duration: 18 });
+            StatusFX.applyToPlayer('stun', { duration: 24 });
             hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "stun" });
           }
         }
-        hitEffects.push({ x: m.x, y: m.y, life: 20, type: "explosion" });
-        // Circle telegraph at landing for visual effect
-        if (typeof TelegraphSystem !== 'undefined') {
-          TelegraphSystem.create({
-            shape: 'circle',
-            params: { cx: m.x, cy: m.y, radius: 80 },
-            delayFrames: 1,
-            color: [255, 100, 40],
-            owner: m.id,
-          });
-        }
-        m._rocketDashing = false;
-        m._specialTimer = m._specialCD || 660;
-      }
-      return { skip: true };
-    }
-
-    // Telegraph phase
-    if (m._rocketTelegraph) {
-      m._rocketTelegraph--;
-      if (m._rocketTelegraph <= 0) {
-        m._rocketDashing = true;
-        m._rocketDashTimer = 16;
-        m._rocketStartX = m.x;
-        m._rocketStartY = m.y;
+        hitEffects.push({ x: m._empTargetX, y: m._empTargetY, life: 25, type: "emp_wave" });
+        m._specialTimer = m._specialCD || 540;
       }
       return { skip: true };
     }
@@ -4114,67 +4208,65 @@ const MOB_SPECIALS = {
     }
 
     // Activate: must be in range
-    if (dist >= 350) {
+    if (dist >= 300) {
       m._specialTimer = 30;
       return {};
     }
 
-    // Dash toward player (240px), clamped to map bounds and walls
-    const dir = Math.atan2(player.y - m.y, player.x - m.x);
-    let dashTargetX = m.x + Math.cos(dir) * 240;
-    let dashTargetY = m.y + Math.sin(dir) * 240;
-    const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
-    dashTargetX = Math.max(TILE, Math.min(mapW - TILE, dashTargetX));
-    dashTargetY = Math.max(TILE, Math.min(mapH - TILE, dashTargetY));
-    if (!positionClear(dashTargetX, dashTargetY)) {
-      let lo = 0, hi = 240;
-      for (let bi = 0; bi < 8; bi++) {
-        const mid = (lo + hi) / 2;
-        const tx = m.x + Math.cos(dir) * mid, ty = m.y + Math.sin(dir) * mid;
-        if (positionClear(tx, ty)) lo = mid; else hi = mid;
-      }
-      dashTargetX = m.x + Math.cos(dir) * lo;
-      dashTargetY = m.y + Math.sin(dir) * lo;
-    }
-    m._rocketTargetX = dashTargetX;
-    m._rocketTargetY = dashTargetY;
+    // Place EMP zone at player position
+    m._empTargetX = player.x;
+    m._empTargetY = player.y;
 
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
-        shape: 'line',
-        params: { x1: m.x, y1: m.y, x2: dashTargetX, y2: dashTargetY, width: 32 },
-        delayFrames: 18,
-        color: [255, 140, 40],
+        shape: 'circle',
+        params: { cx: m._empTargetX, cy: m._empTargetY, radius: 120 },
+        delayFrames: 36,
+        color: [80, 200, 255], // cyan
         owner: m.id,
       });
     }
-    m._rocketTelegraph = 18;
+    m._empTelegraph = 36;
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
     return { skip: true };
   },
 
-  // --- Signal Jammer: EMP Dome ---
-  // Ring telegraph centered on mob. On resolve: silence + damage. Purple telegraph.
+  // --- Signal Jammer: EMP Suppression Dome ---
+  // Ring telegraph centered on mob. On resolve: long silence + damage + persistent suppression zone.
   emp_dome: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
-    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 900;
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 720;
 
     // Telegraph phase
     if (m._empDomeTelegraph) {
       m._empDomeTelegraph--;
       if (m._empDomeTelegraph <= 0) {
-        // Resolve: silence + damage if player inside ring
+        // Resolve: long silence + damage if player inside ring
         if (typeof AttackShapes !== 'undefined') {
           if (AttackShapes.hitsPlayer(m.x, m.y, 200)) {
-            StatusFX.applyToPlayer('silence', { duration: 90 }); // 1.5s
+            StatusFX.applyToPlayer('silence', { duration: 240 }); // 4s suppression
             hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "silence" });
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
           }
         }
+        // Create persistent suppression zone
+        if (typeof HazardSystem !== 'undefined') {
+          HazardSystem.createZone({
+            cx: m.x, cy: m.y,
+            radius: 160,
+            duration: 420, // 7s persistent zone
+            tickRate: 60, // damage every 1s
+            tickDamage: Math.round(m.damage * 0.2 * getMobDamageMultiplier()),
+            tickEffect: 'silence',
+            color: [160, 60, 220], // purple
+            slow: 0.3,
+          });
+        }
         hitEffects.push({ x: m.x, y: m.y, life: 25, type: "emp_wave" });
-        m._specialTimer = m._specialCD || 900;
+        m._specialTimer = m._specialCD || 720;
       }
       return { skip: true };
     }
@@ -4248,9 +4340,35 @@ const MOB_SPECIALS = {
   },
 
   // --- J.U.N.Z: Repulsor Beam ---
-  // Line telegraph (6 tiles = 288px) toward player. On resolve: push player 3 tiles away + damage.
+  // Wide line telegraph (7 tiles = 336px) toward player. Visible persistent beam. Push + damage.
   repulsor_beam: (m, ctx) => {
     const { dist, dx, dy, player, hitEffects } = ctx;
+
+    // Beam active phase — visible persistent beam for 30 frames after telegraph
+    if (m._repulsorBeamActive) {
+      m._repulsorBeamActive--;
+      // Show beam sparks along the line
+      const bLen = Math.sqrt((m._repulsorX2 - m._repulsorX1)**2 + (m._repulsorY2 - m._repulsorY1)**2);
+      const bDir = Math.atan2(m._repulsorY2 - m._repulsorY1, m._repulsorX2 - m._repulsorX1);
+      const sparkPos = Math.random() * bLen;
+      hitEffects.push({
+        x: m._repulsorX1 + Math.cos(bDir) * sparkPos + (Math.random()-0.5)*20,
+        y: m._repulsorY1 + Math.sin(bDir) * sparkPos + (Math.random()-0.5)*20,
+        life: 8, type: "spark"
+      });
+      // Damage player if still in beam (every 15 frames)
+      if (m._repulsorBeamActive % 15 === 0 && typeof AttackShapes !== 'undefined') {
+        if (AttackShapes.playerInLine(m._repulsorX1, m._repulsorY1, m._repulsorX2, m._repulsorY2, 40)) {
+          const dmg = Math.round(m.damage * 0.3 * getMobDamageMultiplier());
+          dealDamageToPlayer(dmg, 'mob_special', m);
+          hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
+        }
+      }
+      if (m._repulsorBeamActive <= 0) {
+        m._repulsorBeamLine = null;
+      }
+      return {};
+    }
 
     // Telegraph phase
     if (m._repulsorTelegraph) {
@@ -4258,7 +4376,7 @@ const MOB_SPECIALS = {
       if (m._repulsorTelegraph <= 0) {
         // Resolve: push player away + damage
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._repulsorX1, m._repulsorY1, m._repulsorX2, m._repulsorY2, 32)) {
+          if (AttackShapes.playerInLine(m._repulsorX1, m._repulsorY1, m._repulsorX2, m._repulsorY2, 40)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -4283,6 +4401,12 @@ const MOB_SPECIALS = {
             player.y = finalY;
           }
         }
+        // Keep beam visible for 30 more frames
+        m._repulsorBeamActive = 30;
+        m._repulsorBeamLine = {
+          x1: m._repulsorX1, y1: m._repulsorY1,
+          x2: m._repulsorX2, y2: m._repulsorY2,
+        };
       }
       return {};
     }
@@ -4291,19 +4415,19 @@ const MOB_SPECIALS = {
     const ndx = dx / (dist || 1), ndy = dy / (dist || 1);
     m._repulsorX1 = m.x;
     m._repulsorY1 = m.y;
-    m._repulsorX2 = m.x + ndx * 288;
-    m._repulsorY2 = m.y + ndy * 288;
+    m._repulsorX2 = m.x + ndx * 336;
+    m._repulsorY2 = m.y + ndy * 336;
 
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
         shape: 'line',
-        params: { x1: m._repulsorX1, y1: m._repulsorY1, x2: m._repulsorX2, y2: m._repulsorY2, width: 32 },
-        delayFrames: 30,
+        params: { x1: m._repulsorX1, y1: m._repulsorY1, x2: m._repulsorX2, y2: m._repulsorY2, width: 40 },
+        delayFrames: 36,
         color: [60, 140, 255], // blue
         owner: m.id,
       });
     }
-    m._repulsorTelegraph = 30;
+    m._repulsorTelegraph = 36;
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
     return {};
   },
@@ -4331,7 +4455,7 @@ const MOB_SPECIALS = {
   },
 
   // --- J.U.N.Z: Drone Court ---
-  // Spawn 4 micro-drones that orbit for 120 frames then dive at player. Max 4 drones active.
+  // Spawn 4 micro-drones that orbit for 3s then dive at player. Max 4 drones. Longer lasting.
   drone_court: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
@@ -4372,7 +4496,7 @@ const MOB_SPECIALS = {
         hitEffects.push({ x: drone.x, y: drone.y - 5, life: 3, type: "spark" });
         if (drone.orbitTimer <= 0) {
           drone.diving = true;
-          drone.life = 120; // 2s max dive time
+          drone.life = 180; // 3s max dive time
         }
         if (drone.life <= 0) {
           m._drones.splice(i, 1);
@@ -4392,9 +4516,9 @@ const MOB_SPECIALS = {
         y: m.y + Math.sin(angle) * 40,
         angle: angle,
         orbitRadius: 40 + d * 10,
-        orbitTimer: 120, // 2s orbit then dive
+        orbitTimer: 180, // 3s orbit then dive
         diving: false,
-        life: 240, // 4s total max lifetime
+        life: 480, // 8s total max lifetime
       });
     }
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });

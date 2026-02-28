@@ -730,6 +730,82 @@ function draw() {
         }
       }
     }
+    // Holographic clones (holo_jester fake_wall) — translucent copies of the mob
+    if (m._holoClones && m._holoClones.length > 0) {
+      for (const clone of m._holoClones) {
+        const clx = clone.x - cx, cly = clone.y - cy;
+        // Hologram shimmer — translucent blue-tinted
+        const holoFlicker = 0.3 + 0.15 * Math.sin(renderTime * 0.12 + clone.angle * 3);
+        ctx.globalAlpha = holoFlicker;
+        // Draw the clone as a character
+        drawChar(clone.x, clone.y, clone.dir, Math.floor(clone.frame) % 4, true,
+          clone.skin, clone.hair, clone.shirt, clone.pants,
+          '', -1, false, null, 100, 0, 0.9, 0);
+        ctx.globalAlpha = 1.0;
+        // Blue hologram glow
+        ctx.fillStyle = `rgba(100,180,255,${holoFlicker * 0.3})`;
+        ctx.beginPath(); ctx.arc(clx, cly - 15, 18, 0, Math.PI * 2); ctx.fill();
+        // Scanline effect
+        if (renderTime % 4 < 2) {
+          ctx.strokeStyle = `rgba(100,200,255,${holoFlicker * 0.4})`;
+          ctx.lineWidth = 1;
+          const scanY = cly - 30 + (renderTime % 60);
+          if (scanY > cly - 35 && scanY < cly + 5) {
+            ctx.beginPath();
+            ctx.moveTo(clx - 12, scanY);
+            ctx.lineTo(clx + 12, scanY);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    // Laser beams (game_master puzzle_lasers) — rotating energy beams
+    if (m._lasers && m._lasers.length > 0) {
+      for (const laser of m._lasers) {
+        const lcx = laser.cx - cx, lcy = laser.cy - cy;
+        const beamLen = laser.length || 300;
+        const endX = lcx + Math.cos(laser.angle) * beamLen;
+        const endY = lcy + Math.sin(laser.angle) * beamLen;
+        // Outer glow
+        ctx.strokeStyle = `rgba(255,40,40,0.15)`;
+        ctx.lineWidth = 16;
+        ctx.beginPath(); ctx.moveTo(lcx, lcy); ctx.lineTo(endX, endY); ctx.stroke();
+        // Mid beam
+        ctx.strokeStyle = `rgba(255,80,40,0.35)`;
+        ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.moveTo(lcx, lcy); ctx.lineTo(endX, endY); ctx.stroke();
+        // Core beam — bright
+        const pulse = 0.6 + 0.4 * Math.sin(renderTime * 0.1 + laser.angle);
+        ctx.strokeStyle = `rgba(255,200,100,${pulse})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(lcx, lcy); ctx.lineTo(endX, endY); ctx.stroke();
+        // Bright center orb
+        ctx.fillStyle = `rgba(255,220,120,${pulse})`;
+        ctx.beginPath(); ctx.arc(lcx, lcy, 6, 0, Math.PI * 2); ctx.fill();
+        // End spark
+        ctx.fillStyle = `rgba(255,100,40,${pulse * 0.7})`;
+        ctx.beginPath(); ctx.arc(endX, endY, 4, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Repulsor beam line (junz repulsor_beam) — visible persistent beam
+    if (m._repulsorBeamLine) {
+      const bl = m._repulsorBeamLine;
+      const bx1 = bl.x1 - cx, by1 = bl.y1 - cy;
+      const bx2 = bl.x2 - cx, by2 = bl.y2 - cy;
+      const bPulse = 0.5 + 0.5 * Math.sin(renderTime * 0.15);
+      // Outer blue glow
+      ctx.strokeStyle = `rgba(60,140,255,${0.12 + bPulse * 0.08})`;
+      ctx.lineWidth = 20;
+      ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
+      // Mid beam
+      ctx.strokeStyle = `rgba(100,180,255,${0.3 + bPulse * 0.2})`;
+      ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
+      // Core beam
+      ctx.strokeStyle = `rgba(180,220,255,${0.5 + bPulse * 0.3})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
+    }
     // Tesla pillars (voltmaster tesla_pillars) — glowing energy pillars
     if (m._pillars && m._pillars.length > 0) {
       for (const pillar of m._pillars) {

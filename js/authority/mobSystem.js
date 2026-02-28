@@ -470,7 +470,7 @@ function updateMobs() {
             if (laser.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
               const endX = laser.cx + Math.cos(laser.angle) * laser.length;
               const endY = laser.cy + Math.sin(laser.angle) * laser.length;
-              if (AttackShapes.playerInLine(laser.cx, laser.cy, endX, endY, 20)) {
+              if (AttackShapes.playerInLine(laser.cx, laser.cy, endX, endY, 24)) {
                 const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
                 dealDamageToPlayer(dmg, 'mob_special', m);
                 hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
@@ -496,6 +496,61 @@ function updateMobs() {
           }
         }
 
+        // Tick persistent repulsor beam visual (Junz repulsor_beam)
+        if (m._repulsorBeamActive && m._repulsorBeamActive > 0 && m._activeAbility !== 'repulsor_beam') {
+          m._repulsorBeamActive--;
+          // Beam sparks along the line
+          if (m._repulsorBeamLine) {
+            const bl = m._repulsorBeamLine;
+            const bLen = Math.sqrt((bl.x2 - bl.x1)**2 + (bl.y2 - bl.y1)**2);
+            const bDir = Math.atan2(bl.y2 - bl.y1, bl.x2 - bl.x1);
+            const sparkPos = Math.random() * bLen;
+            hitEffects.push({
+              x: bl.x1 + Math.cos(bDir) * sparkPos,
+              y: bl.y1 + Math.sin(bDir) * sparkPos,
+              life: 8, type: "spark"
+            });
+            // Damage player if still in beam (every 15 frames)
+            if (m._repulsorBeamActive % 15 === 0 && typeof AttackShapes !== 'undefined') {
+              if (AttackShapes.playerInLine(bl.x1, bl.y1, bl.x2, bl.y2, 40)) {
+                const dmg = Math.round(m.damage * 0.3 * getMobDamageMultiplier());
+                dealDamageToPlayer(dmg, 'mob_special', m);
+                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
+              }
+            }
+          }
+          if (m._repulsorBeamActive <= 0) {
+            m._repulsorBeamLine = null;
+          }
+        }
+        // Tick persistent holo clones (Holo Jester fake_wall — for boss rotation cases)
+        if (m._holoClones && m._holoClones.length > 0 && m._activeAbility !== 'fake_wall') {
+          for (let ci = m._holoClones.length - 1; ci >= 0; ci--) {
+            const clone = m._holoClones[ci];
+            clone.life--;
+            clone.frame = (clone.frame || 0) + 0.08;
+            const cdx = player.x - clone.x, cdy = player.y - clone.y;
+            const cDist = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
+            clone.x += (cdx / cDist) * 1.5;
+            clone.y += (cdy / cDist) * 1.5;
+            if (Math.abs(cdx) > Math.abs(cdy)) {
+              clone.dir = cdx > 0 ? 'right' : 'left';
+            } else {
+              clone.dir = cdy > 0 ? 'down' : 'up';
+            }
+            if (cDist < 32) {
+              const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
+              dealDamageToPlayer(dmg, 'mob_special', m);
+              StatusFX.applyToPlayer('confuse', { duration: 60 });
+              hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dmg });
+              hitEffects.push({ x: clone.x, y: clone.y, life: 20, type: "explosion" });
+              m._holoClones.splice(ci, 1);
+            } else if (clone.life <= 0) {
+              hitEffects.push({ x: clone.x, y: clone.y, life: 15, type: "fizzle" });
+              m._holoClones.splice(ci, 1);
+            }
+          }
+        }
         // Tick persistent static orbs (Jackman static_orbs)
         if (m._staticOrbs && m._staticOrbs.length > 0 && m._activeAbility !== 'static_orbs') {
           for (let oi = m._staticOrbs.length - 1; oi >= 0; oi--) {
