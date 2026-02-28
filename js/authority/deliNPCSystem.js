@@ -92,18 +92,13 @@ const DELI_NPC_CONFIG = {
   aisleChance:     0.7,        // chance to browse aisles after eating
   tipChance:       0.4,
   tipAmount:       [1, 5],
-  // Emoji mood bubbles above NPC heads (5-grade system: S/A/B/C/F)
-  emojiBubble: {
-    bubbleDuration: 120,           // 2 sec display time
-    spawnAnimFrames: 12,           // cloud puff expand animation frames
-  },
-  // Per-NPC patience range (frames at 60fps): 20-45 seconds
-  patienceRange: [1200, 2700],
+  // Persistent emoji mood display (5 time-based stages)
+  moodEmojis: ['', '😐', '☹️', '😡', '🤬'], // stage 1-5 (stage 1 = no emoji)
+  // Leave chance per 5-second check, indexed by moodStage (1-5)
+  leaveChance: [0, 0.005, 0.02, 0.06, 0.22, 0.47],
   // Pre-queue aisle browsing
   preQueueBrowseChance: 0.3,      // 30% chance to browse aisles before joining line
-  // Mid-queue line leaving
-  midQueueLeaveChance: 0.001,     // per-frame chance (~6% per second) to leave line
-  midQueueMinIdx: 3,              // only leave if queueIdx >= this (not near front)
+  // (mood-based leaving config is in leaveChance array above)
 };
 
 // ===================== STATE =====================
@@ -343,8 +338,8 @@ function moveDeliNPC(npc) {
   // Walk toward current waypoint
   npc.moving = true;
   const spd = npc.speed;
-  npc.x += (dx / dist) * spd;
-  npc.y += (dy / dist) * spd;
+  const moveX = (dx / dist) * spd;
+  const moveY = (dy / dist) * spd;
 
   // Facing direction
   if (Math.abs(dx) > Math.abs(dy)) {
@@ -355,12 +350,43 @@ function moveDeliNPC(npc) {
 
   npc.frame = (npc.frame + 0.1) % 4;
 
-  // NPC-NPC separation — prevent phasing through each other
+  // --- AABB tile collision (same pattern as mobs) ---
+  const mhw = 14; // NPC half-width
+  const nx = npc.x + moveX;
+  const ny = npc.y + moveY;
+
+  // Try X axis
+  let cL = Math.floor((nx - mhw) / TILE), cR = Math.floor((nx + mhw) / TILE);
+  let rT = Math.floor((npc.y - mhw) / TILE), rB = Math.floor((npc.y + mhw) / TILE);
+  if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
+    npc.x = nx;
+  }
+  // Try Y axis
+  cL = Math.floor((npc.x - mhw) / TILE); cR = Math.floor((npc.x + mhw) / TILE);
+  rT = Math.floor((ny - mhw) / TILE); rB = Math.floor((ny + mhw) / TILE);
+  if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
+    npc.y = ny;
+  }
+
+  // --- NPC-Player soft blocking ---
+  // Push NPC away from player (gentle — allows passing in corridors)
+  if (typeof GameState !== 'undefined') {
+    const p = GameState.player;
+    const pdx = npc.x - p.x, pdy = npc.y - p.y;
+    const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+    const playerBlockDist = 26;
+    if (pDist > 0 && pDist < playerBlockDist) {
+      const push = (playerBlockDist - pDist) * 0.35;
+      npc.x += (pdx / pDist) * push;
+      npc.y += (pdy / pDist) * push;
+    }
+  }
+  // --- NPC-NPC separation (soft push to prevent overlap) ---
   const inQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
   const sepDist = 24; // minimum separation in pixels (half a tile)
   for (const other of deliNPCs) {
     if (other === npc) continue;
-    // Only separate from moving/queued NPCs (don't push seated NPCs)
+    // Only interact with active NPCs (not seated/despawning)
     if (other.state === 'eating' || other.state === 'at_condiments' ||
         other.state === 'spawn_wait' || other.state === '_despawn') continue;
     const sx = npc.x - other.x;
@@ -368,13 +394,13 @@ function moveDeliNPC(npc) {
     const sd = Math.sqrt(sx * sx + sy * sy);
     if (sd > 0 && sd < sepDist) {
       const push = (sepDist - sd) * 0.3;
-      const nx = sx / sd, ny = sy / sd;
+      const ux = sx / sd, uy = sy / sd;
       if (inQueue) {
         // Queue NPCs only push vertically — never sideways off the line
-        npc.y += ny * push;
+        npc.y += uy * push;
       } else {
-        npc.x += nx * push;
-        npc.y += ny * push;
+        npc.x += ux * push;
+        npc.y += uy * push;
       }
     }
   }
@@ -409,18 +435,32 @@ function _nextQueueSpot() {
 }
 
 function _advanceQueue() {
-  // Called when front-of-line NPC leaves. Everyone moves forward.
-  const inQueue = deliNPCs.filter(n =>
-    (n.state === 'in_queue' || n.state === 'ordering' || n.state === 'waiting_food') && n._queueIdx > 0
-  );
-  for (const n of inQueue) {
-    n._queueIdx--;
-    const spot = QUEUE_SPOTS[n._queueIdx];
-    if (spot) {
-      // Walk to new queue spot
-      n.route = [{ tx: spot.tx, ty: spot.ty }];
-      // Don't change state — stay in_queue but walk forward
+  // Called when front-of-line NPC leaves. Everyone moves forward one slot.
+  // Process front-to-back so each NPC only steps if the slot ahead is free.
+  const inQueue = deliNPCs
+    .filter(n => (n.state === 'in_queue' || n.state === 'ordering' || n.state === 'waiting_food') && n._queueIdx > 0)
+    .sort((a, b) => a._queueIdx - b._queueIdx); // front-to-back order
+
+  const occupied = new Set();
+  // Mark slots currently being targeted or occupied
+  for (const n of deliNPCs) {
+    if (n.state === 'in_queue' || n.state === 'ordering' || n.state === 'waiting_food') {
+      occupied.add(n._queueIdx);
     }
+  }
+
+  for (const n of inQueue) {
+    const targetIdx = n._queueIdx - 1;
+    if (!occupied.has(targetIdx)) {
+      occupied.delete(n._queueIdx);
+      n._queueIdx = targetIdx;
+      occupied.add(targetIdx);
+      const spot = QUEUE_SPOTS[targetIdx];
+      if (spot) {
+        n.route = [{ tx: spot.tx, ty: spot.ty }];
+      }
+    }
+    // else: slot ahead is still occupied — wait
   }
 }
 
@@ -450,13 +490,16 @@ function spawnDeliNPC() {
     _browseFirst: false,       // true if browsing aisles before joining queue
     _browsedPreQueue: false,   // true after completing pre-queue browse
     _aisleVisits: 0,           // track aisle visit count
-    // Emoji bubble state (5-grade: S/A/B/C/F based on patience ratio)
-    _bubbleTimer: 0,           // countdown to next bubble show
-    _bubbleActive: 0,          // frames remaining for current bubble
-    _bubbleSpawnAnim: 0,       // cloud puff expand timer
-    _bubbleEmoji: null,        // current emoji string being shown
+    // Mood system — 5 time-based stages with persistent emoji display
+    _moodStage: 1,             // 1=happy, 2=neutral, 3=upset, 4=angry, 5=raging
+    _moodThreshold: _randRange(1800, 3600), // base threshold in frames (30-60s), randomized per NPC
     _waitFrames: 0,            // total frames spent waiting in queue
-    _patienceMax: _randRange(DELI_NPC_CONFIG.patienceRange[0], DELI_NPC_CONFIG.patienceRange[1]),
+    _leaveCheckTimer: 0,       // frames until next leave-chance roll (every 300 = 5s)
+    // Emoji bubble rendering state (kept for draw.js compatibility)
+    _bubbleTimer: 0,
+    _bubbleActive: 0,
+    _bubbleSpawnAnim: 0,
+    _bubbleEmoji: null,
     _recipeIngredients: null,  // set when food is picked up (for food visual colors)
     speed: DELI_NPC_CONFIG.baseSpeed + (Math.random() - 0.5) * DELI_NPC_CONFIG.speedVariance * 2,
     isDeliNPC: true,
@@ -603,21 +646,24 @@ const DELI_NPC_AI = {
       return;
     }
 
-    // Mid-queue leave: customers stuck far back may leave to grab items
-    if (npc._queueIdx >= DELI_NPC_CONFIG.midQueueMinIdx &&
-        Math.random() < DELI_NPC_CONFIG.midQueueLeaveChance) {
-      // Forfeit queue slot
-      npc._queueIdx = -1;
-      _advanceQueue();
-      // Reset browse flags for re-entry
-      npc._browseFirst = false;
-      npc._browsedPreQueue = false;
-      npc._aisleVisits = 0;
-      npc._waitFrames = 0;
-      const aisle = _randFromArray(DELI_AISLES);
-      npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
-      _npcStartRoute(npc, _routeCounterToAisle(aisle),
-        'mid_queue_browse', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+    // Mood-based leaving: check every 5 seconds (300 frames)
+    // Higher mood stage = higher chance to leave
+    npc._leaveCheckTimer++;
+    if (npc._leaveCheckTimer >= 300) {
+      npc._leaveCheckTimer = 0;
+      const chance = DELI_NPC_CONFIG.leaveChance[npc._moodStage] || 0;
+      if (Math.random() < chance) {
+        // Angry leave — show rage emote, walk to exit
+        npc._bubbleEmoji = '🤬';
+        npc._bubbleActive = 120; // show for 2s while leaving
+        npc._bubbleSpawnAnim = 12;
+        npc._queueIdx = -1;
+        _advanceQueue();
+        const curTX = Math.floor(npc.x / TILE);
+        const curTY = Math.floor(npc.y / TILE);
+        _npcStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
+        return;
+      }
     }
   },
 
@@ -859,70 +905,40 @@ const DELI_NPC_AI = {
   },
 };
 
-// ===================== EMOJI BUBBLE UPDATE =====================
-// 5-grade system based on wait ratio (waitFrames / patienceMax):
-//   ratio < 0.3  → S grade → no bubble (happy, patient)
-//   ratio 0.3-0.6 → A/B grade → occasional 🙂 every 8-12s
-//   ratio 0.6-0.8 → C grade → 😠 every 6-8s
-//   ratio 0.8-0.9 → near-F → 😡 every 3-5s
-//   ratio > 0.9  → F grade → 🤬 every 2-4s
-function _updateNPCBubble(npc) {
-  // Only show bubbles for NPCs waiting in queue
-  if (npc.state !== 'in_queue' && npc.state !== 'waiting_food' && npc.state !== 'ordering') {
-    npc._bubbleActive = 0;
+// ===================== MOOD STAGE UPDATE =====================
+// 5 time-based stages. Mood only worsens while waiting in line.
+// _moodThreshold is randomized per NPC (30-60s base, frames at 60fps).
+//   Stage 1: 0 → threshold         (happy, no emoji)
+//   Stage 2: threshold → threshold*2 (neutral 😐)
+//   Stage 3: threshold*2 → threshold*3 (upset ☹️)
+//   Stage 4: threshold*3 → threshold*4 (angry 😡)
+//   Stage 5: threshold*4+             (raging 🤬)
+function _updateNPCMood(npc) {
+  // Only track mood for NPCs in line
+  const inLine = npc.state === 'in_queue' || npc.state === 'waiting_food' || npc.state === 'ordering';
+  if (!inLine) {
+    // Reset emoji when not in line (keep waitFrames for re-entry)
     npc._bubbleEmoji = null;
     return;
   }
 
-  const ratio = npc._patienceMax > 0 ? npc._waitFrames / npc._patienceMax : 0;
+  // Compute mood stage from wait time
+  const t = npc._moodThreshold;
+  const w = npc._waitFrames;
+  let stage;
+  if (w < t)       stage = 1;
+  else if (w < t * 2) stage = 2;
+  else if (w < t * 3) stage = 3;
+  else if (w < t * 4) stage = 4;
+  else                 stage = 5;
+  npc._moodStage = stage;
 
-  // S grade — happy, no bubble
-  if (ratio < 0.3) {
-    npc._bubbleActive = 0;
-    npc._bubbleEmoji = null;
-    return;
-  }
-
-  // Determine emoji and repeat interval based on grade
-  let emoji, intervalMin, intervalMax;
-  if (ratio < 0.6) {
-    // A/B grade — mild impatience
-    emoji = '🙂';
-    intervalMin = 480; intervalMax = 720; // 8-12s
-  } else if (ratio < 0.8) {
-    // C grade — getting annoyed
-    emoji = '😠';
-    intervalMin = 360; intervalMax = 480; // 6-8s
-  } else if (ratio < 0.9) {
-    // Near-F — angry
-    emoji = '😡';
-    intervalMin = 180; intervalMax = 300; // 3-5s
-  } else {
-    // F grade — furious
-    emoji = '🤬';
-    intervalMin = 120; intervalMax = 240; // 2-4s
-  }
-
-  // Active bubble countdown
-  if (npc._bubbleActive > 0) {
-    npc._bubbleActive--;
-    if (npc._bubbleSpawnAnim < DELI_NPC_CONFIG.emojiBubble.spawnAnimFrames) {
-      npc._bubbleSpawnAnim++;
-    }
-    return;
-  }
-
-  // Cooldown between bubbles
-  if (npc._bubbleTimer > 0) {
-    npc._bubbleTimer--;
-    return;
-  }
-
-  // Trigger new bubble
-  npc._bubbleTimer = _randRange(intervalMin, intervalMax);
-  npc._bubbleActive = DELI_NPC_CONFIG.emojiBubble.bubbleDuration;
-  npc._bubbleSpawnAnim = 0;
-  npc._bubbleEmoji = emoji;
+  // Persistent emoji — always shown when stage >= 2
+  const emojis = DELI_NPC_CONFIG.moodEmojis;
+  npc._bubbleEmoji = stage >= 2 ? emojis[stage - 1] : null;
+  // Keep _bubbleActive high so draw.js always renders it
+  npc._bubbleActive = stage >= 2 ? 999 : 0;
+  npc._bubbleSpawnAnim = 12; // skip spawn animation for persistent display
 }
 
 // ===================== MAIN UPDATE =====================
@@ -947,8 +963,8 @@ function updateDeliNPCs() {
     const handler = DELI_NPC_AI[npc.state];
     if (handler) handler(npc);
 
-    // Update emoji mood bubble
-    _updateNPCBubble(npc);
+    // Update mood stage + persistent emoji
+    _updateNPCMood(npc);
 
     // Move along route (walking state — other states that move call moveDeliNPC internally)
     if (npc.state === 'walking') {

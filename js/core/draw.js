@@ -513,50 +513,37 @@ function draw() {
         }
       }
 
-      // Emoji mood bubble (cloud puff + emoji) — 5-grade system
-      if (npc._bubbleActive > 0 && npc._bubbleEmoji) {
-        const cfg = DELI_NPC_CONFIG.emojiBubble;
-        const spawnProg = Math.min(1, npc._bubbleSpawnAnim / cfg.spawnAnimFrames);
-        const fadeAlpha = npc._bubbleActive < 15 ? npc._bubbleActive / 15 : 1;
+      // Persistent emoji mood display — always visible when stage >= 2
+      if (npc._bubbleEmoji) {
         const bx = npc.x, by = npc.y - 82;
+        // Fade in briefly for leaving NPCs (bubbleActive counts down), else full alpha
+        const fadeAlpha = npc._bubbleActive < 15 ? npc._bubbleActive / 15 : 1;
 
         ctx.save();
         ctx.globalAlpha = fadeAlpha;
 
-        // Cloud puff spawn animation — 3 expanding circles
-        if (spawnProg < 1) {
-          const puffScale = spawnProg;
-          for (let p = 0; p < 3; p++) {
-            const angle = p * (Math.PI * 2 / 3) - Math.PI / 2;
-            const dist = 8 * puffScale;
-            const pr = 6 * puffScale;
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
-            ctx.beginPath();
-            ctx.arc(bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist, pr, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
+        // Bubble tint: white for stages 2-3 (yellow moods), red-tinted for stages 4-5
+        const isRed = npc._moodStage >= 4;
+        const bubbleFill = isRed ? 'rgba(255,220,220,0.94)' : 'rgba(255,255,255,0.94)';
+        const bubbleStroke = isRed ? 'rgba(180,60,60,0.3)' : 'rgba(0,0,0,0.18)';
 
-        // Main bubble — white rounded cloud (36x32)
-        const scale = Math.min(1, spawnProg * 1.2);
-        const bw = 36 * scale, bh = 32 * scale;
-        ctx.fillStyle = 'rgba(255,255,255,0.94)';
+        // Main bubble — white/red rounded cloud (36x32)
+        const bw = 36, bh = 32;
+        ctx.fillStyle = bubbleFill;
         ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1.2;
+        ctx.strokeStyle = bubbleStroke; ctx.lineWidth = 1.2;
         ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.stroke();
 
         // Tail — two small circles leading down to head
-        ctx.fillStyle = 'rgba(255,255,255,0.88)';
-        ctx.beginPath(); ctx.arc(bx - 6, by + bh / 2 + 4, 4 * scale, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(bx - 10, by + bh / 2 + 10, 2.5 * scale, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = isRed ? 'rgba(255,220,220,0.88)' : 'rgba(255,255,255,0.88)';
+        ctx.beginPath(); ctx.arc(bx - 6, by + bh / 2 + 4, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx - 10, by + bh / 2 + 10, 2.5, 0, Math.PI * 2); ctx.fill();
 
         // Emoji inside bubble (20px font)
-        if (scale > 0.5) {
-          ctx.font = Math.round(20 * scale) + 'px sans-serif';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#000';
-          ctx.fillText(npc._bubbleEmoji, bx, by + 1);
-        }
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#000';
+        ctx.fillText(npc._bubbleEmoji, bx, by + 1);
 
         ctx.restore();
       }
