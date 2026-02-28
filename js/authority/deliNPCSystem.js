@@ -82,7 +82,7 @@ const DELI_AISLES = [
 const DELI_NPC_CONFIG = {
   minNPCs: 0,
   maxNPCs: 12,
-  spawnInterval: [600, 1800],  // 10-30 sec randomized range (frames at 60fps)
+  spawnInterval: [300, 900],   // 5-15 sec randomized range (frames at 60fps)
   baseSpeed: 0.9,              // slow relaxed stroll
   speedVariance: 0.15,
   eatDuration:    [1800, 3000], // 30-50 sec — long relaxed meal
@@ -356,6 +356,7 @@ function moveDeliNPC(npc) {
   npc.frame = (npc.frame + 0.1) % 4;
 
   // NPC-NPC separation — prevent phasing through each other
+  const inQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
   const sepDist = 24; // minimum separation in pixels (half a tile)
   for (const other of deliNPCs) {
     if (other === npc) continue;
@@ -368,8 +369,13 @@ function moveDeliNPC(npc) {
     if (sd > 0 && sd < sepDist) {
       const push = (sepDist - sd) * 0.3;
       const nx = sx / sd, ny = sy / sd;
-      npc.x += nx * push;
-      npc.y += ny * push;
+      if (inQueue) {
+        // Queue NPCs only push vertically — never sideways off the line
+        npc.y += ny * push;
+      } else {
+        npc.x += nx * push;
+        npc.y += ny * push;
+      }
     }
   }
 }
@@ -574,12 +580,19 @@ const DELI_NPC_AI = {
     if (npc.route && npc.route.length > 0) {
       moveDeliNPC(npc);
       // Face north (toward person ahead) even while walking into position
-      // Queue extends south, so "ahead" is always north (dir=1)
       if (npc.route.length <= 1) npc.dir = 1;
       return;
     }
     npc.moving = false;
     npc.dir = 1; // face north — toward the back of the customer ahead in line
+
+    // Snap to exact queue spot — prevents drifting sideways from separation push
+    const spot = QUEUE_SPOTS[npc._queueIdx];
+    if (spot) {
+      npc.x = spot.tx * TILE + TILE / 2;
+      npc.y = spot.ty * TILE + TILE / 2;
+    }
+
     npc._waitFrames++; // track how long this NPC has been waiting
 
     // Front of line + shift active → become ordering
@@ -647,6 +660,9 @@ const DELI_NPC_AI = {
   ordering: (npc) => {
     npc.moving = false;
     npc.dir = 1;
+    // Snap to queue spot 0 (counter)
+    npc.x = QUEUE_SPOTS[0].tx * TILE + TILE / 2;
+    npc.y = QUEUE_SPOTS[0].ty * TILE + TILE / 2;
     // spawnOrder() in cookingSystem.js will find us and link the order
     // If shift ends while waiting, leave
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
@@ -666,6 +682,9 @@ const DELI_NPC_AI = {
   waiting_food: (npc) => {
     npc.moving = false;
     npc.dir = 1;
+    // Snap to queue spot 0 (counter)
+    npc.x = QUEUE_SPOTS[0].tx * TILE + TILE / 2;
+    npc.y = QUEUE_SPOTS[0].ty * TILE + TILE / 2;
     // applyOrderResult() in cookingSystem.js will set us to pickup_food
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
       npc.linkedOrderId = null;
