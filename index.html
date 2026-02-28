@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <title>Graal-Style PvP Arena</title>
@@ -33,71 +33,74 @@
     }
     resize();
     window.addEventListener("resize", resize);
+
+    // Cache-bust version — increment to force browser to reload all JS
+    const _v = 3;
   </script>
 
   <!-- Phase A: Shared data -->
-  <script src="js/shared/levelData.js"></script>
-  <script src="js/shared/mobTypes.js"></script>
-  <script src="js/shared/floorConfig.js"></script>
-  <script src="js/shared/itemData.js"></script>
-  <script src="js/shared/oreData.js"></script>
-  <script src="js/shared/cookingData.js"></script>
-  <script src="js/shared/fishingData.js"></script>
-  <script src="js/shared/farmingData.js"></script>
-  <script src="js/shared/armorVisuals.js"></script>
+  <script src="js/shared/levelData.js?v=3"></script>
+  <script src="js/shared/mobTypes.js?v=3"></script>
+  <script src="js/shared/floorConfig.js?v=3"></script>
+  <script src="js/shared/itemData.js?v=3"></script>
+  <script src="js/shared/oreData.js?v=3"></script>
+  <script src="js/shared/cookingData.js?v=3"></script>
+  <script src="js/shared/fishingData.js?v=3"></script>
+  <script src="js/shared/farmingData.js?v=3"></script>
+  <script src="js/shared/armorVisuals.js?v=3"></script>
 
   <!-- Phase B: Authority systems -->
-  <script src="js/authority/eventBus.js"></script>
-  <script src="js/authority/gameState.js?v=2"></script>
-  <script src="js/authority/combatSystem.js"></script>
-  <script src="js/authority/attackShapes.js"></script>
-  <script src="js/authority/telegraphSystem.js"></script>
-  <script src="js/authority/hazardSystem.js"></script>
+  <script src="js/authority/eventBus.js?v=3"></script>
+  <script src="js/authority/gameState.js?v=3"></script>
+  <script src="js/authority/combatSystem.js?v=3"></script>
+  <script src="js/authority/attackShapes.js?v=3"></script>
+  <script src="js/authority/telegraphSystem.js?v=3"></script>
+  <script src="js/authority/hazardSystem.js?v=3"></script>
 
   <!-- Phase C: Client rendering -->
-  <script src="js/client/rendering/hitEffects.js"></script>
-  <script src="js/client/rendering/entityRenderers.js"></script>
+  <script src="js/client/rendering/hitEffects.js?v=3"></script>
+  <script src="js/client/rendering/entityRenderers.js?v=3"></script>
 
   <!-- Phase A.5: Core scene/level management (depends on Phase A data + eventBus) -->
-  <script src="js/core/sceneManager.js"></script>
-  <script src="js/core/tileRenderer.js"></script>
+  <script src="js/core/sceneManager.js?v=3"></script>
+  <script src="js/core/tileRenderer.js?v=3"></script>
 
   <!-- Phase B: Authority systems (continued) -->
-  <script src="js/authority/waveSystem.js"></script>
-  <script src="js/authority/damageSystem.js"></script>
-  <script src="js/authority/inventorySystem.js"></script>
-  <script src="js/authority/mobSystem.js"></script>
-  <script src="js/authority/stateReset.js"></script>
-  <script src="js/authority/miningSystem.js"></script>
-  <script src="js/authority/fishingSystem.js"></script>
-  <script src="js/authority/farmingSystem.js"></script>
-  <script src="js/authority/snapshots.js"></script>
-  <script src="js/authority/commands.js"></script>
-  <script src="js/authority/authorityTick.js"></script>
+  <script src="js/authority/waveSystem.js?v=3"></script>
+  <script src="js/authority/damageSystem.js?v=3"></script>
+  <script src="js/authority/inventorySystem.js?v=3"></script>
+  <script src="js/authority/mobSystem.js?v=3"></script>
+  <script src="js/authority/stateReset.js?v=3"></script>
+  <script src="js/authority/miningSystem.js?v=3"></script>
+  <script src="js/authority/fishingSystem.js?v=3"></script>
+  <script src="js/authority/farmingSystem.js?v=3"></script>
+  <script src="js/authority/snapshots.js?v=3"></script>
+  <script src="js/authority/commands.js?v=3"></script>
+  <script src="js/authority/authorityTick.js?v=3"></script>
 
   <!-- Phase C: Client rendering (continued) -->
-  <script src="js/client/rendering/characterSprite.js"></script>
+  <script src="js/client/rendering/characterSprite.js?v=3"></script>
 
   <!-- Phase D: Client UI -->
-  <script src="js/client/input/inputIntent.js"></script>
-  <script src="js/client/ui/panelManager.js"></script>
-  <script src="js/client/ui/chatProfile.js"></script>
-  <script src="js/client/ui/toolbox.js"></script>
-  <script src="js/client/ui/settings.js"></script>
-  <script src="js/client/ui/panels.js"></script>
-  <script src="js/client/ui/customize.js"></script>
-  <script src="js/client/ui/inventory.js"></script>
-  <script src="js/client/ui/testMobPanel.js"></script>
+  <script src="js/client/input/inputIntent.js?v=3"></script>
+  <script src="js/client/ui/panelManager.js?v=3"></script>
+  <script src="js/client/ui/chatProfile.js?v=3"></script>
+  <script src="js/client/ui/toolbox.js?v=3"></script>
+  <script src="js/client/ui/settings.js?v=3"></script>
+  <script src="js/client/ui/panels.js?v=3"></script>
+  <script src="js/client/ui/customize.js?v=3"></script>
+  <script src="js/client/ui/inventory.js?v=3"></script>
+  <script src="js/client/ui/testMobPanel.js?v=3"></script>
 
   <!-- Phase E: Input + Core -->
-  <script src="js/client/input/input.js"></script>
-  <script src="js/core/gunSystem.js"></script>
-  <script src="js/core/meleeSystem.js"></script>
-  <script src="js/core/saveLoad.js"></script>
-  <script src="js/core/interactable.js"></script>
-  <script src="js/authority/cookingSystem.js"></script>
-  <script src="js/authority/deliNPCSystem.js"></script>
-  <script src="js/core/draw.js"></script>
-  <script src="js/testing/testHarness.js"></script>
+  <script src="js/client/input/input.js?v=3"></script>
+  <script src="js/core/gunSystem.js?v=3"></script>
+  <script src="js/core/meleeSystem.js?v=3"></script>
+  <script src="js/core/saveLoad.js?v=3"></script>
+  <script src="js/core/interactable.js?v=3"></script>
+  <script src="js/authority/cookingSystem.js?v=3"></script>
+  <script src="js/authority/deliNPCSystem.js?v=3"></script>
+  <script src="js/core/draw.js?v=3"></script>
+  <script src="js/testing/testHarness.js?v=3"></script>
 </body>
 </html>

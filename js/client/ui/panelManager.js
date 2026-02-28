@@ -539,8 +539,11 @@ window.addEventListener("keydown", e => {
           if (mob) mobs.push(mob);
           chatMessages.push({ name: "SYSTEM", text: "Spawned test grunt", time: Date.now() });
         } else if (cmdLower === "/testmob" || cmdLower === "/testmobs") {
+          chatInput = "";
+          chatInputActive = false; InputIntent.chatActive = false;
           UI.close();
           UI.open('testmob');
+          return;
         } else if (cmdLower.startsWith("/test")) {
           const parts = cmd.trim().split(/\s+/);
           const typeKey = parts[1];
