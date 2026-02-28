@@ -3914,13 +3914,13 @@ const MOB_SPECIALS = {
       const laser = m._lasers[i];
       laser.life--;
 
-      // Track toward player — slowly turn toward player position
-      const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx) + laser.angleOffset;
+      // Track toward player — BOTH beams aim at player
+      const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx);
       let diff = targetAngle - laser.angle;
       // Normalize angle difference to [-PI, PI]
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      laser.angle += diff * 0.03; // slow tracking speed
+      laser.angle += diff * 0.08; // moderate tracking speed
 
       // Calculate beam line endpoints
       const lx2 = laser.cx + Math.cos(laser.angle) * laser.length;
@@ -3949,8 +3949,7 @@ const MOB_SPECIALS = {
     for (let b = 0; b < 2; b++) {
       m._lasers.push({
         cx: m.x, cy: m.y,
-        angle: startAngle + b * Math.PI, // start 180 degrees apart
-        angleOffset: b * Math.PI, // one beam tracks player, other tracks opposite
+        angle: startAngle + b * Math.PI, // start 180 degrees apart, both converge on player
         life: 480, // 8s
         length: 300, // 300px beam length
       });
@@ -4252,7 +4251,7 @@ const MOB_SPECIALS = {
   emp_dome: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
-    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 720;
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 300;
 
     // Telegraph phase
     if (m._empDomeTelegraph) {
@@ -4269,7 +4268,7 @@ const MOB_SPECIALS = {
           }
         }
         hitEffects.push({ x: m.x, y: m.y, life: 25, type: "emp_wave" });
-        m._specialTimer = m._specialCD || 720;
+        m._specialTimer = m._specialCD || 300;
       }
       return { skip: true };
     }
@@ -4280,7 +4279,7 @@ const MOB_SPECIALS = {
     }
 
     // Activate: player must be close enough
-    if (dist >= 260) {
+    if (dist >= 300) {
       m._specialTimer = 30;
       return {};
     }
@@ -4289,12 +4288,12 @@ const MOB_SPECIALS = {
       TelegraphSystem.create({
         shape: 'circle',
         params: { cx: m.x, cy: m.y, radius: 180 },
-        delayFrames: 30,
+        delayFrames: 60,
         color: [160, 60, 220], // purple
         owner: m.id,
       });
     }
-    m._empDomeTelegraph = 30;
+    m._empDomeTelegraph = 60;
     return { skip: true };
   },
 
@@ -4343,56 +4342,79 @@ const MOB_SPECIALS = {
   },
 
   // --- J.U.N.Z: Repulsor Beam ---
-  // Single wide beam aimed directly at the player. Line telegraph → resolve: push + damage.
+  // Persistent energy beam like Game Master but blue/cyan. Telegraph → beam tracks player for 6s.
   repulsor_beam: (m, ctx) => {
     const { dist, dx, dy, player, hitEffects } = ctx;
+
+    // Tick persistent beam (if active)
+    if (m._junzBeam && m._junzBeam.life > 0) {
+      m._junzBeam.life--;
+      // Track toward player
+      const targetAngle = Math.atan2(player.y - m._junzBeam.cy, player.x - m._junzBeam.cx);
+      let diff = targetAngle - m._junzBeam.angle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      m._junzBeam.angle += diff * 0.06;
+      // Keep beam origin at mob position (follows mob)
+      m._junzBeam.cx = m.x;
+      m._junzBeam.cy = m.y;
+      // Damage check every 10 frames
+      if (m._junzBeam.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
+        const endX = m._junzBeam.cx + Math.cos(m._junzBeam.angle) * m._junzBeam.length;
+        const endY = m._junzBeam.cy + Math.sin(m._junzBeam.angle) * m._junzBeam.length;
+        if (AttackShapes.playerInLine(m._junzBeam.cx, m._junzBeam.cy, endX, endY, 28)) {
+          const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
+          const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+          hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+          // Push player slightly away from beam
+          const pdx = player.x - m.x, pdy = player.y - m.y;
+          const pDist = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
+          const pushX = player.x + (pdx / pDist) * 30;
+          const pushY = player.y + (pdy / pDist) * 30;
+          if (positionClear(pushX, pushY)) { player.x = pushX; player.y = pushY; }
+        }
+      }
+      if (m._junzBeam.life <= 0) m._junzBeam = null;
+      return {};
+    }
 
     // Telegraph phase
     if (m._repulsorTelegraph) {
       m._repulsorTelegraph--;
       if (m._repulsorTelegraph <= 0) {
-        // Resolve: push player away + damage
+        // Resolve: create persistent beam that tracks player
+        const beamAngle = Math.atan2(m._repulsorY2 - m._repulsorY1, m._repulsorX2 - m._repulsorX1);
+        m._junzBeam = {
+          cx: m.x, cy: m.y,
+          angle: beamAngle,
+          length: 336,
+          life: 360, // 6s persistent beam
+        };
+        // Initial damage on resolve
         if (typeof AttackShapes !== 'undefined') {
           if (AttackShapes.playerInLine(m._repulsorX1, m._repulsorY1, m._repulsorX2, m._repulsorY2, 40)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-            // Push player 3 tiles (144px) away from mob
-            const pushDist = 144;
+            // Push player away
             const pdx = player.x - m.x, pdy = player.y - m.y;
             const pDist = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
             const ndx2 = pdx / pDist, ndy2 = pdy / pDist;
             let finalX = player.x, finalY = player.y;
-            const steps = 6;
-            for (let i = 1; i <= steps; i++) {
-              const testX = player.x + ndx2 * (pushDist * i / steps);
-              const testY = player.y + ndy2 * (pushDist * i / steps);
-              if (positionClear(testX, testY)) {
-                finalX = testX;
-                finalY = testY;
-              } else {
-                break;
-              }
+            for (let i = 1; i <= 6; i++) {
+              const testX = player.x + ndx2 * (144 * i / 6);
+              const testY = player.y + ndy2 * (144 * i / 6);
+              if (positionClear(testX, testY)) { finalX = testX; finalY = testY; } else break;
             }
-            player.x = finalX;
-            player.y = finalY;
+            player.x = finalX; player.y = finalY;
           }
         }
-        // Visual spark burst along the beam line
-        const bDir = Math.atan2(m._repulsorY2 - m._repulsorY1, m._repulsorX2 - m._repulsorX1);
-        for (let sp = 0; sp < 6; sp++) {
-          const sparkDist = Math.random() * 336;
-          hitEffects.push({
-            x: m._repulsorX1 + Math.cos(bDir) * sparkDist + (Math.random()-0.5)*20,
-            y: m._repulsorY1 + Math.sin(bDir) * sparkDist + (Math.random()-0.5)*20,
-            life: 15, type: "spark"
-          });
-        }
+        hitEffects.push({ x: m.x, y: m.y, life: 20, type: "cast" });
       }
-      return {};
+      return { skip: true };
     }
 
-    // Activate: single line telegraph from mob directly at player
+    // Activate: line telegraph aimed at player
     const ndx = dx / (dist || 1), ndy = dy / (dist || 1);
     m._repulsorX1 = m.x;
     m._repulsorY1 = m.y;
@@ -4410,7 +4432,7 @@ const MOB_SPECIALS = {
     }
     m._repulsorTelegraph = 36;
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
-    return {};
+    return { skip: true };
   },
 
   // --- J.U.N.Z: Nano Armor ---
@@ -4436,10 +4458,11 @@ const MOB_SPECIALS = {
   },
 
   // --- J.U.N.Z: Drone Court ---
-  // Spawn 2 hovering gun-drones that orbit and shoot bullets at the player. Max 2 drones. Long lasting.
+  // Spawn 2 hovering gun-drones that orbit and shoot bullets at the player. Drones despawn after 10s with cooldown before respawn.
   drone_court: (m, ctx) => {
     const { dist, player, hitEffects } = ctx;
 
+    if (m._droneCourtTimer === undefined) m._droneCourtTimer = 0;
     if (!m._rocketDrones) m._rocketDrones = [];
 
     // Tick active drones
@@ -4480,12 +4503,17 @@ const MOB_SPECIALS = {
       hitEffects.push({ x: drone.x, y: drone.y - 5, life: 3, type: "spark" });
     }
 
-    // Activate: max 2 drones active
-    if (m._rocketDrones.length >= 2) return {};
+    // Cooldown between drone deployments
+    if (m._droneCourtTimer > 0) {
+      m._droneCourtTimer--;
+      return {};
+    }
+
+    // Don't spawn if drones still active
+    if (m._rocketDrones.length > 0) return {};
 
     // Spawn 2 drones
-    const toSpawn = 2 - m._rocketDrones.length;
-    for (let d = 0; d < toSpawn; d++) {
+    for (let d = 0; d < 2; d++) {
       const angle = d * Math.PI; // 180 degrees apart
       m._rocketDrones.push({
         x: m.x + Math.cos(angle) * 50,
@@ -4497,6 +4525,7 @@ const MOB_SPECIALS = {
       });
     }
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
+    m._droneCourtTimer = 900; // 15s cooldown before next deployment
     return {};
   },
 

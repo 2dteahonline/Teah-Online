@@ -268,7 +268,7 @@ const MOB_TYPES = {
   signal_jammer: {
     name: "Signal Jammer Bot", hp: 80, speed: 2.0, damage: 10, killHeal: 8,
     skin: "#6a7a6a", hair: "#3a4a3a", shirt: "#4a5a4a", pants: "#3a4a3a", contactRange: 76,
-    ai: 'witch', _specials: ['emp_dome'], specialCD: 900, // 15s
+    ai: 'witch', _specials: ['emp_dome'], specialCD: 300, // 5s — frequent suppression circles
     kiteRange: 300,
   },
 

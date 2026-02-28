@@ -465,12 +465,12 @@ function updateMobs() {
             const laser = m._lasers[li];
             laser.life--;
             if (laser.life <= 0) { m._lasers.splice(li, 1); continue; }
-            // Track toward player
-            const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx) + (laser.angleOffset || 0);
+            // Track toward player — both beams aim at player
+            const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx);
             let diff = targetAngle - laser.angle;
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
-            laser.angle += diff * 0.03;
+            laser.angle += diff * 0.08;
             // Check player in beam every 10 frames
             if (laser.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
               const endX = laser.cx + Math.cos(laser.angle) * laser.length;
@@ -536,6 +536,30 @@ function updateMobs() {
               drone.fireTimer = 25;
             }
           }
+        }
+        // Tick persistent Junz beam (repulsor_beam) — continues tracking while boss uses other abilities
+        if (m._junzBeam && m._junzBeam.life > 0 && m._activeAbility !== 'repulsor_beam') {
+          m._junzBeam.life--;
+          // Track toward player
+          const targetAngle = Math.atan2(player.y - m._junzBeam.cy, player.x - m._junzBeam.cx);
+          let diff = targetAngle - m._junzBeam.angle;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          m._junzBeam.angle += diff * 0.06;
+          // Follow mob position
+          m._junzBeam.cx = m.x;
+          m._junzBeam.cy = m.y;
+          // Damage check every 10 frames
+          if (m._junzBeam.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
+            const endX = m._junzBeam.cx + Math.cos(m._junzBeam.angle) * m._junzBeam.length;
+            const endY = m._junzBeam.cy + Math.sin(m._junzBeam.angle) * m._junzBeam.length;
+            if (AttackShapes.playerInLine(m._junzBeam.cx, m._junzBeam.cy, endX, endY, 28)) {
+              const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
+              dealDamageToPlayer(dmg, 'mob_special', m);
+              hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
+            }
+          }
+          if (m._junzBeam.life <= 0) m._junzBeam = null;
         }
         // Tick persistent holo clones (Holo Jester fake_wall — for boss rotation cases)
         if (m._holoClones && m._holoClones.length > 0 && m._activeAbility !== 'fake_wall') {

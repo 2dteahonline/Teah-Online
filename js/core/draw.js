@@ -563,7 +563,7 @@ function draw() {
     // Gas canister projectile (street_chemist) — green arcing vial
     if (m._gasProjectile) {
       const gp = m._gasProjectile;
-      const gpx = gp.x - cx, gpy = gp.y - cy;
+      const gpx = gp.x, gpy = gp.y;
       // Green glow trail
       ctx.fillStyle = 'rgba(100,200,50,0.25)';
       ctx.beginPath(); ctx.arc(gpx, gpy, 10, 0, Math.PI * 2); ctx.fill();
@@ -585,7 +585,7 @@ function draw() {
     // Sticky bombs (renegade_demo) — orange pulsing bombs on ground
     if (m._bombs && m._bombs.length > 0) {
       for (const bomb of m._bombs) {
-        const bx = bomb.x - cx, by = bomb.y - cy;
+        const bx = bomb.x, by = bomb.y;
         const fuseProgress = 1 - bomb.timer / 120;
         const flashRate = 3 + fuseProgress * 15;
         const flash = 0.5 + 0.5 * Math.sin(renderTime * 0.05 * flashRate);
@@ -615,7 +615,7 @@ function draw() {
     // Smart mines (the_don) — armed/unarmed proximity mines
     if (m._mines && m._mines.length > 0) {
       for (const mine of m._mines) {
-        const mx = mine.x - cx, my = mine.y - cy;
+        const mx = mine.x, my = mine.y;
         if (mine.armed) {
           // Armed — red pulsing
           const pulse = 0.5 + 0.5 * Math.sin(renderTime * 0.08);
@@ -637,7 +637,7 @@ function draw() {
     // Turret entities (suit_enforcer briefcase_turret) — small mounted gun
     if (m._turrets && m._turrets.length > 0) {
       for (const turret of m._turrets) {
-        const tx = turret.x - cx, ty = turret.y - cy;
+        const tx = turret.x, ty = turret.y;
         // Base platform
         ctx.fillStyle = '#3a3a4a';
         ctx.fillRect(tx - 10, ty - 4, 20, 8);
@@ -662,7 +662,7 @@ function draw() {
     // Drone entities (executive_handler drone_swarm, junz drone_court) — small orbiting bots
     if (m._drones && m._drones.length > 0) {
       for (const drone of m._drones) {
-        const dx = drone.x - cx, dy = drone.y - cy;
+        const dx = drone.x, dy = drone.y;
         // Drone body — small dark disc
         ctx.fillStyle = drone.diving ? '#ff4040' : '#4a6a8a';
         ctx.beginPath(); ctx.arc(dx, dy, 6, 0, Math.PI * 2); ctx.fill();
@@ -682,7 +682,7 @@ function draw() {
     // Static orbs (jackman static_orbs) — electric orbiting balls
     if (m._staticOrbs && m._staticOrbs.length > 0) {
       for (const orb of m._staticOrbs) {
-        const ox = orb.x - cx, oy = orb.y - cy;
+        const ox = orb.x, oy = orb.y;
         // Electric glow
         ctx.fillStyle = orb.diving ? 'rgba(255,220,80,0.3)' : 'rgba(80,180,255,0.3)';
         ctx.beginPath(); ctx.arc(ox, oy, 12, 0, Math.PI * 2); ctx.fill();
@@ -707,7 +707,7 @@ function draw() {
     // Egg sac entities (centipede toxic_nursery) — green pulsing eggs
     if (m._eggs && m._eggs.length > 0) {
       for (const egg of m._eggs) {
-        const ex = egg.x - cx, ey = egg.y - cy;
+        const ex = egg.x, ey = egg.y;
         const hatchProgress = 1 - egg.timer / 180;
         const pulse = 0.5 + 0.3 * Math.sin(renderTime * 0.08 + hatchProgress * 10);
         // Slime base
@@ -733,7 +733,7 @@ function draw() {
     // Holographic clones (holo_jester fake_wall) — translucent copies of the mob
     if (m._holoClones && m._holoClones.length > 0) {
       for (const clone of m._holoClones) {
-        const clx = clone.x - cx, cly = clone.y - cy;
+        const clx = clone.x, cly = clone.y;
         const holoFlicker = 0.3 + 0.15 * Math.sin(renderTime * 0.12 + clone.angle * 3);
         // Blue hologram glow BEHIND character (centered on body at y-20)
         ctx.fillStyle = `rgba(100,180,255,${holoFlicker * 0.25})`;
@@ -764,7 +764,7 @@ function draw() {
     // Rocket drones (enforcer_drone suppress_cone) — floating shooting drone
     if (m._rocketDrones && m._rocketDrones.length > 0) {
       for (const drone of m._rocketDrones) {
-        const rdx = drone.x - cx, rdy = drone.y - cy;
+        const rdx = drone.x, rdy = drone.y;
         // Hover bob
         const bob = Math.sin(renderTime * 0.08 + drone.x * 0.01) * 3;
         const droneY = rdy + bob;
@@ -805,7 +805,7 @@ function draw() {
     // Laser beams (game_master puzzle_lasers) — rotating energy beams
     if (m._lasers && m._lasers.length > 0) {
       for (const laser of m._lasers) {
-        const lcx = laser.cx - cx, lcy = laser.cy - cy;
+        const lcx = laser.cx, lcy = laser.cy;
         const beamLen = laser.length || 300;
         const endX = lcx + Math.cos(laser.angle) * beamLen;
         const endY = lcy + Math.sin(laser.angle) * beamLen;
@@ -830,10 +830,37 @@ function draw() {
         ctx.beginPath(); ctx.arc(endX, endY, 4, 0, Math.PI * 2); ctx.fill();
       }
     }
+    // Junz beam (repulsor_beam) — persistent energy beam like Game Master but blue/cyan
+    if (m._junzBeam && m._junzBeam.life > 0) {
+      const jb = m._junzBeam;
+      const jbx = jb.cx, jby = jb.cy;
+      const jbLen = jb.length || 336;
+      const jEndX = jbx + Math.cos(jb.angle) * jbLen;
+      const jEndY = jby + Math.sin(jb.angle) * jbLen;
+      // Outer glow — blue
+      ctx.strokeStyle = `rgba(40,100,255,0.15)`;
+      ctx.lineWidth = 16;
+      ctx.beginPath(); ctx.moveTo(jbx, jby); ctx.lineTo(jEndX, jEndY); ctx.stroke();
+      // Mid beam — cyan
+      ctx.strokeStyle = `rgba(60,160,255,0.35)`;
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(jbx, jby); ctx.lineTo(jEndX, jEndY); ctx.stroke();
+      // Core beam — bright white-blue
+      const jPulse = 0.6 + 0.4 * Math.sin(renderTime * 0.1 + jb.angle);
+      ctx.strokeStyle = `rgba(140,200,255,${jPulse})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(jbx, jby); ctx.lineTo(jEndX, jEndY); ctx.stroke();
+      // Bright center orb
+      ctx.fillStyle = `rgba(120,180,255,${jPulse})`;
+      ctx.beginPath(); ctx.arc(jbx, jby, 6, 0, Math.PI * 2); ctx.fill();
+      // End spark
+      ctx.fillStyle = `rgba(60,140,255,${jPulse * 0.7})`;
+      ctx.beginPath(); ctx.arc(jEndX, jEndY, 4, 0, Math.PI * 2); ctx.fill();
+    }
     // Tesla pillars (voltmaster tesla_pillars) — glowing energy pillars
     if (m._pillars && m._pillars.length > 0) {
       for (const pillar of m._pillars) {
-        const plx = pillar.x - cx, ply = pillar.y - cy;
+        const plx = pillar.x, ply = pillar.y;
         // Pillar base
         ctx.fillStyle = 'rgba(0,180,220,0.15)';
         ctx.beginPath(); ctx.arc(plx, ply + 5, 14, 0, Math.PI * 2); ctx.fill();
@@ -855,8 +882,8 @@ function draw() {
           const p1 = m._pillars[pi];
           const p2 = m._pillars[(pi + 1) % m._pillars.length];
           ctx.beginPath();
-          ctx.moveTo(p1.x - cx, p1.y - 20 - cy);
-          ctx.lineTo(p2.x - cx, p2.y - 20 - cy);
+          ctx.moveTo(p1.x, p1.y - 20);
+          ctx.lineTo(p2.x, p2.y - 20);
           ctx.stroke();
         }
       }
