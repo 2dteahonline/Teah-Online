@@ -298,9 +298,9 @@ function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
   } else {
     route.push({ tx: 26, ty: 20 });
   }
-  route.push({ tx: 26, ty: 22 });
-  route.push({ tx: queueSpot.tx, ty: 22 });
-  route.push({ tx: queueSpot.tx, ty: queueSpot.ty });
+  route.push({ tx: 13, ty: 22 });                     // west to approach corridor
+  route.push({ tx: 13, ty: queueSpot.ty });            // south to queue Y level
+  route.push({ tx: queueSpot.tx, ty: queueSpot.ty });  // west into line
   return route;
 }
 
@@ -511,8 +511,10 @@ const DELI_NPC_AI = {
     }
     npc._queueIdx = qIdx;
     const spot = QUEUE_SPOTS[qIdx];
+    // Walk north along tx:13 to the spot's Y level, then west into line
+    // This prevents walking through customers already ahead in line
     _npcStartRoute(npc,
-      [{ tx: 13, ty: 22 }, { tx: spot.tx, ty: 22 }, { tx: spot.tx, ty: spot.ty }],
+      [{ tx: 13, ty: spot.ty }, { tx: spot.tx, ty: spot.ty }],
       'in_queue', 0
     );
   },

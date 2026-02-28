@@ -223,8 +223,12 @@ function updateCooking() {
     return;
   }
 
-  // Spawn order if none active
+  // Spawn order if none active — only when a customer NPC is at the counter
   if (!cookingState.currentOrder) {
+    // Wait for a customer to reach the counter (ordering state) before showing order
+    const hasCustomerAtCounter = typeof deliNPCs !== 'undefined' &&
+      deliNPCs.some(n => n.state === 'ordering' && !n.linkedOrderId);
+    if (!hasCustomerAtCounter) return;
     if (cookingState.orderSpawnDelay > 0) {
       cookingState.orderSpawnDelay--;
     } else {
