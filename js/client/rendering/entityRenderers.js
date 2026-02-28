@@ -2413,6 +2413,51 @@ ENTITY_RENDERERS.anvil = (e, ctx, ex, ey, w, h) => {
     ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(cx - 16, cy - 9, 32, 3);
 };
 
+// ===================== CRATE (generic prop) =====================
+ENTITY_RENDERERS.crate = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(ex + cw / 2, ey + ch, cw * 0.4, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // Crate body
+    ctx.fillStyle = '#6a5030';
+    ctx.fillRect(ex + 4, ey + 6, cw - 8, ch - 8);
+    // Lighter top face
+    ctx.fillStyle = '#7a6040';
+    ctx.fillRect(ex + 4, ey + 6, cw - 8, 8);
+    // Plank lines
+    ctx.strokeStyle = '#4a3820'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ex + cw / 2, ey + 6); ctx.lineTo(ex + cw / 2, ey + ch - 2); ctx.stroke();
+    // Metal bands
+    ctx.strokeStyle = '#8a7a60'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ex + 6, ey + ch * 0.4); ctx.lineTo(ex + cw - 6, ey + ch * 0.4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ex + 6, ey + ch * 0.7); ctx.lineTo(ex + cw - 6, ey + ch * 0.7); ctx.stroke();
+};
+
+// ===================== BARREL (generic prop) =====================
+ENTITY_RENDERERS.barrel = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const cx = ex + cw / 2, cy = ey + ch / 2;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(cx, ey + ch, cw * 0.35, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // Barrel body (rounded)
+    ctx.fillStyle = '#6a4a28';
+    ctx.beginPath(); ctx.roundRect(ex + 6, ey + 4, cw - 12, ch - 6, 6); ctx.fill();
+    // Barrel bulge (wider in middle)
+    ctx.fillStyle = '#7a5a38';
+    ctx.beginPath(); ctx.roundRect(ex + 4, ey + ch * 0.25, cw - 8, ch * 0.5, 8); ctx.fill();
+    // Metal bands
+    ctx.strokeStyle = '#8a7a60'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ex + 8, ey + ch * 0.2); ctx.lineTo(ex + cw - 8, ey + ch * 0.2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ex + 8, ey + ch * 0.8); ctx.lineTo(ex + cw - 8, ey + ch * 0.8); ctx.stroke();
+    // Top ellipse
+    ctx.fillStyle = '#5a3a18';
+    ctx.beginPath(); ctx.ellipse(cx, ey + 6, cw * 0.35, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#8a7a60'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(cx, ey + 6, cw * 0.35, 5, 0, 0, Math.PI * 2); ctx.stroke();
+};
+
 function drawLevelEntities(camX, camY) {
   for (const e of levelEntities) {
     const w = e.w ?? 1;
