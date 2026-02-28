@@ -1893,7 +1893,8 @@ function gameLoop(timestamp) {
     //  Locally we skip it — authorityTick already mutated GameState directly.)
     accumulator -= FIXED_DT; updates++;
   }
-  draw();
+  // Only draw when physics actually updated — caps everything to 60 FPS
+  if (updates > 0) draw();
   requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);
