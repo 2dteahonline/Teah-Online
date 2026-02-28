@@ -659,7 +659,8 @@ window.addEventListener("keydown", e => {
           } else {
             const amt = parseInt(val);
             if (!isNaN(amt) && amt > 0) {
-              player.hp = Math.min(amt, player.maxHp);
+              if (amt > player.maxHp) player.maxHp = amt;
+              player.hp = amt;
               chatMessages.push({ name: "SYSTEM", text: "HP set to " + player.hp + "/" + player.maxHp, time: Date.now() });
             } else {
               chatMessages.push({ name: "SYSTEM", text: "Usage: /hp <amount|max>  Current: " + player.hp + "/" + player.maxHp, time: Date.now() });

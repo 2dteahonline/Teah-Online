@@ -75,6 +75,13 @@ function updateMobs() {
 
   for (const m of mobs) {
     if (m.hp <= 0) continue;
+    // /freeze — auto-freeze any mob not yet flagged (catches summoned mobs like skeletons)
+    if (window._mobsFrozen && !m._frozen) {
+      m._savedSpeed = m.speed;
+      m.speed = 0;
+      m._specialTimer = 99999;
+      m._frozen = true;
+    }
     if (m.boneSwing > 0) m.boneSwing--;
     // Tick all status effects (stagger, stun, frost, burn)
     const fxResult = StatusFX.tickMob(m);
