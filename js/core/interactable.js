@@ -87,8 +87,8 @@ registerInteractable({
 // Register gunsmith NPC interactable (gunsmith room only)
 registerInteractable({
   id: 'gunsmith_npc',
-  get x() { return 9 * TILE + TILE; },   // center of 2x2 entity at tx:9
-  get y() { return 5 * TILE + TILE; },   // center of 2x2 entity at ty:5
+  get x() { return 19 * TILE + TILE; },   // center of 2x2 entity at tx:19
+  get y() { return 10 * TILE + TILE; },   // center of 2x2 entity at ty:10
   range: 120,
   get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Gunsmith'; },
   type: 'gunsmith',

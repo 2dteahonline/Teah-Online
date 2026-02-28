@@ -148,7 +148,7 @@ const LEVELS = {
       { type: 'house_entrance', tx: 10, ty: 6, w: 3, h: 2, solid: false, target: 'house_01', spawnTX: 10, spawnTY: 26 },
       // === GUNSMITH BUILDING (right side, below azurine) ===
       { type: 'building_gunsmith', tx: 47, ty: 8, w: 7, h: 7, solid: true },
-      { type: 'gunsmith_entrance', tx: 49, ty: 14, w: 3, h: 2, solid: false, target: 'gunsmith_01', spawnTX: 10, spawnTY: 13 },
+      { type: 'gunsmith_entrance', tx: 49, ty: 14, w: 3, h: 2, solid: false, target: 'gunsmith_01', spawnTX: 20, spawnTY: 22 },
       // === FISHING DOCK (bottom-center, end of south path) ===
       { type: 'fishing_spot', tx: 26, ty: 42, w: 4, h: 2, solid: false },
       { type: 'fish_vendor', tx: 23, ty: 40, w: 2, h: 2, solid: true },
@@ -890,44 +890,56 @@ const LEVELS = {
   // Small indoor room with Gunsmith NPC and workbench
   gunsmith_01: {
     id: 'gunsmith_01',
-    widthTiles: 20,
-    heightTiles: 16,
+    widthTiles: 42,
+    heightTiles: 26,
     isGunsmith: true,
-    spawns: { p1: { tx: 10, ty: 13 } },
+    spawns: { p1: { tx: 20, ty: 22 } },
     collisionAscii: [
-      "####################",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#..................#",
-      "#........####......#",
-      "####################"
+      "##########################################",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#........................................#",
+      "#...................####.................#",
+      "##########################################"
     ],
     entities: [
       // Exit back to lobby
-      { type: 'gunsmith_exit', tx: 8, ty: 14, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 10, spawnTY: 8 },
-      // Gunsmith NPC (center-ish of room)
-      { type: 'gunsmith_npc', tx: 9, ty: 5, w: 2, h: 2, solid: true },
+      { type: 'gunsmith_exit', tx: 18, ty: 24, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 50, spawnTY: 16 },
+      // Gunsmith NPC (center of room)
+      { type: 'gunsmith_npc', tx: 19, ty: 10, w: 2, h: 2, solid: true },
       // Workbench (left of NPC)
-      { type: 'workbench', tx: 5, ty: 4, w: 3, h: 2, solid: true },
+      { type: 'workbench', tx: 14, ty: 9, w: 3, h: 2, solid: true },
       // Weapon rack (right wall)
-      { type: 'weapon_rack', tx: 16, ty: 2, w: 2, h: 4, solid: true },
-      // Anvil (bottom left)
-      { type: 'anvil', tx: 3, ty: 10, w: 2, h: 2, solid: true },
-      // Torches
-      { type: 'torch', tx: 1, ty: 1, solid: false },
-      { type: 'torch', tx: 18, ty: 1, solid: false },
-      { type: 'torch', tx: 1, ty: 12, solid: false },
-      { type: 'torch', tx: 18, ty: 12, solid: false },
+      { type: 'weapon_rack', tx: 36, ty: 4, w: 2, h: 4, solid: true },
+      // Anvil (bottom left area)
+      { type: 'anvil', tx: 8, ty: 16, w: 2, h: 2, solid: true },
+      // Torches (corners + along walls)
+      { type: 'torch', tx: 2, ty: 2, solid: false },
+      { type: 'torch', tx: 39, ty: 2, solid: false },
+      { type: 'torch', tx: 2, ty: 22, solid: false },
+      { type: 'torch', tx: 39, ty: 22, solid: false },
+      { type: 'torch', tx: 20, ty: 2, solid: false },
+      { type: 'torch', tx: 20, ty: 22, solid: false },
     ]
   }
 };
