@@ -347,36 +347,16 @@ function capMobSpeed(type, speed) {
 }
 
 // ===================== FLOOR-AWARE WAVE COMPOSITION =====================
-// Uses FLOOR_CONFIG (from floorConfig.js) when available, falls back to legacy cycle.
+// All dungeons use FLOOR_CONFIG (keyed by dungeon type then floor number).
 function getWaveComposition(w) {
-  // Only use FLOOR_CONFIG for dungeons that have it (e.g. 'azurine')
-  // Cave dungeon always uses legacy wave compositions
-  const _dungEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[currentDungeon];
-  if (_dungEntry && _dungEntry.hasFloorConfig && typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[dungeonFloor]) {
-    const floorComp = getFloorWaveComposition(FLOOR_CONFIG[dungeonFloor], w);
+  const dungeonConfig = typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[currentDungeon];
+  if (dungeonConfig && dungeonConfig[dungeonFloor]) {
+    const floorComp = getFloorWaveComposition(dungeonConfig[dungeonFloor], w);
     if (floorComp) return floorComp;
   }
-  // Cave dungeon + fallback: use legacy compositions
-  return getLegacyWaveComposition(w);
-}
-
-function getLegacyWaveComposition(w) {
-  const isBoss = w % 10 === 0 && w >= 10;
-  if (isBoss) return { primary: [{type:"golem",weight:1}], support: [{type:"tank",weight:2},{type:"witch",weight:1},{type:"grunt",weight:2}], primaryPct: 0.08, theme: "⚔ BOSS WAVE ⚔", forceGolem: true };
-
-  // Cycle through themed waves with some variety
-  const cycle = ((w - 1) % 8);
-  switch(cycle) {
-    case 0: return { primary: [{type:"grunt",weight:1}], support: [], primaryPct: 1.0, theme: "Grunt Rush" };
-    case 1: return { primary: [{type:"archer",weight:3},{type:"grunt",weight:2}], support: [{type:"runner",weight:2}], primaryPct: 0.6, theme: "Archer Ambush" };
-    case 2: return { primary: [{type:"runner",weight:3}], support: [{type:"grunt",weight:1}], primaryPct: 0.75, theme: "Speed Swarm" };
-    case 3: return { primary: [{type:"mummy",weight:3}], support: [{type:"runner",weight:2},{type:"grunt",weight:1}], primaryPct: 0.5, theme: "Mummy Ambush" };
-    case 4: return { primary: [{type:"tank",weight:5}], support: [{type:"healer",weight:2},{type:"grunt",weight:1}], primaryPct: 0.6, theme: "Heavy Assault" };
-    case 5: return { primary: [{type:"witch",weight:2}], support: [{type:"grunt",weight:2},{type:"tank",weight:1}], primaryPct: 0.3, theme: "Witch Coven" };
-    case 6: return { primary: [{type:"runner",weight:3},{type:"mummy",weight:2}], support: [{type:"grunt",weight:1}], primaryPct: 0.65, theme: "Blitz Wave" };
-    case 7: return { primary: [{type:"tank",weight:2},{type:"witch",weight:2}], support: [{type:"healer",weight:1},{type:"archer",weight:1},{type:"mummy",weight:1},{type:"runner",weight:1}], primaryPct: 0.5, theme: "Elite Wave" };
-    default: return { primary: [{type:"grunt",weight:1}], support: [], primaryPct: 1.0, theme: "Wave " + w };
-  }
+  // Fallback: generic grunt wave (should never hit if FLOOR_CONFIG is complete)
+  console.warn('No FLOOR_CONFIG for', currentDungeon, 'floor', dungeonFloor);
+  return { primary: [{type:'grunt',weight:1}], support: [], primaryPct: 1.0, theme: 'Wave ' + w };
 }
 
 // ===================== MOB FACTORY =====================
@@ -456,15 +436,11 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     _shieldExpireFrame: 0,            // auto-expire frame for timed shields
     _invulnerable: false,             // invulnerability flag (mud_dive, etc.)
     _submerged: false,                // for mud_dive
-    _canSplit: mt._canSplit || false,  // for core_guardian split mechanic
-    _splitDone: false,
     _turrets: [],                     // for briefcase_turret
     _drones: [],                      // for drone_swarm
     _pillars: [],                     // for tesla_pillars
     _eggs: [],                        // for toxic_nursery
     _traps: [],                       // for tripwire
-    _seekMines: [],                   // for seek_mine
-    _fakeWalls: [],                   // for fake_wall
     _lasers: [],                      // for puzzle_lasers
     _baits: [],                       // for loot_bait
     _staticOrbs: [],                  // for static_orbs

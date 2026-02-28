@@ -116,6 +116,10 @@ const TESTMOB_DUNGEONS = {
     name: 'Cave Dungeon',
     floors: {
       1: { name: 'Cave Floor 1', mobs: ['grunt', 'runner', 'tank', 'witch', 'skeleton', 'mummy', 'archer', 'healer', 'golem', 'mini_golem'] },
+      2: { name: 'Cave Floor 2', mobs: ['grunt', 'runner', 'tank', 'witch', 'skeleton', 'mummy', 'archer', 'healer', 'golem', 'mini_golem'] },
+      3: { name: 'Cave Floor 3', mobs: ['grunt', 'runner', 'tank', 'witch', 'skeleton', 'mummy', 'archer', 'healer', 'golem', 'mini_golem'] },
+      4: { name: 'Cave Floor 4', mobs: ['grunt', 'runner', 'tank', 'witch', 'skeleton', 'mummy', 'archer', 'healer', 'golem', 'mini_golem'] },
+      5: { name: 'Cave Floor 5', mobs: ['grunt', 'runner', 'tank', 'witch', 'skeleton', 'mummy', 'archer', 'healer', 'golem', 'mini_golem'] },
     }
   },
   azurine: {
@@ -129,6 +133,17 @@ const TESTMOB_DUNGEONS = {
     }
   }
 };
+
+// Validate TESTMOB_DUNGEONS floor counts match DUNGEON_REGISTRY
+if (typeof DUNGEON_REGISTRY !== 'undefined') {
+  for (const [key, reg] of Object.entries(DUNGEON_REGISTRY)) {
+    const td = TESTMOB_DUNGEONS[key];
+    if (!td) { console.warn('TESTMOB_DUNGEONS missing dungeon:', key); continue; }
+    const floorCount = Object.keys(td.floors).length;
+    if (floorCount !== reg.maxFloors)
+      console.warn('TESTMOB_DUNGEONS ' + key + ': ' + floorCount + ' floors but registry says ' + reg.maxFloors);
+  }
+}
 
 UI.register('testmob', {
   onOpen() { testMobScroll = 0; testMobAbilityPopup = null; },

@@ -397,6 +397,6 @@ const CROWD_EXEMPT_TYPES = new Set(["runner", "golem", "mini_golem", "archer", "
 const MOB_ENTITY_ARRAYS = [
   '_bombs', '_mines', '_oilPuddles', '_traps', '_oozeLines', '_rampartZones',
   '_meltTargets', '_summonedMinions', '_turrets', '_drones', '_pillars',
-  '_eggs', '_seekMines', '_fakeWalls', '_lasers', '_baits', '_staticOrbs',
+  '_eggs', '_lasers', '_baits', '_staticOrbs',
   '_holoClones', '_rocketDrones', '_junzBeam',
 ];

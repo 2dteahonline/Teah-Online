@@ -279,83 +279,6 @@ const HazardSystem = {
       },
     },
 
-    // Floor 2: Security Door — temporary walls appear periodically
-    security_door: {
-      init(h) {
-        h.timer = 720; // 12s cycle
-        h.doorsActive = false;
-        h.doorTimer = 0;
-        h.doorDuration = 180; // 3s active
-        h.doors = []; // {x1, y1, x2, y2} wall segments
-      },
-      update(h) {
-        if (h.doorsActive) {
-          h.doorTimer--;
-          // Push player out if overlapping a door
-          for (const door of h.doors) {
-            const px = player.x, py = player.y;
-            // Door is a 2-tile wide strip
-            if (px >= door.x1 - 16 && px <= door.x2 + 16 &&
-                py >= door.y1 - 16 && py <= door.y2 + 16) {
-              // Push player to nearest side
-              const pushL = px - door.x1, pushR = door.x2 - px;
-              const pushT = py - door.y1, pushB = door.y2 - py;
-              const minPush = Math.min(pushL + 16, pushR + 16, pushT + 16, pushB + 16);
-              if (minPush === pushL + 16) player.x = door.x1 - 20;
-              else if (minPush === pushR + 16) player.x = door.x2 + 20;
-              else if (minPush === pushT + 16) player.y = door.y1 - 20;
-              else player.y = door.y2 + 20;
-            }
-          }
-          if (h.doorTimer <= 0) {
-            h.doorsActive = false;
-            h.doors = [];
-            h.timer = 720;
-          }
-        } else {
-          h.timer--;
-          if (h.timer <= 0) {
-            h.doorsActive = true;
-            h.doorTimer = h.doorDuration;
-            // Create 2 horizontal door segments at random Y
-            const mapW = MAP_W, mapH = MAP_H;
-            for (let d = 0; d < 2; d++) {
-              const doorY = TILE * 6 + Math.random() * (mapH - TILE * 12);
-              const doorX = TILE * 4 + Math.random() * (mapW - TILE * 12);
-              const doorLen = TILE * 4;
-              h.doors.push({ x1: doorX, y1: doorY, x2: doorX + doorLen, y2: doorY + TILE });
-            }
-          }
-        }
-      },
-      draw(h, ctx, camX, camY) {
-        // Warning phase
-        if (!h.doorsActive && h.timer <= 90) {
-          for (const door of h.doors) {
-            // Nothing to show yet
-          }
-          return;
-        }
-        if (!h.doorsActive) return;
-        for (const door of h.doors) {
-          const alpha = Math.min(0.7, h.doorTimer / 60);
-          // Metal door fill
-          ctx.fillStyle = `rgba(80,90,100,${alpha})`;
-          ctx.fillRect(door.x1 - camX, door.y1 - camY, door.x2 - door.x1, door.y2 - door.y1);
-          // Edge glow
-          ctx.strokeStyle = `rgba(200,100,0,${alpha})`;
-          ctx.lineWidth = 2;
-          ctx.strokeRect(door.x1 - camX, door.y1 - camY, door.x2 - door.x1, door.y2 - door.y1);
-          // Warning stripes
-          ctx.fillStyle = `rgba(255,200,0,${alpha * 0.3})`;
-          const stripeW = 12;
-          for (let sx = door.x1; sx < door.x2; sx += stripeW * 2) {
-            ctx.fillRect(sx - camX, door.y1 - camY, stripeW, door.y2 - door.y1);
-          }
-        }
-      },
-    },
-
     // Floor 2 Boss: Conveyor Belt — pushes player sideways
     conveyor_belt: {
       init(h) {
@@ -907,7 +830,9 @@ const HazardSystem = {
     const _hzEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[currentDungeon];
     if (!_hzEntry || !_hzEntry.hasHazards) return;
     if (typeof FLOOR_CONFIG === 'undefined') return;
-    const config = FLOOR_CONFIG[floor];
+    const dungeonFloors = FLOOR_CONFIG[currentDungeon];
+    if (!dungeonFloors) return;
+    const config = dungeonFloors[floor];
     if (!config || !config.hazards) return;
 
     for (const hazardKey of config.hazards) {
