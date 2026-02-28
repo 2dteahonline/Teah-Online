@@ -38,28 +38,28 @@ const QUEUE_SPOTS = [
   { tx: 11, ty: 26 },
 ];
 
-// Chairs (NPCs sit here to eat) — left, right, top, bottom for each of 4 tables
+// Chairs (NPCs sit here to eat) — 2 per side × 4 sides × 4 tables = 32 seats
 const DELI_CHAIRS = [
   // Table 1 (28,4)
-  { tx: 27, ty: 4,  sitDir: 3 },   // left
-  { tx: 31, ty: 4,  sitDir: 2 },   // right
-  { tx: 29, ty: 3,  sitDir: 0 },   // top (face down)
-  { tx: 29, ty: 6,  sitDir: 1 },   // bottom (face up)
+  { tx: 27, ty: 4,  sitDir: 3 },  { tx: 27, ty: 5,  sitDir: 3 },   // left ×2
+  { tx: 31, ty: 4,  sitDir: 2 },  { tx: 31, ty: 5,  sitDir: 2 },   // right ×2
+  { tx: 28, ty: 3,  sitDir: 0 },  { tx: 30, ty: 3,  sitDir: 0 },   // top ×2
+  { tx: 28, ty: 6,  sitDir: 1 },  { tx: 30, ty: 6,  sitDir: 1 },   // bottom ×2
   // Table 2 (40,4)
-  { tx: 39, ty: 4,  sitDir: 3 },
-  { tx: 43, ty: 4,  sitDir: 2 },
-  { tx: 41, ty: 3,  sitDir: 0 },
-  { tx: 41, ty: 6,  sitDir: 1 },
+  { tx: 39, ty: 4,  sitDir: 3 },  { tx: 39, ty: 5,  sitDir: 3 },
+  { tx: 43, ty: 4,  sitDir: 2 },  { tx: 43, ty: 5,  sitDir: 2 },
+  { tx: 40, ty: 3,  sitDir: 0 },  { tx: 42, ty: 3,  sitDir: 0 },
+  { tx: 40, ty: 6,  sitDir: 1 },  { tx: 42, ty: 6,  sitDir: 1 },
   // Table 3 (28,17)
-  { tx: 27, ty: 17, sitDir: 3 },
-  { tx: 31, ty: 17, sitDir: 2 },
-  { tx: 29, ty: 16, sitDir: 0 },
-  { tx: 29, ty: 19, sitDir: 1 },
+  { tx: 27, ty: 17, sitDir: 3 },  { tx: 27, ty: 18, sitDir: 3 },
+  { tx: 31, ty: 17, sitDir: 2 },  { tx: 31, ty: 18, sitDir: 2 },
+  { tx: 28, ty: 16, sitDir: 0 },  { tx: 30, ty: 16, sitDir: 0 },
+  { tx: 28, ty: 19, sitDir: 1 },  { tx: 30, ty: 19, sitDir: 1 },
   // Table 4 (40,17)
-  { tx: 39, ty: 17, sitDir: 3 },
-  { tx: 43, ty: 17, sitDir: 2 },
-  { tx: 41, ty: 16, sitDir: 0 },
-  { tx: 41, ty: 19, sitDir: 1 },
+  { tx: 39, ty: 17, sitDir: 3 },  { tx: 39, ty: 18, sitDir: 3 },
+  { tx: 43, ty: 17, sitDir: 2 },  { tx: 43, ty: 18, sitDir: 2 },
+  { tx: 40, ty: 16, sitDir: 0 },  { tx: 42, ty: 16, sitDir: 0 },
+  { tx: 40, ty: 19, sitDir: 1 },  { tx: 42, ty: 19, sitDir: 1 },
 ];
 
 // Aisle browse spots (stand next to shelves — all items are in the aisles now)

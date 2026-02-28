@@ -90,14 +90,16 @@ function draw() {
         }
         if (flashAlpha || phaseTimer > 0) ctx.globalAlpha = 1.0;
 
-        // Player held food visual (cooking scene — shows assembly as a growing sandwich)
+        // Player held food visual (cooking scene — plate+sandwich at hand level)
         if (Scene.inCooking && typeof cookingState !== 'undefined' && cookingState.active &&
             cookingState.assembly && cookingState.assembly.length > 0) {
           const assembly = cookingState.assembly;
-          // Direction-aware offset
-          let offX = 0, offY = -68;
-          if (player.dir === 2) offX = -16;       // facing left
-          else if (player.dir === 3) offX = 16;   // facing right
+          // Hand-level position, offset by facing direction
+          let offX = 0, offY = -32;
+          if (player.dir === 2) offX = -20;        // facing left → food on left hand
+          else if (player.dir === 3) offX = 20;    // facing right → food on right hand
+          else if (player.dir === 0) offY = -28;   // facing down → food slightly lower
+          else if (player.dir === 1) offY = -38;   // facing up → food slightly higher
           // Walk bob
           const bob = player.moving ? Math.sin(player.frame * Math.PI / 2) * 2 : 0;
           const fx = player.x + offX;
@@ -447,18 +449,28 @@ function draw() {
       const npc = e.npc;
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
-        npc.name, -1, false, null, 100, 0, 0.9, 0);
-      // Food indicator — plate with layered sandwich (32px wide, recipe-colored)
+        npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
+      // Food indicator — plate + sandwich held at hand level (40px wide)
       if (npc.hasFood) {
-        const fx = npc.x, fy = npc.y - 64;
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.beginPath(); ctx.ellipse(fx, fy + 8, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
-        // Plate (32px wide)
-        ctx.fillStyle = '#c8b898';
-        ctx.beginPath(); ctx.ellipse(fx, fy + 4, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#a09070'; ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.ellipse(fx, fy + 4, 16, 6, 0, 0, Math.PI * 2); ctx.stroke();
+        // Position at hand/arm level, offset by facing direction
+        let fOffX = 0, fOffY = -30; // hand height (mid-torso)
+        if (npc.dir === 2) fOffX = -18;        // facing left → food on left
+        else if (npc.dir === 3) fOffX = 18;    // facing right → food on right
+        else if (npc.dir === 0) fOffY = -26;   // facing down → food slightly lower/forward
+        else if (npc.dir === 1) fOffY = -36;   // facing up → food slightly higher
+        const bobF = npc.moving ? Math.sin(npc.frame * Math.PI / 2) * 1.5 : 0;
+        const fx = npc.x + fOffX, fy = npc.y + fOffY + bobF;
+        // Shadow under plate
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.beginPath(); ctx.ellipse(fx, fy + 10, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+        // Plate (40px wide)
+        ctx.fillStyle = '#d4c8a8';
+        ctx.beginPath(); ctx.ellipse(fx, fy + 5, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#a09070'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(fx, fy + 5, 20, 8, 0, 0, Math.PI * 2); ctx.stroke();
+        // Plate rim highlight
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(fx, fy + 4, 18, 6, 0, 0, Math.PI); ctx.stroke();
         // Build sandwich layers from NPC's recipe if available
         let layers = [];
         if (npc._recipeIngredients && typeof DELI_INGREDIENTS !== 'undefined') {
@@ -468,30 +480,35 @@ function draw() {
           }
         }
         if (layers.length === 0) {
-          // Fallback generic sandwich
           layers = [
             { color: '#c8a050', isBread: true }, { color: '#e08080', isBread: false },
             { color: '#60c040', isBread: false }, { color: '#f0d040', isBread: false },
             { color: '#d4a840', isBread: true },
           ];
         }
-        const npcMaxW = 28, npcLayerH = 4;
+        const npcMaxW = 34, npcLayerH = 5;
         for (let li = 0; li < layers.length; li++) {
-          const ly = fy + 1 - li * npcLayerH;
+          const ly = fy + 2 - li * npcLayerH;
           const lw = layers[li].isBread ? npcMaxW : npcMaxW - 4;
-          const lh = layers[li].isBread ? 5 : 4;
-          // Dome top bread
+          const lh = layers[li].isBread ? 6 : 5;
           if (layers[li].isBread && li === layers.length - 1 && li > 0) {
             ctx.fillStyle = layers[li].color;
             ctx.beginPath();
             ctx.moveTo(fx - lw / 2, ly + 1);
-            ctx.quadraticCurveTo(fx, ly - lh - 2, fx + lw / 2, ly + 1);
+            ctx.quadraticCurveTo(fx, ly - lh - 3, fx + lw / 2, ly + 1);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.moveTo(fx - lw / 2 + 2, ly);
+            ctx.quadraticCurveTo(fx, ly - lh - 1, fx + lw / 2 - 2, ly);
             ctx.closePath(); ctx.fill();
           } else {
             ctx.fillStyle = layers[li].color;
             ctx.fillRect(fx - lw / 2, ly - lh / 2, lw, lh);
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            ctx.fillRect(fx - lw / 2 + 1, ly - lh / 2, lw - 2, 1);
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(fx - lw / 2 + 1, ly - lh / 2, lw - 2, 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.08)';
+            ctx.fillRect(fx - lw / 2 + 1, ly + lh / 2 - 1, lw - 2, 1);
           }
         }
       }

@@ -242,8 +242,8 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   }
 
   // Legacy canvas drawing
-  // Draw hitbox circle at normal scale (before character)
-  if (!isPlayer || gameSettings.playerIndicator) {
+  // Draw hitbox circle at normal scale (before character) — skip for deli NPCs
+  if ((!isPlayer || gameSettings.playerIndicator) && mobType !== 'deliNPC') {
     ctx.strokeStyle = "#00cc44";
     ctx.lineWidth = 2;
     ctx.beginPath();

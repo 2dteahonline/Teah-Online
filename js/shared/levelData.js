@@ -782,30 +782,50 @@ const LEVELS = {
       // Deli Counter (center — clear plate)
       { type: 'deli_counter', tx: 9, ty: 8, w: 6, h: 2, solid: true },
 
-      // === DINING AREA (right side — 4 tables with chairs) ===
+      // === DINING AREA (right side — 4 tables, 2 cushions per side = 8 per table) ===
+      // Table 1 (28,4) — 3w × 2h
       { type: 'deli_table', tx: 28, ty: 4, w: 3, h: 2, solid: true },
-      { type: 'deli_chair', tx: 27, ty: 4, solid: false },
-      { type: 'deli_chair', tx: 31, ty: 4, solid: false },
-      { type: 'deli_chair', tx: 29, ty: 3, solid: false },
-      { type: 'deli_chair', tx: 29, ty: 6, solid: false },
+      { type: 'deli_chair', tx: 27, ty: 4, solid: false },   // left 1
+      { type: 'deli_chair', tx: 27, ty: 5, solid: false },   // left 2
+      { type: 'deli_chair', tx: 31, ty: 4, solid: false },   // right 1
+      { type: 'deli_chair', tx: 31, ty: 5, solid: false },   // right 2
+      { type: 'deli_chair', tx: 28, ty: 3, solid: false },   // top 1
+      { type: 'deli_chair', tx: 30, ty: 3, solid: false },   // top 2
+      { type: 'deli_chair', tx: 28, ty: 6, solid: false },   // bottom 1
+      { type: 'deli_chair', tx: 30, ty: 6, solid: false },   // bottom 2
 
+      // Table 2 (40,4) — 3w × 2h
       { type: 'deli_table', tx: 40, ty: 4, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 39, ty: 4, solid: false },
+      { type: 'deli_chair', tx: 39, ty: 5, solid: false },
       { type: 'deli_chair', tx: 43, ty: 4, solid: false },
-      { type: 'deli_chair', tx: 41, ty: 3, solid: false },
-      { type: 'deli_chair', tx: 41, ty: 6, solid: false },
+      { type: 'deli_chair', tx: 43, ty: 5, solid: false },
+      { type: 'deli_chair', tx: 40, ty: 3, solid: false },
+      { type: 'deli_chair', tx: 42, ty: 3, solid: false },
+      { type: 'deli_chair', tx: 40, ty: 6, solid: false },
+      { type: 'deli_chair', tx: 42, ty: 6, solid: false },
 
+      // Table 3 (28,17) — 3w × 2h
       { type: 'deli_table', tx: 28, ty: 17, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 27, ty: 17, solid: false },
+      { type: 'deli_chair', tx: 27, ty: 18, solid: false },
       { type: 'deli_chair', tx: 31, ty: 17, solid: false },
-      { type: 'deli_chair', tx: 29, ty: 16, solid: false },
-      { type: 'deli_chair', tx: 29, ty: 19, solid: false },
+      { type: 'deli_chair', tx: 31, ty: 18, solid: false },
+      { type: 'deli_chair', tx: 28, ty: 16, solid: false },
+      { type: 'deli_chair', tx: 30, ty: 16, solid: false },
+      { type: 'deli_chair', tx: 28, ty: 19, solid: false },
+      { type: 'deli_chair', tx: 30, ty: 19, solid: false },
 
+      // Table 4 (40,17) — 3w × 2h
       { type: 'deli_table', tx: 40, ty: 17, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 39, ty: 17, solid: false },
+      { type: 'deli_chair', tx: 39, ty: 18, solid: false },
       { type: 'deli_chair', tx: 43, ty: 17, solid: false },
-      { type: 'deli_chair', tx: 41, ty: 16, solid: false },
-      { type: 'deli_chair', tx: 41, ty: 19, solid: false },
+      { type: 'deli_chair', tx: 43, ty: 18, solid: false },
+      { type: 'deli_chair', tx: 40, ty: 16, solid: false },
+      { type: 'deli_chair', tx: 42, ty: 16, solid: false },
+      { type: 'deli_chair', tx: 40, ty: 19, solid: false },
+      { type: 'deli_chair', tx: 42, ty: 19, solid: false },
 
       // === CONDIMENT TABLE (center of dining area) ===
       { type: 'deli_condiment_table', tx: 34, ty: 11, w: 3, h: 2, solid: true },
