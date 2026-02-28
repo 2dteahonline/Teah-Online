@@ -69,22 +69,35 @@ const DELI_AISLES = [
 const DELI_NPC_CONFIG = {
   minNPCs: 4,
   maxNPCs: 7,
-  spawnInterval: 400,         // frames between spawn checks (~6.5 sec)
-  baseSpeed: 0.9,             // slow relaxed stroll
+  spawnInterval: [240, 720],   // 4-12 sec randomized range (frames at 60fps)
+  baseSpeed: 0.9,              // slow relaxed stroll
   speedVariance: 0.15,
   eatDuration:    [1800, 3000], // 30-50 sec — long relaxed meal
   browseDuration: [480, 900],   // 8-15 sec browsing at an aisle
   condimentTime:  [300, 480],   // 5-8 sec at condiments
   condimentChance: 0.5,
-  aisleChance:     0.7,       // chance to browse aisles after eating
+  aisleChance:     0.7,        // chance to browse aisles after eating
   tipChance:       0.4,
   tipAmount:       [1, 5],
+  // Emoji mood bubbles above NPC heads
+  emojiBubble: {
+    concernedInterval: [240, 420], // 4-7 sec between bubbles when concerned
+    furiousInterval:   [180, 300], // 3-5 sec between bubbles when furious
+    bubbleDuration: 90,            // 1.5 sec display time
+    spawnAnimFrames: 12,           // cloud puff expand animation frames
+  },
+  // Pre-queue aisle browsing
+  preQueueBrowseChance: 0.3,      // 30% chance to browse aisles before joining line
+  // Mid-queue line leaving
+  midQueueLeaveChance: 0.001,     // per-frame chance (~6% per second) to leave line
+  midQueueMinIdx: 3,              // only leave if queueIdx >= this (not near front)
 };
 
 // ===================== STATE =====================
 const deliNPCs = [];
 let _deliNPCId = 0;
 let _deliSpawnTimer = 0;
+let _nextSpawnInterval = 400; // randomized after each spawn
 
 // ===================== HELPERS =====================
 function _randRange(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -256,6 +269,28 @@ function _routeToTipJar(fromTX, fromTY) {
   return route;
 }
 
+// Route from exit to an aisle (for pre-queue browsing)
+function _routeExitToAisle(aisle) {
+  return [{ tx: 13, ty: 22 }].concat(_routeCounterToAisle(aisle));
+}
+
+// Route from aisle area back to a queue spot
+function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
+  const route = [];
+  const gap = _nearestAisleGap(fromTX);
+  route.push({ tx: gap, ty: fromTY });
+  if (gap !== 26) {
+    route.push({ tx: gap, ty: 20 });
+    route.push({ tx: 26, ty: 20 });
+  } else {
+    route.push({ tx: 26, ty: 20 });
+  }
+  route.push({ tx: 26, ty: 22 });
+  route.push({ tx: queueSpot.tx, ty: 22 });
+  route.push({ tx: queueSpot.tx, ty: queueSpot.ty });
+  return route;
+}
+
 // ===================== ROUTE-BASED MOVEMENT =====================
 // NPC walks toward route[0]. When close, shifts to next waypoint.
 // When route is empty, movement is done.
@@ -375,6 +410,15 @@ function spawnDeliNPC() {
     linkedOrderId: null,
     _pendingPurchase: null,
     _lastChairIdx: -1,
+    _browseFirst: false,       // true if browsing aisles before joining queue
+    _browsedPreQueue: false,   // true after completing pre-queue browse
+    _aisleVisits: 0,           // track aisle visit count
+    // Emoji bubble state
+    _bubbleTimer: 0,           // countdown to next bubble show
+    _bubbleActive: 0,          // frames remaining for current bubble
+    _bubbleSpawnAnim: 0,       // cloud puff expand timer
+    _bubbleMoodIdx: -1,        // mood stage index being shown
+    _waitFrames: 0,            // total frames spent waiting in queue (for non-order NPCs)
     speed: DELI_NPC_CONFIG.baseSpeed + (Math.random() - 0.5) * DELI_NPC_CONFIG.speedVariance * 2,
     isDeliNPC: true,
   };
@@ -386,33 +430,14 @@ function initDeliNPCs() {
   deliNPCs.length = 0;
   _deliNPCId = 0;
   _deliSpawnTimer = 0;
-  // Spawn initial batch — place them already in queue
+  _nextSpawnInterval = _randRange(DELI_NPC_CONFIG.spawnInterval[0], DELI_NPC_CONFIG.spawnInterval[1]);
+  // Spawn initial batch at exit — staggered walk-in (no teleporting into positions)
   const count = _randRange(DELI_NPC_CONFIG.minNPCs, DELI_NPC_CONFIG.minNPCs + 2);
   for (let i = 0; i < count; i++) {
     const npc = spawnDeliNPC();
-    if (i < QUEUE_SPOTS.length) {
-      // Place directly in queue
-      const spot = QUEUE_SPOTS[i];
-      npc.x = spot.tx * TILE + TILE / 2;
-      npc.y = spot.ty * TILE + TILE / 2;
-      npc._queueIdx = i;
-      npc.state = 'in_queue';
-      npc.dir = 1; // face north
-    } else {
-      // Extra NPCs — place at random chairs eating
-      const chairIdx = i - QUEUE_SPOTS.length;
-      if (chairIdx < DELI_CHAIRS.length) {
-        const ch = DELI_CHAIRS[chairIdx];
-        npc.x = ch.tx * TILE + TILE / 2;
-        npc.y = ch.ty * TILE + TILE / 2;
-        npc.claimedChair = chairIdx;
-        npc.state = 'eating';
-        npc.stateTimer = _randRange(DELI_NPC_CONFIG.eatDuration[0], DELI_NPC_CONFIG.eatDuration[1]);
-        npc.hasFood = true;
-        npc.dir = ch.sitDir;
-        npc._lastChairIdx = chairIdx;
-      }
-    }
+    // Stagger: first NPC enters immediately, rest have increasing delays
+    npc.state = 'spawn_wait';
+    npc.stateTimer = i * _randRange(90, 180); // 1.5-3 sec stagger per NPC
   }
 }
 
@@ -420,13 +445,31 @@ function initDeliNPCs() {
 
 const DELI_NPC_AI = {
 
-  // ─── ENTERING: Walk from exit to queue ─────────────────
+  // ─── SPAWN_WAIT: Staggered delay before entering ───────
+  spawn_wait: (npc) => {
+    npc.moving = false;
+    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
+    npc.state = 'entering';
+  },
+
+  // ─── ENTERING: Walk from exit to queue (or browse aisles first) ──
   entering: (npc) => {
+    // Pre-queue browsing chance — some customers grab sides before lining up
+    if (!npc._browseFirst && !npc._browsedPreQueue &&
+        Math.random() < DELI_NPC_CONFIG.preQueueBrowseChance) {
+      npc._browseFirst = true;
+      const aisle = _randFromArray(DELI_AISLES);
+      npc._pendingPurchase = Math.random() < 0.6 ? aisle : null;
+      _npcStartRoute(npc, _routeExitToAisle(aisle),
+        'pre_queue_browse', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
+      );
+      return;
+    }
+
     const qIdx = _nextQueueSpot();
     if (qIdx < 0) {
       // Queue full — browse aisles instead
       const aisle = _randFromArray(DELI_AISLES);
-      // Use _routeCounterToAisle which handles going above shelves
       const route = [{ tx: 13, ty: 22 }].concat(_routeCounterToAisle(aisle));
       _npcStartRoute(npc, route,
         'shopping_aisle', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
@@ -436,11 +479,59 @@ const DELI_NPC_AI = {
     }
     npc._queueIdx = qIdx;
     const spot = QUEUE_SPOTS[qIdx];
-    // Walk north to counter corridor, then west to queue column, then south to queue spot
     _npcStartRoute(npc,
       [{ tx: 13, ty: 22 }, { tx: spot.tx, ty: 22 }, { tx: spot.tx, ty: spot.ty }],
       'in_queue', 0
     );
+  },
+
+  // ─── PRE-QUEUE BROWSE: Browsing aisles before joining queue ──
+  pre_queue_browse: (npc) => {
+    npc.moving = false;
+    npc.dir = 1; // face shelves
+    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
+
+    // Process purchase
+    if (npc._pendingPurchase) {
+      const item = npc._pendingPurchase;
+      if (typeof gold !== 'undefined') gold += item.price;
+      if (typeof cookingState !== 'undefined' && cookingState.active) {
+        cookingState.stats.totalEarned += item.price;
+      }
+      npc.purchasedExtras.push(item.name);
+      if (typeof hitEffects !== 'undefined') {
+        hitEffects.push({ x: npc.x, y: npc.y - 40, life: 30, maxLife: 30, type: 'heal', dmg: '+$' + item.price + ' (' + item.name + ')' });
+      }
+      npc._pendingPurchase = null;
+    }
+
+    // Done browsing — try to join queue
+    npc._browsedPreQueue = true;
+    const qIdx = _nextQueueSpot();
+    if (qIdx < 0) {
+      // Queue still full — browse another aisle or leave
+      npc._aisleVisits++;
+      if (npc._aisleVisits < 2 && Math.random() < 0.5) {
+        const aisle = _randFromArray(DELI_AISLES);
+        npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
+        const curTX = Math.floor(npc.x / TILE);
+        const curTY = Math.floor(npc.y / TILE);
+        _npcStartRoute(npc, _routeAisleToAisle(curTX, curTY, aisle),
+          'pre_queue_browse', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+      } else {
+        const aTX = Math.floor(npc.x / TILE);
+        const aTY = Math.floor(npc.y / TILE);
+        _npcStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
+      }
+      return;
+    }
+
+    // Join the queue from aisle
+    npc._queueIdx = qIdx;
+    const spot = QUEUE_SPOTS[qIdx];
+    const curTX = Math.floor(npc.x / TILE);
+    const curTY = Math.floor(npc.y / TILE);
+    _npcStartRoute(npc, _routeAisleToQueue(curTX, curTY, spot), 'in_queue', 0);
   },
 
   // ─── WALKING: Follow route, then transition ────────────
@@ -460,11 +551,67 @@ const DELI_NPC_AI = {
     }
     npc.moving = false;
     npc.dir = 1; // face north toward counter
+    npc._waitFrames++; // track how long this NPC has been waiting
 
     // Front of line + shift active → become ordering
     if (npc._queueIdx === 0 && typeof cookingState !== 'undefined' && cookingState.active) {
       npc.state = 'ordering';
+      return;
     }
+
+    // Mid-queue leave: customers stuck far back may leave to grab items
+    if (npc._queueIdx >= DELI_NPC_CONFIG.midQueueMinIdx &&
+        Math.random() < DELI_NPC_CONFIG.midQueueLeaveChance) {
+      // Forfeit queue slot
+      npc._queueIdx = -1;
+      _advanceQueue();
+      // Reset browse flags for re-entry
+      npc._browseFirst = false;
+      npc._browsedPreQueue = false;
+      npc._aisleVisits = 0;
+      npc._waitFrames = 0;
+      const aisle = _randFromArray(DELI_AISLES);
+      npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
+      _npcStartRoute(npc, _routeCounterToAisle(aisle),
+        'mid_queue_browse', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+    }
+  },
+
+  // ─── MID-QUEUE BROWSE: Left queue to browse, will re-enter ──
+  mid_queue_browse: (npc) => {
+    npc.moving = false;
+    npc.dir = 1;
+    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
+
+    // Process purchase
+    if (npc._pendingPurchase) {
+      const item = npc._pendingPurchase;
+      if (typeof gold !== 'undefined') gold += item.price;
+      if (typeof cookingState !== 'undefined' && cookingState.active) {
+        cookingState.stats.totalEarned += item.price;
+      }
+      npc.purchasedExtras.push(item.name);
+      if (typeof hitEffects !== 'undefined') {
+        hitEffects.push({ x: npc.x, y: npc.y - 40, life: 30, maxLife: 30, type: 'heal', dmg: '+$' + item.price + ' (' + item.name + ')' });
+      }
+      npc._pendingPurchase = null;
+    }
+
+    // Try to rejoin queue
+    const qIdx = _nextQueueSpot();
+    if (qIdx < 0) {
+      // Queue full — give up and leave
+      const aTX = Math.floor(npc.x / TILE);
+      const aTY = Math.floor(npc.y / TILE);
+      _npcStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
+      return;
+    }
+
+    npc._queueIdx = qIdx;
+    const spot = QUEUE_SPOTS[qIdx];
+    const curTX = Math.floor(npc.x / TILE);
+    const curTY = Math.floor(npc.y / TILE);
+    _npcStartRoute(npc, _routeAisleToQueue(curTX, curTY, spot), 'in_queue', 0);
   },
 
   // ─── ORDERING: At counter, waiting for spawnOrder() to link us ──
@@ -662,14 +809,73 @@ const DELI_NPC_AI = {
   },
 };
 
+// ===================== EMOJI BUBBLE UPDATE =====================
+function _updateNPCBubble(npc) {
+  // Only show bubbles for NPCs waiting in queue
+  if (npc.state !== 'in_queue' && npc.state !== 'waiting_food' && npc.state !== 'ordering') {
+    npc._bubbleActive = 0;
+    npc._bubbleMoodIdx = -1;
+    return;
+  }
+
+  // Determine mood index: use linked order mood if available, else derive from wait time
+  let moodIdx = 0;
+  if (npc.linkedOrderId !== null && typeof cookingState !== 'undefined' && cookingState.currentOrder &&
+      cookingState.currentOrder.npcId === npc.id) {
+    // Front-of-line NPC with linked order — use actual mood data
+    moodIdx = cookingState.currentOrder.moodStageIdx || 0;
+  } else {
+    // Other queued NPCs — derive mood from wait time using MOOD_STAGES thresholds
+    if (typeof MOOD_STAGES !== 'undefined') {
+      let threshold = 0;
+      for (let i = 0; i < MOOD_STAGES.length; i++) {
+        threshold += MOOD_STAGES[i].baseFrames;
+        if (npc._waitFrames < threshold) { moodIdx = i; break; }
+        if (i === MOOD_STAGES.length - 1) moodIdx = i;
+      }
+    }
+  }
+
+  // patient (idx 0) = no bubble
+  if (moodIdx === 0) {
+    npc._bubbleActive = 0;
+    npc._bubbleMoodIdx = -1;
+    return;
+  }
+
+  // Active bubble countdown
+  if (npc._bubbleActive > 0) {
+    npc._bubbleActive--;
+    if (npc._bubbleSpawnAnim < DELI_NPC_CONFIG.emojiBubble.spawnAnimFrames) {
+      npc._bubbleSpawnAnim++;
+    }
+    return;
+  }
+
+  // Cooldown between bubbles
+  if (npc._bubbleTimer > 0) {
+    npc._bubbleTimer--;
+    return;
+  }
+
+  // Trigger new bubble
+  const cfg = DELI_NPC_CONFIG.emojiBubble;
+  const interval = moodIdx >= 2 ? cfg.furiousInterval : cfg.concernedInterval;
+  npc._bubbleTimer = _randRange(interval[0], interval[1]);
+  npc._bubbleActive = cfg.bubbleDuration;
+  npc._bubbleSpawnAnim = 0;
+  npc._bubbleMoodIdx = moodIdx;
+}
+
 // ===================== MAIN UPDATE =====================
 function updateDeliNPCs() {
   if (typeof Scene === 'undefined' || !Scene.inCooking) return;
 
-  // Spawn management
+  // Spawn management — randomized interval
   _deliSpawnTimer++;
-  if (_deliSpawnTimer >= DELI_NPC_CONFIG.spawnInterval) {
+  if (_deliSpawnTimer >= _nextSpawnInterval) {
     _deliSpawnTimer = 0;
+    _nextSpawnInterval = _randRange(DELI_NPC_CONFIG.spawnInterval[0], DELI_NPC_CONFIG.spawnInterval[1]);
     if (deliNPCs.length < DELI_NPC_CONFIG.minNPCs) {
       spawnDeliNPC(); // enters in 'entering' state
     } else if (deliNPCs.length < DELI_NPC_CONFIG.maxNPCs && Math.random() < 0.35) {
@@ -684,6 +890,9 @@ function updateDeliNPCs() {
     // Run state handler
     const handler = DELI_NPC_AI[npc.state];
     if (handler) handler(npc);
+
+    // Update emoji mood bubble
+    _updateNPCBubble(npc);
 
     // Move along route (walking state — other states that move call moveDeliNPC internally)
     if (npc.state === 'walking') {
