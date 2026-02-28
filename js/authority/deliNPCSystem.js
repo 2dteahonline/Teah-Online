@@ -29,13 +29,14 @@ const DELI_SPOTS = {
   condiments:  { tx: 35, ty: 13 },   // south side of condiment table
 };
 
-// Queue line — south from counter
+// Queue line — south from counter (vertical line at tx:11, same as ordering spot)
 const QUEUE_SPOTS = [
   { tx: 11, ty: 22 },  // spot 0 = at counter (front of line)
   { tx: 11, ty: 23 },
   { tx: 11, ty: 24 },
   { tx: 11, ty: 25 },
   { tx: 11, ty: 26 },
+  { tx: 11, ty: 27 },  // spot 5 = back of line (6 max)
 ];
 
 // Chairs (NPCs sit here to eat) — 2 per side × 4 sides × 4 tables = 32 seats
@@ -79,9 +80,9 @@ const DELI_AISLES = [
 
 // ===================== CONFIG =====================
 const DELI_NPC_CONFIG = {
-  minNPCs: 4,
-  maxNPCs: 7,
-  spawnInterval: [240, 720],   // 4-12 sec randomized range (frames at 60fps)
+  minNPCs: 0,
+  maxNPCs: 12,
+  spawnInterval: [600, 3600],  // 10-60 sec randomized range (frames at 60fps)
   baseSpeed: 0.9,              // slow relaxed stroll
   speedVariance: 0.15,
   eatDuration:    [1800, 3000], // 30-50 sec — long relaxed meal
@@ -462,15 +463,8 @@ function initDeliNPCs() {
   deliNPCs.length = 0;
   _deliNPCId = 0;
   _deliSpawnTimer = 0;
-  _nextSpawnInterval = _randRange(DELI_NPC_CONFIG.spawnInterval[0], DELI_NPC_CONFIG.spawnInterval[1]);
-  // Spawn initial batch at exit — staggered walk-in (no teleporting into positions)
-  const count = _randRange(DELI_NPC_CONFIG.minNPCs, DELI_NPC_CONFIG.minNPCs + 2);
-  for (let i = 0; i < count; i++) {
-    const npc = spawnDeliNPC();
-    // Stagger: first NPC enters immediately, rest have increasing delays
-    npc.state = 'spawn_wait';
-    npc.stateTimer = i * _randRange(45, 90); // 0.75-1.5 sec stagger per NPC (faster walk-in)
-  }
+  // First customer walks in after 1-3 seconds, then 10-60s between each after that
+  _nextSpawnInterval = _randRange(60, 180);
 }
 
 // ===================== AI STATE HANDLERS =====================
@@ -911,15 +905,13 @@ function _updateNPCBubble(npc) {
 function updateDeliNPCs() {
   if (typeof Scene === 'undefined' || !Scene.inCooking) return;
 
-  // Spawn management — randomized interval
+  // Spawn management — one customer at a time, 10-60s apart
   _deliSpawnTimer++;
   if (_deliSpawnTimer >= _nextSpawnInterval) {
     _deliSpawnTimer = 0;
     _nextSpawnInterval = _randRange(DELI_NPC_CONFIG.spawnInterval[0], DELI_NPC_CONFIG.spawnInterval[1]);
-    if (deliNPCs.length < DELI_NPC_CONFIG.minNPCs) {
-      spawnDeliNPC(); // enters in 'entering' state
-    } else if (deliNPCs.length < DELI_NPC_CONFIG.maxNPCs && Math.random() < 0.35) {
-      spawnDeliNPC();
+    if (deliNPCs.length < DELI_NPC_CONFIG.maxNPCs) {
+      spawnDeliNPC(); // enters in 'entering' state — walks in one by one
     }
   }
 
