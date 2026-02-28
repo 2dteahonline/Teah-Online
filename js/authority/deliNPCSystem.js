@@ -298,9 +298,9 @@ function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
   } else {
     route.push({ tx: 26, ty: 20 });
   }
-  route.push({ tx: 13, ty: 22 });                     // west to approach corridor
-  route.push({ tx: 13, ty: queueSpot.ty });            // south to queue Y level
-  route.push({ tx: queueSpot.tx, ty: queueSpot.ty });  // west into line
+  route.push({ tx: 13, ty: 20 });                      // west to approach corridor (horizontal)
+  route.push({ tx: 13, ty: queueSpot.ty });             // south to queue Y level (vertical)
+  route.push({ tx: queueSpot.tx, ty: queueSpot.ty });   // west into line (horizontal)
   return route;
 }
 
