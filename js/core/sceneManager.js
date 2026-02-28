@@ -160,7 +160,7 @@ let nearStairs = false;
 let nearFishingSpot = false;
 let queueLockX = 0;
 let queueLockY = 0;
-let queueFloorStart = 0; // which dungeonFloor to set on entry (0=legacy, 1=Azurine City, etc.)
+let queueFloorStart = 1; // which dungeonFloor to set on entry (minimum 1)
 let queueDungeonType = 'cave'; // 'cave' | 'azurine' | future dungeon types
 let queueReturnLevel = 'cave_01'; // level to return to after dungeon complete
 let pendingDungeonFloor = null; // set by queue, consumed by resetCombatState

@@ -480,8 +480,12 @@ window.addEventListener("keydown", e => {
         } else if (cmdLower === "/heal") {
           player.hp = player.maxHp; chatMessages.push({ name: "SYSTEM", text: "Healed to full", time: Date.now() });
         } else if (cmdLower === "/dung" || cmdLower === "/dungeon") {
+          // Set proper dungeon state for direct teleport (bypasses queue)
+          queueFloorStart = 1;
+          queueDungeonType = 'cave';
+          queueReturnLevel = 'cave_01';
           enterLevel('warehouse_01', 20, 20);
-          chatMessages.push({ name: "SYSTEM", text: "Teleported to dungeon", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "Teleported to dungeon (Floor 1)", time: Date.now() });
         } else if (cmdLower === "/stairs") {
           stairsOpen = true;
           stairsAppearTimer = 0;
