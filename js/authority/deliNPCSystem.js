@@ -38,16 +38,28 @@ const QUEUE_SPOTS = [
   { tx: 11, ty: 26 },
 ];
 
-// Chairs (NPCs sit here to eat)
+// Chairs (NPCs sit here to eat) — left, right, top, bottom for each of 4 tables
 const DELI_CHAIRS = [
-  { tx: 27, ty: 4,  sitDir: 3 },
-  { tx: 31, ty: 4,  sitDir: 2 },
+  // Table 1 (28,4)
+  { tx: 27, ty: 4,  sitDir: 3 },   // left
+  { tx: 31, ty: 4,  sitDir: 2 },   // right
+  { tx: 29, ty: 3,  sitDir: 0 },   // top (face down)
+  { tx: 29, ty: 6,  sitDir: 1 },   // bottom (face up)
+  // Table 2 (40,4)
   { tx: 39, ty: 4,  sitDir: 3 },
   { tx: 43, ty: 4,  sitDir: 2 },
+  { tx: 41, ty: 3,  sitDir: 0 },
+  { tx: 41, ty: 6,  sitDir: 1 },
+  // Table 3 (28,17)
   { tx: 27, ty: 17, sitDir: 3 },
   { tx: 31, ty: 17, sitDir: 2 },
+  { tx: 29, ty: 16, sitDir: 0 },
+  { tx: 29, ty: 19, sitDir: 1 },
+  // Table 4 (40,17)
   { tx: 39, ty: 17, sitDir: 3 },
   { tx: 43, ty: 17, sitDir: 2 },
+  { tx: 41, ty: 16, sitDir: 0 },
+  { tx: 41, ty: 19, sitDir: 1 },
 ];
 
 // Aisle browse spots (stand next to shelves — all items are in the aisles now)
@@ -79,13 +91,13 @@ const DELI_NPC_CONFIG = {
   aisleChance:     0.7,        // chance to browse aisles after eating
   tipChance:       0.4,
   tipAmount:       [1, 5],
-  // Emoji mood bubbles above NPC heads
+  // Emoji mood bubbles above NPC heads (5-grade system: S/A/B/C/F)
   emojiBubble: {
-    concernedInterval: [240, 420], // 4-7 sec between bubbles when concerned
-    furiousInterval:   [180, 300], // 3-5 sec between bubbles when furious
-    bubbleDuration: 90,            // 1.5 sec display time
+    bubbleDuration: 120,           // 2 sec display time
     spawnAnimFrames: 12,           // cloud puff expand animation frames
   },
+  // Per-NPC patience range (frames at 60fps): 20-45 seconds
+  patienceRange: [1200, 2700],
   // Pre-queue aisle browsing
   preQueueBrowseChance: 0.3,      // 30% chance to browse aisles before joining line
   // Mid-queue line leaving
@@ -341,6 +353,24 @@ function moveDeliNPC(npc) {
   }
 
   npc.frame = (npc.frame + 0.1) % 4;
+
+  // NPC-NPC separation — prevent phasing through each other
+  const sepDist = 24; // minimum separation in pixels (half a tile)
+  for (const other of deliNPCs) {
+    if (other === npc) continue;
+    // Only separate from moving/queued NPCs (don't push seated NPCs)
+    if (other.state === 'eating' || other.state === 'at_condiments' ||
+        other.state === 'spawn_wait' || other.state === '_despawn') continue;
+    const sx = npc.x - other.x;
+    const sy = npc.y - other.y;
+    const sd = Math.sqrt(sx * sx + sy * sy);
+    if (sd > 0 && sd < sepDist) {
+      const push = (sepDist - sd) * 0.3;
+      const nx = sx / sd, ny = sy / sd;
+      npc.x += nx * push;
+      npc.y += ny * push;
+    }
+  }
 }
 
 // ===================== QUEUE MANAGEMENT =====================
@@ -413,12 +443,14 @@ function spawnDeliNPC() {
     _browseFirst: false,       // true if browsing aisles before joining queue
     _browsedPreQueue: false,   // true after completing pre-queue browse
     _aisleVisits: 0,           // track aisle visit count
-    // Emoji bubble state
+    // Emoji bubble state (5-grade: S/A/B/C/F based on patience ratio)
     _bubbleTimer: 0,           // countdown to next bubble show
     _bubbleActive: 0,          // frames remaining for current bubble
     _bubbleSpawnAnim: 0,       // cloud puff expand timer
-    _bubbleMoodIdx: -1,        // mood stage index being shown
-    _waitFrames: 0,            // total frames spent waiting in queue (for non-order NPCs)
+    _bubbleEmoji: null,        // current emoji string being shown
+    _waitFrames: 0,            // total frames spent waiting in queue
+    _patienceMax: _randRange(DELI_NPC_CONFIG.patienceRange[0], DELI_NPC_CONFIG.patienceRange[1]),
+    _recipeIngredients: null,  // set when food is picked up (for food visual colors)
     speed: DELI_NPC_CONFIG.baseSpeed + (Math.random() - 0.5) * DELI_NPC_CONFIG.speedVariance * 2,
     isDeliNPC: true,
   };
@@ -437,7 +469,7 @@ function initDeliNPCs() {
     const npc = spawnDeliNPC();
     // Stagger: first NPC enters immediately, rest have increasing delays
     npc.state = 'spawn_wait';
-    npc.stateTimer = i * _randRange(90, 180); // 1.5-3 sec stagger per NPC
+    npc.stateTimer = i * _randRange(45, 90); // 0.75-1.5 sec stagger per NPC (faster walk-in)
   }
 }
 
@@ -810,37 +842,47 @@ const DELI_NPC_AI = {
 };
 
 // ===================== EMOJI BUBBLE UPDATE =====================
+// 5-grade system based on wait ratio (waitFrames / patienceMax):
+//   ratio < 0.3  → S grade → no bubble (happy, patient)
+//   ratio 0.3-0.6 → A/B grade → occasional 🙂 every 8-12s
+//   ratio 0.6-0.8 → C grade → 😠 every 6-8s
+//   ratio 0.8-0.9 → near-F → 😡 every 3-5s
+//   ratio > 0.9  → F grade → 🤬 every 2-4s
 function _updateNPCBubble(npc) {
   // Only show bubbles for NPCs waiting in queue
   if (npc.state !== 'in_queue' && npc.state !== 'waiting_food' && npc.state !== 'ordering') {
     npc._bubbleActive = 0;
-    npc._bubbleMoodIdx = -1;
+    npc._bubbleEmoji = null;
     return;
   }
 
-  // Determine mood index: use linked order mood if available, else derive from wait time
-  let moodIdx = 0;
-  if (npc.linkedOrderId !== null && typeof cookingState !== 'undefined' && cookingState.currentOrder &&
-      cookingState.currentOrder.npcId === npc.id) {
-    // Front-of-line NPC with linked order — use actual mood data
-    moodIdx = cookingState.currentOrder.moodStageIdx || 0;
-  } else {
-    // Other queued NPCs — derive mood from wait time using MOOD_STAGES thresholds
-    if (typeof MOOD_STAGES !== 'undefined') {
-      let threshold = 0;
-      for (let i = 0; i < MOOD_STAGES.length; i++) {
-        threshold += MOOD_STAGES[i].baseFrames;
-        if (npc._waitFrames < threshold) { moodIdx = i; break; }
-        if (i === MOOD_STAGES.length - 1) moodIdx = i;
-      }
-    }
-  }
+  const ratio = npc._patienceMax > 0 ? npc._waitFrames / npc._patienceMax : 0;
 
-  // patient (idx 0) = no bubble
-  if (moodIdx === 0) {
+  // S grade — happy, no bubble
+  if (ratio < 0.3) {
     npc._bubbleActive = 0;
-    npc._bubbleMoodIdx = -1;
+    npc._bubbleEmoji = null;
     return;
+  }
+
+  // Determine emoji and repeat interval based on grade
+  let emoji, intervalMin, intervalMax;
+  if (ratio < 0.6) {
+    // A/B grade — mild impatience
+    emoji = '🙂';
+    intervalMin = 480; intervalMax = 720; // 8-12s
+  } else if (ratio < 0.8) {
+    // C grade — getting annoyed
+    emoji = '😠';
+    intervalMin = 360; intervalMax = 480; // 6-8s
+  } else if (ratio < 0.9) {
+    // Near-F — angry
+    emoji = '😡';
+    intervalMin = 180; intervalMax = 300; // 3-5s
+  } else {
+    // F grade — furious
+    emoji = '🤬';
+    intervalMin = 120; intervalMax = 240; // 2-4s
   }
 
   // Active bubble countdown
@@ -859,12 +901,10 @@ function _updateNPCBubble(npc) {
   }
 
   // Trigger new bubble
-  const cfg = DELI_NPC_CONFIG.emojiBubble;
-  const interval = moodIdx >= 2 ? cfg.furiousInterval : cfg.concernedInterval;
-  npc._bubbleTimer = _randRange(interval[0], interval[1]);
-  npc._bubbleActive = cfg.bubbleDuration;
+  npc._bubbleTimer = _randRange(intervalMin, intervalMax);
+  npc._bubbleActive = DELI_NPC_CONFIG.emojiBubble.bubbleDuration;
   npc._bubbleSpawnAnim = 0;
-  npc._bubbleMoodIdx = moodIdx;
+  npc._bubbleEmoji = emoji;
 }
 
 // ===================== MAIN UPDATE =====================

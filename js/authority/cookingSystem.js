@@ -526,6 +526,10 @@ function applyOrderResult(result) {
       npc.state = 'pickup_food';
       npc.stateTimer = 30;
       npc.hasFood = true;
+      // Store recipe ingredients for food visual colors
+      if (cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients) {
+        npc._recipeIngredients = cookingState.currentOrder.recipe.ingredients.slice();
+      }
       npc.linkedOrderId = null;
     }
   }

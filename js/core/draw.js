@@ -95,33 +95,56 @@ function draw() {
             cookingState.assembly && cookingState.assembly.length > 0) {
           const assembly = cookingState.assembly;
           // Direction-aware offset
-          let offX = 0, offY = -55;
-          if (player.dir === 2) offX = -14;       // facing left
-          else if (player.dir === 3) offX = 14;   // facing right
+          let offX = 0, offY = -68;
+          if (player.dir === 2) offX = -16;       // facing left
+          else if (player.dir === 3) offX = 16;   // facing right
           // Walk bob
           const bob = player.moving ? Math.sin(player.frame * Math.PI / 2) * 2 : 0;
           const fx = player.x + offX;
           const fy = player.y + offY + bob;
-          // Plate base
+          // Shadow under plate
+          ctx.fillStyle = 'rgba(0,0,0,0.18)';
+          ctx.beginPath(); ctx.ellipse(fx, fy + 10, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+          // Plate base (40px wide)
           ctx.fillStyle = '#c8b898';
-          ctx.beginPath(); ctx.ellipse(fx, fy + 4, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#a09070'; ctx.lineWidth = 0.5;
-          ctx.beginPath(); ctx.ellipse(fx, fy + 4, 12, 5, 0, 0, Math.PI * 2); ctx.stroke();
-          // Stack ingredients as layers
-          const layerH = 3;
-          const maxW = 18;
+          ctx.beginPath(); ctx.ellipse(fx, fy + 6, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#a09070'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.ellipse(fx, fy + 6, 20, 8, 0, 0, Math.PI * 2); ctx.stroke();
+          // Plate rim highlight
+          ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.ellipse(fx, fy + 5, 18, 6, 0, 0, Math.PI); ctx.stroke();
+          // Stack ingredients as layers (36px wide, 5px tall each)
+          const layerH = 5;
+          const maxW = 36;
           for (let ai = 0; ai < assembly.length; ai++) {
             const ing = typeof DELI_INGREDIENTS !== 'undefined' ? DELI_INGREDIENTS[assembly[ai]] : null;
             if (!ing) continue;
-            const ly = fy + 2 - ai * layerH;
+            const ly = fy + 3 - ai * layerH;
             const isBread = assembly[ai] === 'bread' || assembly[ai] === 'bagel';
-            const lw = isBread ? maxW : maxW - 2;
-            const lh = isBread ? 4 : 3;
-            ctx.fillStyle = ing.color;
-            ctx.fillRect(fx - lw / 2, ly - lh / 2, lw, lh);
-            // Highlight on top edge
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            ctx.fillRect(fx - lw / 2 + 1, ly - lh / 2, lw - 2, 1);
+            const lw = isBread ? maxW : maxW - 4;
+            const lh = isBread ? 6 : 5;
+            // Bread top gets dome shape
+            if (isBread && ai === assembly.length - 1 && ai > 0) {
+              ctx.fillStyle = ing.color;
+              ctx.beginPath();
+              ctx.moveTo(fx - lw / 2, ly + 1);
+              ctx.quadraticCurveTo(fx, ly - lh - 3, fx + lw / 2, ly + 1);
+              ctx.closePath(); ctx.fill();
+              ctx.fillStyle = 'rgba(255,255,255,0.2)';
+              ctx.beginPath();
+              ctx.moveTo(fx - lw / 2 + 2, ly);
+              ctx.quadraticCurveTo(fx, ly - lh - 1, fx + lw / 2 - 2, ly);
+              ctx.closePath(); ctx.fill();
+            } else {
+              ctx.fillStyle = ing.color;
+              ctx.fillRect(fx - lw / 2, ly - lh / 2, lw, lh);
+              // Highlight on top edge
+              ctx.fillStyle = 'rgba(255,255,255,0.25)';
+              ctx.fillRect(fx - lw / 2 + 1, ly - lh / 2, lw - 2, 2);
+              // Shadow on bottom edge
+              ctx.fillStyle = 'rgba(0,0,0,0.1)';
+              ctx.fillRect(fx - lw / 2 + 1, ly + lh / 2 - 1, lw - 2, 1);
+            }
           }
         }
 
@@ -425,77 +448,100 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, null, 100, 0, 0.9, 0);
-      // Food indicator — plate with sandwich layers
+      // Food indicator — plate with layered sandwich (32px wide, recipe-colored)
       if (npc.hasFood) {
-        const fx = npc.x + 14, fy = npc.y - 56;
-        // Plate
+        const fx = npc.x, fy = npc.y - 64;
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.beginPath(); ctx.ellipse(fx, fy + 8, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
+        // Plate (32px wide)
         ctx.fillStyle = '#c8b898';
-        ctx.beginPath(); ctx.ellipse(fx, fy + 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#a09070'; ctx.lineWidth = 0.5;
-        ctx.beginPath(); ctx.ellipse(fx, fy + 2, 8, 4, 0, 0, Math.PI * 2); ctx.stroke();
-        // Bread bottom
-        ctx.fillStyle = '#c8a050';
-        ctx.fillRect(fx - 6, fy - 1, 12, 3);
-        // Filling layers
-        ctx.fillStyle = '#e08080'; ctx.fillRect(fx - 5, fy - 3, 10, 2); // meat
-        ctx.fillStyle = '#60c040'; ctx.fillRect(fx - 5, fy - 5, 10, 2); // lettuce
-        ctx.fillStyle = '#f0d040'; ctx.fillRect(fx - 5, fy - 6, 10, 1); // cheese
-        // Bread top
-        ctx.fillStyle = '#d4a840';
-        ctx.beginPath();
-        ctx.moveTo(fx - 6, fy - 7); ctx.lineTo(fx, fy - 10); ctx.lineTo(fx + 6, fy - 7);
-        ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(fx, fy + 4, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#a09070'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.ellipse(fx, fy + 4, 16, 6, 0, 0, Math.PI * 2); ctx.stroke();
+        // Build sandwich layers from NPC's recipe if available
+        let layers = [];
+        if (npc._recipeIngredients && typeof DELI_INGREDIENTS !== 'undefined') {
+          for (const ingId of npc._recipeIngredients) {
+            const ing = DELI_INGREDIENTS[ingId];
+            if (ing) layers.push({ color: ing.color, isBread: ingId === 'bread' || ingId === 'bagel' });
+          }
+        }
+        if (layers.length === 0) {
+          // Fallback generic sandwich
+          layers = [
+            { color: '#c8a050', isBread: true }, { color: '#e08080', isBread: false },
+            { color: '#60c040', isBread: false }, { color: '#f0d040', isBread: false },
+            { color: '#d4a840', isBread: true },
+          ];
+        }
+        const npcMaxW = 28, npcLayerH = 4;
+        for (let li = 0; li < layers.length; li++) {
+          const ly = fy + 1 - li * npcLayerH;
+          const lw = layers[li].isBread ? npcMaxW : npcMaxW - 4;
+          const lh = layers[li].isBread ? 5 : 4;
+          // Dome top bread
+          if (layers[li].isBread && li === layers.length - 1 && li > 0) {
+            ctx.fillStyle = layers[li].color;
+            ctx.beginPath();
+            ctx.moveTo(fx - lw / 2, ly + 1);
+            ctx.quadraticCurveTo(fx, ly - lh - 2, fx + lw / 2, ly + 1);
+            ctx.closePath(); ctx.fill();
+          } else {
+            ctx.fillStyle = layers[li].color;
+            ctx.fillRect(fx - lw / 2, ly - lh / 2, lw, lh);
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fillRect(fx - lw / 2 + 1, ly - lh / 2, lw - 2, 1);
+          }
+        }
       }
 
-      // Emoji mood bubble (cloud puff + emoji)
-      if (npc._bubbleActive > 0 && npc._bubbleMoodIdx > 0 && typeof MOOD_STAGES !== 'undefined') {
-        const moodStage = MOOD_STAGES[npc._bubbleMoodIdx];
-        if (moodStage) {
-          const cfg = DELI_NPC_CONFIG.emojiBubble;
-          const spawnProg = Math.min(1, npc._bubbleSpawnAnim / cfg.spawnAnimFrames);
-          const fadeAlpha = npc._bubbleActive < 15 ? npc._bubbleActive / 15 : 1;
-          const bx = npc.x, by = npc.y - 78;
+      // Emoji mood bubble (cloud puff + emoji) — 5-grade system
+      if (npc._bubbleActive > 0 && npc._bubbleEmoji) {
+        const cfg = DELI_NPC_CONFIG.emojiBubble;
+        const spawnProg = Math.min(1, npc._bubbleSpawnAnim / cfg.spawnAnimFrames);
+        const fadeAlpha = npc._bubbleActive < 15 ? npc._bubbleActive / 15 : 1;
+        const bx = npc.x, by = npc.y - 82;
 
-          ctx.save();
-          ctx.globalAlpha = fadeAlpha;
+        ctx.save();
+        ctx.globalAlpha = fadeAlpha;
 
-          // Cloud puff spawn animation — 3 expanding circles
-          if (spawnProg < 1) {
-            const puffScale = spawnProg;
-            for (let p = 0; p < 3; p++) {
-              const angle = p * (Math.PI * 2 / 3) - Math.PI / 2;
-              const dist = 6 * puffScale;
-              const pr = 4 * puffScale;
-              ctx.fillStyle = 'rgba(255,255,255,0.6)';
-              ctx.beginPath();
-              ctx.arc(bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist, pr, 0, Math.PI * 2);
-              ctx.fill();
-            }
+        // Cloud puff spawn animation — 3 expanding circles
+        if (spawnProg < 1) {
+          const puffScale = spawnProg;
+          for (let p = 0; p < 3; p++) {
+            const angle = p * (Math.PI * 2 / 3) - Math.PI / 2;
+            const dist = 8 * puffScale;
+            const pr = 6 * puffScale;
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.beginPath();
+            ctx.arc(bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist, pr, 0, Math.PI * 2);
+            ctx.fill();
           }
-
-          // Main bubble — white rounded cloud
-          const scale = Math.min(1, spawnProg * 1.2);
-          const bw = 22 * scale, bh = 20 * scale;
-          ctx.fillStyle = 'rgba(255,255,255,0.92)';
-          ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.stroke();
-
-          // Tail — two small circles leading down to head
-          ctx.fillStyle = 'rgba(255,255,255,0.85)';
-          ctx.beginPath(); ctx.arc(bx - 5, by + bh / 2 + 3, 3 * scale, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(bx - 8, by + bh / 2 + 8, 2 * scale, 0, Math.PI * 2); ctx.fill();
-
-          // Emoji inside bubble
-          if (scale > 0.5) {
-            ctx.font = Math.round(14 * scale) + 'px sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#000';
-            ctx.fillText(moodStage.icon, bx, by + 1);
-          }
-
-          ctx.restore();
         }
+
+        // Main bubble — white rounded cloud (36x32)
+        const scale = Math.min(1, spawnProg * 1.2);
+        const bw = 36 * scale, bh = 32 * scale;
+        ctx.fillStyle = 'rgba(255,255,255,0.94)';
+        ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.stroke();
+
+        // Tail — two small circles leading down to head
+        ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        ctx.beginPath(); ctx.arc(bx - 6, by + bh / 2 + 4, 4 * scale, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx - 10, by + bh / 2 + 10, 2.5 * scale, 0, Math.PI * 2); ctx.fill();
+
+        // Emoji inside bubble (20px font)
+        if (scale > 0.5) {
+          ctx.font = Math.round(20 * scale) + 'px sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#000';
+          ctx.fillText(npc._bubbleEmoji, bx, by + 1);
+        }
+
+        ctx.restore();
       }
     } else {
       const m = e.mob;
