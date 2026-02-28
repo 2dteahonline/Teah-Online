@@ -1096,52 +1096,42 @@ function drawGunsmithPanel() {
     ctx.textAlign = "left";
   }
 
-  // ---- UPGRADE REQUIREMENTS (if owned and < 25) ----
+  // ---- UPGRADE (if owned and < 25) ----
+  // TODO: When material drops are implemented, re-enable ore/parts checks here.
+  // For now upgrades only cost gold (testing mode).
   if (selLvl > 0 && selLvl < 25) {
     const recipe = GUN_UPGRADE_RECIPES[selId][selLvl + 1];
-    let reqY = py + ph - 120;
+    let reqY = py + ph - 100;
     ctx.font = "bold 12px monospace";
     ctx.fillStyle = "#ffa840";
     ctx.fillText("Upgrade to Lv. " + (selLvl + 1) + ":", detailX + 16, reqY);
     reqY += 18;
 
-    // Gold
+    // Gold cost
     ctx.font = "11px monospace";
     const hasGold = gold >= recipe.gold;
     ctx.fillStyle = hasGold ? "#5fca80" : "#cc4444";
     ctx.fillText("Gold: " + recipe.gold + "g", detailX + 20, reqY);
     reqY += 16;
 
-    // Ores
-    for (const oreId in recipe.ores) {
-      const oreDef = typeof ORE_TYPES !== 'undefined' ? ORE_TYPES[oreId] : null;
-      const oreName = oreDef ? oreDef.name : oreId;
-      ctx.fillStyle = "#cc4444"; // always red (materials not available yet)
-      ctx.fillText(oreName + ": " + recipe.ores[oreId], detailX + 20, reqY);
-      reqY += 16;
-    }
+    // Future materials note (greyed out)
+    ctx.fillStyle = "#444";
+    ctx.font = "10px monospace";
+    ctx.fillText("(Materials required in future updates)", detailX + 20, reqY);
 
-    // Parts
-    for (const partId in recipe.parts) {
-      const partDef = typeof WEAPON_PARTS !== 'undefined' ? WEAPON_PARTS[partId] : null;
-      const partName = partDef ? partDef.name : partId;
-      ctx.fillStyle = "#cc4444"; // always red (not available yet)
-      ctx.fillText(partName + ": " + recipe.parts[partId], detailX + 20, reqY);
-      reqY += 16;
-    }
-
-    // Disabled upgrade button
+    // Upgrade button — gold only for testing
+    const canUpgrade = hasGold;
     const btnW = 180, btnH = 38;
     const btnX = detailX + detailW / 2 - btnW / 2;
     const btnY = py + ph - 55;
-    ctx.fillStyle = "#2a2a30";
+    ctx.fillStyle = canUpgrade ? "#2a6a30" : "#2a2a30";
     ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.fill();
-    ctx.strokeStyle = "#444"; ctx.lineWidth = 1;
+    ctx.strokeStyle = canUpgrade ? "#5fca80" : "#444"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.stroke();
-    ctx.font = "bold 12px monospace";
-    ctx.fillStyle = "#555";
+    ctx.font = "bold 13px monospace";
+    ctx.fillStyle = canUpgrade ? "#fff" : "#555";
     ctx.textAlign = "center";
-    ctx.fillText("NEED MATERIALS", btnX + btnW / 2, btnY + 24);
+    ctx.fillText("UPGRADE - " + recipe.gold + "g", btnX + btnW / 2, btnY + 24);
     ctx.textAlign = "left";
   }
 
@@ -1203,6 +1193,40 @@ function handleGunsmithClick(mx, my) {
         const gunItem = createMainGun(selId, 1);
         if (gunItem) addToInventory(gunItem);
         chatMessages.push({ name: "SYSTEM", text: "Purchased " + selDef.name + "!", time: Date.now() });
+        if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
+      } else {
+        chatMessages.push({ name: "SYSTEM", text: "Not enough gold!", time: Date.now() });
+      }
+      return true;
+    }
+  }
+
+  // Upgrade button — gold only for testing
+  // TODO: Add material checks when dungeon drops are implemented
+  if (selLvl > 0 && selLvl < 25) {
+    const recipe = GUN_UPGRADE_RECIPES[selId][selLvl + 1];
+    const btnW = 180, btnH = 38;
+    const btnX = detailX + detailW / 2 - btnW / 2;
+    const btnY = py + ph - 55;
+    if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
+      if (gold >= recipe.gold) {
+        gold -= recipe.gold;
+        const newLvl = selLvl + 1;
+        window._gunLevels[selId] = newLvl;
+        // Update gun in inventory if it exists
+        for (let i = 0; i < inventory.length; i++) {
+          if (inventory[i] && inventory[i].id === selId) {
+            const upgraded = createMainGun(selId, newLvl);
+            if (upgraded) inventory[i] = upgraded;
+            break;
+          }
+        }
+        // Re-apply stats if this gun is currently equipped
+        if (playerEquip.gun && playerEquip.gun.id === selId) {
+          const newStats = getGunStatsAtLevel(selId, newLvl);
+          if (newStats) applyGunStats(newStats);
+        }
+        chatMessages.push({ name: "SYSTEM", text: selDef.name + " upgraded to Lv." + newLvl + "!", time: Date.now() });
         if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
       } else {
         chatMessages.push({ name: "SYSTEM", text: "Not enough gold!", time: Date.now() });
