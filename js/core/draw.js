@@ -417,14 +417,16 @@ function draw() {
         ctx.beginPath(); ctx.arc(m.x, m.y - 20, 30 + urgency * 20, 0, Math.PI * 2); ctx.stroke();
       }
       // Cloaked mobs (cloak_backstab) — fully invisible, only smoke puffs hint location
+      // Determine if mob should be fully invisible
+      const mobInvisible = m._cloaked || m._hidden || m._submerged || m._burrowSubmerged;
       if (m._cloaked) {
         ctx.globalAlpha = 0.0;
         if (renderTime % 8 === 0) {
           hitEffects.push({ x: m.x + (Math.random()-0.5)*30, y: m.y - 20 + (Math.random()-0.5)*15, life: 8, type: "smoke_puff" });
         }
       }
-      // Boss scale glow
-      if (m.isBoss) {
+      // Boss scale glow — only show when mob is visible
+      if (m.isBoss && !mobInvisible) {
         const bPulse = 0.15 + 0.08 * Math.sin(renderTime * 0.005);
         ctx.fillStyle = `rgba(255,120,40,${bPulse})`;
         ctx.beginPath(); ctx.arc(m.x, m.y - 15, 35 * (m.scale || 1), 0, Math.PI * 2); ctx.fill();
@@ -442,8 +444,8 @@ function draw() {
       if (m._cloaked) ctx.globalAlpha = 1.0;
       // Restore alpha for hidden/submerged
       if (m._hidden || m._submerged || m._burrowSubmerged) ctx.globalAlpha = 1.0;
-      // Shield HP overlay — blue/gold hexagonal shield
-      if (m._shieldHp > 0) {
+      // Shield HP overlay — blue/gold hexagonal shield (skip if invisible)
+      if (m._shieldHp > 0 && !mobInvisible) {
         const shPulse = 0.4 + 0.2 * Math.sin(renderTime * 0.008);
         const sc = m.scale || 1;
         // Blue shield glow
@@ -461,8 +463,8 @@ function draw() {
         ctx.fillText('\u{1F6E1}' + m._shieldHp, m.x, m.y - 35 * sc);
       }
 
-      // Frost effect overlay — obvious blue tint on frozen mobs
-      if (m.frostTimer > 0) {
+      // Frost effect overlay — obvious blue tint on frozen mobs (skip if invisible)
+      if (m.frostTimer > 0 && !mobInvisible) {
         const fAlpha = Math.min(0.5, m.frostTimer / 150 * 0.5);
         // Blue glow around mob
         ctx.fillStyle = `rgba(60,160,255,${fAlpha * 0.6})`;
@@ -491,8 +493,8 @@ function draw() {
         ctx.fillText("SLOW", m.x, m.y - 42);
         ctx.textAlign = "left";
       }
-      // Burn effect overlay — big fire particles on burning mobs
-      if (m.burnTimer > 0) {
+      // Burn effect overlay — big fire particles on burning mobs (skip if invisible)
+      if (m.burnTimer > 0 && !mobInvisible) {
         const bAlpha = Math.min(0.7, m.burnTimer / 180 * 0.7);
         // Orange glow
         ctx.fillStyle = `rgba(255,100,20,${bAlpha * 0.35})`;
@@ -519,8 +521,8 @@ function draw() {
       }
       // Poison effect overlay — green dripping particles on poisoned mobs
 
-      // Stagger effect overlay — orange/gold stunned effect
-      if (m.staggerTimer > 0) {
+      // Stagger effect overlay — orange/gold stunned effect (skip if invisible)
+      if (m.staggerTimer > 0 && !mobInvisible) {
         const sAlpha = Math.min(0.7, m.staggerTimer / 18 * 0.7);
         // Orange flash on mob
         ctx.fillStyle = `rgba(255,160,40,${sAlpha * 0.3})`;

@@ -551,7 +551,7 @@ window.addEventListener("keydown", e => {
           if (!typeKey) {
             // Enter test arena if not already there, show help
             if (!Scene.inTestArena) {
-              enterLevel('test_arena', 10, 4);
+              enterLevel('test_arena', 18, 10);
               dungeonFloor = 1;
               window._opMode = true;
               player.hp = player.maxHp = 10000;
@@ -564,7 +564,7 @@ window.addEventListener("keydown", e => {
           } else {
             // Enter test arena if needed
             if (!Scene.inTestArena) {
-              enterLevel('test_arena', 10, 4);
+              enterLevel('test_arena', 18, 10);
               dungeonFloor = 1;
               window._opMode = true;
               player.hp = player.maxHp = 10000;

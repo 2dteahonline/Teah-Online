@@ -36,7 +36,7 @@ UI.register('testmob', {
 function _testmobSpawn(typeKey, mode) {
   // Enter test arena if not already there
   if (!Scene.inTestArena) {
-    enterLevel('test_arena', 10, 4);
+    enterLevel('test_arena', 18, 10);
     dungeonFloor = testMobFloor;
     window._opMode = true;
     player.hp = player.maxHp = 10000;

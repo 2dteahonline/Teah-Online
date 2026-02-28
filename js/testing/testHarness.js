@@ -40,7 +40,7 @@ const FLOOR_BOSSES = {
 
 function _ensureTestArena() {
   if (!Scene.inTestArena) {
-    enterLevel('test_arena', 10, 4);
+    enterLevel('test_arena', 18, 10);
     dungeonFloor = 1;
     currentDungeon = 'azurine'; // default to azurine for FLOOR_CONFIG mobs
     window._opMode = true;
