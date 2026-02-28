@@ -6,7 +6,7 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 
 const SaveLoad = {
   // Cosmetic keys to persist from player object
@@ -37,6 +37,7 @@ const SaveLoad = {
         playerLevel: playerLevel,
         playerXP: playerXP,
         skillData: JSON.parse(JSON.stringify(skillData)),
+        gunLevels: typeof window._gunLevels !== 'undefined' ? { ...window._gunLevels } : {},
       };
       // Fishing state (v4: rod is now an inventory item, only persist bait + stats)
       data.fishing = {
@@ -111,6 +112,14 @@ const SaveLoad = {
           }
         }
         // Gold, inventory, equipment are session-only (dungeon roguelike design)
+        // Gun levels (v6+) — permanent gun progression
+        if (p.gunLevels && typeof window._gunLevels !== 'undefined') {
+          for (const gunId in p.gunLevels) {
+            if (gunId in window._gunLevels) {
+              window._gunLevels[gunId] = p.gunLevels[gunId];
+            }
+          }
+        }
       }
 
       // Fishing state (v4: rod is inventory item, only load bait + stats)

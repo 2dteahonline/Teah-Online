@@ -584,6 +584,83 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   // For all directions, the arm+gun attaches at the same body-relative point.
   // Rifle: stock -> body -> barrel -> muzzle, total ~50px long
 
+  // ---- IRONWOOD BOW RENDERING ----
+  const drawBow = (rx, ry, pointDir) => {
+    const wood = "#6a4a2a";
+    const woodD = "#4a3018";
+    const string = "#c8b888";
+    const bowLen = 40;
+    const grip = "#3a2a18";
+
+    if (pointDir === 2) { // LEFT
+      // Bow stave (curved left)
+      ctx.strokeStyle = wood; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(rx - 4, ry - bowLen / 2);
+      ctx.quadraticCurveTo(rx - 20, ry, rx - 4, ry + bowLen / 2);
+      ctx.stroke();
+      // String
+      ctx.strokeStyle = string; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rx - 4, ry - bowLen / 2);
+      ctx.lineTo(rx - 4, ry + bowLen / 2);
+      ctx.stroke();
+      // Grip wrap
+      ctx.fillStyle = grip; ctx.fillRect(rx - 8, ry - 3, 5, 6);
+      // Arrow nocked
+      ctx.fillStyle = woodD; ctx.fillRect(rx - 4 - 30, ry - 1, 30, 2);
+      // Green fletching
+      ctx.fillStyle = "#4a8a3a"; ctx.fillRect(rx - 4 - 4, ry - 3, 6, 2); ctx.fillRect(rx - 4 - 4, ry + 1, 6, 2);
+      // Arrowhead
+      ctx.fillStyle = "#888"; ctx.beginPath(); ctx.moveTo(rx - 34, ry - 3); ctx.lineTo(rx - 40, ry); ctx.lineTo(rx - 34, ry + 3); ctx.fill();
+    } else if (pointDir === 3) { // RIGHT
+      ctx.strokeStyle = wood; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(rx + 4, ry - bowLen / 2);
+      ctx.quadraticCurveTo(rx + 20, ry, rx + 4, ry + bowLen / 2);
+      ctx.stroke();
+      ctx.strokeStyle = string; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rx + 4, ry - bowLen / 2);
+      ctx.lineTo(rx + 4, ry + bowLen / 2);
+      ctx.stroke();
+      ctx.fillStyle = grip; ctx.fillRect(rx + 3, ry - 3, 5, 6);
+      ctx.fillStyle = woodD; ctx.fillRect(rx + 4, ry - 1, 30, 2);
+      ctx.fillStyle = "#4a8a3a"; ctx.fillRect(rx + 4 - 2, ry - 3, 6, 2); ctx.fillRect(rx + 4 - 2, ry + 1, 6, 2);
+      ctx.fillStyle = "#888"; ctx.beginPath(); ctx.moveTo(rx + 34, ry - 3); ctx.lineTo(rx + 40, ry); ctx.lineTo(rx + 34, ry + 3); ctx.fill();
+    } else if (pointDir === 0) { // DOWN
+      ctx.strokeStyle = wood; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(rx - bowLen / 2, ry - 4);
+      ctx.quadraticCurveTo(rx, ry + 16, rx + bowLen / 2, ry - 4);
+      ctx.stroke();
+      ctx.strokeStyle = string; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rx - bowLen / 2, ry - 4);
+      ctx.lineTo(rx + bowLen / 2, ry - 4);
+      ctx.stroke();
+      ctx.fillStyle = grip; ctx.fillRect(rx - 3, ry - 2, 6, 5);
+      ctx.fillStyle = woodD; ctx.fillRect(rx - 1, ry - 4, 2, 30);
+      ctx.fillStyle = "#4a8a3a"; ctx.fillRect(rx - 3, ry - 4 - 2, 2, 6); ctx.fillRect(rx + 1, ry - 4 - 2, 2, 6);
+      ctx.fillStyle = "#888"; ctx.beginPath(); ctx.moveTo(rx - 3, ry + 26); ctx.lineTo(rx, ry + 32); ctx.lineTo(rx + 3, ry + 26); ctx.fill();
+    } else { // UP
+      ctx.strokeStyle = wood; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(rx - bowLen / 2, ry + 4);
+      ctx.quadraticCurveTo(rx, ry - 16, rx + bowLen / 2, ry + 4);
+      ctx.stroke();
+      ctx.strokeStyle = string; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rx - bowLen / 2, ry + 4);
+      ctx.lineTo(rx + bowLen / 2, ry + 4);
+      ctx.stroke();
+      ctx.fillStyle = grip; ctx.fillRect(rx - 3, ry - 3, 6, 5);
+      ctx.fillStyle = woodD; ctx.fillRect(rx - 1, ry + 4 - 30, 2, 30);
+      ctx.fillStyle = "#4a8a3a"; ctx.fillRect(rx - 3, ry + 4 - 4, 2, 6); ctx.fillRect(rx + 1, ry + 4 - 4, 2, 6);
+      ctx.fillStyle = "#888"; ctx.beginPath(); ctx.moveTo(rx - 3, ry - 26); ctx.lineTo(rx, ry - 32); ctx.lineTo(rx + 3, ry - 26); ctx.fill();
+    }
+  };
+
   const drawRifle = (rx, ry, pointDir) => {
     // Pick colors/proportions based on equipped gun (drawChoso is player-only)
     const eq = playerEquip.gun;
@@ -596,7 +673,19 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
       rifle:          { metal: "#4a3040", metalL: "#5a4050", stock: "#3a2030", stockL: "#4a3040", mag: "#3a2030", accent: "#7a5a6a", muzzle: "#2a1a2a", barrelLen: 48, handguardLen: 24, compact: false },
       frost_rifle:    { metal: "#2a4a5a", metalL: "#3a5a6a", stock: "#1a3a4a", stockL: "#2a4a5a", mag: "#1a3a4a", accent: "#5a8aaa", muzzle: "#1a3a4a", barrelLen: 44, handguardLen: 22, compact: false },
       inferno_cannon: { metal: "#4a2a1a", metalL: "#5a3a2a", stock: "#3a1a0a", stockL: "#4a2a1a", mag: "#3a1a0a", accent: "#8a4a2a", muzzle: "#2a1a0a", barrelLen: 50, handguardLen: 26, compact: false },
+      // === MAIN GUNS ===
+      storm_ar:       { metal: "#2a4a6a", metalL: "#3a5a7a", stock: "#1a3a5a", stockL: "#2a4a6a", mag: "#1a3a5a", accent: "#5a8acc", muzzle: "#1a3050", barrelLen: 40, handguardLen: 20, compact: false },
+      heavy_ar:       { metal: "#3a3030", metalL: "#4a4040", stock: "#2a2020", stockL: "#3a3030", mag: "#2a1a1a", accent: "#6a4a3a", muzzle: "#1a1010", barrelLen: 48, handguardLen: 26, compact: false },
+      boomstick:      { metal: "#5a4a30", metalL: "#6a5a40", stock: "#3a2a18", stockL: "#4a3a28", mag: "#3a2a18", accent: "#8a7a50", muzzle: "#2a2010", barrelLen: 22, handguardLen: 12, compact: false },
+      volt_9:         { metal: "#3a2a5a", metalL: "#4a3a6a", stock: "#2a1a4a", stockL: "#3a2a5a", mag: "#2a1a4a", accent: "#6a5a8a", muzzle: "#1a1030", barrelLen: 22, handguardLen: 12, compact: true },
     };
+
+    // Ironwood Bow: special rendering instead of rifle
+    if (gunId === 'ironwood_bow') {
+      drawBow(rx, ry, pointDir);
+      return;
+    }
+
     const c = configs[gunId] || configs.recruit;
 
     // Draw based on direction (simplified template using config)

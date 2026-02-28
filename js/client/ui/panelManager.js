@@ -73,6 +73,9 @@ UI.register('toolbox', {
 UI.register('fishVendor', {
   onOpen() { fishVendorTab = 0; },
 });
+UI.register('gunsmith', {
+  onOpen() { _gunsmithSelected = 0; },
+});
 
 let playerStatus = ""; // player's status message
 let statusEditActive = false;
@@ -511,7 +514,7 @@ window.addEventListener("keydown", e => {
           if (fl > 0) { dungeonFloor = fl; resetCombatState('floor'); }
           chatMessages.push({ name: "SYSTEM", text: "Set to floor " + dungeonFloor, time: Date.now() });
         } else if (cmdLower === "/help") {
-          chatMessages.push({ name: "SYSTEM", text: "/testmob | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /leave | /op | /stairs | /floor [n] | /freeze | /god | /nofire | /speed <n> | /hp <n|max> | /skipw | /info | /sprites | /export | /save | /resetsave | /mg", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "/testmob | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /leave | /op | /stairs | /floor [n] | /freeze | /god | /nofire | /speed <n> | /hp <n|max> | /skipw | /info | /gun <id> [lvl] | /sprites | /export | /save | /resetsave | /mg", time: Date.now() });
         } else if (cmdLower === "/save") {
           SaveLoad.save();
           chatMessages.push({ name: "SYSTEM", text: "Game saved!", time: Date.now() });
@@ -699,6 +702,21 @@ window.addEventListener("keydown", e => {
               " | HP:" + player.hp + "/" + player.maxHp +
               " | " + typeStr,
               time: Date.now() });
+          }
+        } else if (cmdLower.startsWith("/gun")) {
+          // /gun <id> [level] — give yourself a main gun (debug)
+          const parts = cmd.split(" ");
+          const gId = parts[1] || "";
+          const gLvl = parseInt(parts[2]) || 1;
+          if (typeof MAIN_GUNS !== 'undefined' && MAIN_GUNS[gId]) {
+            window._gunLevels[gId] = Math.max(window._gunLevels[gId] || 0, gLvl);
+            const gunItem = createMainGun(gId, gLvl);
+            if (gunItem) addToInventory(gunItem);
+            chatMessages.push({ name: "SYSTEM", text: "Gave " + MAIN_GUNS[gId].name + " Lv." + gLvl, time: Date.now() });
+            if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
+          } else {
+            const ids = typeof MAIN_GUNS !== 'undefined' ? Object.keys(MAIN_GUNS).join(', ') : 'none';
+            chatMessages.push({ name: "SYSTEM", text: "Usage: /gun <id> [level]. IDs: " + ids, time: Date.now() });
           }
         } else {
           chatMessages.push({ name: player.name, text: cmd, time: Date.now() });

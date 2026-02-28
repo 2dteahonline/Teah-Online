@@ -929,25 +929,55 @@ function updateBullets() {
       continue;
     }
 
+    // Max-range despawn (shotgun pellets)
+    if (b.maxRange && b.startX !== undefined) {
+      const travelDx = b.x - b.startX;
+      const travelDy = b.y - b.startY;
+      if (travelDx * travelDx + travelDy * travelDy > b.maxRange * b.maxRange) {
+        hitEffects.push({ x: b.x, y: b.y, life: 6, type: "wall" });
+        bullets.splice(i, 1);
+        continue;
+      }
+    }
+
     // Mob hit — circle centered 20px above feet (body center)
     if (b.fromPlayer) {
       let hit = false;
       for (const m of mobs) {
         if (m.hp <= 0) continue;
+
+        // Pierce: skip mobs already hit by this bullet
+        if (b.pierce && b.hitMobs && b.hitMobs.indexOf(m._mobId !== undefined ? m._mobId : mobs.indexOf(m)) >= 0) continue;
+
         const dx = b.x - m.x;
         const dy = b.y - (m.y - 20);
         if (dx * dx + dy * dy < HIT_DIST_SQ) {
           hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: gun.damage });
-          
+
           // Gun special on-hit effects (dispatched via registry)
           const gunBehavior = gun.special && GUN_BEHAVIORS[gun.special];
           if (gunBehavior && gunBehavior.onHit) {
             gunBehavior.onHit(m, b.x, b.y);
           }
-          
-          bullets.splice(i, 1);
+
           dealDamageToMob(m, gun.damage, "gun");
-          hit = true;
+
+          // Pierce mechanic: don't destroy bullet, decrement pierceCount
+          if (b.pierce) {
+            const mobKey = m._mobId !== undefined ? m._mobId : mobs.indexOf(m);
+            b.hitMobs.push(mobKey);
+            if (b.pierceCount > 0) {
+              b.pierceCount--;
+              // Don't set hit=true — bullet continues
+            } else {
+              // No more pierces left, destroy bullet
+              bullets.splice(i, 1);
+              hit = true;
+            }
+          } else {
+            bullets.splice(i, 1);
+            hit = true;
+          }
           break;
         }
       }

@@ -361,7 +361,7 @@ function drawIdentityPanel() {
     ctx.fillText("Select Your Faction", popX + popW / 2, popY + 20);
     ctx.font = "10px 'Segoe UI', sans-serif";
     ctx.fillStyle = "#667";
-    ctx.fillText("Your homeland — where you were born", popX + popW / 2, popY + 34);
+    ctx.fillText("Your homeland - where you were born", popX + popW / 2, popY + 34);
 
     const fOpts = [
       { label: "Wild West", color: "#d4a040", desc: "Dusty plains & saloons" },
@@ -900,5 +900,317 @@ function drawStatsPanel() {
   }
 
   ctx.textAlign = "left";
+}
+
+// ===================== GUNSMITH PANEL =====================
+// Shows all 5 main guns — buy unowned, view stats, see upgrade requirements
+let _gunsmithSelected = 0; // index into gun list
+let _gunsmithScroll = 0;
+
+// Gun ownership — level 0 = not owned, 1+ = owned at that level
+// Persisted via SaveLoad. Initialized here as defaults.
+if (typeof window._gunLevels === 'undefined') {
+  window._gunLevels = { storm_ar: 0, heavy_ar: 0, boomstick: 0, ironwood_bow: 0, volt_9: 0 };
+}
+
+function drawGunsmithPanel() {
+  if (!UI.isOpen('gunsmith')) return;
+  if (typeof MAIN_GUNS === 'undefined') return;
+
+  const pw = 720, ph = 500;
+  const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
+
+  // Dimmed backdrop
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  // Panel bg
+  ctx.fillStyle = "#0c1018";
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 12); ctx.fill();
+  ctx.strokeStyle = "rgba(255,168,64,0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 12); ctx.stroke();
+
+  // Title bar
+  ctx.fillStyle = "rgba(60,40,20,0.5)";
+  ctx.beginPath(); ctx.roundRect(px + 3, py + 3, pw - 6, 42, [10, 10, 0, 0]); ctx.fill();
+  ctx.font = "bold 20px monospace";
+  ctx.fillStyle = "#ffa840";
+  ctx.textAlign = "center";
+  ctx.fillText("GUNSMITH", px + pw / 2, py + 30);
+
+  // Close button
+  ctx.fillStyle = PALETTE.closeBtn;
+  ctx.beginPath(); ctx.roundRect(px + pw - 42, py + 8, 32, 32, 6); ctx.fill();
+  ctx.font = "bold 18px monospace"; ctx.fillStyle = "#fff";
+  ctx.textAlign = "center"; ctx.fillText("\u2715", px + pw - 26, py + 30);
+
+  const gunIds = Object.keys(MAIN_GUNS);
+  const listW = 200, listX = px + 12;
+  const detailX = px + listW + 24, detailW = pw - listW - 36;
+  const contentY = py + 52;
+
+  // ---- GUN LIST (left side) ----
+  for (let i = 0; i < gunIds.length; i++) {
+    const gid = gunIds[i];
+    const def = MAIN_GUNS[gid];
+    const lvl = window._gunLevels[gid] || 0;
+    const gy = contentY + i * 82;
+    const isSelected = i === _gunsmithSelected;
+
+    // Card bg
+    ctx.fillStyle = isSelected ? "rgba(255,168,64,0.15)" : "rgba(255,255,255,0.03)";
+    ctx.beginPath(); ctx.roundRect(listX, gy, listW, 74, 6); ctx.fill();
+    if (isSelected) {
+      ctx.strokeStyle = "#ffa840"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(listX, gy, listW, 74, 6); ctx.stroke();
+    }
+
+    // Gun name
+    ctx.font = "bold 14px monospace";
+    ctx.textAlign = "left";
+    ctx.fillStyle = lvl > 0 ? "#fff" : "#888";
+    ctx.fillText(def.name, listX + 12, gy + 22);
+
+    // Level or "Not Owned"
+    ctx.font = "11px monospace";
+    if (lvl > 0) {
+      ctx.fillStyle = "#ffa840";
+      ctx.fillText("Lv. " + lvl, listX + 12, gy + 40);
+    } else {
+      ctx.fillStyle = "#666";
+      ctx.fillText("Not Owned", listX + 12, gy + 40);
+    }
+
+    // Category
+    ctx.font = "9px monospace";
+    ctx.fillStyle = "#555";
+    ctx.fillText(def.category.replace('_', ' ').toUpperCase(), listX + 12, gy + 56);
+
+    // Price or level badge
+    if (lvl === 0) {
+      ctx.font = "bold 11px monospace";
+      ctx.fillStyle = PALETTE.gold;
+      ctx.textAlign = "right";
+      ctx.fillText(def.buyPrice + "g", listX + listW - 12, gy + 22);
+      ctx.textAlign = "left";
+    } else {
+      // Small colored dot for bullet color
+      const bc = def.bulletColor;
+      ctx.fillStyle = bc.main;
+      ctx.beginPath(); ctx.arc(listX + listW - 16, gy + 18, 5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ---- GUN DETAIL (right side) ----
+  const selId = gunIds[_gunsmithSelected];
+  const selDef = MAIN_GUNS[selId];
+  const selLvl = window._gunLevels[selId] || 0;
+
+  // Detail card bg
+  ctx.fillStyle = "rgba(255,255,255,0.02)";
+  ctx.beginPath(); ctx.roundRect(detailX, contentY, detailW, ph - 72, 8); ctx.fill();
+  ctx.strokeStyle = "rgba(255,168,64,0.15)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(detailX, contentY, detailW, ph - 72, 8); ctx.stroke();
+
+  // Gun name + description
+  ctx.font = "bold 18px monospace";
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "left";
+  ctx.fillText(selDef.name, detailX + 16, contentY + 28);
+  ctx.font = "12px monospace";
+  ctx.fillStyle = "#999";
+  ctx.fillText(selDef.desc, detailX + 16, contentY + 48);
+
+  // Current stats
+  let statY = contentY + 72;
+  ctx.font = "bold 13px monospace";
+  ctx.fillStyle = "#ffa840";
+  ctx.fillText(selLvl > 0 ? "Stats (Lv. " + selLvl + ")" : "Base Stats (Lv. 1)", detailX + 16, statY);
+  statY += 20;
+
+  const curStats = getGunStatsAtLevel(selId, Math.max(1, selLvl));
+  const nextStats = selLvl > 0 && selLvl < 25 ? getGunStatsAtLevel(selId, selLvl + 1) : null;
+
+  const statFields = [
+    { key: 'damage', label: 'Damage', color: '#ff8866' },
+    { key: 'fireRate', label: 'Fire Rate', color: '#ffcc44', format: v => (60/v).toFixed(1) + '/s' },
+    { key: 'magSize', label: 'Mag Size', color: '#66bbff' },
+    { key: 'pellets', label: 'Pellets', color: '#ffaa44' },
+    { key: 'pierceCount', label: 'Pierce', color: '#88ddff', format: v => (v + 1) + ' mobs' },
+    { key: 'spread', label: 'Spread', color: '#ccaa66', format: v => v + '\u00b0' },
+    { key: 'reloadSpeed', label: 'Reload', color: '#aaaaaa', format: v => (v / 60).toFixed(2) + 's' },
+    { key: 'bulletSpeed', label: 'Arrow Speed', color: '#8b8' },
+  ];
+
+  for (const sf of statFields) {
+    if (curStats[sf.key] === undefined) continue;
+    const val = sf.format ? sf.format(curStats[sf.key]) : curStats[sf.key];
+    ctx.font = "12px monospace"; ctx.fillStyle = "#aaa";
+    ctx.fillText(sf.label + ":", detailX + 20, statY);
+    ctx.fillStyle = sf.color; ctx.font = "bold 12px monospace";
+    ctx.fillText(val + "", detailX + 140, statY);
+
+    // Next level diff
+    if (nextStats && nextStats[sf.key] !== undefined && nextStats[sf.key] !== curStats[sf.key]) {
+      const nextVal = sf.format ? sf.format(nextStats[sf.key]) : nextStats[sf.key];
+      ctx.fillStyle = "#5fca80";
+      ctx.fillText(" \u2192 " + nextVal, detailX + 220, statY);
+    }
+    statY += 18;
+  }
+
+  // Special flags
+  if (curStats.neverReload) {
+    ctx.font = "bold 11px monospace"; ctx.fillStyle = "#66ffaa";
+    ctx.fillText("\u2022 Unlimited Ammo", detailX + 20, statY);
+    statY += 16;
+  }
+  if (curStats.pierce) {
+    ctx.font = "bold 11px monospace"; ctx.fillStyle = "#88ddff";
+    ctx.fillText("\u2022 Pierces Through Enemies", detailX + 20, statY);
+    statY += 16;
+  }
+  if (curStats.maxRange) {
+    ctx.font = "bold 11px monospace"; ctx.fillStyle = "#aabb88";
+    ctx.fillText("\u2022 Limited Range (" + curStats.maxRange + "px)", detailX + 20, statY);
+    statY += 16;
+  }
+
+  // ---- BUY BUTTON (if not owned) ----
+  if (selLvl === 0) {
+    const btnW = 180, btnH = 44;
+    const btnX = detailX + detailW / 2 - btnW / 2;
+    const btnY = py + ph - 72;
+    const canAfford = gold >= selDef.buyPrice;
+
+    ctx.fillStyle = canAfford ? "#2a6a30" : "#3a3a40";
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 8); ctx.fill();
+    ctx.strokeStyle = canAfford ? "#5fca80" : "#555"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 8); ctx.stroke();
+
+    ctx.font = "bold 16px monospace";
+    ctx.fillStyle = canAfford ? "#fff" : "#666";
+    ctx.textAlign = "center";
+    ctx.fillText("BUY - " + selDef.buyPrice + "g", btnX + btnW / 2, btnY + 28);
+    ctx.textAlign = "left";
+  }
+
+  // ---- UPGRADE REQUIREMENTS (if owned and < 25) ----
+  if (selLvl > 0 && selLvl < 25) {
+    const recipe = GUN_UPGRADE_RECIPES[selId][selLvl + 1];
+    let reqY = py + ph - 120;
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = "#ffa840";
+    ctx.fillText("Upgrade to Lv. " + (selLvl + 1) + ":", detailX + 16, reqY);
+    reqY += 18;
+
+    // Gold
+    ctx.font = "11px monospace";
+    const hasGold = gold >= recipe.gold;
+    ctx.fillStyle = hasGold ? "#5fca80" : "#cc4444";
+    ctx.fillText("Gold: " + recipe.gold + "g", detailX + 20, reqY);
+    reqY += 16;
+
+    // Ores
+    for (const oreId in recipe.ores) {
+      const oreDef = typeof ORE_TYPES !== 'undefined' ? ORE_TYPES[oreId] : null;
+      const oreName = oreDef ? oreDef.name : oreId;
+      ctx.fillStyle = "#cc4444"; // always red (materials not available yet)
+      ctx.fillText(oreName + ": " + recipe.ores[oreId], detailX + 20, reqY);
+      reqY += 16;
+    }
+
+    // Parts
+    for (const partId in recipe.parts) {
+      const partDef = typeof WEAPON_PARTS !== 'undefined' ? WEAPON_PARTS[partId] : null;
+      const partName = partDef ? partDef.name : partId;
+      ctx.fillStyle = "#cc4444"; // always red (not available yet)
+      ctx.fillText(partName + ": " + recipe.parts[partId], detailX + 20, reqY);
+      reqY += 16;
+    }
+
+    // Disabled upgrade button
+    const btnW = 180, btnH = 38;
+    const btnX = detailX + detailW / 2 - btnW / 2;
+    const btnY = py + ph - 55;
+    ctx.fillStyle = "#2a2a30";
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.fill();
+    ctx.strokeStyle = "#444"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.stroke();
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = "#555";
+    ctx.textAlign = "center";
+    ctx.fillText("NEED MATERIALS", btnX + btnW / 2, btnY + 24);
+    ctx.textAlign = "left";
+  }
+
+  // Max level badge
+  if (selLvl >= 25) {
+    ctx.font = "bold 16px monospace";
+    ctx.fillStyle = "#ffd740";
+    ctx.textAlign = "center";
+    ctx.fillText("\u2605 MAX LEVEL \u2605", detailX + detailW / 2, py + ph - 50);
+    ctx.textAlign = "left";
+  }
+}
+
+function handleGunsmithClick(mx, my) {
+  if (!UI.isOpen('gunsmith')) return false;
+  if (typeof MAIN_GUNS === 'undefined') return false;
+
+  const pw = 720, ph = 500;
+  const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
+
+  // Close button
+  if (mx >= px + pw - 42 && mx <= px + pw - 10 && my >= py + 8 && my <= py + 40) {
+    UI.close(); return true;
+  }
+
+  // Outside panel → close
+  if (mx < px || mx > px + pw || my < py || my > py + ph) {
+    UI.close(); return true;
+  }
+
+  const gunIds = Object.keys(MAIN_GUNS);
+  const listW = 200, listX = px + 12;
+  const contentY = py + 52;
+
+  // Gun list selection
+  for (let i = 0; i < gunIds.length; i++) {
+    const gy = contentY + i * 82;
+    if (mx >= listX && mx <= listX + listW && my >= gy && my <= gy + 74) {
+      _gunsmithSelected = i;
+      return true;
+    }
+  }
+
+  // Buy button
+  const selId = gunIds[_gunsmithSelected];
+  const selDef = MAIN_GUNS[selId];
+  const selLvl = window._gunLevels[selId] || 0;
+  const detailX = px + listW + 24, detailW = pw - listW - 36;
+
+  if (selLvl === 0) {
+    const btnW = 180, btnH = 44;
+    const btnX = detailX + detailW / 2 - btnW / 2;
+    const btnY = py + ph - 72;
+    if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
+      if (gold >= selDef.buyPrice) {
+        gold -= selDef.buyPrice;
+        window._gunLevels[selId] = 1;
+        // Create gun item and add to inventory
+        const gunItem = createMainGun(selId, 1);
+        if (gunItem) addToInventory(gunItem);
+        chatMessages.push({ name: "SYSTEM", text: "Purchased " + selDef.name + "!", time: Date.now() });
+        if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
+      } else {
+        chatMessages.push({ name: "SYSTEM", text: "Not enough gold!", time: Date.now() });
+      }
+      return true;
+    }
+  }
+
+  return true; // consume click inside panel
 }
 

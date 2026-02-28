@@ -88,9 +88,30 @@ function applyGunStats(data) {
   playerEquip.gun = data;
   gun.damage = data.damage || GUN_DEFAULTS.damage;
   gun.magSize = data.magSize || 12;
-  gun.ammo = data.magSize || 12;
+  gun.ammo = data.neverReload ? Infinity : (data.magSize || 12);
   gun.fireCooldownMax = data.fireRate || 10;
   gun.special = data.special || null;
+  // Extended fields for main guns
+  gun.reloading = false;
+  gun.reloadTimer = 0;
+}
+
+// Create a main gun item from gunData.js definitions at a given level
+function createMainGun(gunId, level) {
+  if (typeof MAIN_GUNS === 'undefined' || !MAIN_GUNS[gunId]) return null;
+  const stats = getGunStatsAtLevel(gunId, level);
+  if (!stats) return null;
+  const def = MAIN_GUNS[gunId];
+  return {
+    id: gunId,
+    name: def.name + ' Lv.' + level,
+    type: 'gun',
+    tier: 0, // main guns use level instead of tier
+    data: stats,
+    stackable: false,
+    count: 1,
+    mainGunLevel: level, // track level for upgrading
+  };
 }
 
 function applyMeleeStats(data) {
