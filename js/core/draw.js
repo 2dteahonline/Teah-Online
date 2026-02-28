@@ -1879,8 +1879,11 @@ function gameLoop(timestamp) {
   // /speed — game speed multiplier (0.25x slow-mo to 2x fast-forward)
   if (window._gameSpeed && window._gameSpeed !== 1) elapsed *= window._gameSpeed;
   accumulator += elapsed;
+  // Fixed timestep: run exactly 60 physics ticks/sec regardless of display refresh rate.
+  // On 120Hz+ displays the old code ran extra ticks (via updates===0 fallback),
+  // making lightweight scenes (gunsmith) physically faster than heavy ones (lobby).
   let updates = 0;
-  while (accumulator >= FIXED_DT && updates < 2) {
+  while (accumulator >= FIXED_DT && updates < 4) {
     // === SERVER-AUTHORITY LOOP ===
     // 1. Client: gather input → produce commands
     translateIntentsToCommands();
@@ -1889,11 +1892,6 @@ function gameLoop(timestamp) {
     // (In real multiplayer, step 3 would be: apply snapshot from server.
     //  Locally we skip it — authorityTick already mutated GameState directly.)
     accumulator -= FIXED_DT; updates++;
-  }
-  if (updates === 0) {
-    translateIntentsToCommands();
-    authorityTick();
-    accumulator = 0;
   }
   draw();
   requestAnimationFrame(gameLoop);
