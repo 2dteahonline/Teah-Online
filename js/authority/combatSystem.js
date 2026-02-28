@@ -3909,24 +3909,27 @@ const MOB_SPECIALS = {
 
     if (!m._lasers) m._lasers = [];
 
-    // Tick active lasers (only when this is the active ability)
+    // Tick active lasers
     for (let i = m._lasers.length - 1; i >= 0; i--) {
       const laser = m._lasers[i];
       laser.life--;
 
-      // Track toward player — BOTH beams aim at player
+      // Track toward player — keeps up with player movement
       const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx);
       let diff = targetAngle - laser.angle;
-      // Normalize angle difference to [-PI, PI]
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      laser.angle += diff * 0.08; // moderate tracking speed
+      laser.angle += diff * 0.18; // fast tracking — keeps up with player
+
+      // Follow mob position
+      laser.cx = m.x;
+      laser.cy = m.y;
 
       // Calculate beam line endpoints
       const lx2 = laser.cx + Math.cos(laser.angle) * laser.length;
       const ly2 = laser.cy + Math.sin(laser.angle) * laser.length;
 
-      // Check player hit (once per 10 frames to avoid rapid ticking)
+      // Check player hit every 10 frames
       if (laser.life % 10 === 0) {
         if (typeof AttackShapes !== 'undefined') {
           if (AttackShapes.playerInLine(laser.cx, laser.cy, lx2, ly2, 24)) {
@@ -3942,16 +3945,17 @@ const MOB_SPECIALS = {
       }
     }
 
-    // Only spawn new lasers if none active (don't reset existing)
+    // Only spawn new lasers if none active
     if (m._lasers.length > 0) return {};
 
+    // Instantly spawn beams — no telegraph
     const startAngle = Math.atan2(player.y - m.y, player.x - m.x);
     for (let b = 0; b < 2; b++) {
       m._lasers.push({
         cx: m.x, cy: m.y,
-        angle: startAngle + b * Math.PI, // start 180 degrees apart, both converge on player
+        angle: startAngle + b * Math.PI, // start 180° apart, both converge on player
         life: 480, // 8s
-        length: 300, // 300px beam length
+        length: 800, // long beam
       });
     }
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
@@ -4342,19 +4346,19 @@ const MOB_SPECIALS = {
   },
 
   // --- J.U.N.Z: Repulsor Beam ---
-  // Persistent energy beam like Game Master but blue/cyan. Telegraph → beam tracks player for 6s.
+  // Persistent energy beam (blue/cyan) like Game Master. No telegraph — instant beam that tracks player.
   repulsor_beam: (m, ctx) => {
     const { dist, dx, dy, player, hitEffects } = ctx;
 
     // Tick persistent beam (if active)
     if (m._junzBeam && m._junzBeam.life > 0) {
       m._junzBeam.life--;
-      // Track toward player
+      // Track toward player — fast enough to keep up with movement
       const targetAngle = Math.atan2(player.y - m._junzBeam.cy, player.x - m._junzBeam.cx);
       let diff = targetAngle - m._junzBeam.angle;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      m._junzBeam.angle += diff * 0.06;
+      m._junzBeam.angle += diff * 0.18; // fast tracking — keeps up with player
       // Keep beam origin at mob position (follows mob)
       m._junzBeam.cx = m.x;
       m._junzBeam.cy = m.y;
@@ -4378,61 +4382,16 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Telegraph phase
-    if (m._repulsorTelegraph) {
-      m._repulsorTelegraph--;
-      if (m._repulsorTelegraph <= 0) {
-        // Resolve: create persistent beam that tracks player
-        const beamAngle = Math.atan2(m._repulsorY2 - m._repulsorY1, m._repulsorX2 - m._repulsorX1);
-        m._junzBeam = {
-          cx: m.x, cy: m.y,
-          angle: beamAngle,
-          length: 336,
-          life: 360, // 6s persistent beam
-        };
-        // Initial damage on resolve
-        if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._repulsorX1, m._repulsorY1, m._repulsorX2, m._repulsorY2, 40)) {
-            const dmg = Math.round(m.damage * getMobDamageMultiplier());
-            const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-            hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-            // Push player away
-            const pdx = player.x - m.x, pdy = player.y - m.y;
-            const pDist = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
-            const ndx2 = pdx / pDist, ndy2 = pdy / pDist;
-            let finalX = player.x, finalY = player.y;
-            for (let i = 1; i <= 6; i++) {
-              const testX = player.x + ndx2 * (144 * i / 6);
-              const testY = player.y + ndy2 * (144 * i / 6);
-              if (positionClear(testX, testY)) { finalX = testX; finalY = testY; } else break;
-            }
-            player.x = finalX; player.y = finalY;
-          }
-        }
-        hitEffects.push({ x: m.x, y: m.y, life: 20, type: "cast" });
-      }
-      return { skip: true };
-    }
-
-    // Activate: line telegraph aimed at player
-    const ndx = dx / (dist || 1), ndy = dy / (dist || 1);
-    m._repulsorX1 = m.x;
-    m._repulsorY1 = m.y;
-    m._repulsorX2 = m.x + ndx * 336;
-    m._repulsorY2 = m.y + ndy * 336;
-
-    if (typeof TelegraphSystem !== 'undefined') {
-      TelegraphSystem.create({
-        shape: 'line',
-        params: { x1: m._repulsorX1, y1: m._repulsorY1, x2: m._repulsorX2, y2: m._repulsorY2, width: 40 },
-        delayFrames: 36,
-        color: [60, 140, 255], // blue
-        owner: m.id,
-      });
-    }
-    m._repulsorTelegraph = 36;
+    // Instantly spawn beam — no telegraph, aimed directly at player
+    const beamAngle = Math.atan2(player.y - m.y, player.x - m.x);
+    m._junzBeam = {
+      cx: m.x, cy: m.y,
+      angle: beamAngle,
+      length: 800, // long beam
+      life: 360, // 6s persistent beam
+    };
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
-    return { skip: true };
+    return {};
   },
 
   // --- J.U.N.Z: Nano Armor ---

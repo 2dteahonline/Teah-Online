@@ -465,12 +465,15 @@ function updateMobs() {
             const laser = m._lasers[li];
             laser.life--;
             if (laser.life <= 0) { m._lasers.splice(li, 1); continue; }
-            // Track toward player — both beams aim at player
+            // Track toward player — fast enough to keep up with movement
             const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx);
             let diff = targetAngle - laser.angle;
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
-            laser.angle += diff * 0.08;
+            laser.angle += diff * 0.18;
+            // Follow mob position
+            laser.cx = m.x;
+            laser.cy = m.y;
             // Check player in beam every 10 frames
             if (laser.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
               const endX = laser.cx + Math.cos(laser.angle) * laser.length;
@@ -545,7 +548,7 @@ function updateMobs() {
           let diff = targetAngle - m._junzBeam.angle;
           while (diff > Math.PI) diff -= Math.PI * 2;
           while (diff < -Math.PI) diff += Math.PI * 2;
-          m._junzBeam.angle += diff * 0.06;
+          m._junzBeam.angle += diff * 0.18; // fast tracking — keeps up with player
           // Follow mob position
           m._junzBeam.cx = m.x;
           m._junzBeam.cy = m.y;
