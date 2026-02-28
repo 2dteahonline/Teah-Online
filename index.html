@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <!-- Prevent browser from caching this HTML file -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <!-- BUILD: v20 — deli upgrade: cushions, held food, emojis, anti-phasing -->
   <title>Graal-Style PvP Arena</title>
   <style>
     * { margin: 0; padding: 0; }
@@ -39,69 +44,69 @@
   </script>
 
   <!-- Phase A: Shared data -->
-  <script src="js/shared/levelData.js?v=19"></script>
-  <script src="js/shared/mobTypes.js?v=19"></script>
-  <script src="js/shared/floorConfig.js?v=19"></script>
-  <script src="js/shared/itemData.js?v=19"></script>
-  <script src="js/shared/oreData.js?v=19"></script>
-  <script src="js/shared/cookingData.js?v=19"></script>
-  <script src="js/shared/fishingData.js?v=19"></script>
-  <script src="js/shared/farmingData.js?v=19"></script>
-  <script src="js/shared/armorVisuals.js?v=19"></script>
-  <script src="js/shared/dungeonRegistry.js?v=19"></script>
+  <script src="js/shared/levelData.js?v=20"></script>
+  <script src="js/shared/mobTypes.js?v=20"></script>
+  <script src="js/shared/floorConfig.js?v=20"></script>
+  <script src="js/shared/itemData.js?v=20"></script>
+  <script src="js/shared/oreData.js?v=20"></script>
+  <script src="js/shared/cookingData.js?v=20"></script>
+  <script src="js/shared/fishingData.js?v=20"></script>
+  <script src="js/shared/farmingData.js?v=20"></script>
+  <script src="js/shared/armorVisuals.js?v=20"></script>
+  <script src="js/shared/dungeonRegistry.js?v=20"></script>
 
   <!-- Phase B: Authority systems -->
-  <script src="js/authority/eventBus.js?v=19"></script>
-  <script src="js/authority/gameState.js?v=19"></script>
-  <script src="js/authority/combatSystem.js?v=19"></script>
-  <script src="js/authority/attackShapes.js?v=19"></script>
-  <script src="js/authority/telegraphSystem.js?v=19"></script>
-  <script src="js/authority/hazardSystem.js?v=19"></script>
+  <script src="js/authority/eventBus.js?v=20"></script>
+  <script src="js/authority/gameState.js?v=20"></script>
+  <script src="js/authority/combatSystem.js?v=20"></script>
+  <script src="js/authority/attackShapes.js?v=20"></script>
+  <script src="js/authority/telegraphSystem.js?v=20"></script>
+  <script src="js/authority/hazardSystem.js?v=20"></script>
 
   <!-- Phase C: Client rendering -->
-  <script src="js/client/rendering/hitEffects.js?v=19"></script>
-  <script src="js/client/rendering/entityRenderers.js?v=19"></script>
+  <script src="js/client/rendering/hitEffects.js?v=20"></script>
+  <script src="js/client/rendering/entityRenderers.js?v=20"></script>
 
   <!-- Phase A.5: Core scene/level management (depends on Phase A data + eventBus) -->
-  <script src="js/core/sceneManager.js?v=19"></script>
-  <script src="js/core/tileRenderer.js?v=19"></script>
+  <script src="js/core/sceneManager.js?v=20"></script>
+  <script src="js/core/tileRenderer.js?v=20"></script>
 
   <!-- Phase B: Authority systems (continued) -->
-  <script src="js/authority/waveSystem.js?v=19"></script>
-  <script src="js/authority/damageSystem.js?v=19"></script>
-  <script src="js/authority/inventorySystem.js?v=19"></script>
-  <script src="js/authority/mobSystem.js?v=19"></script>
-  <script src="js/authority/stateReset.js?v=19"></script>
-  <script src="js/authority/miningSystem.js?v=19"></script>
-  <script src="js/authority/fishingSystem.js?v=19"></script>
-  <script src="js/authority/farmingSystem.js?v=19"></script>
-  <script src="js/authority/snapshots.js?v=19"></script>
-  <script src="js/authority/commands.js?v=19"></script>
-  <script src="js/authority/authorityTick.js?v=19"></script>
+  <script src="js/authority/waveSystem.js?v=20"></script>
+  <script src="js/authority/damageSystem.js?v=20"></script>
+  <script src="js/authority/inventorySystem.js?v=20"></script>
+  <script src="js/authority/mobSystem.js?v=20"></script>
+  <script src="js/authority/stateReset.js?v=20"></script>
+  <script src="js/authority/miningSystem.js?v=20"></script>
+  <script src="js/authority/fishingSystem.js?v=20"></script>
+  <script src="js/authority/farmingSystem.js?v=20"></script>
+  <script src="js/authority/snapshots.js?v=20"></script>
+  <script src="js/authority/commands.js?v=20"></script>
+  <script src="js/authority/authorityTick.js?v=20"></script>
 
   <!-- Phase C: Client rendering (continued) -->
-  <script src="js/client/rendering/characterSprite.js?v=19"></script>
+  <script src="js/client/rendering/characterSprite.js?v=20"></script>
 
   <!-- Phase D: Client UI -->
-  <script src="js/client/input/inputIntent.js?v=19"></script>
-  <script src="js/client/ui/panelManager.js?v=19"></script>
-  <script src="js/client/ui/chatProfile.js?v=19"></script>
-  <script src="js/client/ui/toolbox.js?v=19"></script>
-  <script src="js/client/ui/settings.js?v=19"></script>
-  <script src="js/client/ui/panels.js?v=19"></script>
-  <script src="js/client/ui/customize.js?v=19"></script>
-  <script src="js/client/ui/inventory.js?v=19"></script>
-  <script src="js/client/ui/testMobPanel.js?v=19"></script>
+  <script src="js/client/input/inputIntent.js?v=20"></script>
+  <script src="js/client/ui/panelManager.js?v=20"></script>
+  <script src="js/client/ui/chatProfile.js?v=20"></script>
+  <script src="js/client/ui/toolbox.js?v=20"></script>
+  <script src="js/client/ui/settings.js?v=20"></script>
+  <script src="js/client/ui/panels.js?v=20"></script>
+  <script src="js/client/ui/customize.js?v=20"></script>
+  <script src="js/client/ui/inventory.js?v=20"></script>
+  <script src="js/client/ui/testMobPanel.js?v=20"></script>
 
   <!-- Phase E: Input + Core -->
-  <script src="js/client/input/input.js?v=19"></script>
-  <script src="js/core/gunSystem.js?v=19"></script>
-  <script src="js/core/meleeSystem.js?v=19"></script>
-  <script src="js/core/saveLoad.js?v=19"></script>
-  <script src="js/core/interactable.js?v=19"></script>
-  <script src="js/authority/cookingSystem.js?v=19"></script>
-  <script src="js/authority/deliNPCSystem.js?v=19"></script>
-  <script src="js/core/draw.js?v=19"></script>
-  <script src="js/testing/testHarness.js?v=19"></script>
+  <script src="js/client/input/input.js?v=20"></script>
+  <script src="js/core/gunSystem.js?v=20"></script>
+  <script src="js/core/meleeSystem.js?v=20"></script>
+  <script src="js/core/saveLoad.js?v=20"></script>
+  <script src="js/core/interactable.js?v=20"></script>
+  <script src="js/authority/cookingSystem.js?v=20"></script>
+  <script src="js/authority/deliNPCSystem.js?v=20"></script>
+  <script src="js/core/draw.js?v=20"></script>
+  <script src="js/testing/testHarness.js?v=20"></script>
 </body>
 </html>
