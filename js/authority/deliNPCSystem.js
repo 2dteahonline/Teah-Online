@@ -82,7 +82,7 @@ const DELI_AISLES = [
 const DELI_NPC_CONFIG = {
   minNPCs: 0,
   maxNPCs: 12,
-  spawnInterval: [600, 3600],  // 10-60 sec randomized range (frames at 60fps)
+  spawnInterval: [600, 1800],  // 10-30 sec randomized range (frames at 60fps)
   baseSpeed: 0.9,              // slow relaxed stroll
   speedVariance: 0.15,
   eatDuration:    [1800, 3000], // 30-50 sec — long relaxed meal
@@ -573,10 +573,13 @@ const DELI_NPC_AI = {
     // If we're still walking to our queue spot, keep going
     if (npc.route && npc.route.length > 0) {
       moveDeliNPC(npc);
+      // Face north (toward person ahead) even while walking into position
+      // Queue extends south, so "ahead" is always north (dir=1)
+      if (npc.route.length <= 1) npc.dir = 1;
       return;
     }
     npc.moving = false;
-    npc.dir = 1; // face north toward counter
+    npc.dir = 1; // face north — toward the back of the customer ahead in line
     npc._waitFrames++; // track how long this NPC has been waiting
 
     // Front of line + shift active → become ordering
