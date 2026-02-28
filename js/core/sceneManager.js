@@ -227,7 +227,8 @@ function checkPortals() {
       queueSpawnTY = e.spawnTY;
       queueFloorStart = e.floorStart || 0;
       queueDungeonType = e.dungeonType || 'cave';
-      queueReturnLevel = Scene.inCave ? 'cave_01' : Scene.inAzurine ? 'azurine_01' : 'cave_01';
+      const _qEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[queueDungeonType];
+      queueReturnLevel = _qEntry ? _qEntry.returnLevel : 'cave_01';
     }
     if (e.type === 'fishing_spot' && Scene.inLobby && inZone) {
       nearFishingSpot = true;
@@ -247,6 +248,7 @@ function checkPortals() {
 
 function goToNextFloor() {
   if (transitioning) return;
+  if (!Scene.inDungeon) return; // safety: only advance floors inside a dungeon
   if (dungeonFloor >= getDungeonMaxFloors()) return; // already at final floor
   dungeonFloor++;
   resetCombatState('floor');

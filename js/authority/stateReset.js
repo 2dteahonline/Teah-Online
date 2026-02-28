@@ -7,6 +7,12 @@
 // duplicated in 4 places with subtle differences (and bugs).
 // Modes: 'lobby', 'dungeon', 'death', 'floor', 'mine', 'cooking'
 function resetCombatState(mode) {
+  // --- Clean entity sub-arrays before clearing mobs (prevents orphaned references) ---
+  for (const m of mobs) {
+    for (const key of MOB_ENTITY_ARRAYS) {
+      if (m[key]) { if (Array.isArray(m[key])) m[key].length = 0; m[key] = null; }
+    }
+  }
   // --- Always clear effects and combat state ---
   mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
   deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
@@ -70,7 +76,8 @@ function resetCombatState(mode) {
     pendingDungeonFloor = null;
     // Track which dungeon type + where to return after completion
     if (pendingDungeonType != null) {
-      currentDungeon = pendingDungeonType;
+      currentDungeon = typeof validateDungeonType === 'function'
+        ? validateDungeonType(pendingDungeonType) : pendingDungeonType;
       pendingDungeonType = null;
     }
     if (pendingReturnLevel != null) {

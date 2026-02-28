@@ -152,9 +152,10 @@ let gameFrame = 0; // global frame counter for quick-kill bonus
 // dungeonFloor → js/authority/gameState.js
 const WAVES_PER_FLOOR = 10;
 const MAX_FLOORS = 5; // legacy alias — use getDungeonMaxFloors() for multi-dungeon support
-const DUNGEON_MAX_FLOORS = { cave: 5, azurine: 5 };
+// DUNGEON_MAX_FLOORS removed — use DUNGEON_REGISTRY instead (js/shared/dungeonRegistry.js)
 function getDungeonMaxFloors() {
-  return (DUNGEON_MAX_FLOORS[currentDungeon] || 5);
+  const entry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[currentDungeon];
+  return entry ? entry.maxFloors : 5;
 }
 let stairsOpen = false; // true after completing WAVES_PER_FLOOR on current floor
 let stairsAppearTimer = 0; // 0-1 animation progress for rising from ground
@@ -350,7 +351,8 @@ function capMobSpeed(type, speed) {
 function getWaveComposition(w) {
   // Only use FLOOR_CONFIG for dungeons that have it (e.g. 'azurine')
   // Cave dungeon always uses legacy wave compositions
-  if (currentDungeon !== 'cave' && typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[dungeonFloor]) {
+  const _dungEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[currentDungeon];
+  if (_dungEntry && _dungEntry.hasFloorConfig && typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[dungeonFloor]) {
     const floorComp = getFloorWaveComposition(FLOOR_CONFIG[dungeonFloor], w);
     if (floorComp) return floorComp;
   }

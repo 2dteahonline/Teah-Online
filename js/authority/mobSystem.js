@@ -944,6 +944,14 @@ function updateMobs() {
       deadPhases.push(m.phase || 1);
     }
   }
+  // Clean up entity sub-arrays on dead mobs before filtering (prevents orphaned references)
+  for (const m of mobs) {
+    if (m.hp <= 0) {
+      for (const key of MOB_ENTITY_ARRAYS) {
+        if (m[key]) { if (Array.isArray(m[key])) m[key].length = 0; m[key] = null; }
+      }
+    }
+  }
   mobs = mobs.filter(m => m.hp > 0);
   // Check phase advancement for each death
   for (const dp of deadPhases) {

@@ -66,10 +66,10 @@ const MOB_TYPES = {
 
   // Level 5 Mini-Boss: The Don
   the_don: {
-    name: "The Don", hp: 800, speed: 1.2, damage: 15, killHeal: 40,
+    name: "The Don", hp: 800, speed: 1.2, damage: 28, killHeal: 40,
     skin: "#8a7a6a", hair: "#2a2a2a", shirt: "#3a2a1a", pants: "#2a1a0a", contactRange: 80,
     ai: 'archer', _specials: ['laser_snipe', 'tommy_burst', 'smart_mine', 'smoke_screen'],
-    isBoss: true, bossScale: 1.4,
+    isBoss: true, bossScale: 1.4, specialCD: 720, // 12s — Floor 1 mini-boss
     arrowRate: 120, arrowSpeed: 7, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'golden',
     bulletColor: { main: '#ffd700', core: '#fff8dc', glow: 'rgba(255,215,0,0.3)' },
@@ -77,7 +77,7 @@ const MOB_TYPES = {
 
   // Level 10 Boss: Velocity
   velocity: {
-    name: "Velocity", hp: 1500, speed: 2.5, damage: 20, killHeal: 50,
+    name: "Velocity", hp: 1500, speed: 2.5, damage: 30, killHeal: 50,
     skin: "#7a7a8a", hair: "#0a0a2a", shirt: "#2a2a5a", pants: "#1a1a4a", contactRange: 78,
     ai: 'runner', _specials: ['phase_dash', 'bullet_time_field', 'afterimage_barrage', 'summon_renegades'],
     isBoss: true, bossScale: 1.5, specialCD: 480, // 8s between abilities (slower rotation = less summon spam)
@@ -392,3 +392,11 @@ const CROWD_EXEMPT_TYPES = new Set(["runner", "golem", "mini_golem", "archer", "
   "chem_frog", "mourn", "centipede",
   "holo_jester", "signal_jammer", "game_master", "junz",
   "plague_batwing", "viscosity_mage", "lehvius", "jackman", "malric", "vale"]);
+
+// All entity sub-arrays a mob can carry. Used for cleanup on death + floor transitions.
+const MOB_ENTITY_ARRAYS = [
+  '_bombs', '_mines', '_oilPuddles', '_traps', '_oozeLines', '_rampartZones',
+  '_meltTargets', '_summonedMinions', '_turrets', '_drones', '_pillars',
+  '_eggs', '_seekMines', '_fakeWalls', '_lasers', '_baits', '_staticOrbs',
+  '_holoClones', '_rocketDrones', '_junzBeam',
+];

@@ -481,14 +481,22 @@ window.addEventListener("keydown", e => {
           player.hp = player.maxHp; chatMessages.push({ name: "SYSTEM", text: "Healed to full", time: Date.now() });
         } else if (cmdLower === "/dung" || cmdLower === "/dungeon") {
           // Set proper dungeon state for direct teleport (bypasses queue)
+          const _dType = currentDungeon || 'cave';
+          const _dEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[_dType];
           queueFloorStart = 1;
-          queueDungeonType = 'cave';
-          queueReturnLevel = 'cave_01';
+          queueDungeonType = _dType;
+          queueReturnLevel = _dEntry ? _dEntry.returnLevel : 'cave_01';
           enterLevel('warehouse_01', 20, 20);
           chatMessages.push({ name: "SYSTEM", text: "Teleported to dungeon (Floor 1)", time: Date.now() });
         } else if (cmdLower === "/leave") {
           if (Scene.inDungeon) {
-            gold = 0; // reset gold (same as death)
+            // Immediately clear all combat so nothing damages player during fade
+            mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
+            deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
+            if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+            if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+            if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
+            gold = 0;
             startTransition(dungeonReturnLevel || 'cave_01', 20, 20);
             chatMessages.push({ name: "SYSTEM", text: "Leaving dungeon...", time: Date.now() });
           } else {
