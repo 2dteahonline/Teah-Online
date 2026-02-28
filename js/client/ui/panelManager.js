@@ -486,6 +486,14 @@ window.addEventListener("keydown", e => {
           queueReturnLevel = 'cave_01';
           enterLevel('warehouse_01', 20, 20);
           chatMessages.push({ name: "SYSTEM", text: "Teleported to dungeon (Floor 1)", time: Date.now() });
+        } else if (cmdLower === "/leave") {
+          if (Scene.inDungeon) {
+            gold = 0; // reset gold (same as death)
+            startTransition(dungeonReturnLevel || 'cave_01', 20, 20);
+            chatMessages.push({ name: "SYSTEM", text: "Leaving dungeon...", time: Date.now() });
+          } else {
+            chatMessages.push({ name: "SYSTEM", text: "You're not in a dungeon", time: Date.now() });
+          }
         } else if (cmdLower === "/stairs") {
           stairsOpen = true;
           stairsAppearTimer = 0;
@@ -495,7 +503,7 @@ window.addEventListener("keydown", e => {
           if (fl > 0) { dungeonFloor = fl; resetCombatState('floor'); }
           chatMessages.push({ name: "SYSTEM", text: "Set to floor " + dungeonFloor, time: Date.now() });
         } else if (cmdLower === "/help") {
-          chatMessages.push({ name: "SYSTEM", text: "/testmob (GUI) | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /op | /stairs | /floor [n] | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "/testmob (GUI) | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /leave | /op | /stairs | /floor [n] | /sprites | /export [name] | /save | /resetsave | /mg", time: Date.now() });
         } else if (cmdLower === "/save") {
           SaveLoad.save();
           chatMessages.push({ name: "SYSTEM", text: "Game saved!", time: Date.now() });
