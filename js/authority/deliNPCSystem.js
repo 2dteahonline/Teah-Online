@@ -39,15 +39,7 @@ const QUEUE_SPOTS = [
 ];
 
 // Kitchen zone — customer NPCs must stay out.
-// Kitchen: tx:1-24, ty:1-20. The door at tx:24, ty:19-20 is open for the player.
-const KITCHEN_BOUNDARY_X = 25 * TILE; // px: NPCs must have x >= this when above counter
-const KITCHEN_BOUNDARY_Y = 21 * TILE; // px: restriction only applies above this line
-
-// NPC collision constants
-const NPC_BLOCK_DIST = 28;    // hard pre-movement blocking radius (px)
-const NPC_QUEUE_SEP  = 96;    // hard separation for queue NPCs (2 tiles)
-const NPC_GENERAL_SEP = 28;   // hard separation for non-queue NPCs
-const NPC_SENSE_DIST = 96;    // 2-tile look-ahead sensing distance (px)
+// Kitchen: tx:0-24, ty:0-20. The door at tx:24, ty:19-20 is open for the player only.
 
 // Chairs (NPCs sit here to eat) — 2 per side × 4 sides × 4 tables = 32 seats
 const DELI_CHAIRS = [
@@ -116,6 +108,68 @@ const deliNPCs = [];
 let _deliNPCId = 0;
 let _deliSpawnTimer = 0;
 let _nextSpawnInterval = 400; // randomized after each spawn
+
+// ===================== OCCUPANCY GRID =====================
+// Static layer: permanently blocked tiles (walls, solid entities, chairs, kitchen zone)
+// Dynamic layer: NPC-occupied / reserved tiles (rebuilt every tick)
+const GRID_W = 50, GRID_H = 30;
+const _staticGrid = [];      // [ty][tx] = true if permanently blocked for NPC customers
+const _dynamicGrid = [];     // [ty][tx] = null | npcId (OCCUPIED or RESERVED)
+
+function _initStaticGrid() {
+  _staticGrid.length = 0;
+  for (let ty = 0; ty < GRID_H; ty++) {
+    _staticGrid[ty] = new Array(GRID_W).fill(false);
+  }
+  // Mark tiles that isSolid() reports as blocked (walls, tables, shelves, counters)
+  for (let ty = 0; ty < GRID_H; ty++) {
+    for (let tx = 0; tx < GRID_W; tx++) {
+      if (typeof isSolid === 'function' && isSolid(tx, ty)) {
+        _staticGrid[ty][tx] = true;
+      }
+    }
+  }
+  // Mark chair tiles as blocked for walking (NPCs only sit when eating)
+  for (const ch of DELI_CHAIRS) {
+    _staticGrid[ch.ty][ch.tx] = true;
+  }
+  // Mark kitchen zone: tx 0-24, ty 0-20 (includes kitchen door) as blocked for customers
+  for (let ty = 0; ty <= 20; ty++) {
+    for (let tx = 0; tx <= 24; tx++) {
+      _staticGrid[ty][tx] = true;
+    }
+  }
+}
+
+function _clearDynamicGrid() {
+  _dynamicGrid.length = 0;
+  for (let ty = 0; ty < GRID_H; ty++) {
+    _dynamicGrid[ty] = new Array(GRID_W).fill(null);
+  }
+}
+
+function _occupy(tx, ty, npcId) {
+  if (tx >= 0 && tx < GRID_W && ty >= 0 && ty < GRID_H && _dynamicGrid[ty]) {
+    _dynamicGrid[ty][tx] = npcId;
+  }
+}
+
+function _release(tx, ty, npcId) {
+  if (tx >= 0 && tx < GRID_W && ty >= 0 && ty < GRID_H && _dynamicGrid[ty]) {
+    if (_dynamicGrid[ty][tx] === npcId) _dynamicGrid[ty][tx] = null;
+  }
+}
+
+// THE single gatekeeper: tile is steppable only if not static-blocked
+// AND not occupied/reserved by another NPC (or player)
+function _canStep(tx, ty, npcId) {
+  if (tx < 0 || tx >= GRID_W || ty < 0 || ty >= GRID_H) return false;
+  if (!_staticGrid[ty] || !_dynamicGrid[ty]) return false; // grid not yet initialized
+  if (_staticGrid[ty][tx]) return false;
+  const occupant = _dynamicGrid[ty][tx];
+  if (occupant !== null && occupant !== npcId) return false;
+  return true;
+}
 
 // ===================== HELPERS =====================
 function _randRange(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -336,265 +390,181 @@ function _posInSolid(px, py) {
 const _CHAIR_TILES = new Set();
 for (const ch of DELI_CHAIRS) _CHAIR_TILES.add(ch.tx + ',' + ch.ty);
 
-// NPC-specific blocked check: solid tiles + chairs + kitchen zone
-function _npcPosBlocked(px, py) {
-  if (_posInSolid(px, py)) return true;
-  const hw = 14;
-  const cL = Math.floor((px - hw) / TILE), cR = Math.floor((px + hw) / TILE);
-  const rT = Math.floor((py - hw) / TILE), rB = Math.floor((py + hw) / TILE);
-  // Chair tiles are blocked for walking NPC customers
-  if (_CHAIR_TILES.has(cL+','+rT) || _CHAIR_TILES.has(cR+','+rT) ||
-      _CHAIR_TILES.has(cL+','+rB) || _CHAIR_TILES.has(cR+','+rB)) return true;
-  // Kitchen zone: tx 0-24, ty 0-20 — fully blocked for customers
-  if ((cL <= 24 && rT <= 20) || (cR <= 24 && rT <= 20) ||
-      (cL <= 24 && rB <= 20) || (cR <= 24 && rB <= 20)) return true;
-  return false;
-}
+// ===================== TILE-BASED MOVEMENT =====================
 
-// Check if a tile is occupied by any NPC (or player)
-function _tileOccupiedByNPC(tx, ty, excludeNPC) {
-  const cx = tx * TILE + TILE / 2;
-  const cy = ty * TILE + TILE / 2;
+// Head-on priority: when two NPCs approach each other within 2 tiles,
+// lower array index moves first; higher index waits.
+function _shouldWaitForPriority(npc, nextTX, nextTY) {
+  const myIdx = deliNPCs.indexOf(npc);
   for (const other of deliNPCs) {
-    if (other === excludeNPC) continue;
+    if (other === npc) continue;
     if (other.state === 'eating' || other.state === 'at_condiments' ||
         other.state === 'spawn_wait' || other.state === '_despawn') continue;
-    if (Math.abs(other.x - cx) < 24 && Math.abs(other.y - cy) < 24) return true;
-  }
-  if (typeof GameState !== 'undefined') {
-    const p = GameState.player;
-    if (Math.abs(p.x - cx) < 24 && Math.abs(p.y - cy) < 24) return true;
-  }
-  return false;
-}
-
-// Try to insert a detour waypoint to avoid an NPC/obstacle 2 tiles ahead.
-// Guards against detour accumulation: max 1 pending detour at a time,
-// and only fires when NPC is within ~2 tiles of the blocker.
-function _tryInsertDetour(npc) {
-  if (!npc.route || npc.route.length === 0) return false;
-  // Guard: don't insert if route already starts with a detour (flag)
-  if (npc._hasDetour) return false;
-  // Guard: cooldown after consuming a detour (prevents immediate re-insertion loops)
-  if (npc._detourCooldown > 0) return false;
-  const wp = npc.route[0];
-  const npcTX = Math.round((npc.x - TILE / 2) / TILE);
-  const npcTY = Math.round((npc.y - TILE / 2) / TILE);
-  const dirTX = wp.tx - npcTX;
-  const dirTY = wp.ty - npcTY;
-  if (dirTX === 0 && dirTY === 0) return false;
-  const udx = Math.sign(dirTX);
-  const udy = Math.sign(dirTY);
-  // Check 1 and 2 tiles ahead along movement axis
-  for (let step = 1; step <= 2; step++) {
-    const checkTX = npcTX + udx * step;
-    const checkTY = npcTY + udy * step;
-    if (_tileOccupiedByNPC(checkTX, checkTY, npc)) {
-      // Try perpendicular detour: left then right (or up then down)
-      const perpOptions = (udx === 0)
-        ? [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }]
-        : [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }];
-      for (const perp of perpOptions) {
-        const detourTX = npcTX + perp.dx;
-        const detourTY = npcTY + perp.dy;
-        const dpx = detourTX * TILE + TILE / 2;
-        const dpy = detourTY * TILE + TILE / 2;
-        if (!_npcPosBlocked(dpx, dpy) && !_tileOccupiedByNPC(detourTX, detourTY, npc)) {
-          npc.route.unshift({ tx: detourTX, ty: detourTY });
-          npc._hasDetour = true; // prevent re-inserting until this detour is consumed
-          return true;
-        }
-      }
-      return false;
+    const otherIdx = deliNPCs.indexOf(other);
+    const tilesDist = Math.abs(npc._tileTX - other._tileTX) + Math.abs(npc._tileTY - other._tileTY);
+    if (tilesDist > 2) continue;
+    // Head-on: NPC wants to step onto other's tile, or other is stepping toward us
+    const movingTowardOther = (nextTX === other._tileTX && nextTY === other._tileTY);
+    const otherTowardUs = other._stepping &&
+      (other._destTX === npc._tileTX && other._destTY === npc._tileTY);
+    if ((movingTowardOther || otherTowardUs) && myIdx > otherIdx) {
+      return true; // higher index yields
     }
   }
   return false;
 }
 
+// Sidestep: when blocked for a while, try stepping perpendicular
+function _trySidestep(npc, wp) {
+  const dtx = wp.tx - npc._tileTX;
+  const dty = wp.ty - npc._tileTY;
+  const movingH = Math.abs(dtx) >= Math.abs(dty);
+  let candidates;
+  if (movingH) {
+    candidates = [
+      { tx: npc._tileTX, ty: npc._tileTY - 1 },
+      { tx: npc._tileTX, ty: npc._tileTY + 1 },
+    ];
+  } else {
+    candidates = [
+      { tx: npc._tileTX - 1, ty: npc._tileTY },
+      { tx: npc._tileTX + 1, ty: npc._tileTY },
+    ];
+  }
+  if (Math.random() < 0.5) candidates.reverse();
+  for (const c of candidates) {
+    if (_canStep(c.tx, c.ty, npc.id)) {
+      _occupy(c.tx, c.ty, npc.id);
+      npc._destTX = c.tx;
+      npc._destTY = c.ty;
+      npc._stepProgress = 0;
+      npc._stepStartX = npc.x;
+      npc._stepStartY = npc.y;
+      npc._stepEndX = c.tx * TILE + TILE / 2;
+      npc._stepEndY = c.ty * TILE + TILE / 2;
+      npc._stepping = true;
+      npc.moving = true;
+      // Update facing
+      if (c.tx > npc._tileTX) npc.dir = 3;
+      else if (c.tx < npc._tileTX) npc.dir = 2;
+      else if (c.ty > npc._tileTY) npc.dir = 0;
+      else npc.dir = 1;
+      return true;
+    }
+  }
+  return false;
+}
+
+// Core movement: tile-to-tile with smooth interpolation
 function moveDeliNPC(npc) {
   if (!npc.route || npc.route.length === 0) {
     npc.moving = false;
     return;
   }
 
-  const _isActive = (s) => s !== 'eating' && s !== 'at_condiments' && s !== 'spawn_wait' && s !== '_despawn';
-  const inQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
-
-  // --- Yield behavior: paused to let another NPC pass ---
-  if (npc._yieldTimer > 0) {
-    npc._yieldTimer--;
-    npc.moving = false;
-    if (npc.route && npc.route.length > 0) {
+  // --- If currently mid-step (animating between tiles) ---
+  if (npc._stepping) {
+    npc._stepProgress += npc.speed / TILE;
+    if (npc._stepProgress >= 1.0) {
+      // Step complete: arrive at destination tile
+      npc._stepProgress = 1.0;
+      _release(npc._tileTX, npc._tileTY, npc.id); // release old tile
+      npc._tileTX = npc._destTX;
+      npc._tileTY = npc._destTY;
+      npc.x = npc._stepEndX;
+      npc.y = npc._stepEndY;
+      npc._stepping = false;
+      npc._destTX = -1;
+      npc._destTY = -1;
+      // Check if we reached current waypoint
       const wp = npc.route[0];
-      const routeDX = wp.tx * TILE + TILE / 2 - npc.x;
-      const routeDY = wp.ty * TILE + TILE / 2 - npc.y;
-      let stepX = 0, stepY = 0;
-      if (Math.abs(routeDX) > Math.abs(routeDY)) {
-        stepY = npc._yieldDir * 0.5;
-      } else {
-        stepX = npc._yieldDir * 0.5;
+      if (wp && npc._tileTX === wp.tx && npc._tileTY === wp.ty) {
+        npc.route.shift();
+        if (npc.route.length === 0) {
+          npc.moving = false;
+          return;
+        }
       }
-      const testX = npc.x + stepX, testY = npc.y + stepY;
-      if (!_npcPosBlocked(testX, testY)) {
-        npc.x = testX;
-        npc.y = testY;
-      }
+    } else {
+      // Interpolate pixel position for smooth rendering
+      const t = npc._stepProgress;
+      npc.x = npc._stepStartX + (npc._stepEndX - npc._stepStartX) * t;
+      npc.y = npc._stepStartY + (npc._stepEndY - npc._stepStartY) * t;
     }
+    npc.frame = (npc.frame + 0.1) % 4;
+    return;
+  }
+
+  // --- Not mid-step: decide next tile to step toward ---
+  if (npc._waitFrames_tile > 0) {
+    npc._waitFrames_tile--;
+    npc.moving = false;
     return;
   }
 
   const wp = npc.route[0];
-  const targetX = wp.tx * TILE + TILE / 2;
-  const targetY = wp.ty * TILE + TILE / 2;
-  const dx = targetX - npc.x;
-  const dy = targetY - npc.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (!wp) { npc.moving = false; return; }
 
-  if (dist < 6) {
-    npc.x = targetX;
-    npc.y = targetY;
+  // Step one tile toward current waypoint (cardinal only)
+  const dtx = wp.tx - npc._tileTX;
+  const dty = wp.ty - npc._tileTY;
+  let nextTX = npc._tileTX;
+  let nextTY = npc._tileTY;
+
+  if (dtx === 0 && dty === 0) {
+    // Already at waypoint — shift and continue
     npc.route.shift();
-    npc._yieldCount = 0;
-    npc._hasDetour = false;
-    npc._detourCooldown = 60; // wait 60 frames before allowing new detours
-    if (npc.route.length === 0) {
-      npc.moving = false;
-    }
+    if (npc.route.length === 0) { npc.moving = false; }
     return;
   }
 
-  // Walk toward current waypoint
-  npc.moving = true;
-  const spd = npc.speed;
-  let moveX = (dx / dist) * spd;
-  let moveY = (dy / dist) * spd;
-
-  // Facing direction
-  if (Math.abs(dx) > Math.abs(dy)) {
-    npc.dir = dx > 0 ? 3 : 2;
+  // Prefer axis with larger delta
+  if (Math.abs(dtx) >= Math.abs(dty)) {
+    nextTX += Math.sign(dtx);
   } else {
-    npc.dir = dy > 0 ? 0 : 1;
-  }
-  npc.frame = (npc.frame + 0.1) % 4;
-
-  // --- 2-tile sensing: detect NPCs ahead and insert detour waypoint ---
-  if (npc._detourCooldown > 0) npc._detourCooldown--;
-  if (!inQueue) {
-    _tryInsertDetour(npc);
+    nextTY += Math.sign(dty);
   }
 
-  // --- Phase A: Pre-movement NPC + Player blocking ---
-  let blockX = false, blockY = false;
+  // Update facing direction
+  if (nextTX > npc._tileTX) npc.dir = 3;      // right
+  else if (nextTX < npc._tileTX) npc.dir = 2;  // left
+  else if (nextTY > npc._tileTY) npc.dir = 0;  // down
+  else if (nextTY < npc._tileTY) npc.dir = 1;  // up
 
-  for (const other of deliNPCs) {
-    if (other === npc || !_isActive(other.state)) continue;
-    // Skip blocking for co-located NPCs (e.g. just spawned at same entrance tile).
-    // Let Phase B separation push them apart instead of deadlocking.
-    const sepX = Math.abs(npc.x - other.x), sepY = Math.abs(npc.y - other.y);
-    if (sepX < 8 && sepY < 8) continue;
-    if (Math.abs((npc.x + moveX) - other.x) < NPC_BLOCK_DIST &&
-        Math.abs(npc.y - other.y) < NPC_BLOCK_DIST) {
-      blockX = true;
-    }
-    if (Math.abs(npc.x - other.x) < NPC_BLOCK_DIST &&
-        Math.abs((npc.y + moveY) - other.y) < NPC_BLOCK_DIST) {
-      blockY = true;
-    }
-  }
-  if (typeof GameState !== 'undefined') {
-    const p = GameState.player;
-    if (Math.abs((npc.x + moveX) - p.x) < NPC_BLOCK_DIST &&
-        Math.abs(npc.y - p.y) < NPC_BLOCK_DIST) blockX = true;
-    if (Math.abs(npc.x - p.x) < NPC_BLOCK_DIST &&
-        Math.abs((npc.y + moveY) - p.y) < NPC_BLOCK_DIST) blockY = true;
-  }
-
-  if (blockX) moveX = 0;
-  if (blockY) moveY = 0;
-
-  // If fully blocked, trigger yield reaction
-  if (blockX && blockY && !npc._yieldTimer) {
-    npc._yieldTimer = _randRange(10, 20);
-    npc._yieldDir = Math.random() < 0.5 ? -1 : 1;
-    npc._yieldCount = (npc._yieldCount || 0) + 1;
-    if (npc._yieldCount > 3 && npc.route && npc.route.length > 0) {
-      const snapWP = npc.route[0];
-      npc.x = snapWP.tx * TILE + TILE / 2;
-      npc.y = snapWP.ty * TILE + TILE / 2;
-      npc.route.shift();
-      npc._yieldCount = 0;
-      npc._hasDetour = false;
-      npc._yieldTimer = 0;
-    }
+  // Head-on priority check
+  if (_shouldWaitForPriority(npc, nextTX, nextTY)) {
+    npc._waitFrames_tile = _randRange(12, 24); // wait 0.2-0.4s
+    npc.moving = false;
     return;
   }
 
-  // --- AABB tile collision (uses NPC-specific blocking: walls + chairs + kitchen) ---
-  if (moveX !== 0) {
-    const nx = npc.x + moveX;
-    if (!_npcPosBlocked(nx, npc.y)) npc.x = nx;
-  }
-  if (moveY !== 0) {
-    const ny = npc.y + moveY;
-    if (!_npcPosBlocked(npc.x, ny)) npc.y = ny;
-  }
-
-  // --- Kitchen boundary (customer NPCs only) ---
-  // Prevent entering kitchen through door gap
-  if (npc.y < KITCHEN_BOUNDARY_Y && npc.x < KITCHEN_BOUNDARY_X) {
-    npc.x = KITCHEN_BOUNDARY_X;
-  }
-  // Prevent phasing through counter wall from below (tx:1-24 must stay at ty >= 22)
-  if (npc.x < KITCHEN_BOUNDARY_X) {
-    const counterSafeY = 22 * TILE;
-    if (npc.y < counterSafeY) {
-      npc.y = counterSafeY;
-    }
-  }
-
-  // Save position before push/separation (for solid re-validation)
-  const prePushX = npc.x, prePushY = npc.y;
-
-  // --- NPC-Player post-movement push ---
-  if (typeof GameState !== 'undefined') {
-    const p = GameState.player;
-    const pdx = npc.x - p.x, pdy = npc.y - p.y;
-    const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
-    if (pDist > 0 && pDist < NPC_BLOCK_DIST) {
-      const push = (NPC_BLOCK_DIST - pDist);
-      npc.x += (pdx / pDist) * push;
-      npc.y += (pdy / pDist) * push;
-    }
-  }
-
-  // --- Phase B: Post-movement hard NPC-NPC separation ---
-  const hardSep = inQueue ? NPC_QUEUE_SEP : NPC_GENERAL_SEP;
-  for (const other of deliNPCs) {
-    if (other === npc || !_isActive(other.state)) continue;
-    const sx = npc.x - other.x;
-    const sy = npc.y - other.y;
-    const sd = Math.sqrt(sx * sx + sy * sy);
-    if (sd > 0 && sd < hardSep) {
-      const overlap = hardSep - sd;
-      const ux = sx / sd, uy = sy / sd;
-      const otherInQueue = (other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food');
-      const otherStationary = otherInQueue && !(other.route && other.route.length > 0 && other.moving);
-
-      if (otherStationary) {
-        if (inQueue) { npc.y += uy * overlap; }
-        else { npc.x += ux * overlap; npc.y += uy * overlap; }
+  // Try to step
+  if (_canStep(nextTX, nextTY, npc.id)) {
+    // Reserve destination, begin step animation
+    _occupy(nextTX, nextTY, npc.id);
+    npc._destTX = nextTX;
+    npc._destTY = nextTY;
+    npc._stepProgress = 0;
+    npc._stepStartX = npc.x;
+    npc._stepStartY = npc.y;
+    npc._stepEndX = nextTX * TILE + TILE / 2;
+    npc._stepEndY = nextTY * TILE + TILE / 2;
+    npc._stepping = true;
+    npc.moving = true;
+    npc._blockedFrames = 0;
+  } else {
+    // Blocked — wait, then try sidestep
+    npc.moving = false;
+    npc._blockedFrames = (npc._blockedFrames || 0) + 1;
+    if (npc._blockedFrames > 30) {
+      // Try sidestep after ~0.5s of being blocked
+      if (_trySidestep(npc, wp)) {
+        npc._blockedFrames = 0;
       } else {
-        const halfPush = overlap * 0.5;
-        if (inQueue) { npc.y += uy * halfPush; }
-        else { npc.x += ux * halfPush; npc.y += uy * halfPush; }
+        // Can't sidestep either — wait a bit more
+        npc._blockedFrames = 15; // retry in 15 more frames
       }
     }
-  }
-
-  // --- Final re-validation: revert if pushes moved NPC into wall/table/chair/kitchen ---
-  if (_npcPosBlocked(npc.x, npc.y)) {
-    npc.x = prePushX;
-    npc.y = prePushY;
   }
 }
 
@@ -648,28 +618,20 @@ function _advanceQueue() {
   for (const n of inQueue) {
     const targetIdx = n._queueIdx - 1;
     if (!occupied.has(targetIdx)) {
-      // Physical space check: is the target spot actually clear of NPCs?
+      // Grid-based check: is the target spot tile clear?
       const targetSpot = QUEUE_SPOTS[targetIdx];
       if (targetSpot) {
-        const tpx = targetSpot.tx * TILE + TILE / 2;
-        const tpy = targetSpot.ty * TILE + TILE / 2;
-        let spotClear = true;
-        for (const other of deliNPCs) {
-          if (other === n) continue;
-          if (other.state === 'eating' || other.state === 'at_condiments' ||
-              other.state === 'spawn_wait' || other.state === '_despawn') continue;
-          if (Math.abs(other.x - tpx) < 24 && Math.abs(other.y - tpy) < 24) {
-            spotClear = false;
-            break;
-          }
-        }
-        if (!spotClear) continue; // wait until spot is physically vacated
+        if (!_canStep(targetSpot.tx, targetSpot.ty, n.id)) continue; // tile occupied — wait
       }
       occupied.delete(n._queueIdx);
       n._queueIdx = targetIdx;
       occupied.add(targetIdx);
       if (targetSpot) {
         n.route = [{ tx: targetSpot.tx, ty: targetSpot.ty }];
+        n.state = 'walking';
+        n._nextState = 'in_queue';
+        n._nextTimer = 0;
+        n.moving = true;
       }
     }
     // else: slot ahead is still occupied — wait
@@ -708,12 +670,19 @@ function spawnDeliNPC() {
     _waitFrames: 0,            // total frames spent waiting in queue
     _leaveCheckTimer: 0,       // frames until next leave-chance roll (every 300 = 5s)
     _moodProgress: 0,          // smooth 0→1 progress for mood meter rendering
-    // Yield/collision reaction state
-    _yieldTimer: 0,            // frames remaining in yield pause
-    _yieldDir: 0,              // sidestep direction (-1 or 1)
-    _yieldCount: 0,            // consecutive yields (for emergency unstick)
-    _hasDetour: false,          // true while a detour waypoint is queued (prevents accumulation)
-    _detourCooldown: 0,         // frames to wait after detour consumed before allowing new ones
+    // Tile-based movement state
+    _tileTX: sp.tx,            // current logical tile X
+    _tileTY: sp.ty,            // current logical tile Y
+    _destTX: -1,               // destination tile X (while animating step)
+    _destTY: -1,               // destination tile Y (while animating step)
+    _stepProgress: 0,          // 0.0 → 1.0 animation progress within a single tile step
+    _stepStartX: 0,            // pixel X at start of current step
+    _stepStartY: 0,            // pixel Y at start of current step
+    _stepEndX: 0,              // pixel X at end of current step
+    _stepEndY: 0,              // pixel Y at end of current step
+    _stepping: false,          // true while animating between tiles
+    _waitFrames_tile: 0,       // frames waiting when blocked (for priority / sidestep delay)
+    _blockedFrames: 0,         // consecutive frames blocked (triggers sidestep after 30)
     // Emoji bubble rendering state (kept for draw.js compatibility)
     _bubbleTimer: 0,
     _bubbleActive: 0,
@@ -731,6 +700,9 @@ function initDeliNPCs() {
   deliNPCs.length = 0;
   _deliNPCId = 0;
   _deliSpawnTimer = 0;
+  // Build occupancy grids
+  _initStaticGrid();
+  _clearDynamicGrid();
   // First customer walks in after 1-3 seconds, then 10-60s between each after that
   _nextSpawnInterval = _randRange(60, 180);
 }
@@ -742,6 +714,9 @@ const DELI_NPC_AI = {
   // ─── SPAWN_WAIT: Staggered delay before entering ───────
   spawn_wait: (npc) => {
     npc.moving = false;
+    npc._stepping = false;
+    npc._tileTX = Math.floor(npc.x / TILE);
+    npc._tileTY = Math.floor(npc.y / TILE);
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
     npc.state = 'entering';
   },
@@ -785,19 +760,24 @@ const DELI_NPC_AI = {
   // ─── PRE-QUEUE BROWSE: Browsing aisles before joining queue ──
   pre_queue_browse: (npc) => {
     npc.moving = false;
+    npc._stepping = false;
     npc.dir = 1; // face shelves
+    npc._tileTX = Math.floor(npc.x / TILE);
+    npc._tileTY = Math.floor(npc.y / TILE);
     if (npc.stateTimer > 0) {
-      // Browsing sidestep: if another NPC is within 2 tiles, step aside 1 tile
+      // Browsing sidestep: if another NPC is within 2 tiles (Manhattan), step aside 1 tile
       for (const other of deliNPCs) {
         if (other === npc || other.state === 'eating' || other.state === '_despawn') continue;
-        const d = Math.sqrt((npc.x - other.x) ** 2 + (npc.y - other.y) ** 2);
-        if (d > 0 && d < NPC_SENSE_DIST) {
-          const stepDir = (npc.x < other.x) ? -1 : 1;
-          const stepTX = Math.round((npc.x - TILE / 2) / TILE) + stepDir;
-          const stepTY = Math.round((npc.y - TILE / 2) / TILE);
-          const spx = stepTX * TILE + TILE / 2, spy = stepTY * TILE + TILE / 2;
-          if (!_npcPosBlocked(spx, spy) && !_tileOccupiedByNPC(stepTX, stepTY, npc)) {
-            npc.x = spx; npc.y = spy;
+        const dist = Math.abs(npc._tileTX - other._tileTX) + Math.abs(npc._tileTY - other._tileTY);
+        if (dist > 0 && dist <= 2) {
+          const stepDir = (npc._tileTX < other._tileTX) ? -1 : 1;
+          const stepTX = npc._tileTX + stepDir;
+          const stepTY = npc._tileTY;
+          if (_canStep(stepTX, stepTY, npc.id)) {
+            npc.x = stepTX * TILE + TILE / 2;
+            npc.y = stepTY * TILE + TILE / 2;
+            npc._tileTX = stepTX;
+            npc._tileTY = stepTY;
           }
           break;
         }
@@ -866,13 +846,16 @@ const DELI_NPC_AI = {
       return;
     }
     npc.moving = false;
+    npc._stepping = false;
     npc.dir = 1; // face north — toward the back of the customer ahead in line
 
-    // Snap to exact queue spot — prevents drifting sideways from separation push
+    // Snap to exact queue spot and sync tile position
     const spot = QUEUE_SPOTS[npc._queueIdx];
     if (spot) {
       npc.x = spot.tx * TILE + TILE / 2;
       npc.y = spot.ty * TILE + TILE / 2;
+      npc._tileTX = spot.tx;
+      npc._tileTY = spot.ty;
     }
 
     npc._waitFrames++; // track how long this NPC has been waiting
@@ -944,10 +927,13 @@ const DELI_NPC_AI = {
   // ─── ORDERING: At counter, waiting for spawnOrder() to link us ──
   ordering: (npc) => {
     npc.moving = false;
+    npc._stepping = false;
     npc.dir = 1;
-    // Snap to queue spot 0 (counter)
+    // Snap to queue spot 0 (counter) and sync tile position
     npc.x = QUEUE_SPOTS[0].tx * TILE + TILE / 2;
     npc.y = QUEUE_SPOTS[0].ty * TILE + TILE / 2;
+    npc._tileTX = QUEUE_SPOTS[0].tx;
+    npc._tileTY = QUEUE_SPOTS[0].ty;
     // spawnOrder() in cookingSystem.js will find us and link the order
     // If shift ends while waiting, leave
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
@@ -966,10 +952,13 @@ const DELI_NPC_AI = {
   // ─── WAITING FOOD: Linked to order, waiting for cook ───
   waiting_food: (npc) => {
     npc.moving = false;
+    npc._stepping = false;
     npc.dir = 1;
-    // Snap to queue spot 0 (counter)
+    // Snap to queue spot 0 (counter) and sync tile position
     npc.x = QUEUE_SPOTS[0].tx * TILE + TILE / 2;
     npc.y = QUEUE_SPOTS[0].ty * TILE + TILE / 2;
+    npc._tileTX = QUEUE_SPOTS[0].tx;
+    npc._tileTY = QUEUE_SPOTS[0].ty;
     // applyOrderResult() in cookingSystem.js will set us to pickup_food
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
       npc.linkedOrderId = null;
@@ -1019,11 +1008,14 @@ const DELI_NPC_AI = {
   // ─── EATING: Sitting in chair, eating food ─────────────
   eating: (npc) => {
     npc.moving = false;
-    // Snap to chair
+    npc._stepping = false;
+    // Snap to chair and sync tile position
     if (npc.claimedChair !== null) {
       const ch = DELI_CHAIRS[npc.claimedChair];
       npc.x = ch.tx * TILE + TILE / 2;
       npc.y = ch.ty * TILE + TILE / 2;
+      npc._tileTX = ch.tx;
+      npc._tileTY = ch.ty;
       npc.dir = ch.sitDir;
     }
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
@@ -1053,19 +1045,24 @@ const DELI_NPC_AI = {
   // ─── SHOPPING AISLE: Browsing grocery shelves ──────────
   shopping_aisle: (npc) => {
     npc.moving = false;
+    npc._stepping = false;
     npc.dir = 1; // face shelves
+    npc._tileTX = Math.floor(npc.x / TILE);
+    npc._tileTY = Math.floor(npc.y / TILE);
     if (npc.stateTimer > 0) {
-      // Browsing sidestep: if another NPC is within 2 tiles, step aside 1 tile
+      // Browsing sidestep: if another NPC is within 2 tiles (Manhattan), step aside 1 tile
       for (const other of deliNPCs) {
         if (other === npc || other.state === 'eating' || other.state === '_despawn') continue;
-        const d = Math.sqrt((npc.x - other.x) ** 2 + (npc.y - other.y) ** 2);
-        if (d > 0 && d < NPC_SENSE_DIST) {
-          const stepDir = (npc.x < other.x) ? -1 : 1;
-          const stepTX = Math.round((npc.x - TILE / 2) / TILE) + stepDir;
-          const stepTY = Math.round((npc.y - TILE / 2) / TILE);
-          const spx = stepTX * TILE + TILE / 2, spy = stepTY * TILE + TILE / 2;
-          if (!_npcPosBlocked(spx, spy) && !_tileOccupiedByNPC(stepTX, stepTY, npc)) {
-            npc.x = spx; npc.y = spy;
+        const dist = Math.abs(npc._tileTX - other._tileTX) + Math.abs(npc._tileTY - other._tileTY);
+        if (dist > 0 && dist <= 2) {
+          const stepDir = (npc._tileTX < other._tileTX) ? -1 : 1;
+          const stepTX = npc._tileTX + stepDir;
+          const stepTY = npc._tileTY;
+          if (_canStep(stepTX, stepTY, npc.id)) {
+            npc.x = stepTX * TILE + TILE / 2;
+            npc.y = stepTY * TILE + TILE / 2;
+            npc._tileTX = stepTX;
+            npc._tileTY = stepTY;
           }
           break;
         }
@@ -1203,6 +1200,26 @@ function _updateNPCMood(npc) {
 function updateDeliNPCs() {
   if (typeof Scene === 'undefined' || !Scene.inCooking) return;
 
+  // Ensure grids are initialized (safe for late scene entry)
+  if (_staticGrid.length === 0) _initStaticGrid();
+
+  // --- Rebuild dynamic occupancy grid every frame ---
+  _clearDynamicGrid();
+  // Mark each NPC's current tile as OCCUPIED, and stepping NPCs' destination as RESERVED
+  for (const npc of deliNPCs) {
+    if (npc.state === '_despawn') continue;
+    _occupy(npc._tileTX, npc._tileTY, npc.id);
+    if (npc._stepping && npc._destTX >= 0 && npc._destTY >= 0) {
+      _occupy(npc._destTX, npc._destTY, npc.id);
+    }
+  }
+  // Mark player's tile as occupied (id = -1) so NPCs avoid the player
+  if (typeof player !== 'undefined' && player.x !== undefined) {
+    const pTX = Math.floor(player.x / TILE);
+    const pTY = Math.floor(player.y / TILE);
+    _occupy(pTX, pTY, -1);
+  }
+
   // Spawn management — one customer at a time, 10-60s apart
   _deliSpawnTimer++;
   if (_deliSpawnTimer >= _nextSpawnInterval) {
@@ -1213,9 +1230,10 @@ function updateDeliNPCs() {
     }
   }
 
-  // Update each NPC
-  for (let i = deliNPCs.length - 1; i >= 0; i--) {
+  // Forward pass (i=0 to N): state handlers + movement (lower index = higher priority)
+  for (let i = 0; i < deliNPCs.length; i++) {
     const npc = deliNPCs[i];
+    if (npc.state === '_despawn') continue;
 
     // Run state handler
     const handler = DELI_NPC_AI[npc.state];
@@ -1228,8 +1246,11 @@ function updateDeliNPCs() {
     if (npc.state === 'walking') {
       moveDeliNPC(npc);
     }
+  }
 
-    // Despawn
+  // Backward pass (i=N to 0): despawn splice (safe to splice in reverse)
+  for (let i = deliNPCs.length - 1; i >= 0; i--) {
+    const npc = deliNPCs[i];
     if (npc.state === '_despawn') {
       if (npc.claimedChair !== null) npc.claimedChair = null;
       if (npc._queueIdx >= 0) { npc._queueIdx = -1; _advanceQueue(); }
