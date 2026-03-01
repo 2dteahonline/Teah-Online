@@ -30,13 +30,12 @@ const DELI_SPOTS = {
 };
 
 // Queue line — south from counter (vertical line at tx:11, same as ordering spot)
+// 4 slots max, 2 tiles (96px) apart. Max queue = 4 customers.
 const QUEUE_SPOTS = [
-  { tx: 11, ty: 22 },  // spot 0 = at counter (front of line)
-  { tx: 11, ty: 23 },
-  { tx: 11, ty: 24 },
-  { tx: 11, ty: 25 },
-  { tx: 11, ty: 26 },
-  { tx: 11, ty: 27 },  // spot 5 = back of line (6 max)
+  { tx: 11, ty: 22 },  // slot 0 = at counter (front of line)
+  { tx: 11, ty: 24 },  // slot 1 (2 tiles back)
+  { tx: 11, ty: 26 },  // slot 2 (4 tiles back)
+  { tx: 11, ty: 28 },  // slot 3 = back of line (6 tiles back)
 ];
 
 // Kitchen zone — customer NPCs must stay out.
@@ -46,8 +45,9 @@ const KITCHEN_BOUNDARY_Y = 21 * TILE; // px: restriction only applies above this
 
 // NPC collision constants
 const NPC_BLOCK_DIST = 28;    // hard pre-movement blocking radius (px)
-const NPC_QUEUE_SEP  = 48;    // hard separation for queue NPCs (full tile)
+const NPC_QUEUE_SEP  = 96;    // hard separation for queue NPCs (2 tiles)
 const NPC_GENERAL_SEP = 28;   // hard separation for non-queue NPCs
+const NPC_SENSE_DIST = 96;    // 2-tile look-ahead sensing distance (px)
 
 // Chairs (NPCs sit here to eat) — 2 per side × 4 sides × 4 tables = 32 seats
 const DELI_CHAIRS = [
@@ -76,22 +76,22 @@ const DELI_CHAIRS = [
 // Aisle browse spots (stand next to shelves — all items are in the aisles now)
 // NPCs stand in the walkway between/below shelf rows, centered on a shelf.
 // Shelf row 1: ty:22-23. Shelf row 2: ty:26-27.
-// Browse spots at ty:25 (gap between rows) and ty:29 (below row 2).
+// Browse spots at ty:25 (gap between rows) and ty:28 (1 tile below row 2, wall at ty:29).
 const DELI_AISLES = [
   // Browsing row 1 shelves from below (ty:25)
   { name: 'Frozen',    price: 4, tx: 29, ty: 25 },
   { name: 'Snacks',    price: 3, tx: 36, ty: 25 },
   { name: 'Drinks',    price: 3, tx: 43, ty: 25 },
-  // Browsing row 2 shelves from below (ty:29)
-  { name: 'Cookies',   price: 3, tx: 29, ty: 29 },
-  { name: 'Soups',     price: 4, tx: 36, ty: 29 },
-  { name: 'Dairy',     price: 4, tx: 43, ty: 29 },
+  // Browsing row 2 shelves from below (ty:28) — ty:29 is wall/out-of-bounds
+  { name: 'Cookies',   price: 3, tx: 29, ty: 28 },
+  { name: 'Soups',     price: 4, tx: 36, ty: 28 },
+  { name: 'Dairy',     price: 4, tx: 43, ty: 28 },
 ];
 
 // ===================== CONFIG =====================
 const DELI_NPC_CONFIG = {
   minNPCs: 0,
-  maxNPCs: 12,
+  maxNPCs: 10,
   spawnInterval: [300, 900],   // 5-15 sec randomized range (frames at 60fps)
   baseSpeed: 0.9,              // slow relaxed stroll
   speedVariance: 0.15,
@@ -133,7 +133,7 @@ function _tilePx(tx, ty) {
 //   Shelf row 1: ty:22-23 → shelves at tx:27-31, tx:34-38, tx:41-45
 //   Browse row 1: ty:25   → NPCs stand here to browse row 1 shelves
 //   Shelf row 2: ty:26-27 → shelves at tx:27-31, tx:34-38, tx:41-45
-//   Browse row 2: ty:29   → NPCs stand here to browse row 2 shelves
+//   Browse row 2: ty:28   → NPCs stand here to browse row 2 shelves
 //
 // GAPS between shelves (safe vertical corridors through aisle area):
 //   tx:26  — west of all shelves (main corridor)
@@ -145,9 +145,9 @@ function _tilePx(tx, ty) {
 //   tx:26  vertical  ty:1-29   (just east of kitchen wall — main N/S corridor)
 //   ty:20  horizontal tx:25-46  (below dining tables, above counter wall)
 //   ty:25  horizontal tx:26-46  (between shelf rows — NPC browse row 1)
-//   ty:29  horizontal tx:26-46  (below shelf row 2 — NPC browse row 2)
-//   tx:32  vertical  ty:22-29  (gap between shelf columns 1 and 2)
-//   tx:39  vertical  ty:22-29  (gap between shelf columns 2 and 3)
+//   ty:28  horizontal tx:26-46  (below shelf row 2 — NPC browse row 2)
+//   tx:32  vertical  ty:22-28  (gap between shelf columns 1 and 2)
+//   tx:39  vertical  ty:22-28  (gap between shelf columns 2 and 3)
 
 // Find the nearest safe vertical gap for a given tx position in the aisle area
 function _nearestAisleGap(tx) {
@@ -304,7 +304,7 @@ function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
     route.push({ tx: 26, ty: 20 });
   }
   // Approach from one tile BELOW the spot to avoid visual double-line at tx:13
-  const approachTY = Math.min(queueSpot.ty + 1, 27);
+  const approachTY = Math.min(queueSpot.ty + 1, 28);
   route.push({ tx: 13, ty: 20 });                          // west to approach corridor
   route.push({ tx: 13, ty: approachTY });                   // south past queue Y level
   route.push({ tx: queueSpot.tx, ty: approachTY });         // west into line column
@@ -332,6 +332,85 @@ function _posInSolid(px, py) {
   return isSolid(cL, rT) || isSolid(cR, rT) || isSolid(cL, rB) || isSolid(cR, rB);
 }
 
+// Chair tile lookup — NPC customers cannot walk through red cushions
+const _CHAIR_TILES = new Set();
+for (const ch of DELI_CHAIRS) _CHAIR_TILES.add(ch.tx + ',' + ch.ty);
+
+// NPC-specific blocked check: solid tiles + chairs + kitchen zone
+function _npcPosBlocked(px, py) {
+  if (_posInSolid(px, py)) return true;
+  const hw = 14;
+  const cL = Math.floor((px - hw) / TILE), cR = Math.floor((px + hw) / TILE);
+  const rT = Math.floor((py - hw) / TILE), rB = Math.floor((py + hw) / TILE);
+  // Chair tiles are blocked for walking NPC customers
+  if (_CHAIR_TILES.has(cL+','+rT) || _CHAIR_TILES.has(cR+','+rT) ||
+      _CHAIR_TILES.has(cL+','+rB) || _CHAIR_TILES.has(cR+','+rB)) return true;
+  // Kitchen zone: tx 0-24, ty 0-20 — fully blocked for customers
+  if ((cL <= 24 && rT <= 20) || (cR <= 24 && rT <= 20) ||
+      (cL <= 24 && rB <= 20) || (cR <= 24 && rB <= 20)) return true;
+  return false;
+}
+
+// Check if a tile is occupied by any NPC (or player)
+function _tileOccupiedByNPC(tx, ty, excludeNPC) {
+  const cx = tx * TILE + TILE / 2;
+  const cy = ty * TILE + TILE / 2;
+  for (const other of deliNPCs) {
+    if (other === excludeNPC) continue;
+    if (other.state === 'eating' || other.state === 'at_condiments' ||
+        other.state === 'spawn_wait' || other.state === '_despawn') continue;
+    if (Math.abs(other.x - cx) < 24 && Math.abs(other.y - cy) < 24) return true;
+  }
+  if (typeof GameState !== 'undefined') {
+    const p = GameState.player;
+    if (Math.abs(p.x - cx) < 24 && Math.abs(p.y - cy) < 24) return true;
+  }
+  return false;
+}
+
+// Try to insert a detour waypoint to avoid an NPC/obstacle 2 tiles ahead.
+// Guards against detour accumulation: max 1 pending detour at a time,
+// and only fires when NPC is within ~2 tiles of the blocker.
+function _tryInsertDetour(npc) {
+  if (!npc.route || npc.route.length === 0) return false;
+  // Guard: don't insert if route already starts with a detour (flag)
+  if (npc._hasDetour) return false;
+  // Guard: cooldown after consuming a detour (prevents immediate re-insertion loops)
+  if (npc._detourCooldown > 0) return false;
+  const wp = npc.route[0];
+  const npcTX = Math.round((npc.x - TILE / 2) / TILE);
+  const npcTY = Math.round((npc.y - TILE / 2) / TILE);
+  const dirTX = wp.tx - npcTX;
+  const dirTY = wp.ty - npcTY;
+  if (dirTX === 0 && dirTY === 0) return false;
+  const udx = Math.sign(dirTX);
+  const udy = Math.sign(dirTY);
+  // Check 1 and 2 tiles ahead along movement axis
+  for (let step = 1; step <= 2; step++) {
+    const checkTX = npcTX + udx * step;
+    const checkTY = npcTY + udy * step;
+    if (_tileOccupiedByNPC(checkTX, checkTY, npc)) {
+      // Try perpendicular detour: left then right (or up then down)
+      const perpOptions = (udx === 0)
+        ? [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }]
+        : [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }];
+      for (const perp of perpOptions) {
+        const detourTX = npcTX + perp.dx;
+        const detourTY = npcTY + perp.dy;
+        const dpx = detourTX * TILE + TILE / 2;
+        const dpy = detourTY * TILE + TILE / 2;
+        if (!_npcPosBlocked(dpx, dpy) && !_tileOccupiedByNPC(detourTX, detourTY, npc)) {
+          npc.route.unshift({ tx: detourTX, ty: detourTY });
+          npc._hasDetour = true; // prevent re-inserting until this detour is consumed
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+  return false;
+}
+
 function moveDeliNPC(npc) {
   if (!npc.route || npc.route.length === 0) {
     npc.moving = false;
@@ -356,7 +435,7 @@ function moveDeliNPC(npc) {
         stepX = npc._yieldDir * 0.5;
       }
       const testX = npc.x + stepX, testY = npc.y + stepY;
-      if (!_posInSolid(testX, testY)) {
+      if (!_npcPosBlocked(testX, testY)) {
         npc.x = testX;
         npc.y = testY;
       }
@@ -376,6 +455,8 @@ function moveDeliNPC(npc) {
     npc.y = targetY;
     npc.route.shift();
     npc._yieldCount = 0;
+    npc._hasDetour = false;
+    npc._detourCooldown = 60; // wait 60 frames before allowing new detours
     if (npc.route.length === 0) {
       npc.moving = false;
     }
@@ -396,43 +477,10 @@ function moveDeliNPC(npc) {
   }
   npc.frame = (npc.frame + 0.1) % 4;
 
-  // --- Active avoidance: steer around nearby NPCs (non-queue only) ---
+  // --- 2-tile sensing: detect NPCs ahead and insert detour waypoint ---
+  if (npc._detourCooldown > 0) npc._detourCooldown--;
   if (!inQueue) {
-    const avoidDist = TILE; // 1 tile look-ahead
-    const moveDirX = moveX / spd, moveDirY = moveY / spd; // unit direction
-    for (const other of deliNPCs) {
-      if (other === npc || !_isActive(other.state)) continue;
-      const toX = other.x - npc.x, toY = other.y - npc.y;
-      const toDist = Math.sqrt(toX * toX + toY * toY);
-      if (toDist <= 0 || toDist > avoidDist) continue;
-      // Dot product: is the other NPC ahead of us?
-      const dot = moveDirX * (toX / toDist) + moveDirY * (toY / toDist);
-      if (dot < 0.3) continue; // not ahead — skip
-      // Deflect perpendicular: choose side with more clearance
-      const perpLX = -moveDirY, perpLY = moveDirX;   // left perpendicular
-      const perpRX = moveDirY, perpRY = -moveDirX;    // right perpendicular
-      // Check which side has more space (sample 1 tile out each way)
-      const lClear = !_posInSolid(npc.x + perpLX * TILE, npc.y + perpLY * TILE);
-      const rClear = !_posInSolid(npc.x + perpRX * TILE, npc.y + perpRY * TILE);
-      let steerX, steerY;
-      if (lClear && !rClear) {
-        steerX = perpLX; steerY = perpLY;
-      } else if (rClear && !lClear) {
-        steerX = perpRX; steerY = perpRY;
-      } else {
-        // Both clear or both blocked — pick based on NPC id for determinism
-        steerX = (npc.id % 2 === 0) ? perpLX : perpRX;
-        steerY = (npc.id % 2 === 0) ? perpLY : perpRY;
-      }
-      // Blend: 60% original direction + 40% steer perpendicular
-      const blend = 0.4 * (1 - toDist / avoidDist); // stronger when closer
-      moveX = (moveX + steerX * spd * blend);
-      moveY = (moveY + steerY * spd * blend);
-      // Re-normalize to original speed
-      const newDist = Math.sqrt(moveX * moveX + moveY * moveY);
-      if (newDist > 0) { moveX = (moveX / newDist) * spd; moveY = (moveY / newDist) * spd; }
-      break; // only dodge one NPC per frame
-    }
+    _tryInsertDetour(npc);
   }
 
   // --- Phase A: Pre-movement NPC + Player blocking ---
@@ -475,20 +523,20 @@ function moveDeliNPC(npc) {
       npc.y = snapWP.ty * TILE + TILE / 2;
       npc.route.shift();
       npc._yieldCount = 0;
+      npc._hasDetour = false;
       npc._yieldTimer = 0;
     }
     return;
   }
 
-  // --- AABB tile collision ---
-  const mhw = 14;
+  // --- AABB tile collision (uses NPC-specific blocking: walls + chairs + kitchen) ---
   if (moveX !== 0) {
     const nx = npc.x + moveX;
-    if (!_posInSolid(nx, npc.y)) npc.x = nx;
+    if (!_npcPosBlocked(nx, npc.y)) npc.x = nx;
   }
   if (moveY !== 0) {
     const ny = npc.y + moveY;
-    if (!_posInSolid(npc.x, ny)) npc.y = ny;
+    if (!_npcPosBlocked(npc.x, ny)) npc.y = ny;
   }
 
   // --- Kitchen boundary (customer NPCs only) ---
@@ -543,8 +591,8 @@ function moveDeliNPC(npc) {
     }
   }
 
-  // --- Final solid re-validation: revert if pushes moved NPC into a wall/table ---
-  if (_posInSolid(npc.x, npc.y)) {
+  // --- Final re-validation: revert if pushes moved NPC into wall/table/chair/kitchen ---
+  if (_npcPosBlocked(npc.x, npc.y)) {
     npc.x = prePushX;
     npc.y = prePushY;
   }
@@ -565,19 +613,21 @@ function _getQueueIndex(npc) {
 }
 
 function _nextQueueSpot() {
-  // Find the next available queue index.
-  // Include ANY NPC with a claimed queueIdx (even walking ones heading to the queue)
-  // to prevent duplicate slot assignments when multiple NPCs enter simultaneously.
+  // Back-only joining: new NPCs always join at the back of the line.
+  // Find the slot immediately after the last occupied slot.
   const taken = new Set();
   for (const n of deliNPCs) {
-    if (n._queueIdx >= 0) {
-      taken.add(n._queueIdx);
-    }
+    if (n._queueIdx >= 0) taken.add(n._queueIdx);
   }
-  for (let i = 0; i < QUEUE_SPOTS.length; i++) {
-    if (!taken.has(i)) return i;
+  if (taken.size === 0) return 0; // empty queue — take front
+  // Find the rearmost (highest index) occupied slot
+  let maxIdx = -1;
+  for (const idx of taken) {
+    if (idx > maxIdx) maxIdx = idx;
   }
-  return -1; // queue full
+  const nextIdx = maxIdx + 1;
+  if (nextIdx >= QUEUE_SPOTS.length) return -1; // queue full (max 4)
+  return nextIdx;
 }
 
 function _advanceQueue() {
@@ -662,6 +712,8 @@ function spawnDeliNPC() {
     _yieldTimer: 0,            // frames remaining in yield pause
     _yieldDir: 0,              // sidestep direction (-1 or 1)
     _yieldCount: 0,            // consecutive yields (for emergency unstick)
+    _hasDetour: false,          // true while a detour waypoint is queued (prevents accumulation)
+    _detourCooldown: 0,         // frames to wait after detour consumed before allowing new ones
     // Emoji bubble rendering state (kept for draw.js compatibility)
     _bubbleTimer: 0,
     _bubbleActive: 0,
@@ -723,7 +775,7 @@ const DELI_NPC_AI = {
     const spot = QUEUE_SPOTS[qIdx];
     // Approach from one tile BELOW the spot, then walk north into position.
     // This avoids creating a visual "second line" at tx:13 alongside queue at tx:11.
-    const approachTY = Math.min(spot.ty + 1, 27);
+    const approachTY = Math.min(spot.ty + 1, 28);
     _npcStartRoute(npc,
       [{ tx: 13, ty: approachTY }, { tx: spot.tx, ty: approachTY }, { tx: spot.tx, ty: spot.ty }],
       'in_queue', 0
@@ -734,7 +786,24 @@ const DELI_NPC_AI = {
   pre_queue_browse: (npc) => {
     npc.moving = false;
     npc.dir = 1; // face shelves
-    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
+    if (npc.stateTimer > 0) {
+      // Browsing sidestep: if another NPC is within 2 tiles, step aside 1 tile
+      for (const other of deliNPCs) {
+        if (other === npc || other.state === 'eating' || other.state === '_despawn') continue;
+        const d = Math.sqrt((npc.x - other.x) ** 2 + (npc.y - other.y) ** 2);
+        if (d > 0 && d < NPC_SENSE_DIST) {
+          const stepDir = (npc.x < other.x) ? -1 : 1;
+          const stepTX = Math.round((npc.x - TILE / 2) / TILE) + stepDir;
+          const stepTY = Math.round((npc.y - TILE / 2) / TILE);
+          const spx = stepTX * TILE + TILE / 2, spy = stepTY * TILE + TILE / 2;
+          if (!_npcPosBlocked(spx, spy) && !_tileOccupiedByNPC(stepTX, stepTY, npc)) {
+            npc.x = spx; npc.y = spy;
+          }
+          break;
+        }
+      }
+      npc.stateTimer--; return;
+    }
 
     // Process purchase
     if (npc._pendingPurchase) {
@@ -985,7 +1054,24 @@ const DELI_NPC_AI = {
   shopping_aisle: (npc) => {
     npc.moving = false;
     npc.dir = 1; // face shelves
-    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
+    if (npc.stateTimer > 0) {
+      // Browsing sidestep: if another NPC is within 2 tiles, step aside 1 tile
+      for (const other of deliNPCs) {
+        if (other === npc || other.state === 'eating' || other.state === '_despawn') continue;
+        const d = Math.sqrt((npc.x - other.x) ** 2 + (npc.y - other.y) ** 2);
+        if (d > 0 && d < NPC_SENSE_DIST) {
+          const stepDir = (npc.x < other.x) ? -1 : 1;
+          const stepTX = Math.round((npc.x - TILE / 2) / TILE) + stepDir;
+          const stepTY = Math.round((npc.y - TILE / 2) / TILE);
+          const spx = stepTX * TILE + TILE / 2, spy = stepTY * TILE + TILE / 2;
+          if (!_npcPosBlocked(spx, spy) && !_tileOccupiedByNPC(stepTX, stepTY, npc)) {
+            npc.x = spx; npc.y = spy;
+          }
+          break;
+        }
+      }
+      npc.stateTimer--; return;
+    }
 
     // Purchase (if they decided to buy)
     if (npc._pendingPurchase) {
