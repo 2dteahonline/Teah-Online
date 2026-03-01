@@ -46,7 +46,7 @@ const KITCHEN_BOUNDARY_Y = 21 * TILE; // px: restriction only applies above this
 
 // NPC collision constants
 const NPC_BLOCK_DIST = 28;    // hard pre-movement blocking radius (px)
-const NPC_QUEUE_SEP  = 44;    // hard separation for queue NPCs (nearly full tile)
+const NPC_QUEUE_SEP  = 48;    // hard separation for queue NPCs (full tile)
 const NPC_GENERAL_SEP = 28;   // hard separation for non-queue NPCs
 
 // Chairs (NPCs sit here to eat) — 2 per side × 4 sides × 4 tables = 32 seats
@@ -324,38 +324,44 @@ function _npcStartRoute(npc, route, nextState, nextTimer) {
   npc.moving = true;
 }
 
+// Helper: check if position overlaps any solid tile
+function _posInSolid(px, py) {
+  const hw = 14;
+  const cL = Math.floor((px - hw) / TILE), cR = Math.floor((px + hw) / TILE);
+  const rT = Math.floor((py - hw) / TILE), rB = Math.floor((py + hw) / TILE);
+  return isSolid(cL, rT) || isSolid(cR, rT) || isSolid(cL, rB) || isSolid(cR, rB);
+}
+
 function moveDeliNPC(npc) {
   if (!npc.route || npc.route.length === 0) {
     npc.moving = false;
     return;
   }
 
+  const _isActive = (s) => s !== 'eating' && s !== 'at_condiments' && s !== 'spawn_wait' && s !== '_despawn';
+  const inQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
+
   // --- Yield behavior: paused to let another NPC pass ---
   if (npc._yieldTimer > 0) {
     npc._yieldTimer--;
     npc.moving = false;
-    // Try to sidestep perpendicular to route direction to make room
     if (npc.route && npc.route.length > 0) {
       const wp = npc.route[0];
       const routeDX = wp.tx * TILE + TILE / 2 - npc.x;
       const routeDY = wp.ty * TILE + TILE / 2 - npc.y;
       let stepX = 0, stepY = 0;
       if (Math.abs(routeDX) > Math.abs(routeDY)) {
-        stepY = npc._yieldDir * 0.5; // moving horizontally → step vertically
+        stepY = npc._yieldDir * 0.5;
       } else {
-        stepX = npc._yieldDir * 0.5; // moving vertically → step horizontally
+        stepX = npc._yieldDir * 0.5;
       }
-      // Only step if clear of walls
-      const mhw = 14;
       const testX = npc.x + stepX, testY = npc.y + stepY;
-      const tcL = Math.floor((testX - mhw) / TILE), tcR = Math.floor((testX + mhw) / TILE);
-      const trT = Math.floor((testY - mhw) / TILE), trB = Math.floor((testY + mhw) / TILE);
-      if (!isSolid(tcL, trT) && !isSolid(tcR, trT) && !isSolid(tcL, trB) && !isSolid(tcR, trB)) {
+      if (!_posInSolid(testX, testY)) {
         npc.x = testX;
         npc.y = testY;
       }
     }
-    return; // skip normal movement this frame
+    return;
   }
 
   const wp = npc.route[0];
@@ -366,11 +372,10 @@ function moveDeliNPC(npc) {
   const dist = Math.sqrt(dx * dx + dy * dy);
 
   if (dist < 6) {
-    // Snap to waypoint and advance
     npc.x = targetX;
     npc.y = targetY;
     npc.route.shift();
-    npc._yieldCount = 0; // reset yield counter on successful waypoint arrival
+    npc._yieldCount = 0;
     if (npc.route.length === 0) {
       npc.moving = false;
     }
@@ -389,41 +394,73 @@ function moveDeliNPC(npc) {
   } else {
     npc.dir = dy > 0 ? 0 : 1;
   }
-
   npc.frame = (npc.frame + 0.1) % 4;
 
+  // --- Active avoidance: steer around nearby NPCs (non-queue only) ---
+  if (!inQueue) {
+    const avoidDist = TILE; // 1 tile look-ahead
+    const moveDirX = moveX / spd, moveDirY = moveY / spd; // unit direction
+    for (const other of deliNPCs) {
+      if (other === npc || !_isActive(other.state)) continue;
+      const toX = other.x - npc.x, toY = other.y - npc.y;
+      const toDist = Math.sqrt(toX * toX + toY * toY);
+      if (toDist <= 0 || toDist > avoidDist) continue;
+      // Dot product: is the other NPC ahead of us?
+      const dot = moveDirX * (toX / toDist) + moveDirY * (toY / toDist);
+      if (dot < 0.3) continue; // not ahead — skip
+      // Deflect perpendicular: choose side with more clearance
+      const perpLX = -moveDirY, perpLY = moveDirX;   // left perpendicular
+      const perpRX = moveDirY, perpRY = -moveDirX;    // right perpendicular
+      // Check which side has more space (sample 1 tile out each way)
+      const lClear = !_posInSolid(npc.x + perpLX * TILE, npc.y + perpLY * TILE);
+      const rClear = !_posInSolid(npc.x + perpRX * TILE, npc.y + perpRY * TILE);
+      let steerX, steerY;
+      if (lClear && !rClear) {
+        steerX = perpLX; steerY = perpLY;
+      } else if (rClear && !lClear) {
+        steerX = perpRX; steerY = perpRY;
+      } else {
+        // Both clear or both blocked — pick based on NPC id for determinism
+        steerX = (npc.id % 2 === 0) ? perpLX : perpRX;
+        steerY = (npc.id % 2 === 0) ? perpLY : perpRY;
+      }
+      // Blend: 60% original direction + 40% steer perpendicular
+      const blend = 0.4 * (1 - toDist / avoidDist); // stronger when closer
+      moveX = (moveX + steerX * spd * blend);
+      moveY = (moveY + steerY * spd * blend);
+      // Re-normalize to original speed
+      const newDist = Math.sqrt(moveX * moveX + moveY * moveY);
+      if (newDist > 0) { moveX = (moveX / newDist) * spd; moveY = (moveY / newDist) * spd; }
+      break; // only dodge one NPC per frame
+    }
+  }
+
   // --- Phase A: Pre-movement NPC + Player blocking ---
-  // Check if proposed move would overlap another NPC or player. If so, block that axis.
   let blockX = false, blockY = false;
-  const _isActive = (s) => s !== 'eating' && s !== 'at_condiments' && s !== 'spawn_wait' && s !== '_despawn';
 
   for (const other of deliNPCs) {
     if (other === npc || !_isActive(other.state)) continue;
-    // Check X-axis: would moving X put us inside other?
+    // Skip blocking for co-located NPCs (e.g. just spawned at same entrance tile).
+    // Let Phase B separation push them apart instead of deadlocking.
+    const sepX = Math.abs(npc.x - other.x), sepY = Math.abs(npc.y - other.y);
+    if (sepX < 8 && sepY < 8) continue;
     if (Math.abs((npc.x + moveX) - other.x) < NPC_BLOCK_DIST &&
         Math.abs(npc.y - other.y) < NPC_BLOCK_DIST) {
       blockX = true;
     }
-    // Check Y-axis: would moving Y put us inside other?
     if (Math.abs(npc.x - other.x) < NPC_BLOCK_DIST &&
         Math.abs((npc.y + moveY) - other.y) < NPC_BLOCK_DIST) {
       blockY = true;
     }
   }
-  // Also block against player
   if (typeof GameState !== 'undefined') {
     const p = GameState.player;
     if (Math.abs((npc.x + moveX) - p.x) < NPC_BLOCK_DIST &&
-        Math.abs(npc.y - p.y) < NPC_BLOCK_DIST) {
-      blockX = true;
-    }
+        Math.abs(npc.y - p.y) < NPC_BLOCK_DIST) blockX = true;
     if (Math.abs(npc.x - p.x) < NPC_BLOCK_DIST &&
-        Math.abs((npc.y + moveY) - p.y) < NPC_BLOCK_DIST) {
-      blockY = true;
-    }
+        Math.abs((npc.y + moveY) - p.y) < NPC_BLOCK_DIST) blockY = true;
   }
 
-  // Zero out blocked axes
   if (blockX) moveX = 0;
   if (blockY) moveY = 0;
 
@@ -432,8 +469,7 @@ function moveDeliNPC(npc) {
     npc._yieldTimer = _randRange(10, 20);
     npc._yieldDir = Math.random() < 0.5 ? -1 : 1;
     npc._yieldCount = (npc._yieldCount || 0) + 1;
-    // Emergency unstick: if yielded too many times, snap to next waypoint
-    if (npc._yieldCount > 5 && npc.route && npc.route.length > 0) {
+    if (npc._yieldCount > 3 && npc.route && npc.route.length > 0) {
       const snapWP = npc.route[0];
       npc.x = snapWP.tx * TILE + TILE / 2;
       npc.y = snapWP.ty * TILE + TILE / 2;
@@ -444,34 +480,34 @@ function moveDeliNPC(npc) {
     return;
   }
 
-  // --- AABB tile collision (same pattern as mobs) ---
-  const mhw = 14; // NPC half-width
-
-  // Try X axis
+  // --- AABB tile collision ---
+  const mhw = 14;
   if (moveX !== 0) {
     const nx = npc.x + moveX;
-    let cL = Math.floor((nx - mhw) / TILE), cR = Math.floor((nx + mhw) / TILE);
-    let rT = Math.floor((npc.y - mhw) / TILE), rB = Math.floor((npc.y + mhw) / TILE);
-    if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
-      npc.x = nx;
-    }
+    if (!_posInSolid(nx, npc.y)) npc.x = nx;
   }
-  // Try Y axis
   if (moveY !== 0) {
     const ny = npc.y + moveY;
-    let cL = Math.floor((npc.x - mhw) / TILE), cR = Math.floor((npc.x + mhw) / TILE);
-    let rT = Math.floor((ny - mhw) / TILE), rB = Math.floor((ny + mhw) / TILE);
-    if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
-      npc.y = ny;
-    }
+    if (!_posInSolid(npc.x, ny)) npc.y = ny;
   }
 
   // --- Kitchen boundary (customer NPCs only) ---
+  // Prevent entering kitchen through door gap
   if (npc.y < KITCHEN_BOUNDARY_Y && npc.x < KITCHEN_BOUNDARY_X) {
     npc.x = KITCHEN_BOUNDARY_X;
   }
+  // Prevent phasing through counter wall from below (tx:1-24 must stay at ty >= 22)
+  if (npc.x < KITCHEN_BOUNDARY_X) {
+    const counterSafeY = 22 * TILE;
+    if (npc.y < counterSafeY) {
+      npc.y = counterSafeY;
+    }
+  }
 
-  // --- NPC-Player post-movement push (backup for existing overlaps) ---
+  // Save position before push/separation (for solid re-validation)
+  const prePushX = npc.x, prePushY = npc.y;
+
+  // --- NPC-Player post-movement push ---
   if (typeof GameState !== 'undefined') {
     const p = GameState.player;
     const pdx = npc.x - p.x, pdy = npc.y - p.y;
@@ -484,7 +520,6 @@ function moveDeliNPC(npc) {
   }
 
   // --- Phase B: Post-movement hard NPC-NPC separation ---
-  const inQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
   const hardSep = inQueue ? NPC_QUEUE_SEP : NPC_GENERAL_SEP;
   for (const other of deliNPCs) {
     if (other === npc || !_isActive(other.state)) continue;
@@ -494,31 +529,24 @@ function moveDeliNPC(npc) {
     if (sd > 0 && sd < hardSep) {
       const overlap = hardSep - sd;
       const ux = sx / sd, uy = sy / sd;
-
-      // Priority: stationary queue NPCs are immovable (they snap each frame)
-      const npcMoving = npc.route && npc.route.length > 0 && npc.moving;
       const otherInQueue = (other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food');
       const otherStationary = otherInQueue && !(other.route && other.route.length > 0 && other.moving);
 
       if (otherStationary) {
-        // Other is anchored in queue — this NPC yields fully
-        if (inQueue) {
-          npc.y += uy * overlap;
-        } else {
-          npc.x += ux * overlap;
-          npc.y += uy * overlap;
-        }
+        if (inQueue) { npc.y += uy * overlap; }
+        else { npc.x += ux * overlap; npc.y += uy * overlap; }
       } else {
-        // Both mobile — split the push 50/50
         const halfPush = overlap * 0.5;
-        if (inQueue) {
-          npc.y += uy * halfPush;
-        } else {
-          npc.x += ux * halfPush;
-          npc.y += uy * halfPush;
-        }
+        if (inQueue) { npc.y += uy * halfPush; }
+        else { npc.x += ux * halfPush; npc.y += uy * halfPush; }
       }
     }
+  }
+
+  // --- Final solid re-validation: revert if pushes moved NPC into a wall/table ---
+  if (_posInSolid(npc.x, npc.y)) {
+    npc.x = prePushX;
+    npc.y = prePushY;
   }
 }
 
@@ -560,9 +588,9 @@ function _advanceQueue() {
     .sort((a, b) => a._queueIdx - b._queueIdx); // front-to-back order
 
   const occupied = new Set();
-  // Mark slots currently being targeted or occupied
+  // Mark slots currently being targeted or occupied (include walking NPCs heading to queue)
   for (const n of deliNPCs) {
-    if (n.state === 'in_queue' || n.state === 'ordering' || n.state === 'waiting_food') {
+    if (n._queueIdx >= 0) {
       occupied.add(n._queueIdx);
     }
   }
@@ -626,7 +654,7 @@ function spawnDeliNPC() {
     _aisleVisits: 0,           // track aisle visit count
     // Mood system — 5 time-based stages with persistent emoji display
     _moodStage: 1,             // 1=happy, 2=neutral, 3=upset, 4=angry, 5=raging
-    _moodThreshold: _randRange(1800, 3600), // base threshold in frames (30-60s), randomized per NPC
+    _moodThreshold: _randRange(900, 1800), // base threshold in frames (15-30s), randomized per NPC
     _waitFrames: 0,            // total frames spent waiting in queue
     _leaveCheckTimer: 0,       // frames until next leave-chance roll (every 300 = 5s)
     _moodProgress: 0,          // smooth 0→1 progress for mood meter rendering
@@ -1047,7 +1075,7 @@ const DELI_NPC_AI = {
 
 // ===================== MOOD STAGE UPDATE =====================
 // 5 time-based stages. Mood only worsens while waiting in line.
-// _moodThreshold is randomized per NPC (30-60s base, frames at 60fps).
+// _moodThreshold is randomized per NPC (15-30s base, frames at 60fps).
 //   Stage 1: 0 → threshold         (happy, no emoji)
 //   Stage 2: threshold → threshold*2 (neutral 😐)
 //   Stage 3: threshold*2 → threshold*3 (upset ☹️)
