@@ -9,10 +9,10 @@ const MOB_TYPES = {
   tank:    { name: "Tank",    hp: 375, speed: 2.5,  damage: 20, killHeal: 20, skin: "#6a5a50", hair: "#2a2a2a", shirt: "#445566", pants: "#2a3a4a", contactRange: 78 },
   witch:   { name: "Witch",   hp: 188, speed: 1.31, damage: 6,  killHeal: 25, skin: "#8a9a7a", hair: "#2a1a3a", shirt: "#3a2a4a", pants: "#2a1a2a", contactRange: 76, summonRate: 540, summonMax: 4 },
   skeleton:{ name: "Skeleton",hp: 38,  speed: 2.81, damage: 8,  killHeal: 1,  skin: "#d8d0c0", hair: "#d0c8b8", shirt: "#c8c0b0", pants: "#b8b0a0", contactRange: 74 },
-  golem:   { name: "Golem",   hp: 1000,speed: 1.1, damage: 13, killHeal: 40, skin: "#6a6a6a", hair: "#555555", shirt: "#5a5a5a", pants: "#4a4a4a", contactRange: 82, boulderRate: 88, boulderSpeed: 23, boulderRange: 1000, summonRate: 300, summonMax: 3 },
-  mini_golem: { name: "Mini Golem", hp: 120, speed: 1.44, damage: 6, killHeal: 10, skin: "#7a7a7a", hair: "#666666", shirt: "#6a6a6a", pants: "#5a5a5a", contactRange: 50, boulderRate: 140, boulderSpeed: 17, boulderRange: 500 },
+  golem:   { name: "Golem",   hp: 1000,speed: 1.1, damage: 13, killHeal: 40, skin: "#6a6a6a", hair: "#555555", shirt: "#5a5a5a", pants: "#4a4a4a", contactRange: 82, boulderRate: 88, boulderSpeed: 21, boulderRange: 1000, summonRate: 300, summonMax: 3 },
+  mini_golem: { name: "Mini Golem", hp: 120, speed: 1.44, damage: 6, killHeal: 10, skin: "#7a7a7a", hair: "#666666", shirt: "#6a6a6a", pants: "#5a5a5a", contactRange: 50, boulderRate: 140, boulderSpeed: 15, boulderRange: 500 },
   mummy:   { name: "Mummy",   hp: 56,  speed: 2.5,  damage: 0,  killHeal: 5,  skin: "#8a8580", hair: "#7a7570", shirt: "#6a6560", pants: "#5a5550", contactRange: 76, explodeRange: 140, explodeDamage: 28, fuseMin: 32, fuseMax: 96 },
-  archer:  { name: "Archer",  hp: 75,  speed: 2.19, damage: 6,  killHeal: 8,  skin: "#3a3530", hair: "#0e0e0e", shirt: "#111111", pants: "#1a1a1a", contactRange: 74, arrowRate: 80, arrowSpeed: 19, arrowRange: 400, arrowBounces: 4, arrowLife: 600 },
+  archer:  { name: "Archer",  hp: 75,  speed: 2.19, damage: 6,  killHeal: 8,  skin: "#3a3530", hair: "#0e0e0e", shirt: "#111111", pants: "#1a1a1a", contactRange: 74, arrowRate: 80, arrowSpeed: 17, arrowRange: 400, arrowBounces: 4, arrowLife: 600 },
   healer:  { name: "Healer",  hp: 81,  speed: 1.56, damage: 5,  killHeal: 15, skin: "#e8d8c8", hair: "#f0e0c0", shirt: "#eee8dd", pants: "#d8d0c0", contactRange: 74, healRadius: 220, healRate: 72, healAmount: 10 },
 
   // ===================== FLOOR 1: AZURINE CITY =====================
@@ -31,7 +31,7 @@ const MOB_TYPES = {
     name: "Drone Lookout", hp: 70, speed: 2.25, damage: 8, killHeal: 10,
     skin: "#6a6a7a", hair: "#2a2a3a", shirt: "#4a4a5a", pants: "#3a3a4a", contactRange: 74,
     ai: 'archer', _specials: ['spot_mark'], specialCD: 600, // 10s
-    arrowRate: 100, arrowSpeed: 17, arrowRange: 350, arrowBounces: 0, arrowLife: 400,
+    arrowRate: 100, arrowSpeed: 15, arrowRange: 350, arrowBounces: 0, arrowLife: 400,
     projectileStyle: 'neon_bolt',
   },
   street_chemist: {
@@ -61,7 +61,7 @@ const MOB_TYPES = {
     name: "Renegade Sniper", hp: 70, speed: 2.13, damage: 10, killHeal: 10,
     skin: "#6a6a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#2a2a3a", contactRange: 74,
     ai: 'archer', _specials: ['ricochet_round'], specialCD: 480, // 8s
-    arrowRate: 90, arrowSpeed: 23, arrowRange: 650, arrowBounces: 1, arrowLife: 500,
+    arrowRate: 90, arrowSpeed: 21, arrowRange: 650, arrowBounces: 1, arrowLife: 500,
     projectileStyle: 'tracer',
   },
 
@@ -71,7 +71,7 @@ const MOB_TYPES = {
     skin: "#8a7a6a", hair: "#2a2a2a", shirt: "#3a2a1a", pants: "#2a1a0a", contactRange: 80,
     ai: 'archer', _specials: ['laser_snipe', 'tommy_burst', 'smart_mine', 'smoke_screen'],
     isBoss: true, bossScale: 1.4, specialCD: 720, // 12s — Floor 1 mini-boss
-    arrowRate: 120, arrowSpeed: 19, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 120, arrowSpeed: 17, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'golden',
     bulletColor: { main: '#ffd700', core: '#fff8dc', glow: 'rgba(255,215,0,0.3)' },
   },
@@ -138,7 +138,7 @@ const MOB_TYPES = {
     name: "Executive Handler", hp: 90, speed: 2.25, damage: 12, killHeal: 10,
     skin: "#8a8a7a", hair: "#2a2a1a", shirt: "#3a3a2a", pants: "#2a2a1a", contactRange: 76,
     ai: 'archer', _specials: ['drone_swarm'], specialCD: 900, // 15s
-    arrowRate: 100, arrowSpeed: 17, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
+    arrowRate: 100, arrowSpeed: 15, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
     projectileStyle: 'electric_bolt',
   },
 
@@ -148,7 +148,7 @@ const MOB_TYPES = {
     skin: "#9a8a6a", hair: "#1a1a1a", shirt: "#2a1a0a", pants: "#1a0a0a", contactRange: 80,
     ai: 'archer', _specials: ['dividend_barrage', 'hostile_takeover', 'nda_field', 'golden_parachute'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
-    arrowRate: 110, arrowSpeed: 19, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 110, arrowSpeed: 17, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'golden',
     bulletColor: { main: '#c0a040', core: '#f0e0a0', glow: 'rgba(192,160,64,0.3)' },
   },
@@ -279,7 +279,7 @@ const MOB_TYPES = {
     skin: "#5a5a7a", hair: "#1a1a3a", shirt: "#2a2a5a", pants: "#1a1a4a", contactRange: 82,
     ai: 'archer', _specials: ['pulse_override', 'repulsor_beam', 'nano_armor', 'drone_court'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
-    arrowRate: 90, arrowSpeed: 23, arrowRange: 550, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 90, arrowSpeed: 21, arrowRange: 550, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'electric_bolt',
     bulletColor: { main: '#4488ff', core: '#aaccff', glow: 'rgba(68,136,255,0.3)' },
   },

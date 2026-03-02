@@ -13,8 +13,8 @@
 // Current meta build: 50/50 firerate/freeze
 
 const gunStats = {
-  firerate: 80,
-  freeze: 20,
+  firerate: 50,
+  freeze: 50,
   spread: 0,
   stack: 0,
 };
@@ -53,7 +53,7 @@ let freezeTimer = 0;
 
 // bullets, hitEffects, deathEffects → js/authority/gameState.js
 // nextBulletId → js/authority/gameState.js (global, loaded before all systems)
-const BULLET_SPEED = 10.2;
+const BULLET_SPEED = 9.2;
 
 function spawnDeathEffect(m) {
   const colors = {
