@@ -607,12 +607,12 @@ const _mgSliders = {
     label: 'Freeze',
     desc: 'Higher = less slowdown after shooting.',
     min: 0, max: 100, step: 5,
-    // Linear: 0→2.50, 75→0.00, capped at 0 above 75
+    // Linear: 0→6.00, 70→0.40, capped at 0.40 above 70 (50=2.00)
     get: () => (typeof _ctxFreeze !== 'undefined') ? _ctxFreeze : 50,
     set: (v) => {
       _ctxFreeze = v;
-      const clamped = Math.min(v, 75);
-      const penalty = 2.50 - (clamped / 75) * 2.50; // 0→2.50, 75→0.00
+      const clamped = Math.min(v, 70);
+      const penalty = 6.00 - (clamped / 70) * 5.60; // 0→6.00, 70→0.40
       CT_X_GUN.freezePenalty = penalty;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.freezePenalty = penalty;
     },
@@ -622,12 +622,12 @@ const _mgSliders = {
     label: 'RoF',
     desc: 'Higher = faster rate of fire.',
     min: 0, max: 100, step: 5,
-    // Linear: 0→24f, 75→1f, capped at 1 above 75
+    // Linear: 0→38f, 70→3.4f, capped at 3.4 above 70 (50=13.3)
     get: () => (typeof _ctxRof !== 'undefined') ? _ctxRof : 50,
     set: (v) => {
       _ctxRof = v;
-      const clamped = Math.min(v, 75);
-      const frames = 24 - (clamped / 75) * 23; // 0→24, 75→1
+      const clamped = Math.min(v, 70);
+      const frames = 38 - (clamped / 70) * 34.6; // 0→38, 70→3.4
       CT_X_GUN.fireRate = frames;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.fireRate = frames;
     },
