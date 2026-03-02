@@ -47,6 +47,16 @@ function resetCombatState(mode) {
     addToInventory(createItem('melee', DEFAULT_MELEE));
     addToInventory(createItem('melee', DEFAULT_PICKAXE));
     addToInventory(createConsumable('potion', 'Health Potion', 3));
+    // Re-add owned main guns from gunsmith (persistent progression)
+    if (typeof window._gunLevels !== 'undefined' && typeof createMainGun === 'function') {
+      for (const gunId in window._gunLevels) {
+        const lvl = window._gunLevels[gunId];
+        if (lvl > 0) {
+          const gunItem = createMainGun(gunId, lvl);
+          if (gunItem) addToInventory(gunItem);
+        }
+      }
+    }
     // Weapon stats
     gun.damage = DEFAULT_GUN.damage; gun.magSize = DEFAULT_GUN.magSize; gun.ammo = DEFAULT_GUN.magSize;
     gun.reloading = false; gun.reloadTimer = 0; gun.fireCooldown = 0; gun.recoilTimer = 0;
