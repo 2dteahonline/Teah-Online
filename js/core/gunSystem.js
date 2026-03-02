@@ -644,7 +644,7 @@ const _mgSliders = {
       CT_X_GUN.spread = degrees;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.spread = degrees;
     },
-    display: (v) => (v * 0.3).toFixed(0) + '°'
+    display: (v) => v.toFixed(0)
   }
 };
 
