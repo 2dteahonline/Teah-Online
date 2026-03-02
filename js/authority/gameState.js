@@ -15,7 +15,7 @@ window.GameState = {
     x: 28 * TILE + TILE/2, y: 30 * TILE + TILE/2,
     vx: 0, vy: 0,
     knockVx: 0, knockVy: 0,
-    speed: 5.3, baseSpeed: 5.3,
+    speed: 5.83, baseSpeed: 5.83,
     dir: 0, frame: 0, animTimer: 0, moving: false,
     skin: "#d4bba8", hair: "#0c0c10", shirt: "#0a0a0c", pants: "#0a0a0c",
     eyes: "#4488aa", facialHair: "#0c0c10", shoes: "#3a2a1a", hat: "#2a2a3a",
