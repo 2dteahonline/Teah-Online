@@ -1795,8 +1795,8 @@ function drawGunIcon(cx, cy) {
 
 const camera = { x: 0, y: 0 };
 function updateCamera() {
-  camera.x = Math.max(0, Math.min(player.x - BASE_W / 2, MAP_W - BASE_W));
-  camera.y = Math.max(0, Math.min(player.y - BASE_H / 2, MAP_H - BASE_H));
+  camera.x = Math.max(0, Math.min(player.x - VIEW_W / 2, MAP_W - VIEW_W));
+  camera.y = Math.max(0, Math.min(player.y - VIEW_H / 2, MAP_H - VIEW_H));
 }
 
 // Track shoot-facing state

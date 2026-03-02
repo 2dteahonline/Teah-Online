@@ -12,8 +12,8 @@ function drawLevelBackground(camX, camY) {
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
   const startTY = Math.max(0, Math.floor(camY / TILE));
-  const endTX = Math.min(level.widthTiles - 1, startTX + Math.ceil(BASE_W / TILE) + 1);
-  const endTY = Math.min(level.heightTiles - 1, startTY + Math.ceil(BASE_H / TILE) + 1);
+  const endTX = Math.min(level.widthTiles - 1, startTX + Math.ceil(VIEW_W / TILE) + 1);
+  const endTY = Math.min(level.heightTiles - 1, startTY + Math.ceil(VIEW_H / TILE) + 1);
 
   for (let ty = startTY; ty <= endTY; ty++) {
     for (let tx = startTX; tx <= endTX; tx++) {

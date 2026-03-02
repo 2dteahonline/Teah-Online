@@ -70,7 +70,7 @@ function drawPlacedTiles(camX, camY) {
     const sx = t.x - camX;
     const sy = t.y - camY;
     // Skip if off screen
-    if (sx + TILE < 0 || sy + TILE < 0 || sx > BASE_W || sy > BASE_H) continue;
+    if (sx + TILE < 0 || sy + TILE < 0 || sx > VIEW_W || sy > VIEW_H) continue;
     ctx.fillStyle = t.color;
     ctx.fillRect(sx, sy, TILE, TILE);
     // Subtle texture

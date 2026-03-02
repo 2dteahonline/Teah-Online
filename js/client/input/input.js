@@ -20,14 +20,16 @@ canvas.addEventListener("mousemove", e => {
   // Intent: continuous mouse position
   InputIntent.mouseX = mouse.x;
   InputIntent.mouseY = mouse.y;
+  InputIntent.mouseWorldX = mouse.x / WORLD_ZOOM + camera.x;
+  InputIntent.mouseWorldY = mouse.y / WORLD_ZOOM + camera.y;
 
   // CT-X slider drag
   handleModifyGunDrag(mouse.x);
 
   // Drag-painting tiles
   if (isDraggingTile && activePlaceTool && !UI.isOpen('toolbox')) {
-    const worldX = mouse.x + camera.x;
-    const worldY = mouse.y + camera.y;
+    const worldX = mouse.x / WORLD_ZOOM + camera.x;
+    const worldY = mouse.y / WORLD_ZOOM + camera.y;
     placeTileAt(worldX, worldY);
   }
 
@@ -62,6 +64,9 @@ canvas.addEventListener("mousedown", e => {
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) / scale;
   const my = (e.clientY - rect.top) / scale;
+  // Update world coords on mousedown too (camera may have moved since last mousemove)
+  InputIntent.mouseWorldX = mx / WORLD_ZOOM + camera.x;
+  InputIntent.mouseWorldY = my / WORLD_ZOOM + camera.y;
 
   // Hotbar slot click detection
   const slotW = 64, slotH = 64, gap = 6;
@@ -145,8 +150,8 @@ canvas.addEventListener("mousedown", e => {
 
   // Tile placement on map (left click when tool is active and not on UI)
   if (activePlaceTool && !UI.anyOpen() && e.button === 0) {
-    const worldX = mx + camera.x;
-    const worldY = my + camera.y;
+    const worldX = mx / WORLD_ZOOM + camera.x;
+    const worldY = my / WORLD_ZOOM + camera.y;
     placeTileAt(worldX, worldY);
     isDraggingTile = true;
     return;
@@ -650,9 +655,9 @@ canvas.addEventListener("mousedown", e => {
 
   // Click on self to open identity panel
   if (!UI.anyOpen() && e.button === 0) {
-    const psx = player.x - camera.x;
-    const psy = player.y - camera.y;
-    const dist = Math.sqrt((mx - psx) ** 2 + (my - psy) ** 2);
+    const wmx = mx / WORLD_ZOOM + camera.x;
+    const wmy = my / WORLD_ZOOM + camera.y;
+    const dist = Math.sqrt((wmx - player.x) ** 2 + (wmy - player.y) ** 2);
     if (dist < 40) {
       UI.open('identity');
       return;
@@ -745,9 +750,10 @@ canvas.addEventListener("mousedown", e => {
   if (nearQueue && e.button === 0) {
     const qe = levelEntities.find(en => en.type === 'queue_zone');
     if (qe) {
-      const qsx = qe.tx * TILE - camera.x, qsy = qe.ty * TILE - camera.y;
+      const qwx = mx / WORLD_ZOOM + camera.x, qwy = my / WORLD_ZOOM + camera.y;
+      const qWorldX = qe.tx * TILE, qWorldY = qe.ty * TILE;
       const qew = (qe.w || 1) * TILE, qeh = (qe.h || 1) * TILE;
-      if (mx >= qsx && mx <= qsx + qew && my >= qsy && my <= qsy + qeh) {
+      if (qwx >= qWorldX && qwx <= qWorldX + qew && qwy >= qWorldY && qwy <= qWorldY + qeh) {
         joinQueue(); return;
       }
     }
@@ -802,8 +808,8 @@ canvas.addEventListener("contextmenu", e => {
     const rect = canvas.getBoundingClientRect();
     const rmx = (e.clientX - rect.left) / scale;
     const rmy = (e.clientY - rect.top) / scale;
-    const worldX = rmx + camera.x;
-    const worldY = rmy + camera.y;
+    const worldX = rmx / WORLD_ZOOM + camera.x;
+    const worldY = rmy / WORLD_ZOOM + camera.y;
     const tx = Math.floor(worldX / TILE) * TILE;
     const ty = Math.floor(worldY / TILE) * TILE;
     for (let i = placedTiles.length - 1; i >= 0; i--) {

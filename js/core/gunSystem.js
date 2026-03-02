@@ -421,10 +421,8 @@ function drawMobGroundEffects() {
 }
 function getAimDir() {
   if (InputIntent.arrowShooting) return InputIntent.arrowAimDir;
-  const psx = player.x - camera.x;
-  const psy = player.y - camera.y - 30;
-  const dx = InputIntent.mouseX - psx;
-  const dy = InputIntent.mouseY - psy;
+  const dx = InputIntent.mouseWorldX - player.x;
+  const dy = InputIntent.mouseWorldY - (player.y - 30);
   if (Math.abs(dx) > Math.abs(dy)) {
     return dx > 0 ? 3 : 2;
   } else {

@@ -11,6 +11,10 @@ function draw() {
   ctx.fillStyle = "#2a2a3a";
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
+  // Begin world-space zoom — everything drawn until the matching restore() is 2x
+  ctx.save();
+  ctx.scale(WORLD_ZOOM, WORLD_ZOOM);
+
   const cx = Math.floor(camera.x), cy = Math.floor(camera.y);
 
   // Draw level background (placeholder tiles)
@@ -1458,6 +1462,9 @@ function draw() {
     ctx.beginPath(); ctx.arc(player.x, player.y - 15, 22, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
+
+  // End world-space zoom — everything below is screen-space HUD/UI at native 1920x1080
+  ctx.restore();
 
   // HUD (screen space)
   if (showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
