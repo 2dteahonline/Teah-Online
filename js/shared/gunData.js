@@ -49,13 +49,13 @@ const MAIN_GUNS = {
     name: 'Ironwood Bow',
     type: 'gun',
     category: 'bow',
-    desc: 'Slow, hard-hitting arrows that pierce through mobs',
+    desc: 'Hard-hitting arrows that pierce through mobs',
     buyPrice: 400,
     bulletColor: { main: '#8b5e3c', core: '#a07050', glow: 'rgba(139,94,60,0.2)' },
-    base: { damage: 60, fireRate: 30, pierceCount: 1, bulletSpeed: 11.0 },
-    max:  { damage: 200, fireRate: 18, pierceCount: 3, bulletSpeed: 15.2 },
+    base: { damage: 60, fireRate: 18, magSize: 12, reloadSpeed: 90, pierceCount: 1, bulletSpeed: 11.0 },
+    max:  { damage: 200, fireRate: 10, magSize: 20, reloadSpeed: 50, pierceCount: 3, bulletSpeed: 15.2 },
     // Special flags — always present at all levels
-    flags: { pierce: true, neverReload: true, isArrow: true },
+    flags: { pierce: true, isArrow: true },
   },
 
   volt_9: {
