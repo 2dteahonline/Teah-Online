@@ -607,13 +607,13 @@ const _mgSliders = {
     label: 'Freeze',
     desc: 'Higher = less slowdown after shooting.',
     min: 0, max: 100, step: 5,
-    // Piecewise linear: 0=0.50, 50=0.15, 100=0.00
+    // Piecewise linear: 0=2.50, 50=0.15, 100=0.00 (5x punishment)
     get: () => (typeof _ctxFreeze !== 'undefined') ? _ctxFreeze : 50,
     set: (v) => {
       _ctxFreeze = v;
       let penalty;
       if (v <= 50) {
-        penalty = 0.50 - (v / 50) * 0.35; // 0→0.50, 50→0.15
+        penalty = 2.50 - (v / 50) * 2.35; // 0→2.50, 50→0.15
       } else {
         penalty = 0.15 - ((v - 50) / 50) * 0.15; // 50→0.15, 100→0.00
       }
@@ -626,13 +626,13 @@ const _mgSliders = {
     label: 'RoF',
     desc: 'Higher = faster rate of fire.',
     min: 0, max: 100, step: 5,
-    // Piecewise linear: 0=8f, 50=4f, 100=1f (every step of 5 is distinct)
+    // Piecewise linear: 0=24f, 50=4f, 100=1f (5x punishment, every step of 5 is distinct)
     get: () => (typeof _ctxRof !== 'undefined') ? _ctxRof : 50,
     set: (v) => {
       _ctxRof = v;
       let frames;
       if (v <= 50) {
-        frames = 8 - (v / 50) * 4; // 0→8, 50→4
+        frames = 24 - (v / 50) * 20; // 0→24, 50→4
       } else {
         frames = 4 - ((v - 50) / 50) * 3; // 50→4, 100→1
       }
