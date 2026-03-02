@@ -596,9 +596,10 @@ function updateGun() {
 // Slider panel to tweak CT-X freeze penalty and fire rate in real-time.
 // Only affects CT_X_GUN — other guns are untouched.
 
-let _mgDragging = null; // 'freeze' | 'rof' | null
+let _mgDragging = null; // 'freeze' | 'rof' | 'spread' | null
 let _ctxFreeze = 50;   // slider value 0-100 (default: 50)
 let _ctxRof = 50;      // slider value 0-100 (default: 50)
+let _ctxSpread = 0;    // slider value 0-30 (default: 0, step 10)
 
 // Slider config: min, max, step, and how to read/write the value
 const _mgSliders = {
@@ -631,13 +632,26 @@ const _mgSliders = {
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.fireRate = frames;
     },
     display: (v) => v.toFixed(0)
+  },
+  spread: {
+    label: 'Spread',
+    desc: 'Bullet spread angle in degrees. 0 = straight.',
+    min: 0, max: 30, step: 10,
+    // 0=straight, 10=slight cone, 20=moderate, 30=wide cone
+    get: () => (typeof _ctxSpread !== 'undefined') ? _ctxSpread : 0,
+    set: (v) => {
+      _ctxSpread = v;
+      CT_X_GUN.spread = v;
+      if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.spread = v;
+    },
+    display: (v) => v.toFixed(0) + '°'
   }
 };
 
 function drawModifyGunPanel() {
   if (!UI.isOpen('modifygun')) return;
 
-  const pw = 500, ph = 340;
+  const pw = 500, ph = 440;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
 
   // Dimmed backdrop
@@ -667,7 +681,7 @@ function drawModifyGunPanel() {
 
   // Draw sliders
   const sliderX = px + 40, sliderW = pw - 80;
-  const keys = ['freeze', 'rof'];
+  const keys = ['freeze', 'rof', 'spread'];
   let sy = py + 70;
 
   for (const key of keys) {
@@ -728,7 +742,7 @@ function drawModifyGunPanel() {
 function handleModifyGunClick(mx, my) {
   if (!UI.isOpen('modifygun')) return false;
 
-  const pw = 500, ph = 340;
+  const pw = 500, ph = 440;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
 
   // Close button
@@ -738,7 +752,7 @@ function handleModifyGunClick(mx, my) {
 
   // Slider interaction
   const sliderX = px + 40, sliderW = pw - 80;
-  const keys = ['freeze', 'rof'];
+  const keys = ['freeze', 'rof', 'spread'];
   let sy = py + 70;
 
   for (const key of keys) {
@@ -756,7 +770,7 @@ function handleModifyGunClick(mx, my) {
   const btnX = px + pw / 2 - btnW / 2, btnY = py + ph - 58;
   if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
     UI.close(); _mgDragging = null;
-    chatMessages.push({ name: "SYSTEM", text: "CT-X saved — Freeze: " + (_mgSliders.freeze.get() * 100).toFixed(0) + "% | RoF: " + _mgSliders.rof.get().toFixed(0) + "f", time: Date.now() });
+    chatMessages.push({ name: "SYSTEM", text: "CT-X saved — Freeze: " + _mgSliders.freeze.get().toFixed(0) + " | RoF: " + _mgSliders.rof.get().toFixed(0) + " | Spread: " + _mgSliders.spread.get().toFixed(0) + "°", time: Date.now() });
     return true;
   }
 
