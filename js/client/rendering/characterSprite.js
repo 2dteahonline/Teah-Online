@@ -247,11 +247,11 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
     ctx.strokeStyle = "#00cc44";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(sx, sy - 20, 32, 0, Math.PI * 2);
+    ctx.arc(sx, sy - 20, 27, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = "rgba(0,200,60,0.08)";
     ctx.beginPath();
-    ctx.arc(sx, sy - 20, 32, 0, Math.PI * 2);
+    ctx.arc(sx, sy - 20, 27, 0, Math.PI * 2);
     ctx.fill();
   }
 
