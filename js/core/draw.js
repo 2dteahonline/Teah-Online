@@ -11,7 +11,7 @@ function draw() {
   ctx.fillStyle = "#2a2a3a";
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
-  // Begin world-space zoom — everything drawn until the matching restore() is 2x
+  // Begin world-space zoom — everything drawn until the matching restore() is scaled
   ctx.save();
   ctx.scale(WORLD_ZOOM, WORLD_ZOOM);
 
@@ -1797,6 +1797,22 @@ function draw() {
     ctx.textAlign = "right";
     ctx.fillText(`${Math.round(spActual)} px/sec`, BASE_W - 10, 16);
     ctx.textAlign = "left";
+  }
+
+  // === DEBUG OVERLAY — zoom/scale tuning info (top-left, below debug flags) ===
+  {
+    const tilesX = Math.round(VIEW_W / TILE * 10) / 10;
+    const tilesY = Math.round(VIEW_H / TILE * 10) / 10;
+    const charH = Math.round(CHAR_SCALE * 68);  // 68 = base body height approx
+    const dbgY = Scene.inDungeon ? 160 : 50;
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(8, dbgY - 12, 200, 50);
+    ctx.fillStyle = "#0ff";
+    ctx.fillText(`ZOOM ${WORLD_ZOOM}  CHAR_SCALE ${CHAR_SCALE}`, 12, dbgY);
+    ctx.fillText(`tiles visible: ${tilesX} x ${tilesY}`, 12, dbgY + 14);
+    ctx.fillText(`char height: ${charH}px  TILE: ${TILE}px`, 12, dbgY + 28);
   }
 
   // === DEATH / RESPAWN OVERLAY ===

@@ -225,7 +225,7 @@ initTemplatesheets();
 let useSpriteMode = false;
 
 // ===================== BIG CHARACTER (~96px tall) =====================
-const CHAR_SCALE = 1.4;
+const CHAR_SCALE = 1.1;
 
 function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp, isPlayer, mobType, maxHp, boneSwing, mobScale, castTimer) {
   const effectiveScale = CHAR_SCALE * (mobScale || 1);
