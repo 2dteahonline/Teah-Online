@@ -2035,7 +2035,7 @@ function update() {
   const ny = player.y + player.vy;
 
   // Wall collision with sliding
-  const hw = 16;
+  const hw = GAME_CONFIG.PLAYER_WALL_HW;
 
   // Try X movement
   let canMoveX = true;
@@ -2063,7 +2063,7 @@ function update() {
   if (player.knockVx !== 0 || player.knockVy !== 0) {
     const knx = player.x + player.knockVx;
     const kny = player.y + player.knockVy;
-    const hw2 = 16;
+    const hw2 = GAME_CONFIG.PLAYER_WALL_HW;
     // X knockback
     const kcL = Math.floor((knx - hw2) / TILE), kcR = Math.floor((knx + hw2) / TILE);
     const krT = Math.floor((player.y - hw2) / TILE), krB = Math.floor((player.y + hw2) / TILE);
@@ -2077,10 +2077,10 @@ function update() {
       player.y = kny;
     } else { player.knockVy = 0; }
     // Decay
-    player.knockVx *= 0.8;
-    player.knockVy *= 0.8;
-    if (Math.abs(player.knockVx) < 0.5) player.knockVx = 0;
-    if (Math.abs(player.knockVy) < 0.5) player.knockVy = 0;
+    player.knockVx *= GAME_CONFIG.KNOCKBACK_DECAY;
+    player.knockVy *= GAME_CONFIG.KNOCKBACK_DECAY;
+    if (Math.abs(player.knockVx) < GAME_CONFIG.KNOCKBACK_THRESHOLD) player.knockVx = 0;
+    if (Math.abs(player.knockVy) < GAME_CONFIG.KNOCKBACK_THRESHOLD) player.knockVy = 0;
   }
 
   // Ore node collision — push player out of big rocks in mine

@@ -3,10 +3,10 @@
 // Split from inventorySystem.js for single-responsibility
 
 // Global helper: check if a position is wall-free (used by spawning, mob AI, and body blocking)
-const POS_HW = 12;
 function positionClear(px, py) {
-  const cL = Math.floor((px - POS_HW) / TILE), cR = Math.floor((px + POS_HW) / TILE);
-  const rT = Math.floor((py - POS_HW) / TILE), rB = Math.floor((py + POS_HW) / TILE);
+  const hw = GAME_CONFIG.POS_HW;
+  const cL = Math.floor((px - hw) / TILE), cR = Math.floor((px + hw) / TILE);
+  const rT = Math.floor((py - hw) / TILE), rB = Math.floor((py + hw) / TILE);
   return !isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB);
 }
 
@@ -62,7 +62,7 @@ function updateMobs() {
       if (b.hp <= 0) continue;
       const sdx = a.x - b.x, sdy = a.y - b.y;
       const sDist = Math.sqrt(sdx * sdx + sdy * sdy);
-      const minSep = 36;
+      const minSep = GAME_CONFIG.MOB_MIN_SEPARATION;
       if (sDist < minSep && sDist > 0.1) {
         const push = (minSep - sDist) * 0.45;
         const px = (sdx / sDist) * push, py = (sdy / sDist) * push;
@@ -110,7 +110,7 @@ function updateMobs() {
 
         // Crowding detection — count nearby allies
         let nearbyCount = 0;
-        const crowdRadius = 55;
+        const crowdRadius = GAME_CONFIG.MOB_CROWD_RADIUS;
         for (const other of mobs) {
           if (other === m || other.hp <= 0) continue;
           const cdx = m.x - other.x, cdy = m.y - other.y;
@@ -135,7 +135,7 @@ function updateMobs() {
         const ndy = tDist > 0 ? tdy / tDist : 0;
 
         // Dynamic speed cap — base speed only, boots should NOT make mobs faster
-        const pSpd = player.baseSpeed || 3.5;
+        const pSpd = player.baseSpeed || GAME_CONFIG.PLAYER_BASE_SPEED;
         const isRunnerAI = m.type === "runner" || (MOB_TYPES[m.type] && MOB_TYPES[m.type].ai === 'runner');
         const maxSpd = isRunnerAI ? pSpd * 1.1 : pSpd * 0.85;
         let effSpeed = Math.min(m.speed, maxSpd);
@@ -206,7 +206,7 @@ function updateMobs() {
       }
 
       // Apply movement with AABB tile collision + sliding
-      const mhw = 14;
+      const mhw = GAME_CONFIG.MOB_WALL_HW;
       const nx = m.x + moveX;
       const ny = m.y + moveY;
       let movedX = false, movedY = false;
@@ -820,10 +820,10 @@ function updateMobs() {
   }
 
   // === BODY BLOCKING: solid collision between all entities ===
-  const MOB_RADIUS = 27;
+  const MOB_RADIUS = GAME_CONFIG.MOB_RADIUS;
   const MOB_MIN_DIST = MOB_RADIUS * 2;
-  const PLAYER_RADIUS = 27;
-  const hw2 = POS_HW;
+  const PLAYER_RADIUS = GAME_CONFIG.PLAYER_RADIUS;
+  const hw2 = GAME_CONFIG.POS_HW;
 
   // Helper: clamp entity out of walls after being pushed
   function clampOutOfWalls(entity) {

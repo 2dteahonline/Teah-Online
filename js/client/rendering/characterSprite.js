@@ -226,7 +226,7 @@ let useSpriteMode = false;
 
 // ===================== BIG CHARACTER (~96px tall) =====================
 const CHAR_SCALE = 1.1;
-const DEFAULT_HITBOX_RADIUS = 27; // matches MOB_RADIUS/PLAYER_RADIUS — mobs can override via MOB_TYPES[type].radius
+const DEFAULT_HITBOX_RADIUS = GAME_CONFIG.DEFAULT_HITBOX_RADIUS;
 
 function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp, isPlayer, mobType, maxHp, boneSwing, mobScale, castTimer) {
   const effectiveScale = CHAR_SCALE * (mobScale || 1);

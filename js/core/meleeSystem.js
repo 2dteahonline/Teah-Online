@@ -863,10 +863,10 @@ function updateBullets() {
   // Bullet: radius 5px
   // Hit distance: 26 + 5 = 31px between centers
 
-  const BULLET_R = 6;
-  const ENTITY_R = 15;
-  const HIT_DIST = BULLET_R + ENTITY_R; // 25
-  const HIT_DIST_SQ = HIT_DIST * HIT_DIST; // 625
+  const BULLET_R = GAME_CONFIG.BULLET_R;
+  const ENTITY_R = GAME_CONFIG.ENTITY_R;
+  const HIT_DIST = BULLET_R + ENTITY_R;
+  const HIT_DIST_SQ = HIT_DIST * HIT_DIST;
 
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
