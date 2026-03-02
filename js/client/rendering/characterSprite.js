@@ -712,8 +712,6 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
       if (gunId === 'smg') { ctx.fillStyle = "#3a4a3a"; ctx.fillRect(rx - 8 - c.barrelLen - 10, ry - 3, 10, 7); }
       // Rifle has front grip
       if (gunId === 'rifle') { ctx.fillStyle = "#3a2030"; ctx.fillRect(rx - 20, ry + 5, 4, 8); }
-      // CT-X has small frost glow at barrel tip
-      if (gunId === 'ct_x') { ctx.fillStyle = "rgba(100,220,255,0.4)"; ctx.beginPath(); ctx.arc(rx - 8 - c.barrelLen - 3, ry, 3, 0, Math.PI * 2); ctx.fill(); }
       // Frost rifle has glowing barrel tip
       if (gunId === 'frost_rifle') { ctx.fillStyle = "rgba(100,200,255,0.5)"; ctx.beginPath(); ctx.arc(rx - 8 - c.barrelLen - 3, ry, 5, 0, Math.PI * 2); ctx.fill(); }
       // Inferno cannon has wide muzzle + glow
@@ -729,7 +727,6 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
       ctx.fillStyle = c.muzzle; ctx.fillRect(rx + 8 + c.barrelLen, ry - 4, 6, 9);
       if (gunId === 'smg') { ctx.fillStyle = "#3a4a3a"; ctx.fillRect(rx + 8 + c.barrelLen, ry - 3, 10, 7); }
       if (gunId === 'rifle') { ctx.fillStyle = "#3a2030"; ctx.fillRect(rx + 16, ry + 5, 4, 8); }
-      if (gunId === 'ct_x') { ctx.fillStyle = "rgba(100,220,255,0.4)"; ctx.beginPath(); ctx.arc(rx + 8 + c.barrelLen + 3, ry, 3, 0, Math.PI * 2); ctx.fill(); }
       if (gunId === 'frost_rifle') { ctx.fillStyle = "rgba(100,200,255,0.5)"; ctx.beginPath(); ctx.arc(rx + 8 + c.barrelLen + 3, ry, 5, 0, Math.PI * 2); ctx.fill(); }
       if (gunId === 'inferno_cannon') { ctx.fillStyle = "#5a2a0a"; ctx.fillRect(rx + 8 + c.barrelLen, ry - 5, 8, 11); ctx.fillStyle = "rgba(255,100,20,0.4)"; ctx.beginPath(); ctx.arc(rx + 8 + c.barrelLen + 4, ry, 6, 0, Math.PI * 2); ctx.fill(); }
     } else if (pointDir === 0) { // DOWN

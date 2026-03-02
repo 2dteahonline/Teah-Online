@@ -840,6 +840,60 @@ function drawShopPanel() {
       ctx.fillText("T" + item.tier, ix + 22, iy + 21);
     }
 
+    // Weapon icon preview (top-right of card)
+    if (item.equipData) {
+      const wId = item.equipData.id;
+      const wcx = ix + itemW - 34, wcy = iy + 18;
+      const wAlpha = isLocked ? 0.3 : 1;
+      ctx.globalAlpha = wAlpha;
+      // Gun icons
+      if (wId === 'smg') {
+        ctx.fillStyle = "#555"; ctx.fillRect(wcx - 14, wcy - 3, 28, 6);
+        ctx.fillStyle = "#444"; ctx.fillRect(wcx - 10, wcy - 5, 14, 10);
+        ctx.fillStyle = "#333"; ctx.fillRect(wcx - 2, wcy + 3, 4, 10);
+      } else if (wId === 'rifle') {
+        ctx.fillStyle = "#888"; ctx.fillRect(wcx - 18, wcy - 2, 36, 5);
+        ctx.fillStyle = "#6a5838"; ctx.fillRect(wcx + 12, wcy - 5, 10, 10);
+        ctx.fillStyle = "#777"; ctx.fillRect(wcx + 4, wcy + 3, 4, 8);
+      } else if (wId === 'frost_rifle') {
+        ctx.fillStyle = "#4488bb"; ctx.fillRect(wcx - 18, wcy - 2, 36, 5);
+        ctx.fillStyle = "#6ab8e8"; ctx.fillRect(wcx - 16, wcy - 3, 28, 3);
+        ctx.fillStyle = "#3a5a6a"; ctx.fillRect(wcx + 12, wcy - 5, 10, 10);
+        ctx.fillStyle = "rgba(100,200,255,0.3)"; ctx.beginPath(); ctx.arc(wcx - 18, wcy, 4, 0, Math.PI * 2); ctx.fill();
+      } else if (wId === 'inferno_cannon') {
+        ctx.fillStyle = "#8a3a1a"; ctx.fillRect(wcx - 18, wcy - 3, 36, 7);
+        ctx.fillStyle = "#a05030"; ctx.fillRect(wcx - 16, wcy - 2, 32, 2);
+        ctx.fillStyle = "#4a2a1a"; ctx.fillRect(wcx + 12, wcy - 5, 10, 11);
+        ctx.fillStyle = "rgba(255,100,20,0.3)"; ctx.beginPath(); ctx.arc(wcx - 18, wcy, 5, 0, Math.PI * 2); ctx.fill();
+      // Melee icons
+      } else if (wId === 'sword') {
+        ctx.strokeStyle = "#c0ccee"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(wcx - 10, wcy + 10); ctx.lineTo(wcx + 10, wcy - 10); ctx.stroke();
+        ctx.strokeStyle = "#c0a040"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(wcx - 8, wcy + 8); ctx.lineTo(wcx - 13, wcy + 12); ctx.stroke();
+        ctx.fillStyle = "#c0a040"; ctx.beginPath(); ctx.arc(wcx - 14, wcy + 13, 1.5, 0, Math.PI * 2); ctx.fill();
+      } else if (wId === 'ninja_katanas') {
+        ctx.strokeStyle = "#1a1a2a"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(wcx - 10, wcy + 10); ctx.lineTo(wcx + 10, wcy - 10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wcx + 10, wcy + 10); ctx.lineTo(wcx - 10, wcy - 10); ctx.stroke();
+        ctx.fillStyle = "#333"; ctx.fillRect(wcx - 2, wcy - 2, 4, 4);
+      } else if (wId === 'storm_blade') {
+        ctx.strokeStyle = "#a0d0ff"; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(wcx - 10, wcy + 10); ctx.lineTo(wcx + 10, wcy - 10); ctx.stroke();
+        ctx.fillStyle = "#d0e8ff"; ctx.beginPath(); ctx.arc(wcx + 10, wcy - 10, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#6a4a2a"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(wcx - 12, wcy + 12); ctx.lineTo(wcx - 8, wcy + 8); ctx.stroke();
+      } else if (wId === 'war_cleaver') {
+        ctx.strokeStyle = "#2a0808"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(wcx, wcy + 12); ctx.lineTo(wcx, wcy - 6); ctx.stroke();
+        ctx.strokeStyle = "#a01515"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(wcx, wcy - 6); ctx.lineTo(wcx, wcy - 12); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wcx, wcy - 5); ctx.lineTo(wcx - 5, wcy - 10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wcx, wcy - 5); ctx.lineTo(wcx + 5, wcy - 10); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     // Item name
     ctx.font = "bold 16px monospace";
     ctx.fillStyle = isLocked ? "#3a3a3a" : isOwned ? PALETTE.accent : canAfford ? "#eee" : "#555";
