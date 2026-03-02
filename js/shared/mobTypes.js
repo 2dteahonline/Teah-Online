@@ -1,6 +1,7 @@
 // ===================== MOB TYPES =====================
 // Shared data: mob stats, caps, crowd exemptions
 // Extracted from index_2.html — Phase A, Step 2
+// Optional per-mob property: `radius` — hitbox/collision circle size in px (default: 27)
 
 const MOB_TYPES = {
   grunt:   { name: "Grunt",   hp: 106, speed: 2.81, damage: 18, killHeal: 10, skin: "#7a6050", hair: "#3a2a1a", shirt: "#556644", pants: "#3a3a2a", contactRange: 76 },

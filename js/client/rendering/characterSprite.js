@@ -226,6 +226,7 @@ let useSpriteMode = false;
 
 // ===================== BIG CHARACTER (~96px tall) =====================
 const CHAR_SCALE = 1.1;
+const DEFAULT_HITBOX_RADIUS = 27; // matches MOB_RADIUS/PLAYER_RADIUS — mobs can override via MOB_TYPES[type].radius
 
 function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp, isPlayer, mobType, maxHp, boneSwing, mobScale, castTimer) {
   const effectiveScale = CHAR_SCALE * (mobScale || 1);
@@ -243,15 +244,18 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
 
   // Legacy canvas drawing
   // Draw hitbox circle at normal scale (before character) — skip for deli NPCs
-  if ((!isPlayer || gameSettings.playerIndicator) && mobType !== 'deliNPC') {
+  // Radius is per-mob (MOB_TYPES[type].radius) or DEFAULT_HITBOX_RADIUS fallback
+  const showHitbox = isPlayer ? gameSettings.showOwnHitbox : gameSettings.showOtherHitbox;
+  if (showHitbox && mobType !== 'deliNPC') {
+    const hitboxR = (!isPlayer && mobType && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || DEFAULT_HITBOX_RADIUS;
     ctx.strokeStyle = "#00cc44";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(sx, sy - 20, 27, 0, Math.PI * 2);
+    ctx.arc(sx, sy - 20, hitboxR, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = "rgba(0,200,60,0.08)";
     ctx.beginPath();
-    ctx.arc(sx, sy - 20, 27, 0, Math.PI * 2);
+    ctx.arc(sx, sy - 20, hitboxR, 0, Math.PI * 2);
     ctx.fill();
   }
 

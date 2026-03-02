@@ -81,7 +81,8 @@ const gameSettings = {
   killFeed: true,
   waveAnnounce: true,
   playerHpBar: true,
-  playerIndicator: true,
+  showOwnHitbox: true,
+  showOtherHitbox: true,
   // Profile
   privateStats: false,
   language: "English",

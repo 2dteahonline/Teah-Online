@@ -75,9 +75,15 @@ const SaveLoad = {
 
       // Settings
       if (data.settings) {
-        for (const key in data.settings) {
+        const s = data.settings;
+        // Migrate old playerIndicator → new split hitbox toggles
+        if (s.playerIndicator !== undefined && s.showOwnHitbox === undefined) {
+          gameSettings.showOwnHitbox = s.playerIndicator;
+          gameSettings.showOtherHitbox = true;
+        }
+        for (const key in s) {
           if (key in gameSettings) {
-            gameSettings[key] = data.settings[key];
+            gameSettings[key] = s[key];
           }
         }
       }
@@ -199,7 +205,8 @@ const SETTINGS_DATA = {
     { label: "Kill Feed", key: "killFeed", type: "toggle" },
     { label: "Wave Announcements", key: "waveAnnounce", type: "toggle" },
     { label: "Player HP Bar", key: "playerHpBar", type: "toggle" },
-    { label: "Player Indicator", key: "playerIndicator", type: "toggle" },
+    { label: "Own Hitbox", key: "showOwnHitbox", type: "toggle" },
+    { label: "Mob/Player Hitbox", key: "showOtherHitbox", type: "toggle" },
   ],
   Profile: [
     { label: "Private Stats", key: "privateStats", type: "toggle" },
