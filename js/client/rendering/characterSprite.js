@@ -666,83 +666,691 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   };
 
   const drawRifle = (rx, ry, pointDir) => {
-    // Pick colors/proportions based on equipped gun (drawChoso is player-only)
     const eq = playerEquip.gun;
     const gunId = eq ? eq.id : 'recruit';
 
-    // Gun visual configs: { metal, metalL, stock, barrel length, compact }
-    const configs = {
-      recruit:        { metal: "#2e2e32", metalL: "#3a3a40", stock: "#2a2218", stockL: "#3a3228", mag: "#282828", accent: "#444", muzzle: "#1a1a1a", barrelLen: 42, handguardLen: 22, compact: false },
-      pistol:         { metal: "#5a5a5e", metalL: "#6a6a70", stock: "#4a4240", stockL: "#5a524e", mag: "#484848", accent: "#7a7a7a", muzzle: "#3a3a3a", barrelLen: 18, handguardLen: 8, compact: true },
-      ct_x:           { metal: "#2a4a2a", metalL: "#3a5a3a", stock: "#1a3a1a", stockL: "#2a4a2a", mag: "#1a3a1a", accent: "#4a7a4a", muzzle: "#1a3a1a", barrelLen: 20, handguardLen: 10, compact: true },
-      smg:            { metal: "#3a4a3a", metalL: "#4a5a4a", stock: "#2a3a2a", stockL: "#3a4a3a", mag: "#2a3a2a", accent: "#5a7a5a", muzzle: "#2a3a2a", barrelLen: 24, handguardLen: 14, compact: true },
-      rifle:          { metal: "#4a3040", metalL: "#5a4050", stock: "#3a2030", stockL: "#4a3040", mag: "#3a2030", accent: "#7a5a6a", muzzle: "#2a1a2a", barrelLen: 48, handguardLen: 24, compact: false },
-      frost_rifle:    { metal: "#2a4a5a", metalL: "#3a5a6a", stock: "#1a3a4a", stockL: "#2a4a5a", mag: "#1a3a4a", accent: "#5a8aaa", muzzle: "#1a3a4a", barrelLen: 44, handguardLen: 22, compact: false },
-      inferno_cannon: { metal: "#4a2a1a", metalL: "#5a3a2a", stock: "#3a1a0a", stockL: "#4a2a1a", mag: "#3a1a0a", accent: "#8a4a2a", muzzle: "#2a1a0a", barrelLen: 50, handguardLen: 26, compact: false },
-      // === MAIN GUNS ===
-      storm_ar:       { metal: "#2a4a6a", metalL: "#3a5a7a", stock: "#1a3a5a", stockL: "#2a4a6a", mag: "#1a3a5a", accent: "#5a8acc", muzzle: "#1a3050", barrelLen: 40, handguardLen: 20, compact: false },
-      heavy_ar:       { metal: "#3a3030", metalL: "#4a4040", stock: "#2a2020", stockL: "#3a3030", mag: "#2a1a1a", accent: "#6a4a3a", muzzle: "#1a1010", barrelLen: 48, handguardLen: 26, compact: false },
-      boomstick:      { metal: "#5a4a30", metalL: "#6a5a40", stock: "#3a2a18", stockL: "#4a3a28", mag: "#3a2a18", accent: "#8a7a50", muzzle: "#2a2010", barrelLen: 22, handguardLen: 12, compact: false },
-      volt_9:         { metal: "#3a2a5a", metalL: "#4a3a6a", stock: "#2a1a4a", stockL: "#3a2a5a", mag: "#2a1a4a", accent: "#6a5a8a", muzzle: "#1a1030", barrelLen: 22, handguardLen: 12, compact: true },
+    // Ironwood Bow: special rendering
+    if (gunId === 'ironwood_bow') { drawBow(rx, ry, pointDir); return; }
+
+    // ========== PER-GUN RENDERERS (unique shapes/silhouettes) ==========
+
+    // --- PISTOL: Small handgun, very short barrel, no stock ---
+    const drawPistol = () => {
+      const m = "#5a5a5e", mL = "#6a6a70", grip_ = "#4a4240", mag = "#484848", acc = "#7a7a7a", muz = "#3a3a3a";
+      if (pointDir === 2) { // LEFT
+        // Slide (main body) — small blocky rectangle
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 4, 12, 7);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 5, ry - 4, 10, 1); // top rail
+        // Short barrel
+        ctx.fillStyle = m; ctx.fillRect(rx - 6 - 12, ry - 3, 12, 5);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 6 - 14, ry - 3, 3, 5); // muzzle
+        // Grip below body (angled slightly back)
+        ctx.fillStyle = grip_; ctx.fillRect(rx + 2, ry + 3, 6, 10);
+        ctx.fillStyle = "#3a3230"; ctx.fillRect(rx + 3, ry + 4, 4, 8);
+        // Trigger guard
+        ctx.fillStyle = m; ctx.fillRect(rx - 1, ry + 3, 4, 2);
+        // Magazine inside grip
+        ctx.fillStyle = mag; ctx.fillRect(rx + 3, ry + 8, 4, 5);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 4, 12, 7);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 5, ry - 4, 10, 1);
+        ctx.fillStyle = m; ctx.fillRect(rx + 6, ry - 3, 12, 5);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 6 + 11, ry - 3, 3, 5);
+        ctx.fillStyle = grip_; ctx.fillRect(rx - 8, ry + 3, 6, 10);
+        ctx.fillStyle = "#3a3230"; ctx.fillRect(rx - 7, ry + 4, 4, 8);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry + 3, 4, 2);
+        ctx.fillStyle = mag; ctx.fillRect(rx - 7, ry + 8, 4, 5);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = mL; ctx.fillRect(rx - 4, ry - 6, 7, 12);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry + 6, 5, 12);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry + 16, 5, 3);
+        ctx.fillStyle = grip_; ctx.fillRect(rx + 3, ry - 2, 8, 5);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 6, ry - 1, 4, 4);
+      } else { // UP
+        ctx.fillStyle = mL; ctx.fillRect(rx - 4, ry - 6, 7, 12);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry - 6 - 12, 5, 12);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry - 6 - 14, 5, 3);
+        ctx.fillStyle = grip_; ctx.fillRect(rx + 3, ry - 2, 8, 5);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 6, ry - 1, 4, 4);
+      }
     };
 
-    // Ironwood Bow: special rendering instead of rifle
-    if (gunId === 'ironwood_bow') {
-      drawBow(rx, ry, pointDir);
-      return;
-    }
+    // --- CT_X: Tactical compact pistol, slightly larger, angular, green-tinted ---
+    const drawCtX = () => {
+      const m = "#2a4a2a", mL = "#3a5a3a", grip_ = "#1a3a1a", mag = "#1a3a1a", acc = "#4a7a4a", muz = "#1a3a1a";
+      if (pointDir === 2) { // LEFT
+        // Angular slide body
+        ctx.fillStyle = mL; ctx.fillRect(rx - 7, ry - 5, 14, 8);
+        // Angular top cut (tactical look)
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 12, 1);
+        ctx.fillStyle = "#5a8a5a"; ctx.fillRect(rx - 4, ry - 5, 3, 1); // front sight
+        ctx.fillStyle = "#5a8a5a"; ctx.fillRect(rx + 4, ry - 5, 3, 1); // rear sight
+        // Barrel (slightly longer than pistol)
+        ctx.fillStyle = m; ctx.fillRect(rx - 7 - 16, ry - 3, 16, 5);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 7 - 18, ry - 3, 3, 5);
+        // Muzzle brake (angled cuts)
+        ctx.fillStyle = acc; ctx.fillRect(rx - 7 - 17, ry - 2, 1, 1); ctx.fillRect(rx - 7 - 17, ry + 1, 1, 1);
+        // Tactical grip with finger grooves
+        ctx.fillStyle = grip_; ctx.fillRect(rx + 2, ry + 3, 7, 11);
+        ctx.fillStyle = "#2a4a2a"; ctx.fillRect(rx + 3, ry + 5, 5, 2); // groove
+        ctx.fillStyle = "#2a4a2a"; ctx.fillRect(rx + 3, ry + 9, 5, 2); // groove
+        // Trigger guard
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry + 3, 5, 2);
+        // Extended mag
+        ctx.fillStyle = mag; ctx.fillRect(rx + 3, ry + 10, 5, 5);
+        // Picatinny rail under barrel
+        ctx.fillStyle = acc; ctx.fillRect(rx - 14, ry + 2, 8, 2);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.fillStyle = mL; ctx.fillRect(rx - 7, ry - 5, 14, 8);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 12, 1);
+        ctx.fillStyle = "#5a8a5a"; ctx.fillRect(rx - 6, ry - 5, 3, 1);
+        ctx.fillStyle = "#5a8a5a"; ctx.fillRect(rx + 1, ry - 5, 3, 1);
+        ctx.fillStyle = m; ctx.fillRect(rx + 7, ry - 3, 16, 5);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 7 + 15, ry - 3, 3, 5);
+        ctx.fillStyle = acc; ctx.fillRect(rx + 7 + 16, ry - 2, 1, 1); ctx.fillRect(rx + 7 + 16, ry + 1, 1, 1);
+        ctx.fillStyle = grip_; ctx.fillRect(rx - 9, ry + 3, 7, 11);
+        ctx.fillStyle = "#2a4a2a"; ctx.fillRect(rx - 8, ry + 5, 5, 2);
+        ctx.fillStyle = "#2a4a2a"; ctx.fillRect(rx - 8, ry + 9, 5, 2);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry + 3, 5, 2);
+        ctx.fillStyle = mag; ctx.fillRect(rx - 8, ry + 10, 5, 5);
+        ctx.fillStyle = acc; ctx.fillRect(rx + 6, ry + 2, 8, 2);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 7, 8, 14);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry + 7, 5, 16);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry + 21, 5, 3);
+        ctx.fillStyle = grip_; ctx.fillRect(rx + 3, ry - 2, 9, 6);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 5, ry - 1, 5, 5);
+      } else { // UP
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 7, 8, 14);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry - 7 - 16, 5, 16);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry - 7 - 18, 5, 3);
+        ctx.fillStyle = grip_; ctx.fillRect(rx + 3, ry - 2, 9, 6);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 5, ry - 1, 5, 5);
+      }
+    };
 
-    const c = configs[gunId] || configs.recruit;
+    // --- SMG: Compact body, suppressor cylinder at tip, LONG vertical magazine ---
+    const drawSmg = () => {
+      const m = "#3a4a3a", mL = "#4a5a4a", stk = "#2a3a2a", mag = "#2a3a2a", acc = "#5a7a5a", muz = "#2a3a2a";
+      if (pointDir === 2) { // LEFT
+        // Folding stock (thin wire)
+        ctx.strokeStyle = stk; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(rx + 6, ry - 2); ctx.lineTo(rx + 14, ry - 4); ctx.lineTo(rx + 14, ry + 4); ctx.stroke();
+        // Compact receiver
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 4, 13, 8);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 5, ry - 4, 10, 1);
+        // Short barrel
+        ctx.fillStyle = m; ctx.fillRect(rx - 6 - 20, ry - 2, 20, 4);
+        // Suppressor cylinder at tip (distinctive)
+        ctx.fillStyle = "#2a3228"; ctx.fillRect(rx - 6 - 20 - 10, ry - 4, 11, 8);
+        ctx.fillStyle = "#3a4238"; ctx.fillRect(rx - 6 - 20 - 9, ry - 3, 9, 6);
+        // Suppressor rings
+        ctx.fillStyle = "#4a5248"; ctx.fillRect(rx - 6 - 20 - 8, ry - 4, 1, 8);
+        ctx.fillStyle = "#4a5248"; ctx.fillRect(rx - 6 - 20 - 4, ry - 4, 1, 8);
+        // LONG vertical magazine (key feature, extends far down)
+        ctx.fillStyle = mag; ctx.fillRect(rx - 3, ry + 4, 5, 16);
+        ctx.fillStyle = "#3a4a3a"; ctx.fillRect(rx - 2, ry + 5, 3, 14); // mag highlight
+        // Small grip
+        ctx.fillStyle = stk; ctx.fillRect(rx + 2, ry + 4, 5, 8);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.strokeStyle = stk; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(rx - 6, ry - 2); ctx.lineTo(rx - 14, ry - 4); ctx.lineTo(rx - 14, ry + 4); ctx.stroke();
+        ctx.fillStyle = mL; ctx.fillRect(rx - 7, ry - 4, 13, 8);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 5, ry - 4, 10, 1);
+        ctx.fillStyle = m; ctx.fillRect(rx + 6, ry - 2, 20, 4);
+        ctx.fillStyle = "#2a3228"; ctx.fillRect(rx + 6 + 19, ry - 4, 11, 8);
+        ctx.fillStyle = "#3a4238"; ctx.fillRect(rx + 6 + 20, ry - 3, 9, 6);
+        ctx.fillStyle = "#4a5248"; ctx.fillRect(rx + 6 + 27, ry - 4, 1, 8);
+        ctx.fillStyle = "#4a5248"; ctx.fillRect(rx + 6 + 23, ry - 4, 1, 8);
+        ctx.fillStyle = mag; ctx.fillRect(rx - 2, ry + 4, 5, 16);
+        ctx.fillStyle = "#3a4a3a"; ctx.fillRect(rx - 1, ry + 5, 3, 14);
+        ctx.fillStyle = stk; ctx.fillRect(rx - 7, ry + 4, 5, 8);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = mL; ctx.fillRect(rx - 4, ry - 6, 8, 13);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry + 7, 4, 20);
+        // Suppressor
+        ctx.fillStyle = "#2a3228"; ctx.fillRect(rx - 4, ry + 26, 8, 10);
+        ctx.fillStyle = "#3a4238"; ctx.fillRect(rx - 3, ry + 27, 6, 8);
+        // Long mag to right
+        ctx.fillStyle = mag; ctx.fillRect(rx + 4, ry - 2, 16, 5);
+        // Wire stock up
+        ctx.strokeStyle = stk; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(rx - 2, ry - 6); ctx.lineTo(rx - 4, ry - 14); ctx.lineTo(rx + 4, ry - 14); ctx.stroke();
+      } else { // UP
+        ctx.fillStyle = mL; ctx.fillRect(rx - 4, ry - 6, 8, 13);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry - 6 - 20, 4, 20);
+        ctx.fillStyle = "#2a3228"; ctx.fillRect(rx - 4, ry - 6 - 30, 8, 10);
+        ctx.fillStyle = "#3a4238"; ctx.fillRect(rx - 3, ry - 6 - 29, 6, 8);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 4, ry - 4, 16, 5);
+        ctx.strokeStyle = stk; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(rx - 2, ry + 7); ctx.lineTo(rx - 4, ry + 14); ctx.lineTo(rx + 4, ry + 14); ctx.stroke();
+      }
+    };
 
-    // Draw based on direction (simplified template using config)
-    const metalD = "#1e1e22";
+    // --- RIFLE: Long hunting/sniper, wood stock, scope bump, front bipod ---
+    const drawRifleGun = () => {
+      const m = "#4a3a30", mL = "#5a4a40", stk = "#5a3a1a", stkL = "#6a4a2a", mag = "#3a2a18", acc = "#7a5a3a", muz = "#2a1a0a";
+      if (pointDir === 2) { // LEFT
+        // Long wooden stock
+        ctx.fillStyle = stk; ctx.fillRect(rx + 6, ry - 4, 16, 8);
+        ctx.fillStyle = stkL; ctx.fillRect(rx + 7, ry - 3, 14, 6);
+        // Stock butt plate
+        ctx.fillStyle = "#3a2a10"; ctx.fillRect(rx + 20, ry - 4, 3, 8);
+        // Receiver
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 5, 16, 10);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 12, 1);
+        // Scope on top (distinctive rectangle above receiver)
+        ctx.fillStyle = "#222"; ctx.fillRect(rx - 6, ry - 9, 14, 4);
+        ctx.fillStyle = "#333"; ctx.fillRect(rx - 5, ry - 8, 12, 2);
+        // Scope lens circles
+        ctx.fillStyle = "#4af"; ctx.beginPath(); ctx.arc(rx - 6, ry - 7, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#4af"; ctx.beginPath(); ctx.arc(rx + 8, ry - 7, 2, 0, Math.PI * 2); ctx.fill();
+        // Long barrel
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8 - 24, ry - 3, 24, 7);
+        ctx.fillStyle = m; ctx.fillRect(rx - 8 - 48, ry - 2, 24, 4);
+        // Muzzle
+        ctx.fillStyle = muz; ctx.fillRect(rx - 8 - 48 - 4, ry - 3, 5, 6);
+        // Grip
+        ctx.fillStyle = "#222"; ctx.fillRect(rx + 2, ry + 5, 5, 10);
+        // Magazine
+        ctx.fillStyle = mag; ctx.fillRect(rx - 4, ry + 5, 5, 10);
+        // Front bipod (two thin legs)
+        ctx.fillStyle = "#333"; ctx.fillRect(rx - 36, ry + 4, 2, 10);
+        ctx.fillStyle = "#333"; ctx.fillRect(rx - 32, ry + 4, 2, 10);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.fillStyle = stk; ctx.fillRect(rx - 22, ry - 4, 16, 8);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 21, ry - 3, 14, 6);
+        ctx.fillStyle = "#3a2a10"; ctx.fillRect(rx - 23, ry - 4, 3, 8);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 5, 16, 10);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 12, 1);
+        // Scope
+        ctx.fillStyle = "#222"; ctx.fillRect(rx - 8, ry - 9, 14, 4);
+        ctx.fillStyle = "#333"; ctx.fillRect(rx - 7, ry - 8, 12, 2);
+        ctx.fillStyle = "#4af"; ctx.beginPath(); ctx.arc(rx - 8, ry - 7, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#4af"; ctx.beginPath(); ctx.arc(rx + 6, ry - 7, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = mL; ctx.fillRect(rx + 8, ry - 3, 24, 7);
+        ctx.fillStyle = m; ctx.fillRect(rx + 32, ry - 2, 24, 4);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 55, ry - 3, 5, 6);
+        ctx.fillStyle = "#222"; ctx.fillRect(rx - 7, ry + 5, 5, 10);
+        ctx.fillStyle = mag; ctx.fillRect(rx - 1, ry + 5, 5, 10);
+        // Front bipod
+        ctx.fillStyle = "#333"; ctx.fillRect(rx + 30, ry + 4, 2, 10);
+        ctx.fillStyle = "#333"; ctx.fillRect(rx + 34, ry + 4, 2, 10);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = stk; ctx.fillRect(rx - 4, ry - 22, 8, 16);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 3, ry - 21, 6, 14);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 8, 10, 16);
+        // Scope (side view — small bump)
+        ctx.fillStyle = "#222"; ctx.fillRect(rx - 7, ry - 6, 3, 10);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry + 8, 7, 24);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry + 32, 4, 24);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry + 55, 6, 5);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 5, ry - 1, 10, 5);
+      } else { // UP
+        ctx.fillStyle = stk; ctx.fillRect(rx - 4, ry + 6, 8, 16);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 3, ry + 7, 6, 14);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 8, 10, 16);
+        ctx.fillStyle = "#222"; ctx.fillRect(rx - 7, ry - 4, 3, 10);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry - 8 - 24, 7, 24);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry - 8 - 48, 4, 24);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry - 8 - 52, 6, 5);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 5, ry - 4, 10, 5);
+      }
+    };
+
+    // --- FROST_RIFLE: Ice rifle, like rifle shape but with glowing blue orb at muzzle ---
+    const drawFrostRifle = () => {
+      const m = "#2a4a5a", mL = "#3a5a6a", stk = "#1a3a4a", stkL = "#2a5a6a", mag = "#1a3a4a", acc = "#5a8aaa", muz = "#1a3a4a";
+      const drawOrb = (ox, oy) => {
+        ctx.fillStyle = "rgba(100,200,255,0.25)"; ctx.beginPath(); ctx.arc(ox, oy, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(140,220,255,0.5)"; ctx.beginPath(); ctx.arc(ox, oy, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(200,240,255,0.8)"; ctx.beginPath(); ctx.arc(ox, oy, 2, 0, Math.PI * 2); ctx.fill();
+      };
+      if (pointDir === 2) { // LEFT
+        // Stock with ice crystal pattern
+        ctx.fillStyle = stk; ctx.fillRect(rx + 6, ry - 4, 14, 8);
+        ctx.fillStyle = stkL; ctx.fillRect(rx + 7, ry - 3, 12, 6);
+        ctx.fillStyle = acc; ctx.fillRect(rx + 10, ry - 2, 2, 4); // ice inlay
+        // Receiver
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 5, 16, 10);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 12, 1);
+        // Ice crystal sight
+        ctx.fillStyle = "#8ad"; ctx.fillRect(rx - 2, ry - 8, 6, 3);
+        // Grip
+        ctx.fillStyle = "#1a2a3a"; ctx.fillRect(rx + 2, ry + 5, 5, 10);
+        // Magazine
+        ctx.fillStyle = mag; ctx.fillRect(rx - 4, ry + 5, 5, 12);
+        // Long icy barrel
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8 - 22, ry - 3, 22, 7);
+        ctx.fillStyle = m; ctx.fillRect(rx - 8 - 44, ry - 2, 22, 4);
+        // Ice formations on barrel
+        ctx.fillStyle = "rgba(140,220,255,0.4)"; ctx.fillRect(rx - 20, ry - 5, 3, 2); ctx.fillRect(rx - 28, ry - 5, 2, 2);
+        // Muzzle
+        ctx.fillStyle = muz; ctx.fillRect(rx - 8 - 44 - 4, ry - 3, 5, 6);
+        // Glowing orb at muzzle tip
+        drawOrb(rx - 8 - 44 - 4, ry);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.fillStyle = stk; ctx.fillRect(rx - 20, ry - 4, 14, 8);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 19, ry - 3, 12, 6);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 12, ry - 2, 2, 4);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 5, 16, 10);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 12, 1);
+        ctx.fillStyle = "#8ad"; ctx.fillRect(rx - 4, ry - 8, 6, 3);
+        ctx.fillStyle = "#1a2a3a"; ctx.fillRect(rx - 7, ry + 5, 5, 10);
+        ctx.fillStyle = mag; ctx.fillRect(rx - 1, ry + 5, 5, 12);
+        ctx.fillStyle = mL; ctx.fillRect(rx + 8, ry - 3, 22, 7);
+        ctx.fillStyle = m; ctx.fillRect(rx + 30, ry - 2, 22, 4);
+        ctx.fillStyle = "rgba(140,220,255,0.4)"; ctx.fillRect(rx + 17, ry - 5, 3, 2); ctx.fillRect(rx + 25, ry - 5, 2, 2);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 51, ry - 3, 5, 6);
+        drawOrb(rx + 55, ry);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = stk; ctx.fillRect(rx - 4, ry - 20, 8, 14);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 8, 10, 16);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry + 8, 5, 22);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry + 30, 4, 22);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry + 51, 6, 5);
+        drawOrb(rx, ry + 55);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 5, ry - 1, 12, 5);
+      } else { // UP
+        ctx.fillStyle = stk; ctx.fillRect(rx - 4, ry + 6, 8, 14);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 8, 10, 16);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry - 8 - 22, 5, 22);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry - 8 - 44, 4, 22);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry - 8 - 48, 6, 5);
+        drawOrb(rx, ry - 8 - 48);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 5, ry - 4, 12, 5);
+      }
+    };
+
+    // --- INFERNO_CANNON: Heavy flamethrower, WIDE/FAT barrel, chunky muzzle, fire glow ---
+    const drawInfernoCannon = () => {
+      const m = "#4a2a1a", mL = "#5a3a2a", stk = "#3a1a0a", mag = "#3a1a0a", acc = "#8a4a2a", muz = "#2a1a0a";
+      const drawFireGlow = (fx, fy) => {
+        ctx.fillStyle = "rgba(255,100,20,0.2)"; ctx.beginPath(); ctx.arc(fx, fy, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(255,140,40,0.4)"; ctx.beginPath(); ctx.arc(fx, fy, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(255,200,80,0.6)"; ctx.beginPath(); ctx.arc(fx, fy, 3, 0, Math.PI * 2); ctx.fill();
+      };
+      if (pointDir === 2) { // LEFT
+        // Heavy stock
+        ctx.fillStyle = stk; ctx.fillRect(rx + 6, ry - 5, 14, 10);
+        ctx.fillStyle = "#4a2a1a"; ctx.fillRect(rx + 7, ry - 4, 12, 8);
+        // Chunky receiver
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 6, 16, 12);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 6, 12, 1);
+        // Fuel tank underneath (cylindrical shape)
+        ctx.fillStyle = "#5a2a0a"; ctx.beginPath(); ctx.arc(rx - 2, ry + 10, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#6a3a1a"; ctx.beginPath(); ctx.arc(rx - 2, ry + 10, 4, 0, Math.PI * 2); ctx.fill();
+        // FAT barrel (much thicker than normal guns)
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8 - 18, ry - 5, 18, 10);
+        ctx.fillStyle = m; ctx.fillRect(rx - 8 - 32, ry - 4, 14, 8);
+        // Heat vents on barrel
+        ctx.fillStyle = "#6a3a1a"; ctx.fillRect(rx - 18, ry - 5, 1, 10);
+        ctx.fillStyle = "#6a3a1a"; ctx.fillRect(rx - 22, ry - 5, 1, 10);
+        // Wide chunky muzzle (flared)
+        ctx.fillStyle = muz; ctx.fillRect(rx - 8 - 32 - 6, ry - 7, 7, 14);
+        ctx.fillStyle = "#3a1a0a"; ctx.fillRect(rx - 8 - 32 - 5, ry - 6, 5, 12);
+        // Fire glow at muzzle
+        drawFireGlow(rx - 8 - 32 - 5, ry);
+        // Grip
+        ctx.fillStyle = "#222"; ctx.fillRect(rx + 2, ry + 5, 5, 9);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.fillStyle = stk; ctx.fillRect(rx - 20, ry - 5, 14, 10);
+        ctx.fillStyle = "#4a2a1a"; ctx.fillRect(rx - 19, ry - 4, 12, 8);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 6, 16, 12);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 6, 12, 1);
+        ctx.fillStyle = "#5a2a0a"; ctx.beginPath(); ctx.arc(rx + 2, ry + 10, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#6a3a1a"; ctx.beginPath(); ctx.arc(rx + 2, ry + 10, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = mL; ctx.fillRect(rx + 8, ry - 5, 18, 10);
+        ctx.fillStyle = m; ctx.fillRect(rx + 26, ry - 4, 14, 8);
+        ctx.fillStyle = "#6a3a1a"; ctx.fillRect(rx + 17, ry - 5, 1, 10);
+        ctx.fillStyle = "#6a3a1a"; ctx.fillRect(rx + 21, ry - 5, 1, 10);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 39, ry - 7, 7, 14);
+        ctx.fillStyle = "#3a1a0a"; ctx.fillRect(rx + 40, ry - 6, 5, 12);
+        drawFireGlow(rx + 44, ry);
+        ctx.fillStyle = "#222"; ctx.fillRect(rx - 7, ry + 5, 5, 9);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = stk; ctx.fillRect(rx - 5, ry - 20, 10, 14);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 8, 12, 16);
+        // Fat barrel
+        ctx.fillStyle = m; ctx.fillRect(rx - 4, ry + 8, 8, 14);
+        ctx.fillStyle = m; ctx.fillRect(rx - 4, ry + 22, 8, 14);
+        // Flared muzzle
+        ctx.fillStyle = muz; ctx.fillRect(rx - 7, ry + 35, 14, 7);
+        drawFireGlow(rx, ry + 40);
+        // Fuel tank
+        ctx.fillStyle = "#5a2a0a"; ctx.beginPath(); ctx.arc(rx + 10, ry, 5, 0, Math.PI * 2); ctx.fill();
+      } else { // UP
+        ctx.fillStyle = stk; ctx.fillRect(rx - 5, ry + 6, 10, 14);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 8, 12, 16);
+        ctx.fillStyle = m; ctx.fillRect(rx - 4, ry - 8 - 14, 8, 14);
+        ctx.fillStyle = m; ctx.fillRect(rx - 4, ry - 8 - 28, 8, 14);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 7, ry - 8 - 34, 14, 7);
+        drawFireGlow(rx, ry - 8 - 34);
+        ctx.fillStyle = "#5a2a0a"; ctx.beginPath(); ctx.arc(rx + 10, ry, 5, 0, Math.PI * 2); ctx.fill();
+      }
+    };
+
+    // --- STORM_AR: Military AR with top-mounted rectangular optic/carry handle ---
+    const drawStormAr = () => {
+      const m = "#2a4a6a", mL = "#3a5a7a", stk = "#1a3a5a", stkL = "#2a4a6a", mag = "#1a3a5a", acc = "#5a8acc", muz = "#1a3050";
+      if (pointDir === 2) { // LEFT
+        // Stock
+        ctx.fillStyle = stk; ctx.fillRect(rx + 6, ry - 4, 12, 8);
+        ctx.fillStyle = stkL; ctx.fillRect(rx + 7, ry - 3, 10, 6);
+        // Receiver
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 5, 16, 10);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 12, 1);
+        // TOP-MOUNTED OPTIC / CARRY HANDLE (key feature — tall rectangular box above receiver)
+        ctx.fillStyle = "#1a3050"; ctx.fillRect(rx - 6, ry - 11, 14, 6);
+        ctx.fillStyle = "#2a4060"; ctx.fillRect(rx - 5, ry - 10, 12, 4);
+        // Carry handle posts
+        ctx.fillStyle = "#1a3050"; ctx.fillRect(rx - 4, ry - 11, 2, 6);
+        ctx.fillStyle = "#1a3050"; ctx.fillRect(rx + 4, ry - 11, 2, 6);
+        // Optic lens
+        ctx.fillStyle = acc; ctx.fillRect(rx - 1, ry - 9, 4, 2);
+        // Grip
+        ctx.fillStyle = "#1a2a3a"; ctx.fillRect(rx + 2, ry + 5, 5, 10);
+        // Magazine
+        ctx.fillStyle = mag; ctx.fillRect(rx - 4, ry + 5, 5, 12);
+        // Handguard with rail
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8 - 20, ry - 4, 20, 8);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 8 - 18, ry - 4, 16, 1); // top rail
+        // Barrel
+        ctx.fillStyle = m; ctx.fillRect(rx - 8 - 34, ry - 2, 14, 4);
+        // Flash hider
+        ctx.fillStyle = muz; ctx.fillRect(rx - 8 - 34 - 5, ry - 3, 6, 6);
+        ctx.fillStyle = "#2a4060"; ctx.fillRect(rx - 8 - 34 - 4, ry - 2, 1, 1); ctx.fillRect(rx - 8 - 34 - 4, ry + 1, 1, 1);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.fillStyle = stk; ctx.fillRect(rx - 18, ry - 4, 12, 8);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 17, ry - 3, 10, 6);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 5, 16, 10);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 12, 1);
+        // Top optic
+        ctx.fillStyle = "#1a3050"; ctx.fillRect(rx - 8, ry - 11, 14, 6);
+        ctx.fillStyle = "#2a4060"; ctx.fillRect(rx - 7, ry - 10, 12, 4);
+        ctx.fillStyle = "#1a3050"; ctx.fillRect(rx - 6, ry - 11, 2, 6);
+        ctx.fillStyle = "#1a3050"; ctx.fillRect(rx + 2, ry - 11, 2, 6);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 3, ry - 9, 4, 2);
+        ctx.fillStyle = "#1a2a3a"; ctx.fillRect(rx - 7, ry + 5, 5, 10);
+        ctx.fillStyle = mag; ctx.fillRect(rx - 1, ry + 5, 5, 12);
+        ctx.fillStyle = mL; ctx.fillRect(rx + 8, ry - 4, 20, 8);
+        ctx.fillStyle = acc; ctx.fillRect(rx + 10, ry - 4, 16, 1);
+        ctx.fillStyle = m; ctx.fillRect(rx + 28, ry - 2, 14, 4);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 41, ry - 3, 6, 6);
+        ctx.fillStyle = "#2a4060"; ctx.fillRect(rx + 43, ry - 2, 1, 1); ctx.fillRect(rx + 43, ry + 1, 1, 1);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = stk; ctx.fillRect(rx - 4, ry - 18, 8, 12);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 8, 10, 16);
+        // Top optic (side view — bump on left)
+        ctx.fillStyle = "#1a3050"; ctx.fillRect(rx - 8, ry - 6, 3, 12);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry + 8, 7, 20);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry + 28, 4, 14);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry + 41, 6, 5);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 5, ry - 1, 12, 5);
+      } else { // UP
+        ctx.fillStyle = stk; ctx.fillRect(rx - 4, ry + 6, 8, 12);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 8, 10, 16);
+        ctx.fillStyle = "#1a3050"; ctx.fillRect(rx - 8, ry - 6, 3, 12);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry - 8 - 20, 7, 20);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry - 8 - 34, 4, 14);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry - 8 - 38, 6, 5);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 5, ry - 4, 12, 5);
+      }
+    };
+
+    // --- HEAVY_AR: Heavy MG, THICK chunky body, DRUM MAGAZINE (circle) ---
+    const drawHeavyAr = () => {
+      const m = "#3a3030", mL = "#4a4040", stk = "#2a2020", stkL = "#3a3030", acc = "#6a4a3a", muz = "#1a1010";
+      if (pointDir === 2) { // LEFT
+        // Heavy stock (thick)
+        ctx.fillStyle = stk; ctx.fillRect(rx + 6, ry - 5, 14, 10);
+        ctx.fillStyle = stkL; ctx.fillRect(rx + 7, ry - 4, 12, 8);
+        // Chunky wide receiver
+        ctx.fillStyle = mL; ctx.fillRect(rx - 10, ry - 6, 18, 12);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 8, ry - 6, 14, 1);
+        // Carry handle
+        ctx.fillStyle = "#2a2020"; ctx.fillRect(rx - 4, ry - 9, 10, 3);
+        // DRUM MAGAZINE (key feature — circle instead of rectangle)
+        ctx.fillStyle = "#2a1a1a"; ctx.beginPath(); ctx.arc(rx - 2, ry + 14, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#3a2a2a"; ctx.beginPath(); ctx.arc(rx - 2, ry + 14, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#4a3a3a"; ctx.beginPath(); ctx.arc(rx - 2, ry + 14, 3, 0, Math.PI * 2); ctx.fill();
+        // Drum feed into receiver
+        ctx.fillStyle = "#2a1a1a"; ctx.fillRect(rx - 5, ry + 6, 6, 5);
+        // Grip
+        ctx.fillStyle = "#222"; ctx.fillRect(rx + 3, ry + 5, 5, 10);
+        // Thick handguard
+        ctx.fillStyle = mL; ctx.fillRect(rx - 10 - 18, ry - 5, 18, 10);
+        // Heat shield (holes in handguard)
+        ctx.fillStyle = "#2a2020"; ctx.fillRect(rx - 16, ry - 3, 2, 2); ctx.fillRect(rx - 22, ry - 3, 2, 2);
+        // Thick barrel
+        ctx.fillStyle = m; ctx.fillRect(rx - 10 - 36, ry - 3, 18, 6);
+        // Heavy muzzle brake
+        ctx.fillStyle = muz; ctx.fillRect(rx - 10 - 36 - 6, ry - 5, 7, 10);
+        ctx.fillStyle = "#2a2020"; ctx.fillRect(rx - 10 - 36 - 5, ry - 4, 1, 2); ctx.fillRect(rx - 10 - 36 - 5, ry + 2, 1, 2);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.fillStyle = stk; ctx.fillRect(rx - 20, ry - 5, 14, 10);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 19, ry - 4, 12, 8);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 6, 18, 12);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 6, 14, 1);
+        ctx.fillStyle = "#2a2020"; ctx.fillRect(rx - 6, ry - 9, 10, 3);
+        // Drum mag
+        ctx.fillStyle = "#2a1a1a"; ctx.beginPath(); ctx.arc(rx + 2, ry + 14, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#3a2a2a"; ctx.beginPath(); ctx.arc(rx + 2, ry + 14, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#4a3a3a"; ctx.beginPath(); ctx.arc(rx + 2, ry + 14, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#2a1a1a"; ctx.fillRect(rx - 1, ry + 6, 6, 5);
+        ctx.fillStyle = "#222"; ctx.fillRect(rx - 8, ry + 5, 5, 10);
+        ctx.fillStyle = mL; ctx.fillRect(rx + 10, ry - 5, 18, 10);
+        ctx.fillStyle = "#2a2020"; ctx.fillRect(rx + 14, ry - 3, 2, 2); ctx.fillRect(rx + 20, ry - 3, 2, 2);
+        ctx.fillStyle = m; ctx.fillRect(rx + 28, ry - 3, 18, 6);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 45, ry - 5, 7, 10);
+        ctx.fillStyle = "#2a2020"; ctx.fillRect(rx + 50, ry - 4, 1, 2); ctx.fillRect(rx + 50, ry + 2, 1, 2);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = stk; ctx.fillRect(rx - 5, ry - 20, 10, 14);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 8, 12, 16);
+        // Drum (side view)
+        ctx.fillStyle = "#2a1a1a"; ctx.beginPath(); ctx.arc(rx + 12, ry + 2, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#3a2a2a"; ctx.beginPath(); ctx.arc(rx + 12, ry + 2, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = m; ctx.fillRect(rx - 4, ry + 8, 8, 18);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry + 26, 6, 18);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 5, ry + 43, 10, 7);
+      } else { // UP
+        ctx.fillStyle = stk; ctx.fillRect(rx - 5, ry + 6, 10, 14);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 8, 12, 16);
+        ctx.fillStyle = "#2a1a1a"; ctx.beginPath(); ctx.arc(rx + 12, ry - 2, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#3a2a2a"; ctx.beginPath(); ctx.arc(rx + 12, ry - 2, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = m; ctx.fillRect(rx - 4, ry - 8 - 18, 8, 18);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry - 8 - 36, 6, 18);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 5, ry - 8 - 42, 10, 7);
+      }
+    };
+
+    // --- BOOMSTICK: Double-barrel shotgun, TWO parallel barrels, wooden stock ---
+    const drawBoomstick = () => {
+      const m = "#5a4a30", mL = "#6a5a40", stk = "#5a3a18", stkL = "#6a4a28", acc = "#8a7a50", muz = "#2a2010";
+      if (pointDir === 2) { // LEFT
+        // Long wooden stock
+        ctx.fillStyle = stk; ctx.fillRect(rx + 6, ry - 4, 14, 8);
+        ctx.fillStyle = stkL; ctx.fillRect(rx + 7, ry - 3, 12, 6);
+        ctx.fillStyle = "#3a2a10"; ctx.fillRect(rx + 18, ry - 4, 3, 8); // butt plate
+        // Receiver / break action hinge
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 5, 14, 10);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 4, ry - 5, 10, 1);
+        // Break action lever
+        ctx.fillStyle = "#8a7a50"; ctx.fillRect(rx + 1, ry - 7, 4, 3);
+        // Grip
+        ctx.fillStyle = stk; ctx.fillRect(rx + 2, ry + 5, 5, 9);
+        // Trigger guard
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry + 5, 5, 2);
+        // TWO PARALLEL BARRELS (key feature — stacked)
+        ctx.fillStyle = m; ctx.fillRect(rx - 6 - 22, ry - 4, 22, 4); // top barrel
+        ctx.fillStyle = "#4a3a20"; ctx.fillRect(rx - 6 - 22, ry + 1, 22, 4); // bottom barrel
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6 - 22, ry - 1, 22, 2); // barrel rib between
+        // Barrel tips
+        ctx.fillStyle = muz; ctx.fillRect(rx - 6 - 22 - 3, ry - 5, 4, 5); // top muzzle
+        ctx.fillStyle = muz; ctx.fillRect(rx - 6 - 22 - 3, ry + 0, 4, 5); // bottom muzzle
+        // Front bead sight
+        ctx.fillStyle = "#cca"; ctx.fillRect(rx - 6 - 22 - 1, ry - 6, 2, 2);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.fillStyle = stk; ctx.fillRect(rx - 20, ry - 4, 14, 8);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 19, ry - 3, 12, 6);
+        ctx.fillStyle = "#3a2a10"; ctx.fillRect(rx - 21, ry - 4, 3, 8);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 8, ry - 5, 14, 10);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 5, 10, 1);
+        ctx.fillStyle = "#8a7a50"; ctx.fillRect(rx - 5, ry - 7, 4, 3);
+        ctx.fillStyle = stk; ctx.fillRect(rx - 7, ry + 5, 5, 9);
+        ctx.fillStyle = m; ctx.fillRect(rx - 3, ry + 5, 5, 2);
+        // Double barrels
+        ctx.fillStyle = m; ctx.fillRect(rx + 6, ry - 4, 22, 4);
+        ctx.fillStyle = "#4a3a20"; ctx.fillRect(rx + 6, ry + 1, 22, 4);
+        ctx.fillStyle = mL; ctx.fillRect(rx + 6, ry - 1, 22, 2);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 27, ry - 5, 4, 5);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 27, ry + 0, 4, 5);
+        ctx.fillStyle = "#cca"; ctx.fillRect(rx + 29, ry - 6, 2, 2);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = stk; ctx.fillRect(rx - 4, ry - 20, 8, 14);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 3, ry - 19, 6, 12);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 8, 10, 14);
+        // Double barrels (side by side when looking down)
+        ctx.fillStyle = m; ctx.fillRect(rx - 4, ry + 6, 4, 22);
+        ctx.fillStyle = "#4a3a20"; ctx.fillRect(rx + 1, ry + 6, 4, 22);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 5, ry + 27, 5, 4);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 0, ry + 27, 5, 4);
+      } else { // UP
+        ctx.fillStyle = stk; ctx.fillRect(rx - 4, ry + 6, 8, 14);
+        ctx.fillStyle = stkL; ctx.fillRect(rx - 3, ry + 7, 6, 12);
+        ctx.fillStyle = mL; ctx.fillRect(rx - 5, ry - 6, 10, 14);
+        ctx.fillStyle = m; ctx.fillRect(rx - 4, ry - 6 - 22, 4, 22);
+        ctx.fillStyle = "#4a3a20"; ctx.fillRect(rx + 1, ry - 6 - 22, 4, 22);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 5, ry - 6 - 25, 5, 4);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 0, ry - 6 - 25, 5, 4);
+      }
+    };
+
+    // --- VOLT_9: Uzi-style, very compact, long extended mag, wire stock, purple accents ---
+    const drawVolt9 = () => {
+      const m = "#3a2a5a", mL = "#4a3a6a", stk = "#2a1a4a", mag = "#2a1a4a", acc = "#6a5a8a", muz = "#1a1030";
+      if (pointDir === 2) { // LEFT
+        // Wire/skeleton stock (just thin lines)
+        ctx.strokeStyle = stk; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(rx + 6, ry - 2); ctx.lineTo(rx + 16, ry - 6); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(rx + 6, ry + 2); ctx.lineTo(rx + 16, ry + 4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(rx + 16, ry - 6); ctx.lineTo(rx + 16, ry + 4); ctx.stroke();
+        // Compact boxy receiver
+        ctx.fillStyle = mL; ctx.fillRect(rx - 6, ry - 4, 13, 8);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 5, ry - 4, 11, 1);
+        // Purple LED accent
+        ctx.fillStyle = "#8a6aff"; ctx.fillRect(rx - 4, ry + 3, 6, 1);
+        // Short barrel
+        ctx.fillStyle = m; ctx.fillRect(rx - 6 - 16, ry - 2, 16, 4);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 6 - 18, ry - 3, 3, 5);
+        // Pistol-style grip (behind the mag)
+        ctx.fillStyle = stk; ctx.fillRect(rx + 2, ry + 4, 5, 10);
+        ctx.fillStyle = "#3a2a4a"; ctx.fillRect(rx + 3, ry + 5, 3, 8);
+        // LONG extended magazine (key feature — very long, extends far)
+        ctx.fillStyle = mag; ctx.fillRect(rx - 3, ry + 4, 5, 20);
+        ctx.fillStyle = "#3a2a5a"; ctx.fillRect(rx - 2, ry + 5, 3, 18);
+        // Mag base plate
+        ctx.fillStyle = acc; ctx.fillRect(rx - 3, ry + 22, 5, 2);
+      } else if (pointDir === 3) { // RIGHT
+        ctx.strokeStyle = stk; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(rx - 6, ry - 2); ctx.lineTo(rx - 16, ry - 6); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(rx - 6, ry + 2); ctx.lineTo(rx - 16, ry + 4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(rx - 16, ry - 6); ctx.lineTo(rx - 16, ry + 4); ctx.stroke();
+        ctx.fillStyle = mL; ctx.fillRect(rx - 7, ry - 4, 13, 8);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 6, ry - 4, 11, 1);
+        ctx.fillStyle = "#8a6aff"; ctx.fillRect(rx - 2, ry + 3, 6, 1);
+        ctx.fillStyle = m; ctx.fillRect(rx + 6, ry - 2, 16, 4);
+        ctx.fillStyle = muz; ctx.fillRect(rx + 6 + 15, ry - 3, 3, 5);
+        ctx.fillStyle = stk; ctx.fillRect(rx - 7, ry + 4, 5, 10);
+        ctx.fillStyle = "#3a2a4a"; ctx.fillRect(rx - 6, ry + 5, 3, 8);
+        ctx.fillStyle = mag; ctx.fillRect(rx - 2, ry + 4, 5, 20);
+        ctx.fillStyle = "#3a2a5a"; ctx.fillRect(rx - 1, ry + 5, 3, 18);
+        ctx.fillStyle = acc; ctx.fillRect(rx - 2, ry + 22, 5, 2);
+      } else if (pointDir === 0) { // DOWN
+        ctx.fillStyle = mL; ctx.fillRect(rx - 4, ry - 6, 8, 13);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry + 7, 4, 16);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry + 21, 5, 3);
+        // Long mag to right
+        ctx.fillStyle = mag; ctx.fillRect(rx + 4, ry - 2, 20, 5);
+        ctx.fillStyle = acc; ctx.fillRect(rx + 22, ry - 1, 2, 3);
+        // Wire stock up
+        ctx.strokeStyle = stk; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(rx - 2, ry - 6); ctx.lineTo(rx - 6, ry - 16); ctx.lineTo(rx + 4, ry - 16); ctx.stroke();
+      } else { // UP
+        ctx.fillStyle = mL; ctx.fillRect(rx - 4, ry - 7, 8, 13);
+        ctx.fillStyle = m; ctx.fillRect(rx - 2, ry - 7 - 16, 4, 16);
+        ctx.fillStyle = muz; ctx.fillRect(rx - 3, ry - 7 - 18, 5, 3);
+        ctx.fillStyle = mag; ctx.fillRect(rx + 4, ry - 3, 20, 5);
+        ctx.fillStyle = acc; ctx.fillRect(rx + 22, ry - 2, 2, 3);
+        ctx.strokeStyle = stk; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(rx - 2, ry + 6); ctx.lineTo(rx - 6, ry + 16); ctx.lineTo(rx + 4, ry + 16); ctx.stroke();
+      }
+    };
+
+    // ========== DISPATCH ==========
+    const gunRenderers = {
+      pistol: drawPistol,
+      ct_x: drawCtX,
+      smg: drawSmg,
+      rifle: drawRifleGun,
+      frost_rifle: drawFrostRifle,
+      inferno_cannon: drawInfernoCannon,
+      storm_ar: drawStormAr,
+      heavy_ar: drawHeavyAr,
+      boomstick: drawBoomstick,
+      volt_9: drawVolt9,
+    };
+
+    if (gunRenderers[gunId]) { gunRenderers[gunId](); return; }
+
+    // ========== DEFAULT / RECRUIT: Generic dark AR silhouette ==========
+    const c = {
+      metal: "#2e2e32", metalL: "#3a3a40", stock: "#2a2218", stockL: "#3a3228",
+      mag: "#282828", accent: "#444", muzzle: "#1a1a1a",
+    };
     const grip = "#222";
 
     if (pointDir === 2) { // LEFT
-      ctx.fillStyle = c.stock; ctx.fillRect(rx + 6, ry - 4, c.compact ? 8 : 12, 8);
-      ctx.fillStyle = c.stockL; ctx.fillRect(rx + 7, ry - 3, c.compact ? 6 : 10, 6);
+      // Stock
+      ctx.fillStyle = c.stock; ctx.fillRect(rx + 6, ry - 4, 12, 8);
+      ctx.fillStyle = c.stockL; ctx.fillRect(rx + 7, ry - 3, 10, 6);
+      // Receiver
       ctx.fillStyle = c.metalL; ctx.fillRect(rx - 8, ry - 5, 16, 10);
       ctx.fillStyle = c.accent; ctx.fillRect(rx - 6, ry - 4, 12, 1);
-      if (!c.compact) { ctx.fillStyle = grip; ctx.fillRect(rx + 2, ry + 5, 5, 10); }
-      ctx.fillStyle = c.mag; ctx.fillRect(rx - 4, ry + 5, 5, c.compact ? 8 : 14);
-      ctx.fillStyle = c.metalL; ctx.fillRect(rx - 8 - c.handguardLen, ry - 4, c.handguardLen, 9);
-      ctx.fillStyle = c.metal; ctx.fillRect(rx - 8 - c.barrelLen, ry - 2, c.barrelLen - c.handguardLen, 5);
-      ctx.fillStyle = c.muzzle; ctx.fillRect(rx - 8 - c.barrelLen - 6, ry - 4, 6, 9);
-      // SMG has suppressor look
-      if (gunId === 'smg') { ctx.fillStyle = "#3a4a3a"; ctx.fillRect(rx - 8 - c.barrelLen - 10, ry - 3, 10, 7); }
-      // Rifle has front grip
-      if (gunId === 'rifle') { ctx.fillStyle = "#3a2030"; ctx.fillRect(rx - 20, ry + 5, 4, 8); }
-      // Frost rifle has glowing barrel tip
-      if (gunId === 'frost_rifle') { ctx.fillStyle = "rgba(100,200,255,0.5)"; ctx.beginPath(); ctx.arc(rx - 8 - c.barrelLen - 3, ry, 5, 0, Math.PI * 2); ctx.fill(); }
-      // Inferno cannon has wide muzzle + glow
-      if (gunId === 'inferno_cannon') { ctx.fillStyle = "#5a2a0a"; ctx.fillRect(rx - 8 - c.barrelLen - 8, ry - 5, 8, 11); ctx.fillStyle = "rgba(255,100,20,0.4)"; ctx.beginPath(); ctx.arc(rx - 8 - c.barrelLen - 4, ry, 6, 0, Math.PI * 2); ctx.fill(); }
+      // Grip
+      ctx.fillStyle = grip; ctx.fillRect(rx + 2, ry + 5, 5, 10);
+      // Magazine
+      ctx.fillStyle = c.mag; ctx.fillRect(rx - 4, ry + 5, 5, 14);
+      // Handguard
+      ctx.fillStyle = c.metalL; ctx.fillRect(rx - 8 - 22, ry - 4, 22, 9);
+      // Barrel
+      ctx.fillStyle = c.metal; ctx.fillRect(rx - 8 - 42, ry - 2, 20, 5);
+      // Muzzle
+      ctx.fillStyle = c.muzzle; ctx.fillRect(rx - 8 - 42 - 6, ry - 4, 6, 9);
     } else if (pointDir === 3) { // RIGHT
-      ctx.fillStyle = c.stock; ctx.fillRect(rx - (c.compact ? 14 : 18), ry - 4, c.compact ? 8 : 12, 8);
+      ctx.fillStyle = c.stock; ctx.fillRect(rx - 18, ry - 4, 12, 8);
+      ctx.fillStyle = c.stockL; ctx.fillRect(rx - 17, ry - 3, 10, 6);
       ctx.fillStyle = c.metalL; ctx.fillRect(rx - 8, ry - 5, 16, 10);
       ctx.fillStyle = c.accent; ctx.fillRect(rx - 6, ry - 4, 12, 1);
-      if (!c.compact) { ctx.fillStyle = grip; ctx.fillRect(rx - 7, ry + 5, 5, 10); }
-      ctx.fillStyle = c.mag; ctx.fillRect(rx - 1, ry + 5, 5, c.compact ? 8 : 14);
-      ctx.fillStyle = c.metalL; ctx.fillRect(rx + 8, ry - 4, c.handguardLen, 9);
-      ctx.fillStyle = c.metal; ctx.fillRect(rx + 8 + c.handguardLen, ry - 2, c.barrelLen - c.handguardLen, 5);
-      ctx.fillStyle = c.muzzle; ctx.fillRect(rx + 8 + c.barrelLen, ry - 4, 6, 9);
-      if (gunId === 'smg') { ctx.fillStyle = "#3a4a3a"; ctx.fillRect(rx + 8 + c.barrelLen, ry - 3, 10, 7); }
-      if (gunId === 'rifle') { ctx.fillStyle = "#3a2030"; ctx.fillRect(rx + 16, ry + 5, 4, 8); }
-      if (gunId === 'frost_rifle') { ctx.fillStyle = "rgba(100,200,255,0.5)"; ctx.beginPath(); ctx.arc(rx + 8 + c.barrelLen + 3, ry, 5, 0, Math.PI * 2); ctx.fill(); }
-      if (gunId === 'inferno_cannon') { ctx.fillStyle = "#5a2a0a"; ctx.fillRect(rx + 8 + c.barrelLen, ry - 5, 8, 11); ctx.fillStyle = "rgba(255,100,20,0.4)"; ctx.beginPath(); ctx.arc(rx + 8 + c.barrelLen + 4, ry, 6, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = grip; ctx.fillRect(rx - 7, ry + 5, 5, 10);
+      ctx.fillStyle = c.mag; ctx.fillRect(rx - 1, ry + 5, 5, 14);
+      ctx.fillStyle = c.metalL; ctx.fillRect(rx + 8, ry - 4, 22, 9);
+      ctx.fillStyle = c.metal; ctx.fillRect(rx + 30, ry - 2, 20, 5);
+      ctx.fillStyle = c.muzzle; ctx.fillRect(rx + 50, ry - 4, 6, 9);
     } else if (pointDir === 0) { // DOWN
-      ctx.fillStyle = c.stock; ctx.fillRect(rx - 4, ry - (c.compact ? 14 : 18), 8, c.compact ? 8 : 12);
+      ctx.fillStyle = c.stock; ctx.fillRect(rx - 4, ry - 18, 8, 12);
       ctx.fillStyle = c.metalL; ctx.fillRect(rx - 5, ry - 8, 10, 16);
-      ctx.fillStyle = c.mag; ctx.fillRect(rx + 5, ry - 1, c.compact ? 8 : 14, 5);
-      ctx.fillStyle = c.metalL; ctx.fillRect(rx - 4, ry + 8, 9, c.handguardLen);
-      ctx.fillStyle = c.metal; ctx.fillRect(rx - 2, ry + 8 + c.handguardLen, 5, c.barrelLen - c.handguardLen);
-      ctx.fillStyle = c.muzzle; ctx.fillRect(rx - 4, ry + 8 + c.barrelLen, 9, 6);
+      ctx.fillStyle = c.mag; ctx.fillRect(rx + 5, ry - 1, 14, 5);
+      ctx.fillStyle = c.metalL; ctx.fillRect(rx - 4, ry + 8, 9, 22);
+      ctx.fillStyle = c.metal; ctx.fillRect(rx - 2, ry + 30, 5, 20);
+      ctx.fillStyle = c.muzzle; ctx.fillRect(rx - 4, ry + 50, 9, 6);
     } else { // UP
-      ctx.fillStyle = c.stock; ctx.fillRect(rx - 4, ry + 6, 8, c.compact ? 8 : 12);
+      ctx.fillStyle = c.stock; ctx.fillRect(rx - 4, ry + 6, 8, 12);
       ctx.fillStyle = c.metalL; ctx.fillRect(rx - 5, ry - 8, 10, 16);
-      ctx.fillStyle = c.mag; ctx.fillRect(rx + 5, ry - 4, c.compact ? 8 : 14, 5);
-      ctx.fillStyle = c.metalL; ctx.fillRect(rx - 4, ry - 8 - c.handguardLen, 9, c.handguardLen);
-      ctx.fillStyle = c.metal; ctx.fillRect(rx - 2, ry - 8 - c.barrelLen, 5, c.barrelLen - c.handguardLen);
-      ctx.fillStyle = c.muzzle; ctx.fillRect(rx - 4, ry - 8 - c.barrelLen - 6, 9, 6);
+      ctx.fillStyle = c.mag; ctx.fillRect(rx + 5, ry - 4, 14, 5);
+      ctx.fillStyle = c.metalL; ctx.fillRect(rx - 4, ry - 8 - 22, 9, 22);
+      ctx.fillStyle = c.metal; ctx.fillRect(rx - 2, ry - 8 - 42, 5, 20);
+      ctx.fillStyle = c.muzzle; ctx.fillRect(rx - 4, ry - 8 - 42 - 6, 9, 6);
     }
   };
   // Consistent anchor: gun arm at left side of body, mid-torso height
