@@ -597,8 +597,8 @@ function updateGun() {
 // Only affects CT_X_GUN — other guns are untouched.
 
 let _mgDragging = null; // 'freeze' | 'rof' | null
-let _ctxFreeze = 85;   // slider value 0-100 (default: 85 = 0.15 penalty)
-let _ctxRof = 50;      // slider value 0-100 (default: 50 = 12f)
+let _ctxFreeze = 50;   // slider value 0-100 (default: 50)
+let _ctxRof = 50;      // slider value 0-100 (default: 50)
 
 // Slider config: min, max, step, and how to read/write the value
 const _mgSliders = {
@@ -606,12 +606,12 @@ const _mgSliders = {
     label: 'Freeze',
     desc: 'Higher = less slowdown after shooting.',
     min: 0, max: 100, step: 5,
-    // Display 0-100 where 0=worst(1.0 penalty = full stop), 100=best(0 penalty)
+    // Remapped curve: 0=0.30 penalty, 50=0.15 (old 85), 100=0.00
     // Stores slider 0-100 in _ctxFreeze, converts to penalty for gameplay
-    get: () => (typeof _ctxFreeze !== 'undefined') ? _ctxFreeze : 85,
+    get: () => (typeof _ctxFreeze !== 'undefined') ? _ctxFreeze : 50,
     set: (v) => {
       _ctxFreeze = v;
-      const penalty = 1 - v / 100;
+      const penalty = 0.30 * (1 - v / 100);
       CT_X_GUN.freezePenalty = penalty;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.freezePenalty = penalty;
     },
@@ -621,12 +621,12 @@ const _mgSliders = {
     label: 'RoF',
     desc: 'Higher = faster rate of fire.',
     min: 0, max: 100, step: 5,
-    // Linear: 0%=20f (slowest), 100%=4f (fastest)
+    // Remapped curve: 0=6f (slow), 50=4f (old 90), 100=2f (fastest)
     // Stores slider 0-100 in _ctxRof, converts to frames for gameplay
     get: () => (typeof _ctxRof !== 'undefined') ? _ctxRof : 50,
     set: (v) => {
       _ctxRof = v;
-      const frames = Math.round(20 - (v / 100) * (20 - 2));
+      const frames = Math.round(6 - (v / 100) * 4);
       CT_X_GUN.fireRate = frames;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.fireRate = frames;
     },
