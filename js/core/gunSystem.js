@@ -647,7 +647,7 @@ const _mgSliders = {
     get: () => (typeof _ctxSpread !== 'undefined') ? _ctxSpread : 0,
     set: (v) => {
       _ctxSpread = v;
-      const degrees = v * 0.45; // 0→0°, 10→4.5°, 50→22.5°, 100→45°
+      const degrees = v * 0.5; // 0→0°, 10→5°, 50→25°, 100→50°
       CT_X_GUN.spread = degrees;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.spread = degrees;
     },
