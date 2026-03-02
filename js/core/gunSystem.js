@@ -627,12 +627,12 @@ const _mgSliders = {
     label: 'RoF',
     desc: 'Higher = faster rate of fire.',
     min: 0, max: 100, step: 5,
-    // Linear: 0→38f, 70→3.4f, capped at 3.4 above 70 (50=13.3)
+    // Linear: 0→10f, 70→1.7f, capped above 70 (50≈4, matches original default)
     get: () => (typeof _ctxRof !== 'undefined') ? _ctxRof : 50,
     set: (v) => {
       _ctxRof = v;
       const clamped = Math.min(v, 70);
-      const frames = 38 - (clamped / 70) * 34.6; // 0→38, 70→3.4
+      const frames = 10 - (clamped / 70) * 8.3; // 0→10, 70→1.7
       CT_X_GUN.fireRate = frames;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.fireRate = frames;
     },
@@ -652,6 +652,9 @@ const _mgSliders = {
     display: (v) => v.toFixed(0)
   }
 };
+
+// Sync CT_X_GUN with default slider values on load
+for (const key in _mgSliders) _mgSliders[key].set(_mgSliders[key].get());
 
 function drawModifyGunPanel() {
   if (!UI.isOpen('modifygun')) return;
