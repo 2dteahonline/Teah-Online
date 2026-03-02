@@ -1029,11 +1029,33 @@ function drawInventoryPanel() {
       ctx.save();
       try {
         if (item.type === 'gun') {
-          const gType = item.data.id === 'smg' ? 'smg' : item.data.id === 'rifle' ? 'rifle' : 'special';
-          drawMiniGun(iconCx, iconCy, 16, item.data.name, item.data.color || '#888', gType);
+          const gId = item.id || (item.data && item.data.id) || '';
+          const GUN_MINI_MAP = {
+            pistol: { type: 'pistol', color: '#6a6a6a' },
+            ct_x: { type: 'pistol', color: '#3a5a3a' },
+            smg: { type: 'smg', color: '#4a4a4a' },
+            rifle: { type: 'rifle', color: '#4a3a2a' },
+            frost_rifle: { type: 'rifle', color: '#44aacc' },
+            inferno_cannon: { type: 'special', color: '#cc4422' },
+            storm_ar: { type: 'rifle', color: '#66ccff' },
+            heavy_ar: { type: 'rifle', color: '#ff9944' },
+            boomstick: { type: 'shotgun', color: '#ffcc33' },
+            ironwood_bow: { type: 'special', color: '#8b5e3c' },
+            volt_9: { type: 'smg', color: '#aa66ff' },
+          };
+          const gInfo = GUN_MINI_MAP[gId] || { type: 'special', color: item.data.color || '#888' };
+          drawMiniGun(iconCx, iconCy, 16, item.data.name || item.name, gInfo.color, gInfo.type);
         } else if (item.type === 'melee') {
-          const mType = item.data.id === 'sword' ? 'sword' : item.data.id === 'ninja_katanas' ? 'katana' : item.data.id === 'storm_blade' ? 'magic' : 'axe';
-          drawMiniMelee(iconCx, iconCy, 16, item.data.name, item.data.color || '#888', mType);
+          const mId = item.id || (item.data && item.data.id) || '';
+          const MELEE_MINI_MAP = {
+            knife: { type: 'sword', color: '#7a7a7a' },
+            sword: { type: 'sword', color: '#8a8a9a' },
+            ninja_katanas: { type: 'heavy', color: '#2a2a3a' },
+            storm_blade: { type: 'sword', color: '#4488dd' },
+            war_cleaver: { type: 'heavy', color: '#cc4444' },
+          };
+          const mInfo = MELEE_MINI_MAP[mId] || { type: 'sword', color: item.data.color || '#888' };
+          drawMiniMelee(iconCx, iconCy, 16, item.data.name || item.name, mInfo.color, mInfo.type);
         } else if (ITEM_CATEGORIES.armor.includes(item.type)) {
           drawMiniArmor(iconCx, iconCy, 16, item.data.name, item.data.color || '#888', item.type);
         } else if (item.type === 'consumable' && item.id === 'potion') {

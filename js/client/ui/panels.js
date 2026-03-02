@@ -913,6 +913,86 @@ if (typeof window._gunLevels === 'undefined') {
   window._gunLevels = { storm_ar: 0, heavy_ar: 0, boomstick: 0, ironwood_bow: 0, volt_9: 0 };
 }
 
+// Helper: draw a gunsmith weapon icon at (cx, cy) with given size
+function _drawGunsmithIcon(cx, cy, s, gunId) {
+  ctx.save();
+  const h = s * 0.5; // half-size
+  if (gunId === 'storm_ar') {
+    // Blue military AR
+    ctx.fillStyle = '#4488bb';
+    ctx.fillRect(cx - h, cy - s * 0.12, s * 0.75, s * 0.24); // barrel
+    ctx.fillStyle = '#336699';
+    ctx.fillRect(cx - h * 0.3, cy - s * 0.18, s * 0.5, s * 0.36); // receiver
+    ctx.fillStyle = '#2a4a6a';
+    ctx.fillRect(cx + h * 0.2, cy + s * 0.1, s * 0.12, s * 0.22); // grip
+    ctx.fillStyle = '#1a3a5a';
+    ctx.fillRect(cx - h, cy - s * 0.08, s * 0.2, s * 0.16); // stock
+    // Muzzle tip
+    ctx.fillStyle = '#66ccff';
+    ctx.fillRect(cx + h * 0.7, cy - s * 0.06, s * 0.08, s * 0.12);
+  } else if (gunId === 'heavy_ar') {
+    // Dark chunky AR
+    ctx.fillStyle = '#5a4030';
+    ctx.fillRect(cx - h, cy - s * 0.16, s * 0.85, s * 0.32); // thick barrel
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(cx - h * 0.2, cy - s * 0.22, s * 0.55, s * 0.44); // chunky receiver
+    ctx.fillStyle = '#2a1a0a';
+    ctx.fillRect(cx + h * 0.3, cy + s * 0.12, s * 0.14, s * 0.24); // grip
+    ctx.fillStyle = '#4a3020';
+    ctx.fillRect(cx - h, cy - s * 0.1, s * 0.22, s * 0.2); // stock
+    // Orange accent
+    ctx.fillStyle = '#ff9944';
+    ctx.fillRect(cx + h * 0.75, cy - s * 0.08, s * 0.06, s * 0.16);
+  } else if (gunId === 'boomstick') {
+    // Double barrel shotgun
+    ctx.fillStyle = '#886633';
+    ctx.fillRect(cx - h * 0.7, cy - s * 0.06, s * 0.35, s * 0.12); // wood stock
+    ctx.fillStyle = '#555';
+    ctx.fillRect(cx - h * 0.1, cy - s * 0.14, s * 0.55, s * 0.12); // top barrel
+    ctx.fillRect(cx - h * 0.1, cy + s * 0.02, s * 0.55, s * 0.12); // bottom barrel
+    // Muzzle flash gold
+    ctx.fillStyle = '#ffcc33';
+    ctx.fillRect(cx + h * 0.65, cy - s * 0.14, s * 0.06, s * 0.28);
+  } else if (gunId === 'ironwood_bow') {
+    // Curved bow with string
+    ctx.strokeStyle = '#8b5e3c';
+    ctx.lineWidth = s * 0.08;
+    ctx.beginPath();
+    ctx.arc(cx, cy, h * 0.8, -Math.PI * 0.7, Math.PI * 0.7);
+    ctx.stroke();
+    // String
+    ctx.strokeStyle = '#a09080';
+    ctx.lineWidth = s * 0.03;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(-Math.PI * 0.7) * h * 0.8, cy + Math.sin(-Math.PI * 0.7) * h * 0.8);
+    ctx.lineTo(cx + Math.cos(Math.PI * 0.7) * h * 0.8, cy + Math.sin(Math.PI * 0.7) * h * 0.8);
+    ctx.stroke();
+    // Arrow
+    ctx.fillStyle = '#6a4a2a';
+    ctx.fillRect(cx - h * 0.1, cy - s * 0.02, h * 0.9, s * 0.04);
+    ctx.fillStyle = '#aaa';
+    ctx.beginPath();
+    ctx.moveTo(cx + h * 0.7, cy - s * 0.06);
+    ctx.lineTo(cx + h * 0.9, cy);
+    ctx.lineTo(cx + h * 0.7, cy + s * 0.06);
+    ctx.fill();
+  } else if (gunId === 'volt_9') {
+    // Purple compact SMG
+    ctx.fillStyle = '#6633aa';
+    ctx.fillRect(cx - h * 0.4, cy - s * 0.14, s * 0.55, s * 0.28); // body
+    ctx.fillStyle = '#7744bb';
+    ctx.fillRect(cx - h * 0.4, cy - s * 0.08, s * 0.7, s * 0.16); // barrel
+    ctx.fillStyle = '#553399';
+    ctx.fillRect(cx - h * 0.05, cy + s * 0.1, s * 0.1, s * 0.22); // long mag
+    ctx.fillStyle = '#442288';
+    ctx.fillRect(cx + h * 0.2, cy + s * 0.06, s * 0.1, s * 0.16); // grip
+    // Purple glow tip
+    ctx.fillStyle = '#aa66ff';
+    ctx.fillRect(cx + h * 0.6, cy - s * 0.05, s * 0.06, s * 0.1);
+  }
+  ctx.restore();
+}
+
 function drawGunsmithPanel() {
   if (!UI.isOpen('gunsmith')) return;
   if (typeof MAIN_GUNS === 'undefined') return;
@@ -987,18 +1067,16 @@ function drawGunsmithPanel() {
     ctx.fillStyle = "#555";
     ctx.fillText(def.category.replace('_', ' ').toUpperCase(), listX + 12, gy + 56);
 
-    // Price or level badge
+    // Weapon icon on right side of list card
+    _drawGunsmithIcon(listX + listW - 30, gy + 28, 36, gid);
+
+    // Price badge (below icon for not-owned)
     if (lvl === 0) {
       ctx.font = "bold 11px monospace";
       ctx.fillStyle = PALETTE.gold;
       ctx.textAlign = "right";
-      ctx.fillText(def.buyPrice + "g", listX + listW - 12, gy + 22);
+      ctx.fillText(def.buyPrice + "g", listX + listW - 8, gy + 64);
       ctx.textAlign = "left";
-    } else {
-      // Small colored dot for bullet color
-      const bc = def.bulletColor;
-      ctx.fillStyle = bc.main;
-      ctx.beginPath(); ctx.arc(listX + listW - 16, gy + 18, 5, 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -1012,6 +1090,9 @@ function drawGunsmithPanel() {
   ctx.beginPath(); ctx.roundRect(detailX, contentY, detailW, ph - 72, 8); ctx.fill();
   ctx.strokeStyle = "rgba(255,168,64,0.15)"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.roundRect(detailX, contentY, detailW, ph - 72, 8); ctx.stroke();
+
+  // Large weapon icon at top of detail panel
+  _drawGunsmithIcon(detailX + detailW - 60, contentY + 40, 64, selId);
 
   // Gun name + description
   ctx.font = "bold 18px monospace";

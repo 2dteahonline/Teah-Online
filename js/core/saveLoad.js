@@ -125,6 +125,16 @@ const SaveLoad = {
               window._gunLevels[gunId] = p.gunLevels[gunId];
             }
           }
+          // Re-create owned gun items in inventory (main guns are permanent progression)
+          for (const gunId in window._gunLevels) {
+            const lvl = window._gunLevels[gunId];
+            if (lvl > 0 && typeof createMainGun === 'function' && typeof addToInventory === 'function') {
+              if (typeof isInInventory === 'function' && !isInInventory(gunId)) {
+                const gunItem = createMainGun(gunId, lvl);
+                if (gunItem) addToInventory(gunItem);
+              }
+            }
+          }
         }
       }
 
