@@ -636,15 +636,14 @@ const _mgSliders = {
   spread: {
     label: 'Spread',
     desc: 'Bullet spread angle in degrees. 0 = straight.',
-    min: 0, max: 30, step: 10,
-    // 0=straight, 10=slight cone, 20=moderate, 30=wide cone
+    min: 0, max: 60, step: 0.5,
     get: () => (typeof _ctxSpread !== 'undefined') ? _ctxSpread : 0,
     set: (v) => {
       _ctxSpread = v;
       CT_X_GUN.spread = v;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.spread = v;
     },
-    display: (v) => v.toFixed(0) + '°'
+    display: (v) => v.toFixed(1) + '°'
   }
 };
 
