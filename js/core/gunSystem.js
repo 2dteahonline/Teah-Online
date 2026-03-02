@@ -53,7 +53,7 @@ let freezeTimer = 0;
 
 // bullets, hitEffects, deathEffects → js/authority/gameState.js
 // nextBulletId → js/authority/gameState.js (global, loaded before all systems)
-const BULLET_SPEED = 3.75;
+const BULLET_SPEED = 4.7;
 
 function spawnDeathEffect(m) {
   const colors = {
