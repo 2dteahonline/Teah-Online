@@ -607,13 +607,13 @@ const _mgSliders = {
     label: 'Freeze',
     desc: 'Higher = less slowdown after shooting.',
     min: 0, max: 100, step: 5,
-    // Piecewise: 0→0.50, 50→0.25, 70→0.04 (capped above 70). Duration flat 15f.
+    // Piecewise: 0→0.40, 50→0.25, 70→0.04 (capped above 70). Duration flat 15f.
     get: () => (typeof _ctxFreeze !== 'undefined') ? _ctxFreeze : 50,
     set: (v) => {
       _ctxFreeze = v;
       let penalty;
       if (v <= 50) {
-        penalty = 0.50 - (v / 50) * 0.25; // 0→0.50, 50→0.25
+        penalty = 0.40 - (v / 50) * 0.15; // 0→0.40, 50→0.25
       } else {
         const clamped = Math.min(v, 70);
         penalty = 0.25 - ((clamped - 50) / 20) * 0.21; // 50→0.25, 70→0.04
