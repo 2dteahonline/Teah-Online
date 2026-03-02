@@ -176,52 +176,220 @@ function drawItemCardArt(item, cx2, cy2, w, h) {
   }
 
   if (item.type === 'gun') {
-    // Gun barrel
-    ctx.fillStyle = "#666";
-    ctx.fillRect(cx2 - 30, cy2 - 4, 60, 8);
-    ctx.fillStyle = "#888";
-    ctx.fillRect(cx2 - 30, cy2 - 3, 60, 3);
-    // Stock
-    ctx.fillStyle = "#553322";
-    ctx.fillRect(cx2 + 18, cy2 - 10, 18, 20);
-    ctx.fillStyle = "#664433";
-    ctx.fillRect(cx2 + 20, cy2 - 8, 14, 16);
-    // Grip
-    ctx.fillStyle = "#444";
-    ctx.fillRect(cx2 + 2, cy2 + 4, 8, 14);
-    // Muzzle flash hint
-    if (d.special === 'frost') {
-      ctx.fillStyle = "rgba(100,200,255,0.4)";
-      ctx.beginPath(); ctx.arc(cx2 - 34, cy2, 8, 0, Math.PI * 2); ctx.fill();
-    } else if (d.special === 'burn') {
-      ctx.fillStyle = "rgba(255,100,30,0.4)";
-      ctx.beginPath(); ctx.arc(cx2 - 34, cy2, 8, 0, Math.PI * 2); ctx.fill();
+    const gId = item.id || 'pistol';
+    if (gId === 'pistol') {
+      // Pistol — compact gray handgun
+      ctx.fillStyle = "#7a7a7a"; ctx.fillRect(cx2 - 14, cy2 - 4, 28, 10);
+      ctx.fillStyle = "#8a8a8a"; ctx.fillRect(cx2 - 12, cy2 - 3, 24, 2);
+      ctx.fillStyle = "#6a6a6a"; ctx.fillRect(cx2 + 14, cy2 - 2, 10, 7);
+      ctx.fillStyle = "#555"; ctx.fillRect(cx2 + 2, cy2 + 6, 7, 16);
+      ctx.fillStyle = "#666"; ctx.fillRect(cx2 + 3, cy2 + 7, 5, 14);
+      ctx.fillStyle = "#777"; ctx.fillRect(cx2 - 20, cy2, 6, 5);
+    } else if (gId === 'ct_x') {
+      // CT-X — green compact with frost crystal
+      ctx.fillStyle = "#4a6a4a"; ctx.fillRect(cx2 - 14, cy2 - 4, 28, 10);
+      ctx.fillStyle = "#5a7a5a"; ctx.fillRect(cx2 - 12, cy2 - 3, 24, 2);
+      ctx.fillStyle = "#3a5a3a"; ctx.fillRect(cx2 + 14, cy2 - 2, 10, 7);
+      ctx.fillStyle = "#2a4a2a"; ctx.fillRect(cx2 + 2, cy2 + 6, 7, 16);
+      ctx.fillStyle = "#2a3a2a"; ctx.fillRect(cx2 + 3, cy2 + 7, 5, 14);
+      ctx.fillStyle = "#3a5a3a"; ctx.fillRect(cx2 - 20, cy2, 6, 5);
+      ctx.fillStyle = "rgba(100,220,255,0.5)"; ctx.beginPath(); ctx.arc(cx2 - 26, cy2 + 2, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#80e0ff"; ctx.fillRect(cx2 - 28, cy2, 5, 5);
+    } else if (gId === 'smg') {
+      // SMG — short dark barrel, extended mag
+      ctx.fillStyle = "#555"; ctx.fillRect(cx2 - 18, cy2 - 4, 36, 10);
+      ctx.fillStyle = "#666"; ctx.fillRect(cx2 - 14, cy2 - 6, 22, 14);
+      ctx.fillStyle = "#444"; ctx.fillRect(cx2 + 18, cy2 - 2, 12, 6);
+      ctx.fillStyle = "#333"; ctx.fillRect(cx2 - 4, cy2 + 6, 6, 20);
+      ctx.fillStyle = "#444"; ctx.fillRect(cx2 - 3, cy2 + 7, 4, 18);
+      ctx.fillStyle = "#555"; ctx.fillRect(cx2 + 6, cy2 + 6, 6, 10);
+      ctx.fillStyle = "#444"; ctx.fillRect(cx2 - 24, cy2 - 1, 6, 4);
+    } else if (gId === 'rifle') {
+      // Rifle — long barrel, wood stock, front grip
+      ctx.fillStyle = "#666"; ctx.fillRect(cx2 - 30, cy2 - 4, 60, 8);
+      ctx.fillStyle = "#888"; ctx.fillRect(cx2 - 30, cy2 - 3, 60, 3);
+      ctx.fillStyle = "#553322"; ctx.fillRect(cx2 + 18, cy2 - 10, 18, 20);
+      ctx.fillStyle = "#664433"; ctx.fillRect(cx2 + 20, cy2 - 8, 14, 16);
+      ctx.fillStyle = "#444"; ctx.fillRect(cx2 + 2, cy2 + 4, 8, 14);
+      ctx.fillStyle = "#777"; ctx.fillRect(cx2 - 2, cy2 + 4, 5, 14);
+      ctx.fillStyle = "#5a3818"; ctx.fillRect(cx2 - 16, cy2 + 4, 5, 10);
+      ctx.fillStyle = "#888"; ctx.fillRect(cx2 - 36, cy2 - 2, 6, 8);
+    } else if (gId === 'frost_rifle') {
+      // Frost Rifle — blue/white with ice glow
+      ctx.fillStyle = "#4488bb"; ctx.fillRect(cx2 - 30, cy2 - 4, 60, 8);
+      ctx.fillStyle = "#6ab8e8"; ctx.fillRect(cx2 - 28, cy2 - 3, 56, 3);
+      ctx.fillStyle = "#3a5a6a"; ctx.fillRect(cx2 + 18, cy2 - 10, 18, 20);
+      ctx.fillStyle = "#4a6a7a"; ctx.fillRect(cx2 + 20, cy2 - 8, 14, 16);
+      ctx.fillStyle = "#3a5a6a"; ctx.fillRect(cx2 + 2, cy2 + 4, 8, 14);
+      ctx.fillStyle = "#4a6a7a"; ctx.fillRect(cx2 - 2, cy2 + 4, 5, 14);
+      ctx.fillStyle = "rgba(100,200,255,0.4)"; ctx.beginPath(); ctx.arc(cx2 - 34, cy2, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#aaddff"; ctx.fillRect(cx2 - 36, cy2 - 2, 6, 8);
+    } else if (gId === 'inferno_cannon') {
+      // Inferno Cannon — thick red barrel, fire glow
+      ctx.fillStyle = "#8a3a1a"; ctx.fillRect(cx2 - 30, cy2 - 6, 60, 12);
+      ctx.fillStyle = "#a05030"; ctx.fillRect(cx2 - 28, cy2 - 5, 56, 4);
+      ctx.fillStyle = "#4a2a1a"; ctx.fillRect(cx2 + 18, cy2 - 10, 18, 22);
+      ctx.fillStyle = "#5a3a2a"; ctx.fillRect(cx2 + 20, cy2 - 8, 14, 18);
+      ctx.fillStyle = "#5a2a0a"; ctx.fillRect(cx2 + 2, cy2 + 6, 8, 14);
+      ctx.fillStyle = "#6a3a1a"; ctx.fillRect(cx2 - 4, cy2 + 6, 6, 14);
+      ctx.fillStyle = "#5a2a0a"; ctx.fillRect(cx2 - 38, cy2 - 4, 8, 12);
+      ctx.fillStyle = "rgba(255,100,30,0.4)"; ctx.beginPath(); ctx.arc(cx2 - 34, cy2, 8, 0, Math.PI * 2); ctx.fill();
+    } else if (gId === 'storm_ar') {
+      // Storm AR — blue-tinted military rifle
+      ctx.fillStyle = "#3a5a7a"; ctx.fillRect(cx2 - 28, cy2 - 4, 56, 8);
+      ctx.fillStyle = "#5a8acc"; ctx.fillRect(cx2 - 26, cy2 - 3, 52, 2);
+      ctx.fillStyle = "#2a4a6a"; ctx.fillRect(cx2 + 18, cy2 - 10, 16, 20);
+      ctx.fillStyle = "#3a5a7a"; ctx.fillRect(cx2 + 20, cy2 - 8, 12, 16);
+      ctx.fillStyle = "#2a4a6a"; ctx.fillRect(cx2 + 2, cy2 + 4, 7, 12);
+      ctx.fillStyle = "#1a3a5a"; ctx.fillRect(cx2 - 2, cy2 + 4, 5, 14);
+      ctx.fillStyle = "#3a5a7a"; ctx.fillRect(cx2 - 34, cy2 - 2, 6, 7);
+    } else if (gId === 'heavy_ar') {
+      // Heavy AR — thick dark, chunky
+      ctx.fillStyle = "#4a4040"; ctx.fillRect(cx2 - 30, cy2 - 5, 60, 10);
+      ctx.fillStyle = "#6a4a3a"; ctx.fillRect(cx2 - 28, cy2 - 4, 56, 2);
+      ctx.fillStyle = "#3a3030"; ctx.fillRect(cx2 + 18, cy2 - 12, 20, 24);
+      ctx.fillStyle = "#4a4040"; ctx.fillRect(cx2 + 20, cy2 - 10, 16, 20);
+      ctx.fillStyle = "#3a3030"; ctx.fillRect(cx2 + 2, cy2 + 5, 8, 14);
+      ctx.fillStyle = "#2a1a1a"; ctx.fillRect(cx2 - 4, cy2 + 5, 6, 16);
+      ctx.fillStyle = "#4a4040"; ctx.fillRect(cx2 - 36, cy2 - 3, 6, 10);
+    } else if (gId === 'boomstick') {
+      // Boomstick — double barrels, wood stock
+      ctx.fillStyle = "#7a6a50"; ctx.fillRect(cx2 - 30, cy2 - 5, 50, 5);
+      ctx.fillStyle = "#7a6a50"; ctx.fillRect(cx2 - 30, cy2 + 2, 50, 5);
+      ctx.fillStyle = "#6a5a40"; ctx.fillRect(cx2 - 34, cy2 - 6, 5, 14);
+      ctx.fillStyle = "#5a4a30"; ctx.fillRect(cx2 + 18, cy2 - 10, 18, 22);
+      ctx.fillStyle = "#6a5a40"; ctx.fillRect(cx2 + 20, cy2 - 8, 14, 18);
+      ctx.fillStyle = "#5a4a30"; ctx.fillRect(cx2 + 4, cy2 + 7, 6, 10);
+    } else if (gId === 'ironwood_bow') {
+      // Ironwood Bow — curved limbs with string and arrow
+      ctx.strokeStyle = "#6a4a20"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(cx2, cy2, 28, -Math.PI * 0.7, Math.PI * 0.7); ctx.stroke();
+      ctx.strokeStyle = "#8a6a30"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx2, cy2, 28, -Math.PI * 0.65, Math.PI * 0.65); ctx.stroke();
+      ctx.strokeStyle = "#bbb"; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx2 + Math.cos(-Math.PI * 0.7) * 28, cy2 + Math.sin(-Math.PI * 0.7) * 28);
+      ctx.lineTo(cx2 + Math.cos(Math.PI * 0.7) * 28, cy2 + Math.sin(Math.PI * 0.7) * 28);
+      ctx.stroke();
+      ctx.fillStyle = "#8a6a3a"; ctx.fillRect(cx2 - 2, cy2 - 22, 4, 44);
+      ctx.fillStyle = "#aaa";
+      ctx.beginPath(); ctx.moveTo(cx2 - 4, cy2 - 22); ctx.lineTo(cx2, cy2 - 30); ctx.lineTo(cx2 + 4, cy2 - 22); ctx.fill();
+    } else if (gId === 'volt_9') {
+      // Volt-9 — compact purple, long magazine
+      ctx.fillStyle = "#4a3a6a"; ctx.fillRect(cx2 - 14, cy2 - 4, 28, 10);
+      ctx.fillStyle = "#6a5a8a"; ctx.fillRect(cx2 - 12, cy2 - 3, 24, 2);
+      ctx.fillStyle = "#5a4a7a"; ctx.fillRect(cx2 - 10, cy2 - 6, 18, 14);
+      ctx.fillStyle = "#3a2a5a"; ctx.fillRect(cx2 + 14, cy2 - 2, 10, 6);
+      ctx.fillStyle = "#2a1a4a"; ctx.fillRect(cx2 - 2, cy2 + 6, 6, 22);
+      ctx.fillStyle = "#3a2a5a"; ctx.fillRect(cx2 - 1, cy2 + 7, 4, 20);
+      ctx.fillStyle = "#4a3a6a"; ctx.fillRect(cx2 + 6, cy2 + 6, 6, 10);
+      ctx.fillStyle = "rgba(170,102,255,0.3)"; ctx.beginPath(); ctx.arc(cx2 - 20, cy2 + 2, 5, 0, Math.PI * 2); ctx.fill();
+    } else {
+      // Unknown gun fallback — generic barrel
+      ctx.fillStyle = "#666"; ctx.fillRect(cx2 - 30, cy2 - 4, 60, 8);
+      ctx.fillStyle = "#888"; ctx.fillRect(cx2 - 30, cy2 - 3, 60, 3);
+      ctx.fillStyle = "#553322"; ctx.fillRect(cx2 + 18, cy2 - 10, 18, 20);
+      ctx.fillStyle = "#444"; ctx.fillRect(cx2 + 2, cy2 + 4, 8, 14);
     }
   } else if (item.type === 'melee') {
-    // Blade
-    ctx.fillStyle = tc;
-    ctx.beginPath();
-    ctx.moveTo(cx2, cy2 - 36);
-    ctx.lineTo(cx2 - 8, cy2 + 4);
-    ctx.lineTo(cx2 + 8, cy2 + 4);
-    ctx.closePath();
-    ctx.fill();
-    // Blade shine
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
-    ctx.beginPath();
-    ctx.moveTo(cx2, cy2 - 34);
-    ctx.lineTo(cx2 - 3, cy2);
-    ctx.lineTo(cx2 + 2, cy2);
-    ctx.closePath();
-    ctx.fill();
-    // Guard
-    ctx.fillStyle = "#aa8844";
-    ctx.fillRect(cx2 - 14, cy2 + 4, 28, 5);
-    // Handle
-    ctx.fillStyle = "#553322";
-    ctx.fillRect(cx2 - 4, cy2 + 9, 8, 18);
-    ctx.fillStyle = "#aa8844";
-    ctx.fillRect(cx2 - 6, cy2 + 26, 12, 4);
+    const mId = item.id || 'knife';
+    if (mId === 'knife') {
+      // Knife — small gray dagger
+      ctx.fillStyle = "#b0b0b8";
+      ctx.beginPath(); ctx.moveTo(cx2, cy2 - 24); ctx.lineTo(cx2 - 5, cy2 + 2); ctx.lineTo(cx2 + 5, cy2 + 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.beginPath(); ctx.moveTo(cx2, cy2 - 22); ctx.lineTo(cx2 - 2, cy2); ctx.lineTo(cx2 + 1, cy2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#777"; ctx.fillRect(cx2 - 8, cy2 + 2, 16, 4);
+      ctx.fillStyle = "#5a4a30"; ctx.fillRect(cx2 - 3, cy2 + 6, 6, 14);
+    } else if (mId === 'sword') {
+      // Sword — silver blade with gold guard and pommel
+      ctx.fillStyle = "#c0ccee";
+      ctx.beginPath(); ctx.moveTo(cx2, cy2 - 36); ctx.lineTo(cx2 - 7, cy2 + 2); ctx.lineTo(cx2 + 7, cy2 + 2); ctx.closePath(); ctx.fill();
+      // Fuller groove
+      ctx.fillStyle = "#8898bb"; ctx.fillRect(cx2 - 1, cy2 - 30, 2, 28);
+      // Edge highlight
+      ctx.fillStyle = "#dde4f0";
+      ctx.beginPath(); ctx.moveTo(cx2, cy2 - 36); ctx.lineTo(cx2 + 7, cy2 + 2); ctx.lineTo(cx2 + 5, cy2 + 2); ctx.lineTo(cx2, cy2 - 32); ctx.closePath(); ctx.fill();
+      // Gold guard
+      ctx.fillStyle = "#c0a860"; ctx.fillRect(cx2 - 14, cy2 + 2, 28, 5);
+      ctx.fillStyle = "#d4b870"; ctx.fillRect(cx2 - 12, cy2 + 3, 24, 3);
+      // Handle
+      ctx.fillStyle = "#5a3818"; ctx.fillRect(cx2 - 4, cy2 + 7, 8, 16);
+      ctx.fillStyle = "#3a2810"; ctx.fillRect(cx2 - 3, cy2 + 8, 6, 14);
+      // Gold pommel
+      ctx.fillStyle = "#c0a040"; ctx.beginPath(); ctx.arc(cx2, cy2 + 26, 4, 0, Math.PI * 2); ctx.fill();
+    } else if (mId === 'ninja_katanas') {
+      // Ninja Katanas — dual crossed black blades
+      ctx.save();
+      // Blade 1 (top-left to bottom-right)
+      ctx.strokeStyle = "#1a1a2a"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(cx2 - 24, cy2 - 28); ctx.lineTo(cx2 + 24, cy2 + 28); ctx.stroke();
+      // Blade 2 (top-right to bottom-left)
+      ctx.beginPath(); ctx.moveTo(cx2 + 24, cy2 - 28); ctx.lineTo(cx2 - 24, cy2 + 28); ctx.stroke();
+      // Blade edge highlights
+      ctx.strokeStyle = "rgba(80,50,120,0.3)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx2 - 22, cy2 - 26); ctx.lineTo(cx2 + 22, cy2 + 26); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx2 + 22, cy2 - 26); ctx.lineTo(cx2 - 22, cy2 + 26); ctx.stroke();
+      // Center diamond (cross guard)
+      ctx.fillStyle = "#333"; ctx.fillRect(cx2 - 5, cy2 - 5, 10, 10);
+      ctx.fillStyle = "#444"; ctx.fillRect(cx2 - 3, cy2 - 3, 6, 6);
+      ctx.restore();
+    } else if (mId === 'storm_blade') {
+      // Storm Blade — crystal faceted blade with glow
+      ctx.fillStyle = "#e8f0ff";
+      ctx.beginPath();
+      ctx.moveTo(cx2, cy2 - 38);
+      ctx.lineTo(cx2 - 10, cy2 - 10);
+      ctx.lineTo(cx2 - 7, cy2 + 4);
+      ctx.lineTo(cx2 + 7, cy2 + 4);
+      ctx.lineTo(cx2 + 10, cy2 - 10);
+      ctx.closePath(); ctx.fill();
+      // Facet lines
+      ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx2, cy2 - 36); ctx.lineTo(cx2, cy2 + 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx2 - 8, cy2 - 8); ctx.lineTo(cx2, cy2 - 20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx2 + 8, cy2 - 8); ctx.lineTo(cx2, cy2 - 20); ctx.stroke();
+      // Sparkle at tip
+      ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.beginPath(); ctx.arc(cx2, cy2 - 38, 3, 0, Math.PI * 2); ctx.fill();
+      // Diamond guard
+      ctx.fillStyle = "#d0e0ff";
+      ctx.beginPath(); ctx.moveTo(cx2, cy2 + 10); ctx.lineTo(cx2 - 10, cy2 + 4); ctx.lineTo(cx2, cy2 - 2); ctx.lineTo(cx2 + 10, cy2 + 4); ctx.closePath(); ctx.fill();
+      // Handle
+      ctx.fillStyle = "#b0c0d0"; ctx.fillRect(cx2 - 3, cy2 + 10, 6, 14);
+      ctx.fillStyle = "#90a8c0"; ctx.fillRect(cx2 - 2, cy2 + 11, 4, 12);
+    } else if (mId === 'war_cleaver') {
+      // War Cleaver — dark red trident staff
+      ctx.fillStyle = "#2a0808"; ctx.fillRect(cx2 - 2, cy2 - 10, 4, 42);
+      ctx.fillStyle = "#180505"; ctx.fillRect(cx2 - 1, cy2 - 8, 2, 38);
+      // Staff wrapping bands
+      ctx.fillStyle = "#801010"; ctx.fillRect(cx2 - 3, cy2 + 6, 6, 3);
+      ctx.fillStyle = "#701010"; ctx.fillRect(cx2 - 3, cy2 + 18, 6, 3);
+      // Center prong (longest)
+      ctx.fillStyle = "#a01515"; ctx.fillRect(cx2 - 2, cy2 - 22, 4, 14);
+      ctx.fillStyle = "#c02020";
+      ctx.beginPath(); ctx.moveTo(cx2 - 2, cy2 - 22); ctx.lineTo(cx2, cy2 - 30); ctx.lineTo(cx2 + 2, cy2 - 22); ctx.fill();
+      // Left prong
+      ctx.fillStyle = "#901515";
+      ctx.beginPath(); ctx.moveTo(cx2 - 2, cy2 - 14); ctx.lineTo(cx2 - 10, cy2 - 24); ctx.lineTo(cx2 - 10, cy2 - 28); ctx.lineTo(cx2 - 4, cy2 - 18); ctx.fill();
+      // Right prong
+      ctx.beginPath(); ctx.moveTo(cx2 + 2, cy2 - 14); ctx.lineTo(cx2 + 10, cy2 - 24); ctx.lineTo(cx2 + 10, cy2 - 28); ctx.lineTo(cx2 + 4, cy2 - 18); ctx.fill();
+      // Red glow at tips
+      ctx.fillStyle = "rgba(200,30,30,0.4)";
+      ctx.beginPath(); ctx.arc(cx2, cy2 - 30, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx2 - 10, cy2 - 28, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx2 + 10, cy2 - 28, 3, 0, Math.PI * 2); ctx.fill();
+      // Butt cap
+      ctx.fillStyle = "#501010"; ctx.beginPath(); ctx.arc(cx2, cy2 + 34, 3, 0, Math.PI * 2); ctx.fill();
+    } else {
+      // Unknown melee fallback — generic blade
+      ctx.fillStyle = tc;
+      ctx.beginPath(); ctx.moveTo(cx2, cy2 - 36); ctx.lineTo(cx2 - 8, cy2 + 4); ctx.lineTo(cx2 + 8, cy2 + 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.beginPath(); ctx.moveTo(cx2, cy2 - 34); ctx.lineTo(cx2 - 3, cy2); ctx.lineTo(cx2 + 2, cy2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#aa8844"; ctx.fillRect(cx2 - 14, cy2 + 4, 28, 5);
+      ctx.fillStyle = "#553322"; ctx.fillRect(cx2 - 4, cy2 + 9, 8, 18);
+      ctx.fillStyle = "#aa8844"; ctx.fillRect(cx2 - 6, cy2 + 26, 12, 4);
+    }
   } else if (item.type === 'boots') {
     // Boot shape
     for (let b = -1; b <= 1; b += 2) {
@@ -1334,33 +1502,107 @@ function drawHotbar() {
     // === SLOT ICONS ===
     if (slot.type === "gun") {
       const gEq = playerEquip.gun;
-      const gTier = gEq ? gEq.tier : 1;
+      const gId = gEq ? gEq.id : 'pistol';
       const cx2 = sx + 32, cy2 = sy + 32;
-      if (gTier === 4) {
+      if (gId === 'inferno_cannon') {
         // Inferno Cannon — thick red barrel with orange glow
         ctx.fillStyle = "#a02020"; ctx.fillRect(sx + 8, sy + 26, 42, 10);
         ctx.fillStyle = "#c03030"; ctx.fillRect(sx + 10, sy + 28, 38, 6);
-        ctx.fillStyle = "#ff6600"; ctx.fillRect(sx + 6, sy + 24, 6, 14); // muzzle
+        ctx.fillStyle = "#ff6600"; ctx.fillRect(sx + 6, sy + 24, 6, 14);
         ctx.fillStyle = "#555"; ctx.fillRect(sx + 38, sy + 24, 16, 12);
         ctx.fillStyle = "#777"; ctx.fillRect(sx + 30, sy + 36, 5, 10);
         ctx.fillStyle = "rgba(255,100,0,0.3)"; ctx.beginPath(); ctx.arc(sx + 9, sy + 31, 8, 0, Math.PI * 2); ctx.fill();
-      } else if (gTier === 3) {
-        // Frost Rifle — blue/white barrel
+      } else if (gId === 'frost_rifle') {
+        // Frost Rifle — blue/white barrel with ice glow
         ctx.fillStyle = "#4488bb"; ctx.fillRect(sx + 10, sy + 28, 40, 6);
         ctx.fillStyle = "#6ab8e8"; ctx.fillRect(sx + 12, sy + 26, 34, 10);
         ctx.fillStyle = "#aaddff"; ctx.fillRect(sx + 8, sy + 29, 4, 4);
         ctx.fillStyle = "#5a4838"; ctx.fillRect(sx + 38, sy + 24, 14, 12);
         ctx.fillStyle = "#666"; ctx.fillRect(sx + 30, sy + 36, 5, 10);
         ctx.fillStyle = "rgba(100,200,255,0.25)"; ctx.beginPath(); ctx.arc(sx + 10, sy + 31, 6, 0, Math.PI * 2); ctx.fill();
-      } else if (gTier === 2) {
-        // Rifle — longer barrel, darker
+      } else if (gId === 'rifle') {
+        // Rifle — long barrel, wood stock, front grip
         ctx.fillStyle = "#888"; ctx.fillRect(sx + 8, sy + 28, 44, 6);
         ctx.fillStyle = "#aaa"; ctx.fillRect(sx + 10, sy + 26, 28, 10);
         ctx.fillStyle = "#6a5838"; ctx.fillRect(sx + 38, sy + 24, 16, 12);
         ctx.fillStyle = "#777"; ctx.fillRect(sx + 28, sy + 36, 5, 10);
         ctx.fillRect(sx + 18, sy + 36, 4, 12);
+      } else if (gId === 'smg') {
+        // SMG — short dark barrel, extended mag, no stock
+        ctx.fillStyle = "#555"; ctx.fillRect(sx + 14, sy + 26, 28, 8);
+        ctx.fillStyle = "#666"; ctx.fillRect(sx + 14, sy + 24, 16, 12);
+        ctx.fillStyle = "#444"; ctx.fillRect(sx + 42, sy + 26, 10, 6);
+        ctx.fillStyle = "#333"; ctx.fillRect(sx + 24, sy + 34, 5, 14);
+        ctx.fillStyle = "#555"; ctx.fillRect(sx + 30, sy + 34, 5, 8);
+      } else if (gId === 'ct_x') {
+        // CT-X — compact green body, frost crystal at muzzle
+        ctx.fillStyle = "#3a5a3a"; ctx.fillRect(sx + 16, sy + 26, 26, 8);
+        ctx.fillStyle = "#4a6a4a"; ctx.fillRect(sx + 16, sy + 24, 16, 12);
+        ctx.fillStyle = "#3a5a3a"; ctx.fillRect(sx + 42, sy + 28, 10, 5);
+        ctx.fillStyle = "#2a3a2a"; ctx.fillRect(sx + 24, sy + 34, 5, 10);
+        ctx.fillStyle = "#2a4a2a"; ctx.fillRect(sx + 30, sy + 34, 5, 8);
+        // Frost crystal
+        ctx.fillStyle = "rgba(100,220,255,0.5)"; ctx.beginPath(); ctx.arc(sx + 13, sy + 30, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#80e0ff"; ctx.fillRect(sx + 11, sy + 28, 4, 4);
+      } else if (gId === 'pistol') {
+        // Pistol — small gray compact body, short barrel, grip
+        ctx.fillStyle = "#7a7a7a"; ctx.fillRect(sx + 20, sy + 26, 20, 8);
+        ctx.fillStyle = "#8a8a8a"; ctx.fillRect(sx + 20, sy + 24, 12, 12);
+        ctx.fillStyle = "#666"; ctx.fillRect(sx + 40, sy + 28, 8, 5);
+        ctx.fillStyle = "#555"; ctx.fillRect(sx + 26, sy + 34, 5, 12);
+        ctx.fillStyle = "#6a6a6a"; ctx.fillRect(sx + 18, sy + 28, 3, 6);
+      } else if (gId === 'storm_ar') {
+        // Storm AR — medium blue-tinted barrel, clean military look
+        ctx.fillStyle = "#3a5a7a"; ctx.fillRect(sx + 10, sy + 28, 38, 6);
+        ctx.fillStyle = "#4a6a8a"; ctx.fillRect(sx + 12, sy + 26, 24, 10);
+        ctx.fillStyle = "#5a8acc"; ctx.fillRect(sx + 12, sy + 25, 20, 2);
+        ctx.fillStyle = "#2a4a6a"; ctx.fillRect(sx + 38, sy + 24, 14, 12);
+        ctx.fillStyle = "#3a5a7a"; ctx.fillRect(sx + 28, sy + 36, 5, 10);
+        ctx.fillStyle = "#1a3a5a"; ctx.fillRect(sx + 20, sy + 36, 4, 8);
+      } else if (gId === 'heavy_ar') {
+        // Heavy AR — thick dark barrel, chunky receiver
+        ctx.fillStyle = "#4a4040"; ctx.fillRect(sx + 8, sy + 26, 44, 8);
+        ctx.fillStyle = "#5a4a4a"; ctx.fillRect(sx + 10, sy + 24, 28, 12);
+        ctx.fillStyle = "#6a4a3a"; ctx.fillRect(sx + 10, sy + 23, 24, 2);
+        ctx.fillStyle = "#3a3030"; ctx.fillRect(sx + 38, sy + 22, 16, 14);
+        ctx.fillStyle = "#4a4040"; ctx.fillRect(sx + 30, sy + 36, 6, 10);
+        ctx.fillStyle = "#2a1a1a"; ctx.fillRect(sx + 20, sy + 36, 5, 12);
+      } else if (gId === 'boomstick') {
+        // Boomstick — double barrels side-by-side, wood stock
+        ctx.fillStyle = "#6a5a40"; ctx.fillRect(sx + 10, sy + 26, 34, 4);
+        ctx.fillStyle = "#6a5a40"; ctx.fillRect(sx + 10, sy + 32, 34, 4);
+        ctx.fillStyle = "#8a7a50"; ctx.fillRect(sx + 8, sy + 25, 4, 12);
+        ctx.fillStyle = "#5a4a30"; ctx.fillRect(sx + 38, sy + 24, 16, 14);
+        ctx.fillStyle = "#4a3a20"; ctx.fillRect(sx + 40, sy + 26, 12, 10);
+        ctx.fillStyle = "#3a2a18"; ctx.fillRect(sx + 30, sy + 36, 5, 8);
+      } else if (gId === 'ironwood_bow') {
+        // Ironwood Bow — curved bow shape with string
+        ctx.strokeStyle = "#6a4a20"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx2, cy2, 18, -Math.PI * 0.7, Math.PI * 0.7); ctx.stroke();
+        ctx.strokeStyle = "#8a6a30"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx2, cy2, 18, -Math.PI * 0.7, Math.PI * 0.7); ctx.stroke();
+        // Bow string
+        ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx2 + Math.cos(-Math.PI * 0.7) * 18, cy2 + Math.sin(-Math.PI * 0.7) * 18);
+        ctx.lineTo(cx2 + Math.cos(Math.PI * 0.7) * 18, cy2 + Math.sin(Math.PI * 0.7) * 18);
+        ctx.stroke();
+        // Arrow
+        ctx.fillStyle = "#8a6a3a"; ctx.fillRect(cx2 - 2, cy2 - 16, 3, 32);
+        ctx.fillStyle = "#aaa";
+        ctx.beginPath(); ctx.moveTo(cx2 - 3, cy2 - 16); ctx.lineTo(cx2, cy2 - 22); ctx.lineTo(cx2 + 2, cy2 - 16); ctx.fill();
+      } else if (gId === 'volt_9') {
+        // Volt-9 — compact purple body, extra-long magazine
+        ctx.fillStyle = "#4a3a6a"; ctx.fillRect(sx + 16, sy + 26, 24, 7);
+        ctx.fillStyle = "#5a4a7a"; ctx.fillRect(sx + 16, sy + 24, 14, 11);
+        ctx.fillStyle = "#6a5a8a"; ctx.fillRect(sx + 16, sy + 23, 12, 2);
+        ctx.fillStyle = "#3a2a5a"; ctx.fillRect(sx + 40, sy + 27, 10, 5);
+        ctx.fillStyle = "#2a1a4a"; ctx.fillRect(sx + 22, sy + 33, 4, 16);
+        ctx.fillStyle = "#3a2a5a"; ctx.fillRect(sx + 28, sy + 33, 4, 8);
+        // Purple glow hint
+        ctx.fillStyle = "rgba(170,102,255,0.2)"; ctx.beginPath(); ctx.arc(sx + 14, sy + 30, 4, 0, Math.PI * 2); ctx.fill();
       } else {
-        // SMG / Recruit — compact
+        // Unknown gun fallback — generic compact
         ctx.fillStyle = "#999"; ctx.fillRect(sx + 14, sy + 28, 34, 6);
         ctx.fillStyle = "#777"; ctx.fillRect(sx + 14, sy + 26, 20, 10);
         ctx.fillStyle = "#6a5838"; ctx.fillRect(sx + 34, sy + 24, 14, 10);
@@ -1368,7 +1610,7 @@ function drawHotbar() {
       }
     } else if (slot.type === "melee") {
       const mEq = playerEquip.melee;
-      const mId = mEq ? mEq.id : 'katana';
+      const mId = mEq ? mEq.id : 'knife';
       if (mId === 'war_cleaver') {
         // Trident staff — vertical dark shaft with 3 red prongs
         ctx.strokeStyle = "#2a0808"; ctx.lineWidth = 3;
@@ -1382,10 +1624,15 @@ function drawHotbar() {
         ctx.beginPath(); ctx.arc(sx + 25, sy + 9, 1.5, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(sx + 39, sy + 9, 1.5, 0, Math.PI * 2); ctx.fill();
       } else if (mId === 'storm_blade') {
-        // Crystal blade — blue/white
+        // Crystal blade — blue/white faceted with sparkle
         ctx.strokeStyle = "#a0d0ff"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(sx + 16, sy + 48); ctx.lineTo(sx + 48, sy + 16); ctx.stroke();
+        ctx.strokeStyle = "#d0e8ff"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx + 22, sy + 44); ctx.lineTo(sx + 46, sy + 20); ctx.stroke();
         ctx.fillStyle = "#d0e8ff"; ctx.beginPath(); ctx.arc(sx + 48, sy + 16, 3, 0, Math.PI * 2); ctx.fill();
+        // Diamond guard
+        ctx.fillStyle = "#b0c0d0";
+        ctx.beginPath(); ctx.moveTo(sx + 16, sy + 48); ctx.lineTo(sx + 13, sy + 45); ctx.lineTo(sx + 16, sy + 42); ctx.lineTo(sx + 19, sy + 45); ctx.fill();
         ctx.strokeStyle = "#6a4a2a"; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.moveTo(sx + 12, sy + 52); ctx.lineTo(sx + 18, sy + 46); ctx.stroke();
       } else if (mId === 'ninja_katanas') {
@@ -1394,8 +1641,35 @@ function drawHotbar() {
         ctx.beginPath(); ctx.moveTo(sx + 14, sy + 48); ctx.lineTo(sx + 50, sy + 12); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(sx + 50, sy + 48); ctx.lineTo(sx + 14, sy + 12); ctx.stroke();
         ctx.fillStyle = "#333"; ctx.fillRect(sx + 29, sy + 28, 6, 6);
+      } else if (mId === 'sword') {
+        // Sword — silver blade with gold crossguard and pommel
+        ctx.strokeStyle = "#c0ccee"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx + 16, sy + 48); ctx.lineTo(sx + 48, sy + 16); ctx.stroke();
+        // Blade edge highlight
+        ctx.strokeStyle = "#dde4f0"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx + 20, sy + 46); ctx.lineTo(sx + 48, sy + 18); ctx.stroke();
+        // Gold crossguard
+        ctx.strokeStyle = "#c0a040"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx + 12, sy + 44); ctx.lineTo(sx + 22, sy + 52); ctx.stroke();
+        // Brown handle
+        ctx.strokeStyle = "#5a3818"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(sx + 12, sy + 52); ctx.lineTo(sx + 18, sy + 46); ctx.stroke();
+        // Gold pommel
+        ctx.fillStyle = "#c0a040"; ctx.beginPath(); ctx.arc(sx + 10, sy + 54, 2.5, 0, Math.PI * 2); ctx.fill();
+      } else if (mId === 'knife') {
+        // Knife — small short dagger, gray blade
+        ctx.strokeStyle = "#b0b0b8"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sx + 24, sy + 40); ctx.lineTo(sx + 44, sy + 22); ctx.stroke();
+        // Blade highlight
+        ctx.strokeStyle = "#d0d0d8"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx + 26, sy + 40); ctx.lineTo(sx + 44, sy + 24); ctx.stroke();
+        // Small guard
+        ctx.fillStyle = "#777"; ctx.fillRect(sx + 22, sy + 40, 6, 2);
+        // Handle
+        ctx.strokeStyle = "#5a4a30"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx + 18, sy + 46); ctx.lineTo(sx + 24, sy + 40); ctx.stroke();
       } else {
-        // Default katana/sword
+        // Unknown melee fallback — generic blade
         ctx.strokeStyle = "#ccd8ff"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(sx + 16, sy + 48); ctx.lineTo(sx + 48, sy + 16); ctx.stroke();
         ctx.strokeStyle = "#8a6a3a"; ctx.lineWidth = 4;
@@ -1743,52 +2017,144 @@ function drawMeleeHUD() {
 }
 
 function drawGunIcon(cx, cy) {
-  // AR-style rifle silhouette matching in-game gun
-  // Stock
-  ctx.fillStyle = "#6a5838";
-  ctx.fillRect(cx + 14, cy - 2, 14, 8);
-  ctx.fillStyle = "#7a6848";
-  ctx.fillRect(cx + 15, cy - 1, 12, 6);
-  // Receiver
-  ctx.fillStyle = "#aaa";
-  ctx.fillRect(cx - 6, cy - 3, 22, 10);
-  ctx.fillStyle = "#bbb";
-  ctx.fillRect(cx - 4, cy - 2, 18, 1); // top rail
-  // Ejection port
-  ctx.fillStyle = "#ccc";
-  ctx.fillRect(cx, cy - 1, 4, 3);
-  // Pistol grip
-  ctx.fillStyle = "#777";
-  ctx.fillRect(cx + 6, cy + 7, 5, 10);
-  ctx.fillStyle = "#666";
-  ctx.fillRect(cx + 7, cy + 8, 3, 8);
-  // Trigger
-  ctx.fillStyle = "#999";
-  ctx.fillRect(cx + 2, cy + 7, 5, 2);
-  ctx.fillStyle = "#888";
-  ctx.fillRect(cx + 4, cy + 7, 2, 4);
-  // Magazine (curved)
-  ctx.fillStyle = "#888";
-  ctx.fillRect(cx - 2, cy + 7, 5, 14);
-  ctx.fillStyle = "#777";
-  ctx.fillRect(cx - 1, cy + 8, 3, 12);
-  // Handguard
-  ctx.fillStyle = "#999";
-  ctx.fillRect(cx - 26, cy - 2, 20, 8);
-  ctx.fillStyle = "#888";
-  ctx.fillRect(cx - 24, cy, 1, 4); ctx.fillRect(cx - 20, cy, 1, 4); ctx.fillRect(cx - 16, cy, 1, 4); ctx.fillRect(cx - 12, cy, 1, 4);
-  // Barrel
-  ctx.fillStyle = "#aaa";
-  ctx.fillRect(cx - 36, cy, 10, 4);
-  // Muzzle brake
-  ctx.fillStyle = "#777";
-  ctx.fillRect(cx - 40, cy - 2, 5, 8);
-  ctx.fillStyle = "#666";
-  ctx.fillRect(cx - 39, cy - 1, 1, 2); ctx.fillRect(cx - 37, cy - 1, 1, 2);
-  ctx.fillRect(cx - 39, cy + 3, 1, 2); ctx.fillRect(cx - 37, cy + 3, 1, 2);
-  // Front sight
-  ctx.fillStyle = "#bbb";
-  ctx.fillRect(cx - 27, cy - 4, 2, 3);
+  const eq = playerEquip.gun;
+  const gId = eq ? eq.id : 'pistol';
+
+  if (gId === 'pistol') {
+    // Pistol — compact gray handgun
+    ctx.fillStyle = "#8a8a8a"; ctx.fillRect(cx - 10, cy - 3, 20, 8);
+    ctx.fillStyle = "#999"; ctx.fillRect(cx - 8, cy - 2, 16, 1);
+    ctx.fillStyle = "#6a6a6a"; ctx.fillRect(cx + 10, cy - 1, 8, 5);
+    ctx.fillStyle = "#666"; ctx.fillRect(cx + 2, cy + 5, 5, 12);
+    ctx.fillStyle = "#555"; ctx.fillRect(cx + 3, cy + 6, 3, 10);
+    ctx.fillStyle = "#888"; ctx.fillRect(cx - 1, cy + 5, 4, 2);
+    ctx.fillStyle = "#777"; ctx.fillRect(cx + 1, cy + 5, 2, 4);
+    ctx.fillStyle = "#7a7a7a"; ctx.fillRect(cx - 16, cy - 1, 6, 4);
+  } else if (gId === 'ct_x') {
+    // CT-X — compact green body with frost crystal
+    ctx.fillStyle = "#4a6a4a"; ctx.fillRect(cx - 10, cy - 3, 20, 8);
+    ctx.fillStyle = "#5a7a5a"; ctx.fillRect(cx - 8, cy - 2, 16, 1);
+    ctx.fillStyle = "#3a5a3a"; ctx.fillRect(cx + 10, cy - 1, 8, 5);
+    ctx.fillStyle = "#2a4a2a"; ctx.fillRect(cx + 2, cy + 5, 5, 12);
+    ctx.fillStyle = "#2a3a2a"; ctx.fillRect(cx + 3, cy + 6, 3, 10);
+    ctx.fillStyle = "#3a5a3a"; ctx.fillRect(cx - 1, cy + 5, 4, 2);
+    ctx.fillStyle = "#3a5a3a"; ctx.fillRect(cx - 16, cy - 1, 6, 4);
+    // Frost crystal at muzzle
+    ctx.fillStyle = "rgba(100,220,255,0.5)"; ctx.beginPath(); ctx.arc(cx - 20, cy + 1, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#80e0ff"; ctx.fillRect(cx - 22, cy - 1, 4, 4);
+  } else if (gId === 'smg') {
+    // SMG — short barrel, extended mag, no stock
+    ctx.fillStyle = "#555"; ctx.fillRect(cx - 14, cy - 3, 28, 8);
+    ctx.fillStyle = "#666"; ctx.fillRect(cx - 12, cy - 4, 18, 10);
+    ctx.fillStyle = "#444"; ctx.fillRect(cx + 14, cy - 1, 10, 5);
+    ctx.fillStyle = "#333"; ctx.fillRect(cx - 4, cy + 5, 5, 16);
+    ctx.fillStyle = "#444"; ctx.fillRect(cx - 3, cy + 6, 3, 14);
+    ctx.fillStyle = "#555"; ctx.fillRect(cx + 4, cy + 5, 5, 8);
+    ctx.fillStyle = "#444"; ctx.fillRect(cx - 20, cy - 1, 6, 4);
+  } else if (gId === 'rifle') {
+    // Rifle — long barrel, wood stock, front grip
+    ctx.fillStyle = "#6a5838"; ctx.fillRect(cx + 14, cy - 2, 14, 8);
+    ctx.fillStyle = "#7a6848"; ctx.fillRect(cx + 15, cy - 1, 12, 6);
+    ctx.fillStyle = "#aaa"; ctx.fillRect(cx - 6, cy - 3, 22, 10);
+    ctx.fillStyle = "#bbb"; ctx.fillRect(cx - 4, cy - 2, 18, 1);
+    ctx.fillStyle = "#777"; ctx.fillRect(cx + 6, cy + 7, 5, 10);
+    ctx.fillStyle = "#888"; ctx.fillRect(cx - 2, cy + 7, 5, 14);
+    ctx.fillStyle = "#999"; ctx.fillRect(cx - 26, cy - 2, 20, 8);
+    ctx.fillStyle = "#aaa"; ctx.fillRect(cx - 36, cy, 10, 4);
+    ctx.fillStyle = "#777"; ctx.fillRect(cx - 40, cy - 2, 5, 8);
+    // Front grip
+    ctx.fillStyle = "#5a3818"; ctx.fillRect(cx - 18, cy + 6, 4, 8);
+  } else if (gId === 'frost_rifle') {
+    // Frost Rifle — blue/white barrel with ice glow
+    ctx.fillStyle = "#3a5a6a"; ctx.fillRect(cx + 14, cy - 2, 14, 8);
+    ctx.fillStyle = "#4a6a7a"; ctx.fillRect(cx + 15, cy - 1, 12, 6);
+    ctx.fillStyle = "#5a8aaa"; ctx.fillRect(cx - 6, cy - 3, 22, 10);
+    ctx.fillStyle = "#6ab8e8"; ctx.fillRect(cx - 4, cy - 2, 18, 1);
+    ctx.fillStyle = "#3a5a6a"; ctx.fillRect(cx + 6, cy + 7, 5, 10);
+    ctx.fillStyle = "#4a6a7a"; ctx.fillRect(cx - 2, cy + 7, 5, 14);
+    ctx.fillStyle = "#6ab8e8"; ctx.fillRect(cx - 26, cy - 2, 20, 8);
+    ctx.fillStyle = "#88ccee"; ctx.fillRect(cx - 36, cy, 10, 4);
+    ctx.fillStyle = "#aaddff"; ctx.fillRect(cx - 40, cy - 2, 5, 8);
+    ctx.fillStyle = "rgba(100,200,255,0.4)"; ctx.beginPath(); ctx.arc(cx - 38, cy + 2, 6, 0, Math.PI * 2); ctx.fill();
+  } else if (gId === 'inferno_cannon') {
+    // Inferno Cannon — thick red barrel, wide muzzle, fire glow
+    ctx.fillStyle = "#4a2a1a"; ctx.fillRect(cx + 14, cy - 3, 16, 10);
+    ctx.fillStyle = "#5a3a2a"; ctx.fillRect(cx + 15, cy - 2, 14, 8);
+    ctx.fillStyle = "#8a4a2a"; ctx.fillRect(cx - 8, cy - 4, 24, 12);
+    ctx.fillStyle = "#a05030"; ctx.fillRect(cx - 6, cy - 3, 20, 1);
+    ctx.fillStyle = "#5a2a0a"; ctx.fillRect(cx + 4, cy + 8, 6, 10);
+    ctx.fillStyle = "#6a3a1a"; ctx.fillRect(cx - 4, cy + 8, 5, 14);
+    ctx.fillStyle = "#a05030"; ctx.fillRect(cx - 30, cy - 3, 22, 10);
+    ctx.fillStyle = "#8a3a1a"; ctx.fillRect(cx - 40, cy - 1, 10, 6);
+    ctx.fillStyle = "#5a2a0a"; ctx.fillRect(cx - 44, cy - 4, 6, 12);
+    ctx.fillStyle = "rgba(255,100,20,0.4)"; ctx.beginPath(); ctx.arc(cx - 42, cy + 2, 7, 0, Math.PI * 2); ctx.fill();
+  } else if (gId === 'storm_ar') {
+    // Storm AR — medium blue-tinted, clean military
+    ctx.fillStyle = "#2a4a6a"; ctx.fillRect(cx + 14, cy - 2, 14, 8);
+    ctx.fillStyle = "#3a5a7a"; ctx.fillRect(cx + 15, cy - 1, 12, 6);
+    ctx.fillStyle = "#4a6a8a"; ctx.fillRect(cx - 6, cy - 3, 22, 10);
+    ctx.fillStyle = "#5a8acc"; ctx.fillRect(cx - 4, cy - 2, 18, 1);
+    ctx.fillStyle = "#3a5a7a"; ctx.fillRect(cx + 6, cy + 7, 5, 10);
+    ctx.fillStyle = "#2a4a6a"; ctx.fillRect(cx - 2, cy + 7, 5, 14);
+    ctx.fillStyle = "#4a6a8a"; ctx.fillRect(cx - 26, cy - 2, 20, 8);
+    ctx.fillStyle = "#5a7a9a"; ctx.fillRect(cx - 36, cy, 10, 4);
+    ctx.fillStyle = "#3a5a7a"; ctx.fillRect(cx - 40, cy - 2, 5, 8);
+  } else if (gId === 'heavy_ar') {
+    // Heavy AR — thick dark, chunky
+    ctx.fillStyle = "#3a3030"; ctx.fillRect(cx + 12, cy - 3, 18, 10);
+    ctx.fillStyle = "#4a4040"; ctx.fillRect(cx + 13, cy - 2, 16, 8);
+    ctx.fillStyle = "#5a4a4a"; ctx.fillRect(cx - 8, cy - 4, 24, 12);
+    ctx.fillStyle = "#6a4a3a"; ctx.fillRect(cx - 6, cy - 3, 20, 1);
+    ctx.fillStyle = "#3a3030"; ctx.fillRect(cx + 4, cy + 8, 6, 10);
+    ctx.fillStyle = "#4a4040"; ctx.fillRect(cx - 4, cy + 8, 6, 16);
+    ctx.fillStyle = "#5a4a4a"; ctx.fillRect(cx - 30, cy - 3, 22, 10);
+    ctx.fillStyle = "#4a4040"; ctx.fillRect(cx - 40, cy, 10, 4);
+    ctx.fillStyle = "#3a3030"; ctx.fillRect(cx - 44, cy - 3, 6, 10);
+  } else if (gId === 'boomstick') {
+    // Boomstick — double barrels, wood stock
+    ctx.fillStyle = "#5a4a30"; ctx.fillRect(cx + 14, cy - 4, 16, 12);
+    ctx.fillStyle = "#6a5a40"; ctx.fillRect(cx + 15, cy - 3, 14, 10);
+    ctx.fillStyle = "#7a6a50"; ctx.fillRect(cx - 6, cy - 3, 22, 4);
+    ctx.fillStyle = "#7a6a50"; ctx.fillRect(cx - 6, cy + 3, 22, 4);
+    ctx.fillStyle = "#5a4a30"; ctx.fillRect(cx + 4, cy + 7, 5, 8);
+    ctx.fillStyle = "#8a7a50"; ctx.fillRect(cx - 34, cy - 3, 28, 4);
+    ctx.fillStyle = "#8a7a50"; ctx.fillRect(cx - 34, cy + 3, 28, 4);
+    ctx.fillStyle = "#6a5a40"; ctx.fillRect(cx - 38, cy - 4, 5, 12);
+  } else if (gId === 'ironwood_bow') {
+    // Ironwood Bow — curved bow shape with string and arrow
+    ctx.strokeStyle = "#6a4a20"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, 22, -Math.PI * 0.7, Math.PI * 0.7); ctx.stroke();
+    ctx.strokeStyle = "#8a6a30"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, 22, -Math.PI * 0.65, Math.PI * 0.65); ctx.stroke();
+    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(-Math.PI * 0.7) * 22, cy + Math.sin(-Math.PI * 0.7) * 22);
+    ctx.lineTo(cx + Math.cos(Math.PI * 0.7) * 22, cy + Math.sin(Math.PI * 0.7) * 22);
+    ctx.stroke();
+    ctx.fillStyle = "#8a6a3a"; ctx.fillRect(cx - 1, cy - 20, 3, 40);
+    ctx.fillStyle = "#aaa";
+    ctx.beginPath(); ctx.moveTo(cx - 3, cy - 20); ctx.lineTo(cx + 1, cy - 26); ctx.lineTo(cx + 4, cy - 20); ctx.fill();
+  } else if (gId === 'volt_9') {
+    // Volt-9 — compact purple, extra-long magazine
+    ctx.fillStyle = "#4a3a6a"; ctx.fillRect(cx - 10, cy - 3, 22, 8);
+    ctx.fillStyle = "#5a4a7a"; ctx.fillRect(cx - 8, cy - 4, 16, 10);
+    ctx.fillStyle = "#6a5a8a"; ctx.fillRect(cx - 6, cy - 3, 14, 1);
+    ctx.fillStyle = "#3a2a5a"; ctx.fillRect(cx + 12, cy - 1, 8, 5);
+    ctx.fillStyle = "#2a1a4a"; ctx.fillRect(cx - 2, cy + 5, 5, 18);
+    ctx.fillStyle = "#3a2a5a"; ctx.fillRect(cx - 1, cy + 6, 3, 16);
+    ctx.fillStyle = "#4a3a6a"; ctx.fillRect(cx + 4, cy + 5, 5, 8);
+    ctx.fillStyle = "#3a2a5a"; ctx.fillRect(cx - 18, cy - 1, 8, 4);
+    ctx.fillStyle = "rgba(170,102,255,0.25)"; ctx.beginPath(); ctx.arc(cx - 20, cy + 1, 4, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // Unknown gun fallback — generic AR silhouette
+    ctx.fillStyle = "#6a5838"; ctx.fillRect(cx + 14, cy - 2, 14, 8);
+    ctx.fillStyle = "#aaa"; ctx.fillRect(cx - 6, cy - 3, 22, 10);
+    ctx.fillStyle = "#777"; ctx.fillRect(cx + 6, cy + 7, 5, 10);
+    ctx.fillStyle = "#888"; ctx.fillRect(cx - 2, cy + 7, 5, 14);
+    ctx.fillStyle = "#999"; ctx.fillRect(cx - 26, cy - 2, 20, 8);
+    ctx.fillStyle = "#aaa"; ctx.fillRect(cx - 36, cy, 10, 4);
+    ctx.fillStyle = "#777"; ctx.fillRect(cx - 40, cy - 2, 5, 8);
+  }
 }
 
 // (crosshair removed — 4-directional shooting)
