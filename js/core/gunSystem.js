@@ -607,14 +607,19 @@ const _mgSliders = {
     label: 'Freeze',
     desc: 'Higher = less slowdown after shooting.',
     min: 0, max: 100, step: 5,
-    // Linear: 0→6.00, 70→0.40, capped at 0.40 above 70 (50=2.00)
+    // Linear: penalty 0→0.95, 70→0.05 + duration 0→45f, 70→8f (capped above 70)
     get: () => (typeof _ctxFreeze !== 'undefined') ? _ctxFreeze : 50,
     set: (v) => {
       _ctxFreeze = v;
       const clamped = Math.min(v, 70);
-      const penalty = 6.00 - (clamped / 70) * 5.60; // 0→6.00, 70→0.40
+      const penalty = 0.95 - (clamped / 70) * 0.90; // 0→0.95 (95% slow), 70→0.05
+      const duration = 45 - (clamped / 70) * 37; // 0→45f, 70→8f
       CT_X_GUN.freezePenalty = penalty;
-      if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.freezePenalty = penalty;
+      CT_X_GUN.freezeDuration = duration;
+      if (playerEquip.gun && playerEquip.gun.id === 'ct_x') {
+        playerEquip.gun.freezePenalty = penalty;
+        playerEquip.gun.freezeDuration = duration;
+      }
     },
     display: (v) => v.toFixed(0)
   },
