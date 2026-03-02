@@ -5,7 +5,7 @@
 
 const GAME_CONFIG = {
   // --- Player ---
-  PLAYER_BASE_SPEED: 5.83,     // base movement speed (no boots) → 350 px/sec
+  PLAYER_BASE_SPEED: 6.25,     // base movement speed (no boots) → 375 px/sec
   PLAYER_WALL_HW: 16,          // player wall collision half-width (AABB)
   PLAYER_RADIUS: 27,           // body-blocking circle radius
 
@@ -17,7 +17,7 @@ const GAME_CONFIG = {
   MOB_CROWD_RADIUS: 55,        // crowding detection radius
 
   // --- Projectiles ---
-  BULLET_SPEED: 9.2,           // default bullet speed (px/frame)
+  BULLET_SPEED: 8.28,          // default bullet speed (px/frame)
   BULLET_R: 6,                 // projectile collision radius
   ENTITY_R: 15,                // entity hit detection radius (bullet-vs-entity)
 
