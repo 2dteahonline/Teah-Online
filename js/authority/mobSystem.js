@@ -62,7 +62,7 @@ function updateMobs() {
       if (b.hp <= 0) continue;
       const sdx = a.x - b.x, sdy = a.y - b.y;
       const sDist = Math.sqrt(sdx * sdx + sdy * sdy);
-      const minSep = GAME_CONFIG.MOB_MIN_SEPARATION;
+      const minSep = Math.max(a.radius ?? GAME_CONFIG.MOB_RADIUS, b.radius ?? GAME_CONFIG.MOB_RADIUS) * 2;
       if (sDist < minSep && sDist > 0.1) {
         const push = (minSep - sDist) * 0.45;
         const px = (sdx / sDist) * push, py = (sdy / sDist) * push;
@@ -121,7 +121,7 @@ function updateMobs() {
         // MOB AI dispatch — registry-based movement targeting
         // Look up AI by mob type first, then by the 'ai' field from MOB_TYPES (for Floor mobs that reuse existing AI)
         const aiCtx = { player, dist, dx, dy, targetX, targetY, playerVelX, playerVelY, mapCenterX, mapCenterY, amBetween, isCrowded, mobs };
-        const aiKey = MOB_AI[m.type] ? m.type : (MOB_TYPES[m.type] && MOB_TYPES[m.type].ai ? MOB_TYPES[m.type].ai : null);
+        const aiKey = MOB_AI[m.type] ? m.type : (m.ai || null);
         if (isCrowded && !CROWD_EXEMPT_TYPES.has(m.type) && dist > 60) {
           ({ targetX, targetY } = MOB_AI.crowded(m, aiCtx));
         } else if (aiKey && MOB_AI[aiKey]) {
@@ -136,7 +136,7 @@ function updateMobs() {
 
         // Dynamic speed cap — base speed only, boots should NOT make mobs faster
         const pSpd = player.baseSpeed || GAME_CONFIG.PLAYER_BASE_SPEED;
-        const isRunnerAI = m.type === "runner" || (MOB_TYPES[m.type] && MOB_TYPES[m.type].ai === 'runner');
+        const isRunnerAI = m.type === "runner" || m.ai === 'runner';
         const maxSpd = isRunnerAI ? pSpd * 1.1 : pSpd * 0.85;
         let effSpeed = Math.min(m.speed, maxSpd);
 
@@ -206,7 +206,7 @@ function updateMobs() {
       }
 
       // Apply movement with AABB tile collision + sliding
-      const mhw = GAME_CONFIG.MOB_WALL_HW;
+      const mhw = m.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
       const nx = m.x + moveX;
       const ny = m.y + moveY;
       let movedX = false, movedY = false;
@@ -820,10 +820,8 @@ function updateMobs() {
   }
 
   // === BODY BLOCKING: solid collision between all entities ===
-  const MOB_RADIUS = GAME_CONFIG.MOB_RADIUS;
-  const MOB_MIN_DIST = MOB_RADIUS * 2;
+  // Per-mob radius: each mob reads m.radius (set by createMob from MOB_TYPES, fallback GAME_CONFIG)
   const PLAYER_RADIUS = GAME_CONFIG.PLAYER_RADIUS;
-  const hw2 = GAME_CONFIG.POS_HW;
 
   // Helper: clamp entity out of walls after being pushed
   function clampOutOfWalls(entity) {
@@ -861,8 +859,9 @@ function updateMobs() {
       const dx = mobs[j].x - mobs[i].x;
       const dy = mobs[j].y - mobs[i].y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < MOB_MIN_DIST && dist > 0.1) {
-        const overlap = (MOB_MIN_DIST - dist) / 2;
+      const pairDist = (mobs[i].radius ?? GAME_CONFIG.MOB_RADIUS) + (mobs[j].radius ?? GAME_CONFIG.MOB_RADIUS);
+      if (dist < pairDist && dist > 0.1) {
+        const overlap = (pairDist - dist) / 2;
         const nx = dx / dist;
         const ny = dy / dist;
         const niX = mobs[i].x - nx * overlap;
@@ -874,7 +873,7 @@ function updateMobs() {
       } else if (dist <= 0.1) {
         // Exact overlap — push apart but only to clear positions
         const randAngle = Math.random() * Math.PI * 2;
-        const pushDist = MOB_MIN_DIST * 0.6;
+        const pushDist = pairDist * 0.6;
         // Try multiple angles if first fails
         for (let at = 0; at < 8; at++) {
           const a = randAngle + at * Math.PI / 4;
@@ -889,7 +888,7 @@ function updateMobs() {
     const pdx = mobs[i].x - player.x;
     const pdy = mobs[i].y - player.y;
     const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
-    const PLAYER_MOB_MIN = PLAYER_RADIUS + MOB_RADIUS;
+    const PLAYER_MOB_MIN = PLAYER_RADIUS + (mobs[i].radius ?? GAME_CONFIG.MOB_RADIUS);
     if (pdist < PLAYER_MOB_MIN && pdist > 0.1) {
       const overlap = PLAYER_MOB_MIN - pdist;
       const nx2 = pdx / pdist;

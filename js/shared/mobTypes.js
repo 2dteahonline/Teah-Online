@@ -1,7 +1,12 @@
 // ===================== MOB TYPES =====================
 // Shared data: mob stats, caps, crowd exemptions
 // Extracted from index_2.html — Phase A, Step 2
-// Optional per-mob property: `radius` — hitbox/collision circle size in px (default: 27)
+// Optional per-mob physics properties (all fall back to GAME_CONFIG defaults):
+//   radius           — body-blocking + collision circle in px (default: 27)
+//   wallHW           — wall collision AABB half-width in px (default: 14)
+//   hitboxR          — bullet hit-detection radius in px (default: 15)
+//   kiteRange        — ideal kiting distance for ranged AI in px (default: 160)
+//   boulderHitRadius — boulder direct-hit radius in px (default: 40)
 
 const MOB_TYPES = {
   grunt:   { name: "Grunt",   hp: 106, speed: 3.4, damage: 18, killHeal: 10, skin: "#7a6050", hair: "#3a2a1a", shirt: "#556644", pants: "#3a3a2a", contactRange: 76 },

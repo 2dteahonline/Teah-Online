@@ -951,7 +951,9 @@ function updateBullets() {
 
         const dx = b.x - m.x;
         const dy = b.y - (m.y - 20);
-        if (dx * dx + dy * dy < HIT_DIST_SQ) {
+        const mobHitR = m.hitboxR ?? ENTITY_R;
+        const mobHitDist = BULLET_R + mobHitR;
+        if (dx * dx + dy * dy < mobHitDist * mobHitDist) {
           hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: gun.damage });
 
           // Gun special on-hit effects (dispatched via registry)
@@ -1004,9 +1006,10 @@ function updateBullets() {
       if (b.isBoulder) {
         const dxB = b.x - player.x;
         const dyB = b.y - (player.y - 20);
-        if (dxB * dxB + dyB * dyB < 1600) { // 40px direct hit radius
+        const boulderHitR = b.boulderHitRadius || 40;
+        if (dxB * dxB + dyB * dyB < boulderHitR * boulderHitR) {
           hitEffects.push({ x: b.x, y: b.y, life: 30, type: "explosion" });
-          const boulderDmg = Math.round(20 * getMobDamageMultiplier());
+          const boulderDmg = b.damage || Math.round(20 * getMobDamageMultiplier());
           const dmgDealt = dealDamageToPlayer(boulderDmg, "aoe", null);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dmgDealt });
           bullets.splice(i, 1);

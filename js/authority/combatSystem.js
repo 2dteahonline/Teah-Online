@@ -364,7 +364,7 @@ const MOB_AI = {
     const { player, dist, dx, dy, playerVelX, playerVelY } = ctx;
     let targetX = player.x, targetY = player.y;
     if (dist > 70) {
-      const idealDist = (MOB_TYPES[m.type] && MOB_TYPES[m.type].kiteRange) || 160;
+      const idealDist = m.kiteRange || 160;
       if (dist > idealDist) {
         targetX = player.x; targetY = player.y;
       } else if (dist < idealDist * 0.5) {
@@ -576,7 +576,9 @@ const MOB_SPECIALS = {
           id: nextBulletId++,
           x: m.x, y: m.y - 20, vx: ndx * m.boulderSpeed, vy: ndy * m.boulderSpeed,
           fromPlayer: false, mobBullet: true, isBoulder: true,
-          damage: Math.round(20 * getMobDamageMultiplier()), ownerId: m.id,
+          damage: Math.round(20 * getMobDamageMultiplier()),
+          boulderHitRadius: (MOB_TYPES[m.type] && MOB_TYPES[m.type].boulderHitRadius) || 40,
+          ownerId: m.id,
         });
       } else if (dist <= 120 && m.boulderTimer <= 0) {
         m.boulderTimer = Math.floor(m.boulderRate * 0.7);
@@ -670,7 +672,9 @@ const MOB_SPECIALS = {
         id: nextBulletId++,
         x: m.x, y: m.y - 12, vx: ndx * m.boulderSpeed, vy: ndy * m.boulderSpeed,
         fromPlayer: false, mobBullet: true, isBoulder: true,
-        damage: Math.round(8 * getMobDamageMultiplier()), ownerId: m.id,
+        damage: Math.round(8 * getMobDamageMultiplier()),
+        boulderHitRadius: (MOB_TYPES[m.type] && MOB_TYPES[m.type].boulderHitRadius) || 40,
+        ownerId: m.id,
       });
     } else if (dist <= 80 && m.boulderTimer <= 0) {
       m.boulderTimer = Math.floor(m.boulderRate * 0.8);

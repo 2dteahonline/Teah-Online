@@ -373,7 +373,7 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
 
   const mobId = nextMobId++;
   const speedCap = typeKey === 'runner' || (mt.ai === 'runner')
-    ? Math.min(mt.speed * spdMult, (player.baseSpeed || 3.5) * 1.1)
+    ? Math.min(mt.speed * spdMult, (player.baseSpeed || GAME_CONFIG.PLAYER_BASE_SPEED) * 1.1)
     : capMobSpeed(typeKey, mt.speed * spdMult);
 
   // Determine visual scale
@@ -389,6 +389,13 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     speed: speedCap,
     damage: Math.round(mt.damage * getMobDamageMultiplier()),
     contactRange: mt.contactRange || 76,
+    // Physics / collision (per-mob with GAME_CONFIG fallbacks)
+    radius: mt.radius ?? GAME_CONFIG.MOB_RADIUS,
+    wallHW: mt.wallHW ?? GAME_CONFIG.MOB_WALL_HW,
+    hitboxR: mt.hitboxR ?? GAME_CONFIG.ENTITY_R,
+    ai: mt.ai || null,
+    kiteRange: mt.kiteRange || 160,
+    // Visual
     skin: mt.skin, hair: mt.hair, shirt: mt.shirt, pants: mt.pants,
     name: mt.name, dir: 0, frame: 0, attackCooldown: 0,
     // Shooter ranged
