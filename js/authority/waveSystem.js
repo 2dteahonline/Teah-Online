@@ -341,7 +341,7 @@ function getMobDamageMultiplier() {
 }
 // Speed caps: runner max 1.5x player speed, everything else max 0.95x
 function capMobSpeed(type, speed) {
-  const playerSpeed = player.baseSpeed || 4.4; // base only — boots should NOT affect mob caps
+  const playerSpeed = player.baseSpeed || 5.3; // base only — boots should NOT affect mob caps
   if (type === "runner") return Math.min(speed, playerSpeed * 1.1);
   return Math.min(speed, playerSpeed * 0.85);
 }

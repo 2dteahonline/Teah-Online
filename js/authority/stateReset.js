@@ -64,7 +64,7 @@ function resetCombatState(mode) {
     playerEquip.pants = null; playerEquip.chest = null; playerEquip.helmet = null;
     // Player bonuses
     fireRateBonus = 0;
-    player.baseSpeed = 4.4;
+    player.baseSpeed = 5.3;
     potion.count = 3; potion.cooldown = 0;
   }
 

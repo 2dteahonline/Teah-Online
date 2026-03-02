@@ -56,7 +56,7 @@ function dealDamageToMob(mob, amount, source) {
         const splitMob = {
           x: sx, y: sy, type: mob.type, id: mobId,
           hp: Math.round(mob.maxHp * 0.35), maxHp: Math.round(mob.maxHp * 0.35),
-          speed: mob.speed * 1.3, damage: mob.damage,
+          speed: mob.speed * 1.6, damage: mob.damage,
           contactRange: mob.contactRange, skin: mob.skin, hair: mob.hair,
           shirt: mob.shirt, pants: mob.pants, name: mob.name + " Shard",
           dir: 0, frame: 0, attackCooldown: 0,
