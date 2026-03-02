@@ -52,8 +52,8 @@ const MAIN_GUNS = {
     desc: 'Slow, hard-hitting arrows that pierce through mobs',
     buyPrice: 400,
     bulletColor: { main: '#8b5e3c', core: '#a07050', glow: 'rgba(139,94,60,0.2)' },
-    base: { damage: 60, fireRate: 30, pierceCount: 1, bulletSpeed: 6.25 },
-    max:  { damage: 200, fireRate: 18, pierceCount: 3, bulletSpeed: 8.75 },
+    base: { damage: 60, fireRate: 30, pierceCount: 1, bulletSpeed: 7.8 },
+    max:  { damage: 200, fireRate: 18, pierceCount: 3, bulletSpeed: 10.9 },
     // Special flags — always present at all levels
     flags: { pierce: true, neverReload: true, isArrow: true },
   },

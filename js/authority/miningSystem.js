@@ -17,7 +17,7 @@ const MINING_CONFIG = {
   range: 90,              // pixels — max distance to mine
   baseTick: 44,           // base frames between mining hits (before pickaxe speed)
   nodeSize: 72,           // visual size in pixels (big chunky rocks)
-  collisionRadius: 23,    // collision circle radius for player blocking
+  collisionRadius: 20,    // collision circle radius for player blocking
   hitFlashFrames: 6,      // frames of hit flash on each mining strike
   respawnTime: 600,       // ~10s at 60fps before regrow starts
   regrowFrames: 90,       // 1.5s — ore visually scales from rubble to full
@@ -580,7 +580,7 @@ function getNearestOre() {
 // Pushes player out of non-depleted ore nodes. Call after player movement.
 function resolveOreCollisions() {
   if (!Scene.inMine) return;
-  const PLAYER_R = 14; // player hitbox half-width
+  const PLAYER_R = 12; // player hitbox half-width
   for (const node of oreNodes) {
     if (node.depleted) continue;
     const dx = player.x - node.x;

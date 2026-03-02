@@ -3,7 +3,7 @@
 // Split from inventorySystem.js for single-responsibility
 
 // Global helper: check if a position is wall-free (used by spawning, mob AI, and body blocking)
-const POS_HW = 14;
+const POS_HW = 12;
 function positionClear(px, py) {
   const cL = Math.floor((px - POS_HW) / TILE), cR = Math.floor((px + POS_HW) / TILE);
   const rT = Math.floor((py - POS_HW) / TILE), rB = Math.floor((py + POS_HW) / TILE);
@@ -820,9 +820,9 @@ function updateMobs() {
   }
 
   // === BODY BLOCKING: solid collision between all entities ===
-  const MOB_RADIUS = 32;
+  const MOB_RADIUS = 27;
   const MOB_MIN_DIST = MOB_RADIUS * 2;
-  const PLAYER_RADIUS = 32;
+  const PLAYER_RADIUS = 27;
   const hw2 = POS_HW;
 
   // Helper: clamp entity out of walls after being pushed
