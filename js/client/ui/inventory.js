@@ -2022,9 +2022,7 @@ function update() {
   const len = Math.sqrt(mx * mx + my * my);
   if (len > 0) { mx /= len; my /= len; }
 
-  // Diagonal boost for perceptual consistency
-  const diagBoost = (dx !== 0 && dy !== 0) ? 1.1 : 1.0;
-  const effectiveSpeed = ((player.baseSpeed || player.speed) + getBootsSpeedBonus()) * speedMult * diagBoost;
+  const effectiveSpeed = ((player.baseSpeed || player.speed) + getBootsSpeedBonus()) * speedMult;
 
   // INSTANT movement — no acceleration, no smoothing
   // Press = move at full speed. Release = stop immediately. Graal-style.
