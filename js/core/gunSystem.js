@@ -623,11 +623,11 @@ const _mgSliders = {
     label: 'RoF',
     desc: 'Higher = faster rate of fire.',
     min: 0, max: 100, step: 5,
-    // Linear: 0→12.25f, 100→2.8f, no cap
+    // Linear: 0→7.84f, 100→1.79f (50=0.32s per shot)
     get: () => (typeof _ctxRof !== 'undefined') ? _ctxRof : 50,
     set: (v) => {
       _ctxRof = v;
-      const frames = 12.25 - (v / 100) * 9.45; // 0→12.25, 100→2.8
+      const frames = 7.84 - (v / 100) * 6.05; // 0→7.84, 50→4.8, 100→1.79
       CT_X_GUN.fireRate = frames;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') playerEquip.gun.fireRate = frames;
     },
