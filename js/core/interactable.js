@@ -102,7 +102,7 @@ const MELEE_DEFAULTS = { damage: 15, critChance: 0.10 };
 
 // Default starter weapons (tier 0 — weaker than T1 shop items)
 const DEFAULT_GUN = { id: 'pistol', name: 'Pistol', tier: 0, damage: 20, fireRate: 10, magSize: 30, color: '#6a6a6a', desc: '20 dmg · 30 mag · starter weapon', waveReq: 0, cost: 0 };
-const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 4.8, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.25, freezeDuration: 15 };
+const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 3.31, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.25, freezeDuration: 15 };
 const DEFAULT_MELEE = { id: 'knife', name: 'Knife', tier: 0, damage: 15, range: 90, cooldown: 28, critChance: 0.10, color: '#7a7a7a', desc: '15 dmg · short range · starter blade', waveReq: 0, cost: 0, special: null };
 const DEFAULT_PICKAXE = { id: 'pickaxe', name: 'Pickaxe', tier: 0, damage: 10, range: 70, cooldown: 32, critChance: 0, color: '#8a6a3a', desc: '10 dmg · mining tool · equip to mine ores', waveReq: 0, cost: 0, special: 'pickaxe' };
 
