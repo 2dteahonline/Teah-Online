@@ -1796,6 +1796,14 @@ function draw() {
     ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.textAlign = "right";
     ctx.fillText(`${Math.round(spActual)} px/sec`, BASE_W - 10, 16);
+    // CT-X build stats (only when CT-X equipped)
+    if (playerEquip.gun && playerEquip.gun.id === 'ct_x') {
+      const g = playerEquip.gun;
+      const rof = g.fireRate ? (g.fireRate * 4 / 60).toFixed(2) + 's' : '?';
+      const frz = g.freezePenalty != null ? Math.round(g.freezePenalty * 100) + '%' : '?';
+      const spr = g.spread ? g.spread.toFixed(0) + '°' : '0°';
+      ctx.fillText(`RoF ${rof}  Frz ${frz}  Spr ${spr}`, BASE_W - 10, 30);
+    }
     ctx.textAlign = "left";
   }
 
