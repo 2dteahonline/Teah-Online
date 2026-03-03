@@ -17,7 +17,7 @@ const GAME_CONFIG = {
   MOB_CROWD_RADIUS: 55,        // crowding detection radius
 
   // --- Projectiles ---
-  BULLET_SPEED: 9.11,          // default bullet speed (px/frame)
+  BULLET_SPEED: 9,             // default bullet speed (px/frame)
   BULLET_R: 6,                 // projectile collision radius
   ENTITY_R: 15,                // entity hit detection radius (bullet-vs-entity)
 

@@ -1268,7 +1268,7 @@ const MOB_SPECIALS = {
         const baseDir = m._tommyDir;
         const spreadAngle = Math.PI / 6; // 30° total
         const shotAngle = baseDir - spreadAngle / 2 + (m._tommyShotsFired / 4) * spreadAngle;
-        const speed = 7;
+        const speed = (MOB_TYPES[m.type] && MOB_TYPES[m.type].bulletSpeed) || 9;
         bullets.push({
           id: nextBulletId++,
           x: m.x, y: m.y - 10,
@@ -2173,7 +2173,7 @@ const MOB_SPECIALS = {
       if (turret.fireTimer <= 0) {
         const tdx = player.x - turret.x, tdy = player.y - turret.y;
         const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-        const bSpeed = 5.5;
+        const bSpeed = (MOB_TYPES[m.type] && MOB_TYPES[m.type].bulletSpeed) || 9;
         bullets.push({
           id: nextBulletId++,
           x: turret.x, y: turret.y - 10,
@@ -2434,7 +2434,7 @@ const MOB_SPECIALS = {
         const spreadAngle = Math.PI / 5; // 36° total spread
         for (let s = 0; s < 5; s++) {
           const shotAngle = baseDir - spreadAngle / 2 + (s / 4) * spreadAngle;
-          const speed = 6;
+          const speed = (MOB_TYPES[m.type] && MOB_TYPES[m.type].bulletSpeed) || 9;
           bullets.push({
             id: nextBulletId++,
             x: m.x, y: m.y - 10,
@@ -2764,7 +2764,7 @@ const MOB_SPECIALS = {
       m._sawTelegraph--;
       if (m._sawTelegraph <= 0) {
         // Fire saw blade projectiles in all 4 cardinal directions
-        const speed = 5;
+        const speed = (MOB_TYPES[m.type] && MOB_TYPES[m.type].bulletSpeed) || 9;
         const sawDmg = Math.round(m.damage * getMobDamageMultiplier());
         const directions = [
           { vx: speed, vy: 0 },    // right
