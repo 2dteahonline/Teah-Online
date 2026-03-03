@@ -2173,7 +2173,7 @@ const MOB_SPECIALS = {
       if (turret.fireTimer <= 0) {
         const tdx = player.x - turret.x, tdy = player.y - turret.y;
         const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-        const bSpeed = 5;
+        const bSpeed = 5.5;
         bullets.push({
           id: nextBulletId++,
           x: turret.x, y: turret.y - 10,
