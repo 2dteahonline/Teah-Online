@@ -989,3 +989,41 @@ const LEVELS = {
     ]
   }
 };
+
+// ===================== PORTAL SPAWN RESOLVER =====================
+// Automatically computes spawnTX/spawnTY for every portal by finding
+// its partner portal in the target level.
+//
+// Partner = the portal in the target level whose .target points back
+// to this level.
+//
+// spawnTX = center of partner zone
+// spawnTY = interior side of partner:
+//   - partner near bottom of its level → spawn 1 tile above
+//   - partner near top → spawn 1 tile below
+//
+// New portals only need: type, tx, ty, w, h, target.
+// spawnTX/spawnTY are auto-computed. No manual coordinate math needed.
+(function _resolvePortalSpawns() {
+  for (const [levelId, levelObj] of Object.entries(LEVELS)) {
+    if (!levelObj.entities) continue;
+    for (const entity of levelObj.entities) {
+      if (!entity.target) continue;
+      const targetLevel = LEVELS[entity.target];
+      if (!targetLevel || !targetLevel.entities) continue;
+      // Find partner: a portal in the target level that leads back here
+      const partner = targetLevel.entities.find(e => e.target === levelId);
+      if (!partner) continue;
+      // Compute spawn at partner's center, on its interior side
+      const pw = partner.w || 1;
+      const ph = partner.h || 1;
+      entity.spawnTX = Math.floor(partner.tx + pw / 2);
+      const midY = (targetLevel.heightTiles || 40) / 2;
+      if (partner.ty > midY) {
+        entity.spawnTY = partner.ty - 1;     // partner at bottom → spawn above
+      } else {
+        entity.spawnTY = partner.ty + ph;    // partner at top → spawn below
+      }
+    }
+  }
+})();
