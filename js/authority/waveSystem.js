@@ -99,18 +99,7 @@ function xpForLevel(lvl) { return Math.floor(50 * Math.pow(1.08, lvl - 1)); }
 // Total XP needed to go from lvl to lvl+1
 function xpToNextLevel(lvl) { return xpForLevel(lvl); }
 
-// Skills system
-// Skill categories
-const SKILL_CATEGORIES = {
-  Killing: ['Total Kills', 'Deaths', 'K/D Ratio', 'Melee Kills', 'Gun Kills', 'Headshots', 'Multi Kills', 'Revenge Kills', 'Explosive Kills', 'Sniper Kills', 'Critical Kills', 'Kill Streaks'],
-  Sparring: ['Duels Played', 'Duels Won', 'Win Rate', 'Combos Landed', 'Parries', 'Ring Outs'],
-  Basing: ['Walls Built', 'Turrets Placed', 'Repairs Done', 'Raids Defended'],
-  Dungeons: ['Floor Clearing', 'Boss Slaying', 'Trap Dodging', 'Chest Looting', 'Speed Runs', 'No Death Runs', 'Wave Surviving', 'Secret Rooms', 'Mini Bosses', 'Dungeon Escapes'],
-  Events: ['Games Played', 'Events Won', 'Tournaments', 'Races', 'Survival', 'Team Battles', 'Puzzles Solved', 'Hide N Seek', 'Capture Flag', 'King of Hill', 'Tag Games', 'Obstacle Course', 'Treasure Hunt', 'Dance Off'],
-  Jobs: ['Mining', 'Digging', 'Farming', 'Mailing', 'Fishing', 'Brewing', 'Cooking', 'Breeding', 'Taxi Driving', 'Woodcutting'],
-};
-const ALL_SKILLS = [];
-for (const cat in SKILL_CATEGORIES) { for (const s of SKILL_CATEGORIES[cat]) ALL_SKILLS.push(s); }
+// Skills system — SKILL_CATEGORIES, ALL_SKILLS now in js/shared/skillRegistry.js
 const skillData = {};
 for (const s of ALL_SKILLS) { skillData[s] = { level: 1, xp: 0 }; }
 

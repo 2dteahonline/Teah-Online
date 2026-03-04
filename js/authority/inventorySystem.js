@@ -45,7 +45,9 @@ function createConsumable(id, name, count) {
   };
 }
 
-// Add item to inventory, returns true (always succeeds — no limit)
+const MAX_INVENTORY_SLOTS = 100;
+
+// Add item to inventory, returns true on success, false if full
 function addToInventory(item) {
   if (item.stackable) {
     for (let i = 0; i < inventory.length; i++) {
@@ -54,6 +56,10 @@ function addToInventory(item) {
         return true;
       }
     }
+  }
+  if (inventory.length >= MAX_INVENTORY_SLOTS) {
+    hitEffects.push({ x: player.x, y: player.y - 40, life: 30, maxLife: 30, type: "heal", dmg: "INVENTORY FULL" });
+    return false;
   }
   inventory.push(item);
   return true;

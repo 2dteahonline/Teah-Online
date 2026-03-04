@@ -684,46 +684,7 @@ function drawIdentityPanel() {
 }
 
 // ===================== STATS / LEVELING PANEL =====================
-const SKILL_ICONS = {
-  // Killing
-  'Total Kills': "💀", Deaths: "☠", 'K/D Ratio': "📊", 'Melee Kills': "⚔", 'Gun Kills': "🔫", Headshots: "🎯", 'Multi Kills': "💥",
-  'Revenge Kills': "🔥", 'Explosive Kills': "💣", 'Sniper Kills': "🎯", 'Critical Kills': "⚡", 'Kill Streaks': "🔥",
-  // Sparring
-  'Duels Played': "🎮", 'Duels Won': "🏅", 'Win Rate': "📊", 'Combos Landed': "👊", Parries: "🛡", 'Ring Outs': "🏟",
-  // Basing
-  'Walls Built': "🧱", 'Turrets Placed': "🔫", 'Repairs Done': "🔧", 'Raids Defended': "🏠",
-  // Dungeons
-  'Floor Clearing': "🏰", 'Boss Slaying': "💀", 'Trap Dodging': "⚡", 'Chest Looting': "📦",
-  'Speed Runs': "⏱", 'No Death Runs': "💎", 'Wave Surviving': "🌊", 'Secret Rooms': "🚪", 'Mini Bosses': "👹", 'Dungeon Escapes': "🏃",
-  // Events
-  'Games Played': "🎮", 'Events Won': "🏅", Tournaments: "🏆", Races: "🏁", Survival: "💀", 'Team Battles': "⚔",
-  'Puzzles Solved': "🧩", 'Hide N Seek': "👀", 'Capture Flag': "🚩", 'King of Hill': "👑",
-  'Tag Games': "🏃", 'Obstacle Course': "🏋", 'Treasure Hunt': "🗺", 'Dance Off': "💃",
-  // Jobs
-  Mining: "⛏", Digging: "⚒", Farming: "🌾", Mailing: "✉", Fishing: "🎣",
-  Brewing: "🧪", Cooking: "🍳", Breeding: "🐣", 'Taxi Driving': "🚕", Woodcutting: "🪓",
-};
-const SKILL_COLORS = {
-  'Total Kills': "#e05050", Deaths: "#a04040", 'K/D Ratio': "#e08050", 'Melee Kills': "#d04040", 'Gun Kills': "#e08030", Headshots: "#e07030",
-  'Multi Kills': "#d040a0", 'Revenge Kills': "#e06020", 'Explosive Kills': "#e0a020", 'Sniper Kills': "#c06050",
-  'Critical Kills': "#e0c040", 'Kill Streaks': "#ff5030",
-  'Duels Played': "#50b0d0", 'Duels Won': "#60c0e0", 'Win Rate': "#70d0e0", 'Combos Landed': "#c080e0", Parries: "#80b0c0", 'Ring Outs': "#40c0a0",
-  'Walls Built': "#a08060", 'Turrets Placed': "#80a060", 'Repairs Done': "#6090c0", 'Raids Defended': "#c07040",
-  'Floor Clearing': "#7080e0", 'Boss Slaying': "#e04040", 'Trap Dodging': "#e0c040", 'Chest Looting': "#c8a040",
-  'Speed Runs': "#50e0a0", 'No Death Runs': "#a080e0", 'Wave Surviving': "#4090e0", 'Secret Rooms': "#c070a0",
-  'Mini Bosses': "#e06060", 'Dungeon Escapes': "#60d080",
-  'Games Played': "#d0a040", 'Events Won': "#ffd050", Tournaments: "#ffc040", Races: "#40e080", Survival: "#e05070", 'Team Battles': "#60a0e0",
-  'Puzzles Solved': "#a0c050", 'Hide N Seek': "#c080d0", 'Capture Flag': "#e06040", 'King of Hill': "#ffd040",
-  'Tag Games': "#50d0a0", 'Obstacle Course': "#d08040", 'Treasure Hunt': "#c0a030", 'Dance Off': "#e060c0",
-  Mining: "#c8a040", Digging: "#a07040", Farming: "#60c040", Mailing: "#60a0e0", Fishing: "#40b0c0",
-  Brewing: "#b060c0", Cooking: "#e0a040", Breeding: "#e0c060", 'Taxi Driving': "#e0d040", Woodcutting: "#8a6a3a",
-};
-const CAT_COLORS = {
-  Killing: "#e05050", Sparring: "#60c0e0", Basing: "#c08040", Dungeons: "#7080e0", Events: "#ffc040", Jobs: PALETTE.accent,
-};
-const CAT_ICONS = {
-  Killing: "💀", Sparring: "🔫", Basing: "🏠", Dungeons: "🏰", Events: "🏆", Jobs: "💼",
-};
+// SKILL_ICONS, SKILL_COLORS, CAT_COLORS, CAT_ICONS now in js/shared/skillRegistry.js
 
 function drawStatsPanel() {
   if (!statsPanelOpen) return;

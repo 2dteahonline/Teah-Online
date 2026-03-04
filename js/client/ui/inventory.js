@@ -11,6 +11,7 @@ const INV_CATEGORIES = [
   { name: "Consumables", filter: t => t === "consumable" || t === "food" },
 ];
 let invCategory = 0;
+let invPage = 0; // current page for item grid pagination
 let armorInvScroll = 0; // scroll offset for armor inventory grid
 let armorHoverSlot = -1; // slot index of hovered armor card in armor tab
 
@@ -1013,15 +1014,25 @@ function drawInventoryPanel() {
 
   const effectiveCols = isArmorTab ? 0 : L.cols; // armor tab uses its own layout above
 
+  // Pagination — calculate visible rows from available grid height
+  const _rowH = L.slotS + L.slotGap;
+  const _maxRows = Math.max(1, Math.floor((L.barY - L.gridY - 30) / _rowH)); // 30px reserved for page controls
+  const _itemsPerPage = effectiveCols * _maxRows;
+  const _totalPages = !isArmorTab && filtered.length > 0 ? Math.max(1, Math.ceil(filtered.length / _itemsPerPage)) : 1;
+  if (invPage >= _totalPages) invPage = _totalPages - 1;
+  const _pageStart = invPage * _itemsPerPage;
+  const _pageEnd = Math.min(_pageStart + _itemsPerPage, filtered.length);
+
   if (!isArmorTab && filtered.length === 0) {
     ctx.font = "16px 'Segoe UI', sans-serif";
     ctx.fillStyle = "#444";
     ctx.textAlign = "center";
     ctx.fillText("No items in this category", BASE_W / 2, L.contentY + L.contentH / 2);
   } else if (!isArmorTab) {
-    for (let fi = 0; fi < filtered.length; fi++) {
+    for (let fi = _pageStart; fi < _pageEnd; fi++) {
       const { item, slot } = filtered[fi];
-      const col = fi % effectiveCols, row = Math.floor(fi / effectiveCols);
+      const pi = fi - _pageStart; // page-relative index
+      const col = pi % effectiveCols, row = Math.floor(pi / effectiveCols);
       const sx = L.gridX + col * (L.slotS + L.slotGap);
       const sy = L.gridY + row * (L.slotS + L.slotGap);
       const isHover = invHover === slot;
@@ -1200,6 +1211,31 @@ function drawInventoryPanel() {
     }
   }
 
+  // Pagination controls (above bottom bar)
+  if (!isArmorTab && _totalPages > 1) {
+    const pgY = L.barY - 26;
+    const pgCx = BASE_W / 2;
+    // Prev arrow
+    ctx.fillStyle = invPage > 0 ? "#ccc" : "#444";
+    ctx.font = "bold 18px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("<", pgCx - 60, pgY + 5);
+    // Page indicator
+    ctx.fillStyle = "#888";
+    ctx.font = "14px 'Segoe UI', sans-serif";
+    ctx.fillText((invPage + 1) + " / " + _totalPages, pgCx, pgY + 5);
+    // Next arrow
+    ctx.fillStyle = invPage < _totalPages - 1 ? "#ccc" : "#444";
+    ctx.font = "bold 18px monospace";
+    ctx.fillText(">", pgCx + 60, pgY + 5);
+  }
+
+  // Slot count (top-right of content area)
+  ctx.font = "13px 'Segoe UI', sans-serif";
+  ctx.fillStyle = inventory.length >= MAX_INVENTORY_SLOTS ? "#e05050" : "#666";
+  ctx.textAlign = "right";
+  ctx.fillText(inventory.length + "/" + MAX_INVENTORY_SLOTS, BASE_W - L.pad - 8, L.contentY + 14);
+
   // Bottom bar
   ctx.fillStyle = "#0a0c12";
   ctx.fillRect(0, L.barY, BASE_W, L.barH);
@@ -1256,6 +1292,7 @@ function handleInventoryClick(mx, my) {
       const tx = L.tabStartX + i * (L.tabW + L.tabGap);
       if (mx >= tx && mx <= tx + L.tabW) {
         invCategory = i;
+        invPage = 0;
         armorInvScroll = 0;
         return true;
       }
@@ -1354,6 +1391,23 @@ function handleInventoryClick(mx, my) {
     return true; // consume clicks on armor tab
   }
 
+  // Pagination click handling
+  const _pgY2 = L.barY - 26;
+  if (my >= _pgY2 - 12 && my <= _pgY2 + 12) {
+    const pgCx2 = BASE_W / 2;
+    // Build pagination info (same logic as draw)
+    const _filtered2 = [];
+    for (let i = 0; i < inventory.length; i++) {
+      if (inventory[i] && INV_CATEGORIES[invCategory].filter(inventory[i].type)) _filtered2.push(i);
+    }
+    const _rowH2 = L.slotS + L.slotGap;
+    const _maxRows2 = Math.max(1, Math.floor((L.barY - L.gridY - 30) / _rowH2));
+    const _ipp2 = L.cols * _maxRows2;
+    const _tp2 = Math.max(1, Math.ceil(_filtered2.length / _ipp2));
+    if (mx >= pgCx2 - 80 && mx <= pgCx2 - 40 && invPage > 0) { invPage--; return true; }
+    if (mx >= pgCx2 + 40 && mx <= pgCx2 + 80 && invPage < _tp2 - 1) { invPage++; return true; }
+  }
+
   // Item grid clicks (non-armor tabs)
   const filtered = [];
   for (let i = 0; i < inventory.length; i++) {
@@ -1367,9 +1421,17 @@ function handleInventoryClick(mx, my) {
     filtered.sort((a, b) => (typeOrder[a.item.type] ?? 9) - (typeOrder[b.item.type] ?? 9));
   }
 
-  for (let fi = 0; fi < filtered.length; fi++) {
+  // Apply same pagination as draw
+  const _rowH3 = L.slotS + L.slotGap;
+  const _maxRows3 = Math.max(1, Math.floor((L.barY - L.gridY - 30) / _rowH3));
+  const _ipp3 = L.cols * _maxRows3;
+  const _ps3 = invPage * _ipp3;
+  const _pe3 = Math.min(_ps3 + _ipp3, filtered.length);
+
+  for (let fi = _ps3; fi < _pe3; fi++) {
     const { item, slot } = filtered[fi];
-    const col = fi % L.cols, row = Math.floor(fi / L.cols);
+    const pi = fi - _ps3;
+    const col = pi % L.cols, row = Math.floor(pi / L.cols);
     const sx = L.gridX + col * (L.slotS + L.slotGap);
     const sy = L.gridY + row * (L.slotS + L.slotGap);
     if (mx >= sx && mx <= sx + L.slotS && my >= sy && my <= sy + L.slotS) {
@@ -1479,8 +1541,16 @@ function handleInventoryHover(mx, my) {
     filtered.sort((a, b) => (typeOrder[a.item.type] ?? 9) - (typeOrder[b.item.type] ?? 9));
   }
 
-  for (let fi = 0; fi < filtered.length; fi++) {
-    const col = fi % L.cols, row = Math.floor(fi / L.cols);
+  // Apply same pagination as draw/click
+  const _rowH4 = L.slotS + L.slotGap;
+  const _maxRows4 = Math.max(1, Math.floor((L.barY - L.gridY - 30) / _rowH4));
+  const _ipp4 = L.cols * _maxRows4;
+  const _ps4 = invPage * _ipp4;
+  const _pe4 = Math.min(_ps4 + _ipp4, filtered.length);
+
+  for (let fi = _ps4; fi < _pe4; fi++) {
+    const pi = fi - _ps4;
+    const col = pi % L.cols, row = Math.floor(pi / L.cols);
     const sx = L.gridX + col * (L.slotS + L.slotGap);
     const sy = L.gridY + row * (L.slotS + L.slotGap);
     if (mx >= sx && mx <= sx + L.slotS && my >= sy && my <= sy + L.slotS) {
