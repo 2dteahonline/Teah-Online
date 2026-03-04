@@ -56,19 +56,9 @@ let freezeTimer = 0;
 const BULLET_SPEED = GAME_CONFIG.BULLET_SPEED;
 
 function spawnDeathEffect(m) {
-  const colors = {
-    witch: ["#a060e0","#8040c0","#c080ff","#6020a0"],
-    golem: ["#8a8580","#6a6560","#a09a90","#585450"],
-    mini_golem: ["#9a9590","#7a7570","#b0aaa0","#686460"],
-    mummy: ["#c8b878","#a89858","#e0d098","#887838"],
-    healer: ["#ffdd30","#ffe870","#ffc800","#ffee90"],
-    archer: ["#30ff20","#1a1a1a","#0e0e0e","#20cc10"],
-    skeleton: ["#d8d0c0","#c8c0b0","#e0d8c8","#b8b0a0"],
-    grunt: ["#aa4444","#884444","#cc6666","#663333"],
-    runner: ["#cc6644","#aa4422","#ee8866","#883322"],
-    tank: ["#4466aa","#335588","#6688cc","#224466"],
-  };
-  const c = colors[m.type] || ["#888","#666","#aaa","#444"];
+  // Death colors from MOB_TYPES registry (fallback to neutral gray)
+  const mt = MOB_TYPES[m.type];
+  const c = (mt && mt.deathColors) || ["#888","#666","#aaa","#444"];
   const isGolemType = m.type === "golem" || m.type === "mini_golem";
   const count = m.type === "golem" ? 24 : m.type === "mini_golem" ? 16 : m.type === "witch" ? 18 : 12;
 

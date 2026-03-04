@@ -247,46 +247,12 @@ function getQuickKillBonus(mob) {
 }
 // gold → js/authority/gameState.js
 
-// Gold reward per mob type (base, scales with wave)
+// Gold reward per mob type — reads base gold from MOB_TYPES.goldReward, scales with wave
 function getGoldReward(type, waveNum) {
-  // Base gold per mob type
-  const rewards = {
-    grunt: 2, runner: 3, tank: 6, witch: 7, skeleton: 0, golem: 30, mini_golem: 5, mummy: 3, archer: 4, healer: 5,
-    // Floor 1: Gangsters & Goons
-    neon_pickpocket: 3, cyber_mugger: 4, drone_lookout: 4, street_chemist: 5,
-    // Floor 1: Renegade Members
-    renegade_bruiser: 6, renegade_shadowknife: 4, renegade_demo: 5, renegade_sniper: 5,
-    // Floor 1: Bosses
-    the_don: 25, velocity: 40,
-    // Floor 2: Tech District
-    circuit_thief: 4, arc_welder: 5, battery_drone: 3, coil_runner: 4,
-    // Floor 2: Corporate Core
-    suit_enforcer: 6, compliance_officer: 5, contract_assassin: 5, executive_handler: 6,
-    // Floor 2: Bosses
-    voltmaster: 30, e_mortis: 45,
-    // Floor 3: Junkyard
-    scrap_rat: 4, magnet_scavenger: 5, rust_sawman: 5, junkyard_pyro: 5,
-    // Floor 3: Swamp
-    toxic_leechling: 3, bog_stalker: 6, chem_frog: 5, mosquito_drone: 3,
-    // Floor 3: Bosses
-    mourn: 35, centipede: 50,
-    // Floor 4: Trap House
-    tripwire_tech: 5, gizmo_hound: 4, holo_jester: 5, time_prankster: 5,
-    // Floor 4: R.E.G.I.M.E
-    enforcer_drone: 6, synth_builder: 6, shock_trooper: 5, signal_jammer: 5,
-    // Floor 4: Bosses
-    game_master: 40, junz: 55,
-    // Floor 5: Waste Planet
-    rabid_hyenaoid: 5, spore_stag: 6, wasteland_raptor: 4, plague_batwing: 5,
-    // Floor 5: Slime/Dusk
-    gel_swordsman: 5, viscosity_mage: 5, core_guardian: 7, biolum_drone: 4,
-    // Floor 5: Bosses
-    lehvius: 45, jackman: 40, malric: 60, vale: 55,
-  };
-  const base = type in rewards ? rewards[type] : 2;
+  const mt = MOB_TYPES[type];
+  const base = mt && mt.goldReward != null ? mt.goldReward : 2;
   const globalWave = (dungeonFloor - 1) * WAVES_PER_FLOOR + waveNum;
-  // Floor 1 gets a generous 1.8x bonus, tapering off on later floors
-  // Floor 1: 1.8x, Floor 2: 1.3x, Floor 3: 1.1x, Floor 4: 1.0x, Floor 5: 1.0x
+  // Floor 1: 1.8x, Floor 2: 1.3x, Floor 3: 1.1x, Floor 4-5: 1.0x
   const floorBonus = dungeonFloor === 1 ? 1.8 : dungeonFloor === 2 ? 1.3 : dungeonFloor === 3 ? 1.1 : 1.0;
   return Math.round(base * (1 + (globalWave - 1) * 0.07) * floorBonus * 0.5);
 }

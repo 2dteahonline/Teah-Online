@@ -2,6 +2,21 @@
 // Environmental room gimmicks that tick independently of mobs.
 // Each floor registers its own hazards via FLOOR_CONFIG.
 
+// Tunable parameters per hazard type — centralized for easy balancing.
+// Adding a new dungeon? Override values in floorConfig or add new entries here.
+const HAZARD_DEFAULTS = {
+  neon_zap:        { damage: 8,  cooldownMin: 480, cooldownRange: 120, zapDuration: 20, zapLength: 3 },
+  traffic_lane:    { damage: 12, cooldownMin: 600, cooldownRange: 120, laneSpeed: 4, laneWidth: 2 },
+  corner_conduit:  { damage: 10, cyclePause: 120, zapDuration: 60, zapRadius: 3 },
+  conveyor_belt:   { pushSpeed: 2.5, switchTime: 600, beltWidth: 3 },
+  magnet_crane:    { damage: 6,  cooldownMin: 480, cooldownRange: 120, sweepSpeed: 3, sweepWidth: 2 },
+  mud_suction:     { stillThreshold: 150, tileLife: 300, maxTiles: 6, slowAmount: 0.4, slowDuration: 30 },
+  pressure_plate:  { damage: 10, cooldownMin: 360, cooldownRange: 120, dartSpeed: 5, dartLife: 180 },
+  energy_pylon:    { damage: 12, zapDuration: 30, zapRadius: 4, cooldownMin: 300, cooldownRange: 120 },
+  radioactive_wind:{ cooldown: 720, pushDist: 2, activeDuration: 30 },
+  slime_tiles:     { cycleTime: 600, patches: 6, slowAmount: 0.4, slowDuration: 30 },
+};
+
 const HazardSystem = {
   active: [],    // active hazard instances
   zones: [],     // persistent damage/effect zones (poison clouds, slime, etc.)
@@ -14,11 +29,16 @@ const HazardSystem = {
     // Floor 1: Neon wall zap — wall edges randomly spark
     neon_zap: {
       init(h) {
-        h.timer = 480 + Math.floor(Math.random() * 120); // 8-10s
+        const cfg = HAZARD_DEFAULTS.neon_zap;
+        h.timer = cfg.cooldownMin + Math.floor(Math.random() * cfg.cooldownRange);
         h.zapActive = false;
         h.zapTimer = 0;
         h.zapX1 = 0; h.zapY1 = 0; h.zapX2 = 0; h.zapY2 = 0;
-        h.zapDamage = 8;
+        h.zapDamage = cfg.damage;
+        h._zapDuration = cfg.zapDuration;
+        h._zapLength = cfg.zapLength;
+        h._cooldownMin = cfg.cooldownMin;
+        h._cooldownRange = cfg.cooldownRange;
       },
       update(h) {
         if (h.zapActive) {
@@ -32,7 +52,7 @@ const HazardSystem = {
           }
           if (h.zapTimer <= 0) {
             h.zapActive = false;
-            h.timer = 480 + Math.floor(Math.random() * 120);
+            h.timer = h._cooldownMin + Math.floor(Math.random() * h._cooldownRange);
           }
           return;
         }
@@ -40,11 +60,11 @@ const HazardSystem = {
         if (h.timer <= 0) {
           // Pick a random wall edge to zap
           h.zapActive = true;
-          h.zapTimer = 20; // zap lasts 20 frames
+          h.zapTimer = h._zapDuration;
           const side = Math.floor(Math.random() * 4); // 0=top, 1=bottom, 2=left, 3=right
           const mapW = MAP_W, mapH = MAP_H;
           const margin = TILE * 2;
-          const len = TILE * 3; // 3-tile zap length
+          const len = TILE * h._zapLength;
           if (side === 0) { // top wall
             const startX = margin + Math.random() * (mapW - margin * 2 - len);
             h.zapX1 = startX; h.zapY1 = margin;
@@ -104,15 +124,18 @@ const HazardSystem = {
     // Floor 1 Boss: Traffic lane — moving hazard strip crosses arena
     traffic_lane: {
       init(h) {
-        h.timer = 600 + Math.floor(Math.random() * 120); // 10-12s
+        const cfg = HAZARD_DEFAULTS.traffic_lane;
+        h.timer = cfg.cooldownMin + Math.floor(Math.random() * cfg.cooldownRange);
         h.laneActive = false;
-        h.laneY = 0;      // current Y position of the lane
-        h.laneSpeed = 4;   // pixels per frame
-        h.laneWidth = TILE * 2; // 2-tile thick lane
-        h.laneDamage = 12;
-        h.laneDir = 1;     // 1 = moving right, -1 = moving left
-        h.laneX = 0;       // current X (for horizontal movement)
+        h.laneY = 0;
+        h.laneSpeed = cfg.laneSpeed;
+        h.laneWidth = TILE * cfg.laneWidth;
+        h.laneDamage = cfg.damage;
+        h.laneDir = 1;
+        h.laneX = 0;
         h.warned = false;
+        h._cooldownMin = cfg.cooldownMin;
+        h._cooldownRange = cfg.cooldownRange;
       },
       update(h) {
         if (h.laneActive) {
@@ -139,7 +162,7 @@ const HazardSystem = {
             h.laneActive = false;
             h._hitThisPass = false;
             h.warned = false;
-            h.timer = 600 + Math.floor(Math.random() * 120);
+            h.timer = h._cooldownMin + Math.floor(Math.random() * h._cooldownRange);
           }
           return;
         }
@@ -184,14 +207,15 @@ const HazardSystem = {
     // Floor 2: Corner Conduit — 4 corner areas zap in sequence
     corner_conduit: {
       init(h) {
-        h.cornerIdx = 0; // which corner is active (0-3)
+        const cfg = HAZARD_DEFAULTS.corner_conduit;
+        h.cornerIdx = 0;
         h.zapTimer = 0;
         h.zapActive = false;
-        h.cyclePause = 120; // pause between corners
+        h.cyclePause = cfg.cyclePause;
         h.pauseTimer = h.cyclePause;
-        h.zapDuration = 60; // 1s zap per corner
-        h.zapDamage = 10;
-        h.zapRadius = TILE * 3;
+        h.zapDuration = cfg.zapDuration;
+        h.zapDamage = cfg.damage;
+        h.zapRadius = TILE * cfg.zapRadius;
       },
       update(h) {
         const mapW = MAP_W, mapH = MAP_H;
@@ -282,11 +306,13 @@ const HazardSystem = {
     // Floor 2 Boss: Conveyor Belt — pushes player sideways
     conveyor_belt: {
       init(h) {
+        const cfg = HAZARD_DEFAULTS.conveyor_belt;
         h.beltY = 0;
-        h.beltWidth = TILE * 3;
-        h.beltSpeed = 2.5; // push speed
+        h.beltWidth = TILE * cfg.beltWidth;
+        h.beltSpeed = cfg.pushSpeed;
         h.beltDir = 1;
-        h.switchTimer = 600; // 10s before switching direction
+        h.switchTimer = cfg.switchTime;
+        h._switchTime = cfg.switchTime;
         h.active = true;
       },
       update(h) {
@@ -294,7 +320,7 @@ const HazardSystem = {
         h.switchTimer--;
         if (h.switchTimer <= 0) {
           h.beltDir *= -1;
-          h.switchTimer = 600;
+          h.switchTimer = h._switchTime;
           // Reposition belt
           h.beltY = TILE * 6 + Math.random() * (MAP_H - TILE * 12);
         }
@@ -337,15 +363,19 @@ const HazardSystem = {
     // Floor 3: Magnet Crane — sweeps a lane, pulls player + slow
     magnet_crane: {
       init(h) {
-        h.timer = 480 + Math.floor(Math.random() * 120); // 8-10s
+        const cfg = HAZARD_DEFAULTS.magnet_crane;
+        h.timer = cfg.cooldownMin + Math.floor(Math.random() * cfg.cooldownRange);
         h.sweepActive = false;
         h.sweepTimer = 0;
         h.sweepY = 0;
         h.sweepX = 0;
-        h.sweepDir = 1; // 1=right, -1=left
-        h.sweepSpeed = 3;
-        h.sweepWidth = TILE * 2;
+        h.sweepDir = 1;
+        h.sweepSpeed = cfg.sweepSpeed;
+        h.sweepWidth = TILE * cfg.sweepWidth;
         h.warned = false;
+        h._cooldownMin = cfg.cooldownMin;
+        h._cooldownRange = cfg.cooldownRange;
+        h._damage = cfg.damage;
       },
       update(h) {
         if (h.sweepActive) {
@@ -362,7 +392,7 @@ const HazardSystem = {
                 player.x += h.sweepDir * (TILE * 2);
                 player.x = Math.max(TILE * 2, Math.min(MAP_W - TILE * 2, player.x));
                 StatusFX.applyToPlayer('slow', { duration: 90, slow: 0.3 });
-                dealDamageToPlayer(Math.round(6 * getMobDamageMultiplier()), 'hazard', null);
+                dealDamageToPlayer(Math.round(h._damage * getMobDamageMultiplier()), 'hazard', null);
                 hitEffects.push({ x: player.x, y: player.y - 20, life: 15, type: 'shockwave' });
               }
             }
@@ -373,7 +403,7 @@ const HazardSystem = {
             h.sweepActive = false;
             h._hitThisSweep = false;
             h.warned = false;
-            h.timer = 480 + Math.floor(Math.random() * 120);
+            h.timer = h._cooldownMin + Math.floor(Math.random() * h._cooldownRange);
           }
           return;
         }
@@ -421,12 +451,18 @@ const HazardSystem = {
     // Floor 3 Boss: Mud Suction — sticky tiles appear if player stands still
     mud_suction: {
       init(h) {
+        const cfg = HAZARD_DEFAULTS.mud_suction;
         h.lastPlayerX = 0;
         h.lastPlayerY = 0;
         h.stillTimer = 0;
-        h.stickyTiles = []; // {x, y, life}
-        h.checkRate = 10; // check every 10 frames
+        h.stickyTiles = [];
+        h.checkRate = 10;
         h.checkCounter = 0;
+        h._stillThreshold = cfg.stillThreshold;
+        h._tileLife = cfg.tileLife;
+        h._maxTiles = cfg.maxTiles;
+        h._slowAmount = cfg.slowAmount;
+        h._slowDuration = cfg.slowDuration;
       },
       update(h) {
         h.checkCounter++;
@@ -442,7 +478,7 @@ const HazardSystem = {
             // Slow + pull player if standing on sticky tile
             const tdx = player.x - tile.x, tdy = player.y - tile.y;
             if (tdx * tdx + tdy * tdy <= (TILE * 1.5) * (TILE * 1.5)) {
-              StatusFX.applyToPlayer('slow', { duration: 30, slow: 0.4 });
+              StatusFX.applyToPlayer('slow', { duration: h._slowDuration, slow: h._slowAmount });
             }
           }
           return;
@@ -457,9 +493,9 @@ const HazardSystem = {
         }
         h.lastPlayerX = player.x;
         h.lastPlayerY = player.y;
-        // After 2.5s standing still, create sticky tile
-        if (h.stillTimer >= 150 && h.stickyTiles.length < 6) {
-          h.stickyTiles.push({ x: player.x, y: player.y, life: 300 }); // 5s
+        // After standing still, create sticky tile
+        if (h.stillTimer >= h._stillThreshold && h.stickyTiles.length < h._maxTiles) {
+          h.stickyTiles.push({ x: player.x, y: player.y, life: h._tileLife });
           h.stillTimer = 0;
           hitEffects.push({ x: player.x, y: player.y, life: 15, type: "mud_bubble" });
         }
@@ -470,13 +506,13 @@ const HazardSystem = {
           if (tile.life <= 0) { h.stickyTiles.splice(i, 1); continue; }
           const tdx = player.x - tile.x, tdy = player.y - tile.y;
           if (tdx * tdx + tdy * tdy <= (TILE * 1.5) * (TILE * 1.5)) {
-            StatusFX.applyToPlayer('slow', { duration: 30, slow: 0.4 });
+            StatusFX.applyToPlayer('slow', { duration: h._slowDuration, slow: h._slowAmount });
           }
         }
       },
       draw(h, ctx, camX, camY) {
         for (const tile of h.stickyTiles) {
-          const alpha = Math.min(0.3, tile.life / 300 * 0.3);
+          const alpha = Math.min(0.3, tile.life / h._tileLife * 0.3);
           ctx.fillStyle = `rgba(80,60,30,${alpha})`;
           ctx.beginPath();
           ctx.arc(tile.x - camX, tile.y - camY, TILE * 1.5, 0, Math.PI * 2);
@@ -494,10 +530,15 @@ const HazardSystem = {
     // Floor 4: Pressure Plate — rotating darts from random positions
     pressure_plate: {
       init(h) {
-        h.timer = 360 + Math.floor(Math.random() * 120); // 6-8s
+        const cfg = HAZARD_DEFAULTS.pressure_plate;
+        h.timer = cfg.cooldownMin + Math.floor(Math.random() * cfg.cooldownRange);
         h.dartActive = false;
-        h.darts = []; // {x, y, vx, vy, life}
-        h.dartDamage = 10;
+        h.darts = [];
+        h.dartDamage = cfg.damage;
+        h._dartSpeed = cfg.dartSpeed;
+        h._dartLife = cfg.dartLife;
+        h._cooldownMin = cfg.cooldownMin;
+        h._cooldownRange = cfg.cooldownRange;
       },
       update(h) {
         // Tick active darts
@@ -522,13 +563,14 @@ const HazardSystem = {
           for (let d = 0; d < count; d++) {
             const side = Math.floor(Math.random() * 4);
             let dx, dy, sx, sy;
-            if (side === 0) { sx = TILE * 3 + Math.random() * (MAP_W - TILE * 6); sy = TILE * 2; dx = 0; dy = 5; }
-            else if (side === 1) { sx = TILE * 3 + Math.random() * (MAP_W - TILE * 6); sy = MAP_H - TILE * 2; dx = 0; dy = -5; }
-            else if (side === 2) { sx = TILE * 2; sy = TILE * 3 + Math.random() * (MAP_H - TILE * 6); dx = 5; dy = 0; }
-            else { sx = MAP_W - TILE * 2; sy = TILE * 3 + Math.random() * (MAP_H - TILE * 6); dx = -5; dy = 0; }
-            h.darts.push({ x: sx, y: sy, vx: dx, vy: dy, life: 180 });
+            const spd = h._dartSpeed;
+            if (side === 0) { sx = TILE * 3 + Math.random() * (MAP_W - TILE * 6); sy = TILE * 2; dx = 0; dy = spd; }
+            else if (side === 1) { sx = TILE * 3 + Math.random() * (MAP_W - TILE * 6); sy = MAP_H - TILE * 2; dx = 0; dy = -spd; }
+            else if (side === 2) { sx = TILE * 2; sy = TILE * 3 + Math.random() * (MAP_H - TILE * 6); dx = spd; dy = 0; }
+            else { sx = MAP_W - TILE * 2; sy = TILE * 3 + Math.random() * (MAP_H - TILE * 6); dx = -spd; dy = 0; }
+            h.darts.push({ x: sx, y: sy, vx: dx, vy: dy, life: h._dartLife });
           }
-          h.timer = 360 + Math.floor(Math.random() * 120);
+          h.timer = h._cooldownMin + Math.floor(Math.random() * h._cooldownRange);
         }
       },
       draw(h, ctx, camX, camY) {
@@ -552,15 +594,18 @@ const HazardSystem = {
     // Floor 4 Boss: Energy Pylon — edge pylons periodically zap
     energy_pylon: {
       init(h) {
+        const cfg = HAZARD_DEFAULTS.energy_pylon;
         h.pylons = [
           { x: TILE * 3, y: TILE * 3, zapTimer: 240 },
           { x: MAP_W - TILE * 3, y: TILE * 3, zapTimer: 360 },
           { x: TILE * 3, y: MAP_H - TILE * 3, zapTimer: 480 },
           { x: MAP_W - TILE * 3, y: MAP_H - TILE * 3, zapTimer: 300 },
         ];
-        h.zapRadius = TILE * 4;
-        h.zapDamage = 12;
-        h.zapDuration = 30;
+        h.zapRadius = TILE * cfg.zapRadius;
+        h.zapDamage = cfg.damage;
+        h.zapDuration = cfg.zapDuration;
+        h._cooldownMin = cfg.cooldownMin;
+        h._cooldownRange = cfg.cooldownRange;
       },
       update(h) {
         for (const pylon of h.pylons) {
@@ -576,7 +621,7 @@ const HazardSystem = {
             }
             if (pylon.zapActiveTimer <= 0) {
               pylon.zapActive = false;
-              pylon.zapTimer = 300 + Math.floor(Math.random() * 120);
+              pylon.zapTimer = h._cooldownMin + Math.floor(Math.random() * h._cooldownRange);
             }
           } else {
             pylon.zapTimer--;
@@ -627,10 +672,13 @@ const HazardSystem = {
     // Floor 5: Radioactive Wind — pushes everyone 2 tiles every ~12s
     radioactive_wind: {
       init(h) {
-        h.windTimer = 720; // 12s at 60fps
-        h.windDir = 0; // 0=right, 1=down, 2=left, 3=up
+        const cfg = HAZARD_DEFAULTS.radioactive_wind;
+        h.windTimer = cfg.cooldown;
+        h.windDir = 0;
         h.windActive = 0;
-        h.windPushDist = TILE * 2; // 2 tiles
+        h.windPushDist = TILE * cfg.pushDist;
+        h._cooldown = cfg.cooldown;
+        h._activeDuration = cfg.activeDuration;
       },
       update(h) {
         if (h.windActive > 0) {
@@ -640,8 +688,8 @@ const HazardSystem = {
         h.windTimer--;
         if (h.windTimer <= 0) {
           h.windDir = Math.floor(Math.random() * 4);
-          h.windActive = 30; // visual warning + push over 0.5s
-          h.windTimer = 720;
+          h.windActive = h._activeDuration;
+          h.windTimer = h._cooldown;
 
           // Push player
           const dirs = [[1,0],[0,1],[-1,0],[0,-1]];
@@ -699,11 +747,15 @@ const HazardSystem = {
     // Floor 5: Slime Tiles — alternating sticky/slippery every 10s
     slime_tiles: {
       init(h) {
-        h.slimeTimer = 600; // 10s cycle
-        h.slimeMode = 'sticky'; // 'sticky' or 'slippery'
+        const cfg = HAZARD_DEFAULTS.slime_tiles;
+        h.slimeTimer = cfg.cycleTime;
+        h._cycleTime = cfg.cycleTime;
+        h.slimeMode = 'sticky';
         h.slimePatches = [];
+        h._slowAmount = cfg.slowAmount;
+        h._slowDuration = cfg.slowDuration;
         // Create patches around arena
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < cfg.patches; i++) {
           h.slimePatches.push({
             x: TILE * 6 + Math.random() * TILE * 10,
             y: TILE * 6 + Math.random() * TILE * 6,
@@ -715,7 +767,7 @@ const HazardSystem = {
         h.slimeTimer--;
         if (h.slimeTimer <= 0) {
           h.slimeMode = h.slimeMode === 'sticky' ? 'slippery' : 'sticky';
-          h.slimeTimer = 600;
+          h.slimeTimer = h._cycleTime;
         }
 
         // Check player in slime patches
@@ -725,7 +777,7 @@ const HazardSystem = {
             if (h.slimeMode === 'sticky') {
               // Slow effect
               if (typeof StatusFX !== 'undefined') {
-                StatusFX.applyToPlayer('slow', { duration: 30, amount: 0.4 });
+                StatusFX.applyToPlayer('slow', { duration: h._slowDuration, amount: h._slowAmount });
               }
             }
             // Slippery mode handled by movement system (minor drift)

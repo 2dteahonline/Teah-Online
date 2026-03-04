@@ -5,6 +5,9 @@
 // ===================== KATANA MELEE SYSTEM =====================
 // melee → js/authority/gameState.js
 
+// Lifesteal helper — 15% of damage dealt, capped at 20 HP
+function calcLifesteal(dmg) { return calcLifesteal(dmg); }
+
 // Malevolent Shrine — War Cleaver ultimate ability
 const shrine = {
   charges: 0,
@@ -138,12 +141,12 @@ function meleeSwing() {
               hitEffects.push({ x: s.x, y: s.y - 8, life: 12, type: "ninja_slash", angle: sa2 });
               dealDamageToMob(s, splashDmg, "ninja_splash");
               // Lifesteal on splash — 15% capped at 20
-              const splashHeal = Math.min(Math.round(splashDmg * 0.15), 20);
+              const splashHeal = calcLifesteal(splashDmg);
               if (splashHeal > 0) player.hp = Math.min(player.maxHp, player.hp + splashHeal);
             }
           }
           // Lifesteal on direct hit — 15% capped at 20
-          const ninjaHeal = Math.min(Math.round(meleeDmg * 0.15), 20);
+          const ninjaHeal = calcLifesteal(meleeDmg);
           if (ninjaHeal > 0) player.hp = Math.min(player.maxHp, player.hp + ninjaHeal);
         }
 
@@ -160,7 +163,7 @@ function meleeSwing() {
         if (melee.special === 'storm' && m.hp > 0) {
           stormHits.push(m);
           // Lifesteal on direct hit — 15% of damage dealt, capped at 20
-          const stormLifesteal = Math.min(Math.round(meleeDmg * 0.15), 20);
+          const stormLifesteal = calcLifesteal(meleeDmg);
           if (stormLifesteal > 0) {
             player.hp = Math.min(player.maxHp, player.hp + stormLifesteal);
           }
@@ -172,7 +175,7 @@ function meleeSwing() {
             const sdx = s.x - m.x, sdy = s.y - m.y;
             if (sdx * sdx + sdy * sdy < 80 * 80) {
               // Lifesteal on shockwave — capped at 20
-              const shockHeal = Math.min(Math.round(shockDmg * 0.15), 20);
+              const shockHeal = calcLifesteal(shockDmg);
               if (shockHeal > 0) player.hp = Math.min(player.maxHp, player.hp + shockHeal);
               hitEffects.push({ x: s.x, y: s.y - 15, life: 15, type: "hit", dmg: shockDmg });
               dealDamageToMob(s, shockDmg, "storm_shock");
@@ -185,7 +188,7 @@ function meleeSwing() {
           hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "cleave_hit" });
           cleaveHits.push(m);
           // Lifesteal on direct hit — 15% capped at 20
-          const cleaveHeal = Math.min(Math.round(meleeDmg * 0.15), 20);
+          const cleaveHeal = calcLifesteal(meleeDmg);
           if (cleaveHeal > 0) player.hp = Math.min(player.maxHp, player.hp + cleaveHeal);
         }
       }
@@ -211,7 +214,7 @@ function meleeSwing() {
         if (!closest) break;
         chainedSet.add(mobs.indexOf(closest));
         // Lifesteal on chain lightning — capped at 20
-        const chainHeal = Math.min(Math.round(chainDmg * 0.15), 20);
+        const chainHeal = calcLifesteal(chainDmg);
         if (chainHeal > 0) player.hp = Math.min(player.maxHp, player.hp + chainHeal);
         hitEffects.push({ x: closest.x, y: closest.y - 15, life: 15, type: "hit", dmg: chainDmg });
         hitEffects.push({ x: prev.x, y: prev.y - 15, life: 12, type: "lightning", tx: closest.x, ty: closest.y - 15 });
@@ -248,7 +251,7 @@ function meleeSwing() {
           alreadyBled.add(t);
           dealDamageToMob(t, bloodDmg, "piercing_blood");
           // Lifesteal on piercing blood — 15% capped at 20
-          const bloodHeal = Math.min(Math.round(bloodDmg * 0.15), 20);
+          const bloodHeal = calcLifesteal(bloodDmg);
           if (bloodHeal > 0) player.hp = Math.min(player.maxHp, player.hp + bloodHeal);
           hitEffects.push({ x: t.x, y: t.y - 20, life: 18, type: "hit", dmg: bloodDmg });
           hitEffects.push({ x: t.x, y: t.y - 10, life: 22, type: "blood_slash_hit" });
@@ -310,7 +313,7 @@ function updateMelee() {
         hitEffects.push({ x: m.x, y: m.y - 10, life: 18, type: "ninja_slash", angle: sa + Math.PI / 3 });
         dealDamageToMob(m, dmg, "ninja_dash_kill");
         // Lifesteal on dash hit — 15% capped at 20
-        const dashHeal = Math.min(Math.round(dmg * 0.15), 20);
+        const dashHeal = calcLifesteal(dmg);
         if (dashHeal > 0) player.hp = Math.min(player.maxHp, player.hp + dashHeal);
       }
     }

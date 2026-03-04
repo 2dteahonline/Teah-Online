@@ -63,6 +63,22 @@ const Scene = {
   get inTestArena() { return this._current === 'test_arena'; },
 };
 
+// ---- PORTAL TYPE REGISTRY ----
+// Maps portal entity type → required scene for the portal to activate.
+// All portal types call startTransition(e.target, e.spawnTX, e.spawnTY).
+// Adding a new portal: just add one entry here + the entity in levelData.
+const PORTAL_SCENES = {
+  cave_entrance: 'lobby',   cave_exit: 'cave',
+  mine_entrance: 'lobby',   mine_exit: 'mine',    mine_door: 'mine',
+  deli_entrance: 'lobby',   deli_exit: 'cooking',
+  house_entrance: 'lobby',  house_exit: 'farm',
+  azurine_entrance: 'lobby', azurine_exit: 'azurine',
+  gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
+};
+
+// Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith']);
+
 // ---- ZONE TRANSITIONS ----
 let transitioning = false;
 let transitionAlpha = 0;
@@ -85,7 +101,7 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
     hitEffects.length = 0;
     medpacks.length = 0;
     queueActive = false; queuePlayers = 0; queueTimer = 0;
-    if (targetLevel.isTestArena) {
+    if (Scene.is('test_arena')) {
       // Test arena: clear mobs/effects but keep inventory/equipment
       mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
       deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
@@ -93,14 +109,14 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
       if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
       if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
       if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
-    } else if (targetLevel.isLobby || targetLevel.isCave || targetLevel.isAzurine || targetLevel.isGunsmith) {
+    } else if (LOBBY_RESET_SCENES.has(Scene.current)) {
       resetCombatState('lobby');
-    } else if (targetLevel.isMine) {
+    } else if (Scene.is('mine')) {
       resetCombatState('mine');
-    } else if (targetLevel.isCooking) {
+    } else if (Scene.is('cooking')) {
       resetCombatState('cooking');
       if (typeof initDeliNPCs === 'function') initDeliNPCs();
-    } else if (targetLevel.isFarm) {
+    } else if (Scene.is('farm')) {
       resetCombatState('farm');
       if (typeof initFarmState === 'function') initFarmState();
     } else {
@@ -178,55 +194,9 @@ function checkPortals() {
     const ew = e.w || 1, eh = e.h || 1;
     const px = player.x / TILE, py = player.y / TILE;
     const inZone = px >= e.tx && px < e.tx + ew && py >= e.ty && py < e.ty + eh;
-    if (e.type === 'cave_entrance' && Scene.inLobby && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'mine_entrance' && Scene.inLobby && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'mine_exit' && Scene.inMine && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'mine_door' && Scene.inMine && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'deli_entrance' && Scene.inLobby && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'deli_exit' && Scene.inCooking && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'house_entrance' && Scene.inLobby && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'house_exit' && Scene.inFarm && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'cave_exit' && Scene.inCave && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'azurine_entrance' && Scene.inLobby && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'azurine_exit' && Scene.inAzurine && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'gunsmith_entrance' && Scene.inLobby && inZone) {
-      startTransition(e.target, e.spawnTX, e.spawnTY);
-      return;
-    }
-    if (e.type === 'gunsmith_exit' && Scene.inGunsmith && inZone) {
+    // Portal registry lookup — replaces 13 individual if-statements
+    const requiredScene = PORTAL_SCENES[e.type];
+    if (requiredScene && Scene.is(requiredScene) && inZone) {
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }
