@@ -143,6 +143,35 @@ function createMainGun(gunId, levelOrTier, level) {
   };
 }
 
+// Create a pickaxe item from progression data at a given tier+level.
+function createPickaxe(pickId, levelOrTier, level) {
+  let tier, lvl;
+  if (level !== undefined) { tier = levelOrTier; lvl = level; }
+  else { tier = 0; lvl = levelOrTier; }
+  if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS[pickId]) {
+    const stats = getProgressedStats(pickId, tier, lvl);
+    if (!stats) return null;
+    const def = PROG_ITEMS[pickId];
+    const tierName = PROGRESSION_CONFIG.TIER_NAMES[tier] || '';
+    return {
+      id: pickId,
+      name: def.name + (tier > 0 ? ' ' + tierName : '') + ' Lv.' + lvl,
+      type: 'melee',
+      tier: tier,
+      level: lvl,
+      progItemId: pickId,
+      data: stats,
+      stackable: false,
+      count: 1,
+    };
+  }
+  // Fallback to PICKAXE_TIERS
+  if (typeof PICKAXE_TIERS === 'undefined') return null;
+  const tierData = PICKAXE_TIERS.find(t => t.id === pickId);
+  if (!tierData) return null;
+  return createItem('melee', tierData);
+}
+
 function applyMeleeStats(data) {
   playerEquip.melee = data;
   melee.damage = data.damage || MELEE_DEFAULTS.damage;

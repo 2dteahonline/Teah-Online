@@ -96,6 +96,18 @@ registerInteractable({
   onInteract() { UI.open('gunsmith'); },
 });
 
+// Register mining shop NPC interactable (mine rooms only)
+registerInteractable({
+  id: 'mining_npc',
+  get x() { return 37 * TILE + TILE; },
+  get y() { return 42 * TILE + TILE; },
+  range: 120,
+  get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Mining Shop'; },
+  type: 'miningShop',
+  canInteract() { return Scene.inMine; },
+  onInteract() { UI.open('miningShop'); },
+});
+
 let fireRateBonus = 0;
 const GUN_DEFAULTS = { damage: 20 };
 const MELEE_DEFAULTS = { damage: 15, critChance: 0.10 };

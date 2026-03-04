@@ -498,6 +498,8 @@ const LEVELS = {
       // Center torches
       { type: 'torch', tx: 34, ty: 6, solid: false },
       { type: 'torch', tx: 34, ty: 24, solid: false },
+      // Mining shop NPC (near exit)
+      { type: 'mining_npc', tx: 37, ty: 42, w: 2, h: 2, solid: true },
     ]
   },
   mine_02: {

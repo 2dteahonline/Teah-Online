@@ -326,6 +326,8 @@ function updateMining() {
 
       // Collect ore into inventory (uses createOreItem factory)
       addToInventory(createOreItem(nearest.oreId));
+      // Track discovered ores for pickaxe unlock gates
+      if (typeof window._discoveredOres !== 'undefined') window._discoveredOres.add(nearest.oreId);
 
       // Collection effect
       hitEffects.push({

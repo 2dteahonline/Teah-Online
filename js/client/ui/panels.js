@@ -1230,11 +1230,11 @@ function drawGunsmithPanel() {
 
   // ---- UPGRADE (if owned and level < max) ----
   if (selProg.owned && !isMaxLevel) {
-    const recipe = typeof getUpgradeRecipe === 'function'
-      ? getUpgradeRecipe(selId, selTier, selLvl + 1)
-      : (GUN_UPGRADE_RECIPES[selId] && GUN_UPGRADE_RECIPES[selId][selTier] && GUN_UPGRADE_RECIPES[selId][selTier][selLvl + 1]);
+    const recipe = typeof getProgUpgradeRecipe === 'function'
+      ? getProgUpgradeRecipe(selId, selTier, selLvl + 1)
+      : null;
     if (recipe) {
-      let reqY = py + ph - 105;
+      let reqY = py + ph - 130;
       ctx.font = "bold 12px monospace";
       ctx.fillStyle = "#ffa840";
       ctx.fillText("Upgrade to Lv." + (selLvl + 1) + ":", detailX + 16, reqY);
@@ -1245,13 +1245,31 @@ function drawGunsmithPanel() {
       const hasGold = gold >= recipe.gold;
       ctx.fillStyle = hasGold ? "#5fca80" : "#cc4444";
       ctx.fillText("Gold: " + recipe.gold + "g", detailX + 20, reqY);
-      reqY += 16;
-
-      ctx.fillStyle = "#444"; ctx.font = "10px monospace";
-      ctx.fillText("(Materials required in future updates)", detailX + 20, reqY);
+      reqY += 14;
+      // Ore costs
+      if (recipe.ores) {
+        for (const oreId in recipe.ores) {
+          const need = recipe.ores[oreId];
+          const have = _countMaterial('ore_' + oreId);
+          ctx.fillStyle = have >= need ? "#5fca80" : "#cc4444";
+          const oreName = (typeof ORE_TYPES !== 'undefined' && ORE_TYPES[oreId]) ? ORE_TYPES[oreId].name : oreId;
+          ctx.fillText(oreName + ": " + have + "/" + need, detailX + 20, reqY);
+          reqY += 14;
+        }
+      }
+      // Parts costs
+      if (recipe.parts) {
+        for (const partId in recipe.parts) {
+          const need = recipe.parts[partId];
+          const have = _countMaterial(partId);
+          ctx.fillStyle = have >= need ? "#5fca80" : "#cc4444";
+          ctx.fillText(partId.replace(/_/g, ' ') + ": " + have + "/" + need, detailX + 20, reqY);
+          reqY += 14;
+        }
+      }
 
       // Upgrade button
-      const canUpgrade = hasGold;
+      const canUpgrade = _canAffordRecipe(recipe);
       const btnW = 180, btnH = 38;
       const btnX = detailX + detailW / 2 - btnW / 2;
       const btnY = py + ph - 55;
@@ -1388,16 +1406,16 @@ function handleGunsmithClick(mx, my) {
 
   // ---- UPGRADE ----
   if (selProg.owned && !isMaxLevel) {
-    const recipe = typeof getUpgradeRecipe === 'function'
-      ? getUpgradeRecipe(selId, selTier, selLvl + 1)
+    const recipe = typeof getProgUpgradeRecipe === 'function'
+      ? getProgUpgradeRecipe(selId, selTier, selLvl + 1)
       : null;
     if (recipe) {
       const btnW = 180, btnH = 38;
       const btnX = detailX + detailW / 2 - btnW / 2;
       const btnY = py + ph - 55;
       if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
-        if (gold >= recipe.gold) {
-          gold -= recipe.gold;
+        if (_canAffordRecipe(recipe)) {
+          _deductRecipe(recipe);
           const newLvl = selLvl + 1;
           _setGunProgress(selId, selTier, newLvl);
           // Update gun in inventory
@@ -1428,12 +1446,20 @@ function handleGunsmithClick(mx, my) {
   if (canEvolveNow && hasProg) {
     const evoCost = getEvolutionCost(selTier);
     const evoGold = evoCost ? evoCost.gold : 0;
+    const evoMats = evoCost ? evoCost.materials : null;
     const btnW = 200, btnH = 40;
     const btnX = detailX + detailW / 2 - btnW / 2;
     const btnY = py + ph - 55;
     if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
-      if (gold >= evoGold) {
+      let canEvo = gold >= evoGold;
+      if (canEvo && evoMats) {
+        for (const matId in evoMats) {
+          if (_countMaterial(matId) < evoMats[matId]) { canEvo = false; break; }
+        }
+      }
+      if (canEvo) {
         gold -= evoGold;
+        if (evoMats) { for (const matId in evoMats) _deductMaterial(matId, evoMats[matId]); }
         const newTier = selTier + 1;
         _setGunProgress(selId, newTier, 1);
         // Update gun in inventory
@@ -1453,7 +1479,580 @@ function handleGunsmithClick(mx, my) {
         chatMessages.push({ name: "SYSTEM", text: "\u2605 " + selDef.name + " evolved to " + newTierName + "! \u2605", time: Date.now() });
         if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
       } else {
-        chatMessages.push({ name: "SYSTEM", text: "Not enough gold for evolution!", time: Date.now() });
+        chatMessages.push({ name: "SYSTEM", text: "Not enough resources for evolution!", time: Date.now() });
+      }
+      return true;
+    }
+  }
+
+  return true; // consume click inside panel
+}
+
+// ===================== MINING SHOP — PICKAXE PROGRESSION =====================
+let _miningShopSelected = 0;
+let _miningShopScroll = 0;
+
+// Pickaxe ownership — { tier: 0-4, level: 1-25 } or 0 = not owned.
+if (typeof window._pickaxeLevels === 'undefined') {
+  window._pickaxeLevels = {
+    pickaxe: { tier: 0, level: 1 },
+    copper_pickaxe: 0, iron_pickaxe: 0, gold_pickaxe: 0,
+    amethyst_pickaxe: 0, ruby_pickaxe: 0, diamond_pickaxe: 0, emerald_pickaxe: 0,
+  };
+}
+function _getPickaxeProgress(pickId) {
+  const v = window._pickaxeLevels[pickId];
+  if (!v) return { tier: 0, level: 0, owned: false };
+  if (typeof v === 'number') return { tier: 0, level: v, owned: v > 0 };
+  return { tier: v.tier || 0, level: v.level || 0, owned: (v.level || 0) > 0 };
+}
+function _setPickaxeProgress(pickId, tier, level) {
+  window._pickaxeLevels[pickId] = { tier: tier, level: level };
+}
+
+// Discovered ores — tracks which ore types have been mined at least once (for pickaxe unlock gates)
+if (typeof window._discoveredOres === 'undefined') {
+  window._discoveredOres = new Set();
+}
+function _isPickaxeUnlocked(pickId) {
+  const def = PROG_ITEMS[pickId];
+  if (!def || !def.unlockGate) return true;
+  return window._discoveredOres.has(def.unlockGate);
+}
+
+// ---- Shared material helpers (used by gunsmith + mining shop) ----
+function _countMaterial(itemId) {
+  for (let i = 0; i < inventory.length; i++) {
+    if (inventory[i] && inventory[i].id === itemId) return inventory[i].count || 1;
+  }
+  return 0;
+}
+function _deductMaterial(itemId, amount) {
+  for (let i = 0; i < inventory.length; i++) {
+    if (inventory[i] && inventory[i].id === itemId) {
+      inventory[i].count -= amount;
+      if (inventory[i].count <= 0) inventory.splice(i, 1);
+      return true;
+    }
+  }
+  return false;
+}
+function _canAffordRecipe(recipe) {
+  if (!recipe) return false;
+  if (gold < recipe.gold) return false;
+  if (recipe.ores) {
+    for (const oreId in recipe.ores) {
+      if (_countMaterial('ore_' + oreId) < recipe.ores[oreId]) return false;
+    }
+  }
+  if (recipe.parts) {
+    for (const partId in recipe.parts) {
+      if (_countMaterial(partId) < recipe.parts[partId]) return false;
+    }
+  }
+  return true;
+}
+function _deductRecipe(recipe) {
+  if (!recipe) return;
+  gold -= recipe.gold;
+  if (recipe.ores) {
+    for (const oreId in recipe.ores) _deductMaterial('ore_' + oreId, recipe.ores[oreId]);
+  }
+  if (recipe.parts) {
+    for (const partId in recipe.parts) _deductMaterial(partId, recipe.parts[partId]);
+  }
+}
+
+// ===================== MINING SHOP PANEL =====================
+
+function _drawPickaxeIcon(cx, cy, size, color) {
+  const s = size * 0.5;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-Math.PI / 4);
+  // Handle
+  ctx.strokeStyle = '#8a6a3a';
+  ctx.lineWidth = Math.max(2, s * 0.15);
+  ctx.beginPath(); ctx.moveTo(0, s * 0.25); ctx.lineTo(0, s); ctx.stroke();
+  // Pick head
+  ctx.fillStyle = color || '#888';
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.5, s * 0.25);
+  ctx.lineTo(s * 0.5, s * 0.25);
+  ctx.lineTo(s * 0.35, -s * 0.15);
+  ctx.lineTo(0, -s * 0.35);
+  ctx.lineTo(-s * 0.35, -s * 0.15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawMiningShopPanel() {
+  if (!UI.isOpen('miningShop')) return;
+  if (typeof PROG_ITEMS === 'undefined') return;
+
+  const pw = 720, ph = 520;
+  const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
+  const tierColors = PROGRESSION_CONFIG.TIER_COLORS;
+  const tierNames = PROGRESSION_CONFIG.TIER_NAMES;
+  const maxLvl = PROGRESSION_CONFIG.LEVELS_PER_TIER;
+  const maxTier = PROGRESSION_CONFIG.TIERS - 1;
+
+  // Dimmed backdrop
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  // Panel bg
+  ctx.fillStyle = "#0c1018";
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 12); ctx.fill();
+  ctx.strokeStyle = "rgba(255,136,0,0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 12); ctx.stroke();
+
+  // Title bar
+  ctx.fillStyle = "rgba(60,40,20,0.5)";
+  ctx.beginPath(); ctx.roundRect(px + 3, py + 3, pw - 6, 42, [10, 10, 0, 0]); ctx.fill();
+  ctx.font = "bold 20px monospace";
+  ctx.fillStyle = "#ff8800";
+  ctx.textAlign = "center";
+  ctx.fillText("MINING SHOP", px + pw / 2, py + 30);
+
+  // Close button
+  ctx.fillStyle = PALETTE.closeBtn;
+  ctx.beginPath(); ctx.roundRect(px + pw - 42, py + 8, 32, 32, 6); ctx.fill();
+  ctx.font = "bold 18px monospace"; ctx.fillStyle = "#fff";
+  ctx.textAlign = "center"; ctx.fillText("\u2715", px + pw - 26, py + 30);
+
+  const pickIds = typeof getProgItemsByCategory === 'function' ? getProgItemsByCategory('pickaxe') : [];
+  const listW = 200, listX = px + 12;
+  const detailX = px + listW + 24, detailW = pw - listW - 36;
+  const contentY = py + 52;
+  const cardH = 56;
+
+  // ---- PICKAXE LIST (left side) ----
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(listX, contentY, listW, ph - 62);
+  ctx.clip();
+
+  for (let i = 0; i < pickIds.length; i++) {
+    const pid = pickIds[i];
+    const def = PROG_ITEMS[pid];
+    if (!def) continue;
+    const prog = _getPickaxeProgress(pid);
+    const unlocked = _isPickaxeUnlocked(pid);
+    const iy = contentY + i * (cardH + 4) - _miningShopScroll;
+    const isSelected = i === _miningShopSelected;
+    const tColor = prog.owned ? (tierColors[prog.tier] || '#888') : '#444';
+
+    // Card bg
+    ctx.fillStyle = isSelected ? "rgba(255,136,0,0.15)" : "rgba(255,255,255,0.03)";
+    ctx.beginPath(); ctx.roundRect(listX, iy, listW, cardH, 6); ctx.fill();
+    if (isSelected) {
+      ctx.strokeStyle = "#ff8800"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(listX, iy, listW, cardH, 6); ctx.stroke();
+    }
+
+    // Tier color bar
+    if (prog.owned) {
+      ctx.fillStyle = tColor;
+      ctx.beginPath(); ctx.roundRect(listX, iy, 4, cardH, [6, 0, 0, 6]); ctx.fill();
+    }
+
+    // Pickaxe icon
+    _drawPickaxeIcon(listX + listW - 22, iy + cardH / 2, 28, def.color);
+
+    // Name
+    ctx.font = "bold 13px monospace";
+    ctx.textAlign = "left";
+    ctx.fillStyle = prog.owned ? "#fff" : (unlocked ? "#888" : "#555");
+    ctx.fillText(def.name, listX + 12, iy + 18);
+
+    // Status line
+    ctx.font = "11px monospace";
+    if (prog.owned) {
+      ctx.fillStyle = tColor;
+      ctx.fillText(tierNames[prog.tier] + " Lv." + prog.level, listX + 12, iy + 34);
+    } else if (!unlocked) {
+      ctx.fillStyle = "#666";
+      const gateName = (typeof ORE_TYPES !== 'undefined' && ORE_TYPES[def.unlockGate])
+        ? ORE_TYPES[def.unlockGate].name : def.unlockGate;
+      ctx.fillText("\uD83D\uDD12 Mine " + gateName + " first", listX + 12, iy + 34);
+    } else {
+      ctx.fillStyle = "#666";
+      ctx.fillText("Not Owned", listX + 12, iy + 34);
+      // Price badge
+      ctx.font = "bold 11px monospace";
+      ctx.fillStyle = PALETTE.gold;
+      ctx.textAlign = "right";
+      ctx.fillText(def.buyPrice + "g", listX + listW - 8, iy + 48);
+      ctx.textAlign = "left";
+    }
+  }
+  ctx.restore();
+
+  // ---- PICKAXE DETAIL (right side) ----
+  if (!pickIds.length) return;
+  const selId = pickIds[_miningShopSelected] || pickIds[0];
+  const selDef = PROG_ITEMS[selId];
+  if (!selDef) return;
+  const selProg = _getPickaxeProgress(selId);
+  const selUnlocked = _isPickaxeUnlocked(selId);
+  const selTier = selProg.tier;
+  const selLvl = selProg.level;
+  const selTierColor = tierColors[selTier] || '#888';
+  const selTierName = tierNames[selTier] || 'Common';
+  const isMaxLevel = selLvl >= maxLvl;
+  const isMaxTier = selTier >= maxTier;
+  const canEvolveNow = isMaxLevel && !isMaxTier && selProg.owned;
+
+  // Detail card bg
+  ctx.fillStyle = "rgba(255,255,255,0.02)";
+  ctx.beginPath(); ctx.roundRect(detailX, contentY, detailW, ph - 72, 8); ctx.fill();
+  ctx.strokeStyle = "rgba(255,136,0,0.15)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(detailX, contentY, detailW, ph - 72, 8); ctx.stroke();
+
+  // Large pickaxe icon
+  _drawPickaxeIcon(detailX + detailW - 50, contentY + 40, 56, selDef.color);
+
+  // Name
+  ctx.font = "bold 18px monospace";
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "left";
+  ctx.fillText(selDef.name, detailX + 16, contentY + 28);
+
+  // Tier badge (if owned)
+  if (selProg.owned) {
+    const nameW = ctx.measureText(selDef.name).width;
+    const badgeX = detailX + 20 + nameW;
+    ctx.fillStyle = selTierColor;
+    ctx.beginPath(); ctx.roundRect(badgeX, contentY + 14, ctx.measureText(selTierName).width + 12, 20, 4); ctx.fill();
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(selTierName, badgeX + 6, contentY + 28);
+  }
+
+  // Description
+  ctx.font = "12px monospace";
+  ctx.fillStyle = "#999";
+  ctx.fillText(selDef.desc, detailX + 16, contentY + 48);
+
+  // Stats header
+  let statY = contentY + 72;
+  ctx.font = "bold 13px monospace";
+  ctx.fillStyle = selTierColor;
+  if (selProg.owned) {
+    ctx.fillText("Stats (" + selTierName + " Lv." + selLvl + ")", detailX + 16, statY);
+  } else {
+    ctx.fillText("Base Stats (Lv. 1)", detailX + 16, statY);
+  }
+  statY += 20;
+
+  const curTier = selProg.owned ? selTier : 0;
+  const curLvl = selProg.owned ? selLvl : 1;
+  const curStats = getProgressedStats(selId, curTier, Math.max(1, curLvl));
+
+  let nextStats = null;
+  if (selProg.owned && !isMaxLevel) {
+    nextStats = getProgressedStats(selId, curTier, curLvl + 1);
+  } else if (canEvolveNow) {
+    nextStats = getProgressedStats(selId, curTier + 1, 1);
+  }
+
+  const statFields = [
+    { key: 'damage', label: 'Damage', color: '#ff8866' },
+    { key: 'range', label: 'Range', color: '#66bbff', format: v => v + 'px' },
+    { key: 'cooldown', label: 'Cooldown', color: '#aaaaaa', format: v => (v / 60).toFixed(2) + 's' },
+    { key: 'critChance', label: 'Crit %', color: '#ffcc44', format: v => (v * 100).toFixed(0) + '%' },
+    { key: 'miningSpeed', label: 'Mine Speed', color: '#5fca80', format: v => v.toFixed(2) + 'x' },
+  ];
+
+  for (const sf of statFields) {
+    if (!curStats || curStats[sf.key] === undefined) continue;
+    const val = sf.format ? sf.format(curStats[sf.key]) : curStats[sf.key];
+    ctx.font = "12px monospace"; ctx.fillStyle = "#aaa";
+    ctx.fillText(sf.label + ":", detailX + 20, statY);
+    ctx.fillStyle = sf.color; ctx.font = "bold 12px monospace";
+    ctx.fillText(val + "", detailX + 140, statY);
+
+    if (nextStats && nextStats[sf.key] !== undefined && nextStats[sf.key] !== curStats[sf.key]) {
+      const nextVal = sf.format ? sf.format(nextStats[sf.key]) : nextStats[sf.key];
+      ctx.fillStyle = canEvolveNow ? (tierColors[curTier + 1] || '#5fca80') : "#5fca80";
+      ctx.fillText(" \u2192 " + nextVal, detailX + 220, statY);
+    }
+    statY += 18;
+  }
+
+  // ---- BUY BUTTON (if not owned and unlocked) ----
+  if (!selProg.owned && selUnlocked) {
+    const btnW = 180, btnH = 44;
+    const btnX = detailX + detailW / 2 - btnW / 2;
+    const btnY = py + ph - 72;
+    const canAfford = gold >= selDef.buyPrice;
+
+    ctx.fillStyle = canAfford ? "#2a6a30" : "#3a3a40";
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 8); ctx.fill();
+    ctx.strokeStyle = canAfford ? "#5fca80" : "#555"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 8); ctx.stroke();
+
+    ctx.font = "bold 16px monospace";
+    ctx.fillStyle = canAfford ? "#fff" : "#666";
+    ctx.textAlign = "center";
+    const priceLabel = selDef.buyPrice === 0 ? "FREE" : selDef.buyPrice + "g";
+    ctx.fillText("BUY - " + priceLabel, btnX + btnW / 2, btnY + 28);
+    ctx.textAlign = "left";
+  }
+
+  // ---- UPGRADE (if owned and level < max) ----
+  if (selProg.owned && !isMaxLevel) {
+    const recipe = typeof getProgUpgradeRecipe === 'function'
+      ? getProgUpgradeRecipe(selId, selTier, selLvl + 1) : null;
+    if (recipe) {
+      let reqY = py + ph - 130;
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = "#ff8800";
+      ctx.fillText("Upgrade to Lv." + (selLvl + 1) + ":", detailX + 16, reqY);
+      reqY += 18;
+
+      // Gold cost
+      ctx.font = "11px monospace";
+      ctx.fillStyle = gold >= recipe.gold ? "#5fca80" : "#cc4444";
+      ctx.fillText("Gold: " + recipe.gold + "g", detailX + 20, reqY);
+      reqY += 14;
+      // Ore costs
+      if (recipe.ores) {
+        for (const oreId in recipe.ores) {
+          const need = recipe.ores[oreId];
+          const have = _countMaterial('ore_' + oreId);
+          ctx.fillStyle = have >= need ? "#5fca80" : "#cc4444";
+          const oreName = (typeof ORE_TYPES !== 'undefined' && ORE_TYPES[oreId]) ? ORE_TYPES[oreId].name : oreId;
+          ctx.fillText(oreName + ": " + have + "/" + need, detailX + 20, reqY);
+          reqY += 14;
+        }
+      }
+      // Parts costs
+      if (recipe.parts) {
+        for (const partId in recipe.parts) {
+          const need = recipe.parts[partId];
+          const have = _countMaterial(partId);
+          ctx.fillStyle = have >= need ? "#5fca80" : "#cc4444";
+          ctx.fillText(partId.replace(/_/g, ' ') + ": " + have + "/" + need, detailX + 20, reqY);
+          reqY += 14;
+        }
+      }
+
+      // Upgrade button
+      const canUpgrade = _canAffordRecipe(recipe);
+      const btnW = 180, btnH = 38;
+      const btnX = detailX + detailW / 2 - btnW / 2;
+      const btnY = py + ph - 55;
+      ctx.fillStyle = canUpgrade ? "#2a6a30" : "#2a2a30";
+      ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.fill();
+      ctx.strokeStyle = canUpgrade ? "#5fca80" : "#444"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.stroke();
+      ctx.font = "bold 13px monospace";
+      ctx.fillStyle = canUpgrade ? "#fff" : "#555";
+      ctx.textAlign = "center";
+      ctx.fillText("UPGRADE - " + recipe.gold + "g", btnX + btnW / 2, btnY + 24);
+      ctx.textAlign = "left";
+    }
+  }
+
+  // ---- EVOLVE BUTTON (if at max level and not max tier) ----
+  if (canEvolveNow) {
+    const evoCost = getEvolutionCost(selTier);
+    const nextTierName = tierNames[selTier + 1] || '???';
+    const nextTierCol = tierColors[selTier + 1] || '#fff';
+    let reqY = py + ph - 105;
+
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = nextTierCol;
+    ctx.fillText("Evolve to " + nextTierName + ":", detailX + 16, reqY);
+    reqY += 18;
+
+    const evoGold = evoCost ? evoCost.gold : 0;
+    ctx.font = "11px monospace";
+    ctx.fillStyle = gold >= evoGold ? "#5fca80" : "#cc4444";
+    ctx.fillText("Gold: " + evoGold + "g", detailX + 20, reqY);
+    reqY += 16;
+
+    ctx.fillStyle = "#444"; ctx.font = "10px monospace";
+    ctx.fillText("(Material costs in future updates)", detailX + 20, reqY);
+
+    // Evolve button with glow
+    const canEvo = gold >= evoGold;
+    const btnW = 200, btnH = 40;
+    const btnX = detailX + detailW / 2 - btnW / 2;
+    const btnY = py + ph - 55;
+
+    const pulse = 0.6 + 0.3 * Math.sin(Date.now() * 0.005);
+    ctx.fillStyle = canEvo
+      ? `rgba(${selTier < 1 ? '95,202,128' : selTier < 2 ? '74,158,255' : selTier < 3 ? '255,154,64' : '255,74,138'},${pulse * 0.3})`
+      : "#2a2a30";
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 8); ctx.fill();
+    ctx.strokeStyle = canEvo ? nextTierCol : "#444"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 8); ctx.stroke();
+    ctx.font = "bold 14px monospace";
+    ctx.fillStyle = canEvo ? "#fff" : "#555";
+    ctx.textAlign = "center";
+    ctx.fillText("\u2605 EVOLVE - " + evoGold + "g", btnX + btnW / 2, btnY + 26);
+    ctx.textAlign = "left";
+  }
+
+  // Max tier + max level badge
+  if (isMaxLevel && isMaxTier && selProg.owned) {
+    const t = Date.now() / 1000;
+    const shimmer = 0.8 + 0.2 * Math.sin(t * 2);
+    ctx.font = "bold 16px monospace";
+    ctx.fillStyle = `rgba(255,74,138,${shimmer})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u2605 LEGENDARY MAX \u2605", detailX + detailW / 2, py + ph - 50);
+    ctx.textAlign = "left";
+  }
+}
+
+function handleMiningShopClick(mx, my) {
+  if (!UI.isOpen('miningShop')) return false;
+  if (typeof PROG_ITEMS === 'undefined') return false;
+
+  const pw = 720, ph = 520;
+  const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
+  const tierNames = PROGRESSION_CONFIG.TIER_NAMES;
+  const maxLvl = PROGRESSION_CONFIG.LEVELS_PER_TIER;
+  const maxTier = PROGRESSION_CONFIG.TIERS - 1;
+
+  // Close button
+  if (mx >= px + pw - 42 && mx <= px + pw - 10 && my >= py + 8 && my <= py + 40) {
+    UI.close(); return true;
+  }
+
+  // Outside panel
+  if (mx < px || mx > px + pw || my < py || my > py + ph) {
+    UI.close(); return true;
+  }
+
+  const pickIds = typeof getProgItemsByCategory === 'function' ? getProgItemsByCategory('pickaxe') : [];
+  const listW = 200, listX = px + 12;
+  const contentY = py + 52;
+  const cardH = 56;
+
+  // Pickaxe list selection
+  for (let i = 0; i < pickIds.length; i++) {
+    const iy = contentY + i * (cardH + 4) - _miningShopScroll;
+    if (mx >= listX && mx <= listX + listW && my >= iy && my <= iy + cardH) {
+      _miningShopSelected = i;
+      return true;
+    }
+  }
+
+  // Detail area buttons
+  if (!pickIds.length) return true;
+  const selId = pickIds[_miningShopSelected] || pickIds[0];
+  const selDef = PROG_ITEMS[selId];
+  if (!selDef) return true;
+  const selProg = _getPickaxeProgress(selId);
+  const selUnlocked = _isPickaxeUnlocked(selId);
+  const selTier = selProg.tier;
+  const selLvl = selProg.level;
+  const detailX = px + listW + 24, detailW = pw - listW - 36;
+  const isMaxLevel = selLvl >= maxLvl;
+  const canEvolveNow = isMaxLevel && selTier < maxTier && selProg.owned;
+
+  // ---- BUY ----
+  if (!selProg.owned && selUnlocked) {
+    const btnW = 180, btnH = 44;
+    const btnX = detailX + detailW / 2 - btnW / 2;
+    const btnY = py + ph - 72;
+    if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
+      if (gold >= selDef.buyPrice) {
+        gold -= selDef.buyPrice;
+        _setPickaxeProgress(selId, 0, 1);
+        const pickItem = createPickaxe(selId, 0, 1);
+        if (pickItem) addToInventory(pickItem);
+        chatMessages.push({ name: "SYSTEM", text: "Purchased " + selDef.name + "!", time: Date.now() });
+        if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
+      } else {
+        chatMessages.push({ name: "SYSTEM", text: "Not enough gold!", time: Date.now() });
+      }
+      return true;
+    }
+  }
+
+  // ---- UPGRADE ----
+  if (selProg.owned && !isMaxLevel) {
+    const recipe = typeof getProgUpgradeRecipe === 'function'
+      ? getProgUpgradeRecipe(selId, selTier, selLvl + 1) : null;
+    if (recipe) {
+      const btnW = 180, btnH = 38;
+      const btnX = detailX + detailW / 2 - btnW / 2;
+      const btnY = py + ph - 55;
+      if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
+        if (_canAffordRecipe(recipe)) {
+          _deductRecipe(recipe);
+          const newLvl = selLvl + 1;
+          _setPickaxeProgress(selId, selTier, newLvl);
+          // Update pickaxe in inventory
+          for (let i = 0; i < inventory.length; i++) {
+            if (inventory[i] && inventory[i].id === selId) {
+              const upgraded = createPickaxe(selId, selTier, newLvl);
+              if (upgraded) inventory[i] = upgraded;
+              break;
+            }
+          }
+          // Re-apply melee stats if this pickaxe is equipped
+          if (playerEquip.melee && playerEquip.melee.id === selId) {
+            const newStats = getProgressedStats(selId, selTier, newLvl);
+            if (newStats) applyMeleeStats(newStats);
+          }
+          const tName = tierNames[selTier] || '';
+          chatMessages.push({ name: "SYSTEM", text: selDef.name + " upgraded to " + tName + " Lv." + newLvl + "!", time: Date.now() });
+          if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
+        } else {
+          chatMessages.push({ name: "SYSTEM", text: "Not enough resources!", time: Date.now() });
+        }
+        return true;
+      }
+    }
+  }
+
+  // ---- EVOLVE ----
+  if (canEvolveNow) {
+    const evoCost = getEvolutionCost(selTier);
+    const evoGold = evoCost ? evoCost.gold : 0;
+    const evoMats = evoCost ? evoCost.materials : null;
+    const btnW = 200, btnH = 40;
+    const btnX = detailX + detailW / 2 - btnW / 2;
+    const btnY = py + ph - 55;
+    if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
+      let canEvo = gold >= evoGold;
+      if (canEvo && evoMats) {
+        for (const matId in evoMats) {
+          if (_countMaterial(matId) < evoMats[matId]) { canEvo = false; break; }
+        }
+      }
+      if (canEvo) {
+        gold -= evoGold;
+        if (evoMats) { for (const matId in evoMats) _deductMaterial(matId, evoMats[matId]); }
+        const newTier = selTier + 1;
+        _setPickaxeProgress(selId, newTier, 1);
+        // Update pickaxe in inventory
+        for (let i = 0; i < inventory.length; i++) {
+          if (inventory[i] && inventory[i].id === selId) {
+            const evolved = createPickaxe(selId, newTier, 1);
+            if (evolved) inventory[i] = evolved;
+            break;
+          }
+        }
+        // Re-apply melee stats if equipped
+        if (playerEquip.melee && playerEquip.melee.id === selId) {
+          const newStats = getProgressedStats(selId, newTier, 1);
+          if (newStats) applyMeleeStats(newStats);
+        }
+        const newTierName = tierNames[newTier] || '';
+        chatMessages.push({ name: "SYSTEM", text: "\u2605 " + selDef.name + " evolved to " + newTierName + "! \u2605", time: Date.now() });
+        if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
+      } else {
+        chatMessages.push({ name: "SYSTEM", text: "Not enough resources for evolution!", time: Date.now() });
       }
       return true;
     }

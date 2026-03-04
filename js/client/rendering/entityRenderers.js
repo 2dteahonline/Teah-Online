@@ -2448,6 +2448,50 @@ ENTITY_RENDERERS.gunsmith_npc = (e, ctx, ex, ey, w, h) => {
     ctx.textAlign = 'left';
 };
 
+// ===================== MINING SHOP NPC =====================
+ENTITY_RENDERERS.mining_npc = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const bx = ex + cw / 2, by = ey + ch / 2;
+    const t = Date.now() / 1000;
+    const bob = Math.sin(t * 1.2) * 1.5;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(bx, by + 30, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // Body (miner outfit — dark grey)
+    ctx.fillStyle = '#4a4a50'; ctx.fillRect(bx - 10, by - 8 + bob, 20, 28);
+    // Vest
+    ctx.fillStyle = '#6a5a30'; ctx.fillRect(bx - 8, by - 4 + bob, 16, 20);
+    // Head
+    ctx.fillStyle = '#c8a888'; ctx.fillRect(bx - 7, by - 22 + bob, 14, 14);
+    // Mining helmet
+    ctx.fillStyle = '#cc8800'; ctx.fillRect(bx - 9, by - 26 + bob, 18, 8);
+    ctx.fillStyle = '#ffaa00'; ctx.fillRect(bx - 2, by - 28 + bob, 4, 4); // headlamp
+    // Eyes
+    ctx.fillStyle = '#222';
+    ctx.fillRect(bx - 4, by - 17 + bob, 3, 3);
+    ctx.fillRect(bx + 2, by - 17 + bob, 3, 3);
+    // Beard (scruffy)
+    ctx.fillStyle = '#5a4a38';
+    ctx.fillRect(bx - 4, by - 12 + bob, 8, 5);
+    // Pickaxe in hand
+    ctx.fillStyle = '#7a6a50'; ctx.fillRect(bx + 10, by - 10 + bob, 3, 22); // handle
+    ctx.fillStyle = '#8a8a90'; // pick head
+    ctx.beginPath();
+    ctx.moveTo(bx + 7, by - 12 + bob);
+    ctx.lineTo(bx + 17, by - 12 + bob);
+    ctx.lineTo(bx + 19, by - 10 + bob);
+    ctx.lineTo(bx + 7, by - 10 + bob);
+    ctx.fill();
+    // Name label
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#000';
+    ctx.fillText('Mining Shop', bx + 1, ey - 4 + bob + 1);
+    ctx.fillStyle = '#ff8800';
+    ctx.fillText('Mining Shop', bx, ey - 4 + bob);
+    ctx.textAlign = 'left';
+};
+
 // ===================== WORKBENCH (gunsmith room) =====================
 ENTITY_RENDERERS.workbench = (e, ctx, ex, ey, w, h) => {
     const cw = w * TILE, ch = h * TILE;

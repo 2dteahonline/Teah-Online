@@ -190,8 +190,9 @@ function _buildUpgradeRecipes() {
 
 const GUN_UPGRADE_RECIPES = _buildUpgradeRecipes();
 
-// Get upgrade recipe for a gun at a specific tier and level
+// DEPRECATED: use getProgUpgradeRecipe() from progressionData.js
 function getUpgradeRecipe(gunId, tier, toLevel) {
+  if (typeof getProgUpgradeRecipe === 'function') return getProgUpgradeRecipe(gunId, tier, toLevel);
   if (!GUN_UPGRADE_RECIPES[gunId]) return null;
   if (!GUN_UPGRADE_RECIPES[gunId][tier]) return null;
   return GUN_UPGRADE_RECIPES[gunId][tier][toLevel] || null;

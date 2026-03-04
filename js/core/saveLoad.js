@@ -6,7 +6,7 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 
 const SaveLoad = {
   // Cosmetic keys to persist from player object
@@ -38,6 +38,8 @@ const SaveLoad = {
         playerXP: playerXP,
         skillData: JSON.parse(JSON.stringify(skillData)),
         gunLevels: typeof window._gunLevels !== 'undefined' ? JSON.parse(JSON.stringify(window._gunLevels)) : {},
+        pickaxeLevels: typeof window._pickaxeLevels !== 'undefined' ? JSON.parse(JSON.stringify(window._pickaxeLevels)) : {},
+        discoveredOres: typeof window._discoveredOres !== 'undefined' ? Array.from(window._discoveredOres) : [],
       };
       // Fishing state (v4: rod is now an inventory item, only persist bait + stats)
       data.fishing = {
@@ -144,6 +146,38 @@ const SaveLoad = {
                 if (gunItem) addToInventory(gunItem);
               }
             }
+          }
+        }
+        // Pickaxe levels (v7+) — permanent pickaxe progression
+        if (p.pickaxeLevels && typeof window._pickaxeLevels !== 'undefined') {
+          for (const pickId in p.pickaxeLevels) {
+            if (pickId in window._pickaxeLevels) {
+              const saved = p.pickaxeLevels[pickId];
+              if (typeof saved === 'number') {
+                window._pickaxeLevels[pickId] = saved > 0 ? { tier: 0, level: saved } : 0;
+              } else {
+                window._pickaxeLevels[pickId] = saved;
+              }
+            }
+          }
+          // Re-create owned pickaxe items in inventory
+          for (const pickId in window._pickaxeLevels) {
+            const v = window._pickaxeLevels[pickId];
+            let tier = 0, lvl = 0;
+            if (typeof v === 'number') { lvl = v; }
+            else if (v && typeof v === 'object') { tier = v.tier || 0; lvl = v.level || 0; }
+            if (lvl > 0 && typeof createPickaxe === 'function' && typeof addToInventory === 'function') {
+              if (typeof isInInventory === 'function' && !isInInventory(pickId)) {
+                const pickItem = createPickaxe(pickId, tier, lvl);
+                if (pickItem) addToInventory(pickItem);
+              }
+            }
+          }
+        }
+        // Discovered ores
+        if (p.discoveredOres && typeof window._discoveredOres !== 'undefined') {
+          for (const oreId of p.discoveredOres) {
+            window._discoveredOres.add(oreId);
           }
         }
       }
