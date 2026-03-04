@@ -219,7 +219,7 @@ const LEVELS = {
     ],
     entities: [
       // === EXIT (bottom center, back to lobby) ===
-      { type: 'house_exit', tx: 8, ty: 27, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 11, spawnTY: 8 },
+      { type: 'house_exit', tx: 8, ty: 27, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 15, spawnTY: 9 },
       // === FARM ZONE (defines tillable area — rows 1-18, cols 1-38) ===
       { type: 'farm_zone', tx: 1, ty: 1, w: 38, h: 18, solid: false },
       // === INDOOR AREA ENTITIES (rows 20-28) ===
@@ -264,7 +264,7 @@ const LEVELS = {
       "########################################"
     ],
     entities: [
-      { type: 'cave_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 28, spawnTY: 8 },
+      { type: 'cave_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 10 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
       { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'cave' },
       // Left torches
@@ -331,7 +331,7 @@ const LEVELS = {
       "########################################"
     ],
     entities: [
-      { type: 'azurine_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 50, spawnTY: 8 },
+      { type: 'azurine_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 72, spawnTY: 9 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
       { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'azurine' },
       // Neon lights (left wall)
@@ -478,7 +478,7 @@ const LEVELS = {
       "######################################################################"
     ],
     entities: [
-      { type: 'mine_exit', tx: 33, ty: 45, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 37, spawnTY: 8 },
+      { type: 'mine_exit', tx: 33, ty: 45, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 9 },
       // Door to Room 2 (top of room)
       { type: 'mine_door', tx: 33, ty: 1, w: 4, h: 2, solid: false, target: 'mine_02', spawnTX: 35, spawnTY: 44, label: 'ROOM 2 \u2192' },
       // Torches — left wall
@@ -763,7 +763,7 @@ const LEVELS = {
     ],
     entities: [
       // Exit door (bottom)
-      { type: 'deli_exit', tx: 12, ty: 27, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 5, spawnTY: 16 },
+      { type: 'deli_exit', tx: 12, ty: 27, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 21 },
 
       // === KITCHEN FLOOR (rendered behind everything — tile pattern) ===
       { type: 'deli_kitchen_floor', tx: 1, ty: 1, w: 23, h: 20, solid: false },
@@ -949,7 +949,7 @@ const LEVELS = {
     ],
     entities: [
       // Exit back to lobby
-      { type: 'gunsmith_exit', tx: 20, ty: 28, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 50, spawnTY: 16 },
+      { type: 'gunsmith_exit', tx: 20, ty: 28, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 72, spawnTY: 21 },
       // Gunsmith NPC (center of room)
       { type: 'gunsmith_npc', tx: 19, ty: 10, w: 2, h: 2, solid: true },
       // Workbench (left of NPC)
