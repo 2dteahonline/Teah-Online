@@ -6,7 +6,7 @@
 // melee → js/authority/gameState.js
 
 // Lifesteal helper — 15% of damage dealt, capped at 20 HP
-function calcLifesteal(dmg) { return calcLifesteal(dmg); }
+function calcLifesteal(dmg) { return Math.min(Math.round(dmg * 0.15), 20); }
 
 // Malevolent Shrine — War Cleaver ultimate ability
 const shrine = {
