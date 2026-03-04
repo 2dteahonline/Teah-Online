@@ -61,14 +61,26 @@ function drawItemCard(item) {
   }
 
   // === TIER BADGE (top-right) ===
-  const badgeW = 50, badgeH = 22;
+  const _isProgItem = item.progItemId && item.level;
+  const _badgeText = _isProgItem
+    ? getTierName(item.tier) + " Lv." + item.level
+    : "TIER " + item.tier;
+  const badgeW = _isProgItem ? 90 : 50, badgeH = 22;
   const bx = cx + cw - badgeW - 12, by = cy + 10;
   ctx.fillStyle = tierCol;
   ctx.beginPath(); ctx.roundRect(bx, by, badgeW, badgeH, 6); ctx.fill();
   ctx.font = "bold 10px monospace";
   ctx.fillStyle = "#000";
   ctx.textAlign = "center";
-  ctx.fillText("TIER " + item.tier, bx + badgeW / 2, by + 15);
+  ctx.fillText(_badgeText, bx + badgeW / 2, by + 15);
+  // Level progress bar inside card (progression items only)
+  if (_isProgItem) {
+    const _pbX = bx + 4, _pbY = by + badgeH + 4, _pbW = badgeW - 8, _pbH = 3;
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fillRect(_pbX, _pbY, _pbW, _pbH);
+    ctx.fillStyle = tierCol;
+    ctx.fillRect(_pbX, _pbY, _pbW * (item.level / 25), _pbH);
+  }
 
   // === ART AREA (illustration box) ===
   const artX = cx + 20, artY = cy + 44, artW = cw - 40, artH = 100;
@@ -98,7 +110,10 @@ function drawItemCard(item) {
   ctx.font = "11px monospace";
   ctx.fillStyle = "#777";
   const typeLabel = { gun: "Ranged Weapon", melee: "Melee Weapon", boots: "Boots", pants: "Leg Armor", chest: "Chest Armor", helmet: "Head Armor", consumable: "Consumable" };
-  ctx.fillText((tierName + " · " + (typeLabel[item.type] || item.type)).toUpperCase(), cx + cw / 2, nameY + 16);
+  const _cardSub = _isProgItem
+    ? (tierName + " Lv." + item.level + " · " + (typeLabel[item.type] || item.type)).toUpperCase()
+    : (tierName + " · " + (typeLabel[item.type] || item.type)).toUpperCase();
+  ctx.fillText(_cardSub, cx + cw / 2, nameY + 16);
 
   // === DIVIDER ===
   const divY = nameY + 26;
@@ -1112,8 +1127,24 @@ function drawInventoryPanel() {
         ctx.fillText("x" + item.count, sx + L.slotS - 6, sy + L.slotS - 6);
       }
 
-      // Tier badge
-      if (item.tier > 0) {
+      // Tier + Level badge (progression items show tier+level, others show T#)
+      if (item.progItemId && item.level) {
+        // Tier-colored level badge
+        const tc = getTierColor(item.tier);
+        ctx.font = "bold 7px monospace";
+        ctx.fillStyle = tc;
+        ctx.textAlign = "left";
+        ctx.fillText(PROGRESSION_CONFIG.TIER_NAMES[item.tier][0] + item.tier + " L" + item.level, sx + 4, sy + 13);
+        // Level progress bar (thin bar under tier bar)
+        const barW = L.slotS - 8;
+        const barH = 2;
+        const barX = sx + 4;
+        const barY = sy + 8;
+        ctx.fillStyle = "rgba(255,255,255,0.08)";
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = tc;
+        ctx.fillRect(barX, barY, barW * (item.level / 25), barH);
+      } else if (item.tier > 0) {
         ctx.font = "bold 8px monospace";
         ctx.fillStyle = getTierColor(item.tier);
         ctx.textAlign = "left";
@@ -1141,7 +1172,10 @@ function drawInventoryPanel() {
 
       ctx.font = "10px monospace";
       ctx.fillStyle = "#888";
-      ctx.fillText(getTierName(item.tier) + " " + item.type, ttx + 10, tty + 36);
+      const _ttSub = item.progItemId && item.level
+        ? getTierName(item.tier) + " Lv." + item.level + " " + item.type
+        : getTierName(item.tier) + " " + item.type;
+      ctx.fillText(_ttSub, ttx + 10, tty + 36);
 
       if (item.data && item.data.desc) {
         ctx.fillStyle = "#bbb";

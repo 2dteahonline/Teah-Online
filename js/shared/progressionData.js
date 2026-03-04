@@ -169,15 +169,311 @@ const PROG_ITEMS = {
     ],
   },
 
-  // ========== FISHING RODS (Phase 5 — definitions added later) ==========
-  // bronze_rod, iron_rod, gold_rod, mythic_rod
+  // ========== FISHING RODS (Phase 5) ==========
+  // T0 base matches ROD_TIERS exactly. Stats: durability, strength, catchBonus, damage, range, cooldown, critChance.
 
-  // ========== FARMING HOES (Phase 6 — definitions added later) ==========
-  // bronze_hoe, iron_hoe, gold_hoe, mythic_hoe
+  bronze_rod: {
+    id: 'bronze_rod', name: 'Bronze Rod', category: 'fishing_rod', type: 'melee',
+    desc: 'Basic fishing rod', buyPrice: 20, color: '#8a6a3a',
+    flags: { special: 'fishing' },
+    tiers: [
+      { base: { durability: 25, strength: 1, catchBonus: 0, damage: 8, range: 80, cooldown: 34, critChance: 0 },
+        max:  { durability: 50, strength: 2, catchBonus: 0.08, damage: 16, range: 85, cooldown: 28, critChance: 0.04 } },
+      { base: { durability: 52, strength: 2, catchBonus: 0.09, damage: 17, range: 86, cooldown: 27, critChance: 0.05 },
+        max:  { durability: 80, strength: 3, catchBonus: 0.18, damage: 28, range: 92, cooldown: 22, critChance: 0.08 } },
+      { base: { durability: 83, strength: 3, catchBonus: 0.19, damage: 29, range: 93, cooldown: 21, critChance: 0.09 },
+        max:  { durability: 120, strength: 4, catchBonus: 0.30, damage: 44, range: 100, cooldown: 18, critChance: 0.12 } },
+      { base: { durability: 124, strength: 4, catchBonus: 0.31, damage: 46, range: 101, cooldown: 17, critChance: 0.13 },
+        max:  { durability: 170, strength: 5, catchBonus: 0.44, damage: 64, range: 110, cooldown: 14, critChance: 0.16 } },
+      { base: { durability: 175, strength: 5, catchBonus: 0.46, damage: 66, range: 112, cooldown: 13, critChance: 0.17 },
+        max:  { durability: 240, strength: 7, catchBonus: 0.60, damage: 90, range: 120, cooldown: 10, critChance: 0.22 } },
+    ],
+  },
 
-  // ========== PICKAXES (Phase 7 — definitions added later) ==========
-  // pickaxe, copper_pickaxe, iron_pickaxe, gold_pickaxe,
-  // amethyst_pickaxe, ruby_pickaxe, diamond_pickaxe, emerald_pickaxe
+  iron_rod: {
+    id: 'iron_rod', name: 'Iron Rod', category: 'fishing_rod', type: 'melee',
+    desc: 'Sturdy iron fishing rod', buyPrice: 80, color: '#8a8a8a',
+    flags: { special: 'fishing' },
+    tiers: [
+      { base: { durability: 40, strength: 2, catchBonus: 0.10, damage: 12, range: 85, cooldown: 30, critChance: 0.05 },
+        max:  { durability: 70, strength: 3, catchBonus: 0.20, damage: 24, range: 90, cooldown: 24, critChance: 0.08 } },
+      { base: { durability: 73, strength: 3, catchBonus: 0.21, damage: 25, range: 91, cooldown: 23, critChance: 0.09 },
+        max:  { durability: 110, strength: 4, catchBonus: 0.32, damage: 40, range: 98, cooldown: 19, critChance: 0.12 } },
+      { base: { durability: 114, strength: 4, catchBonus: 0.33, damage: 42, range: 99, cooldown: 18, critChance: 0.13 },
+        max:  { durability: 160, strength: 5, catchBonus: 0.46, damage: 60, range: 108, cooldown: 15, critChance: 0.16 } },
+      { base: { durability: 165, strength: 5, catchBonus: 0.47, damage: 62, range: 109, cooldown: 14, critChance: 0.17 },
+        max:  { durability: 220, strength: 7, catchBonus: 0.60, damage: 84, range: 118, cooldown: 12, critChance: 0.20 } },
+      { base: { durability: 226, strength: 7, catchBonus: 0.62, damage: 87, range: 120, cooldown: 11, critChance: 0.21 },
+        max:  { durability: 300, strength: 9, catchBonus: 0.78, damage: 115, range: 130, cooldown: 8, critChance: 0.26 } },
+    ],
+  },
+
+  gold_rod: {
+    id: 'gold_rod', name: 'Gold Rod', category: 'fishing_rod', type: 'melee',
+    desc: 'Gleaming gold fishing rod', buyPrice: 200, color: '#ffd700',
+    flags: { special: 'fishing' },
+    tiers: [
+      { base: { durability: 60, strength: 3, catchBonus: 0.20, damage: 16, range: 90, cooldown: 26, critChance: 0.08 },
+        max:  { durability: 100, strength: 4, catchBonus: 0.34, damage: 32, range: 96, cooldown: 20, critChance: 0.12 } },
+      { base: { durability: 104, strength: 4, catchBonus: 0.35, damage: 34, range: 97, cooldown: 19, critChance: 0.13 },
+        max:  { durability: 150, strength: 5, catchBonus: 0.48, damage: 52, range: 106, cooldown: 16, critChance: 0.16 } },
+      { base: { durability: 155, strength: 5, catchBonus: 0.50, damage: 54, range: 107, cooldown: 15, critChance: 0.17 },
+        max:  { durability: 210, strength: 7, catchBonus: 0.64, damage: 76, range: 116, cooldown: 12, critChance: 0.20 } },
+      { base: { durability: 216, strength: 7, catchBonus: 0.66, damage: 78, range: 118, cooldown: 11, critChance: 0.21 },
+        max:  { durability: 280, strength: 9, catchBonus: 0.80, damage: 104, range: 128, cooldown: 9, critChance: 0.25 } },
+      { base: { durability: 288, strength: 9, catchBonus: 0.82, damage: 108, range: 130, cooldown: 8, critChance: 0.26 },
+        max:  { durability: 380, strength: 12, catchBonus: 1.00, damage: 145, range: 142, cooldown: 6, critChance: 0.32 } },
+    ],
+  },
+
+  mythic_rod: {
+    id: 'mythic_rod', name: 'Mythic Rod', category: 'fishing_rod', type: 'melee',
+    desc: 'Legendary mythic fishing rod', buyPrice: 500, color: '#d4a030',
+    flags: { special: 'fishing' },
+    tiers: [
+      { base: { durability: 100, strength: 5, catchBonus: 0.35, damage: 22, range: 95, cooldown: 22, critChance: 0.12 },
+        max:  { durability: 160, strength: 6, catchBonus: 0.50, damage: 44, range: 102, cooldown: 17, critChance: 0.16 } },
+      { base: { durability: 165, strength: 6, catchBonus: 0.52, damage: 46, range: 103, cooldown: 16, critChance: 0.17 },
+        max:  { durability: 230, strength: 8, catchBonus: 0.66, damage: 70, range: 112, cooldown: 13, critChance: 0.20 } },
+      { base: { durability: 236, strength: 8, catchBonus: 0.68, damage: 72, range: 114, cooldown: 12, critChance: 0.21 },
+        max:  { durability: 310, strength: 10, catchBonus: 0.82, damage: 100, range: 124, cooldown: 10, critChance: 0.25 } },
+      { base: { durability: 318, strength: 10, catchBonus: 0.84, damage: 104, range: 126, cooldown: 9, critChance: 0.26 },
+        max:  { durability: 400, strength: 13, catchBonus: 1.00, damage: 140, range: 138, cooldown: 7, critChance: 0.30 } },
+      { base: { durability: 410, strength: 13, catchBonus: 1.00, damage: 145, range: 140, cooldown: 6, critChance: 0.31 },
+        max:  { durability: 520, strength: 16, catchBonus: 1.20, damage: 200, range: 155, cooldown: 4, critChance: 0.38 } },
+    ],
+  },
+
+  // ========== FARMING HOES (Phase 6) ==========
+  // T0 base matches HOE_TIERS exactly. Stats: durability, damage, range, cooldown, critChance, waterRange, waterDuration.
+
+  bronze_hoe: {
+    id: 'bronze_hoe', name: 'Bronze Hoe', category: 'farming_hoe', type: 'melee',
+    desc: 'Basic farming hoe', buyPrice: 20, color: '#8a6a3a',
+    flags: { special: 'farming' },
+    tiers: [
+      { base: { durability: 30, damage: 6, range: 70, cooldown: 36, critChance: 0, waterRange: 1, waterDuration: 1800 },
+        max:  { durability: 55, damage: 12, range: 76, cooldown: 30, critChance: 0.04, waterRange: 1, waterDuration: 2400 } },
+      { base: { durability: 58, damage: 13, range: 77, cooldown: 29, critChance: 0.05, waterRange: 1, waterDuration: 2500 },
+        max:  { durability: 90, damage: 22, range: 84, cooldown: 24, critChance: 0.08, waterRange: 2, waterDuration: 3200 } },
+      { base: { durability: 93, damage: 23, range: 85, cooldown: 23, critChance: 0.09, waterRange: 2, waterDuration: 3300 },
+        max:  { durability: 130, damage: 36, range: 92, cooldown: 20, critChance: 0.12, waterRange: 2, waterDuration: 4200 } },
+      { base: { durability: 134, damage: 37, range: 93, cooldown: 19, critChance: 0.13, waterRange: 2, waterDuration: 4300 },
+        max:  { durability: 180, damage: 52, range: 100, cooldown: 16, critChance: 0.16, waterRange: 3, waterDuration: 5400 } },
+      { base: { durability: 185, damage: 54, range: 102, cooldown: 15, critChance: 0.17, waterRange: 3, waterDuration: 5500 },
+        max:  { durability: 250, damage: 75, range: 112, cooldown: 12, critChance: 0.22, waterRange: 4, waterDuration: 7200 } },
+    ],
+  },
+
+  iron_hoe: {
+    id: 'iron_hoe', name: 'Iron Hoe', category: 'farming_hoe', type: 'melee',
+    desc: 'Durable iron hoe', buyPrice: 80, color: '#8a8a8a',
+    flags: { special: 'farming' },
+    tiers: [
+      { base: { durability: 50, damage: 10, range: 75, cooldown: 32, critChance: 0.05, waterRange: 1, waterDuration: 2700 },
+        max:  { durability: 85, damage: 20, range: 82, cooldown: 26, critChance: 0.08, waterRange: 2, waterDuration: 3400 } },
+      { base: { durability: 88, damage: 21, range: 83, cooldown: 25, critChance: 0.09, waterRange: 2, waterDuration: 3500 },
+        max:  { durability: 130, damage: 34, range: 90, cooldown: 20, critChance: 0.12, waterRange: 2, waterDuration: 4400 } },
+      { base: { durability: 134, damage: 35, range: 91, cooldown: 19, critChance: 0.13, waterRange: 2, waterDuration: 4500 },
+        max:  { durability: 180, damage: 52, range: 100, cooldown: 16, critChance: 0.16, waterRange: 3, waterDuration: 5600 } },
+      { base: { durability: 185, damage: 54, range: 101, cooldown: 15, critChance: 0.17, waterRange: 3, waterDuration: 5700 },
+        max:  { durability: 245, damage: 74, range: 112, cooldown: 12, critChance: 0.20, waterRange: 3, waterDuration: 7000 } },
+      { base: { durability: 252, damage: 76, range: 114, cooldown: 11, critChance: 0.21, waterRange: 3, waterDuration: 7200 },
+        max:  { durability: 340, damage: 105, range: 125, cooldown: 8, critChance: 0.26, waterRange: 4, waterDuration: 9000 } },
+    ],
+  },
+
+  gold_hoe: {
+    id: 'gold_hoe', name: 'Gold Hoe', category: 'farming_hoe', type: 'melee',
+    desc: 'Gleaming gold hoe', buyPrice: 200, color: '#ffd700',
+    flags: { special: 'farming' },
+    tiers: [
+      { base: { durability: 70, damage: 14, range: 80, cooldown: 28, critChance: 0.08, waterRange: 2, waterDuration: 3600 },
+        max:  { durability: 110, damage: 28, range: 88, cooldown: 22, critChance: 0.12, waterRange: 2, waterDuration: 4600 } },
+      { base: { durability: 114, damage: 29, range: 89, cooldown: 21, critChance: 0.13, waterRange: 2, waterDuration: 4700 },
+        max:  { durability: 165, damage: 46, range: 98, cooldown: 17, critChance: 0.16, waterRange: 3, waterDuration: 5800 } },
+      { base: { durability: 170, damage: 48, range: 99, cooldown: 16, critChance: 0.17, waterRange: 3, waterDuration: 5900 },
+        max:  { durability: 230, damage: 68, range: 110, cooldown: 13, critChance: 0.20, waterRange: 3, waterDuration: 7200 } },
+      { base: { durability: 236, damage: 70, range: 111, cooldown: 12, critChance: 0.21, waterRange: 3, waterDuration: 7400 },
+        max:  { durability: 310, damage: 96, range: 122, cooldown: 10, critChance: 0.25, waterRange: 4, waterDuration: 9000 } },
+      { base: { durability: 318, damage: 100, range: 124, cooldown: 9, critChance: 0.26, waterRange: 4, waterDuration: 9200 },
+        max:  { durability: 420, damage: 140, range: 138, cooldown: 6, critChance: 0.32, waterRange: 5, waterDuration: 12000 } },
+    ],
+  },
+
+  mythic_hoe: {
+    id: 'mythic_hoe', name: 'Mythic Hoe', category: 'farming_hoe', type: 'melee',
+    desc: 'Legendary mythic hoe', buyPrice: 500, color: '#d4a030',
+    flags: { special: 'farming' },
+    tiers: [
+      { base: { durability: 120, damage: 20, range: 85, cooldown: 24, critChance: 0.12, waterRange: 3, waterDuration: 5400 },
+        max:  { durability: 180, damage: 40, range: 94, cooldown: 18, critChance: 0.16, waterRange: 3, waterDuration: 6800 } },
+      { base: { durability: 185, damage: 42, range: 95, cooldown: 17, critChance: 0.17, waterRange: 3, waterDuration: 7000 },
+        max:  { durability: 260, damage: 64, range: 106, cooldown: 14, critChance: 0.20, waterRange: 4, waterDuration: 8600 } },
+      { base: { durability: 268, damage: 66, range: 107, cooldown: 13, critChance: 0.21, waterRange: 4, waterDuration: 8800 },
+        max:  { durability: 360, damage: 92, range: 118, cooldown: 10, critChance: 0.25, waterRange: 4, waterDuration: 10800 } },
+      { base: { durability: 370, damage: 95, range: 120, cooldown: 9, critChance: 0.26, waterRange: 4, waterDuration: 11000 },
+        max:  { durability: 470, damage: 130, range: 132, cooldown: 7, critChance: 0.30, waterRange: 5, waterDuration: 13500 } },
+      { base: { durability: 480, damage: 134, range: 134, cooldown: 6, critChance: 0.31, waterRange: 5, waterDuration: 13800 },
+        max:  { durability: 600, damage: 185, range: 150, cooldown: 4, critChance: 0.38, waterRange: 6, waterDuration: 18000 } },
+    ],
+  },
+
+  // ========== PICKAXES (Phase 7) ==========
+  // 8 pickaxes (1 per ore chain). T0 base matches PICKAXE_TIERS exactly.
+  // Stats: damage, range, cooldown, critChance, miningSpeed.
+
+  pickaxe: {
+    id: 'pickaxe', name: 'Pickaxe', category: 'pickaxe', type: 'melee',
+    desc: 'Basic mining tool', buyPrice: 0, color: '#8a6a3a',
+    flags: { special: 'pickaxe' },
+    unlockGate: null,
+    tiers: [
+      { base: { damage: 10, range: 70, cooldown: 32, critChance: 0, miningSpeed: 1.0 },
+        max:  { damage: 18, range: 74, cooldown: 28, critChance: 0.03, miningSpeed: 1.2 } },
+      { base: { damage: 19, range: 75, cooldown: 27, critChance: 0.04, miningSpeed: 1.22 },
+        max:  { damage: 30, range: 80, cooldown: 22, critChance: 0.07, miningSpeed: 1.5 } },
+      { base: { damage: 31, range: 81, cooldown: 21, critChance: 0.08, miningSpeed: 1.52 },
+        max:  { damage: 46, range: 86, cooldown: 18, critChance: 0.11, miningSpeed: 1.8 } },
+      { base: { damage: 48, range: 87, cooldown: 17, critChance: 0.12, miningSpeed: 1.82 },
+        max:  { damage: 66, range: 92, cooldown: 14, critChance: 0.16, miningSpeed: 2.2 } },
+      { base: { damage: 68, range: 93, cooldown: 13, critChance: 0.17, miningSpeed: 2.24 },
+        max:  { damage: 90, range: 100, cooldown: 10, critChance: 0.22, miningSpeed: 2.8 } },
+    ],
+  },
+
+  copper_pickaxe: {
+    id: 'copper_pickaxe', name: 'Copper Pickaxe', category: 'pickaxe', type: 'melee',
+    desc: 'Copper-tipped mining pick', buyPrice: 50, color: '#b87333',
+    flags: { special: 'pickaxe' },
+    unlockGate: 'coal',
+    tiers: [
+      { base: { damage: 14, range: 70, cooldown: 30, critChance: 0, miningSpeed: 1.15 },
+        max:  { damage: 24, range: 75, cooldown: 26, critChance: 0.04, miningSpeed: 1.35 } },
+      { base: { damage: 25, range: 76, cooldown: 25, critChance: 0.05, miningSpeed: 1.37 },
+        max:  { damage: 38, range: 82, cooldown: 20, critChance: 0.08, miningSpeed: 1.65 } },
+      { base: { damage: 39, range: 83, cooldown: 19, critChance: 0.09, miningSpeed: 1.68 },
+        max:  { damage: 56, range: 89, cooldown: 16, critChance: 0.12, miningSpeed: 2.0 } },
+      { base: { damage: 58, range: 90, cooldown: 15, critChance: 0.13, miningSpeed: 2.04 },
+        max:  { damage: 78, range: 96, cooldown: 12, critChance: 0.17, miningSpeed: 2.4 } },
+      { base: { damage: 80, range: 97, cooldown: 11, critChance: 0.18, miningSpeed: 2.44 },
+        max:  { damage: 105, range: 105, cooldown: 8, critChance: 0.24, miningSpeed: 3.0 } },
+    ],
+  },
+
+  iron_pickaxe: {
+    id: 'iron_pickaxe', name: 'Iron Pickaxe', category: 'pickaxe', type: 'melee',
+    desc: 'Iron mining pickaxe', buyPrice: 80, color: '#8a8a8a',
+    flags: { special: 'pickaxe' },
+    unlockGate: 'iron',
+    tiers: [
+      { base: { damage: 18, range: 70, cooldown: 28, critChance: 0, miningSpeed: 1.3 },
+        max:  { damage: 30, range: 76, cooldown: 24, critChance: 0.04, miningSpeed: 1.52 } },
+      { base: { damage: 31, range: 77, cooldown: 23, critChance: 0.05, miningSpeed: 1.54 },
+        max:  { damage: 46, range: 84, cooldown: 18, critChance: 0.08, miningSpeed: 1.85 } },
+      { base: { damage: 48, range: 85, cooldown: 17, critChance: 0.09, miningSpeed: 1.88 },
+        max:  { damage: 66, range: 92, cooldown: 14, critChance: 0.12, miningSpeed: 2.2 } },
+      { base: { damage: 68, range: 93, cooldown: 13, critChance: 0.13, miningSpeed: 2.24 },
+        max:  { damage: 92, range: 100, cooldown: 10, critChance: 0.17, miningSpeed: 2.6 } },
+      { base: { damage: 95, range: 101, cooldown: 9, critChance: 0.18, miningSpeed: 2.65 },
+        max:  { damage: 125, range: 110, cooldown: 7, critChance: 0.24, miningSpeed: 3.2 } },
+    ],
+  },
+
+  gold_pickaxe: {
+    id: 'gold_pickaxe', name: 'Gold Pickaxe', category: 'pickaxe', type: 'melee',
+    desc: 'Gold mining pickaxe', buyPrice: 150, color: '#ffd700',
+    flags: { special: 'pickaxe' },
+    unlockGate: 'gold',
+    tiers: [
+      { base: { damage: 22, range: 75, cooldown: 26, critChance: 0, miningSpeed: 1.5 },
+        max:  { damage: 36, range: 80, cooldown: 22, critChance: 0.05, miningSpeed: 1.72 } },
+      { base: { damage: 37, range: 81, cooldown: 21, critChance: 0.06, miningSpeed: 1.75 },
+        max:  { damage: 54, range: 88, cooldown: 16, critChance: 0.09, miningSpeed: 2.08 } },
+      { base: { damage: 56, range: 89, cooldown: 15, critChance: 0.10, miningSpeed: 2.12 },
+        max:  { damage: 78, range: 96, cooldown: 12, critChance: 0.14, miningSpeed: 2.5 } },
+      { base: { damage: 80, range: 97, cooldown: 11, critChance: 0.15, miningSpeed: 2.54 },
+        max:  { damage: 106, range: 105, cooldown: 9, critChance: 0.19, miningSpeed: 2.95 } },
+      { base: { damage: 110, range: 106, cooldown: 8, critChance: 0.20, miningSpeed: 3.0 },
+        max:  { damage: 145, range: 115, cooldown: 6, critChance: 0.26, miningSpeed: 3.6 } },
+    ],
+  },
+
+  amethyst_pickaxe: {
+    id: 'amethyst_pickaxe', name: 'Amethyst Pickaxe', category: 'pickaxe', type: 'melee',
+    desc: 'Amethyst-edged mining pick', buyPrice: 250, color: '#9b59b6',
+    flags: { special: 'pickaxe' },
+    unlockGate: 'amethyst',
+    tiers: [
+      { base: { damage: 26, range: 75, cooldown: 24, critChance: 0, miningSpeed: 1.7 },
+        max:  { damage: 42, range: 82, cooldown: 20, critChance: 0.05, miningSpeed: 1.95 } },
+      { base: { damage: 43, range: 83, cooldown: 19, critChance: 0.06, miningSpeed: 1.98 },
+        max:  { damage: 62, range: 90, cooldown: 15, critChance: 0.10, miningSpeed: 2.32 } },
+      { base: { damage: 64, range: 91, cooldown: 14, critChance: 0.11, miningSpeed: 2.36 },
+        max:  { damage: 88, range: 99, cooldown: 11, critChance: 0.15, miningSpeed: 2.75 } },
+      { base: { damage: 90, range: 100, cooldown: 10, critChance: 0.16, miningSpeed: 2.8 },
+        max:  { damage: 120, range: 108, cooldown: 8, critChance: 0.21, miningSpeed: 3.25 } },
+      { base: { damage: 124, range: 110, cooldown: 7, critChance: 0.22, miningSpeed: 3.3 },
+        max:  { damage: 165, range: 120, cooldown: 5, critChance: 0.28, miningSpeed: 4.0 } },
+    ],
+  },
+
+  ruby_pickaxe: {
+    id: 'ruby_pickaxe', name: 'Ruby Pickaxe', category: 'pickaxe', type: 'melee',
+    desc: 'Ruby-infused mining pick', buyPrice: 400, color: '#e74c3c',
+    flags: { special: 'pickaxe' },
+    unlockGate: 'ruby',
+    tiers: [
+      { base: { damage: 30, range: 80, cooldown: 22, critChance: 0, miningSpeed: 1.9 },
+        max:  { damage: 48, range: 86, cooldown: 18, critChance: 0.06, miningSpeed: 2.15 } },
+      { base: { damage: 50, range: 87, cooldown: 17, critChance: 0.07, miningSpeed: 2.18 },
+        max:  { damage: 72, range: 94, cooldown: 14, critChance: 0.11, miningSpeed: 2.55 } },
+      { base: { damage: 74, range: 95, cooldown: 13, critChance: 0.12, miningSpeed: 2.58 },
+        max:  { damage: 100, range: 103, cooldown: 10, critChance: 0.16, miningSpeed: 3.0 } },
+      { base: { damage: 103, range: 104, cooldown: 9, critChance: 0.17, miningSpeed: 3.05 },
+        max:  { damage: 138, range: 113, cooldown: 7, critChance: 0.22, miningSpeed: 3.5 } },
+      { base: { damage: 142, range: 114, cooldown: 6, critChance: 0.23, miningSpeed: 3.56 },
+        max:  { damage: 190, range: 125, cooldown: 4, critChance: 0.30, miningSpeed: 4.3 } },
+    ],
+  },
+
+  diamond_pickaxe: {
+    id: 'diamond_pickaxe', name: 'Diamond Pickaxe', category: 'pickaxe', type: 'melee',
+    desc: 'Diamond-tipped mining pick', buyPrice: 600, color: '#85c1e9',
+    flags: { special: 'pickaxe' },
+    unlockGate: 'diamond',
+    tiers: [
+      { base: { damage: 35, range: 80, cooldown: 20, critChance: 0, miningSpeed: 2.1 },
+        max:  { damage: 55, range: 88, cooldown: 16, critChance: 0.06, miningSpeed: 2.4 } },
+      { base: { damage: 57, range: 89, cooldown: 15, critChance: 0.07, miningSpeed: 2.44 },
+        max:  { damage: 82, range: 97, cooldown: 12, critChance: 0.11, miningSpeed: 2.85 } },
+      { base: { damage: 84, range: 98, cooldown: 11, critChance: 0.12, miningSpeed: 2.9 },
+        max:  { damage: 115, range: 107, cooldown: 9, critChance: 0.16, miningSpeed: 3.35 } },
+      { base: { damage: 118, range: 108, cooldown: 8, critChance: 0.17, miningSpeed: 3.4 },
+        max:  { damage: 156, range: 118, cooldown: 6, critChance: 0.23, miningSpeed: 3.9 } },
+      { base: { damage: 160, range: 119, cooldown: 5, critChance: 0.24, miningSpeed: 3.96 },
+        max:  { damage: 215, range: 130, cooldown: 3, critChance: 0.32, miningSpeed: 4.8 } },
+    ],
+  },
+
+  emerald_pickaxe: {
+    id: 'emerald_pickaxe', name: 'Emerald Pickaxe', category: 'pickaxe', type: 'melee',
+    desc: 'Emerald-forged mining pick', buyPrice: 900, color: '#2ecc71',
+    flags: { special: 'pickaxe' },
+    unlockGate: 'emerald',
+    tiers: [
+      { base: { damage: 40, range: 85, cooldown: 18, critChance: 0, miningSpeed: 2.4 },
+        max:  { damage: 64, range: 92, cooldown: 14, critChance: 0.07, miningSpeed: 2.72 } },
+      { base: { damage: 66, range: 93, cooldown: 13, critChance: 0.08, miningSpeed: 2.76 },
+        max:  { damage: 94, range: 102, cooldown: 10, critChance: 0.12, miningSpeed: 3.2 } },
+      { base: { damage: 97, range: 103, cooldown: 9, critChance: 0.13, miningSpeed: 3.24 },
+        max:  { damage: 132, range: 112, cooldown: 7, critChance: 0.18, miningSpeed: 3.7 } },
+      { base: { damage: 136, range: 113, cooldown: 6, critChance: 0.19, miningSpeed: 3.76 },
+        max:  { damage: 180, range: 124, cooldown: 5, critChance: 0.25, miningSpeed: 4.3 } },
+      { base: { damage: 185, range: 125, cooldown: 4, critChance: 0.26, miningSpeed: 4.36 },
+        max:  { damage: 250, range: 138, cooldown: 2, critChance: 0.35, miningSpeed: 5.2 } },
+    ],
+  },
 };
 
 
@@ -311,4 +607,65 @@ function getTierLevelDisplay(tier, level) {
 // Get the progression definition for an item
 function getProgItemDef(itemId) {
   return PROG_ITEMS[itemId] || null;
+}
+
+
+// ---- UNIVERSAL UPGRADE RECIPES (Phase 8) ----
+// Generates upgrade cost for ANY PROG_ITEMS item at tier+level.
+// Replaces the per-gun GUN_UPGRADE_RECIPES with a universal system.
+// Cost brackets match mine rooms:
+//   L2-6:   Coal/Copper/Iron + gold (50-150g) + tier-appropriate parts
+//   L7-13:  Steel/Gold/Amethyst + gold (200-500g)
+//   L14-19: Ruby/Diamond/Emerald + gold (600-1200g)
+//   L20-25: Titanium/Mythril/Celestium + gold (1500-3000g)
+// Tier multiplier scales costs: T0=1x, T1=2.5x, T2=5x, T3=10x, T4=20x
+
+const _PROG_TIER_COST_MULT = [1, 2.5, 5, 10, 20];
+const _PROG_PART_KEYS = {
+  main_gun:    ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
+  fishing_rod: ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
+  farming_hoe: ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
+  pickaxe:     ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
+};
+
+function getProgUpgradeRecipe(itemId, tier, toLevel) {
+  const def = PROG_ITEMS[itemId];
+  if (!def || toLevel < 2 || toLevel > 25 || tier < 0 || tier > 4) return null;
+
+  const mult = _PROG_TIER_COST_MULT[tier];
+  const partKeys = _PROG_PART_KEYS[def.category] || _PROG_PART_KEYS.main_gun;
+  const partKey = partKeys[Math.min(tier, partKeys.length - 1)];
+
+  let baseGold, ores;
+  if (toLevel <= 6) {
+    baseGold = 50 + (toLevel - 2) * 25;
+    const amt = toLevel - 1;
+    if (toLevel <= 3)      ores = { coal: amt };
+    else if (toLevel <= 5) ores = { copper: amt };
+    else                   ores = { iron: amt };
+  } else if (toLevel <= 13) {
+    baseGold = 200 + (toLevel - 7) * 50;
+    const amt = toLevel - 4;
+    if (toLevel <= 9)       ores = { steel: amt };
+    else if (toLevel <= 11) ores = { gold_ore: amt };
+    else                    ores = { amethyst: amt };
+  } else if (toLevel <= 19) {
+    baseGold = 600 + (toLevel - 14) * 120;
+    const amt = toLevel - 8;
+    if (toLevel <= 15)      ores = { ruby: amt };
+    else if (toLevel <= 17) ores = { diamond: amt };
+    else                    ores = { emerald: amt };
+  } else {
+    baseGold = 1500 + (toLevel - 20) * 300;
+    const amt = toLevel - 12;
+    if (toLevel <= 21)      ores = { titanium: amt };
+    else if (toLevel <= 23) ores = { mythril: amt };
+    else                    ores = { celestium: amt };
+  }
+
+  const goldCost = Math.round(baseGold * mult);
+  const parts = {};
+  parts[partKey] = Math.ceil((toLevel - 1) / 2);
+
+  return { gold: goldCost, ores, parts };
 }

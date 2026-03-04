@@ -37,7 +37,7 @@ const SaveLoad = {
         playerLevel: playerLevel,
         playerXP: playerXP,
         skillData: JSON.parse(JSON.stringify(skillData)),
-        gunLevels: typeof window._gunLevels !== 'undefined' ? { ...window._gunLevels } : {},
+        gunLevels: typeof window._gunLevels !== 'undefined' ? JSON.parse(JSON.stringify(window._gunLevels)) : {},
       };
       // Fishing state (v4: rod is now an inventory item, only persist bait + stats)
       data.fishing = {
@@ -119,18 +119,28 @@ const SaveLoad = {
         }
         // Gold, inventory, equipment are session-only (dungeon roguelike design)
         // Gun levels (v6+) — permanent gun progression
+        // Supports old format (integer) and new format ({tier, level})
         if (p.gunLevels && typeof window._gunLevels !== 'undefined') {
           for (const gunId in p.gunLevels) {
             if (gunId in window._gunLevels) {
-              window._gunLevels[gunId] = p.gunLevels[gunId];
+              const saved = p.gunLevels[gunId];
+              // Migrate old integer format → {tier: 0, level: N}
+              if (typeof saved === 'number') {
+                window._gunLevels[gunId] = saved > 0 ? { tier: 0, level: saved } : 0;
+              } else {
+                window._gunLevels[gunId] = saved;
+              }
             }
           }
           // Re-create owned gun items in inventory (main guns are permanent progression)
           for (const gunId in window._gunLevels) {
-            const lvl = window._gunLevels[gunId];
+            const v = window._gunLevels[gunId];
+            let tier = 0, lvl = 0;
+            if (typeof v === 'number') { lvl = v; }
+            else if (v && typeof v === 'object') { tier = v.tier || 0; lvl = v.level || 0; }
             if (lvl > 0 && typeof createMainGun === 'function' && typeof addToInventory === 'function') {
               if (typeof isInInventory === 'function' && !isInInventory(gunId)) {
-                const gunItem = createMainGun(gunId, lvl);
+                const gunItem = createMainGun(gunId, tier, lvl);
                 if (gunItem) addToInventory(gunItem);
               }
             }

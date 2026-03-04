@@ -96,21 +96,50 @@ function applyGunStats(data) {
   gun.reloadTimer = 0;
 }
 
-// Create a main gun item from gunData.js definitions at a given level
-function createMainGun(gunId, level) {
+// Create a main gun item from progression data at a given tier+level.
+// Falls back to gunData.js T0 if progressionData not loaded yet.
+function createMainGun(gunId, levelOrTier, level) {
+  // Support both old signature createMainGun(id, level) and new createMainGun(id, tier, level)
+  let tier, lvl;
+  if (level !== undefined) {
+    tier = levelOrTier; lvl = level;
+  } else {
+    tier = 0; lvl = levelOrTier;
+  }
+  // Use PROG_ITEMS if available (Phase 1+ progression system)
+  if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS[gunId]) {
+    const stats = getProgressedStats(gunId, tier, lvl);
+    if (!stats) return null;
+    const def = PROG_ITEMS[gunId];
+    const tierName = PROGRESSION_CONFIG.TIER_NAMES[tier] || '';
+    return {
+      id: gunId,
+      name: def.name + (tier > 0 ? ' ' + tierName : '') + ' Lv.' + lvl,
+      type: 'gun',
+      tier: tier,
+      level: lvl,
+      progItemId: gunId,
+      data: stats,
+      stackable: false,
+      count: 1,
+      mainGunLevel: lvl, // backward compat
+    };
+  }
+  // Fallback to old MAIN_GUNS system
   if (typeof MAIN_GUNS === 'undefined' || !MAIN_GUNS[gunId]) return null;
-  const stats = getGunStatsAtLevel(gunId, level);
+  const stats = getGunStatsAtLevel(gunId, lvl);
   if (!stats) return null;
   const def = MAIN_GUNS[gunId];
   return {
     id: gunId,
-    name: def.name + ' Lv.' + level,
+    name: def.name + ' Lv.' + lvl,
     type: 'gun',
-    tier: 0, // main guns use level instead of tier
+    tier: 0,
+    level: lvl,
     data: stats,
     stackable: false,
     count: 1,
-    mainGunLevel: level, // track level for upgrading
+    mainGunLevel: lvl,
   };
 }
 

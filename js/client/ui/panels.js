@@ -907,10 +907,20 @@ function drawStatsPanel() {
 let _gunsmithSelected = 0; // index into gun list
 let _gunsmithScroll = 0;
 
-// Gun ownership — level 0 = not owned, 1+ = owned at that level
+// Gun ownership — { tier: 0-4, level: 1-25 } or 0 = not owned.
 // Persisted via SaveLoad. Initialized here as defaults.
 if (typeof window._gunLevels === 'undefined') {
   window._gunLevels = { storm_ar: 0, heavy_ar: 0, boomstick: 0, ironwood_bow: 0, volt_9: 0 };
+}
+// Helper: read tier+level from _gunLevels (handles both old int and new {tier,level} format)
+function _getGunProgress(gunId) {
+  const v = window._gunLevels[gunId];
+  if (!v) return { tier: 0, level: 0, owned: false };
+  if (typeof v === 'number') return { tier: 0, level: v, owned: v > 0 };
+  return { tier: v.tier || 0, level: v.level || 0, owned: (v.level || 0) > 0 };
+}
+function _setGunProgress(gunId, tier, level) {
+  window._gunLevels[gunId] = { tier: tier, level: level };
 }
 
 // Helper: draw a gunsmith weapon icon at (cx, cy) with given size
@@ -997,8 +1007,11 @@ function drawGunsmithPanel() {
   if (!UI.isOpen('gunsmith')) return;
   if (typeof MAIN_GUNS === 'undefined') return;
 
-  const pw = 720, ph = 500;
+  const pw = 720, ph = 520;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
+  const hasProg = typeof PROG_ITEMS !== 'undefined';
+  const tierColors = hasProg ? PROGRESSION_CONFIG.TIER_COLORS : ['#888'];
+  const tierNames = hasProg ? PROGRESSION_CONFIG.TIER_NAMES : ['Common'];
 
   // Dimmed backdrop
   ctx.fillStyle = "rgba(0,0,0,0.6)";
@@ -1034,9 +1047,10 @@ function drawGunsmithPanel() {
   for (let i = 0; i < gunIds.length; i++) {
     const gid = gunIds[i];
     const def = MAIN_GUNS[gid];
-    const lvl = window._gunLevels[gid] || 0;
+    const prog = _getGunProgress(gid);
     const gy = contentY + i * 82;
     const isSelected = i === _gunsmithSelected;
+    const tColor = prog.owned ? (tierColors[prog.tier] || '#888') : '#444';
 
     // Card bg
     ctx.fillStyle = isSelected ? "rgba(255,168,64,0.15)" : "rgba(255,255,255,0.03)";
@@ -1046,17 +1060,24 @@ function drawGunsmithPanel() {
       ctx.beginPath(); ctx.roundRect(listX, gy, listW, 74, 6); ctx.stroke();
     }
 
+    // Tier color bar on left edge
+    if (prog.owned) {
+      ctx.fillStyle = tColor;
+      ctx.beginPath(); ctx.roundRect(listX, gy, 4, 74, [6,0,0,6]); ctx.fill();
+    }
+
     // Gun name
     ctx.font = "bold 14px monospace";
     ctx.textAlign = "left";
-    ctx.fillStyle = lvl > 0 ? "#fff" : "#888";
+    ctx.fillStyle = prog.owned ? "#fff" : "#888";
     ctx.fillText(def.name, listX + 12, gy + 22);
 
-    // Level or "Not Owned"
+    // Tier + Level or "Not Owned"
     ctx.font = "11px monospace";
-    if (lvl > 0) {
-      ctx.fillStyle = "#ffa840";
-      ctx.fillText("Lv. " + lvl, listX + 12, gy + 40);
+    if (prog.owned) {
+      ctx.fillStyle = tColor;
+      const tName = tierNames[prog.tier] || '';
+      ctx.fillText(tName + " Lv." + prog.level, listX + 12, gy + 40);
     } else {
       ctx.fillStyle = "#666";
       ctx.fillText("Not Owned", listX + 12, gy + 40);
@@ -1067,11 +1088,11 @@ function drawGunsmithPanel() {
     ctx.fillStyle = "#555";
     ctx.fillText(def.category.replace('_', ' ').toUpperCase(), listX + 12, gy + 56);
 
-    // Weapon icon on right side of list card
+    // Weapon icon
     _drawGunsmithIcon(listX + listW - 30, gy + 28, 36, gid);
 
-    // Price badge (below icon for not-owned)
-    if (lvl === 0) {
+    // Price badge (for not-owned)
+    if (!prog.owned) {
       ctx.font = "bold 11px monospace";
       ctx.fillStyle = PALETTE.gold;
       ctx.textAlign = "right";
@@ -1083,7 +1104,16 @@ function drawGunsmithPanel() {
   // ---- GUN DETAIL (right side) ----
   const selId = gunIds[_gunsmithSelected];
   const selDef = MAIN_GUNS[selId];
-  const selLvl = window._gunLevels[selId] || 0;
+  const selProg = _getGunProgress(selId);
+  const selTier = selProg.tier;
+  const selLvl = selProg.level;
+  const selTierColor = tierColors[selTier] || '#888';
+  const selTierName = tierNames[selTier] || 'Common';
+  const maxLvl = hasProg ? PROGRESSION_CONFIG.LEVELS_PER_TIER : 25;
+  const maxTier = hasProg ? PROGRESSION_CONFIG.TIERS - 1 : 0;
+  const isMaxLevel = selLvl >= maxLvl;
+  const isMaxTier = selTier >= maxTier;
+  const canEvolveNow = isMaxLevel && !isMaxTier && selProg.owned;
 
   // Detail card bg
   ctx.fillStyle = "rgba(255,255,255,0.02)";
@@ -1091,27 +1121,54 @@ function drawGunsmithPanel() {
   ctx.strokeStyle = "rgba(255,168,64,0.15)"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.roundRect(detailX, contentY, detailW, ph - 72, 8); ctx.stroke();
 
-  // Large weapon icon at top of detail panel
+  // Large weapon icon
   _drawGunsmithIcon(detailX + detailW - 60, contentY + 40, 64, selId);
 
-  // Gun name + description
+  // Gun name + tier badge + description
   ctx.font = "bold 18px monospace";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "left";
   ctx.fillText(selDef.name, detailX + 16, contentY + 28);
+
+  // Tier badge next to name (if owned)
+  if (selProg.owned) {
+    const nameW = ctx.measureText(selDef.name).width;
+    const badgeX = detailX + 20 + nameW;
+    ctx.fillStyle = selTierColor;
+    ctx.beginPath(); ctx.roundRect(badgeX, contentY + 14, ctx.measureText(selTierName).width + 12, 20, 4); ctx.fill();
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(selTierName, badgeX + 6, contentY + 28);
+  }
+
   ctx.font = "12px monospace";
   ctx.fillStyle = "#999";
   ctx.fillText(selDef.desc, detailX + 16, contentY + 48);
 
-  // Current stats
+  // Current stats header
   let statY = contentY + 72;
   ctx.font = "bold 13px monospace";
-  ctx.fillStyle = "#ffa840";
-  ctx.fillText(selLvl > 0 ? "Stats (Lv. " + selLvl + ")" : "Base Stats (Lv. 1)", detailX + 16, statY);
+  ctx.fillStyle = selTierColor;
+  if (selProg.owned) {
+    ctx.fillText("Stats (" + selTierName + " Lv." + selLvl + ")", detailX + 16, statY);
+  } else {
+    ctx.fillText("Base Stats (Lv. 1)", detailX + 16, statY);
+  }
   statY += 20;
 
-  const curStats = getGunStatsAtLevel(selId, Math.max(1, selLvl));
-  const nextStats = selLvl > 0 && selLvl < 25 ? getGunStatsAtLevel(selId, selLvl + 1) : null;
+  // Use progression stats if available
+  const curTier = selProg.owned ? selTier : 0;
+  const curLvl = selProg.owned ? selLvl : 1;
+  const curStats = hasProg ? getProgressedStats(selId, curTier, Math.max(1, curLvl))
+                           : getGunStatsAtLevel(selId, Math.max(1, curLvl));
+  // Next level stats (within same tier, or next tier base if at max level)
+  let nextStats = null;
+  if (selProg.owned && !isMaxLevel) {
+    nextStats = hasProg ? getProgressedStats(selId, curTier, curLvl + 1)
+                        : getGunStatsAtLevel(selId, curLvl + 1);
+  } else if (canEvolveNow && hasProg) {
+    nextStats = getProgressedStats(selId, curTier + 1, 1);
+  }
 
   const statFields = [
     { key: 'damage', label: 'Damage', color: '#ff8866' },
@@ -1121,45 +1178,39 @@ function drawGunsmithPanel() {
     { key: 'pierceCount', label: 'Pierce', color: '#88ddff', format: v => (v + 1) + ' mobs' },
     { key: 'spread', label: 'Spread', color: '#ccaa66', format: v => v + '\u00b0' },
     { key: 'reloadSpeed', label: 'Reload', color: '#aaaaaa', format: v => (v / 60).toFixed(2) + 's' },
-    { key: 'bulletSpeed', label: 'Arrow Speed', color: '#8b8' },
   ];
 
   for (const sf of statFields) {
-    if (curStats[sf.key] === undefined) continue;
+    if (!curStats || curStats[sf.key] === undefined) continue;
     const val = sf.format ? sf.format(curStats[sf.key]) : curStats[sf.key];
     ctx.font = "12px monospace"; ctx.fillStyle = "#aaa";
     ctx.fillText(sf.label + ":", detailX + 20, statY);
     ctx.fillStyle = sf.color; ctx.font = "bold 12px monospace";
     ctx.fillText(val + "", detailX + 140, statY);
 
-    // Next level diff
+    // Next level or next tier diff
     if (nextStats && nextStats[sf.key] !== undefined && nextStats[sf.key] !== curStats[sf.key]) {
       const nextVal = sf.format ? sf.format(nextStats[sf.key]) : nextStats[sf.key];
-      ctx.fillStyle = "#5fca80";
+      ctx.fillStyle = canEvolveNow ? (tierColors[curTier + 1] || '#5fca80') : "#5fca80";
       ctx.fillText(" \u2192 " + nextVal, detailX + 220, statY);
     }
     statY += 18;
   }
 
   // Special flags
-  if (curStats.neverReload) {
-    ctx.font = "bold 11px monospace"; ctx.fillStyle = "#66ffaa";
-    ctx.fillText("\u2022 Unlimited Ammo", detailX + 20, statY);
-    statY += 16;
-  }
-  if (curStats.pierce) {
+  if (curStats && curStats.pierce) {
     ctx.font = "bold 11px monospace"; ctx.fillStyle = "#88ddff";
     ctx.fillText("\u2022 Pierces Through Enemies", detailX + 20, statY);
     statY += 16;
   }
-  if (curStats.maxRange) {
+  if (curStats && curStats.maxRange) {
     ctx.font = "bold 11px monospace"; ctx.fillStyle = "#aabb88";
     ctx.fillText("\u2022 Limited Range (" + curStats.maxRange + "px)", detailX + 20, statY);
     statY += 16;
   }
 
   // ---- BUY BUTTON (if not owned) ----
-  if (selLvl === 0) {
+  if (!selProg.owned) {
     const btnW = 180, btnH = 44;
     const btnX = detailX + detailW / 2 - btnW / 2;
     const btnY = py + ph - 72;
@@ -1177,51 +1228,96 @@ function drawGunsmithPanel() {
     ctx.textAlign = "left";
   }
 
-  // ---- UPGRADE (if owned and < 25) ----
-  // TODO: When material drops are implemented, re-enable ore/parts checks here.
-  // For now upgrades only cost gold (testing mode).
-  if (selLvl > 0 && selLvl < 25) {
-    const recipe = GUN_UPGRADE_RECIPES[selId][selLvl + 1];
-    let reqY = py + ph - 100;
+  // ---- UPGRADE (if owned and level < max) ----
+  if (selProg.owned && !isMaxLevel) {
+    const recipe = typeof getUpgradeRecipe === 'function'
+      ? getUpgradeRecipe(selId, selTier, selLvl + 1)
+      : (GUN_UPGRADE_RECIPES[selId] && GUN_UPGRADE_RECIPES[selId][selTier] && GUN_UPGRADE_RECIPES[selId][selTier][selLvl + 1]);
+    if (recipe) {
+      let reqY = py + ph - 105;
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = "#ffa840";
+      ctx.fillText("Upgrade to Lv." + (selLvl + 1) + ":", detailX + 16, reqY);
+      reqY += 18;
+
+      // Gold cost
+      ctx.font = "11px monospace";
+      const hasGold = gold >= recipe.gold;
+      ctx.fillStyle = hasGold ? "#5fca80" : "#cc4444";
+      ctx.fillText("Gold: " + recipe.gold + "g", detailX + 20, reqY);
+      reqY += 16;
+
+      ctx.fillStyle = "#444"; ctx.font = "10px monospace";
+      ctx.fillText("(Materials required in future updates)", detailX + 20, reqY);
+
+      // Upgrade button
+      const canUpgrade = hasGold;
+      const btnW = 180, btnH = 38;
+      const btnX = detailX + detailW / 2 - btnW / 2;
+      const btnY = py + ph - 55;
+      ctx.fillStyle = canUpgrade ? "#2a6a30" : "#2a2a30";
+      ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.fill();
+      ctx.strokeStyle = canUpgrade ? "#5fca80" : "#444"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.stroke();
+      ctx.font = "bold 13px monospace";
+      ctx.fillStyle = canUpgrade ? "#fff" : "#555";
+      ctx.textAlign = "center";
+      ctx.fillText("UPGRADE - " + recipe.gold + "g", btnX + btnW / 2, btnY + 24);
+      ctx.textAlign = "left";
+    }
+  }
+
+  // ---- EVOLVE BUTTON (if at max level and not max tier) ----
+  if (canEvolveNow && hasProg) {
+    const evoCost = getEvolutionCost(selTier);
+    const nextTierName = tierNames[selTier + 1] || '???';
+    const nextTierCol = tierColors[selTier + 1] || '#fff';
+    let reqY = py + ph - 105;
+
     ctx.font = "bold 12px monospace";
-    ctx.fillStyle = "#ffa840";
-    ctx.fillText("Upgrade to Lv. " + (selLvl + 1) + ":", detailX + 16, reqY);
+    ctx.fillStyle = nextTierCol;
+    ctx.fillText("Evolve to " + nextTierName + ":", detailX + 16, reqY);
     reqY += 18;
 
-    // Gold cost
+    // Evolution gold cost
+    const evoGold = evoCost ? evoCost.gold : 0;
     ctx.font = "11px monospace";
-    const hasGold = gold >= recipe.gold;
-    ctx.fillStyle = hasGold ? "#5fca80" : "#cc4444";
-    ctx.fillText("Gold: " + recipe.gold + "g", detailX + 20, reqY);
+    const hasEvoGold = gold >= evoGold;
+    ctx.fillStyle = hasEvoGold ? "#5fca80" : "#cc4444";
+    ctx.fillText("Gold: " + evoGold + "g", detailX + 20, reqY);
     reqY += 16;
 
-    // Future materials note (greyed out)
-    ctx.fillStyle = "#444";
-    ctx.font = "10px monospace";
-    ctx.fillText("(Materials required in future updates)", detailX + 20, reqY);
+    // Material hints
+    ctx.fillStyle = "#444"; ctx.font = "10px monospace";
+    ctx.fillText("(Material costs in future updates)", detailX + 20, reqY);
 
-    // Upgrade button — gold only for testing
-    const canUpgrade = hasGold;
-    const btnW = 180, btnH = 38;
+    // Evolve button
+    const canEvo = hasEvoGold;
+    const btnW = 200, btnH = 40;
     const btnX = detailX + detailW / 2 - btnW / 2;
     const btnY = py + ph - 55;
-    ctx.fillStyle = canUpgrade ? "#2a6a30" : "#2a2a30";
-    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.fill();
-    ctx.strokeStyle = canUpgrade ? "#5fca80" : "#444"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 6); ctx.stroke();
-    ctx.font = "bold 13px monospace";
-    ctx.fillStyle = canUpgrade ? "#fff" : "#555";
+
+    // Glowing evolve button
+    const pulse = 0.6 + 0.3 * Math.sin(Date.now() * 0.005);
+    ctx.fillStyle = canEvo ? `rgba(${selTier < 1 ? '95,202,128' : selTier < 2 ? '74,158,255' : selTier < 3 ? '255,154,64' : '255,74,138'},${pulse * 0.3})` : "#2a2a30";
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 8); ctx.fill();
+    ctx.strokeStyle = canEvo ? nextTierCol : "#444"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 8); ctx.stroke();
+    ctx.font = "bold 14px monospace";
+    ctx.fillStyle = canEvo ? "#fff" : "#555";
     ctx.textAlign = "center";
-    ctx.fillText("UPGRADE - " + recipe.gold + "g", btnX + btnW / 2, btnY + 24);
+    ctx.fillText("\u2605 EVOLVE - " + evoGold + "g", btnX + btnW / 2, btnY + 26);
     ctx.textAlign = "left";
   }
 
-  // Max level badge
-  if (selLvl >= 25) {
+  // Max tier + max level badge
+  if (isMaxLevel && isMaxTier && selProg.owned) {
+    const t = Date.now() / 1000;
+    const shimmer = 0.8 + 0.2 * Math.sin(t * 2);
     ctx.font = "bold 16px monospace";
-    ctx.fillStyle = "#ffd740";
+    ctx.fillStyle = `rgba(255,74,138,${shimmer})`;
     ctx.textAlign = "center";
-    ctx.fillText("\u2605 MAX LEVEL \u2605", detailX + detailW / 2, py + ph - 50);
+    ctx.fillText("\u2605 LEGENDARY MAX \u2605", detailX + detailW / 2, py + ph - 50);
     ctx.textAlign = "left";
   }
 }
@@ -1230,8 +1326,12 @@ function handleGunsmithClick(mx, my) {
   if (!UI.isOpen('gunsmith')) return false;
   if (typeof MAIN_GUNS === 'undefined') return false;
 
-  const pw = 720, ph = 500;
+  const pw = 720, ph = 520;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
+  const hasProg = typeof PROG_ITEMS !== 'undefined';
+  const tierNames = hasProg ? PROGRESSION_CONFIG.TIER_NAMES : ['Common'];
+  const maxLvl = hasProg ? PROGRESSION_CONFIG.LEVELS_PER_TIER : 25;
+  const maxTier = hasProg ? PROGRESSION_CONFIG.TIERS - 1 : 0;
 
   // Close button
   if (mx >= px + pw - 42 && mx <= px + pw - 10 && my >= py + 8 && my <= py + 40) {
@@ -1256,22 +1356,26 @@ function handleGunsmithClick(mx, my) {
     }
   }
 
-  // Buy button
+  // Detail area buttons
   const selId = gunIds[_gunsmithSelected];
   const selDef = MAIN_GUNS[selId];
-  const selLvl = window._gunLevels[selId] || 0;
+  const selProg = _getGunProgress(selId);
+  const selTier = selProg.tier;
+  const selLvl = selProg.level;
   const detailX = px + listW + 24, detailW = pw - listW - 36;
+  const isMaxLevel = selLvl >= maxLvl;
+  const canEvolveNow = isMaxLevel && selTier < maxTier && selProg.owned;
 
-  if (selLvl === 0) {
+  // ---- BUY ----
+  if (!selProg.owned) {
     const btnW = 180, btnH = 44;
     const btnX = detailX + detailW / 2 - btnW / 2;
     const btnY = py + ph - 72;
     if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
       if (gold >= selDef.buyPrice) {
         gold -= selDef.buyPrice;
-        window._gunLevels[selId] = 1;
-        // Create gun item and add to inventory
-        const gunItem = createMainGun(selId, 1);
+        _setGunProgress(selId, 0, 1);
+        const gunItem = createMainGun(selId, 0, 1);
         if (gunItem) addToInventory(gunItem);
         chatMessages.push({ name: "SYSTEM", text: "Purchased " + selDef.name + "!", time: Date.now() });
         if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
@@ -1282,35 +1386,74 @@ function handleGunsmithClick(mx, my) {
     }
   }
 
-  // Upgrade button — gold only for testing
-  // TODO: Add material checks when dungeon drops are implemented
-  if (selLvl > 0 && selLvl < 25) {
-    const recipe = GUN_UPGRADE_RECIPES[selId][selLvl + 1];
-    const btnW = 180, btnH = 38;
+  // ---- UPGRADE ----
+  if (selProg.owned && !isMaxLevel) {
+    const recipe = typeof getUpgradeRecipe === 'function'
+      ? getUpgradeRecipe(selId, selTier, selLvl + 1)
+      : null;
+    if (recipe) {
+      const btnW = 180, btnH = 38;
+      const btnX = detailX + detailW / 2 - btnW / 2;
+      const btnY = py + ph - 55;
+      if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
+        if (gold >= recipe.gold) {
+          gold -= recipe.gold;
+          const newLvl = selLvl + 1;
+          _setGunProgress(selId, selTier, newLvl);
+          // Update gun in inventory
+          for (let i = 0; i < inventory.length; i++) {
+            if (inventory[i] && inventory[i].id === selId) {
+              const upgraded = createMainGun(selId, selTier, newLvl);
+              if (upgraded) inventory[i] = upgraded;
+              break;
+            }
+          }
+          // Re-apply stats if equipped
+          if (playerEquip.gun && playerEquip.gun.id === selId) {
+            const newStats = hasProg ? getProgressedStats(selId, selTier, newLvl) : getGunStatsAtLevel(selId, newLvl);
+            if (newStats) applyGunStats(newStats);
+          }
+          const tName = tierNames[selTier] || '';
+          chatMessages.push({ name: "SYSTEM", text: selDef.name + " upgraded to " + tName + " Lv." + newLvl + "!", time: Date.now() });
+          if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
+        } else {
+          chatMessages.push({ name: "SYSTEM", text: "Not enough gold!", time: Date.now() });
+        }
+        return true;
+      }
+    }
+  }
+
+  // ---- EVOLVE ----
+  if (canEvolveNow && hasProg) {
+    const evoCost = getEvolutionCost(selTier);
+    const evoGold = evoCost ? evoCost.gold : 0;
+    const btnW = 200, btnH = 40;
     const btnX = detailX + detailW / 2 - btnW / 2;
     const btnY = py + ph - 55;
     if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
-      if (gold >= recipe.gold) {
-        gold -= recipe.gold;
-        const newLvl = selLvl + 1;
-        window._gunLevels[selId] = newLvl;
-        // Update gun in inventory if it exists
+      if (gold >= evoGold) {
+        gold -= evoGold;
+        const newTier = selTier + 1;
+        _setGunProgress(selId, newTier, 1);
+        // Update gun in inventory
         for (let i = 0; i < inventory.length; i++) {
           if (inventory[i] && inventory[i].id === selId) {
-            const upgraded = createMainGun(selId, newLvl);
-            if (upgraded) inventory[i] = upgraded;
+            const evolved = createMainGun(selId, newTier, 1);
+            if (evolved) inventory[i] = evolved;
             break;
           }
         }
-        // Re-apply stats if this gun is currently equipped
+        // Re-apply stats if equipped
         if (playerEquip.gun && playerEquip.gun.id === selId) {
-          const newStats = getGunStatsAtLevel(selId, newLvl);
+          const newStats = getProgressedStats(selId, newTier, 1);
           if (newStats) applyGunStats(newStats);
         }
-        chatMessages.push({ name: "SYSTEM", text: selDef.name + " upgraded to Lv." + newLvl + "!", time: Date.now() });
+        const newTierName = tierNames[newTier] || '';
+        chatMessages.push({ name: "SYSTEM", text: "\u2605 " + selDef.name + " evolved to " + newTierName + "! \u2605", time: Date.now() });
         if (typeof SaveLoad !== 'undefined') SaveLoad.autoSave();
       } else {
-        chatMessages.push({ name: "SYSTEM", text: "Not enough gold!", time: Date.now() });
+        chatMessages.push({ name: "SYSTEM", text: "Not enough gold for evolution!", time: Date.now() });
       }
       return true;
     }

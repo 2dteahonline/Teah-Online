@@ -530,21 +530,33 @@ function getFishVendorBuyItems() {
     isLocked: false,
     action() { fishingState.baitCount += 10; return true; }
   });
-  // Rods (now creates melee weapon inventory items)
+  // Rods — use PROG_ITEMS if available, fallback to ROD_TIERS
   for (const rod of ROD_TIERS) {
     const owned = isInInventory(rod.id);
+    const hasProg = typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS[rod.id];
+    const progDef = hasProg ? PROG_ITEMS[rod.id] : null;
+    const price = progDef ? progDef.buyPrice : rod.cost;
     items.push({
       id: rod.id, name: rod.name,
       desc: 'Durability: ' + rod.durability + ' | Str: ' + rod.strength + ' | Dmg: ' + rod.damage,
-      cost: rod.cost,
+      cost: price,
       isLocked: fishingLevel < rod.levelReq,
       lockReason: 'Fishing Lv.' + rod.levelReq,
       isOwned: owned,
       action() {
-        // Create a melee weapon item with durability tracking
-        const rodData = { ...rod, currentDurability: rod.durability };
-        const rodItem = createItem('melee', rodData);
-        if (!addToInventory(rodItem)) return false;
+        if (hasProg) {
+          // Create progressed item at T0 L1
+          const item = createProgressedItem(rod.id, 0, 1);
+          if (!item) return false;
+          item.data.currentDurability = item.data.durability || rod.durability;
+          item.data.special = 'fishing';
+          if (!addToInventory(item)) return false;
+        } else {
+          // Fallback: legacy rod creation
+          const rodData = { ...rod, currentDurability: rod.durability };
+          const rodItem = createItem('melee', rodData);
+          if (!addToInventory(rodItem)) return false;
+        }
         return true;
       }
     });

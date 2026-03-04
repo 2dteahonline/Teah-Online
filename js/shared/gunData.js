@@ -128,51 +128,61 @@ const WEAPON_PARTS = {
 //   L14-19: Ruby/Diamond/Emerald + gold (600-1200g) + Rare Weapon Parts
 //   L20-25: Titanium/Mythril/Celestium + gold (1500-3000g) + Epic Weapon Parts
 
+// Tier-aware upgrade recipe builder. Each tier has 25 levels.
+// Tier multiplier scales costs so higher tiers cost proportionally more.
+const _TIER_COST_MULT = [1, 2.5, 5, 10, 20]; // T0=1x, T1=2.5x, etc.
+const _TIER_PART_KEYS = [
+  'common_weapon_parts', 'uncommon_weapon_parts',
+  'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'
+];
+
 function _buildUpgradeRecipes() {
   const recipes = {};
   for (const gunId in MAIN_GUNS) {
     recipes[gunId] = {};
-    for (let lvl = 2; lvl <= 25; lvl++) {
-      let gold, ores, parts;
+    // Build for all 5 tiers (0-4), levels 2-25 each
+    for (let t = 0; t < 5; t++) {
+      if (!recipes[gunId][t]) recipes[gunId][t] = {};
+      const mult = _TIER_COST_MULT[t];
+      const partKey = _TIER_PART_KEYS[Math.min(t, _TIER_PART_KEYS.length - 1)];
+      for (let lvl = 2; lvl <= 25; lvl++) {
+        let baseGold, ores;
 
-      if (lvl <= 6) {
-        // Tier 1: beginner ores
-        gold = 50 + (lvl - 2) * 25; // 50, 75, 100, 125, 150
-        const oreAmount = lvl - 1; // 1-5
-        if (lvl <= 3)      ores = { coal: oreAmount };
-        else if (lvl <= 5) ores = { copper: oreAmount };
-        else               ores = { iron: oreAmount };
-        parts = { common_weapon_parts: Math.ceil((lvl - 1) / 2) }; // 1,1,2,2,3
-      }
-      else if (lvl <= 13) {
-        // Tier 2: intermediate ores
-        gold = 200 + (lvl - 7) * 50; // 200, 250, 300, 350, 400, 450, 500
-        const oreAmount = lvl - 4; // 3-9
-        if (lvl <= 9)       ores = { steel: oreAmount };
-        else if (lvl <= 11) ores = { gold: oreAmount };
-        else                ores = { amethyst: oreAmount };
-        parts = { uncommon_weapon_parts: Math.ceil((lvl - 6) / 2) }; // 1,1,2,2,3,3,4
-      }
-      else if (lvl <= 19) {
-        // Tier 3: advanced ores
-        gold = 600 + (lvl - 14) * 120; // 600, 720, 840, 960, 1080, 1200
-        const oreAmount = lvl - 8; // 6-11
-        if (lvl <= 15)      ores = { ruby: oreAmount };
-        else if (lvl <= 17) ores = { diamond: oreAmount };
-        else                ores = { emerald: oreAmount };
-        parts = { rare_weapon_parts: Math.ceil((lvl - 13) / 2) }; // 1,1,2,2,3,3
-      }
-      else {
-        // Tier 4: elite ores
-        gold = 1500 + (lvl - 20) * 300; // 1500, 1800, 2100, 2400, 2700, 3000
-        const oreAmount = lvl - 12; // 8-13
-        if (lvl <= 21)      ores = { titanium: oreAmount };
-        else if (lvl <= 23) ores = { mythril: oreAmount };
-        else                ores = { celestium: oreAmount };
-        parts = { epic_weapon_parts: Math.ceil((lvl - 19) / 2) }; // 1,1,2,2,3,3
-      }
+        if (lvl <= 6) {
+          baseGold = 50 + (lvl - 2) * 25;
+          const oreAmount = lvl - 1;
+          if (lvl <= 3)      ores = { coal: oreAmount };
+          else if (lvl <= 5) ores = { copper: oreAmount };
+          else               ores = { iron: oreAmount };
+        }
+        else if (lvl <= 13) {
+          baseGold = 200 + (lvl - 7) * 50;
+          const oreAmount = lvl - 4;
+          if (lvl <= 9)       ores = { steel: oreAmount };
+          else if (lvl <= 11) ores = { gold_ore: oreAmount };
+          else                ores = { amethyst: oreAmount };
+        }
+        else if (lvl <= 19) {
+          baseGold = 600 + (lvl - 14) * 120;
+          const oreAmount = lvl - 8;
+          if (lvl <= 15)      ores = { ruby: oreAmount };
+          else if (lvl <= 17) ores = { diamond: oreAmount };
+          else                ores = { emerald: oreAmount };
+        }
+        else {
+          baseGold = 1500 + (lvl - 20) * 300;
+          const oreAmount = lvl - 12;
+          if (lvl <= 21)      ores = { titanium: oreAmount };
+          else if (lvl <= 23) ores = { mythril: oreAmount };
+          else                ores = { celestium: oreAmount };
+        }
 
-      recipes[gunId][lvl] = { gold, ores, parts, gunLevel: lvl - 1 };
+        const goldCost = Math.round(baseGold * mult);
+        const parts = {};
+        parts[partKey] = Math.ceil((lvl - 1) / 2);
+
+        recipes[gunId][t][lvl] = { gold: goldCost, ores, parts };
+      }
     }
   }
   return recipes;
@@ -180,17 +190,28 @@ function _buildUpgradeRecipes() {
 
 const GUN_UPGRADE_RECIPES = _buildUpgradeRecipes();
 
+// Get upgrade recipe for a gun at a specific tier and level
+function getUpgradeRecipe(gunId, tier, toLevel) {
+  if (!GUN_UPGRADE_RECIPES[gunId]) return null;
+  if (!GUN_UPGRADE_RECIPES[gunId][tier]) return null;
+  return GUN_UPGRADE_RECIPES[gunId][tier][toLevel] || null;
+}
+
 // ---- HELPERS ----
 // Get all main gun IDs as array
 function getMainGunIds() {
   return Object.keys(MAIN_GUNS);
 }
 
-// Get display description for a gun at a level
-function getGunLevelDesc(gunId, level) {
-  const stats = getGunStatsAtLevel(gunId, level);
+// Get display description for a gun at a tier+level
+function getGunLevelDesc(gunId, tierOrLevel, level) {
+  let tier, lvl;
+  if (level !== undefined) { tier = tierOrLevel; lvl = level; }
+  else { tier = 0; lvl = tierOrLevel; }
+  const stats = (typeof getProgressedStats === 'function' && typeof PROG_ITEMS !== 'undefined')
+    ? getProgressedStats(gunId, tier, lvl)
+    : getGunStatsAtLevel(gunId, lvl);
   if (!stats) return '';
-  const def = MAIN_GUNS[gunId];
   let desc = stats.damage + ' dmg';
   if (stats.pellets) desc += ' x' + stats.pellets + ' pellets';
   if (stats.magSize) desc += ' · ' + stats.magSize + ' mag';

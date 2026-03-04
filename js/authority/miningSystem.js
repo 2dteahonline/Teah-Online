@@ -46,11 +46,15 @@ const SPAWN_CONFIG = {
 function getMiningTickRate() {
   const equip = (typeof playerEquip !== 'undefined') ? playerEquip.melee : null;
   if (!equip || equip.special !== 'pickaxe') return MINING_CONFIG.baseTick;
-  // Look up miningSpeed from PICKAXE_TIERS
-  const tierData = (typeof PICKAXE_TIERS !== 'undefined')
-    ? PICKAXE_TIERS.find(t => t.id === equip.id)
-    : null;
-  const speed = (tierData && tierData.miningSpeed) ? tierData.miningSpeed : 1.0;
+  // Use miningSpeed from equipped stats (PROG_ITEMS or PICKAXE_TIERS)
+  let speed = equip.miningSpeed || 1.0;
+  if (!speed || speed <= 0) {
+    // Fallback: look up from PICKAXE_TIERS
+    const tierData = (typeof PICKAXE_TIERS !== 'undefined')
+      ? PICKAXE_TIERS.find(t => t.id === equip.id)
+      : null;
+    speed = (tierData && tierData.miningSpeed) ? tierData.miningSpeed : 1.0;
+  }
   return Math.max(10, Math.round(MINING_CONFIG.baseTick / speed));
 }
 

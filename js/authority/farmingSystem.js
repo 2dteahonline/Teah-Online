@@ -717,10 +717,23 @@ function handleFarmVendorClick(mx, my) {
         if (gold < item.cost) return true;
 
         if (item.type === 'hoe') {
-          // Buy hoe — add to inventory + equip
+          // Buy hoe — use PROG_ITEMS if available, fallback to legacy
           gold -= item.cost;
-          const newHoe = { ...item.hoeData, currentDurability: item.hoeData.durability };
-          addToInventory(createItem('melee', newHoe));
+          const hasProg = typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS[item.id];
+          let newHoe;
+          if (hasProg) {
+            const progItem = createProgressedItem(item.id, 0, 1);
+            if (progItem) {
+              progItem.data.currentDurability = progItem.data.durability || item.hoeData.durability;
+              progItem.data.special = 'farming';
+              addToInventory(progItem);
+              newHoe = progItem.data;
+            }
+          }
+          if (!newHoe) {
+            newHoe = { ...item.hoeData, currentDurability: item.hoeData.durability };
+            addToInventory(createItem('melee', newHoe));
+          }
           // Auto-equip
           playerEquip.melee = newHoe;
           melee.damage = newHoe.damage;

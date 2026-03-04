@@ -45,14 +45,44 @@ function resetCombatState(mode) {
     addToInventory(createItem('gun', DEFAULT_GUN));
     addToInventory(createItem('gun', CT_X_GUN));
     addToInventory(createItem('melee', DEFAULT_MELEE));
-    addToInventory(createItem('melee', DEFAULT_PICKAXE));
+    // Pickaxe — use PROG_ITEMS if available
+    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['pickaxe']) {
+      const _pickItem = createProgressedItem('pickaxe', 0, 1);
+      if (_pickItem) {
+        _pickItem.data.special = 'pickaxe';
+        addToInventory(_pickItem);
+      } else {
+        addToInventory(createItem('melee', DEFAULT_PICKAXE));
+      }
+    } else {
+      addToInventory(createItem('melee', DEFAULT_PICKAXE));
+    }
+    // Starter fishing rod
+    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['bronze_rod']) {
+      const _ri = createProgressedItem('bronze_rod', 0, 1);
+      if (_ri) { _ri.data.special = 'fishing'; _ri.data.currentDurability = _ri.data.durability || 25; addToInventory(_ri); }
+      else if (typeof ROD_TIERS !== 'undefined') { addToInventory(createItem('melee', { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability })); }
+    } else if (typeof ROD_TIERS !== 'undefined') {
+      addToInventory(createItem('melee', { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability }));
+    }
+    // Starter farming hoe
+    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['bronze_hoe']) {
+      const _hi = createProgressedItem('bronze_hoe', 0, 1);
+      if (_hi) { _hi.data.special = 'farming'; _hi.data.currentDurability = _hi.data.durability || 30; addToInventory(_hi); }
+      else if (typeof HOE_TIERS !== 'undefined') { addToInventory(createItem('melee', { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability })); }
+    } else if (typeof HOE_TIERS !== 'undefined') {
+      addToInventory(createItem('melee', { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability }));
+    }
     addToInventory(createConsumable('potion', 'Health Potion', 3));
     // Re-add owned main guns from gunsmith (persistent progression)
     if (typeof window._gunLevels !== 'undefined' && typeof createMainGun === 'function') {
       for (const gunId in window._gunLevels) {
-        const lvl = window._gunLevels[gunId];
+        const v = window._gunLevels[gunId];
+        let tier = 0, lvl = 0;
+        if (typeof v === 'number') { lvl = v; }
+        else if (v && typeof v === 'object') { tier = v.tier || 0; lvl = v.level || 0; }
         if (lvl > 0) {
-          const gunItem = createMainGun(gunId, lvl);
+          const gunItem = createMainGun(gunId, tier, lvl);
           if (gunItem) addToInventory(gunItem);
         }
       }
