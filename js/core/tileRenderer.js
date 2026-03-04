@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inLobby ? '#1a4a18' : '#1e1e26';
+  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inLobby ? '#080810' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -21,35 +21,53 @@ function drawLevelBackground(camX, camY) {
       const y = ty * TILE - camY;
       const isBorder = tx === 0 || ty === 0 || tx === level.widthTiles-1 || ty === level.heightTiles-1;
 
-      // === LOBBY TILES ===
+      // === LOBBY TILES (Cyberpunk) ===
       if (Scene.inLobby) {
         const ascii = level.collisionAscii[ty]?.[tx];
         if (ascii === '@') {
-          // Hedge border
-          ctx.fillStyle = '#1a4a18';
+          // Dark steel wall border with neon edge
+          ctx.fillStyle = '#0a0a14';
           ctx.fillRect(x, y, TILE, TILE);
-          ctx.fillStyle = '#226a20';
+          ctx.fillStyle = '#141420';
           ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
-          for (let li = 0; li < 3; li++) {
-            ctx.fillStyle = `rgba(40,120,30,${0.4 + li * 0.1})`;
-            ctx.beginPath(); ctx.arc(x + 10 + li * 14, y + 12 + (li % 2) * 18, 8, 0, Math.PI * 2); ctx.fill();
+          // Neon cyan edge accents
+          ctx.fillStyle = 'rgba(0,204,255,0.12)';
+          ctx.fillRect(x + 3, y + 3, TILE - 6, 1);
+          ctx.fillRect(x + 3, y + TILE - 4, TILE - 6, 1);
+          // Occasional panel rivet
+          if ((tx + ty * 3) % 4 === 0) {
+            ctx.fillStyle = 'rgba(0,204,255,0.08)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, 3, 0, Math.PI * 2); ctx.fill();
           }
         } else {
-          // Grass
-          const gv = ((tx * 7 + ty * 13) % 5);
-          const gr = 60 + gv * 2, gg = 120 + gv * 3, gb = 45 + gv;
-          ctx.fillStyle = `rgb(${gr},${gg},${gb})`;
+          // Dark metallic floor grid
+          const sv = ((tx * 7 + ty * 13) % 5);
+          const fr = 16 + sv, fg = 16 + sv, fb = 22 + sv * 2;
+          ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
           ctx.fillRect(x, y, TILE, TILE);
-          ctx.strokeStyle = 'rgba(0,0,0,0.03)';
+          // Subtle grid lines (cyan)
+          ctx.strokeStyle = 'rgba(0,204,255,0.04)';
           ctx.lineWidth = 1;
           ctx.strokeRect(x, y, TILE, TILE);
-          // Grass blades
-          if ((tx + ty * 3) % 4 === 0) {
-            ctx.strokeStyle = `rgba(80,150,60,0.3)`;
+          // Circuit trace accents (sparse)
+          if ((tx + ty * 3) % 8 === 0) {
+            ctx.strokeStyle = 'rgba(0,204,255,0.06)';
+            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(x + 12, y + TILE - 4); ctx.lineTo(x + 14, y + TILE - 14);
-            ctx.moveTo(x + 30, y + TILE - 6); ctx.lineTo(x + 28, y + TILE - 16);
+            ctx.moveTo(x + 6, y + TILE/2); ctx.lineTo(x + TILE - 6, y + TILE/2);
             ctx.stroke();
+          }
+          if ((tx * 5 + ty * 11) % 12 === 0) {
+            ctx.strokeStyle = 'rgba(0,204,255,0.05)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x + TILE/2, y + 6); ctx.lineTo(x + TILE/2, y + TILE - 6);
+            ctx.stroke();
+          }
+          // Circuit node at intersections
+          if ((tx % 8 === 0) && (ty % 8 === 0)) {
+            ctx.fillStyle = 'rgba(0,204,255,0.06)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, 4, 0, Math.PI * 2); ctx.fill();
           }
         }
         continue;
