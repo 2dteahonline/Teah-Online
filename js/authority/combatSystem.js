@@ -491,6 +491,60 @@ const MOB_AI = {
   },
 };
 
+// ===================== MOVEMENT VALIDATION HELPERS =====================
+
+// Clamp a dash/teleport target to the farthest wall-clear position along a direction.
+// Uses binary search (8 iterations) to find max safe distance. Returns { x, y } guaranteed clear.
+function clampDashTarget(startX, startY, dir, maxDist) {
+  const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
+  let tx = startX + Math.cos(dir) * maxDist;
+  let ty = startY + Math.sin(dir) * maxDist;
+  tx = Math.max(TILE, Math.min(mapW - TILE, tx));
+  ty = Math.max(TILE, Math.min(mapH - TILE, ty));
+  if (positionClear(tx, ty)) return { x: tx, y: ty };
+  let lo = 0, hi = maxDist;
+  for (let i = 0; i < 8; i++) {
+    const mid = (lo + hi) / 2;
+    const mx = startX + Math.cos(dir) * mid;
+    const my = startY + Math.sin(dir) * mid;
+    if (positionClear(mx, my)) lo = mid; else hi = mid;
+  }
+  return { x: startX + Math.cos(dir) * lo, y: startY + Math.sin(dir) * lo };
+}
+
+// Validate a position (e.g. teleport destination). Tries target → 8 compass offsets → fallback.
+// Returns { x, y } guaranteed clear.
+function findClearPosition(targetX, targetY, fallbackX, fallbackY) {
+  const mapW = level.widthTiles * TILE, mapH = level.heightTiles * TILE;
+  targetX = Math.max(TILE, Math.min(mapW - TILE, targetX));
+  targetY = Math.max(TILE, Math.min(mapH - TILE, targetY));
+  if (positionClear(targetX, targetY)) return { x: targetX, y: targetY };
+  for (let a = 0; a < 8; a++) {
+    const ang = a * Math.PI / 4;
+    const cx = targetX + Math.cos(ang) * TILE;
+    const cy = targetY + Math.sin(ang) * TILE;
+    if (positionClear(cx, cy)) return { x: cx, y: cy };
+  }
+  return { x: fallbackX, y: fallbackY };
+}
+
+// Lightweight 1-tile wall check for AI retreat targets.
+// If target direction hits wall within 1 tile, slide perpendicular. Cost: 1-3 positionClear calls.
+function sanitizeAITarget(m, targetX, targetY) {
+  const dirX = targetX - m.x, dirY = targetY - m.y;
+  const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
+  if (dirLen < 1) return { targetX, targetY };
+  const ndx = dirX / dirLen, ndy = dirY / dirLen;
+  const hw = m.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
+  if (positionClear(m.x + ndx * TILE, m.y + ndy * TILE, hw)) return { targetX, targetY };
+  // Wall ahead — try perpendicular slide (both directions)
+  const slideA_x = m.x + (-ndy) * TILE * 0.5, slideA_y = m.y + ndx * TILE * 0.5;
+  if (positionClear(slideA_x, slideA_y, hw)) return { targetX: slideA_x, targetY: slideA_y };
+  const slideB_x = m.x + ndy * TILE * 0.5, slideB_y = m.y + (-ndx) * TILE * 0.5;
+  if (positionClear(slideB_x, slideB_y, hw)) return { targetX: slideB_x, targetY: slideB_y };
+  return { targetX: m.x, targetY: m.y };
+}
+
 // ===================== MOB SPECIALS REGISTRY =====================
 // Each mob type with a special attack defines an update function.
 // Returns { skip: true } if the mob should skip the rest of its update (e.g. mummy explodes).
@@ -865,8 +919,9 @@ const MOB_SPECIALS = {
     // Activate: create line telegraph toward player (6 tiles = 288px)
     const dir = Math.atan2(player.y - m.y, player.x - m.x);
     const dashDist = 288;
-    m._blinkTargetX = m.x + Math.cos(dir) * dashDist;
-    m._blinkTargetY = m.y + Math.sin(dir) * dashDist;
+    const _blinkClamped = clampDashTarget(m.x, m.y, dir, dashDist);
+    m._blinkTargetX = _blinkClamped.x;
+    m._blinkTargetY = _blinkClamped.y;
 
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
@@ -1789,15 +1844,17 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Target player's current position
-    m._chargeTargetX = player.x;
-    m._chargeTargetY = player.y;
+    // Target player's current position (clamped to wall-safe)
+    const _chargeDir = Math.atan2(player.y - m.y, player.x - m.x);
+    const _chargeClamped = clampDashTarget(m.x, m.y, _chargeDir, dist);
+    m._chargeTargetX = _chargeClamped.x;
+    m._chargeTargetY = _chargeClamped.y;
 
     if (typeof TelegraphSystem !== 'undefined') {
       // Line telegraph showing dash path
       TelegraphSystem.create({
         shape: 'line',
-        params: { x1: m.x, y1: m.y, x2: player.x, y2: player.y, width: 32 },
+        params: { x1: m.x, y1: m.y, x2: m._chargeTargetX, y2: m._chargeTargetY, width: 32 },
         delayFrames: 18,
         color: [255, 230, 50], // yellow
         owner: m.id,
@@ -1805,7 +1862,7 @@ const MOB_SPECIALS = {
       // Circle telegraph at destination showing explosion
       TelegraphSystem.create({
         shape: 'circle',
-        params: { cx: player.x, cy: player.y, radius: 96 },
+        params: { cx: m._chargeTargetX, cy: m._chargeTargetY, radius: 96 },
         delayFrames: 18,
         color: [255, 230, 50], // yellow
         owner: m.id,
@@ -3420,10 +3477,15 @@ const MOB_SPECIALS = {
         });
         m._burrowTargetX = player.x;
         m._burrowTargetY = player.y;
+        // Validate emerge target against walls
+        if (!positionClear(m._burrowTargetX, m._burrowTargetY)) {
+          const _bs = findClearPosition(m._burrowTargetX, m._burrowTargetY, m.x, m.y);
+          m._burrowTargetX = _bs.x; m._burrowTargetY = _bs.y;
+        }
       }
 
       if (m._burrowTimer <= 0) {
-        // Emerge at target position
+        // Emerge at target position (already validated)
         m._invulnerable = false;
         m._burrowSubmerged = false;
         m.x = m._burrowTargetX || player.x;
@@ -4558,8 +4620,9 @@ const MOB_SPECIALS = {
     // Telegraph line from mob to player
     const dir = Math.atan2(player.y - m.y, player.x - m.x);
     const dashDist = Math.min(dist + 20, 320);
-    m._dashTargetX = m.x + Math.cos(dir) * dashDist;
-    m._dashTargetY = m.y + Math.sin(dir) * dashDist;
+    const _dashClamped = clampDashTarget(m.x, m.y, dir, dashDist);
+    m._dashTargetX = _dashClamped.x;
+    m._dashTargetY = _dashClamped.y;
 
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
@@ -4649,8 +4712,9 @@ const MOB_SPECIALS = {
 
     const dir = Math.atan2(player.y - m.y, player.x - m.x);
     const chargeDist = Math.min(dist + 30, 360);
-    m._goreTargetX = m.x + Math.cos(dir) * chargeDist;
-    m._goreTargetY = m.y + Math.sin(dir) * chargeDist;
+    const _goreClamped = clampDashTarget(m.x, m.y, dir, chargeDist);
+    m._goreTargetX = _goreClamped.x;
+    m._goreTargetY = _goreClamped.y;
 
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
@@ -4710,13 +4774,14 @@ const MOB_SPECIALS = {
     }
 
     // Telegraph circle at player position
-    m._pounceTargetX = player.x;
-    m._pounceTargetY = player.y;
+    const _pounceSafe = findClearPosition(player.x, player.y, m.x, m.y);
+    m._pounceTargetX = _pounceSafe.x;
+    m._pounceTargetY = _pounceSafe.y;
 
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
         shape: 'circle',
-        params: { cx: player.x, cy: player.y, radius: 55 },
+        params: { cx: m._pounceTargetX, cy: m._pounceTargetY, radius: 55 },
         delayFrames: 18,
         color: [255, 180, 50], // bright orange
         owner: m.id,
@@ -5611,8 +5676,18 @@ const MOB_SPECIALS = {
           tx = player.x + Math.cos(angle + Math.PI) * teleportDist;
           ty = player.y + Math.sin(angle + Math.PI) * teleportDist;
           if (!positionClear(tx, ty)) {
-            tx = player.x + 150;
-            ty = player.y;
+            // Try all 8 compass directions at teleportDist
+            let _tpFound = false;
+            for (let _ta = 0; _ta < 8 && !_tpFound; _ta++) {
+              const _tang = _ta * Math.PI / 4;
+              const _cx = player.x + Math.cos(_tang) * teleportDist;
+              const _cy = player.y + Math.sin(_tang) * teleportDist;
+              if (positionClear(_cx, _cy)) { tx = _cx; ty = _cy; _tpFound = true; }
+            }
+            if (!_tpFound) {
+              const _safe = findClearPosition(m.x, m.y, m.x, m.y);
+              tx = _safe.x; ty = _safe.y;
+            }
           }
         }
         m.x = tx;

@@ -13,7 +13,6 @@ const GAME_CONFIG = {
   MOB_WALL_HW: 14,             // mob wall collision half-width (AABB)
   MOB_RADIUS: 27,              // body-blocking circle radius
   POS_HW: 12,                  // spawn/position clearance half-width
-  MOB_MIN_SEPARATION: 36,      // mob-mob push distance (centers)
   MOB_CROWD_RADIUS: 55,        // crowding detection radius
 
   // --- Projectiles ---

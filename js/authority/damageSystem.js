@@ -50,8 +50,19 @@ function dealDamageToMob(mob, amount, source) {
     if (mt && typeof mobs !== 'undefined') {
       for (let si = 0; si < 2; si++) {
         const angle = Math.random() * Math.PI * 2;
-        const sx = mob.x + Math.cos(angle) * 50;
-        const sy = mob.y + Math.sin(angle) * 50;
+        let sx = mob.x + Math.cos(angle) * 50;
+        let sy = mob.y + Math.sin(angle) * 50;
+        // Validate split spawn position against walls
+        if (typeof positionClear === 'function' && !positionClear(sx, sy)) {
+          let _splitFound = false;
+          for (let _sa = 0; _sa < 8 && !_splitFound; _sa++) {
+            const _sang = _sa * Math.PI / 4;
+            const _cx = mob.x + Math.cos(_sang) * 50;
+            const _cy = mob.y + Math.sin(_sang) * 50;
+            if (positionClear(_cx, _cy)) { sx = _cx; sy = _cy; _splitFound = true; }
+          }
+          if (!_splitFound) { sx = mob.x; sy = mob.y; }
+        }
         const mobId = typeof nextMobId !== 'undefined' ? nextMobId++ : Math.floor(Math.random() * 99999);
         const splitMob = {
           x: sx, y: sy, type: mob.type, id: mobId,

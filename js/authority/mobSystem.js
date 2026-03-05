@@ -72,6 +72,17 @@ function updateMobs() {
         const mhwB = b.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
         if (positionClear(a.x + px, a.y + py, mhwA)) { a.x += px; a.y += py; }
         if (positionClear(b.x - px, b.y - py, mhwB)) { b.x -= px; b.y -= py; }
+      } else if (sDist <= 0.1) {
+        // Exact overlap — push b in a random direction (8-angle search)
+        const _randAng = Math.random() * Math.PI * 2;
+        const _pushDist = minSep * 0.6;
+        const mhwB = b.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
+        for (let _oa = 0; _oa < 8; _oa++) {
+          const _ang = _randAng + _oa * Math.PI / 4;
+          const _nx = b.x + Math.cos(_ang) * _pushDist;
+          const _ny = b.y + Math.sin(_ang) * _pushDist;
+          if (positionClear(_nx, _ny, mhwB)) { b.x = _nx; b.y = _ny; break; }
+        }
       }
     }
   }
@@ -129,6 +140,10 @@ function updateMobs() {
           ({ targetX, targetY } = MOB_AI.crowded(m, aiCtx));
         } else if (aiKey && MOB_AI[aiKey]) {
           ({ targetX, targetY } = MOB_AI[aiKey](m, aiCtx));
+        }
+        // Sanitize retreat vectors — prevent AI from backing mobs into walls
+        if (typeof sanitizeAITarget === 'function') {
+          ({ targetX, targetY } = sanitizeAITarget(m, targetX, targetY));
         }
 
         const tdx = targetX - m.x;
@@ -189,8 +204,23 @@ function updateMobs() {
             const wDist = Math.sqrt(wdx * wdx + wdy * wdy) || 1;
             moveX = (wdx / wDist) * effSpeed;
             moveY = (wdy / wDist) * effSpeed;
+          } else if (path === null) {
+            // BFS failed (>600 tiles) — pick nearest open neighbor toward target, don't walk into walls
+            let _bestMX = 0, _bestMY = 0, _bestDot = -2;
+            const _dirs8 = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+            for (const [_ddx, _ddy] of _dirs8) {
+              const _ntx = myTX + _ddx, _nty = myTY + _ddy;
+              if (_ntx >= 0 && _nty >= 0 && _ntx < level.widthTiles && _nty < level.heightTiles && !isSolid(_ntx, _nty)) {
+                const _wpX = _ntx * TILE + TILE / 2, _wpY = _nty * TILE + TILE / 2;
+                const _wdx = _wpX - m.x, _wdy = _wpY - m.y;
+                const _wDist = Math.sqrt(_wdx * _wdx + _wdy * _wdy) || 1;
+                const dot = (_wdx / _wDist) * ndx + (_wdy / _wDist) * ndy;
+                if (dot > _bestDot) { _bestDot = dot; _bestMX = (_wdx / _wDist) * effSpeed; _bestMY = (_wdy / _wDist) * effSpeed; }
+              }
+            }
+            moveX = _bestMX; moveY = _bestMY;
           } else {
-            // No path found or already at target — move direct
+            // Already at target tile — move direct
             moveX = ndx * effSpeed;
             moveY = ndy * effSpeed;
           }
@@ -335,7 +365,8 @@ function updateMobs() {
       }
 
       // Animate
-      m.frame = (m.frame + 0.08) % 4;
+      const _animSpd = 0.015 * effSpeed + 0.01; // scale animation with movement speed
+      m.frame = (m.frame + _animSpd) % 4;
       } else {
         // Shooter in range — face player but don't move
         if (Math.abs(dx) > Math.abs(dy)) {
