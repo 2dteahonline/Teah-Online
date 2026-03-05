@@ -296,78 +296,78 @@ const MOB_TYPES = {
   // ===================== FLOOR 5: WASTE PLANET → SLIME/DUSK =====================
   // Levels 41-44: Waste Planet Beasts
   rabid_hyenaoid: {
-    name: "Rabid Hyenaoid", hp: 90, speed: 3.9, damage: 16, killHeal: 6, goldReward: 5,
+    name: "Rabid Hyenaoid", hp: 105, speed: 4.1, damage: 18, killHeal: 6, goldReward: 5,
     skin: "#7a6a4a", hair: "#5a4a2a", shirt: "#6a5a3a", pants: "#5a4a2a", contactRange: 74,
-    ai: 'runner', _specials: ['bleed_maul'], specialCD: 540, // 9s
+    ai: 'runner', _specials: ['bleed_maul'], specialCD: 360, // 6s — aggressive dasher
   },
   spore_stag: {
-    name: "Spore Stag", hp: 100, speed: 3.3, damage: 18, killHeal: 8, goldReward: 6,
+    name: "Spore Stag", hp: 120, speed: 3.5, damage: 20, killHeal: 8, goldReward: 6,
     skin: "#5a7a5a", hair: "#3a5a3a", shirt: "#4a6a4a", pants: "#3a5a3a", contactRange: 78,
-    ai: 'tank', _specials: ['gore_spore_burst'], specialCD: 720, // 12s
+    ai: 'tank', _specials: ['gore_spore_burst'], specialCD: 480, // 8s — charge + spore zones
   },
   wasteland_raptor: {
-    name: "Wasteland Raptor", hp: 80, speed: 4.2, damage: 14, killHeal: 5, goldReward: 4,
+    name: "Wasteland Raptor", hp: 95, speed: 4.4, damage: 16, killHeal: 5, goldReward: 4,
     skin: "#6a5a3a", hair: "#4a3a1a", shirt: "#5a4a2a", pants: "#4a3a1a", contactRange: 74,
-    ai: 'runner', _specials: ['pounce_pin'], specialCD: 600, // 10s
+    ai: 'runner', _specials: ['pounce_pin'], specialCD: 420, // 7s — fast pouncer
   },
   plague_batwing: {
-    name: "Plague Batwing", hp: 60, speed: 3.6, damage: 10, killHeal: 8, goldReward: 5,
+    name: "Plague Batwing", hp: 70, speed: 3.8, damage: 12, killHeal: 8, goldReward: 5,
     skin: "#5a4a5a", hair: "#3a2a3a", shirt: "#4a3a4a", pants: "#3a2a3a", contactRange: 76,
-    ai: 'witch', _specials: ['screech_ring'], specialCD: 780, // 13s
+    ai: 'witch', _specials: ['screech_ring'], specialCD: 480, // 8s — area denial screech
     kiteRange: 260,
   },
 
   // Level 45 Duo Mini-Boss: Lehvius + Jackman
   lehvius: {
-    name: "Lehvius", hp: 1600, speed: 2.7, damage: 22, killHeal: 40, goldReward: 45,
+    name: "Lehvius", hp: 1900, speed: 2.9, damage: 26, killHeal: 40, goldReward: 45,
     skin: "#4a6a4a", hair: "#1a3a1a", shirt: "#2a5a2a", pants: "#1a4a1a", contactRange: 82,
     ai: 'tank', _specials: ['symbiote_lash', 'toxic_spikes', 'adrenal_surge'],
-    isBoss: true, bossScale: 1.4, specialCD: 480, // 8s
+    isBoss: true, bossScale: 1.4, specialCD: 360, // 6s — aggressive boss
   },
   jackman: {
-    name: "Jackman", hp: 1200, speed: 2.1, damage: 16, killHeal: 40, goldReward: 40,
+    name: "Jackman", hp: 1500, speed: 2.3, damage: 19, killHeal: 40, goldReward: 40,
     skin: "#6a6a8a", hair: "#3a3a5a", shirt: "#4a4a6a", pants: "#3a3a5a", contactRange: 80,
     ai: 'witch', _specials: ['absorb_barrier', 'static_orbs', 'overcharge_dump'],
-    isBoss: true, bossScale: 1.3, specialCD: 600, // 10s
+    isBoss: true, bossScale: 1.3, specialCD: 420, // 7s — electric boss
     kiteRange: 280,
   },
 
   // Levels 46-49: Slime/Dusk Creatures
   gel_swordsman: {
-    name: "Gel Swordsman", hp: 85, speed: 3.6, damage: 14, killHeal: 6, goldReward: 5,
+    name: "Gel Swordsman", hp: 100, speed: 3.8, damage: 16, killHeal: 6, goldReward: 5,
     skin: "#4a8a8a", hair: "#2a6a6a", shirt: "#3a7a7a", pants: "#2a6a6a", contactRange: 76,
-    ai: 'grunt', _specials: ['slime_wave_slash'], specialCD: 480, // 8s
+    ai: 'grunt', _specials: ['slime_wave_slash'], specialCD: 320, // 5.3s — aggressive slasher
   },
   viscosity_mage: {
-    name: "Viscosity Mage", hp: 70, speed: 2.4, damage: 8, killHeal: 10, goldReward: 5,
+    name: "Viscosity Mage", hp: 80, speed: 2.6, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#5a7a9a", hair: "#3a5a7a", shirt: "#4a6a8a", pants: "#3a5a7a", contactRange: 76,
-    ai: 'witch', _specials: ['sticky_field'], specialCD: 600, // 10s
+    ai: 'witch', _specials: ['sticky_field'], specialCD: 420, // 7s — zone control mage
     kiteRange: 300,
   },
   core_guardian: {
-    name: "Core Guardian Blob", hp: 150, speed: 2.7, damage: 12, killHeal: 10, goldReward: 7,
+    name: "Core Guardian Blob", hp: 175, speed: 2.9, damage: 14, killHeal: 10, goldReward: 7,
     skin: "#3a9a7a", hair: "#1a7a5a", shirt: "#2a8a6a", pants: "#1a7a5a", contactRange: 78,
     ai: 'tank', _specials: ['split_response'], specialCD: 9999, // passive — handled on damage
     _canSplit: true,
   },
   biolum_drone: {
-    name: "Bio-Lum Drone", hp: 55, speed: 3.9, damage: 10, killHeal: 5, goldReward: 4,
+    name: "Bio-Lum Drone", hp: 65, speed: 4.1, damage: 12, killHeal: 5, goldReward: 4,
     skin: "#5a8a5a", hair: "#3a6a3a", shirt: "#4a7a4a", pants: "#3a6a3a", contactRange: 74,
-    ai: 'runner', _specials: ['glow_mark'], specialCD: 720, // 12s
+    ai: 'runner', _specials: ['glow_mark'], specialCD: 420, // 7s — fast marker
   },
 
   // Level 50 Duo Boss: World Malric + Vale
   malric: {
-    name: "World Malric", hp: 3000, speed: 2.4, damage: 28, killHeal: 50, goldReward: 60,
+    name: "World Malric", hp: 3600, speed: 2.6, damage: 32, killHeal: 50, goldReward: 60,
     skin: "#3a7a5a", hair: "#1a5a3a", shirt: "#2a6a4a", pants: "#1a5a3a", contactRange: 84,
     ai: 'tank', _specials: ['ooze_blade_arc', 'slime_rampart', 'melt_floor', 'summon_elite'],
-    isBoss: true, bossScale: 1.6, specialCD: 480, // 8s
+    isBoss: true, bossScale: 1.6, specialCD: 360, // 6s — relentless final boss
   },
   vale: {
-    name: "Vale", hp: 2200, speed: 3.0, damage: 20, killHeal: 50, goldReward: 55,
+    name: "Vale", hp: 2600, speed: 3.2, damage: 24, killHeal: 50, goldReward: 55,
     skin: "#4a3a5a", hair: "#2a1a3a", shirt: "#3a2a4a", pants: "#2a1a3a", contactRange: 80,
     ai: 'witch', _specials: ['shadow_teleport', 'puppet_shot', 'abyss_grasp', 'regen_veil'],
-    isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
+    isBoss: true, bossScale: 1.5, specialCD: 360, // 6s — aggressive shadow boss
     kiteRange: 280,
   },
 };

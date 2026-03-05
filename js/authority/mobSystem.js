@@ -713,7 +713,7 @@ function updateMobs() {
               // Floor 5
               m._bleedDash || m._bleedTelegraph > 0 || m._goreDash || m._goreTelegraph > 0 ||
               m._pounceTelegraph > 0 || m._screechTelegraph > 0 || m._slimeTelegraph > 0 ||
-              m._glowTelegraph > 0 || m._lashTelegraph > 0 || m._barrierTelegraph > 0 ||
+              m._glowTelegraph > 0 || m._stickyTelegraph > 0 || m._lashTelegraph > 0 || m._barrierTelegraph > 0 ||
               m._orbTelegraph > 0 || m._overchargeTelegraph > 0 ||
               m._oozeTelegraph > 0 || m._rampartTelegraph > 0 || m._meltTelegraph > 0 ||
               m._shadowTeleport > 0 || m._puppetTelegraph > 0 || m._abyssTelegraph > 0;
@@ -771,7 +771,7 @@ function updateMobs() {
               // Floor 5
               m._bleedDash || m._bleedTelegraph > 0 || m._goreDash || m._goreTelegraph > 0 ||
               m._pounceTelegraph > 0 || m._screechTelegraph > 0 || m._slimeTelegraph > 0 ||
-              m._glowTelegraph > 0 || m._lashTelegraph > 0 || m._barrierTelegraph > 0 ||
+              m._glowTelegraph > 0 || m._stickyTelegraph > 0 || m._lashTelegraph > 0 || m._barrierTelegraph > 0 ||
               m._orbTelegraph > 0 || m._overchargeTelegraph > 0 ||
               m._oozeTelegraph > 0 || m._rampartTelegraph > 0 || m._meltTelegraph > 0 ||
               m._shadowTeleport > 0 || m._puppetTelegraph > 0 || m._abyssTelegraph > 0;
