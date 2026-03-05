@@ -3,8 +3,9 @@
 // Split from inventorySystem.js for single-responsibility
 
 // Global helper: check if a position is wall-free (used by spawning, mob AI, and body blocking)
-function positionClear(px, py) {
-  const hw = GAME_CONFIG.POS_HW;
+// Optional hw param: pass MOB_WALL_HW for movement checks, defaults to POS_HW for spawning
+function positionClear(px, py, hw) {
+  hw = hw ?? GAME_CONFIG.POS_HW;
   const cL = Math.floor((px - hw) / TILE), cR = Math.floor((px + hw) / TILE);
   const rT = Math.floor((py - hw) / TILE), rB = Math.floor((py + hw) / TILE);
   return !isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB);
@@ -66,9 +67,11 @@ function updateMobs() {
       if (sDist < minSep && sDist > 0.1) {
         const push = (minSep - sDist) * 0.45;
         const px = (sdx / sDist) * push, py = (sdy / sDist) * push;
-        // Only push if destination is clear of walls
-        if (positionClear(a.x + px, a.y + py)) { a.x += px; a.y += py; }
-        if (positionClear(b.x - px, b.y - py)) { b.x -= px; b.y -= py; }
+        // Only push if destination is clear of walls (use actual wall hitbox, not spawn hitbox)
+        const mhwA = a.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
+        const mhwB = b.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
+        if (positionClear(a.x + px, a.y + py, mhwA)) { a.x += px; a.y += py; }
+        if (positionClear(b.x - px, b.y - py, mhwB)) { b.x -= px; b.y -= py; }
       }
     }
   }
@@ -226,13 +229,15 @@ function updateMobs() {
 
       // If blocked on one axis, try to slide along the other with reduced speed
       if (!movedX && movedY) {
-        // Slide along Y — try small X nudge to unstick from corner
-        const nudge = moveX > 0 ? -1.5 : 1.5;
-        if (positionClear(m.x + nudge, m.y)) m.x += nudge;
+        // Nudge in movement direction first, then try opposite
+        const nudge = moveX > 0 ? 1.5 : -1.5;
+        if (positionClear(m.x + nudge, m.y, mhw)) m.x += nudge;
+        else if (positionClear(m.x - nudge, m.y, mhw)) m.x -= nudge;
       }
       if (movedX && !movedY) {
-        const nudge = moveY > 0 ? -1.5 : 1.5;
-        if (positionClear(m.x, m.y + nudge)) m.y += nudge;
+        const nudge = moveY > 0 ? 1.5 : -1.5;
+        if (positionClear(m.x, m.y + nudge, mhw)) m.y += nudge;
+        else if (positionClear(m.x, m.y - nudge, mhw)) m.y -= nudge;
       }
 
       // If fully stuck on both axes, try sliding along walls smoothly
@@ -253,7 +258,7 @@ function updateMobs() {
       }
 
       // SMOOTH WALL REPULSION: if mob is overlapping a wall, gently push out
-      if (!positionClear(m.x, m.y)) {
+      if (!positionClear(m.x, m.y, mhw)) {
         // Find push direction: check which side has open space and push that way
         const pushStr = 2.5; // smooth push speed per frame
         let pushX = 0, pushY = 0;
@@ -262,7 +267,7 @@ function updateMobs() {
           const ang = a * Math.PI / 4;
           const testX = m.x + Math.cos(ang) * TILE;
           const testY = m.y + Math.sin(ang) * TILE;
-          if (positionClear(testX, testY)) {
+          if (positionClear(testX, testY, mhw)) {
             pushX += Math.cos(ang);
             pushY += Math.sin(ang);
           }
@@ -271,10 +276,17 @@ function updateMobs() {
         if (pLen > 0) {
           const newX = m.x + (pushX / pLen) * pushStr;
           const newY = m.y + (pushY / pLen) * pushStr;
-          m.x = newX;
-          m.y = newY;
-        } else {
-          // Completely stuck — find nearest clear tile center as last resort
+          // Validate destination before applying — try both axes, then each independently
+          if (positionClear(newX, newY, mhw)) {
+            m.x = newX; m.y = newY;
+          } else if (positionClear(newX, m.y, mhw)) {
+            m.x = newX;
+          } else if (positionClear(m.x, newY, mhw)) {
+            m.y = newY;
+          }
+        }
+        // If still inside a wall after push attempt, spiral-search for nearest clear tile
+        if (!positionClear(m.x, m.y, mhw)) {
           const mtx = Math.floor(m.x / TILE), mty = Math.floor(m.y / TILE);
           for (let r = 1; r <= 3; r++) {
             let found = false;
@@ -292,6 +304,34 @@ function updateMobs() {
           }
         }
         m._pathCache = null;
+      }
+
+      // STUCK DETECTION: if mob hasn't moved >2px in 90 frames (~1.5s), teleport out
+      if (m._stuckX === undefined) { m._stuckX = m.x; m._stuckY = m.y; m._stuckFrames = 0; }
+      const movedDist = Math.abs(m.x - m._stuckX) + Math.abs(m.y - m._stuckY);
+      if (movedDist < 2) {
+        m._stuckFrames++;
+        if (m._stuckFrames > 90) {
+          const mtx = Math.floor(m.x / TILE), mty = Math.floor(m.y / TILE);
+          for (let r = 1; r <= 3; r++) {
+            let found = false;
+            for (let dy2 = -r; dy2 <= r && !found; dy2++) {
+              for (let dx2 = -r; dx2 <= r && !found; dx2++) {
+                if (Math.abs(dx2) !== r && Math.abs(dy2) !== r) continue;
+                if (!isSolid(mtx + dx2, mty + dy2)) {
+                  m.x = (mtx + dx2) * TILE + TILE / 2;
+                  m.y = (mty + dy2) * TILE + TILE / 2;
+                  found = true;
+                }
+              }
+            }
+            if (found) break;
+          }
+          m._stuckFrames = 0; m._stuckX = m.x; m._stuckY = m.y;
+          m._pathCache = null;
+        }
+      } else {
+        m._stuckX = m.x; m._stuckY = m.y; m._stuckFrames = 0;
       }
 
       // Animate
