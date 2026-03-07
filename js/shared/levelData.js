@@ -1236,8 +1236,8 @@ const LEVELS = {
     //  ROOMS (6 total — bigger rooms, building outward)
     // ========================================
 
-    // === CAFETERIA (top center, dominant hub — 28×16) ===
-    room(42, 3, 69, 18);
+    // === CAFETERIA (top center, dominant hub — 28×20, taller) ===
+    room(42, 3, 69, 22);
 
     // === UPPER ENGINE (upper left — 20×14) ===
     room(6, 4, 25, 17);
@@ -1263,25 +1263,27 @@ const LEVELS = {
     // ========================================
     //  CAFETERIA OCTAGONAL CORNER CUTS
     // ========================================
+    // Top corners (unchanged)
     wall(42,3); wall(43,3); wall(44,3); wall(42,4); wall(43,4); wall(42,5);
     wall(67,3); wall(68,3); wall(69,3); wall(68,4); wall(69,4); wall(69,5);
-    wall(42,16); wall(42,17); wall(43,17); wall(42,18); wall(43,18); wall(44,18);
-    wall(67,18); wall(68,18); wall(69,18); wall(69,17); wall(68,17); wall(69,16);
+    // Bottom corners (shifted to new bottom y=22)
+    wall(42,20); wall(42,21); wall(43,21); wall(42,22); wall(43,22); wall(44,22);
+    wall(67,22); wall(68,22); wall(69,22); wall(69,21); wall(68,21); wall(69,20);
 
     // ========================================
-    //  CORRIDORS
+    //  CORRIDORS — all 5 tiles wide
     // ========================================
 
-    // --- Top wing ---
-    hCorridor3(25, 42, 9);     // UE → Cafe (wide, y=9-11)
-    hCorridor3(69, 90, 10);    // Cafe → Weapons (wide, y=10-12)
+    // --- Top wing (5 tiles tall) ---
+    room(25, 8, 42, 12);      // UE → Cafe (5 tall: y=8-12)
+    room(69, 9, 90, 13);      // Cafe → Weapons (5 tall: y=9-13)
 
-    // --- Vertical spine: UE ↓ LE (bypasses Reactor) ---
-    vCorridor3(17, 52, 20);    // Main spine (x=20-22), straight through
+    // --- Vertical spine: UE ↓ LE (5 tiles wide, bypasses Reactor) ---
+    room(19, 17, 23, 52);     // Main spine (5 wide: x=19-23)
 
-    // --- Cross branches at y=33-35 ---
-    hCorridor3(15, 20, 33);    // LEFT: spine → Reactor (turn left)
-    hCorridor3(22, 30, 33);    // RIGHT: spine → Security (turn right)
+    // --- Cross branches (5 tiles tall) ---
+    room(15, 32, 20, 36);     // LEFT: spine → Reactor (5 tall: y=32-36)
+    room(22, 32, 30, 36);     // RIGHT: spine → Security (5 tall: y=32-36)
 
     // ========================================
     //  BORDERS

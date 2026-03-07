@@ -8,7 +8,7 @@ let minimapOpen = false;
 // ---- MINIMAP ROOM LABELS (per-level) ----
 const MINIMAP_LABELS = {
   skeld_01: [
-    { name: 'Cafeteria',    x: 42, y: 3,  w: 28, h: 16 },
+    { name: 'Cafeteria',    x: 42, y: 3,  w: 28, h: 20 },
     { name: 'Upper Engine', x: 6,  y: 4,  w: 20, h: 14 },
     { name: 'Reactor',      x: 2,  y: 28, w: 14, h: 14 },
     { name: 'Security',     x: 30, y: 30, w: 12, h: 10 },
