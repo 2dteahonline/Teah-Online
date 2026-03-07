@@ -1228,6 +1228,7 @@ const LEVELS = {
       g[py][px]=1; g[py][px+1]=1; g[py+1][px]=1; g[py+1][px+1]=1;
     }
     function wall(x, y) { if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 1; }
+    function carve(x, y) { if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 0; }
 
     // ========================================
     //  ROOMS (14 total)
@@ -1260,14 +1261,28 @@ const LEVELS = {
     // === ADMIN (center-right — 10×8) ===
     room(44, 30, 53, 37);
 
-    // === WEAPONS (upper right — 12×10) ===
+    // === WEAPONS (upper right — arrow shape pointing right) ===
     room(66, 4, 77, 13);
+    // Taper right side into arrow point
+    for (let x = 75; x <= 77; x++) {
+      const indent = x - 74;
+      for (let y = 4; y < 4 + indent; y++) wall(x, y);
+      for (let y = 14 - indent; y <= 13; y++) wall(x, y);
+    }
+    carve(78, 8); carve(78, 9); // arrow tip
 
     // === O2 (right mid — 8×8) ===
     room(64, 20, 71, 27);
 
-    // === NAVIGATION (far right — 12×10) ===
+    // === NAVIGATION (far right — pointed nose shape) ===
     room(80, 20, 91, 29);
+    // Taper right side into ship bow
+    for (let x = 89; x <= 91; x++) {
+      const indent = x - 88;
+      for (let y = 20; y < 20 + indent; y++) wall(x, y);
+      for (let y = 30 - indent; y <= 29; y++) wall(x, y);
+    }
+    carve(92, 24); carve(92, 25); // nose tip
 
     // === SHIELDS (right mid-low — 10×8) ===
     room(68, 32, 77, 39);
