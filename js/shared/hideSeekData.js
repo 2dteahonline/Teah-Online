@@ -12,6 +12,6 @@ const HIDESEEK = {
   BOT_SPEED:       6.25,   // matches PLAYER_BASE_SPEED
   BOT_DETECT_RANGE: 3,     // tiles — seeker bot detects hider within this range
   RETURN_LEVEL: 'lobby_01', // level to return to after match
-  RETURN_TX: 16,            // spawn tile X in return level
-  RETURN_TY: 20,            // spawn tile Y in return level
+  RETURN_TX: 17,            // spawn tile X in return level (centered on entrance)
+  RETURN_TY: 22,            // spawn tile Y in return level (below portal zone)
 };

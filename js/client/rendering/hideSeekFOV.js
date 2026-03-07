@@ -280,7 +280,9 @@ function drawHideSeekHUD() {
     if (_showBotOverlay && HideSeekState.botMob) {
       _drawSeekerTrackingMinimap();
     }
-  } else {
+  } else if (!(phase === 'hide' && HideSeekState.playerRole === 'seeker')) {
+    // Only null the button when we're sure no toggle should exist
+    // (don't overwrite the button set by drawHideSeekFOV during seeker's hide phase)
     window._hsShowBotBtn = null;
   }
 

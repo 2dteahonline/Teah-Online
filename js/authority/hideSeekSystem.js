@@ -458,8 +458,9 @@ window.HideSeekSystem = {
 
     // Step 3: BFS-validate reachability from seeker spawn
     const spawn = (level.spawns && level.spawns.seeker) || { tx: 5, ty: 5 };
-    const spawnTX = Math.floor((hs.botMob ? hs.botMob.x : spawn.tx * TILE) / TILE);
-    const spawnTY = Math.floor((hs.botMob ? hs.botMob.y : spawn.ty * TILE) / TILE);
+    const botMob = HideSeekState.botMob;
+    const spawnTX = Math.floor((botMob ? botMob.x : spawn.tx * TILE) / TILE);
+    const spawnTY = Math.floor((botMob ? botMob.y : spawn.ty * TILE) / TILE);
     const reachable = waypoints.filter(wp => {
       if (typeof bfsPath === 'function') {
         const path = bfsPath(spawnTX, spawnTY, wp.tx, wp.ty, 5000);
