@@ -1224,6 +1224,63 @@ const LEVELS = {
     hCorridor(8, 10, 31);     // R15→A10
 
     // ========================================
+    //  SIDE EXTENSIONS (break the rectangular shape)
+    // ========================================
+
+    // --- FAR EAST wing extension (sticks out beyond main body) ---
+    room(66, 15, 72, 20);     // R33: far-east upper wing (7x6)
+    hCorridor(64, 66, 17);    // A8 area→R33
+    pillar(69, 17);
+
+    room(68, 22, 74, 27);     // R34: far-east mid wing (7x6)
+    vCorridor(20, 22, 69);    // R33→R34
+    pillar(71, 24);
+
+    // Dead-end off R34
+    room(75, 23, 77, 26);     // A11: far-east dead-end (3x4)
+    hCorridor(74, 75, 24);    // door
+
+    // --- FAR SOUTH extension (sticks out below main body) ---
+    room(32, 48, 38, 53);     // R35: south extension (7x6)
+    vCorridor(46, 48, 34);    // R22 area→R35
+    hCorridor(31, 32, 50);    // connect to R22 corridor
+
+    room(38, 51, 43, 56);     // R36: deep south room (6x6)
+    hCorridor(38, 39, 52);    // R35→R36
+    pillar(40, 53);
+
+    // Dead-end alcove off R36
+    room(44, 54, 46, 57);     // A12: south dead-end (3x4)
+    hCorridor(43, 44, 55);    // door
+
+    // --- NORTHWEST extension (extends beyond NW corner) ---
+    room(2, 52, 7, 56);       // R37: deep NW room (6x5)
+    vCorridor(49, 52, 4);     // R19→R37
+
+    // Dead-end alcove off R37
+    room(9, 53, 11, 56);      // A13: NW side closet (3x4)
+    hCorridor(7, 9, 54);      // door
+
+    // --- MID-SOUTH connector rooms ---
+    room(14, 48, 19, 52);     // R38: mid-south pocket (6x5)
+    vCorridor(46, 48, 16);    // R30→R38
+
+    room(20, 50, 24, 54);     // R39: south-center-left deep (5x5)
+    hCorridor(19, 20, 51);    // R38→R39
+    pillar(22, 52);
+
+    // --- FAR EAST lower extension ---
+    room(62, 34, 67, 39);     // R40: east-south wing (6x6)
+    hCorridor(60, 62, 36);    // R25 area→R40
+
+    room(66, 40, 70, 44);     // R41: east-south deep (5x5)
+    vCorridor(39, 40, 67);    // R40→R41
+
+    // Dead-end off R41
+    room(71, 41, 73, 44);     // A14: east-south closet (3x4)
+    hCorridor(70, 71, 42);    // door
+
+    // ========================================
     //  ENSURE BORDERS ARE WALLS
     // ========================================
     for (let x = 0; x < W; x++) { g[0][x] = 1; g[H-1][x] = 1; }

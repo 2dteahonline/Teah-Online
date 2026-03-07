@@ -290,19 +290,36 @@ window.HideSeekSystem = {
     const w = level.widthTiles;
     const h = level.heightTiles;
 
-    // Determine seeker spawn position (where the seeker starts)
-    const seekerSpawn = (level.spawns && level.spawns.seeker) || { tx: 5, ty: 5 };
-
     // ---- Speed boost during hide phase so bot reaches distant spots ----
-    hs.botMob.speed = HIDESEEK.BOT_SPEED * 1.5;
+    hs.botMob.speed = HIDESEEK.BOT_SPEED * 2.0;
 
-    // ---- Smart scoring: alcoves, corners, dead-ends, distance ----
+    // Bot's current tile
+    const botTX = Math.floor(hs.botMob.x / TILE);
+    const botTY = Math.floor(hs.botMob.y / TILE);
+
+    // ---- Find ALL favorable hiding spots across the entire map ----
+    // Score based on spot quality (walls/dead-ends/corners).
+    // Bot can pick ANY good spot on the map including near its own spawn.
+    // The key is randomness — it picks randomly from all good spots so it
+    // doesn't always go to the same place. Works for random maps too.
+
     const candidates = [];
     for (let ty = 2; ty < h - 2; ty++) {
       for (let tx = 2; tx < w - 2; tx++) {
         if (typeof isSolid === 'function' && isSolid(tx, ty)) continue;
 
-        // Count adjacent walls — all 8 directions
+        // Count cardinal openings (walkable neighbors)
+        let cardinalOpen = 0;
+        if (!isSolid(tx - 1, ty)) cardinalOpen++;
+        if (!isSolid(tx + 1, ty)) cardinalOpen++;
+        if (!isSolid(tx, ty - 1)) cardinalOpen++;
+        if (!isSolid(tx, ty + 1)) cardinalOpen++;
+
+        // Only consider spots with 1-2 openings (corners and dead-ends)
+        // Skip wide-open corridor/intersection tiles — bad hiding spots
+        if (cardinalOpen >= 3) continue;
+
+        // Count all 8 adjacent walls
         let adjWalls = 0;
         for (let dy = -1; dy <= 1; dy++) {
           for (let dx = -1; dx <= 1; dx++) {
@@ -311,43 +328,27 @@ window.HideSeekSystem = {
           }
         }
 
-        // Count cardinal openings (walkable neighbors) — fewer = more hidden
-        let cardinalOpen = 0;
-        if (!isSolid(tx - 1, ty)) cardinalOpen++;
-        if (!isSolid(tx + 1, ty)) cardinalOpen++;
-        if (!isSolid(tx, ty - 1)) cardinalOpen++;
-        if (!isSolid(tx, ty + 1)) cardinalOpen++;
+        // Score purely by hiding quality — works on any map layout
+        const deadEndBonus = (cardinalOpen === 1) ? 80 : 20;
+        const wallBonus = adjWalls * 10;
+        const score = deadEndBonus + wallBonus;
 
-        // Dead-end bonus: only 1 cardinal opening = perfect hiding spot
-        const deadEndBonus = (cardinalOpen === 1) ? 60 : (cardinalOpen === 2) ? 20 : 0;
-
-        // Corner bonus: 5+ walls out of 8 surrounding tiles = tucked away
-        const cornerBonus = (adjWalls >= 6) ? 40 : (adjWalls >= 5) ? 25 : (adjWalls >= 4) ? 10 : 0;
-
-        // Distance from seeker spawn (Euclidean, not Manhattan, for better scoring)
-        const distX = tx - seekerSpawn.tx;
-        const distY = ty - seekerSpawn.ty;
-        const dist = Math.sqrt(distX * distX + distY * distY);
-
-        // Distance from map center (prefer edges)
-        const cx = w / 2, cy = h / 2;
-        const edgeDist = Math.sqrt((tx - cx) * (tx - cx) + (ty - cy) * (ty - cy));
-        const edgeBonus = edgeDist * 0.5;
-
-        // Final score: distance + wall bonuses + dead-end + edge preference
-        const score = dist * 3 + adjWalls * 8 + deadEndBonus + cornerBonus + edgeBonus;
         candidates.push({ tx, ty, score });
       }
     }
 
-    // Sort by score descending (best spots first)
+    // Shuffle candidates first for base randomness, then stable-sort by score
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
     candidates.sort((a, b) => b.score - a.score);
 
     // Cache top candidates for re-picking if stuck
-    hs._hiderCandidates = candidates.slice(0, 15);
+    hs._hiderCandidates = candidates.slice(0, 25);
     hs._hiderRetries = 0;
 
-    // Pick from top 8 with weighted random (higher scores more likely)
+    // Pick a random spot from the good candidates
     this._pickHiderSpot();
   },
 
@@ -359,21 +360,8 @@ window.HideSeekSystem = {
     const candidates = hs._hiderCandidates;
     if (!candidates || candidates.length === 0) return;
 
-    // Weighted random from top candidates
-    const topN = Math.min(8, candidates.length);
-    const weights = [];
-    let totalWeight = 0;
-    for (let i = 0; i < topN; i++) {
-      const w = candidates[i].score;
-      weights.push(w);
-      totalWeight += w;
-    }
-    let r = Math.random() * totalWeight;
-    let pickIdx = 0;
-    for (let i = 0; i < topN; i++) {
-      r -= weights[i];
-      if (r <= 0) { pickIdx = i; break; }
-    }
+    // Pick purely random from the top candidates (all are good spots)
+    const pickIdx = Math.floor(Math.random() * Math.min(12, candidates.length));
     const pick = candidates[pickIdx];
 
     hs._botHideSpot = { tx: pick.tx, ty: pick.ty };
@@ -390,8 +378,8 @@ window.HideSeekSystem = {
     hs._botPathIdx = 0;
     hs._botTarget = { tx: pick.tx, ty: pick.ty };
 
-    // If path failed, retry with a different candidate (up to 3 retries)
-    if (!hs._botPath && hs._hiderRetries < 3) {
+    // If path failed, retry with a different candidate (up to 5 retries)
+    if (!hs._botPath && hs._hiderRetries < 5) {
       hs._hiderRetries++;
       // Remove failed candidate and try again
       candidates.splice(pickIdx, 1);
@@ -467,6 +455,21 @@ window.HideSeekSystem = {
       { tx: 57, ty: 23 }, // R28: far-east
       { tx: 63, ty: 23 }, // A8: far-east closet
       { tx: 48, ty: 28 }, // R29: east-south connector
+
+      // Side extensions
+      { tx: 69, ty: 17 }, // R33: far-east upper wing
+      { tx: 71, ty: 24 }, // R34: far-east mid wing
+      { tx: 76, ty: 24 }, // A11: far-east dead-end
+      { tx: 35, ty: 50 }, // R35: south extension
+      { tx: 40, ty: 53 }, // R36: deep south
+      { tx: 45, ty: 55 }, // A12: south dead-end
+      { tx: 4, ty: 54 },  // R37: deep NW room
+      { tx: 10, ty: 54 }, // A13: NW side closet
+      { tx: 16, ty: 50 }, // R38: mid-south pocket
+      { tx: 22, ty: 52 }, // R39: south-center-left deep
+      { tx: 64, ty: 36 }, // R40: east-south wing
+      { tx: 68, ty: 42 }, // R41: east-south deep
+      { tx: 72, ty: 42 }, // A14: east-south closet
     ];
 
     // Validate — only keep walkable waypoints
