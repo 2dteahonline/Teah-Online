@@ -1233,7 +1233,7 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (14 total) — scaled up with proper spacing
+    //  ROOMS (5 kept — building outward from here)
     // ========================================
 
     // === CAFETERIA (top center, dominant hub — 28×16) ===
@@ -1245,23 +1245,8 @@ const LEVELS = {
     // === REACTOR (far left — 12×12) ===
     room(2, 28, 13, 39);
 
-    // === SECURITY (+ intersection hub between engines — 10×7) ===
-    room(18, 33, 27, 39);
-
     // === LOWER ENGINE (lower left — 16×12) ===
     room(8, 50, 23, 61);
-
-    // === MEDBAY (left of center — 10×10) ===
-    room(36, 26, 45, 35);
-
-    // === ELECTRICAL (lower center-left — 12×12) ===
-    room(32, 54, 43, 65);
-
-    // === STORAGE (bottom center hub — 22×13) ===
-    room(50, 56, 71, 68);
-
-    // === ADMIN (right of center — 12×10) ===
-    room(66, 35, 77, 44);
 
     // === WEAPONS (upper right — arrow shape, 16×12) ===
     room(90, 6, 105, 17);
@@ -1272,24 +1257,6 @@ const LEVELS = {
     }
     carve(106, 11); carve(106, 12);
 
-    // === O2 (right mid — 10×10) ===
-    room(82, 26, 91, 35);
-
-    // === NAVIGATION (far right — pointed nose, 16×12) ===
-    room(104, 26, 119, 37);
-    for (let x = 117; x <= 119; x++) {
-      const indent = x - 116;
-      for (let y = 26; y < 26 + indent; y++) wall(x, y);
-      for (let y = 38 - indent; y <= 37; y++) wall(x, y);
-    }
-    carve(120, 31); carve(120, 32);
-
-    // === SHIELDS (right lower — 12×10) ===
-    room(88, 50, 99, 59);
-
-    // === COMMUNICATIONS (bottom right — 10×9) ===
-    room(82, 63, 91, 71);
-
     // ========================================
     //  CAFETERIA OCTAGONAL CORNER CUTS
     // ========================================
@@ -1299,39 +1266,16 @@ const LEVELS = {
     wall(67,18); wall(68,18); wall(69,18); wall(69,17); wall(68,17); wall(69,16);
 
     // ========================================
-    //  CORRIDORS — matched to reference
+    //  CORRIDORS (only between the 5 kept rooms)
     // ========================================
 
     // --- Top wing ---
     hCorridor3(23, 42, 11);    // UE → Cafe (wide, y=11-13)
     hCorridor3(69, 90, 10);    // Cafe → Weapons (wide, y=10-12)
 
-    // --- Cafeteria south: wide channel matching reference ---
-    room(47, 18, 63, 28);      // Wide south corridor from Cafe (17×11)
-    room(44, 24, 50, 28);      // Left branch widening toward MedBay
-    vCorridor3(28, 38, 54);    // South spine continues down (x=54-56)
-    hCorridor3(56, 66, 36);    // Branch right into Admin (y=36-38)
-
-    // --- Left wing: Security cluster (3-wide corridors) ---
-    vCorridor3(19, 33, 19);    // UE ↓ Security (x=19-21)
-    hCorridor3(13, 18, 35);    // Reactor → Security (y=35-37)
-    vCorridor3(39, 50, 19);    // Security ↓ LE (x=19-21)
-    hCorridor3(27, 36, 33);    // Security → MedBay (y=33-35)
-
-    // --- Bottom left ---
-    hCorridor3(23, 32, 56);    // LE → Electrical (y=56-58)
-    hCorridor3(43, 50, 59);    // Electrical → Storage (y=59-61)
-
-    // --- Center / bottom ---
-    vCorridor3(44, 56, 67);    // Admin ↓ Storage (x=67-69)
-    hCorridor3(71, 82, 64);    // Storage → Comms (y=64-66)
-
-    // --- Right wing: large junction matching reference ---
-    vCorridor3(17, 26, 90);    // Weapons ↓ O2 (x=90-92)
-    hCorridor3(91, 104, 30);   // O2 → Navigation (y=30-32)
-    room(77, 42, 90, 50);      // Right wing junction: Admin→Shields (wide)
-    room(88, 35, 92, 50);      // Right wing spine: O2↓Shields (wide)
-    vCorridor3(59, 63, 88);    // Shields ↓ Comms (x=88-90)
+    // --- Left wing: UE ↓ Reactor ↓ LE ---
+    vCorridor3(19, 28, 12);    // UE ↓ Reactor (x=12-14)
+    vCorridor3(39, 50, 12);    // Reactor ↓ LE (x=12-14)
 
     // ========================================
     //  BORDERS

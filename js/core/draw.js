@@ -11,17 +11,8 @@ const MINIMAP_LABELS = {
     { name: 'Cafeteria',    x: 42, y: 3,  w: 28, h: 16 },
     { name: 'Upper Engine', x: 8,  y: 8,  w: 16, h: 12 },
     { name: 'Reactor',      x: 2,  y: 28, w: 12, h: 12 },
-    { name: 'Security',     x: 18, y: 33, w: 10, h: 7  },
     { name: 'Lower Engine', x: 8,  y: 50, w: 16, h: 12 },
-    { name: 'MedBay',       x: 36, y: 26, w: 10, h: 10 },
-    { name: 'Electrical',   x: 32, y: 54, w: 12, h: 12 },
-    { name: 'Storage',      x: 50, y: 56, w: 22, h: 13 },
-    { name: 'Admin',        x: 66, y: 35, w: 12, h: 10 },
     { name: 'Weapons',      x: 90, y: 6,  w: 16, h: 12 },
-    { name: 'O2',           x: 82, y: 26, w: 10, h: 10 },
-    { name: 'Navigation',   x: 104, y: 26, w: 16, h: 12 },
-    { name: 'Shields',      x: 88, y: 50, w: 12, h: 10 },
-    { name: 'Comms',        x: 82, y: 63, w: 10, h: 9  },
   ],
 };
 
