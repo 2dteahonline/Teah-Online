@@ -1233,57 +1233,57 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (6 total — bigger rooms, building outward)
+    //  ROOMS (6 total)
     // ========================================
 
-    // === CAFETERIA (top center, dominant hub — 28×20, taller) ===
-    room(42, 3, 69, 22);
+    // === CAFETERIA (top center — 28×20) ===
+    room(49, 3, 76, 22);
 
     // === UPPER ENGINE (upper left — 20×14) ===
-    room(6, 4, 25, 17);
+    room(4, 4, 23, 17);
 
-    // === REACTOR (far left — 14×14) ===
-    room(2, 28, 15, 41);
+    // === REACTOR (far left — 12×14) ===
+    room(2, 28, 13, 41);
 
     // === SECURITY (right of cross — 12×10) ===
-    room(30, 30, 41, 39);
+    room(29, 30, 40, 39);
 
     // === LOWER ENGINE (lower left — 20×14) ===
-    room(6, 52, 25, 65);
+    room(4, 52, 23, 65);
 
     // === WEAPONS (upper right — arrow shape, 16×12) ===
-    room(90, 6, 105, 17);
-    for (let x = 103; x <= 105; x++) {
-      const indent = x - 102;
+    room(102, 6, 117, 17);
+    for (let x = 115; x <= 117; x++) {
+      const indent = x - 114;
       for (let y = 6; y < 6 + indent; y++) wall(x, y);
       for (let y = 18 - indent; y <= 17; y++) wall(x, y);
     }
-    carve(106, 11); carve(106, 12);
+    carve(118, 11); carve(118, 12);
 
     // ========================================
     //  CAFETERIA OCTAGONAL CORNER CUTS
     // ========================================
-    // Top corners (unchanged)
-    wall(42,3); wall(43,3); wall(44,3); wall(42,4); wall(43,4); wall(42,5);
-    wall(67,3); wall(68,3); wall(69,3); wall(68,4); wall(69,4); wall(69,5);
-    // Bottom corners (shifted to new bottom y=22)
-    wall(42,20); wall(42,21); wall(43,21); wall(42,22); wall(43,22); wall(44,22);
-    wall(67,22); wall(68,22); wall(69,22); wall(69,21); wall(68,21); wall(69,20);
+    // Top corners
+    wall(49,3); wall(50,3); wall(51,3); wall(49,4); wall(50,4); wall(49,5);
+    wall(74,3); wall(75,3); wall(76,3); wall(75,4); wall(76,4); wall(76,5);
+    // Bottom corners
+    wall(49,20); wall(49,21); wall(50,21); wall(49,22); wall(50,22); wall(51,22);
+    wall(74,22); wall(75,22); wall(76,22); wall(76,21); wall(75,21); wall(76,20);
 
     // ========================================
     //  CORRIDORS — all 5 tiles wide
     // ========================================
 
-    // --- Top wing (5 tiles tall) ---
-    room(25, 8, 42, 12);      // UE → Cafe (5 tall: y=8-12)
-    room(69, 9, 90, 13);      // Cafe → Weapons (5 tall: y=9-13)
+    // --- Top wing (5 tall, 25 blocks long each) ---
+    room(23, 8, 49, 12);      // UE → Cafe (25 blocks: x=24-48)
+    room(76, 9, 102, 13);     // Cafe → Weapons (25 blocks: x=77-101)
 
-    // --- Vertical spine: UE ↓ LE (5 tiles wide, bypasses Reactor) ---
-    room(19, 17, 23, 52);     // Main spine (5 wide: x=19-23)
+    // --- Vertical spine: UE ↓ LE (5 wide, bypasses Reactor) ---
+    room(19, 17, 23, 52);     // Main spine (x=19-23)
 
-    // --- Cross branches (5 tiles tall) ---
-    room(15, 32, 20, 36);     // LEFT: spine → Reactor (5 tall: y=32-36)
-    room(22, 32, 30, 36);     // RIGHT: spine → Security (5 tall: y=32-36)
+    // --- Cross branches (5 tall, 5 blocks long each) ---
+    room(13, 32, 19, 36);     // LEFT: spine → Reactor (5 blocks: x=14-18)
+    room(23, 32, 29, 36);     // RIGHT: spine → Security (5 blocks: x=24-28)
 
     // ========================================
     //  BORDERS
@@ -1298,10 +1298,10 @@ const LEVELS = {
       widthTiles: W,
       heightTiles: H,
       isSkeld: true,
-      spawns: { p1: { tx: 55, ty: 10 } },
+      spawns: { p1: { tx: 62, ty: 12 } },
       collisionAscii: ascii,
       entities: [
-        { type: 'skeld_exit', tx: 54, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' }
+        { type: 'skeld_exit', tx: 61, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' }
       ]
     };
   })()
