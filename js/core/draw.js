@@ -3,6 +3,134 @@
 // Extracted from index_2.html — Phase E
 
 let renderTime = 0;
+let minimapOpen = false;
+
+// ---- MINIMAP ROOM LABELS (per-level) ----
+const MINIMAP_LABELS = {
+  skeld_01: [
+    { name: 'Cafeteria',    x: 36, y: 4,  w: 22, h: 14 },
+    { name: 'Upper Engine', x: 8,  y: 6,  w: 12, h: 10 },
+    { name: 'Reactor',      x: 2,  y: 22, w: 12, h: 10 },
+    { name: 'Security',     x: 8,  y: 34, w: 8,  h: 6  },
+    { name: 'Lower Engine', x: 8,  y: 42, w: 12, h: 10 },
+    { name: 'MedBay',       x: 30, y: 20, w: 8,  h: 8  },
+    { name: 'Electrical',   x: 22, y: 46, w: 10, h: 10 },
+    { name: 'Storage',      x: 36, y: 42, w: 18, h: 11 },
+    { name: 'Admin',        x: 44, y: 30, w: 10, h: 8  },
+    { name: 'Weapons',      x: 66, y: 4,  w: 12, h: 10 },
+    { name: 'O2',           x: 64, y: 20, w: 8,  h: 8  },
+    { name: 'Navigation',   x: 80, y: 20, w: 12, h: 10 },
+    { name: 'Shields',      x: 68, y: 32, w: 10, h: 8  },
+    { name: 'Comms',        x: 68, y: 44, w: 8,  h: 7  },
+  ],
+};
+
+// Pre-cached minimap image (regenerated on level change)
+let _minimapCache = null;
+let _minimapCacheLevel = null;
+
+function _buildMinimapCache() {
+  if (!level || !collisionGrid) return null;
+  const W = level.widthTiles, H = level.heightTiles;
+  // Scale so map fits nicely on screen (max ~900px wide or ~600px tall)
+  const S = Math.max(2, Math.min(Math.floor(900 / W), Math.floor(560 / H)));
+  const c = document.createElement('canvas');
+  c.width = W * S; c.height = H * S;
+  const mc = c.getContext('2d');
+
+  // Background
+  mc.fillStyle = '#0a0a14';
+  mc.fillRect(0, 0, c.width, c.height);
+
+  // Tiles
+  for (let row = 0; row < H; row++) {
+    const gridRow = collisionGrid[row];
+    if (!gridRow) continue;
+    for (let col = 0; col < W; col++) {
+      const solid = gridRow[col] === 1;
+      if (!solid) {
+        mc.fillStyle = '#3a3a5c';
+        mc.fillRect(col * S, row * S, S, S);
+        if (S >= 5) {
+          mc.strokeStyle = '#2e2e4a';
+          mc.lineWidth = 0.5;
+          mc.strokeRect(col * S, row * S, S, S);
+        }
+      } else {
+        mc.fillStyle = '#12121e';
+        mc.fillRect(col * S, row * S, S, S);
+      }
+    }
+  }
+
+  // Room labels
+  const rooms = MINIMAP_LABELS[level.id] || [];
+  mc.textAlign = 'center';
+  mc.textBaseline = 'middle';
+  rooms.forEach(r => {
+    mc.strokeStyle = '#0ff';
+    mc.lineWidth = 2;
+    mc.strokeRect(r.x * S + 1, r.y * S + 1, r.w * S - 2, r.h * S - 2);
+    const cx = (r.x + r.w / 2) * S;
+    const cy = (r.y + r.h / 2) * S;
+    const fontSize = Math.max(9, Math.min(13, S * 1.5)) | 0;
+    mc.font = `bold ${fontSize}px monospace`;
+    mc.fillStyle = '#000';
+    mc.fillText(r.name, cx + 1, cy + 1);
+    mc.fillStyle = '#0ff';
+    mc.fillText(r.name, cx, cy);
+  });
+
+  return { canvas: c, scale: S };
+}
+
+function drawMinimap() {
+  if (!minimapOpen || !level) return;
+
+  // Rebuild cache if level changed
+  if (_minimapCacheLevel !== level.id) {
+    _minimapCache = _buildMinimapCache();
+    _minimapCacheLevel = level.id;
+  }
+  if (!_minimapCache) return;
+
+  const mc = _minimapCache;
+  const S = mc.scale;
+  const ox = (BASE_W - mc.canvas.width) / 2;
+  const oy = (BASE_H - mc.canvas.height) / 2;
+
+  // Dark overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.88)';
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  // Title
+  ctx.font = 'bold 20px monospace';
+  ctx.fillStyle = '#0ff';
+  ctx.textAlign = 'center';
+  const title = level.id.replace(/_/g, ' ').toUpperCase();
+  ctx.fillText(title + '  —  MAP', BASE_W / 2, oy - 16);
+
+  // Draw cached map
+  ctx.drawImage(mc.canvas, ox, oy);
+
+  // Player dot (live position)
+  const px = ox + (player.x / TILE) * S;
+  const py = oy + (player.y / TILE) * S;
+  const pulse = 0.7 + 0.3 * Math.sin(renderTime * 0.008);
+  ctx.fillStyle = `rgba(255,255,0,${pulse})`;
+  ctx.beginPath();
+  ctx.arc(px, py, Math.max(4, S * 0.6), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ff0';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Hint
+  ctx.font = '13px monospace';
+  ctx.fillStyle = '#666';
+  ctx.fillText('Press M to close', BASE_W / 2, oy + mc.canvas.height + 20);
+  ctx.textAlign = 'left';
+}
 
 // ===================== DRAW =====================
 function draw() {
@@ -1916,6 +2044,10 @@ function draw() {
       ctx.textAlign = "left";
     }
   }
+
+  // Minimap overlay (drawn above everything)
+  drawMinimap();
+
   } catch(drawErr) {
     console.error('DRAW ERROR:', drawErr.message, drawErr.stack);
   }

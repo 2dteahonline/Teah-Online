@@ -827,6 +827,14 @@ window.addEventListener("keydown", e => {
   const allBound = Object.values(keybinds);
   if (allBound.includes(key) || key === " ") e.preventDefault();
 
+  // M key toggles minimap
+  if (key === "m" && !chatInputActive && !nameEditActive && !statusEditActive && !rebindingKey) {
+    if (typeof minimapOpen !== 'undefined') {
+      minimapOpen = !minimapOpen;
+      return;
+    }
+  }
+
   // R key toggles remove mode when placement tool is active
   if (key === "r" && activePlaceTool && !isTyping && !UI.isOpen('toolbox')) {
     removeModeActive = !removeModeActive;
