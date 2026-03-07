@@ -290,101 +290,65 @@ window.HideSeekSystem = {
     const w = level.widthTiles;
     const h = level.heightTiles;
 
-    // ---- Speed boost during hide phase so bot reaches distant spots ----
+    // Speed boost so bot can reach far spots in time
     hs.botMob.speed = HIDESEEK.BOT_SPEED * 2.0;
 
-    // Bot's current tile
-    const botTX = Math.floor(hs.botMob.x / TILE);
-    const botTY = Math.floor(hs.botMob.y / TILE);
-
-    // ---- Find ALL favorable hiding spots across the entire map ----
-    // Score based on spot quality (walls/dead-ends/corners).
-    // Bot can pick ANY good spot on the map including near its own spawn.
-    // The key is randomness — it picks randomly from all good spots so it
-    // doesn't always go to the same place. Works for random maps too.
-
-    const candidates = [];
+    // ---- Collect ALL favorable hiding spots on the map ----
+    // Favorable = tile with 1-2 cardinal openings (dead-ends, corners, tucked spots)
+    const favorable = [];
     for (let ty = 2; ty < h - 2; ty++) {
       for (let tx = 2; tx < w - 2; tx++) {
         if (typeof isSolid === 'function' && isSolid(tx, ty)) continue;
 
-        // Count cardinal openings (walkable neighbors)
-        let cardinalOpen = 0;
-        if (!isSolid(tx - 1, ty)) cardinalOpen++;
-        if (!isSolid(tx + 1, ty)) cardinalOpen++;
-        if (!isSolid(tx, ty - 1)) cardinalOpen++;
-        if (!isSolid(tx, ty + 1)) cardinalOpen++;
+        let openings = 0;
+        if (!isSolid(tx - 1, ty)) openings++;
+        if (!isSolid(tx + 1, ty)) openings++;
+        if (!isSolid(tx, ty - 1)) openings++;
+        if (!isSolid(tx, ty + 1)) openings++;
 
-        // Only consider spots with 1-2 openings (corners and dead-ends)
-        // Skip wide-open corridor/intersection tiles — bad hiding spots
-        if (cardinalOpen >= 3) continue;
-
-        // Count all 8 adjacent walls
-        let adjWalls = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            if (isSolid(tx + dx, ty + dy)) adjWalls++;
-          }
-        }
-
-        // Score purely by hiding quality — works on any map layout
-        const deadEndBonus = (cardinalOpen === 1) ? 80 : 20;
-        const wallBonus = adjWalls * 10;
-        const score = deadEndBonus + wallBonus;
-
-        candidates.push({ tx, ty, score });
+        // Dead-ends (1 opening) and corners (2 openings) are favorable
+        if (openings <= 2) favorable.push({ tx, ty });
       }
     }
 
-    // Shuffle candidates first for base randomness, then stable-sort by score
-    for (let i = candidates.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-    }
-    candidates.sort((a, b) => b.score - a.score);
-
-    // Cache top candidates for re-picking if stuck
-    hs._hiderCandidates = candidates.slice(0, 25);
+    // Cache all favorable spots (used for re-picks if stuck)
+    hs._hiderCandidates = favorable;
     hs._hiderRetries = 0;
 
-    // Pick a random spot from the good candidates
+    // Pick a random one and pathfind to it
     this._pickHiderSpot();
   },
 
-  // Pick a hiding spot from cached candidates and pathfind to it
+  // Pick a random favorable hiding spot and BFS pathfind to it
   _pickHiderSpot() {
     const hs = HideSeekState;
     if (!hs.botMob) return;
 
-    const candidates = hs._hiderCandidates;
-    if (!candidates || candidates.length === 0) return;
+    const spots = hs._hiderCandidates;
+    if (!spots || spots.length === 0) return;
 
-    // Pick purely random from the top candidates (all are good spots)
-    const pickIdx = Math.floor(Math.random() * Math.min(12, candidates.length));
-    const pick = candidates[pickIdx];
-
-    hs._botHideSpot = { tx: pick.tx, ty: pick.ty };
-
-    // BFS from bot's current tile to the hiding spot
     const botTX = Math.floor(hs.botMob.x / TILE);
     const botTY = Math.floor(hs.botMob.y / TILE);
 
-    if (typeof bfsPath === 'function') {
-      hs._botPath = bfsPath(botTX, botTY, pick.tx, pick.ty);
-    } else {
-      hs._botPath = null;
-    }
-    hs._botPathIdx = 0;
-    hs._botTarget = { tx: pick.tx, ty: pick.ty };
+    // Try up to 10 random picks to find one with a valid BFS path
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const pick = spots[Math.floor(Math.random() * spots.length)];
 
-    // If path failed, retry with a different candidate (up to 5 retries)
-    if (!hs._botPath && hs._hiderRetries < 5) {
-      hs._hiderRetries++;
-      // Remove failed candidate and try again
-      candidates.splice(pickIdx, 1);
-      this._pickHiderSpot();
+      if (typeof bfsPath === 'function') {
+        const path = bfsPath(botTX, botTY, pick.tx, pick.ty);
+        if (path && path.length > 0) {
+          hs._botHideSpot = { tx: pick.tx, ty: pick.ty };
+          hs._botPath = path;
+          hs._botPathIdx = 0;
+          hs._botTarget = { tx: pick.tx, ty: pick.ty };
+          return;
+        }
+      }
     }
+
+    // Fallback: no valid path found, bot stays put
+    hs._botPath = null;
+    hs._botPathIdx = 0;
   },
 
 
@@ -525,9 +489,8 @@ window.HideSeekSystem = {
       hs._botLastX = bot.x;
       hs._botLastY = bot.y;
 
-      // If stuck 60+ frames and we have candidates, re-pick a new hiding spot
-      if (hs._botStuckTimer > 60 && hs._hiderRetries < 5) {
-        hs._hiderRetries++;
+      // If stuck 60+ frames, re-pick a new random hiding spot
+      if (hs._botStuckTimer > 60) {
         hs._botStuckTimer = 0;
         this._pickHiderSpot();
       }

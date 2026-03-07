@@ -1229,7 +1229,7 @@ const LEVELS = {
 
     // --- FAR EAST wing extension (sticks out beyond main body) ---
     room(66, 15, 72, 20);     // R33: far-east upper wing (7x6)
-    hCorridor(64, 66, 17);    // A8 area→R33
+    hCorridor(58, 66, 16);    // R9→R33 (long corridor bridging the gap)
     pillar(69, 17);
 
     room(68, 22, 74, 27);     // R34: far-east mid wing (7x6)
@@ -1242,8 +1242,8 @@ const LEVELS = {
 
     // --- FAR SOUTH extension (sticks out below main body) ---
     room(32, 48, 38, 53);     // R35: south extension (7x6)
-    vCorridor(46, 48, 34);    // R22 area→R35
-    hCorridor(31, 32, 50);    // connect to R22 corridor
+    vCorridor(42, 48, 35);    // R31→R35 (bridge from R31 bottom to R35 top)
+    hCorridor(31, 32, 50);    // side door into R35
 
     room(38, 51, 43, 56);     // R36: deep south room (6x6)
     hCorridor(38, 39, 52);    // R35→R36
@@ -1271,7 +1271,7 @@ const LEVELS = {
 
     // --- FAR EAST lower extension ---
     room(62, 34, 67, 39);     // R40: east-south wing (6x6)
-    hCorridor(60, 62, 36);    // R25 area→R40
+    hCorridor(58, 62, 36);    // R25→R40 (bridge from R25 right edge)
 
     room(66, 40, 70, 44);     // R41: east-south deep (5x5)
     vCorridor(39, 40, 67);    // R40→R41
