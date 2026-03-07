@@ -347,7 +347,7 @@ window.HideSeekSystem = {
     for (let i = 0; i < Math.min(candidates.length, 20); i++) {
       const pick = candidates[i];
       if (typeof bfsPath === 'function') {
-        const path = bfsPath(botTX, botTY, pick.tx, pick.ty, 3000);
+        const path = bfsPath(botTX, botTY, pick.tx, pick.ty, 5000);
         if (path && path.length > 0) {
           hs._botHideSpot = { tx: pick.tx, ty: pick.ty };
           hs._botPath = path;
@@ -371,43 +371,65 @@ window.HideSeekSystem = {
     const hs = HideSeekState;
     if (!level) return;
 
-    // Pre-defined room centers for the compact 40×30 hide_01 map
+    // Pre-defined room centers for the 55×42 hide_01 map
     const roomCenters = [
       // NW wing
-      { tx: 4, ty: 3 },   // R1: seeker spawn
-      { tx: 3, ty: 8 },   // R2: side room
-      { tx: 2, ty: 13 },  // A1: dead-end closet
+      { tx: 5, ty: 4 },   // R1: seeker spawn
+      { tx: 4, ty: 10 },  // R2: west antechamber
+      { tx: 3, ty: 15 },  // A1: NW dead-end
 
-      // North rooms
-      { tx: 11, ty: 3 },  // R3: upper room
-      { tx: 18, ty: 3 },  // R4: north-center
-      { tx: 25, ty: 3 },  // R5: NE room
-      { tx: 36, ty: 3 },  // R18: far-east wing
+      // North row
+      { tx: 14, ty: 4 },  // R3: north-west
+      { tx: 23, ty: 4 },  // R4: north-center
+      { tx: 31, ty: 4 },  // R5: north-east
 
-      // Central rooms
-      { tx: 11, ty: 9 },  // R6: central-west
-      { tx: 19, ty: 9 },  // R7: center hub
-      { tx: 26, ty: 9 },  // R8: center-east
-      { tx: 33, ty: 8 },  // R9: NE room
-      { tx: 37, ty: 8 },  // A2: NE dead-end
+      // NE extension
+      { tx: 39, ty: 3 },  // R6: NE wing
+      { tx: 46, ty: 3 },  // R7: far NE
+      { tx: 51, ty: 3 },  // A2: NE dead-end nook
 
-      // West wing
-      { tx: 4, ty: 18 },  // R10: west room
-      { tx: 10, ty: 18 }, // R11: inner-west
-      { tx: 3, ty: 23 },  // A3: SW closet
+      // Upper-central band
+      { tx: 14, ty: 11 }, // R8: mid-west
+      { tx: 23, ty: 11 }, // R9: center hub
+      { tx: 32, ty: 11 }, // R10: center-east
+      { tx: 40, ty: 11 }, // R11: east room
+      { tx: 46, ty: 11 }, // A3: east alcove
 
-      // South corridor
-      { tx: 16, ty: 16 }, // R12: south-center
-      { tx: 16, ty: 22 }, // R13: lower-center
-      { tx: 15, ty: 27 }, // A4: bottom nook
+      // West wing mid-level
+      { tx: 4, ty: 21 },  // R12: west chamber
+      { tx: 3, ty: 27 },  // A4: west nook
+      { tx: 11, ty: 21 }, // R13: inner-west
+      { tx: 10, ty: 27 }, // A5: SW dead-end
 
-      // SE wing (hider spawn)
-      { tx: 24, ty: 16 }, // R14: SE-north
-      { tx: 31, ty: 16 }, // R15: east room
-      { tx: 24, ty: 22 }, // R16: SE-south
-      { tx: 31, ty: 22 }, // R17: hider spawn
-      { tx: 37, ty: 22 }, // A5: east closet
-      { tx: 31, ty: 27 }, // A6: south closet
+      // SW extension
+      { tx: 4, ty: 34 },  // R14: SW wing
+      { tx: 3, ty: 39 },  // A6: SW dead-end
+      { tx: 11, ty: 34 }, // R15: inner-SW
+
+      // Central south band
+      { tx: 20, ty: 19 }, // R16: south-center-west
+      { tx: 29, ty: 19 }, // R17: south-center-east
+      { tx: 37, ty: 19 }, // R18: SE-north
+      { tx: 43, ty: 18 }, // A7: east dead-end
+
+      // Lower rooms
+      { tx: 20, ty: 27 }, // R19: lower-center-west
+      { tx: 29, ty: 27 }, // R20: lower-center-east
+      { tx: 37, ty: 26 }, // R21: SE room
+      { tx: 43, ty: 26 }, // A8: SE dead-end
+
+      // South extension
+      { tx: 19, ty: 35 }, // R22: south wing-west
+      { tx: 18, ty: 39 }, // A9: bottom-left nook
+      { tx: 28, ty: 35 }, // R23: south wing-center
+      { tx: 36, ty: 35 }, // R24: south wing-east
+      { tx: 42, ty: 35 }, // A10: SE bottom alcove
+
+      // Hider spawn area
+      { tx: 45, ty: 32 }, // R25: hider approach
+      { tx: 45, ty: 38 }, // R26: hider spawn
+      { tx: 51, ty: 37 }, // R27: hider escape east
+      { tx: 51, ty: 32 }, // R28: far-east room
     ];
 
     // Validate — only keep walkable waypoints
@@ -530,7 +552,7 @@ window.HideSeekSystem = {
         if (!hs._botPath || hs._botPathIdx >= hs._botPath.length ||
             !hs._botTarget || hs._botTarget.tx !== hiderTX || hs._botTarget.ty !== hiderTY) {
           if (typeof bfsPath === 'function') {
-            hs._botPath = bfsPath(botTX, botTY, hiderTX, hiderTY, 3000);
+            hs._botPath = bfsPath(botTX, botTY, hiderTX, hiderTY, 5000);
           }
           hs._botPathIdx = 0;
           hs._botTarget = { tx: hiderTX, ty: hiderTY };
@@ -555,7 +577,7 @@ window.HideSeekSystem = {
     if (!hs._botPath || hs._botPathIdx >= (hs._botPath ? hs._botPath.length : 0) ||
         !hs._botTarget || hs._botTarget.tx !== wp.tx || hs._botTarget.ty !== wp.ty) {
       if (typeof bfsPath === 'function') {
-        hs._botPath = bfsPath(botTX, botTY, wp.tx, wp.ty, 3000);
+        hs._botPath = bfsPath(botTX, botTY, wp.tx, wp.ty, 5000);
       }
       hs._botPathIdx = 0;
       hs._botTarget = { tx: wp.tx, ty: wp.ty };

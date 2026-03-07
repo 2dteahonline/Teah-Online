@@ -306,35 +306,42 @@ function recalcMaxHp() {
 const ROLL_CHANCES = { 1: 0.20, 2: 0.10, 3: 0.05 }; // 65% = nothing
 
 // === POPULATE STARTER INVENTORY ===
+// This IIFE runs once at startup. resetCombatState('lobby') does the same on scene transitions.
 (function() {
   addToInventory(createItem('gun', DEFAULT_GUN));
   addToInventory(createItem('gun', CT_X_GUN));
   addToInventory(createItem('melee', DEFAULT_MELEE));
-  // Pickaxe — use PROG_ITEMS if available
-  if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['pickaxe']) {
-    const _pi = createProgressedItem('pickaxe', 0, 1);
-    if (_pi) { _pi.data.special = 'pickaxe'; addToInventory(_pi); }
-    else addToInventory(createItem('melee', DEFAULT_PICKAXE));
-  } else {
-    addToInventory(createItem('melee', DEFAULT_PICKAXE));
+  // Pickaxe — skip if SaveLoad already restored one
+  if (!isInInventory('pickaxe')) {
+    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['pickaxe']) {
+      const _pi = createProgressedItem('pickaxe', 0, 1);
+      if (_pi) { _pi.data.special = 'pickaxe'; addToInventory(_pi); }
+      else addToInventory(createItem('melee', DEFAULT_PICKAXE));
+    } else {
+      addToInventory(createItem('melee', DEFAULT_PICKAXE));
+    }
   }
-  // Starter fishing rod — use PROG_ITEMS if available
-  if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['bronze_rod']) {
-    const _ri = createProgressedItem('bronze_rod', 0, 1);
-    if (_ri) { _ri.data.special = 'fishing'; _ri.data.currentDurability = _ri.data.durability || ROD_TIERS[0].durability; addToInventory(_ri); }
-    else { const sr = { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability }; addToInventory(createItem('melee', sr)); }
-  } else {
-    const starterRod = { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability };
-    addToInventory(createItem('melee', starterRod));
+  // Starter fishing rod — skip if already restored
+  if (!isInInventory('bronze_rod')) {
+    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['bronze_rod']) {
+      const _ri = createProgressedItem('bronze_rod', 0, 1);
+      if (_ri) { _ri.data.special = 'fishing'; _ri.data.currentDurability = _ri.data.durability || ROD_TIERS[0].durability; addToInventory(_ri); }
+      else { const sr = { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability }; addToInventory(createItem('melee', sr)); }
+    } else {
+      const starterRod = { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability };
+      addToInventory(createItem('melee', starterRod));
+    }
   }
-  // Starter farming hoe — use PROG_ITEMS if available
-  if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['bronze_hoe']) {
-    const _hi = createProgressedItem('bronze_hoe', 0, 1);
-    if (_hi) { _hi.data.special = 'farming'; _hi.data.currentDurability = _hi.data.durability || HOE_TIERS[0].durability; addToInventory(_hi); }
-    else { const sh = { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability }; addToInventory(createItem('melee', sh)); }
-  } else {
-    const starterHoe = { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability };
-    addToInventory(createItem('melee', starterHoe));
+  // Starter farming hoe — skip if already restored
+  if (!isInInventory('bronze_hoe')) {
+    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['bronze_hoe']) {
+      const _hi = createProgressedItem('bronze_hoe', 0, 1);
+      if (_hi) { _hi.data.special = 'farming'; _hi.data.currentDurability = _hi.data.durability || HOE_TIERS[0].durability; addToInventory(_hi); }
+      else { const sh = { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability }; addToInventory(createItem('melee', sh)); }
+    } else {
+      const starterHoe = { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability };
+      addToInventory(createItem('melee', starterHoe));
+    }
   }
   addToInventory(createConsumable('potion', 'Health Potion', 3));
   playerEquip.gun = DEFAULT_GUN;
