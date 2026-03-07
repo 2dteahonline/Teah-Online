@@ -1278,12 +1278,12 @@ const LEVELS = {
     room(23, 8, 57, 12);      // UE → Cafe (33 blocks: x=24-56)
     room(84, 9, 95, 13);      // Cafe → Weapons (10 blocks: x=85-94)
 
-    // --- Vertical spine: UE ↓ LE (5 wide, bypasses Reactor) ---
-    room(19, 17, 23, 52);     // Main spine (x=19-23)
+    // --- Vertical spine: UE ↓ LE (5 wide, right side of engines) ---
+    room(22, 17, 26, 52);     // Main spine (x=22-26)
 
-    // --- Cross branches (5 tall, 5 blocks long each) ---
-    room(13, 32, 19, 36);     // LEFT: spine → Reactor (5 blocks: x=14-18)
-    room(23, 32, 29, 36);     // RIGHT: spine → Security (5 blocks: x=24-28)
+    // --- Cross branches (5 tall) ---
+    room(13, 32, 22, 36);     // LEFT: spine → Reactor (8 blocks: x=14-21)
+    room(26, 32, 29, 36);     // RIGHT: spine → Security (3 blocks: x=27-28)
 
     // ========================================
     //  BORDERS
