@@ -1110,12 +1110,42 @@ const LEVELS = {
     room(28, 32, 31, 34);   // 4x3 below hub
     vCorridor(26, 32, 29);  // already part of main corridor
 
+    // ===== EXTRA ROOMS (more areas to explore and hide in) =====
+    // Side storage rooms along top corridor
+    room(27, 2, 31, 4);     // Room S — top-center small
+    room(42, 2, 46, 6);     // Room T — top-right-mid (6x5)
+    // Side storage rooms along bottom corridor
+    room(27, 40, 31, 42);   // Room U — bottom-center small
+    room(42, 37, 46, 42);   // Room V — bottom-right-mid (5x6)
+    // Extra side rooms on left wall
+    room(2, 15, 5, 16);     // Room W — left narrow closet
+    room(10, 16, 13, 19);   // Room X — inner-left room (4x4)
+    hCorridor(6, 10, 17);   // connect X to left corridor
+    // Extra side rooms on right wall
+    room(55, 15, 57, 16);   // Room Y — right narrow closet
+    room(46, 16, 49, 19);   // Room Z — inner-right room (4x4)
+    hCorridor(49, 53, 17);  // connect Z to right corridor
+    // Extra rooms between outer and inner rings
+    room(10, 28, 13, 30);   // Room AA — mid-left pocket
+    hCorridor(6, 10, 29);   // connect AA
+    room(46, 28, 49, 30);   // Room BB — mid-right pocket
+    hCorridor(49, 53, 29);  // connect BB
+    // Small nook rooms along mid-corridors
+    room(22, 10, 25, 12);   // Room CC — left of center-top alcove
+    room(33, 10, 36, 12);   // Room DD — right of center-top alcove
+    room(22, 32, 25, 34);   // Room EE — left of center-bottom alcove
+    room(33, 32, 36, 34);   // Room FF — right of center-bottom alcove
+
     // ===== OBSTACLES INSIDE LARGE ROOMS (force navigation, create cover) =====
     // Central hub pillars (2x2 blocks)
     room(27, 20, 28, 21); g[20][27]=1; g[20][28]=1; g[21][27]=1; g[21][28]=1;
     room(31, 20, 32, 21); g[20][31]=1; g[20][32]=1; g[21][31]=1; g[21][32]=1;
     room(27, 23, 28, 24); g[23][27]=1; g[23][28]=1; g[24][27]=1; g[24][28]=1;
     room(31, 23, 32, 24); g[23][31]=1; g[23][32]=1; g[24][31]=1; g[24][32]=1;
+    // Pillar in Room A (seeker spawn)
+    g[5][6]=1; g[5][7]=1; g[6][6]=1; g[6][7]=1;
+    // Pillar in Room G (hider spawn)
+    g[38][52]=1; g[38][53]=1; g[39][52]=1; g[39][53]=1;
 
     // ===== Ensure borders are always walls =====
     for (let x = 0; x < W; x++) { g[0][x] = 1; g[H-1][x] = 1; }

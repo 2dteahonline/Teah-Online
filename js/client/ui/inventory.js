@@ -2433,12 +2433,7 @@ function update() {
       else if (UI.isOpen('shop')) { UI.close(); }
       else if (UI.isOpen('inventory')) { UI.close(); }
       else if (Scene.inHideSeek) {
-        // Hide & Seek: interact triggers tag/return, never opens inventory
-        // Debounce: require 30+ frames in post_match before E-to-lobby (prevents tag+endMatch same frame)
-        if (HideSeekState.phase === 'post_match' && (typeof gameFrame !== 'undefined') &&
-            (gameFrame - HideSeekState._postMatchFrame) > 30) {
-          HideSeekSystem.endMatch();
-        }
+        // Hide & Seek: E key does nothing special — tagging is via melee, lobby return via click
       }
       else {
         const nearby = getNearestInteractable();

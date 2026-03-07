@@ -83,6 +83,15 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Hide & Seek post-match return button click
+  if (typeof HideSeekState !== 'undefined' && HideSeekState.phase === 'post_match' && window._hsReturnButton) {
+    const btn = window._hsReturnButton;
+    if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+      HideSeekSystem.endMatch();
+      return;
+    }
+  }
+
   // Hotbar slot click detection
   const slotW = 64, slotH = 64, gap = 6;
   const slotCount = 5;

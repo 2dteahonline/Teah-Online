@@ -566,6 +566,13 @@ function draw() {
       }
     } else {
       const m = e.mob;
+      // Hide & Seek: skip rendering mob entirely if outside seeker's FOV
+      if (typeof HideSeekState !== 'undefined' && Scene.inHideSeek &&
+          HideSeekState.phase === 'seek' && HideSeekState.playerRole === 'seeker') {
+        const fovPx = HIDESEEK.FOV_RADIUS * TILE;
+        const mdx = m.x - player.x, mdy = m.y - player.y;
+        if (Math.sqrt(mdx * mdx + mdy * mdy) > fovPx) continue;
+      }
       // Mummy armed glow — flashes green faster as fuse runs down
       if (m.type === "mummy" && m.mummyArmed) {
         const fuseMax = MOB_TYPES.mummy.fuseMax;

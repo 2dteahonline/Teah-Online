@@ -174,18 +174,7 @@ window.HideSeekSystem = {
       this._tickBotAI();
     }
 
-    // ---- Player-as-seeker tag check during seek phase ----
-    if (hs.phase === 'seek' && hs.playerRole === 'seeker' && hs.botMob) {
-      const dx = player.x - hs.botMob.x;
-      const dy = player.y - hs.botMob.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= HIDESEEK.TAG_RANGE) {
-        // Check if player is pressing interact to tag
-        if (typeof InputIntent !== 'undefined' && InputIntent.interactPressed) {
-          this.onTag();
-        }
-      }
-    }
+    // Tag detection is handled by meleeSystem.js (Seeking Baton melee hit)
   },
 
 
@@ -345,6 +334,19 @@ window.HideSeekSystem = {
       { tx: 47, ty: 41 }, // bottom-right alcove
       { tx: 30, ty: 11 }, // center-top alcove
       { tx: 30, ty: 33 }, // center-bottom alcove
+      // Extra rooms
+      { tx: 29, ty: 3 },  // Room S
+      { tx: 44, ty: 4 },  // Room T
+      { tx: 29, ty: 41 }, // Room U
+      { tx: 44, ty: 40 }, // Room V
+      { tx: 12, ty: 18 }, // Room X
+      { tx: 47, ty: 18 }, // Room Z
+      { tx: 12, ty: 29 }, // Room AA
+      { tx: 47, ty: 29 }, // Room BB
+      { tx: 24, ty: 11 }, // Room CC
+      { tx: 34, ty: 11 }, // Room DD
+      { tx: 24, ty: 33 }, // Room EE
+      { tx: 34, ty: 33 }, // Room FF
     ];
 
     // Validate — only keep walkable waypoints

@@ -15,11 +15,65 @@ function drawHideSeekFOV() {
   if (HideSeekState.playerRole !== 'seeker') return;
   if (typeof ctx === 'undefined' || typeof player === 'undefined' || typeof camera === 'undefined') return;
 
-  // --- Hide phase: seeker is completely blind (full black screen) ---
+  // --- Hide phase: seeker sees map overview (study the layout) but not the game world ---
   if (HideSeekState.phase === 'hide') {
     ctx.save();
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+    // Draw full map overview centered on screen
+    if (typeof level !== 'undefined' && typeof collisionGrid !== 'undefined') {
+      const mapScale = Math.min((BASE_W - 120) / level.widthTiles, (BASE_H - 200) / level.heightTiles);
+      const mapW = level.widthTiles * mapScale;
+      const mapH = level.heightTiles * mapScale;
+      const mapX = (BASE_W - mapW) / 2;
+      const mapY = (BASE_H - mapH) / 2 + 20;
+
+      // Draw tiles
+      for (let row = 0; row < level.heightTiles; row++) {
+        for (let col = 0; col < level.widthTiles; col++) {
+          const isWall = collisionGrid[row] && collisionGrid[row][col] === 1;
+          ctx.fillStyle = isWall ? '#2a2a3a' : '#0e0e18';
+          ctx.fillRect(mapX + col * mapScale, mapY + row * mapScale, Math.ceil(mapScale), Math.ceil(mapScale));
+        }
+      }
+
+      // Draw player spawn (pulsing blue dot)
+      const t = typeof renderTime !== 'undefined' ? renderTime : Date.now();
+      const pulse = 0.5 + Math.sin(t / 300) * 0.5;
+      const spawnTX = (level.spawns && level.spawns.seeker) ? level.spawns.seeker.tx : 5;
+      const spawnTY = (level.spawns && level.spawns.seeker) ? level.spawns.seeker.ty : 5;
+      const spawnDotX = mapX + (spawnTX + 0.5) * mapScale;
+      const spawnDotY = mapY + (spawnTY + 0.5) * mapScale;
+      const dotR = 4 + pulse * 3;
+
+      ctx.fillStyle = `rgba(60,140,255,${0.7 + pulse * 0.3})`;
+      ctx.beginPath();
+      ctx.arc(spawnDotX, spawnDotY, dotR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(60,140,255,${0.3 + pulse * 0.3})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(spawnDotX, spawnDotY, dotR + 4, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Label
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = 'rgba(60,140,255,0.8)';
+      ctx.fillText('YOUR SPAWN', spawnDotX, spawnDotY + dotR + 16);
+
+      // Border
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(mapX, mapY, mapW, mapH);
+
+      // Title
+      ctx.font = 'bold 18px monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillText('STUDY THE MAP', BASE_W / 2, mapY - 15);
+    }
+
     ctx.restore();
     return;
   }
@@ -448,15 +502,32 @@ function _drawPostMatchOverlay() {
     _drawPostMatchMinimap(panelX, panelY, panelW);
   }
 
-  // --- Bottom text: press key to return ---
-  let keyName = 'E';
-  if (typeof getKeyDisplayName === 'function' && typeof keybinds !== 'undefined' && keybinds.interact) {
-    keyName = getKeyDisplayName(keybinds.interact);
-  }
+  // --- Clickable "RETURN TO LOBBY" button ---
+  const btnW = 220;
+  const btnH = 40;
+  const btnX = (BASE_W - btnW) / 2;
+  const btnY = panelY + panelH - 60;
 
-  ctx.font = '14px monospace';
-  ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.fillText('Press [' + keyName + '] to return to lobby', BASE_W / 2, panelY + panelH - 25);
+  // Button background
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath();
+  ctx.roundRect(btnX, btnY, btnW, btnH, 8);
+  ctx.fill();
+
+  // Button border
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(btnX, btnY, btnW, btnH, 8);
+  ctx.stroke();
+
+  // Button text
+  ctx.font = 'bold 16px monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fillText('RETURN TO LOBBY', BASE_W / 2, btnY + btnH / 2 + 5);
+
+  // Store button bounds for click detection
+  window._hsReturnButton = { x: btnX, y: btnY, w: btnW, h: btnH };
 
   ctx.textAlign = 'left';
   ctx.restore();
