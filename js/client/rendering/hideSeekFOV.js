@@ -155,86 +155,7 @@ function drawHideSeekFOV() {
   ctx.restore();
 }
 
-// ─────────────────────────────────────────────────────────────────
-// 2. Minimap — shown to seeker during hide phase (top-right)
-// ─────────────────────────────────────────────────────────────────
-function drawHideSeekMinimap() {
-  // Minimap removed during hide phase — seeker is now fully blind
-  if (typeof Scene === 'undefined' || typeof HideSeekState === 'undefined') return;
-  if (!Scene.inHideSeek) return;
-  return; // disabled — seeker sees nothing during hide phase
-  if (typeof ctx === 'undefined' || typeof level === 'undefined') return;
-
-  const mmW = 240;
-  const mmH = 180;
-  const mmX = BASE_W - mmW - 20;
-  const mmY = 20;
-  const tileW = mmW / level.widthTiles;
-  const tileH = mmH / level.heightTiles;
-
-  ctx.save();
-
-  // --- Background panel with rounded corners ---
-  ctx.globalAlpha = 0.7;
-  ctx.fillStyle = '#000000';
-  ctx.beginPath();
-  ctx.roundRect(mmX, mmY, mmW, mmH, 8);
-  ctx.fill();
-  ctx.globalAlpha = 1.0;
-
-  // --- Draw collision grid ---
-  if (typeof collisionGrid !== 'undefined') {
-    for (let row = 0; row < level.heightTiles; row++) {
-      for (let col = 0; col < level.widthTiles; col++) {
-        const isWall = collisionGrid[row] && collisionGrid[row][col] === 1;
-        ctx.fillStyle = isWall ? '#3a3a4a' : '#1a1a2a';
-        ctx.fillRect(
-          mmX + col * tileW,
-          mmY + row * tileH,
-          Math.ceil(tileW),
-          Math.ceil(tileH)
-        );
-      }
-    }
-  }
-
-  // --- Seeker spawn pulsing blue dot ---
-  if (typeof player !== 'undefined') {
-    const t = typeof renderTime !== 'undefined' ? renderTime : Date.now();
-    const pulse = 0.5 + Math.sin(t / 300) * 0.5;
-    const dotX = mmX + (player.x / TILE) * tileW;
-    const dotY = mmY + (player.y / TILE) * tileH;
-    const dotR = 3 + pulse * 2;
-
-    ctx.fillStyle = `rgba(60,140,255,${0.6 + pulse * 0.4})`;
-    ctx.beginPath();
-    ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Glow ring
-    ctx.strokeStyle = `rgba(60,140,255,${0.3 + pulse * 0.3})`;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(dotX, dotY, dotR + 3, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  // --- Semi-transparent border ---
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.roundRect(mmX, mmY, mmW, mmH, 8);
-  ctx.stroke();
-
-  // --- Label above minimap ---
-  ctx.font = 'bold 11px monospace';
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.textAlign = 'center';
-  ctx.fillText('MAP LAYOUT', mmX + mmW / 2, mmY - 6);
-  ctx.textAlign = 'left';
-
-  ctx.restore();
-}
+// (Minimap removed — seeker sees full map overview in drawHideSeekFOV())
 
 // ─────────────────────────────────────────────────────────────────
 // 3. HUD — phase timer, role indicator, phase label, transition flash
@@ -623,7 +544,7 @@ function _drawPostMatchMinimap(panelX, panelY, panelW) {
   if (typeof level === 'undefined') return;
 
   const mmW = 160;
-  const mmH = 120;
+  const mmH = Math.round(mmW * (level.heightTiles / level.widthTiles));
   const mmX = panelX + (panelW - mmW) / 2;
   const mmY = panelY + 110;
   const tileW = mmW / level.widthTiles;

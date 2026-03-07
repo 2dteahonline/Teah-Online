@@ -13,7 +13,8 @@ window.HideSeekState = {
   tagFrame: 0,            // frame when tag happened (0 = no tag yet)
   _postMatchFrame: 0,     // frame when post_match phase started (for E-key debounce)
   seekerWon: false,       // true if seeker tagged hider before time ran out
-  botMob: null,           // reference to bot in mobs[]
+  botMob: null,           // backward-compat shim (use participants[] for new code)
+  participants: [],       // array of { id, role, entity, isBot, isLocal }
 
   // Bot AI internal state
   _botTarget: null,       // {tx, ty} — current pathfind target tile
@@ -22,7 +23,6 @@ window.HideSeekState = {
   _botHideSpot: null,     // {tx, ty} — chosen hiding destination (hider bot only)
   _seekerWaypoints: [],   // array of {tx, ty} — patrol waypoints (seeker bot only)
   _seekerWPIdx: 0,        // current waypoint index
-  _visitedTiles: null,    // Set of "tx,ty" strings — tiles the seeker has been near
   _chasing: false,        // true when seeker bot has detected the hider
   _botStuckTimer: 0,      // frames the bot hasn't moved (stuck detection)
   _botLastX: 0,           // last known bot X position
@@ -32,9 +32,8 @@ window.HideSeekState = {
   _savedMelee: null,       // saved melee weapon data before match
   _savedSlot: 0,           // saved activeSlot before match
 
-  // Hider bot retry
-  _hiderRetries: 0,        // number of times hider re-picked a hiding spot
-  _hiderCandidates: [],    // cached top hiding spot candidates
+  // Match config
+  _mapId: null,            // active map ID (defaults to HIDESEEK.MAP_ID)
 };
 
 // ---- Default state snapshot for resets ----
@@ -47,26 +46,39 @@ const _HIDESEEK_DEFAULTS = {
   tagFrame: 0,
   seekerWon: false,
   botMob: null,
+  participants: [],
   _botTarget: null,
   _botPath: null,
   _botPathIdx: 0,
   _botHideSpot: null,
   _seekerWaypoints: [],
   _seekerWPIdx: 0,
-  _visitedTiles: null,
   _chasing: false,
   _botStuckTimer: 0,
   _botLastX: 0,
   _botLastY: 0,
   _savedMelee: null,
   _savedSlot: 0,
-  _hiderRetries: 0,
-  _hiderCandidates: [],
+  _mapId: null,
 };
 
 
 // ===================== HideSeekSystem =====================
 window.HideSeekSystem = {
+
+  // ---- Participant helpers (multiplayer-ready) ----
+  getLocalPlayer() {
+    return HideSeekState.participants.find(p => p.isLocal) || null;
+  },
+  getHiders() {
+    return HideSeekState.participants.filter(p => p.role === 'hider');
+  },
+  getSeekers() {
+    return HideSeekState.participants.filter(p => p.role === 'seeker');
+  },
+  getBots() {
+    return HideSeekState.participants.filter(p => p.isBot);
+  },
 
   // ---- Start a match ----
   // playerRole: 'hider' | 'seeker'
@@ -133,6 +145,12 @@ window.HideSeekSystem = {
     };
     // Bot is NOT pushed to mobs[] — it's its own entity
     hs.botMob = bot;
+
+    // Participant registry (multiplayer-ready)
+    hs.participants = [
+      { id: 'player', role: playerRole, entity: player, isBot: false, isLocal: true },
+      { id: 'bot_0', role: hs.botRole, entity: bot, isBot: true, isLocal: false },
+    ];
 
     // Enter hide phase
     hs.phase = 'hide';
@@ -219,17 +237,17 @@ window.HideSeekSystem = {
   },
 
 
-  // ---- Check if the player should be movement-frozen ----
-  isPlayerFrozen() {
+  // ---- Check if a participant should be movement-frozen ----
+  // participantId: optional — defaults to local player (backward-compatible)
+  isPlayerFrozen(participantId) {
     const hs = HideSeekState;
+    const p = participantId
+      ? hs.participants.find(pp => pp.id === participantId)
+      : hs.participants.find(pp => pp.isLocal);
+    const role = p ? p.role : hs.playerRole; // fallback for pre-registry callers
 
-    // Seeker is frozen during hide phase (can't move while hider hides)
-    if (hs.phase === 'hide' && hs.playerRole === 'seeker') return true;
-
-    // Hider is frozen during seek phase (must stay in place while being sought)
-    if (hs.phase === 'seek' && hs.playerRole === 'hider') return true;
-
-    // Both frozen during role select and post-match
+    if (hs.phase === 'hide' && role === 'seeker') return true;
+    if (hs.phase === 'seek' && role === 'hider') return true;
     if (hs.phase === 'role_select') return true;
     if (hs.phase === 'post_match') return true;
 
@@ -253,14 +271,15 @@ window.HideSeekSystem = {
 
     // Bot is not in mobs[] so no need to clear it — just null the reference
 
+    // Clean up window globals (click detection regions)
+    window._hsShowBotBtn = null;
+    window._hsRoleButtons = null;
+    window._hsReturnButton = null;
+
     // Reset all HideSeekState fields to defaults
     for (const key in _HIDESEEK_DEFAULTS) {
-      if (key === '_seekerWaypoints') {
-        hs._seekerWaypoints = [];
-      } else if (key === '_visitedTiles') {
-        hs._visitedTiles = null;
-      } else if (key === '_hiderCandidates') {
-        hs._hiderCandidates = [];
+      if (key === '_seekerWaypoints' || key === 'participants') {
+        hs[key] = [];
       } else {
         hs[key] = _HIDESEEK_DEFAULTS[key];
       }
@@ -268,7 +287,7 @@ window.HideSeekSystem = {
 
     // Return to lobby
     if (typeof enterLevel === 'function') {
-      enterLevel('lobby_01', 40, 42);
+      enterLevel(HIDESEEK.RETURN_LEVEL, HIDESEEK.RETURN_TX, HIDESEEK.RETURN_TY);
     }
   },
 
@@ -369,90 +388,112 @@ window.HideSeekSystem = {
 
   // ===================== BOT AI — SEEKER =====================
 
-  // Initialize the seeker bot's patrol waypoints — room centers for systematic coverage
+  // Initialize the seeker bot's patrol — generates waypoints dynamically for any map
   _initSeekerBot() {
     const hs = HideSeekState;
     if (!level) return;
 
-    // Pre-defined room centers for the 55×42 hide_01 map
-    const roomCenters = [
-      // NW wing
-      { tx: 5, ty: 4 },   // R1: seeker spawn
-      { tx: 4, ty: 10 },  // R2: west antechamber
-      { tx: 3, ty: 15 },  // A1: NW dead-end
-
-      // North row
-      { tx: 14, ty: 4 },  // R3: north-west
-      { tx: 23, ty: 4 },  // R4: north-center
-      { tx: 31, ty: 4 },  // R5: north-east
-
-      // NE extension
-      { tx: 39, ty: 3 },  // R6: NE wing
-      { tx: 46, ty: 3 },  // R7: far NE
-      { tx: 51, ty: 3 },  // A2: NE dead-end nook
-
-      // Upper-central band
-      { tx: 14, ty: 11 }, // R8: mid-west
-      { tx: 23, ty: 11 }, // R9: center hub
-      { tx: 32, ty: 11 }, // R10: center-east
-      { tx: 40, ty: 11 }, // R11: east room
-      { tx: 46, ty: 11 }, // A3: east alcove
-
-      // West wing mid-level
-      { tx: 4, ty: 21 },  // R12: west chamber
-      { tx: 3, ty: 27 },  // A4: west nook
-      { tx: 11, ty: 21 }, // R13: inner-west
-      { tx: 10, ty: 27 }, // A5: SW dead-end
-
-      // SW extension
-      { tx: 4, ty: 34 },  // R14: SW wing
-      { tx: 3, ty: 39 },  // A6: SW dead-end
-      { tx: 11, ty: 34 }, // R15: inner-SW
-
-      // Central south band
-      { tx: 20, ty: 19 }, // R16: south-center-west
-      { tx: 29, ty: 19 }, // R17: south-center-east
-      { tx: 37, ty: 19 }, // R18: SE-north
-      { tx: 43, ty: 18 }, // A7: east dead-end
-
-      // Lower rooms
-      { tx: 20, ty: 27 }, // R19: lower-center-west
-      { tx: 29, ty: 27 }, // R20: lower-center-east
-      { tx: 37, ty: 26 }, // R21: SE room
-      { tx: 43, ty: 26 }, // A8: SE dead-end
-
-      // South extension
-      { tx: 19, ty: 35 }, // R22: south wing-west
-      { tx: 18, ty: 39 }, // A9: bottom-left nook
-      { tx: 28, ty: 35 }, // R23: south wing-center
-      { tx: 36, ty: 35 }, // R24: south wing-east
-      { tx: 42, ty: 35 }, // A10: SE bottom alcove
-
-      // Hider spawn area
-      { tx: 45, ty: 32 }, // R25: hider approach
-      { tx: 45, ty: 38 }, // R26: hider spawn
-      { tx: 51, ty: 37 }, // R27: hider escape east
-      { tx: 51, ty: 32 }, // R28: far-east room
-    ];
-
-    // Validate — only keep walkable waypoints
-    const valid = roomCenters.filter(wp =>
-      typeof isSolid === 'function' && !isSolid(wp.tx, wp.ty)
-    );
-
-    // Shuffle for variety
-    for (let i = valid.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [valid[i], valid[j]] = [valid[j], valid[i]];
-    }
-
-    hs._seekerWaypoints = valid;
+    hs._seekerWaypoints = this._generateSeekerWaypoints();
     hs._seekerWPIdx = 0;
-    hs._visitedTiles = new Set();
     hs._chasing = false;
     hs._botStuckTimer = 0;
     hs._botLastX = 0;
     hs._botLastY = 0;
+  },
+
+  // Generate patrol waypoints for any map — grid sampling + junctions + dead-ends
+  _generateSeekerWaypoints() {
+    const w = level.widthTiles, h = level.heightTiles;
+    const STEP = 6; // sample every 6 tiles (roughly room-sized)
+    const MERGE_DIST = 3; // merge waypoints within 3 tiles
+    const waypoints = [];
+
+    // Step 1: Grid sample — place candidates every STEP tiles on walkable ground
+    for (let y = STEP; y < h - 1; y += STEP) {
+      for (let x = STEP; x < w - 1; x += STEP) {
+        if (isSolid(x, y)) continue;
+        // Attract toward openness: find the tile in a 3-tile radius with the most open neighbors
+        let bestX = x, bestY = y, bestOpen = 0;
+        for (let dy = -3; dy <= 3; dy++) {
+          for (let dx = -3; dx <= 3; dx++) {
+            const cx = x + dx, cy = y + dy;
+            if (cx < 1 || cy < 1 || cx >= w - 1 || cy >= h - 1) continue;
+            if (isSolid(cx, cy)) continue;
+            let open = 0;
+            for (let ny = -1; ny <= 1; ny++) {
+              for (let nx = -1; nx <= 1; nx++) {
+                if (!isSolid(cx + nx, cy + ny)) open++;
+              }
+            }
+            if (open > bestOpen) { bestOpen = open; bestX = cx; bestY = cy; }
+          }
+        }
+        waypoints.push({ tx: bestX, ty: bestY });
+      }
+    }
+
+    // Step 2: Add junction waypoints (3+ cardinal openings = T-junction or crossroads)
+    // and dead-end waypoints (exactly 1 cardinal opening)
+    for (let y = 2; y < h - 2; y++) {
+      for (let x = 2; x < w - 2; x++) {
+        if (isSolid(x, y)) continue;
+        let openCount = 0;
+        if (!isSolid(x - 1, y)) openCount++;
+        if (!isSolid(x + 1, y)) openCount++;
+        if (!isSolid(x, y - 1)) openCount++;
+        if (!isSolid(x, y + 1)) openCount++;
+
+        if (openCount >= 3 || openCount === 1) {
+          // Check not too close to existing waypoint
+          let tooClose = false;
+          for (const wp of waypoints) {
+            if (Math.abs(wp.tx - x) + Math.abs(wp.ty - y) < MERGE_DIST) {
+              tooClose = true; break;
+            }
+          }
+          if (!tooClose) waypoints.push({ tx: x, ty: y });
+        }
+      }
+    }
+
+    // Step 3: BFS-validate reachability from seeker spawn
+    const spawn = (level.spawns && level.spawns.seeker) || { tx: 5, ty: 5 };
+    const spawnTX = Math.floor((hs.botMob ? hs.botMob.x : spawn.tx * TILE) / TILE);
+    const spawnTY = Math.floor((hs.botMob ? hs.botMob.y : spawn.ty * TILE) / TILE);
+    const reachable = waypoints.filter(wp => {
+      if (typeof bfsPath === 'function') {
+        const path = bfsPath(spawnTX, spawnTY, wp.tx, wp.ty, 5000);
+        return path && path.length > 0;
+      }
+      return true; // if no BFS, keep all
+    });
+
+    // Step 4: Order via nearest-neighbor greedy from seeker spawn
+    const ordered = [];
+    const remaining = reachable.slice();
+    let curX = spawnTX, curY = spawnTY;
+    while (remaining.length > 0) {
+      let bestIdx = 0, bestDist = Infinity;
+      for (let i = 0; i < remaining.length; i++) {
+        const dx = remaining[i].tx - curX, dy = remaining[i].ty - curY;
+        const d = dx * dx + dy * dy;
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+      }
+      const picked = remaining.splice(bestIdx, 1)[0];
+      ordered.push(picked);
+      curX = picked.tx;
+      curY = picked.ty;
+    }
+
+    // Step 5: Shuffle ~25% of adjacent pairs for variety
+    for (let i = 0; i < ordered.length - 1; i++) {
+      if (Math.random() < 0.25) {
+        [ordered[i], ordered[i + 1]] = [ordered[i + 1], ordered[i]];
+        i++; // skip swapped pair
+      }
+    }
+
+    return ordered;
   },
 
 
@@ -517,22 +558,27 @@ window.HideSeekSystem = {
       hs._chasing = false;
     }
 
-    // Mark nearby tiles as visited
-    if (hs._visitedTiles) {
-      for (let dy = -2; dy <= 2; dy++) {
-        for (let dx = -2; dx <= 2; dx++) {
-          hs._visitedTiles.add((botTX + dx) + ',' + (botTY + dy));
-        }
-      }
-    }
-
-    // ---- Detection: is the hider (player) within detect range? ----
-    const hdx = player.x - bot.x;
-    const hdy = player.y - bot.y;
+    // ---- Detection: is a hider within detect range? ----
+    const hiders = hs.participants.filter(p => p.role === 'hider');
+    if (!hiders.length) return;
+    const hiderEntity = hiders[0].entity; // 1v1: first hider. Multiplayer: pick closest.
+    const hdx = hiderEntity.x - bot.x;
+    const hdy = hiderEntity.y - bot.y;
     const hDist = Math.sqrt(hdx * hdx + hdy * hdy);
 
     if (hDist <= detectRange) {
-      hs._chasing = true;
+      // Line-of-sight check: reject if any wall tile between bot and hider
+      let blocked = false;
+      if (hDist > TILE) {
+        const steps = Math.ceil(hDist / TILE);
+        for (let s = 1; s < steps; s++) {
+          const t = s / steps;
+          if (isSolid(Math.floor((bot.x + hdx * t) / TILE), Math.floor((bot.y + hdy * t) / TILE))) {
+            blocked = true; break;
+          }
+        }
+      }
+      if (!blocked) hs._chasing = true;
     }
 
     // ---- Chase mode: BFS pathfind toward hider ----
@@ -549,9 +595,9 @@ window.HideSeekSystem = {
           return;
         }
 
-        // Re-pathfind to hider every 30 frames (hider is stationary but path may be stale)
-        const hiderTX = Math.floor(player.x / TILE);
-        const hiderTY = Math.floor(player.y / TILE);
+        // Re-pathfind to hider (hider is stationary but path may be stale)
+        const hiderTX = Math.floor(hiderEntity.x / TILE);
+        const hiderTY = Math.floor(hiderEntity.y / TILE);
         if (!hs._botPath || hs._botPathIdx >= hs._botPath.length ||
             !hs._botTarget || hs._botTarget.tx !== hiderTX || hs._botTarget.ty !== hiderTY) {
           if (typeof bfsPath === 'function') {
@@ -708,10 +754,11 @@ window.HideSeekSystem = {
 
 
 // ===================== DEBUG COMMAND =====================
-// Usage: _hideSeekDebug('seeker') or _hideSeekDebug('hider')
+// Usage: _hideSeekDebug('seeker') or _hideSeekDebug('hider', 'hide_02')
 // Can be called from the console or from the /hideseek chat command
 
-window._hideSeekDebug = function(role) {
+window._hideSeekDebug = function(role, mapId) {
+  const targetMap = mapId || HIDESEEK.MAP_ID;
   // Only allow from lobby or hide & seek map
   const inHideSeek = (typeof Scene !== 'undefined' && Scene.inHideSeek);
   const inLobby = (typeof Scene !== 'undefined' && Scene.inLobby);
@@ -723,7 +770,7 @@ window._hideSeekDebug = function(role) {
     if (typeof enterLevel === 'function') {
       const spawnTX = (level && level.spawns && level.spawns.seeker) ? level.spawns.seeker.tx : 5;
       const spawnTY = (level && level.spawns && level.spawns.seeker) ? level.spawns.seeker.ty : 5;
-      enterLevel(HIDESEEK.MAP_ID, spawnTX, spawnTY);
+      enterLevel(targetMap, spawnTX, spawnTY);
     }
     // Wait a frame for level to load, then start match
     setTimeout(function() {

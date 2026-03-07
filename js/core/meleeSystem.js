@@ -91,21 +91,25 @@ function meleeSwing() {
   const stormHits = []; // track hits for chain lightning
   const cleaveHits = []; // track hits for piercing blood
 
-  // Hide & Seek tag check — bot is standalone (not in mobs[])
-  if (typeof HideSeekState !== 'undefined' && HideSeekState.phase === 'seek' &&
-      HideSeekState.playerRole === 'seeker' && HideSeekState.botMob) {
-    const bot = HideSeekState.botMob;
-    const tdx = bot.x - player.x;
-    const tdy = bot.y - player.y;
-    const tDist = Math.sqrt(tdx * tdx + tdy * tdy);
-    if (tDist < melee.range) {
-      const angleToBot = Math.atan2(tdy, tdx);
-      let angleDiff = angleToBot - melee.swingDir;
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      if (Math.abs(angleDiff) < halfArc) {
-        HideSeekSystem.onTag();
-        hitEffects.push({ x: bot.x, y: bot.y - 20, life: 30, maxLife: 30, type: "heal", dmg: "TAG!" });
+  // Hide & Seek tag check — loop hider participants (multiplayer-ready)
+  if (typeof HideSeekSystem !== 'undefined' && typeof HideSeekState !== 'undefined' &&
+      HideSeekState.phase === 'seek' && HideSeekState.playerRole === 'seeker') {
+    const hiders = HideSeekSystem.getHiders();
+    for (const h of hiders) {
+      if (!h.entity || h.isLocal) continue; // don't tag yourself
+      const tdx = h.entity.x - player.x;
+      const tdy = h.entity.y - player.y;
+      const tDist = Math.sqrt(tdx * tdx + tdy * tdy);
+      if (tDist < melee.range) {
+        const angleToBot = Math.atan2(tdy, tdx);
+        let angleDiff = angleToBot - melee.swingDir;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        if (Math.abs(angleDiff) < halfArc) {
+          HideSeekSystem.onTag();
+          hitEffects.push({ x: h.entity.x, y: h.entity.y - 20, life: 30, maxLife: 30, type: "heal", dmg: "TAG!" });
+          break; // one tag per swing
+        }
       }
     }
   }

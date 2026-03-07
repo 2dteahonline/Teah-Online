@@ -40,9 +40,11 @@ function draw() {
 
   sortedChars.push({ y: player.y, type: "player" });
   for (const m of mobs) if (m.hp > 0) sortedChars.push({ y: m.y, type: "mob", mob: m });
-  // Hide & Seek bot — standalone entity, not in mobs[]
-  if (typeof HideSeekState !== 'undefined' && HideSeekState.botMob && Scene.inHideSeek) {
-    sortedChars.push({ y: HideSeekState.botMob.y, type: "mob", mob: HideSeekState.botMob });
+  // Hide & Seek participants — standalone entities, not in mobs[]
+  if (typeof HideSeekState !== 'undefined' && Scene.inHideSeek && HideSeekState.participants) {
+    for (const p of HideSeekState.participants) {
+      if (!p.isLocal && p.entity) sortedChars.push({ y: p.entity.y, type: "mob", mob: p.entity });
+    }
   }
   // Deli customer NPCs
   if (typeof deliNPCs !== 'undefined' && Scene.inCooking) {
@@ -1482,7 +1484,6 @@ function draw() {
 
   // HUD (screen space)
   if (typeof drawHideSeekHUD === 'function') drawHideSeekHUD();
-  if (typeof drawHideSeekMinimap === 'function') drawHideSeekMinimap();
   if (showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
   if (showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
   drawHotbar();
