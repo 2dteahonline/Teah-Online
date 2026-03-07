@@ -1236,8 +1236,8 @@ const LEVELS = {
     //  ROOMS (8 total)
     // ========================================
 
-    // === CAFETERIA (top center — 28×26, 30% taller) ===
-    room(57, 3, 84, 28);
+    // === CAFETERIA (top center — 28×32) ===
+    room(57, 3, 84, 34);
 
     // === UPPER ENGINE (upper left — 20×14) ===
     room(4, 4, 23, 17);
@@ -1251,8 +1251,8 @@ const LEVELS = {
     // === MEDBAY (center-right — 12×10) ===
     room(38, 18, 49, 27);
 
-    // === STORAGE (bottom center — 26×14, rectangular) ===
-    room(52, 53, 77, 66);
+    // === STORAGE (bottom center — 16×22, tall rectangle) ===
+    room(58, 53, 73, 74);
 
     // === LOWER ENGINE (lower left — 20×14) ===
     room(4, 52, 23, 65);
@@ -1273,8 +1273,8 @@ const LEVELS = {
     wall(57,3); wall(58,3); wall(59,3); wall(57,4); wall(58,4); wall(57,5);
     wall(82,3); wall(83,3); wall(84,3); wall(83,4); wall(84,4); wall(84,5);
     // Bottom corners
-    wall(57,26); wall(57,27); wall(58,27); wall(57,28); wall(58,28); wall(59,28);
-    wall(82,28); wall(83,28); wall(84,28); wall(84,27); wall(83,27); wall(84,26);
+    wall(57,32); wall(57,33); wall(58,33); wall(57,34); wall(58,34); wall(59,34);
+    wall(82,34); wall(83,34); wall(84,34); wall(84,33); wall(83,33); wall(84,32);
 
     // ========================================
     //  CORRIDORS — all 5 tiles wide
@@ -1294,8 +1294,8 @@ const LEVELS = {
     room(8, 32, 14, 36);      // LEFT: spine → Reactor (5 blocks: x=9-13)
     room(18, 32, 24, 36);     // RIGHT: spine → Security (5 blocks: x=19-23)
 
-    // --- Cafe ↓ Storage (5 wide, 25 blocks down from Cafe bottom) ---
-    room(68, 28, 72, 53);     // Cafe bottom → Storage (x=68-72, y=29-52)
+    // --- Cafe ↓ Storage (5 wide, from new Cafe bottom to Storage) ---
+    room(68, 34, 72, 53);     // Cafe bottom → Storage (x=68-72, y=35-52)
 
     // ========================================
     //  BORDERS
