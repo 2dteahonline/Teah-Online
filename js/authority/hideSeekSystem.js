@@ -73,6 +73,9 @@ window.HideSeekSystem = {
   startMatch(playerRole) {
     const hs = HideSeekState;
 
+    // Reset UI toggles
+    if (typeof _showSeekerOverlay !== 'undefined') _showSeekerOverlay = false;
+
     // Assign roles
     hs.playerRole = playerRole;
     hs.botRole = (playerRole === 'hider') ? 'seeker' : 'hider';

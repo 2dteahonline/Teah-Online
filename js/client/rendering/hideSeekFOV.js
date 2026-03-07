@@ -6,6 +6,9 @@
 let _phaseFlashTimer = 0;
 let _lastHideSeekPhase = '';
 
+// "Show Seeker" toggle for hider during seek phase
+let _showSeekerOverlay = false;
+
 // ─────────────────────────────────────────────────────────────────
 // 1. FOV — dark overlay with circular cutout around the seeker
 // ─────────────────────────────────────────────────────────────────
@@ -306,6 +309,42 @@ function drawHideSeekHUD() {
       ctx.fillStyle = roleColor;
       ctx.fillText(roleText, cx, 95);
     }
+  }
+
+  // --- "Show Seeker" toggle button (hider during seek phase) ---
+  if (phase === 'seek' && HideSeekState.playerRole === 'hider') {
+    const btnW = 140;
+    const btnH = 32;
+    const btnX = BASE_W - btnW - 20;
+    const btnY = 20;
+
+    // Button background
+    ctx.fillStyle = _showSeekerOverlay ? 'rgba(255,154,64,0.2)' : 'rgba(255,255,255,0.06)';
+    ctx.beginPath();
+    ctx.roundRect(btnX, btnY, btnW, btnH, 6);
+    ctx.fill();
+
+    // Button border
+    ctx.strokeStyle = _showSeekerOverlay ? '#ff9a40' : 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(btnX, btnY, btnW, btnH, 6);
+    ctx.stroke();
+
+    // Button text
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = _showSeekerOverlay ? '#ff9a40' : 'rgba(255,255,255,0.6)';
+    ctx.fillText(_showSeekerOverlay ? 'HIDE SEEKER' : 'SHOW SEEKER', btnX + btnW / 2, btnY + btnH / 2 + 4);
+
+    // Store bounds for click detection
+    window._hsShowSeekerBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+    // --- Draw seeker tracking minimap when toggled on ---
+    if (_showSeekerOverlay && HideSeekState.botMob) {
+      _drawSeekerTrackingMinimap();
+    }
+  } else {
+    window._hsShowSeekerBtn = null;
   }
 
   // --- Phase transition flash ("SEEK PHASE BEGINS!") ---
@@ -640,4 +679,100 @@ function _drawPostMatchMinimap(panelX, panelY, panelW) {
   ctx.fillStyle = 'rgba(255,80,60,0.7)';
   ctx.textAlign = 'center';
   ctx.fillText('HIDER WAS HERE', mmX + mmW / 2, mmY + mmH + 14);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 5. Seeker Tracking Minimap — shown to hider during seek phase (toggle)
+// ─────────────────────────────────────────────────────────────────
+function _drawSeekerTrackingMinimap() {
+  if (typeof level === 'undefined' || typeof collisionGrid === 'undefined') return;
+
+  const mmW = 220;
+  const mmH = Math.round(mmW * (level.heightTiles / level.widthTiles));
+  const mmX = BASE_W - mmW - 20;
+  const mmY = 60; // below the toggle button
+  const tileW = mmW / level.widthTiles;
+  const tileH = mmH / level.heightTiles;
+
+  ctx.save();
+
+  // --- Background panel ---
+  ctx.globalAlpha = 0.8;
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.roundRect(mmX, mmY, mmW, mmH, 8);
+  ctx.fill();
+  ctx.globalAlpha = 1.0;
+
+  // --- Draw collision grid ---
+  for (let row = 0; row < level.heightTiles; row++) {
+    for (let col = 0; col < level.widthTiles; col++) {
+      const isWall = collisionGrid[row] && collisionGrid[row][col] === 1;
+      ctx.fillStyle = isWall ? '#2a2a3a' : '#0e0e18';
+      ctx.fillRect(
+        mmX + col * tileW,
+        mmY + row * tileH,
+        Math.ceil(tileW),
+        Math.ceil(tileH)
+      );
+    }
+  }
+
+  const t = typeof renderTime !== 'undefined' ? renderTime : Date.now();
+  const pulse = 0.5 + Math.sin(t / 300) * 0.5;
+
+  // --- Seeker bot position (orange dot, pulsing) ---
+  const bot = HideSeekState.botMob;
+  if (bot) {
+    const botDotX = mmX + (bot.x / TILE) * tileW;
+    const botDotY = mmY + (bot.y / TILE) * tileH;
+    const dotR = 3 + pulse * 2;
+
+    ctx.fillStyle = `rgba(255,154,64,${0.7 + pulse * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(botDotX, botDotY, dotR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glow ring
+    ctx.strokeStyle = `rgba(255,154,64,${0.3 + pulse * 0.3})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(botDotX, botDotY, dotR + 3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Label
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = 'rgba(255,154,64,0.8)';
+    ctx.fillText('SEEKER', botDotX, botDotY - 10);
+  }
+
+  // --- Seeker's current target waypoint (orange X) ---
+  if (HideSeekState._botTarget) {
+    const tgtX = mmX + (HideSeekState._botTarget.tx + 0.5) * tileW;
+    const tgtY = mmY + (HideSeekState._botTarget.ty + 0.5) * tileH;
+    ctx.strokeStyle = 'rgba(255,160,40,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(tgtX - 3, tgtY - 3); ctx.lineTo(tgtX + 3, tgtY + 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tgtX + 3, tgtY - 3); ctx.lineTo(tgtX - 3, tgtY + 3); ctx.stroke();
+  }
+
+  // --- Player position (green dot — you're the hider) ---
+  if (typeof player !== 'undefined') {
+    const pDotX = mmX + (player.x / TILE) * tileW;
+    const pDotY = mmY + (player.y / TILE) * tileH;
+    ctx.fillStyle = `rgba(95,202,128,${0.7 + pulse * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(pDotX, pDotY, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // --- Border ---
+  ctx.strokeStyle = 'rgba(255,154,64,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(mmX, mmY, mmW, mmH, 8);
+  ctx.stroke();
+
+  ctx.restore();
 }
