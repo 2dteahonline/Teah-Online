@@ -1237,7 +1237,7 @@ const LEVELS = {
     // ========================================
 
     // === CAFETERIA (top center — 28×26, 30% taller) ===
-    room(49, 3, 76, 28);
+    room(57, 3, 84, 28);
 
     // === UPPER ENGINE (upper left — 20×14) ===
     room(4, 4, 23, 17);
@@ -1252,31 +1252,31 @@ const LEVELS = {
     room(4, 52, 23, 65);
 
     // === WEAPONS (upper right — arrow shape, 16×12) ===
-    room(87, 6, 102, 17);
-    for (let x = 100; x <= 102; x++) {
-      const indent = x - 99;
+    room(95, 6, 110, 17);
+    for (let x = 108; x <= 110; x++) {
+      const indent = x - 107;
       for (let y = 6; y < 6 + indent; y++) wall(x, y);
       for (let y = 18 - indent; y <= 17; y++) wall(x, y);
     }
-    carve(103, 11); carve(103, 12);
+    carve(111, 11); carve(111, 12);
 
     // ========================================
     //  CAFETERIA OCTAGONAL CORNER CUTS
     // ========================================
     // Top corners
-    wall(49,3); wall(50,3); wall(51,3); wall(49,4); wall(50,4); wall(49,5);
-    wall(74,3); wall(75,3); wall(76,3); wall(75,4); wall(76,4); wall(76,5);
+    wall(57,3); wall(58,3); wall(59,3); wall(57,4); wall(58,4); wall(57,5);
+    wall(82,3); wall(83,3); wall(84,3); wall(83,4); wall(84,4); wall(84,5);
     // Bottom corners
-    wall(49,26); wall(49,27); wall(50,27); wall(49,28); wall(50,28); wall(51,28);
-    wall(74,28); wall(75,28); wall(76,28); wall(76,27); wall(75,27); wall(76,26);
+    wall(57,26); wall(57,27); wall(58,27); wall(57,28); wall(58,28); wall(59,28);
+    wall(82,28); wall(83,28); wall(84,28); wall(84,27); wall(83,27); wall(84,26);
 
     // ========================================
     //  CORRIDORS — all 5 tiles wide
     // ========================================
 
-    // --- Top wing (5 tall, 25 blocks long each) ---
-    room(23, 8, 49, 12);      // UE → Cafe (25 blocks: x=24-48)
-    room(76, 9, 87, 13);      // Cafe → Weapons (10 blocks: x=77-86)
+    // --- Top wing (5 tall) ---
+    room(23, 8, 57, 12);      // UE → Cafe (33 blocks: x=24-56)
+    room(84, 9, 95, 13);      // Cafe → Weapons (10 blocks: x=85-94)
 
     // --- Vertical spine: UE ↓ LE (5 wide, bypasses Reactor) ---
     room(19, 17, 23, 52);     // Main spine (x=19-23)
@@ -1298,10 +1298,10 @@ const LEVELS = {
       widthTiles: W,
       heightTiles: H,
       isSkeld: true,
-      spawns: { p1: { tx: 62, ty: 12 } },
+      spawns: { p1: { tx: 70, ty: 15 } },
       collisionAscii: ascii,
       entities: [
-        { type: 'skeld_exit', tx: 61, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' }
+        { type: 'skeld_exit', tx: 69, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' }
       ]
     };
   })()
