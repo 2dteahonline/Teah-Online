@@ -2000,6 +2000,100 @@ const ENTITY_RENDERERS = {
         }
       }
   },
+  building_hideseek: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath(); ctx.ellipse(ex+cw/2+6, ey+ch+7, cw*0.45, 9, 0, 0, Math.PI*2); ctx.fill();
+      // Main structure — dark amber warehouse
+      ctx.fillStyle = '#12100e';
+      ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
+      // Steel panel lines (rust-tinted)
+      ctx.strokeStyle = '#2a2218'; ctx.lineWidth = 1;
+      for (let r = 0; r < 5; r++) {
+        const ly = ey+ch*0.3+r*ch*0.14;
+        ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
+      }
+      // Corrugated wall texture (vertical ridges)
+      ctx.strokeStyle = 'rgba(255,154,64,0.04)'; ctx.lineWidth = 1;
+      for (let ridge = 0; ridge < 12; ridge++) {
+        const rx = ex + 8 + ridge * (cw - 16) / 12;
+        ctx.beginPath(); ctx.moveTo(rx, ey+ch*0.26); ctx.lineTo(rx, ey+ch*0.95); ctx.stroke();
+      }
+      // Roof — flat industrial awning
+      ctx.fillStyle = '#1a1510';
+      ctx.beginPath();
+      ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.3, ey+ch*0.06);
+      ctx.lineTo(ex+cw*0.7, ey+ch*0.06); ctx.lineTo(ex+cw+6, ey+ch*0.24);
+      ctx.closePath(); ctx.fill();
+      // Roof highlight
+      ctx.fillStyle = '#221a10';
+      ctx.beginPath();
+      ctx.moveTo(ex+cw*0.3, ey+ch*0.06); ctx.lineTo(ex+cw*0.7, ey+ch*0.06);
+      ctx.lineTo(ex+cw+6, ey+ch*0.24); ctx.lineTo(ex+cw*0.5, ey+ch*0.24);
+      ctx.closePath(); ctx.fill();
+      // Neon amber trim on roof edge
+      ctx.strokeStyle = '#ff9a40'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.3, ey+ch*0.06);
+      ctx.lineTo(ex+cw*0.7, ey+ch*0.06); ctx.lineTo(ex+cw+6, ey+ch*0.24);
+      ctx.stroke();
+      // Boarded-up windows with dim amber glow (hide-and-seek vibe — mostly dark)
+      const glow = 0.5 + Math.sin(t * 1.5) * 0.15;
+      for (let wr = 0; wr < 2; wr++) {
+        for (let wc = 0; wc < 3; wc++) {
+          const wx = ex + cw*0.08 + wc*cw*0.3;
+          const wy = ey + ch*0.32 + wr*ch*0.22;
+          // Dark window base
+          ctx.fillStyle = '#0a0a08';
+          ctx.fillRect(wx, wy, cw*0.22, ch*0.14);
+          // Dim amber glow (barely visible, mysterious)
+          ctx.fillStyle = `rgba(255,154,64,${glow * 0.12})`;
+          ctx.fillRect(wx+1, wy+1, cw*0.22-2, ch*0.14-2);
+          ctx.strokeStyle = `rgba(255,154,64,${glow * 0.4})`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(wx, wy, cw*0.22, ch*0.14);
+          // Board slats across windows (2 diagonal boards)
+          ctx.strokeStyle = '#2a2218'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(wx+2, wy+2); ctx.lineTo(wx+cw*0.22-2, wy+ch*0.14-2); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(wx+cw*0.22-2, wy+2); ctx.lineTo(wx+2, wy+ch*0.14-2); ctx.stroke();
+        }
+      }
+      // Heavy door — reinforced warehouse style
+      ctx.fillStyle = '#08080a';
+      ctx.fillRect(ex+cw*0.32, ey+ch*0.75, cw*0.36, ch*0.25);
+      // Door reinforcement bars
+      ctx.strokeStyle = '#2a2218'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ex+cw*0.32, ey+ch*0.82); ctx.lineTo(ex+cw*0.68, ey+ch*0.82); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex+cw*0.32, ey+ch*0.92); ctx.lineTo(ex+cw*0.68, ey+ch*0.92); ctx.stroke();
+      // Door neon frame
+      ctx.strokeStyle = `rgba(255,154,64,${0.6 + Math.sin(t*2)*0.2})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ex+cw*0.32, ey+ch*0.75, cw*0.36, ch*0.25);
+      // Neon side strips (amber)
+      ctx.fillStyle = `rgba(255,154,64,${0.15 + Math.sin(t*1.2)*0.08})`;
+      ctx.fillRect(ex+4, ey+ch*0.25, 3, ch*0.7);
+      ctx.fillRect(ex+cw-7, ey+ch*0.25, 3, ch*0.7);
+      // Flickering warning light on roof (alternating amber/dark)
+      const flicker = Math.sin(t * 4) > 0 ? 0.6 : 0.15;
+      ctx.fillStyle = `rgba(255,120,20,${flicker})`;
+      ctx.beginPath(); ctx.arc(ex+cw*0.5, ey+ch*0.02, 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgba(255,120,20,${flicker * 0.3})`;
+      ctx.beginPath(); ctx.arc(ex+cw*0.5, ey+ch*0.02, 8, 0, Math.PI*2); ctx.fill();
+      // Neon "HIDE & SEEK" sign (amber/orange)
+      const signGlow = 0.7 + Math.sin(t * 2.5) * 0.2;
+      ctx.font = "bold 9px monospace";
+      ctx.fillStyle = `rgba(255,154,64,${signGlow})`;
+      ctx.textAlign = "center";
+      ctx.fillText("HIDE & SEEK", ex+cw/2, ey+ch*0.16);
+      // Sign glow halo
+      ctx.fillStyle = `rgba(255,154,64,${signGlow * 0.15})`;
+      ctx.fillRect(ex+cw*0.15, ey+ch*0.09, cw*0.7, ch*0.1);
+      // Label below
+      ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ff9a40'; ctx.textAlign = "center";
+      ctx.fillText("Hide & Seek", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
+  },
 };
 
 // ---- Grocery Shelf Renderer Data ----

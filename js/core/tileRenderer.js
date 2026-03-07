@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inLobby ? '#080810' : '#1e1e26';
+  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inHideSeek ? '#0a0a10' : Scene.inLobby ? '#080810' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -289,6 +289,85 @@ function drawLevelBackground(camX, camY) {
           ctx.strokeStyle = 'rgba(0,0,0,0.05)';
           ctx.lineWidth = 1;
           ctx.strokeRect(x, y, TILE, TILE);
+        }
+        continue;
+      }
+
+      // === HIDE & SEEK TILES (abandoned warehouse / dark facility) ===
+      if (Scene.inHideSeek) {
+        const isOuterEdge = tx === 0 || ty === 0 || tx === level.widthTiles - 1 || ty === level.heightTiles - 1;
+        if (collisionGrid[ty][tx] === 1) {
+          if (isOuterEdge) {
+            // Outer boundary — heavy dark charcoal wall
+            ctx.fillStyle = '#0e0e14';
+            ctx.fillRect(x, y, TILE, TILE);
+            ctx.fillStyle = '#141420';
+            ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+            // Subtle rust streak on some wall tiles
+            if ((tx + ty * 5) % 7 === 0) {
+              ctx.fillStyle = 'rgba(120,60,20,0.08)';
+              ctx.fillRect(x + 8, y + 4, 3, TILE - 8);
+            }
+          } else {
+            // Interior wall — dark slate with vent grate details
+            ctx.fillStyle = '#1a1a22';
+            ctx.fillRect(x, y, TILE, TILE);
+            ctx.fillStyle = '#202030';
+            ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+            // Vent grate pattern (horizontal slats on some wall tiles)
+            if ((tx + ty * 3) % 4 === 0) {
+              ctx.strokeStyle = 'rgba(255,154,64,0.06)';
+              ctx.lineWidth = 1;
+              for (let sl = 0; sl < 4; sl++) {
+                const sy = y + 8 + sl * 8;
+                ctx.beginPath(); ctx.moveTo(x + 6, sy); ctx.lineTo(x + TILE - 6, sy); ctx.stroke();
+              }
+            }
+            // Rust streak accent
+            if ((tx * 7 + ty) % 9 === 0) {
+              ctx.fillStyle = 'rgba(120,60,20,0.1)';
+              ctx.fillRect(x + 12, y + 2, 2, TILE - 4);
+            }
+            // Bolt rivets on corners
+            if ((tx + ty) % 3 === 0) {
+              ctx.fillStyle = 'rgba(80,80,100,0.15)';
+              ctx.beginPath(); ctx.arc(x + 6, y + 6, 2, 0, Math.PI * 2); ctx.fill();
+              ctx.beginPath(); ctx.arc(x + TILE - 6, y + TILE - 6, 2, 0, Math.PI * 2); ctx.fill();
+            }
+          }
+        } else {
+          // Floor — dusty concrete with faint tile grid
+          const sv = ((tx * 3 + ty * 7) % 5);
+          const fr = 30 + sv, fg = 30 + sv, fb = 38 + sv;
+          ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Faint tile grid lines
+          ctx.strokeStyle = 'rgba(80,80,100,0.06)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Scuff marks (sparse diagonal scratches)
+          if ((tx * 11 + ty * 3) % 13 === 0) {
+            ctx.strokeStyle = 'rgba(60,60,70,0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 6, y + 10); ctx.lineTo(x + 28, y + 34); ctx.stroke();
+          }
+          if ((tx * 5 + ty * 9) % 17 === 0) {
+            ctx.strokeStyle = 'rgba(50,50,60,0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 30, y + 8); ctx.lineTo(x + 12, y + 32); ctx.stroke();
+          }
+          // Dust speckles
+          if ((tx + ty * 3) % 9 === 0) {
+            ctx.fillStyle = 'rgba(80,75,70,0.12)';
+            ctx.beginPath(); ctx.arc(x + 20, y + 24, 2, 0, Math.PI * 2); ctx.fill();
+          }
+          // Dim amber light pools near intersections (warm glow spots)
+          if ((tx % 6 === 0) && (ty % 6 === 0)) {
+            ctx.fillStyle = 'rgba(255,154,64,0.04)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,154,64,0.06)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.4, 0, Math.PI * 2); ctx.fill();
+          }
         }
         continue;
       }

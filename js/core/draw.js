@@ -1466,7 +1466,12 @@ function draw() {
   // End world-space zoom — everything below is screen-space HUD/UI at native 1920x1080
   ctx.restore();
 
+  // Hide & Seek FOV mask (screen-space, covers world)
+  if (typeof drawHideSeekFOV === 'function') drawHideSeekFOV();
+
   // HUD (screen space)
+  if (typeof drawHideSeekHUD === 'function') drawHideSeekHUD();
+  if (typeof drawHideSeekMinimap === 'function') drawHideSeekMinimap();
   if (showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
   if (showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
   drawHotbar();
@@ -1877,6 +1882,9 @@ function draw() {
 
   // Draw customize screen LAST so it covers all HUD
   drawCustomizeScreen();
+
+  // Hide & Seek overlay (role select + post-match — drawn above everything else)
+  if (typeof drawHideSeekOverlay === 'function') drawHideSeekOverlay();
 
   // Draw inventory panel ABSOLUTE LAST — full opaque overlay
   drawInventoryPanel();

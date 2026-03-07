@@ -68,6 +68,21 @@ canvas.addEventListener("mousedown", e => {
   InputIntent.mouseWorldX = mx / WORLD_ZOOM + camera.x;
   InputIntent.mouseWorldY = my / WORLD_ZOOM + camera.y;
 
+  // Hide & Seek role select click detection
+  if (typeof HideSeekState !== 'undefined' && HideSeekState.phase === 'role_select' && window._hsRoleButtons) {
+    const btns = window._hsRoleButtons;
+    if (mx >= btns.hider.x && mx <= btns.hider.x + btns.hider.w &&
+        my >= btns.hider.y && my <= btns.hider.y + btns.hider.h) {
+      HideSeekSystem.startMatch('hider');
+      return;
+    }
+    if (mx >= btns.seeker.x && mx <= btns.seeker.x + btns.seeker.w &&
+        my >= btns.seeker.y && my <= btns.seeker.y + btns.seeker.h) {
+      HideSeekSystem.startMatch('seeker');
+      return;
+    }
+  }
+
   // Hotbar slot click detection
   const slotW = 64, slotH = 64, gap = 6;
   const slotCount = 5;

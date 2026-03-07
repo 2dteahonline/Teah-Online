@@ -108,6 +108,19 @@ window.authorityTick = function() {
     }
   }
 
+  // ---- Hide & Seek authority freeze: block ALL intents when player is frozen ----
+  if (typeof HideSeekSystem !== 'undefined' && HideSeekSystem.isPlayerFrozen()) {
+    InputIntent.moveX = 0;
+    InputIntent.moveY = 0;
+    InputIntent.meleePressed = false;
+    InputIntent.shootHeld = false;
+    InputIntent.shootPressed = false;
+    InputIntent.dashPressed = false;
+    InputIntent.interactPressed = false;
+    InputIntent.ultimatePressed = false;
+    InputIntent.reloadPressed = false;
+  }
+
   // ---- 3. Run simulation ----
   // Tell update() to skip keysDown → InputIntent translation (we already did it).
   _authorityDriven = true;

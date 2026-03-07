@@ -2312,6 +2312,7 @@ function update() {
   checkPortals();
   updateTransition();
   updateQueue();
+  if (typeof HideSeekSystem !== 'undefined') HideSeekSystem.tick();
 
   if (UI.isOpen('shop') && !isNearInteractable('shop_station')) { UI.close(); }
   if (UI.isOpen('shop') && waveState === "active") { UI.close(); }
@@ -2372,6 +2373,11 @@ function update() {
     }
   }
 
+  // Hide & Seek speed backup freeze (belt-and-suspenders with authorityTick gate)
+  if (typeof HideSeekSystem !== 'undefined' && HideSeekSystem.isPlayerFrozen()) {
+    speedMult = 0;
+  }
+
   // ===================== APPLY INTENTS (Step 3) =====================
   // Authority reads InputIntent and dispatches gameplay actions.
   // Input handlers ONLY set intents; this is the ONLY place they are consumed.
@@ -2426,6 +2432,14 @@ function update() {
       }
       else if (UI.isOpen('shop')) { UI.close(); }
       else if (UI.isOpen('inventory')) { UI.close(); }
+      else if (Scene.inHideSeek) {
+        // Hide & Seek: interact triggers tag/return, never opens inventory
+        // Debounce: require 30+ frames in post_match before E-to-lobby (prevents tag+endMatch same frame)
+        if (HideSeekState.phase === 'post_match' && (typeof gameFrame !== 'undefined') &&
+            (gameFrame - HideSeekState._postMatchFrame) > 30) {
+          HideSeekSystem.endMatch();
+        }
+      }
       else {
         const nearby = getNearestInteractable();
         if (nearby) { nearby.onInteract(); }

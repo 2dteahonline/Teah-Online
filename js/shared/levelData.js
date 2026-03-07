@@ -109,6 +109,9 @@ const LEVELS = {
       // === WEST DISTRICT BUILDINGS (below north row) ===
       { type: 'building_deli', tx: 3, ty: 12, w: 7, h: 8, solid: true },
       { type: 'deli_entrance', tx: 5, ty: 19, w: 3, h: 2, solid: false, target: 'deli_01', spawnTX: 14, spawnTY: 27 },
+      // === HIDE & SEEK ARENA (west district, next to deli) ===
+      { type: 'building_hideseek', tx: 14, ty: 12, w: 7, h: 8, solid: true },
+      { type: 'hideseek_entrance', tx: 16, ty: 19, w: 3, h: 2, solid: false, target: 'hide_01', spawnTX: 5, spawnTY: 5 },
       // === EAST DISTRICT BUILDINGS ===
       { type: 'building_gunsmith', tx: 69, ty: 12, w: 7, h: 8, solid: true },
       { type: 'gunsmith_entrance', tx: 71, ty: 19, w: 3, h: 2, solid: false, target: 'gunsmith_01', spawnTX: 22, spawnTY: 26 },
@@ -987,7 +990,112 @@ const LEVELS = {
       { type: 'torch', tx: 2, ty: 14, solid: false },
       { type: 'torch', tx: 41, ty: 14, solid: false },
     ]
-  }
+  },
+
+  // ===================== HIDE & SEEK ARENA =====================
+  hide_01: (function() {
+    // Generate 60x45 maze programmatically using iterative backtracker
+    const W = 60, H = 45;
+    const grid = [];
+    // Init all walls
+    for (let y = 0; y < H; y++) {
+      grid[y] = [];
+      for (let x = 0; x < W; x++) {
+        grid[y][x] = 1; // wall
+      }
+    }
+
+    // Iterative recursive backtracker (avoids stack overflow at 60x45)
+    (function carveIterative(startX, startY) {
+      const stack = [{ cx: startX, cy: startY }];
+      grid[startY][startX] = 0;
+      while (stack.length > 0) {
+        const { cx, cy } = stack[stack.length - 1];
+        const dirs = [[0,-2],[0,2],[-2,0],[2,0]];
+        // Shuffle directions
+        for (let i = dirs.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+        }
+        let carved = false;
+        for (const [dx, dy] of dirs) {
+          const nx = cx + dx, ny = cy + dy;
+          if (nx >= 1 && nx < W - 1 && ny >= 1 && ny < H - 1 && grid[ny][nx] === 1) {
+            grid[cy + dy / 2][cx + dx / 2] = 0; // remove wall between
+            grid[ny][nx] = 0;
+            stack.push({ cx: nx, cy: ny });
+            carved = true;
+            break; // restart from new cell
+          }
+        }
+        if (!carved) {
+          stack.pop(); // backtrack
+        }
+      }
+    })(1, 1);
+
+    // Widen corridors — for each floor cell, also clear some adjacent walls
+    // to make 2-wide corridors (prevents getting stuck with 48px characters)
+    const copy = grid.map(r => [...r]);
+    for (let y = 1; y < H - 1; y++) {
+      for (let x = 1; x < W - 1; x++) {
+        if (copy[y][x] === 0) {
+          // Clear right neighbor if it connects to another floor
+          if (x + 1 < W - 1 && copy[y][x + 1] === 1) {
+            if ((x + 2 < W && copy[y][x + 2] === 0) ||
+                (y > 0 && copy[y - 1][x + 1] === 0) ||
+                (y + 1 < H && copy[y + 1][x + 1] === 0)) {
+              grid[y][x + 1] = 0;
+            }
+          }
+          // Clear down neighbor if it connects to another floor
+          if (y + 1 < H - 1 && copy[y + 1][x] === 1) {
+            if ((y + 2 < H && copy[y + 2][x] === 0) ||
+                (x > 0 && copy[y + 1][x - 1] === 0) ||
+                (x + 1 < W && copy[y + 1][x + 1] === 0)) {
+              grid[y + 1][x] = 0;
+            }
+          }
+        }
+      }
+    }
+
+    // Clear spawn areas (7x7 open zones near each corner)
+    for (let y = 2; y <= 8; y++) for (let x = 2; x <= 8; x++) grid[y][x] = 0;
+    for (let y = 36; y <= 42; y++) for (let x = 51; x <= 57; x++) grid[y][x] = 0;
+
+    // Clear a center room (8x7)
+    for (let y = 19; y <= 25; y++) for (let x = 26; x <= 33; x++) grid[y][x] = 0;
+
+    // Add extra dead-end pockets (good hiding spots)
+    // Top-right pocket
+    for (let y = 3; y <= 5; y++) for (let x = 50; x <= 53; x++) grid[y][x] = 0;
+    // Bottom-left pocket
+    for (let y = 38; y <= 40; y++) for (let x = 5; x <= 8; x++) grid[y][x] = 0;
+    // Mid-left alcove
+    for (let y = 20; y <= 22; y++) for (let x = 3; x <= 5; x++) grid[y][x] = 0;
+    // Mid-right alcove
+    for (let y = 20; y <= 22; y++) for (let x = 54; x <= 56; x++) grid[y][x] = 0;
+
+    // Ensure borders are always walls
+    for (let x = 0; x < W; x++) { grid[0][x] = 1; grid[H - 1][x] = 1; }
+    for (let y = 0; y < H; y++) { grid[y][0] = 1; grid[y][W - 1] = 1; }
+
+    // Convert to ASCII strings
+    const ascii = grid.map(row => row.map(v => v ? '#' : '.').join(''));
+
+    return {
+      id: 'hide_01',
+      widthTiles: W,
+      heightTiles: H,
+      isHideSeek: true,
+      spawns: { seeker: { tx: 5, ty: 5 }, hider: { tx: 54, ty: 39 }, p1: { tx: 5, ty: 5 } },
+      collisionAscii: ascii,
+      entities: [
+        { type: 'hideseek_exit', tx: 28, ty: 22, w: 3, h: 2, solid: false, target: 'lobby_01', spawnTX: 40, spawnTY: 10 }
+      ]
+    };
+  })()
 };
 
 // ===================== PORTAL SPAWN RESOLVER =====================

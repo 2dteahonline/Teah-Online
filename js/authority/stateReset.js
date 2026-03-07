@@ -40,7 +40,7 @@ function resetCombatState(mode) {
   if (typeof deliNPCs !== 'undefined') deliNPCs.length = 0;
 
   // --- Reset inventory + equipment (everything except 'floor', 'mine', and 'cooking') ---
-  if (mode !== 'floor' && mode !== 'mine' && mode !== 'cooking' && mode !== 'farm') {
+  if (mode !== 'floor' && mode !== 'mine' && mode !== 'cooking' && mode !== 'farm' && mode !== 'hideseek') {
     inventory.length = 0;
     addToInventory(createItem('gun', DEFAULT_GUN));
     addToInventory(createItem('gun', CT_X_GUN));

@@ -44,6 +44,7 @@ const Scene = {
     else if (level.isAzurine) this._current = 'azurine';
     else if (level.isGunsmith) this._current = 'gunsmith';
     else if (level.isTestArena) this._current = 'test_arena';
+    else if (level.isHideSeek) this._current = 'hideseek';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -61,6 +62,7 @@ const Scene = {
   get inAzurine() { return this._current === 'azurine'; },
   get inGunsmith() { return this._current === 'gunsmith'; },
   get inTestArena() { return this._current === 'test_arena'; },
+  get inHideSeek() { return this._current === 'hideseek'; },
 };
 
 // ---- PORTAL TYPE REGISTRY ----
@@ -74,6 +76,7 @@ const PORTAL_SCENES = {
   house_entrance: 'lobby',  house_exit: 'farm',
   azurine_entrance: 'lobby', azurine_exit: 'azurine',
   gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
+  hideseek_entrance: 'lobby', hideseek_exit: 'hideseek',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
@@ -119,6 +122,9 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
     } else if (Scene.is('farm')) {
       resetCombatState('farm');
       if (typeof initFarmState === 'function') initFarmState();
+    } else if (Scene.is('hideseek')) {
+      resetCombatState('hideseek');
+      if (typeof HideSeekState !== 'undefined') HideSeekState.phase = 'role_select';
     } else {
       pendingDungeonFloor = queueFloorStart;
       pendingDungeonType = queueDungeonType;
