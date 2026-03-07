@@ -1251,8 +1251,8 @@ const LEVELS = {
     // === MEDBAY (center-right — 12×10) ===
     room(38, 18, 49, 27);
 
-    // === STORAGE (bottom center — 24×16, bigger than normal) ===
-    room(58, 53, 81, 68);
+    // === STORAGE (bottom center — 26×14, rectangular) ===
+    room(52, 53, 77, 66);
 
     // === LOWER ENGINE (lower left — 20×14) ===
     room(4, 52, 23, 65);
