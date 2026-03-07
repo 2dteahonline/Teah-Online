@@ -1297,8 +1297,10 @@ const LEVELS = {
     // --- Cafe ↓ Storage (5 wide, from new Cafe bottom to Storage) ---
     room(68, 34, 72, 53);     // Cafe bottom → Storage (x=68-72, y=35-52)
 
-    // --- LE → Storage (5 tall, horizontal) ---
-    room(23, 57, 58, 61);     // Lower Engine → Storage (x=24-57, y=57-61)
+    // --- LE ↔ Storage (Z-shaped: horizontal, up, left) ---
+    room(38, 67, 58, 71);     // Bottom: Storage left → junction (y=67-71)
+    room(36, 60, 40, 67);     // Vertical: going up (x=36-40)
+    room(23, 58, 38, 62);     // Top: junction → LE right (y=58-62)
 
     // ========================================
     //  BORDERS
