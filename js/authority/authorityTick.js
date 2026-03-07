@@ -121,6 +121,17 @@ window.authorityTick = function() {
     InputIntent.reloadPressed = false;
   }
 
+  // ---- Hide & Seek weapon restrictions: no guns, force melee slot ----
+  if (typeof Scene !== 'undefined' && Scene.inHideSeek &&
+      typeof HideSeekState !== 'undefined' && HideSeekState.phase !== 'idle') {
+    // Block gun shooting entirely — only Seeking Baton allowed
+    if (typeof activeSlot !== 'undefined') activeSlot = 1; // force melee slot
+    // If player is hider, also block melee (they can't use weapons)
+    if (HideSeekState.playerRole === 'hider') {
+      InputIntent.meleePressed = false;
+    }
+  }
+
   // ---- 3. Run simulation ----
   // Tell update() to skip keysDown → InputIntent translation (we already did it).
   _authorityDriven = true;

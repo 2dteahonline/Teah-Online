@@ -117,6 +117,8 @@ const DEFAULT_GUN = { id: 'pistol', name: 'Pistol', tier: 0, damage: 20, fireRat
 const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 5.4, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.45, freezeDuration: 15 };
 const DEFAULT_MELEE = { id: 'knife', name: 'Knife', tier: 0, damage: 15, range: 90, cooldown: 28, critChance: 0.10, color: '#7a7a7a', desc: '15 dmg · short range · starter blade', waveReq: 0, cost: 0, special: null };
 const DEFAULT_PICKAXE = { id: 'pickaxe', name: 'Pickaxe', tier: 0, damage: 10, range: 70, cooldown: 32, critChance: 0, color: '#8a6a3a', desc: '10 dmg · mining tool · equip to mine ores', waveReq: 0, cost: 0, special: 'pickaxe' };
+const SEEKING_BATON = { id: 'seeking_baton', name: 'Seeking Baton', tier: 0, damage: 0, range: 90, cooldown: 18, critChance: 0, color: '#ff9a40', desc: 'Tag hiders with this baton', waveReq: 0, cost: 0, special: 'seeking' };
+window.SEEKING_BATON = SEEKING_BATON; // expose globally for hideSeekSystem.js
 
 // === PICKAXE TIERS ===
 // Each tier is a full melee weapon definition + mining-specific fields.

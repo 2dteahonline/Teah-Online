@@ -383,7 +383,7 @@ function _drawRoleSelectOverlay() {
     color: '#ff6a3a',
     label: 'SEEKER',
     sub1: '60s to find hider',
-    sub2: 'Tag with melee to win'
+    sub2: 'Tag with Seeking Baton'
   });
 
   // --- Store button bounds globally for click detection ---

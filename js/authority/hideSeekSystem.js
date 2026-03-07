@@ -27,6 +27,14 @@ window.HideSeekState = {
   _botStuckTimer: 0,      // frames the bot hasn't moved (stuck detection)
   _botLastX: 0,           // last known bot X position
   _botLastY: 0,           // last known bot Y position
+
+  // Weapon save/restore
+  _savedMelee: null,       // saved melee weapon data before match
+  _savedSlot: 0,           // saved activeSlot before match
+
+  // Hider bot retry
+  _hiderRetries: 0,        // number of times hider re-picked a hiding spot
+  _hiderCandidates: [],    // cached top hiding spot candidates
 };
 
 // ---- Default state snapshot for resets ----
@@ -50,6 +58,10 @@ const _HIDESEEK_DEFAULTS = {
   _botStuckTimer: 0,
   _botLastX: 0,
   _botLastY: 0,
+  _savedMelee: null,
+  _savedSlot: 0,
+  _hiderRetries: 0,
+  _hiderCandidates: [],
 };
 
 
@@ -64,6 +76,20 @@ window.HideSeekSystem = {
     // Assign roles
     hs.playerRole = playerRole;
     hs.botRole = (playerRole === 'hider') ? 'seeker' : 'hider';
+
+    // ---- Save current weapon state & equip Seeking Baton ----
+    if (typeof playerEquip !== 'undefined' && playerEquip.melee) {
+      hs._savedMelee = Object.assign({}, playerEquip.melee);
+    } else {
+      hs._savedMelee = null;
+    }
+    hs._savedSlot = (typeof activeSlot !== 'undefined') ? activeSlot : 0;
+
+    // Equip Seeking Baton for seekers
+    if (playerRole === 'seeker' && typeof SEEKING_BATON !== 'undefined' && typeof applyMeleeStats === 'function') {
+      applyMeleeStats(SEEKING_BATON);
+      if (typeof activeSlot !== 'undefined') activeSlot = 1; // force melee slot
+    }
 
     // Clear existing mobs
     mobs.length = 0;
@@ -148,6 +174,9 @@ window.HideSeekSystem = {
       hs.phaseTimer = HIDESEEK.SEEK_TIME;
       hs.matchStartFrame = (typeof gameFrame !== 'undefined') ? gameFrame : 0;
 
+      // Reset hider bot speed to normal (was boosted during hide phase)
+      if (hs.botMob) hs.botMob.speed = HIDESEEK.BOT_SPEED;
+
       // If bot is the seeker, initialize its patrol AI now
       if (hs.botRole === 'seeker') {
         this._initSeekerBot();
@@ -216,16 +245,29 @@ window.HideSeekSystem = {
 
   // ---- End match and return to lobby ----
   endMatch() {
+    const hs = HideSeekState;
+
+    // ---- Restore saved weapon state ----
+    if (hs._savedMelee && typeof applyMeleeStats === 'function') {
+      applyMeleeStats(hs._savedMelee);
+    } else if (typeof applyDefaultMelee === 'function') {
+      applyDefaultMelee();
+    }
+    if (typeof activeSlot !== 'undefined') {
+      activeSlot = hs._savedSlot || 0;
+    }
+
     // Clear all mobs
     mobs.length = 0;
 
     // Reset all HideSeekState fields to defaults
-    const hs = HideSeekState;
     for (const key in _HIDESEEK_DEFAULTS) {
       if (key === '_seekerWaypoints') {
         hs._seekerWaypoints = [];
       } else if (key === '_visitedTiles') {
         hs._visitedTiles = null;
+      } else if (key === '_hiderCandidates') {
+        hs._hiderCandidates = [];
       } else {
         hs[key] = _HIDESEEK_DEFAULTS[key];
       }
@@ -251,24 +293,49 @@ window.HideSeekSystem = {
     // Determine seeker spawn position (where the seeker starts)
     const seekerSpawn = (level.spawns && level.spawns.seeker) || { tx: 5, ty: 5 };
 
-    // Score all walkable tiles: prefer far from seeker + near walls (corners)
+    // ---- Speed boost during hide phase so bot reaches distant spots ----
+    hs.botMob.speed = HIDESEEK.BOT_SPEED * 1.5;
+
+    // ---- Smart scoring: alcoves, corners, dead-ends, distance ----
     const candidates = [];
-    for (let ty = 1; ty < h - 1; ty++) {
-      for (let tx = 1; tx < w - 1; tx++) {
+    for (let ty = 2; ty < h - 2; ty++) {
+      for (let tx = 2; tx < w - 2; tx++) {
         if (typeof isSolid === 'function' && isSolid(tx, ty)) continue;
 
-        // Count adjacent walls (N, S, E, W)
+        // Count adjacent walls — all 8 directions
         let adjWalls = 0;
-        if (isSolid(tx - 1, ty)) adjWalls++;
-        if (isSolid(tx + 1, ty)) adjWalls++;
-        if (isSolid(tx, ty - 1)) adjWalls++;
-        if (isSolid(tx, ty + 1)) adjWalls++;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            if (isSolid(tx + dx, ty + dy)) adjWalls++;
+          }
+        }
 
-        // Manhattan distance from seeker spawn
-        const manhattan = Math.abs(tx - seekerSpawn.tx) + Math.abs(ty - seekerSpawn.ty);
+        // Count cardinal openings (walkable neighbors) — fewer = more hidden
+        let cardinalOpen = 0;
+        if (!isSolid(tx - 1, ty)) cardinalOpen++;
+        if (!isSolid(tx + 1, ty)) cardinalOpen++;
+        if (!isSolid(tx, ty - 1)) cardinalOpen++;
+        if (!isSolid(tx, ty + 1)) cardinalOpen++;
 
-        // Score: distance matters most, walls give a bonus
-        const score = manhattan * 2 + adjWalls * 15;
+        // Dead-end bonus: only 1 cardinal opening = perfect hiding spot
+        const deadEndBonus = (cardinalOpen === 1) ? 60 : (cardinalOpen === 2) ? 20 : 0;
+
+        // Corner bonus: 5+ walls out of 8 surrounding tiles = tucked away
+        const cornerBonus = (adjWalls >= 6) ? 40 : (adjWalls >= 5) ? 25 : (adjWalls >= 4) ? 10 : 0;
+
+        // Distance from seeker spawn (Euclidean, not Manhattan, for better scoring)
+        const distX = tx - seekerSpawn.tx;
+        const distY = ty - seekerSpawn.ty;
+        const dist = Math.sqrt(distX * distX + distY * distY);
+
+        // Distance from map center (prefer edges)
+        const cx = w / 2, cy = h / 2;
+        const edgeDist = Math.sqrt((tx - cx) * (tx - cx) + (ty - cy) * (ty - cy));
+        const edgeBonus = edgeDist * 0.5;
+
+        // Final score: distance + wall bonuses + dead-end + edge preference
+        const score = dist * 3 + adjWalls * 8 + deadEndBonus + cornerBonus + edgeBonus;
         candidates.push({ tx, ty, score });
       }
     }
@@ -276,10 +343,39 @@ window.HideSeekSystem = {
     // Sort by score descending (best spots first)
     candidates.sort((a, b) => b.score - a.score);
 
-    // Pick randomly from the top 5
-    const topN = Math.min(5, candidates.length);
-    if (topN === 0) return; // no walkable tiles (shouldn't happen)
-    const pick = candidates[Math.floor(Math.random() * topN)];
+    // Cache top candidates for re-picking if stuck
+    hs._hiderCandidates = candidates.slice(0, 15);
+    hs._hiderRetries = 0;
+
+    // Pick from top 8 with weighted random (higher scores more likely)
+    this._pickHiderSpot();
+  },
+
+  // Pick a hiding spot from cached candidates and pathfind to it
+  _pickHiderSpot() {
+    const hs = HideSeekState;
+    if (!hs.botMob) return;
+
+    const candidates = hs._hiderCandidates;
+    if (!candidates || candidates.length === 0) return;
+
+    // Weighted random from top candidates
+    const topN = Math.min(8, candidates.length);
+    const weights = [];
+    let totalWeight = 0;
+    for (let i = 0; i < topN; i++) {
+      const w = candidates[i].score;
+      weights.push(w);
+      totalWeight += w;
+    }
+    let r = Math.random() * totalWeight;
+    let pickIdx = 0;
+    for (let i = 0; i < topN; i++) {
+      r -= weights[i];
+      if (r <= 0) { pickIdx = i; break; }
+    }
+    const pick = candidates[pickIdx];
+
     hs._botHideSpot = { tx: pick.tx, ty: pick.ty };
 
     // BFS from bot's current tile to the hiding spot
@@ -293,6 +389,14 @@ window.HideSeekSystem = {
     }
     hs._botPathIdx = 0;
     hs._botTarget = { tx: pick.tx, ty: pick.ty };
+
+    // If path failed, retry with a different candidate (up to 3 retries)
+    if (!hs._botPath && hs._hiderRetries < 3) {
+      hs._hiderRetries++;
+      // Remove failed candidate and try again
+      candidates.splice(pickIdx, 1);
+      this._pickHiderSpot();
+    }
   },
 
 
@@ -303,50 +407,66 @@ window.HideSeekSystem = {
     const hs = HideSeekState;
     if (!level) return;
 
-    // Pre-defined room centers based on the hide_01 map layout
-    // These are guaranteed-walkable locations in each room
+    // Pre-defined room centers based on the new organic hide_01 map layout
+    // These cover all rooms, alcoves, and key corridor intersections
     const roomCenters = [
-      // Start from hider spawn area (bottom-right) and spiral inward
-      { tx: 53, ty: 39 }, // Room G — hider spawn
-      { tx: 54, ty: 31 }, // Room H
-      { tx: 54, ty: 21 }, // Room J — mid-right
-      { tx: 49, ty: 5 },  // Room C — top-right
-      { tx: 54, ty: 12 }, // Room D
-      { tx: 38, ty: 5 },  // Room L — top-center-right
-      { tx: 21, ty: 5 },  // Room K — top-center-left
-      { tx: 5, ty: 5 },   // Room A — seeker spawn (but hider might loop back)
-      { tx: 5, ty: 12 },  // Room B
-      { tx: 5, ty: 21 },  // Room I — mid-left
-      { tx: 5, ty: 31 },  // Room F
-      { tx: 5, ty: 39 },  // Room E — bottom-left
-      { tx: 21, ty: 40 }, // Room M — bottom-center-left
-      { tx: 38, ty: 40 }, // Room N — bottom-center-right
-      // Inner rooms near hub
-      { tx: 20, ty: 18 }, // Room O
-      { tx: 40, ty: 18 }, // Room P
-      { tx: 20, ty: 26 }, // Room Q
-      { tx: 40, ty: 26 }, // Room R
-      { tx: 30, ty: 22 }, // Central hub
-      // Alcoves (prime hiding spots)
-      { tx: 12, ty: 3 },  // top-left alcove
-      { tx: 47, ty: 3 },  // top-right alcove
-      { tx: 12, ty: 41 }, // bottom-left alcove
-      { tx: 47, ty: 41 }, // bottom-right alcove
-      { tx: 30, ty: 11 }, // center-top alcove
-      { tx: 30, ty: 33 }, // center-bottom alcove
-      // Extra rooms
-      { tx: 29, ty: 3 },  // Room S
-      { tx: 44, ty: 4 },  // Room T
-      { tx: 29, ty: 41 }, // Room U
-      { tx: 44, ty: 40 }, // Room V
-      { tx: 12, ty: 18 }, // Room X
-      { tx: 47, ty: 18 }, // Room Z
-      { tx: 12, ty: 29 }, // Room AA
-      { tx: 47, ty: 29 }, // Room BB
-      { tx: 24, ty: 11 }, // Room CC
-      { tx: 34, ty: 11 }, // Room DD
-      { tx: 24, ty: 33 }, // Room EE
-      { tx: 34, ty: 33 }, // Room FF
+      // Northwest wing
+      { tx: 7, ty: 6 },   // R1: seeker spawn
+      { tx: 5, ty: 14 },  // R2: side room
+      { tx: 17, ty: 4 },  // R3: upper room
+      { tx: 16, ty: 12 }, // R4: connector room
+      { tx: 3, ty: 20 },  // A1: NW alcove
+
+      // North corridor & rooms
+      { tx: 25, ty: 3 },  // R5: top nook
+      { tx: 36, ty: 4 },  // R6: offset room
+      { tx: 47, ty: 4 },  // R7: NE corner room
+      { tx: 55, ty: 7 },  // R8: NE extension
+      { tx: 61, ty: 6 },  // A2: NE dead-end
+      { tx: 55, ty: 14 }, // R9: south of R8
+      { tx: 42, ty: 11 }, // A9: nook
+
+      // Central maze
+      { tx: 27, ty: 15 }, // R10: central-north
+      { tx: 37, ty: 14 }, // R11: central-NE
+      { tx: 24, ty: 22 }, // R12: left-center
+      { tx: 39, ty: 22 }, // R13: right-center
+      { tx: 31, ty: 21 }, // R14: center hub
+      { tx: 46, ty: 16 }, // R32: connector
+
+      // West wing
+      { tx: 5, ty: 27 },  // R15: mid-west
+      { tx: 12, ty: 24 }, // R16: inner-west
+      { tx: 3, ty: 33 },  // A3: west closet
+      { tx: 11, ty: 31 }, // A10: inner-west nook
+
+      // Southwest sprawl
+      { tx: 5, ty: 39 },  // R17: SW room
+      { tx: 14, ty: 37 }, // R18: adjacent
+      { tx: 4, ty: 46 },  // R19: deep SW
+      { tx: 10, ty: 47 }, // A4: SW closet
+      { tx: 17, ty: 44 }, // R30: hidden south
+
+      // South corridor & rooms
+      { tx: 24, ty: 32 }, // R20: south-center-left
+      { tx: 33, ty: 32 }, // R21: south-center-right
+      { tx: 27, ty: 43 }, // R22: lower-center
+      { tx: 25, ty: 49 }, // A5: bottom nook
+      { tx: 35, ty: 40 }, // R31: south-mid
+
+      // Southeast wing (hider spawn)
+      { tx: 43, ty: 30 }, // R23: SE mid
+      { tx: 47, ty: 38 }, // R24: SE room
+      { tx: 55, ty: 37 }, // R25: deep east
+      { tx: 57, ty: 45 }, // R26: hider spawn
+      { tx: 63, ty: 44 }, // A6: east closet
+      { tx: 55, ty: 51 }, // A7: south closet
+
+      // East corridor
+      { tx: 49, ty: 21 }, // R27: mid-east
+      { tx: 57, ty: 23 }, // R28: far-east
+      { tx: 63, ty: 23 }, // A8: far-east closet
+      { tx: 48, ty: 28 }, // R29: east-south connector
     ];
 
     // Validate — only keep walkable waypoints
@@ -391,6 +511,24 @@ window.HideSeekSystem = {
 
     // ---- Hider bot during hide phase: walk to hide spot ----
     if (hs.botRole === 'hider' && hs.phase === 'hide') {
+      // Stuck detection: if bot hasn't moved >2px in 60 frames, re-pick a spot
+      const hdxL = bot.x - (hs._botLastX || bot.x);
+      const hdyL = bot.y - (hs._botLastY || bot.y);
+      if (Math.abs(hdxL) < 2 && Math.abs(hdyL) < 2) {
+        hs._botStuckTimer = (hs._botStuckTimer || 0) + 1;
+      } else {
+        hs._botStuckTimer = 0;
+      }
+      hs._botLastX = bot.x;
+      hs._botLastY = bot.y;
+
+      // If stuck 60+ frames and we have candidates, re-pick a new hiding spot
+      if (hs._botStuckTimer > 60 && hs._hiderRetries < 5) {
+        hs._hiderRetries++;
+        hs._botStuckTimer = 0;
+        this._pickHiderSpot();
+      }
+
       this._moveBotAlongPath(bot);
       return;
     }

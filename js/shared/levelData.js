@@ -997,157 +997,235 @@ const LEVELS = {
   // Small rooms along the perimeter, a central hub, and 2-wide corridors linking everything.
   // Good hiding spots in corners/dead-ends, easy traversal for seekers through the middle.
   hide_01: (function() {
-    const W = 60, H = 45;
+    // ===== ORGANIC IRREGULAR MAP — not a rectangle! =====
+    // The playable area forms an irregular shape with wings and extensions.
+    // Many rooms are staggered, not on a grid. Corridors twist and turn.
+    const W = 80, H = 60;
     const g = [];
-    // Init all walls
     for (let y = 0; y < H; y++) { g[y] = []; for (let x = 0; x < W; x++) g[y][x] = 1; }
 
-    // Helper: carve a rectangular room (inclusive coords)
     function room(x1, y1, x2, y2) {
       for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) {
         if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 0;
       }
     }
-    // Helper: carve a 2-wide horizontal corridor from x1 to x2 at rows y, y+1
     function hCorridor(x1, x2, y) {
       const lo = Math.min(x1,x2), hi = Math.max(x1,x2);
       for (let x = lo; x <= hi; x++) { if(y>0&&y<H-1) g[y][x]=0; if(y+1>0&&y+1<H-1) g[y+1][x]=0; }
     }
-    // Helper: carve a 2-wide vertical corridor from y1 to y2 at cols x, x+1
     function vCorridor(y1, y2, x) {
       const lo = Math.min(y1,y2), hi = Math.max(y1,y2);
       for (let y = lo; y <= hi; y++) { if(x>0&&x<W-1) g[y][x]=0; if(x+1>0&&x+1<W-1) g[y][x+1]=0; }
     }
+    // Pillar: set a 2x2 block solid
+    function pillar(px, py) {
+      g[py][px]=1; g[py][px+1]=1; g[py+1][px]=1; g[py+1][px+1]=1;
+    }
 
-    // ===== CENTRAL HUB (large open area in the middle) =====
-    room(25, 18, 34, 26); // 10x9 central room
+    // ========================================
+    //  NORTHWEST WING (seeker spawn area)
+    // ========================================
+    room(2, 2, 12, 10);       // R1: Seeker spawn (11x9)
+    pillar(6, 5);              // cover pillar
+    room(2, 12, 8, 17);       // R2: side room (7x6)
+    vCorridor(10, 12, 5);     // R1→R2
 
-    // ===== MAIN CROSS CORRIDORS (connect hub to all edges) =====
-    // Horizontal main corridor through the center
-    hCorridor(1, 58, 21);  // full width at y=21,22
-    // Vertical main corridor through the center
-    vCorridor(1, 43, 29);  // full height at x=29,30
+    room(14, 2, 21, 7);       // R3: upper room (8x6)
+    hCorridor(12, 14, 4);     // R1→R3
 
-    // ===== OUTER RING CORRIDORS =====
-    // Top horizontal corridor
-    hCorridor(3, 56, 5);    // y=5,6
-    // Bottom horizontal corridor
-    hCorridor(3, 56, 38);   // y=38,39
-    // Left vertical corridor
-    vCorridor(3, 41, 5);    // x=5,6
-    // Right vertical corridor
-    vCorridor(3, 41, 53);   // x=53,54
+    room(14, 10, 19, 15);     // R4: connector room (6x6)
+    hCorridor(12, 14, 11);    // R1→R4
+    vCorridor(7, 10, 16);     // R3→R4
 
-    // ===== CONNECTING CORRIDORS (outer ring to center) =====
-    // Top-left to center
-    vCorridor(6, 21, 14);   // x=14,15 vertical
-    // Top-right to center
-    vCorridor(6, 21, 44);   // x=44,45 vertical
-    // Bottom-left to center
-    vCorridor(22, 38, 14);  // x=14,15 vertical
-    // Bottom-right to center
-    vCorridor(22, 38, 44);  // x=44,45 vertical
-    // Mid cross connectors
-    hCorridor(6, 29, 13);   // y=13,14 — left mid
-    hCorridor(30, 53, 13);  // y=13,14 — right mid
-    hCorridor(6, 29, 31);   // y=31,32 — left mid lower
-    hCorridor(30, 53, 31);  // y=31,32 — right mid lower
+    // Alcove off R2 (dead-end closet)
+    room(2, 19, 4, 21);       // A1: 3x3 closet
+    vCorridor(17, 19, 3);     // door
 
-    // ===== PERIMETER ROOMS (outer rooms for hiding) =====
+    // ========================================
+    //  NORTH CORRIDOR (twisting connection)
+    // ========================================
+    hCorridor(19, 30, 5);     // across top
+    room(23, 2, 28, 4);       // R5: small nook off top corridor
+    vCorridor(4, 5, 25);      // door to R5
 
-    // TOP-LEFT room cluster
-    room(2, 2, 10, 8);      // Room A (9x7) — seeker spawn area
-    room(2, 10, 8, 14);     // Room B (7x5)
+    hCorridor(30, 38, 8);     // jog down
+    vCorridor(5, 8, 30);      // connects the two horizontal corridors
 
-    // TOP-RIGHT room cluster
-    room(48, 2, 57, 8);     // Room C (10x7)
-    room(50, 10, 57, 14);   // Room D (8x5)
+    room(33, 2, 39, 6);       // R6: offset room (7x5)
+    vCorridor(6, 8, 35);      // R6→corridor
 
-    // BOTTOM-LEFT room cluster
-    room(2, 35, 10, 42);    // Room E (9x8)
-    room(2, 28, 8, 33);     // Room F (7x6)
+    // ========================================
+    //  NORTHEAST EXTENSION (L-shaped wing)
+    // ========================================
+    hCorridor(38, 50, 8);     // continue east
+    room(44, 2, 51, 7);       // R7: corner room (8x6)
+    vCorridor(7, 8, 47);      // R7→corridor
 
-    // BOTTOM-RIGHT room cluster
-    room(48, 35, 57, 42);   // Room G (10x8) — hider spawn area
-    room(50, 28, 57, 33);   // Room H (8x6)
+    room(52, 4, 58, 10);      // R8: extension room (7x7)
+    hCorridor(51, 52, 7);     // R7→R8
 
-    // MID-LEFT rooms
-    room(2, 17, 8, 25);     // Room I (7x9)
-    // MID-RIGHT rooms
-    room(50, 17, 57, 25);   // Room J (8x9)
+    // Dead-end alcove off R8
+    room(60, 5, 62, 8);       // A2: side closet (3x4)
+    hCorridor(58, 60, 6);     // door
 
-    // TOP-CENTER rooms (small hiding rooms off the top corridor)
-    room(18, 2, 24, 7);     // Room K (7x6)
-    room(35, 2, 41, 7);     // Room L (7x6)
+    room(52, 12, 58, 17);     // R9: south of R8 (7x6)
+    vCorridor(10, 12, 54);    // R8→R9
+    pillar(55, 14);            // cover
 
-    // BOTTOM-CENTER rooms (small hiding rooms off the bottom corridor)
-    room(18, 37, 24, 42);   // Room M (7x6)
-    room(35, 37, 41, 42);   // Room N (7x6)
+    // ========================================
+    //  CENTRAL MAZE (irregular intersections)
+    // ========================================
+    // NOT a clean open hub — maze-like corridors through the middle
+    room(24, 12, 31, 18);     // R10: central-north room (8x7)
+    vCorridor(5, 12, 26);     // north corridor→R10
+    hCorridor(19, 24, 13);    // R4→R10
 
-    // ===== INNER ROOMS (near the hub for tactical play) =====
-    room(17, 16, 22, 20);   // Room O (6x5) — left of hub
-    room(37, 16, 42, 20);   // Room P (6x5) — right of hub
-    room(17, 24, 22, 28);   // Room Q (6x5) — left-below hub
-    room(37, 24, 42, 28);   // Room R (6x5) — right-below hub
+    room(34, 12, 40, 17);     // R11: central-north-east (7x6)
+    hCorridor(31, 34, 14);    // R10→R11
+    hCorridor(40, 44, 14);    // R11→east corridor
+    vCorridor(8, 12, 37);     // north corridor→R11
 
-    // ===== HIDDEN ALCOVES (1-entrance dead-ends, prime hiding spots) =====
-    // Top-left alcove
-    room(11, 2, 13, 4);     // 3x3
-    vCorridor(4, 5, 12);    // door
-    // Top-right alcove
-    room(46, 2, 48, 4);     // 3x3
-    vCorridor(4, 5, 47);    // door
-    // Bottom-left alcove
-    room(11, 40, 13, 42);   // 3x3
-    vCorridor(38, 40, 12);  // door
-    // Bottom-right alcove
-    room(46, 40, 48, 42);   // 3x3
-    vCorridor(38, 40, 47);  // door
-    // Center-top alcove
-    room(28, 10, 31, 12);   // 4x3 above hub
-    vCorridor(12, 18, 29);  // already part of main corridor
-    // Center-bottom alcove
-    room(28, 32, 31, 34);   // 4x3 below hub
-    vCorridor(26, 32, 29);  // already part of main corridor
+    // Central cross corridors (NOT straight — staggered)
+    vCorridor(18, 25, 27);    // R10 south, offset left
+    vCorridor(18, 25, 36);    // R11 south, offset right
+    hCorridor(22, 38, 22);    // horizontal through center
 
-    // ===== EXTRA ROOMS (more areas to explore and hide in) =====
-    // Side storage rooms along top corridor
-    room(27, 2, 31, 4);     // Room S — top-center small
-    room(42, 2, 46, 6);     // Room T — top-right-mid (6x5)
-    // Side storage rooms along bottom corridor
-    room(27, 40, 31, 42);   // Room U — bottom-center small
-    room(42, 37, 46, 42);   // Room V — bottom-right-mid (5x6)
-    // Extra side rooms on left wall
-    room(2, 15, 5, 16);     // Room W — left narrow closet
-    room(10, 16, 13, 19);   // Room X — inner-left room (4x4)
-    hCorridor(6, 10, 17);   // connect X to left corridor
-    // Extra side rooms on right wall
-    room(55, 15, 57, 16);   // Room Y — right narrow closet
-    room(46, 16, 49, 19);   // Room Z — inner-right room (4x4)
-    hCorridor(49, 53, 17);  // connect Z to right corridor
-    // Extra rooms between outer and inner rings
-    room(10, 28, 13, 30);   // Room AA — mid-left pocket
-    hCorridor(6, 10, 29);   // connect AA
-    room(46, 28, 49, 30);   // Room BB — mid-right pocket
-    hCorridor(49, 53, 29);  // connect BB
-    // Small nook rooms along mid-corridors
-    room(22, 10, 25, 12);   // Room CC — left of center-top alcove
-    room(33, 10, 36, 12);   // Room DD — right of center-top alcove
-    room(22, 32, 25, 34);   // Room EE — left of center-bottom alcove
-    room(33, 32, 36, 34);   // Room FF — right of center-bottom alcove
+    room(22, 20, 26, 25);     // R12: left-center (5x6)
+    room(37, 20, 42, 25);     // R13: right-center (6x6)
+    pillar(39, 22);            // cover in R13
 
-    // ===== OBSTACLES INSIDE LARGE ROOMS (force navigation, create cover) =====
-    // Central hub pillars (2x2 blocks)
-    room(27, 20, 28, 21); g[20][27]=1; g[20][28]=1; g[21][27]=1; g[21][28]=1;
-    room(31, 20, 32, 21); g[20][31]=1; g[20][32]=1; g[21][31]=1; g[21][32]=1;
-    room(27, 23, 28, 24); g[23][27]=1; g[23][28]=1; g[24][27]=1; g[24][28]=1;
-    room(31, 23, 32, 24); g[23][31]=1; g[23][32]=1; g[24][31]=1; g[24][32]=1;
-    // Pillar in Room A (seeker spawn)
-    g[5][6]=1; g[5][7]=1; g[6][6]=1; g[6][7]=1;
-    // Pillar in Room G (hider spawn)
-    g[38][52]=1; g[38][53]=1; g[39][52]=1; g[39][53]=1;
+    room(29, 19, 34, 24);     // R14: center hub (6x6) — small, maze-like
+    pillar(31, 21);            // hub pillar
 
-    // ===== Ensure borders are always walls =====
+    // ========================================
+    //  WEST WING (extends south from NW)
+    // ========================================
+    vCorridor(17, 28, 5);     // left corridor going south
+    room(2, 24, 8, 30);       // R15: mid-west room (7x7)
+    hCorridor(6, 8, 25);      // corridor→R15 (already overlaps)
+    pillar(4, 27);
+
+    room(10, 22, 15, 27);     // R16: inner-west room (6x6)
+    hCorridor(8, 10, 24);     // R15→R16
+    vCorridor(18, 22, 12);    // R4 area→R16
+
+    // Alcove off R15 (dead-end)
+    room(2, 32, 4, 34);       // A3: west closet (3x3)
+    vCorridor(30, 32, 3);     // door
+
+    // ========================================
+    //  SOUTHWEST SPRAWL (irregular extension)
+    // ========================================
+    vCorridor(28, 38, 5);     // continue south
+    room(2, 36, 9, 42);       // R17: SW room (8x7)
+    hCorridor(5, 8, 37);      // corridor overlaps
+
+    room(11, 35, 17, 40);     // R18: adjacent (7x6)
+    hCorridor(9, 11, 37);     // R17→R18
+
+    room(2, 44, 7, 49);       // R19: deep SW room (6x6)
+    vCorridor(42, 44, 4);     // R17→R19
+    pillar(4, 46);
+
+    // Dead-end off R19
+    room(9, 46, 11, 49);      // A4: closet (3x4)
+    hCorridor(7, 9, 47);      // door
+
+    // ========================================
+    //  SOUTH CORRIDOR (winding path)
+    // ========================================
+    hCorridor(17, 28, 37);    // south main corridor
+    vCorridor(27, 37, 20);    // R12→south
+
+    room(22, 30, 27, 35);     // R20: south-center-left (6x6)
+    vCorridor(25, 30, 24);    // R12→R20
+    hCorridor(17, 22, 32);    // R18→R20 area
+
+    room(30, 30, 36, 35);     // R21: south-center-right (7x6)
+    hCorridor(27, 30, 32);    // R20→R21
+    vCorridor(24, 30, 33);    // R14→R21
+
+    room(24, 40, 31, 46);     // R22: lower-center room (8x7)
+    vCorridor(37, 40, 26);    // south corridor→R22
+    pillar(27, 43);
+
+    // Alcove off R22
+    room(24, 48, 27, 50);     // A5: bottom nook (4x3)
+    vCorridor(46, 48, 25);    // door
+
+    // ========================================
+    //  SOUTHEAST WING (hider spawn, deep)
+    // ========================================
+    hCorridor(36, 48, 32);    // east corridor at mid-south
+    vCorridor(25, 32, 42);    // R13→south-east corridor
+
+    room(40, 28, 47, 33);     // R23: SE mid room (8x6)
+    pillar(43, 30);
+
+    room(44, 35, 51, 41);     // R24: SE room (8x7)
+    vCorridor(33, 35, 47);    // R23→R24
+    hCorridor(48, 54, 37);    // R24→east
+
+    room(52, 34, 58, 40);     // R25: deep east room (7x7)
+    pillar(55, 37);
+
+    room(54, 42, 60, 48);     // R26: HIDER SPAWN (7x7)
+    vCorridor(40, 42, 56);    // R25→R26
+    pillar(57, 45);
+
+    // Dead-end alcoves near hider spawn
+    room(62, 43, 64, 46);     // A6: east closet (3x4)
+    hCorridor(60, 62, 44);    // door
+
+    room(54, 50, 57, 53);     // A7: south closet (4x4)
+    vCorridor(48, 50, 55);    // door
+
+    // ========================================
+    //  EAST CORRIDOR (connecting NE to SE)
+    // ========================================
+    vCorridor(17, 28, 50);    // east spine
+    room(46, 19, 52, 24);     // R27: mid-east room (7x6)
+    hCorridor(42, 46, 21);    // R13→R27
+    pillar(49, 21);
+
+    room(55, 20, 60, 26);     // R28: far-east room (6x7)
+    hCorridor(52, 55, 22);    // R27→R28
+
+    // Dead-end off R28
+    room(62, 22, 64, 25);     // A8: far-east closet (3x4)
+    hCorridor(60, 62, 23);    // door
+
+    room(46, 26, 51, 30);     // R29: east-south connector (6x5)
+    vCorridor(24, 26, 48);    // R27→R29
+
+    // ========================================
+    //  ADDITIONAL NOOKS AND CRANNIES
+    // ========================================
+    // Hidden room between R18 and south corridor
+    room(15, 42, 19, 46);     // R30: hidden south room (5x5)
+    vCorridor(40, 42, 16);    // R18→R30
+
+    // Extra room north of R22
+    room(33, 38, 38, 42);     // R31: south-mid room (6x5)
+    hCorridor(31, 33, 40);    // R22→R31
+    vCorridor(35, 38, 35);    // R21→R31
+
+    // Small nook off central-north
+    room(41, 10, 44, 12);     // A9: nook (4x3)
+    vCorridor(8, 10, 42);     // corridor→A9 (off north corridor)
+
+    // Room between NE and east corridor
+    room(44, 14, 49, 18);     // R32: connector room (6x5)
+    hCorridor(40, 44, 15);    // R11→R32
+    vCorridor(18, 19, 47);    // R32→east corridor
+
+    // Extra alcove off west wing
+    room(10, 30, 13, 33);     // A10: inner-west nook (4x4)
+    hCorridor(8, 10, 31);     // R15→A10
+
+    // ========================================
+    //  ENSURE BORDERS ARE WALLS
+    // ========================================
     for (let x = 0; x < W; x++) { g[0][x] = 1; g[H-1][x] = 1; }
     for (let y = 0; y < H; y++) { g[y][0] = 1; g[y][W-1] = 1; }
 
@@ -1158,7 +1236,7 @@ const LEVELS = {
       widthTiles: W,
       heightTiles: H,
       isHideSeek: true,
-      spawns: { seeker: { tx: 5, ty: 5 }, hider: { tx: 53, ty: 39 }, p1: { tx: 5, ty: 5 } },
+      spawns: { seeker: { tx: 6, ty: 6 }, hider: { tx: 57, ty: 45 }, p1: { tx: 6, ty: 6 } },
       collisionAscii: ascii,
       entities: []
     };

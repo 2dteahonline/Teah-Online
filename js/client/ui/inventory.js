@@ -2473,14 +2473,18 @@ function update() {
         }
       }
     }
-    // Hotbar slot keys (1/2/3)
+    // Hotbar slot keys (1/2/3) — blocked during hide & seek (only Seeking Baton allowed)
     if (InputIntent.slot1Pressed || InputIntent.slot2Pressed || InputIntent.slot3Pressed) {
-      const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : 2;
-      if (hotbarSlots[slot].type !== "empty") {
-        if (hotbarSlots[slot].type === "potion") {
-          usePotion();
-        } else {
-          activeSlot = slot;
+      if (typeof Scene !== 'undefined' && Scene.inHideSeek) {
+        // In Hide & Seek: ignore slot switching, stay on melee
+      } else {
+        const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : 2;
+        if (hotbarSlots[slot].type !== "empty") {
+          if (hotbarSlots[slot].type === "potion") {
+            usePotion();
+          } else {
+            activeSlot = slot;
+          }
         }
       }
     }
