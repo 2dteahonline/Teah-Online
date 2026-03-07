@@ -1233,7 +1233,7 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (6 total)
+    //  ROOMS (7 total)
     // ========================================
 
     // === CAFETERIA (top center — 28×26, 30% taller) ===
@@ -1247,6 +1247,9 @@ const LEVELS = {
 
     // === SECURITY (right of cross — 12×10) ===
     room(24, 30, 35, 39);
+
+    // === MEDBAY (center — 12×10) ===
+    room(28, 18, 39, 27);
 
     // === LOWER ENGINE (lower left — 20×14) ===
     room(4, 52, 23, 65);
@@ -1277,6 +1280,9 @@ const LEVELS = {
     // --- Top wing (5 tall) ---
     room(23, 8, 57, 12);      // UE → Cafe (33 blocks: x=24-56)
     room(84, 9, 95, 13);      // Cafe → Weapons (10 blocks: x=85-94)
+
+    // --- MedBay connector (5 wide, drops from UE→Cafe corridor) ---
+    room(30, 12, 34, 18);     // Corridor → MedBay (x=30-34, y=13-17)
 
     // --- Vertical spine: UE ↓ LE (5 wide, center of engines) ---
     room(14, 17, 18, 52);     // Main spine (x=14-18)
