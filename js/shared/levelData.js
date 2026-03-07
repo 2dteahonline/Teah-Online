@@ -1233,7 +1233,7 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (7 total)
+    //  ROOMS (8 total)
     // ========================================
 
     // === CAFETERIA (top center — 28×26, 30% taller) ===
@@ -1250,6 +1250,9 @@ const LEVELS = {
 
     // === MEDBAY (center-right — 12×10) ===
     room(38, 18, 49, 27);
+
+    // === STORAGE (bottom center — 24×16, bigger than normal) ===
+    room(58, 53, 81, 68);
 
     // === LOWER ENGINE (lower left — 20×14) ===
     room(4, 52, 23, 65);
@@ -1290,6 +1293,9 @@ const LEVELS = {
     // --- Cross branches (5 tall, 5 blocks each) ---
     room(8, 32, 14, 36);      // LEFT: spine → Reactor (5 blocks: x=9-13)
     room(18, 32, 24, 36);     // RIGHT: spine → Security (5 blocks: x=19-23)
+
+    // --- Cafe ↓ Storage (5 wide, 25 blocks down from Cafe bottom) ---
+    room(68, 28, 72, 53);     // Cafe bottom → Storage (x=68-72, y=29-52)
 
     // ========================================
     //  BORDERS
