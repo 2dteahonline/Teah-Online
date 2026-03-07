@@ -7,7 +7,7 @@ const HIDESEEK = {
   SEEK_TIME:       3600,   // 60s @ 60fps — seeker moves, hider frozen
   POST_MATCH_TIME: 600,    // 10s @ 60fps — results screen before auto-return
   TAG_RANGE:       90,     // px — matches default melee.range
-  FOV_RADIUS:      3,      // tiles — seeker's visible circle during seek phase
+  FOV_RADIUS:      4.5,    // tiles — seeker's visible circle during seek phase (50% larger)
   MAP_ID:          'hide_01',
   BOT_SPEED:       6.25,   // matches PLAYER_BASE_SPEED
   BOT_DETECT_RANGE: 3,     // tiles — seeker bot detects hider within this range

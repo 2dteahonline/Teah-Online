@@ -76,7 +76,7 @@ const PORTAL_SCENES = {
   house_entrance: 'lobby',  house_exit: 'farm',
   azurine_entrance: 'lobby', azurine_exit: 'azurine',
   gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
-  hideseek_entrance: 'lobby', hideseek_exit: 'hideseek',
+  hideseek_entrance: 'lobby',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)

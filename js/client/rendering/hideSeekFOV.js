@@ -12,9 +12,20 @@ let _lastHideSeekPhase = '';
 function drawHideSeekFOV() {
   if (typeof Scene === 'undefined' || typeof HideSeekState === 'undefined') return;
   if (!Scene.inHideSeek) return;
-  if (HideSeekState.phase !== 'seek') return;
   if (HideSeekState.playerRole !== 'seeker') return;
   if (typeof ctx === 'undefined' || typeof player === 'undefined' || typeof camera === 'undefined') return;
+
+  // --- Hide phase: seeker is completely blind (full black screen) ---
+  if (HideSeekState.phase === 'hide') {
+    ctx.save();
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.restore();
+    return;
+  }
+
+  // --- Seek phase: FOV circle cutout ---
+  if (HideSeekState.phase !== 'seek') return;
 
   const px = (player.x - camera.x) * WORLD_ZOOM;
   const py = (player.y - camera.y) * WORLD_ZOOM;
@@ -45,10 +56,10 @@ function drawHideSeekFOV() {
 // 2. Minimap — shown to seeker during hide phase (top-right)
 // ─────────────────────────────────────────────────────────────────
 function drawHideSeekMinimap() {
+  // Minimap removed during hide phase — seeker is now fully blind
   if (typeof Scene === 'undefined' || typeof HideSeekState === 'undefined') return;
   if (!Scene.inHideSeek) return;
-  if (HideSeekState.phase !== 'hide') return;
-  if (HideSeekState.playerRole !== 'seeker') return;
+  return; // disabled — seeker sees nothing during hide phase
   if (typeof ctx === 'undefined' || typeof level === 'undefined') return;
 
   const mmW = 240;

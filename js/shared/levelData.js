@@ -993,107 +993,144 @@ const LEVELS = {
   },
 
   // ===================== HIDE & SEEK ARENA =====================
+  // Room-based layout: outer rooms connected to central corridors.
+  // Small rooms along the perimeter, a central hub, and 2-wide corridors linking everything.
+  // Good hiding spots in corners/dead-ends, easy traversal for seekers through the middle.
   hide_01: (function() {
-    // Generate 60x45 maze programmatically using iterative backtracker
     const W = 60, H = 45;
-    const grid = [];
+    const g = [];
     // Init all walls
-    for (let y = 0; y < H; y++) {
-      grid[y] = [];
-      for (let x = 0; x < W; x++) {
-        grid[y][x] = 1; // wall
+    for (let y = 0; y < H; y++) { g[y] = []; for (let x = 0; x < W; x++) g[y][x] = 1; }
+
+    // Helper: carve a rectangular room (inclusive coords)
+    function room(x1, y1, x2, y2) {
+      for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) {
+        if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 0;
       }
     }
-
-    // Iterative recursive backtracker (avoids stack overflow at 60x45)
-    (function carveIterative(startX, startY) {
-      const stack = [{ cx: startX, cy: startY }];
-      grid[startY][startX] = 0;
-      while (stack.length > 0) {
-        const { cx, cy } = stack[stack.length - 1];
-        const dirs = [[0,-2],[0,2],[-2,0],[2,0]];
-        // Shuffle directions
-        for (let i = dirs.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
-        }
-        let carved = false;
-        for (const [dx, dy] of dirs) {
-          const nx = cx + dx, ny = cy + dy;
-          if (nx >= 1 && nx < W - 1 && ny >= 1 && ny < H - 1 && grid[ny][nx] === 1) {
-            grid[cy + dy / 2][cx + dx / 2] = 0; // remove wall between
-            grid[ny][nx] = 0;
-            stack.push({ cx: nx, cy: ny });
-            carved = true;
-            break; // restart from new cell
-          }
-        }
-        if (!carved) {
-          stack.pop(); // backtrack
-        }
-      }
-    })(1, 1);
-
-    // Widen corridors — for each floor cell, also clear some adjacent walls
-    // to make 2-wide corridors (prevents getting stuck with 48px characters)
-    const copy = grid.map(r => [...r]);
-    for (let y = 1; y < H - 1; y++) {
-      for (let x = 1; x < W - 1; x++) {
-        if (copy[y][x] === 0) {
-          // Clear right neighbor if it connects to another floor
-          if (x + 1 < W - 1 && copy[y][x + 1] === 1) {
-            if ((x + 2 < W && copy[y][x + 2] === 0) ||
-                (y > 0 && copy[y - 1][x + 1] === 0) ||
-                (y + 1 < H && copy[y + 1][x + 1] === 0)) {
-              grid[y][x + 1] = 0;
-            }
-          }
-          // Clear down neighbor if it connects to another floor
-          if (y + 1 < H - 1 && copy[y + 1][x] === 1) {
-            if ((y + 2 < H && copy[y + 2][x] === 0) ||
-                (x > 0 && copy[y + 1][x - 1] === 0) ||
-                (x + 1 < W && copy[y + 1][x + 1] === 0)) {
-              grid[y + 1][x] = 0;
-            }
-          }
-        }
-      }
+    // Helper: carve a 2-wide horizontal corridor from x1 to x2 at rows y, y+1
+    function hCorridor(x1, x2, y) {
+      const lo = Math.min(x1,x2), hi = Math.max(x1,x2);
+      for (let x = lo; x <= hi; x++) { if(y>0&&y<H-1) g[y][x]=0; if(y+1>0&&y+1<H-1) g[y+1][x]=0; }
+    }
+    // Helper: carve a 2-wide vertical corridor from y1 to y2 at cols x, x+1
+    function vCorridor(y1, y2, x) {
+      const lo = Math.min(y1,y2), hi = Math.max(y1,y2);
+      for (let y = lo; y <= hi; y++) { if(x>0&&x<W-1) g[y][x]=0; if(x+1>0&&x+1<W-1) g[y][x+1]=0; }
     }
 
-    // Clear spawn areas (7x7 open zones near each corner)
-    for (let y = 2; y <= 8; y++) for (let x = 2; x <= 8; x++) grid[y][x] = 0;
-    for (let y = 36; y <= 42; y++) for (let x = 51; x <= 57; x++) grid[y][x] = 0;
+    // ===== CENTRAL HUB (large open area in the middle) =====
+    room(25, 18, 34, 26); // 10x9 central room
 
-    // Clear a center room (8x7)
-    for (let y = 19; y <= 25; y++) for (let x = 26; x <= 33; x++) grid[y][x] = 0;
+    // ===== MAIN CROSS CORRIDORS (connect hub to all edges) =====
+    // Horizontal main corridor through the center
+    hCorridor(1, 58, 21);  // full width at y=21,22
+    // Vertical main corridor through the center
+    vCorridor(1, 43, 29);  // full height at x=29,30
 
-    // Add extra dead-end pockets (good hiding spots)
-    // Top-right pocket
-    for (let y = 3; y <= 5; y++) for (let x = 50; x <= 53; x++) grid[y][x] = 0;
-    // Bottom-left pocket
-    for (let y = 38; y <= 40; y++) for (let x = 5; x <= 8; x++) grid[y][x] = 0;
-    // Mid-left alcove
-    for (let y = 20; y <= 22; y++) for (let x = 3; x <= 5; x++) grid[y][x] = 0;
-    // Mid-right alcove
-    for (let y = 20; y <= 22; y++) for (let x = 54; x <= 56; x++) grid[y][x] = 0;
+    // ===== OUTER RING CORRIDORS =====
+    // Top horizontal corridor
+    hCorridor(3, 56, 5);    // y=5,6
+    // Bottom horizontal corridor
+    hCorridor(3, 56, 38);   // y=38,39
+    // Left vertical corridor
+    vCorridor(3, 41, 5);    // x=5,6
+    // Right vertical corridor
+    vCorridor(3, 41, 53);   // x=53,54
 
-    // Ensure borders are always walls
-    for (let x = 0; x < W; x++) { grid[0][x] = 1; grid[H - 1][x] = 1; }
-    for (let y = 0; y < H; y++) { grid[y][0] = 1; grid[y][W - 1] = 1; }
+    // ===== CONNECTING CORRIDORS (outer ring to center) =====
+    // Top-left to center
+    vCorridor(6, 21, 14);   // x=14,15 vertical
+    // Top-right to center
+    vCorridor(6, 21, 44);   // x=44,45 vertical
+    // Bottom-left to center
+    vCorridor(22, 38, 14);  // x=14,15 vertical
+    // Bottom-right to center
+    vCorridor(22, 38, 44);  // x=44,45 vertical
+    // Mid cross connectors
+    hCorridor(6, 29, 13);   // y=13,14 — left mid
+    hCorridor(30, 53, 13);  // y=13,14 — right mid
+    hCorridor(6, 29, 31);   // y=31,32 — left mid lower
+    hCorridor(30, 53, 31);  // y=31,32 — right mid lower
 
-    // Convert to ASCII strings
-    const ascii = grid.map(row => row.map(v => v ? '#' : '.').join(''));
+    // ===== PERIMETER ROOMS (outer rooms for hiding) =====
+
+    // TOP-LEFT room cluster
+    room(2, 2, 10, 8);      // Room A (9x7) — seeker spawn area
+    room(2, 10, 8, 14);     // Room B (7x5)
+
+    // TOP-RIGHT room cluster
+    room(48, 2, 57, 8);     // Room C (10x7)
+    room(50, 10, 57, 14);   // Room D (8x5)
+
+    // BOTTOM-LEFT room cluster
+    room(2, 35, 10, 42);    // Room E (9x8)
+    room(2, 28, 8, 33);     // Room F (7x6)
+
+    // BOTTOM-RIGHT room cluster
+    room(48, 35, 57, 42);   // Room G (10x8) — hider spawn area
+    room(50, 28, 57, 33);   // Room H (8x6)
+
+    // MID-LEFT rooms
+    room(2, 17, 8, 25);     // Room I (7x9)
+    // MID-RIGHT rooms
+    room(50, 17, 57, 25);   // Room J (8x9)
+
+    // TOP-CENTER rooms (small hiding rooms off the top corridor)
+    room(18, 2, 24, 7);     // Room K (7x6)
+    room(35, 2, 41, 7);     // Room L (7x6)
+
+    // BOTTOM-CENTER rooms (small hiding rooms off the bottom corridor)
+    room(18, 37, 24, 42);   // Room M (7x6)
+    room(35, 37, 41, 42);   // Room N (7x6)
+
+    // ===== INNER ROOMS (near the hub for tactical play) =====
+    room(17, 16, 22, 20);   // Room O (6x5) — left of hub
+    room(37, 16, 42, 20);   // Room P (6x5) — right of hub
+    room(17, 24, 22, 28);   // Room Q (6x5) — left-below hub
+    room(37, 24, 42, 28);   // Room R (6x5) — right-below hub
+
+    // ===== HIDDEN ALCOVES (1-entrance dead-ends, prime hiding spots) =====
+    // Top-left alcove
+    room(11, 2, 13, 4);     // 3x3
+    vCorridor(4, 5, 12);    // door
+    // Top-right alcove
+    room(46, 2, 48, 4);     // 3x3
+    vCorridor(4, 5, 47);    // door
+    // Bottom-left alcove
+    room(11, 40, 13, 42);   // 3x3
+    vCorridor(38, 40, 12);  // door
+    // Bottom-right alcove
+    room(46, 40, 48, 42);   // 3x3
+    vCorridor(38, 40, 47);  // door
+    // Center-top alcove
+    room(28, 10, 31, 12);   // 4x3 above hub
+    vCorridor(12, 18, 29);  // already part of main corridor
+    // Center-bottom alcove
+    room(28, 32, 31, 34);   // 4x3 below hub
+    vCorridor(26, 32, 29);  // already part of main corridor
+
+    // ===== OBSTACLES INSIDE LARGE ROOMS (force navigation, create cover) =====
+    // Central hub pillars (2x2 blocks)
+    room(27, 20, 28, 21); g[20][27]=1; g[20][28]=1; g[21][27]=1; g[21][28]=1;
+    room(31, 20, 32, 21); g[20][31]=1; g[20][32]=1; g[21][31]=1; g[21][32]=1;
+    room(27, 23, 28, 24); g[23][27]=1; g[23][28]=1; g[24][27]=1; g[24][28]=1;
+    room(31, 23, 32, 24); g[23][31]=1; g[23][32]=1; g[24][31]=1; g[24][32]=1;
+
+    // ===== Ensure borders are always walls =====
+    for (let x = 0; x < W; x++) { g[0][x] = 1; g[H-1][x] = 1; }
+    for (let y = 0; y < H; y++) { g[y][0] = 1; g[y][W-1] = 1; }
+
+    const ascii = g.map(row => row.map(v => v ? '#' : '.').join(''));
 
     return {
       id: 'hide_01',
       widthTiles: W,
       heightTiles: H,
       isHideSeek: true,
-      spawns: { seeker: { tx: 5, ty: 5 }, hider: { tx: 54, ty: 39 }, p1: { tx: 5, ty: 5 } },
+      spawns: { seeker: { tx: 5, ty: 5 }, hider: { tx: 53, ty: 39 }, p1: { tx: 5, ty: 5 } },
       collisionAscii: ascii,
-      entities: [
-        { type: 'hideseek_exit', tx: 28, ty: 22, w: 3, h: 2, solid: false, target: 'lobby_01', spawnTX: 40, spawnTY: 10 }
-      ]
+      entities: []
     };
   })()
 };

@@ -502,8 +502,20 @@ window.addEventListener("keydown", e => {
             gold = 0;
             startTransition(dungeonReturnLevel || 'cave_01', 20, 20);
             chatMessages.push({ name: "SYSTEM", text: "Leaving dungeon...", time: Date.now() });
+          } else if (Scene.inHideSeek && typeof HideSeekSystem !== 'undefined') {
+            HideSeekSystem.endMatch();
+            chatMessages.push({ name: "SYSTEM", text: "Left Hide & Seek.", time: Date.now() });
           } else {
             chatMessages.push({ name: "SYSTEM", text: "You're not in a dungeon", time: Date.now() });
+          }
+        } else if (cmdLower === "/skip") {
+          // Debug: skip current hide & seek phase
+          if (Scene.inHideSeek && typeof HideSeekState !== 'undefined' &&
+              (HideSeekState.phase === 'hide' || HideSeekState.phase === 'seek')) {
+            HideSeekState.phaseTimer = 1;
+            chatMessages.push({ name: "SYSTEM", text: "Skipping phase...", time: Date.now() });
+          } else {
+            chatMessages.push({ name: "SYSTEM", text: "Nothing to skip", time: Date.now() });
           }
         } else if (cmdLower === "/stairs") {
           stairsOpen = true;

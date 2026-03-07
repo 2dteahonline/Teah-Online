@@ -24,6 +24,9 @@ window.HideSeekState = {
   _seekerWPIdx: 0,        // current waypoint index
   _visitedTiles: null,    // Set of "tx,ty" strings — tiles the seeker has been near
   _chasing: false,        // true when seeker bot has detected the hider
+  _botStuckTimer: 0,      // frames the bot hasn't moved (stuck detection)
+  _botLastX: 0,           // last known bot X position
+  _botLastY: 0,           // last known bot Y position
 };
 
 // ---- Default state snapshot for resets ----
@@ -44,6 +47,9 @@ const _HIDESEEK_DEFAULTS = {
   _seekerWPIdx: 0,
   _visitedTiles: null,
   _chasing: false,
+  _botStuckTimer: 0,
+  _botLastX: 0,
+  _botLastY: 0,
 };
 
 
@@ -303,39 +309,62 @@ window.HideSeekSystem = {
 
   // ===================== BOT AI — SEEKER =====================
 
-  // Initialize the seeker bot's patrol waypoints
+  // Initialize the seeker bot's patrol waypoints — room centers for systematic coverage
   _initSeekerBot() {
     const hs = HideSeekState;
     if (!level) return;
 
-    const w = level.widthTiles;
-    const h = level.heightTiles;
-    const waypoints = [];
+    // Pre-defined room centers based on the hide_01 map layout
+    // These are guaranteed-walkable locations in each room
+    const roomCenters = [
+      // Start from hider spawn area (bottom-right) and spiral inward
+      { tx: 53, ty: 39 }, // Room G — hider spawn
+      { tx: 54, ty: 31 }, // Room H
+      { tx: 54, ty: 21 }, // Room J — mid-right
+      { tx: 49, ty: 5 },  // Room C — top-right
+      { tx: 54, ty: 12 }, // Room D
+      { tx: 38, ty: 5 },  // Room L — top-center-right
+      { tx: 21, ty: 5 },  // Room K — top-center-left
+      { tx: 5, ty: 5 },   // Room A — seeker spawn (but hider might loop back)
+      { tx: 5, ty: 12 },  // Room B
+      { tx: 5, ty: 21 },  // Room I — mid-left
+      { tx: 5, ty: 31 },  // Room F
+      { tx: 5, ty: 39 },  // Room E — bottom-left
+      { tx: 21, ty: 40 }, // Room M — bottom-center-left
+      { tx: 38, ty: 40 }, // Room N — bottom-center-right
+      // Inner rooms near hub
+      { tx: 20, ty: 18 }, // Room O
+      { tx: 40, ty: 18 }, // Room P
+      { tx: 20, ty: 26 }, // Room Q
+      { tx: 40, ty: 26 }, // Room R
+      { tx: 30, ty: 22 }, // Central hub
+      // Alcoves (prime hiding spots)
+      { tx: 12, ty: 3 },  // top-left alcove
+      { tx: 47, ty: 3 },  // top-right alcove
+      { tx: 12, ty: 41 }, // bottom-left alcove
+      { tx: 47, ty: 41 }, // bottom-right alcove
+      { tx: 30, ty: 11 }, // center-top alcove
+      { tx: 30, ty: 33 }, // center-bottom alcove
+    ];
 
-    // Create a grid of waypoints every 8 tiles, only on walkable tiles
-    for (let ty = 4; ty < h - 2; ty += 8) {
-      for (let tx = 4; tx < w - 2; tx += 8) {
-        if (typeof isSolid === 'function' && !isSolid(tx, ty)) {
-          waypoints.push({ tx, ty });
-        }
-      }
-    }
+    // Validate — only keep walkable waypoints
+    const valid = roomCenters.filter(wp =>
+      typeof isSolid === 'function' && !isSolid(wp.tx, wp.ty)
+    );
 
-    // Shuffle for variety (Fisher-Yates)
-    for (let i = waypoints.length - 1; i > 0; i--) {
+    // Shuffle for variety
+    for (let i = valid.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      const tmp = waypoints[i];
-      waypoints[i] = waypoints[j];
-      waypoints[j] = tmp;
+      [valid[i], valid[j]] = [valid[j], valid[i]];
     }
 
-    // Cap at ~12 waypoints
-    if (waypoints.length > 12) waypoints.length = 12;
-
-    hs._seekerWaypoints = waypoints;
+    hs._seekerWaypoints = valid;
     hs._seekerWPIdx = 0;
     hs._visitedTiles = new Set();
     hs._chasing = false;
+    hs._botStuckTimer = 0;
+    hs._botLastX = 0;
+    hs._botLastY = 0;
   },
 
 
@@ -375,94 +404,115 @@ window.HideSeekSystem = {
   // ---- Seeker bot AI: patrol waypoints, detect hider, chase & tag ----
   _tickSeekerBot(bot) {
     const hs = HideSeekState;
-    const detectRange = HIDESEEK.BOT_DETECT_RANGE * TILE;
+    const detectRange = HIDESEEK.FOV_RADIUS * TILE; // use same FOV as player seeker
 
-    // Mark nearby tiles as visited
     const botTX = Math.floor(bot.x / TILE);
     const botTY = Math.floor(bot.y / TILE);
+
+    // ---- Stuck detection: if bot hasn't moved >2px in 60 frames, skip to next waypoint ----
+    const dxLast = bot.x - (hs._botLastX || 0);
+    const dyLast = bot.y - (hs._botLastY || 0);
+    if (Math.abs(dxLast) < 2 && Math.abs(dyLast) < 2) {
+      hs._botStuckTimer = (hs._botStuckTimer || 0) + 1;
+    } else {
+      hs._botStuckTimer = 0;
+    }
+    hs._botLastX = bot.x;
+    hs._botLastY = bot.y;
+
+    // If stuck for 60+ frames, skip to next waypoint
+    if (hs._botStuckTimer > 60) {
+      hs._seekerWPIdx = ((hs._seekerWPIdx || 0) + 1);
+      hs._botPath = null;
+      hs._botTarget = null;
+      hs._botStuckTimer = 0;
+      hs._chasing = false;
+    }
+
+    // Mark nearby tiles as visited
     if (hs._visitedTiles) {
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
           hs._visitedTiles.add((botTX + dx) + ',' + (botTY + dy));
         }
       }
     }
 
     // ---- Detection: is the hider (player) within detect range? ----
-    const hiderX = player.x;
-    const hiderY = player.y;
-    const hdx = hiderX - bot.x;
-    const hdy = hiderY - bot.y;
+    const hdx = player.x - bot.x;
+    const hdy = player.y - bot.y;
     const hDist = Math.sqrt(hdx * hdx + hdy * hdy);
 
     if (hDist <= detectRange) {
       hs._chasing = true;
     }
 
-    // ---- Chase mode: move directly toward hider ----
+    // ---- Chase mode: BFS pathfind toward hider ----
     if (hs._chasing) {
-      // Check if hider moved out of extended range (lose tracking)
-      if (hDist > detectRange * 2) {
+      // Lose tracking if hider is very far away
+      if (hDist > detectRange * 3) {
         hs._chasing = false;
+        hs._botPath = null;
+        hs._botTarget = null;
       } else {
-        // Move directly toward hider
-        if (hDist > 2) {
-          const ndx = hdx / hDist;
-          const ndy = hdy / hDist;
-          const moveX = ndx * bot.speed;
-          const moveY = ndy * bot.speed;
-          this._applyBotMovement(bot, moveX, moveY);
-
-          // Update facing direction
-          if (Math.abs(hdx) > Math.abs(hdy)) {
-            bot.dir = hdx > 0 ? 3 : 2; // right : left
-          } else {
-            bot.dir = hdy > 0 ? 0 : 1; // down : up
-          }
-          bot.moving = true;
-          bot.frame += 0.15;
-        }
-
         // Tag check: within TAG_RANGE → tag the hider
         if (hDist <= HIDESEEK.TAG_RANGE) {
           this.onTag();
+          return;
         }
+
+        // Re-pathfind to hider every 30 frames (hider is stationary but path may be stale)
+        const hiderTX = Math.floor(player.x / TILE);
+        const hiderTY = Math.floor(player.y / TILE);
+        if (!hs._botPath || hs._botPathIdx >= hs._botPath.length ||
+            !hs._botTarget || hs._botTarget.tx !== hiderTX || hs._botTarget.ty !== hiderTY) {
+          if (typeof bfsPath === 'function') {
+            hs._botPath = bfsPath(botTX, botTY, hiderTX, hiderTY);
+          }
+          hs._botPathIdx = 0;
+          hs._botTarget = { tx: hiderTX, ty: hiderTY };
+        }
+
+        this._moveBotAlongPath(bot);
         return;
       }
     }
 
-    // ---- Patrol mode: navigate through waypoints ----
+    // ---- Patrol mode: navigate through room waypoints ----
     const wps = hs._seekerWaypoints;
     if (!wps || wps.length === 0) return;
 
-    // Get current waypoint
-    const wpIdx = hs._seekerWPIdx % wps.length;
+    // Get current waypoint (loop around)
+    const wpIdx = (hs._seekerWPIdx || 0) % wps.length;
     const wp = wps[wpIdx];
     const wpX = wp.tx * TILE + TILE / 2;
     const wpY = wp.ty * TILE + TILE / 2;
 
-    // Check if we need a new path to this waypoint
+    // Pathfind to waypoint if needed
     if (!hs._botPath || hs._botPathIdx >= (hs._botPath ? hs._botPath.length : 0) ||
         !hs._botTarget || hs._botTarget.tx !== wp.tx || hs._botTarget.ty !== wp.ty) {
-      // Pathfind to waypoint
       if (typeof bfsPath === 'function') {
         hs._botPath = bfsPath(botTX, botTY, wp.tx, wp.ty);
-      } else {
-        hs._botPath = null;
       }
       hs._botPathIdx = 0;
       hs._botTarget = { tx: wp.tx, ty: wp.ty };
+
+      // If pathfind failed, skip this waypoint immediately
+      if (!hs._botPath) {
+        hs._seekerWPIdx = (hs._seekerWPIdx || 0) + 1;
+        hs._botTarget = null;
+        return;
+      }
     }
 
     // Move along path
     this._moveBotAlongPath(bot);
 
-    // Check if arrived at waypoint (within 1 tile)
+    // Check if arrived at waypoint (within 1.5 tiles)
     const distToWP = Math.sqrt((bot.x - wpX) * (bot.x - wpX) + (bot.y - wpY) * (bot.y - wpY));
-    if (distToWP < TILE) {
-      // Advance to next waypoint
-      hs._seekerWPIdx++;
-      hs._botPath = null; // clear path so next tick recalculates
+    if (distToWP < TILE * 1.5) {
+      hs._seekerWPIdx = (hs._seekerWPIdx || 0) + 1;
+      hs._botPath = null;
       hs._botTarget = null;
     }
   },
