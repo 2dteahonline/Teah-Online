@@ -1204,10 +1204,10 @@ const LEVELS = {
   })(),
 
   // ===================== THE SKELD (Among Us) =====================
-  // 96×64 spaceship map — 14 rooms connected by hallways.
-  // Only geometry: rooms, corridors, walls, floors. No gameplay systems.
+  // 128×80 spaceship map — 14 rooms connected by long hallways.
+  // Scaled up for spacious corridors matching the reference layout.
   skeld_01: (function() {
-    const W = 96, H = 64;
+    const W = 128, H = 80;
     const g = [];
     for (let y = 0; y < H; y++) { g[y] = []; for (let x = 0; x < W; x++) g[y][x] = 1; }
 
@@ -1233,165 +1233,168 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (14 total) — positioned to match The Skeld reference
+    //  ROOMS (14 total) — scaled up with proper spacing
     // ========================================
 
-    // === CAFETERIA (top center, dominant hub — 22×14) ===
-    room(36, 4, 57, 17);
+    // === CAFETERIA (top center, dominant hub — 28×16) ===
+    room(42, 3, 69, 18);
 
-    // === UPPER ENGINE (upper left — 12×10) ===
-    room(8, 6, 19, 15);
+    // === UPPER ENGINE (upper left — 16×12) ===
+    room(8, 8, 23, 19);
 
-    // === REACTOR (far left — 12×10) ===
-    room(2, 22, 13, 31);
+    // === REACTOR (far left — 12×12) ===
+    room(2, 28, 13, 39);
 
-    // === SECURITY (+ intersection hub between UE, LE, Reactor — 8×6) ===
-    room(14, 27, 21, 32);
+    // === SECURITY (+ intersection hub between engines — 10×7) ===
+    room(18, 33, 27, 39);
 
-    // === LOWER ENGINE (lower left — 12×10) ===
-    room(8, 40, 19, 49);
+    // === LOWER ENGINE (lower left — 16×12) ===
+    room(8, 50, 23, 61);
 
-    // === MEDBAY (upper-middle-left, side room off Cafe corridor — 8×8) ===
-    room(28, 20, 35, 27);
+    // === MEDBAY (left of center — 10×10) ===
+    room(36, 26, 45, 35);
 
-    // === ELECTRICAL (lower-middle-left — 10×10) ===
-    room(24, 44, 33, 53);
+    // === ELECTRICAL (lower center-left — 12×12) ===
+    room(32, 54, 43, 65);
 
-    // === STORAGE (bottom center hub — 18×11) ===
-    room(36, 42, 53, 52);
+    // === STORAGE (bottom center hub — 22×13) ===
+    room(50, 56, 71, 68);
 
-    // === ADMIN (lower-right of Cafeteria, NOT centered — 10×8) ===
-    room(50, 28, 59, 35);
+    // === ADMIN (right of center — 12×10) ===
+    room(66, 35, 77, 44);
 
-    // === WEAPONS (upper right — arrow shape) ===
-    room(66, 4, 77, 13);
-    for (let x = 75; x <= 77; x++) {
-      const indent = x - 74;
-      for (let y = 4; y < 4 + indent; y++) wall(x, y);
-      for (let y = 14 - indent; y <= 13; y++) wall(x, y);
+    // === WEAPONS (upper right — arrow shape, 16×12) ===
+    room(90, 6, 105, 17);
+    for (let x = 103; x <= 105; x++) {
+      const indent = x - 102;
+      for (let y = 6; y < 6 + indent; y++) wall(x, y);
+      for (let y = 18 - indent; y <= 17; y++) wall(x, y);
     }
-    carve(78, 8); carve(78, 9);
+    carve(106, 11); carve(106, 12);
 
-    // === O2 (right mid, slightly left of Weapons — 8×8) ===
-    room(62, 19, 69, 26);
+    // === O2 (right mid — 10×10) ===
+    room(82, 26, 91, 35);
 
-    // === NAVIGATION (far right — pointed nose) ===
-    room(78, 19, 89, 28);
-    for (let x = 87; x <= 89; x++) {
-      const indent = x - 86;
-      for (let y = 19; y < 19 + indent; y++) wall(x, y);
-      for (let y = 29 - indent; y <= 28; y++) wall(x, y);
+    // === NAVIGATION (far right — pointed nose, 16×12) ===
+    room(104, 26, 119, 37);
+    for (let x = 117; x <= 119; x++) {
+      const indent = x - 116;
+      for (let y = 26; y < 26 + indent; y++) wall(x, y);
+      for (let y = 38 - indent; y <= 37; y++) wall(x, y);
     }
-    carve(90, 23); carve(90, 24);
+    carve(120, 31); carve(120, 32);
 
-    // === SHIELDS (right side, lower half — 10×8) ===
-    room(66, 40, 75, 47);
+    // === SHIELDS (right lower — 12×10) ===
+    room(88, 50, 99, 59);
 
-    // === COMMUNICATIONS (bottom right, below Shields — 8×7) ===
-    room(62, 51, 69, 57);
+    // === COMMUNICATIONS (bottom right — 10×9) ===
+    room(82, 63, 91, 71);
 
     // ========================================
     //  CAFETERIA OCTAGONAL CORNER CUTS
     // ========================================
-    wall(36,4); wall(37,4); wall(38,4); wall(36,5); wall(37,5); wall(36,6);
-    wall(55,4); wall(56,4); wall(57,4); wall(56,5); wall(57,5); wall(57,6);
-    wall(36,15); wall(36,16); wall(37,16); wall(36,17); wall(37,17); wall(38,17);
-    wall(55,17); wall(56,17); wall(57,17); wall(57,16); wall(56,16); wall(57,15);
+    wall(42,3); wall(43,3); wall(44,3); wall(42,4); wall(43,4); wall(42,5);
+    wall(67,3); wall(68,3); wall(69,3); wall(68,4); wall(69,4); wall(69,5);
+    wall(42,16); wall(42,17); wall(43,17); wall(42,18); wall(43,18); wall(44,18);
+    wall(67,18); wall(68,18); wall(69,18); wall(69,17); wall(68,17); wall(69,16);
 
     // ========================================
-    //  CORRIDORS (17 connections)
-    //  Reference: red = hallway paths between rooms
+    //  CORRIDORS (17 connections) — long hallways with proper spacing
     // ========================================
 
     // --- Top wing: Cafe is the hub ---
-    hCorridor3(19, 36, 9);    // Upper Engine → Cafe (y=9-11, wide)
-    hCorridor3(57, 66, 7);    // Cafe → Weapons (y=7-9, wide)
+    hCorridor3(23, 42, 12);    // Upper Engine → Cafe (y=12-14, wide)
+    hCorridor3(69, 90, 10);    // Cafe → Weapons (y=10-12, wide)
 
     // --- Cafeteria south forks ---
-    vCorridor3(17, 20, 34);   // Cafe ↓ MedBay (x=34-36, wide)
-    vCorridor3(17, 28, 52);   // Cafe ↓ Admin (x=52-54, wide)
+    vCorridor3(18, 26, 44);    // Cafe ↓ MedBay (x=44-46, wide)
+    vCorridor3(18, 35, 66);    // Cafe ↓ Admin (x=66-68, wide)
 
     // --- Left wing: + intersection at Security ---
-    vCorridor(15, 27, 16);    // UE ↓ Security (x=16-17, vertical spine)
-    hCorridor(13, 14, 29);    // Reactor → Security (y=29-30, west arm of +)
-    vCorridor(32, 40, 16);    // Security ↓ LE (x=16-17, spine continues)
-    hCorridor3(13, 28, 23);   // Reactor area → MedBay (y=23-25, wide east)
+    vCorridor(19, 33, 20);     // UE ↓ Security (x=20-21, vertical spine)
+    hCorridor(13, 18, 36);     // Reactor → Security (y=36-37, west arm of +)
+    vCorridor(39, 50, 20);     // Security ↓ LE (x=20-21, spine continues)
+    hCorridor3(13, 36, 31);    // Reactor area → MedBay (y=31-33, wide east)
 
     // --- Bottom left ---
-    hCorridor(19, 24, 46);    // LE → Electrical (y=46-47)
-    hCorridor(33, 36, 48);    // Electrical → Storage (y=48-49)
+    hCorridor(23, 32, 57);     // LE → Electrical (y=57-58)
+    hCorridor(43, 50, 60);     // Electrical → Storage (y=60-61)
 
     // --- Center / bottom ---
-    vCorridor(35, 42, 52);    // Admin ↓ Storage (x=52-53)
-    hCorridor(53, 62, 52);    // Storage → Comms (y=52-53)
+    vCorridor(44, 56, 68);     // Admin ↓ Storage (x=68-69)
+    hCorridor(71, 82, 65);     // Storage → Comms (y=65-66)
 
     // --- Right wing ---
-    vCorridor(13, 19, 68);    // Weapons ↓ O2 (x=68-69)
-    hCorridor(69, 78, 22);    // O2 → Navigation (y=22-23)
-    vCorridor(26, 40, 68);    // O2 ↓ Shields (x=68-69, long vertical)
-    hCorridor3(59, 68, 33);   // Admin → right wing junction (y=33-35, wide)
-    vCorridor(47, 51, 66);    // Shields ↓ Comms (x=66-67)
+    vCorridor(17, 26, 90);     // Weapons ↓ O2 (x=90-91)
+    hCorridor(91, 104, 31);    // O2 → Navigation (y=31-32)
+    vCorridor(35, 50, 90);     // O2 ↓ Shields (x=90-91, long vertical)
+    hCorridor3(77, 90, 42);    // Admin → right wing junction (y=42-44, wide)
+    vCorridor(59, 63, 88);     // Shields ↓ Comms (x=88-89)
 
     // ========================================
-    //  PILLARS (2×2 solid blocks — furniture/equipment)
+    //  PILLARS (2×2 solid blocks)
     // ========================================
 
     // Cafeteria tables
-    pillar(42, 8); pillar(51, 8); pillar(42, 13); pillar(51, 13);
+    pillar(52, 8); pillar(60, 8); pillar(52, 14); pillar(60, 14);
 
     // Engine cores
-    pillar(12, 9); pillar(15, 9);    // Upper Engine
-    pillar(12, 43); pillar(15, 43);  // Lower Engine
+    pillar(14, 12); pillar(18, 12);    // Upper Engine
+    pillar(14, 54); pillar(18, 54);    // Lower Engine
 
     // Reactor core
-    pillar(6, 25); pillar(9, 25);
+    pillar(6, 32); pillar(9, 32);
+
+    // Security console
+    pillar(22, 36);
 
     // Equipment / furniture
-    pillar(31, 23);   // MedBay bed
-    pillar(27, 48); pillar(30, 48);  // Electrical panels
-    pillar(42, 46); pillar(47, 46);  // Storage crates
-    pillar(54, 31);   // Admin table
-    pillar(70, 7); pillar(73, 7);    // Weapons stations
-    pillar(65, 22);   // O2 equipment
-    pillar(82, 23); pillar(85, 23);  // Navigation consoles
-    pillar(17, 29);   // Security console
-    pillar(70, 43);   // Shield generator
-    pillar(65, 53);   // Comms equipment
+    pillar(39, 30);   // MedBay bed
+    pillar(35, 58); pillar(38, 58);  // Electrical panels
+    pillar(56, 60); pillar(61, 60);  // Storage crates
+    pillar(71, 39);   // Admin table
+    pillar(96, 10); pillar(100, 10); // Weapons stations
+    pillar(86, 30);   // O2 equipment
+    pillar(110, 31); pillar(114, 31); // Navigation consoles
+    pillar(93, 54);   // Shield generator
+    pillar(86, 66);   // Comms equipment
 
     // ========================================
-    //  HULL FILL — controlled floor zones for ship silhouette
-    //  Shaped to match reference: corridors stay narrow, fills add body
+    //  HULL FILL — ship silhouette body between rooms
     // ========================================
 
-    // Left wing: narrow neck between UE and Reactor (engine nacelle waist)
-    room(14, 15, 17, 22);     // 4-wide vertical alongside UE↓Security spine
+    // Left wing: neck between UE and Security spine
+    room(18, 19, 22, 33);     // Narrow neck alongside vertical spine
 
-    // Left-center: Security + junction — only 1-tile padding around room
-    room(13, 26, 22, 33);     // Controlled + hub (Security is 14-21, 27-32)
+    // Security + junction widening
+    room(17, 33, 28, 40);     // Wider floor around Security for + feel
 
-    // Security east arm: extends + toward MedBay/Electrical area
-    room(21, 28, 28, 31);     // East arm connecting Security to MedBay corridor area
+    // Security east arm toward MedBay
+    room(27, 34, 36, 37);     // East arm of +
 
-    // Left-center: small junction near Reactor→MedBay corridor
-    room(20, 23, 25, 27);     // 6×5 near corridor intersection
+    // Left-center: junction near Reactor→MedBay corridor
+    room(24, 30, 36, 34);     // Junction area
 
     // Lower-left: LE to Electrical approach
-    room(19, 40, 24, 46);     // Fill between LE and Electrical corridor
+    room(23, 50, 32, 57);     // Fill between LE and Electrical corridor
 
     // Bottom center: Electrical→Storage transition
-    room(34, 44, 36, 48);     // 3×5 narrow connection
+    room(43, 58, 50, 64);     // Fill between Electrical and Storage
 
-    // Right-center: small widening near Cafe→Admin corridor
-    room(52, 23, 55, 28);     // 4×6 controlled approach to Admin
+    // Cafeteria south lobby: wide exit that branches to MedBay and Admin
+    room(44, 18, 66, 22);     // Wide south exit below Cafeteria
 
-    // Upper-right: small connector between Cafe corridor and O2 area
-    room(58, 17, 62, 19);     // 5×3 tiny fill
+    // Right-center: Cafe↓Admin approach widening
+    room(66, 22, 72, 35);     // Wider approach to Admin from above
 
-    // Right wing: O2 ↓ Shields body (alongside the long vertical corridor)
-    room(66, 26, 69, 40);     // 4-wide fill connecting O2 bottom to Shields top
+    // Upper-right: Cafe→O2 hull body
+    room(70, 17, 82, 22);     // Hull body between Cafe bottom and O2 area
 
-    // Right body: Admin corridor → Shields area (ship hull body)
-    room(60, 35, 66, 40);     // 7×6 hull body between Admin and Shields
+    // Right wing: O2↓Shields body (alongside corridor)
+    room(88, 35, 92, 50);     // 5-wide fill alongside O2↓Shields spine
+
+    // Right hull body: Admin→Shields area
+    room(78, 42, 88, 50);     // Hull body from Admin corridor to Shields
 
     // ========================================
     //  BORDERS
@@ -1406,10 +1409,10 @@ const LEVELS = {
       widthTiles: W,
       heightTiles: H,
       isSkeld: true,
-      spawns: { p1: { tx: 46, ty: 10 } },
+      spawns: { p1: { tx: 55, ty: 10 } },
       collisionAscii: ascii,
       entities: [
-        { type: 'skeld_exit', tx: 45, ty: 4, w: 4, h: 2, solid: false, target: 'lobby_01' }
+        { type: 'skeld_exit', tx: 54, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' }
       ]
     };
   })()
