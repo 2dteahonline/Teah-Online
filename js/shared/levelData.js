@@ -1299,22 +1299,25 @@ const LEVELS = {
     wall(67,18); wall(68,18); wall(69,18); wall(69,17); wall(68,17); wall(69,16);
 
     // ========================================
-    //  CORRIDORS (17 connections) — long hallways with proper spacing
+    //  CORRIDORS (17 segments + 3 junction pieces = 20 calls)
     // ========================================
 
     // --- Top wing: Cafe is the hub ---
-    hCorridor3(23, 42, 12);    // Upper Engine → Cafe (y=12-14, wide)
+    hCorridor3(23, 42, 11);    // UE → Cafe (y=11-13, wide)
     hCorridor3(69, 90, 10);    // Cafe → Weapons (y=10-12, wide)
 
-    // --- Cafeteria south forks ---
-    vCorridor3(18, 26, 44);    // Cafe ↓ MedBay (x=44-46, wide)
-    vCorridor3(18, 35, 66);    // Cafe ↓ Admin (x=66-68, wide)
+    // --- Cafeteria south: asymmetric fork ---
+    room(50, 18, 60, 22);      // South vestibule below Cafe center
+    vCorridor(22, 26, 48);     // Left fork → MedBay area (x=48-49)
+    hCorridor(45, 48, 27);     // Branch left into MedBay (y=27-28)
+    vCorridor(22, 38, 58);     // Right fork → Admin area (x=58-59)
+    hCorridor(58, 66, 37);     // Branch right into Admin (y=37-38)
 
-    // --- Left wing: + intersection at Security ---
-    vCorridor(19, 33, 20);     // UE ↓ Security (x=20-21, vertical spine)
-    hCorridor(13, 18, 36);     // Reactor → Security (y=36-37, west arm of +)
-    vCorridor(39, 50, 20);     // Security ↓ LE (x=20-21, spine continues)
-    hCorridor3(13, 36, 31);    // Reactor area → MedBay (y=31-33, wide east)
+    // --- Left wing: Security cluster ---
+    vCorridor(19, 33, 20);     // UE ↓ Security (x=20-21)
+    hCorridor(13, 18, 36);     // Reactor → Security (y=36-37)
+    vCorridor(39, 50, 20);     // Security ↓ LE (x=20-21)
+    hCorridor(27, 36, 30);     // Security area → MedBay (y=30-31)
 
     // --- Bottom left ---
     hCorridor(23, 32, 57);     // LE → Electrical (y=57-58)
@@ -1324,77 +1327,13 @@ const LEVELS = {
     vCorridor(44, 56, 68);     // Admin ↓ Storage (x=68-69)
     hCorridor(71, 82, 65);     // Storage → Comms (y=65-66)
 
-    // --- Right wing ---
+    // --- Right wing: clean vertical spine ---
     vCorridor(17, 26, 90);     // Weapons ↓ O2 (x=90-91)
     hCorridor(91, 104, 31);    // O2 → Navigation (y=31-32)
-    vCorridor(35, 50, 90);     // O2 ↓ Shields (x=90-91, long vertical)
-    hCorridor3(77, 90, 42);    // Admin → right wing junction (y=42-44, wide)
+    vCorridor(35, 50, 90);     // O2 ↓ Shields (x=90-91)
+    hCorridor(77, 88, 43);     // Admin → right wing (y=43-44)
+    room(89, 43, 91, 46);      // Right wing junction (3×4)
     vCorridor(59, 63, 88);     // Shields ↓ Comms (x=88-89)
-
-    // ========================================
-    //  PILLARS (2×2 solid blocks)
-    // ========================================
-
-    // Cafeteria tables
-    pillar(52, 8); pillar(60, 8); pillar(52, 14); pillar(60, 14);
-
-    // Engine cores
-    pillar(14, 12); pillar(18, 12);    // Upper Engine
-    pillar(14, 54); pillar(18, 54);    // Lower Engine
-
-    // Reactor core
-    pillar(6, 32); pillar(9, 32);
-
-    // Security console
-    pillar(22, 36);
-
-    // Equipment / furniture
-    pillar(39, 30);   // MedBay bed
-    pillar(35, 58); pillar(38, 58);  // Electrical panels
-    pillar(56, 60); pillar(61, 60);  // Storage crates
-    pillar(71, 39);   // Admin table
-    pillar(96, 10); pillar(100, 10); // Weapons stations
-    pillar(86, 30);   // O2 equipment
-    pillar(110, 31); pillar(114, 31); // Navigation consoles
-    pillar(93, 54);   // Shield generator
-    pillar(86, 66);   // Comms equipment
-
-    // ========================================
-    //  HULL FILL — ship silhouette body between rooms
-    // ========================================
-
-    // Left wing: neck between UE and Security spine
-    room(18, 19, 22, 33);     // Narrow neck alongside vertical spine
-
-    // Security + junction widening
-    room(17, 33, 28, 40);     // Wider floor around Security for + feel
-
-    // Security east arm toward MedBay
-    room(27, 34, 36, 37);     // East arm of +
-
-    // Left-center: junction near Reactor→MedBay corridor
-    room(24, 30, 36, 34);     // Junction area
-
-    // Lower-left: LE to Electrical approach
-    room(23, 50, 32, 57);     // Fill between LE and Electrical corridor
-
-    // Bottom center: Electrical→Storage transition
-    room(43, 58, 50, 64);     // Fill between Electrical and Storage
-
-    // Cafeteria south lobby: wide exit that branches to MedBay and Admin
-    room(44, 18, 66, 22);     // Wide south exit below Cafeteria
-
-    // Right-center: Cafe↓Admin approach widening
-    room(66, 22, 72, 35);     // Wider approach to Admin from above
-
-    // Upper-right: Cafe→O2 hull body
-    room(70, 17, 82, 22);     // Hull body between Cafe bottom and O2 area
-
-    // Right wing: O2↓Shields body (alongside corridor)
-    room(88, 35, 92, 50);     // 5-wide fill alongside O2↓Shields spine
-
-    // Right hull body: Admin→Shields area
-    room(78, 42, 88, 50);     // Hull body from Admin corridor to Shields
 
     // ========================================
     //  BORDERS
