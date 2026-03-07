@@ -1248,8 +1248,8 @@ const LEVELS = {
     // === SECURITY (right of cross — 12×10) ===
     room(24, 30, 35, 39);
 
-    // === MEDBAY (center — 12×10) ===
-    room(28, 18, 39, 27);
+    // === MEDBAY (center-right — 12×10) ===
+    room(38, 18, 49, 27);
 
     // === LOWER ENGINE (lower left — 20×14) ===
     room(4, 52, 23, 65);
@@ -1282,7 +1282,7 @@ const LEVELS = {
     room(84, 9, 95, 13);      // Cafe → Weapons (10 blocks: x=85-94)
 
     // --- MedBay connector (5 wide, drops from UE→Cafe corridor) ---
-    room(30, 12, 34, 18);     // Corridor → MedBay (x=30-34, y=13-17)
+    room(42, 12, 46, 18);     // Corridor → MedBay (x=42-46, y=13-17)
 
     // --- Vertical spine: UE ↓ LE (5 wide, center of engines) ---
     room(14, 17, 18, 52);     // Main spine (x=14-18)
