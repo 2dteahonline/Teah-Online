@@ -371,81 +371,43 @@ window.HideSeekSystem = {
     const hs = HideSeekState;
     if (!level) return;
 
-    // Pre-defined room centers based on the new organic hide_01 map layout
-    // These cover all rooms, alcoves, and key corridor intersections
+    // Pre-defined room centers for the compact 40×30 hide_01 map
     const roomCenters = [
-      // Northwest wing
-      { tx: 7, ty: 6 },   // R1: seeker spawn
-      { tx: 5, ty: 14 },  // R2: side room
-      { tx: 17, ty: 4 },  // R3: upper room
-      { tx: 16, ty: 12 }, // R4: connector room
-      { tx: 3, ty: 20 },  // A1: NW alcove
+      // NW wing
+      { tx: 4, ty: 3 },   // R1: seeker spawn
+      { tx: 3, ty: 8 },   // R2: side room
+      { tx: 2, ty: 13 },  // A1: dead-end closet
 
-      // North corridor & rooms
-      { tx: 25, ty: 3 },  // R5: top nook
-      { tx: 36, ty: 4 },  // R6: offset room
-      { tx: 47, ty: 4 },  // R7: NE corner room
-      { tx: 55, ty: 7 },  // R8: NE extension
-      { tx: 61, ty: 6 },  // A2: NE dead-end
-      { tx: 55, ty: 14 }, // R9: south of R8
-      { tx: 42, ty: 11 }, // A9: nook
+      // North rooms
+      { tx: 11, ty: 3 },  // R3: upper room
+      { tx: 18, ty: 3 },  // R4: north-center
+      { tx: 25, ty: 3 },  // R5: NE room
+      { tx: 36, ty: 3 },  // R18: far-east wing
 
-      // Central maze
-      { tx: 27, ty: 15 }, // R10: central-north
-      { tx: 37, ty: 14 }, // R11: central-NE
-      { tx: 24, ty: 22 }, // R12: left-center
-      { tx: 39, ty: 22 }, // R13: right-center
-      { tx: 31, ty: 21 }, // R14: center hub
-      { tx: 46, ty: 16 }, // R32: connector
+      // Central rooms
+      { tx: 11, ty: 9 },  // R6: central-west
+      { tx: 19, ty: 9 },  // R7: center hub
+      { tx: 26, ty: 9 },  // R8: center-east
+      { tx: 33, ty: 8 },  // R9: NE room
+      { tx: 37, ty: 8 },  // A2: NE dead-end
 
       // West wing
-      { tx: 5, ty: 27 },  // R15: mid-west
-      { tx: 12, ty: 24 }, // R16: inner-west
-      { tx: 3, ty: 33 },  // A3: west closet
-      { tx: 11, ty: 31 }, // A10: inner-west nook
+      { tx: 4, ty: 18 },  // R10: west room
+      { tx: 10, ty: 18 }, // R11: inner-west
+      { tx: 3, ty: 23 },  // A3: SW closet
 
-      // Southwest sprawl
-      { tx: 5, ty: 39 },  // R17: SW room
-      { tx: 14, ty: 37 }, // R18: adjacent
-      { tx: 4, ty: 46 },  // R19: deep SW
-      { tx: 10, ty: 47 }, // A4: SW closet
-      { tx: 17, ty: 44 }, // R30: hidden south
+      // South corridor
+      { tx: 16, ty: 16 }, // R12: south-center
+      { tx: 16, ty: 22 }, // R13: lower-center
+      { tx: 15, ty: 27 }, // A4: bottom nook
 
-      // South corridor & rooms
-      { tx: 24, ty: 32 }, // R20: south-center-left
-      { tx: 33, ty: 32 }, // R21: south-center-right
-      { tx: 27, ty: 43 }, // R22: lower-center
-      { tx: 25, ty: 49 }, // A5: bottom nook
-      { tx: 35, ty: 40 }, // R31: south-mid
-
-      // Southeast wing (hider spawn)
-      { tx: 43, ty: 30 }, // R23: SE mid
-      { tx: 47, ty: 38 }, // R24: SE room
-      { tx: 55, ty: 37 }, // R25: deep east
-      { tx: 57, ty: 45 }, // R26: hider spawn
-      { tx: 63, ty: 44 }, // A6: east closet
-      { tx: 55, ty: 51 }, // A7: south closet
-
-      // East corridor
-      { tx: 49, ty: 21 }, // R27: mid-east
-      { tx: 57, ty: 23 }, // R28: far-east
-      { tx: 63, ty: 23 }, // A8: far-east closet
-      { tx: 48, ty: 28 }, // R29: east-south connector
-
-      // Side extensions
-      { tx: 69, ty: 17 }, // R33: far-east upper wing
-      { tx: 71, ty: 24 }, // R34: far-east mid wing
-      { tx: 76, ty: 24 }, // A11: far-east dead-end
-      { tx: 35, ty: 50 }, // R35: south extension
-      { tx: 40, ty: 53 }, // R36: deep south
-      { tx: 45, ty: 55 }, // A12: south dead-end
-      { tx: 4, ty: 54 },  // R37: deep NW room
-      { tx: 10, ty: 54 }, // A13: NW side closet
-      { tx: 16, ty: 50 }, // R38: mid-south pocket
-      { tx: 22, ty: 52 }, // R39: south-center-left deep
-      { tx: 64, ty: 36 }, // R40: east-south wing
-      { tx: 68, ty: 42 }, // R41: east-south deep
-      { tx: 72, ty: 42 }, // A14: east-south closet
+      // SE wing (hider spawn)
+      { tx: 24, ty: 16 }, // R14: SE-north
+      { tx: 31, ty: 16 }, // R15: east room
+      { tx: 24, ty: 22 }, // R16: SE-south
+      { tx: 31, ty: 22 }, // R17: hider spawn
+      { tx: 37, ty: 22 }, // A5: east closet
+      { tx: 31, ty: 27 }, // A6: south closet
     ];
 
     // Validate — only keep walkable waypoints

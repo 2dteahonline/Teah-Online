@@ -993,14 +993,10 @@ const LEVELS = {
   },
 
   // ===================== HIDE & SEEK ARENA =====================
-  // Room-based layout: outer rooms connected to central corridors.
-  // Small rooms along the perimeter, a central hub, and 2-wide corridors linking everything.
-  // Good hiding spots in corners/dead-ends, easy traversal for seekers through the middle.
+  // Compact 40×30 arena — 18 rooms + 6 alcoves, organic layout with NE extension.
+  // Seeker spawns NW, hider spawns SE. Plenty of dead-ends and corners for hiding.
   hide_01: (function() {
-    // ===== ORGANIC IRREGULAR MAP — not a rectangle! =====
-    // The playable area forms an irregular shape with wings and extensions.
-    // Many rooms are staggered, not on a grid. Corridors twist and turn.
-    const W = 80, H = 60;
+    const W = 40, H = 30;
     const g = [];
     for (let y = 0; y < H; y++) { g[y] = []; for (let x = 0; x < W; x++) g[y][x] = 1; }
 
@@ -1017,268 +1013,109 @@ const LEVELS = {
       const lo = Math.min(y1,y2), hi = Math.max(y1,y2);
       for (let y = lo; y <= hi; y++) { if(x>0&&x<W-1) g[y][x]=0; if(x+1>0&&x+1<W-1) g[y][x+1]=0; }
     }
-    // Pillar: set a 2x2 block solid
     function pillar(px, py) {
       g[py][px]=1; g[py][px+1]=1; g[py+1][px]=1; g[py+1][px+1]=1;
     }
 
     // ========================================
-    //  NORTHWEST WING (seeker spawn area)
+    //  NW WING (seeker spawn)
     // ========================================
-    room(2, 2, 12, 10);       // R1: Seeker spawn (11x9)
-    pillar(6, 5);              // cover pillar
-    room(2, 12, 8, 17);       // R2: side room (7x6)
-    vCorridor(10, 12, 5);     // R1→R2
-
-    room(14, 2, 21, 7);       // R3: upper room (8x6)
-    hCorridor(12, 14, 4);     // R1→R3
-
-    room(14, 10, 19, 15);     // R4: connector room (6x6)
-    hCorridor(12, 14, 11);    // R1→R4
-    vCorridor(7, 10, 16);     // R3→R4
-
-    // Alcove off R2 (dead-end closet)
-    room(2, 19, 4, 21);       // A1: 3x3 closet
-    vCorridor(17, 19, 3);     // door
+    room(2, 2, 7, 5);       // R1: seeker spawn (6×4)
+    room(2, 7, 5, 10);      // R2: side room (4×4)
+    vCorridor(5, 7, 3);     // R1→R2
+    room(2, 12, 3, 14);     // A1: dead-end closet (2×3)
+    vCorridor(10, 12, 2);   // R2→A1
 
     // ========================================
-    //  NORTH CORRIDOR (twisting connection)
+    //  NORTH ROOMS
     // ========================================
-    hCorridor(19, 30, 5);     // across top
-    room(23, 2, 28, 4);       // R5: small nook off top corridor
-    vCorridor(4, 5, 25);      // door to R5
-
-    hCorridor(30, 38, 8);     // jog down
-    vCorridor(5, 8, 30);      // connects the two horizontal corridors
-
-    room(33, 2, 39, 6);       // R6: offset room (7x5)
-    vCorridor(6, 8, 35);      // R6→corridor
+    room(9, 2, 14, 5);      // R3: upper room (6×4)
+    hCorridor(7, 9, 3);     // R1→R3
+    room(16, 2, 21, 5);     // R4: north-center (6×4)
+    hCorridor(14, 16, 3);   // R3→R4
+    room(23, 2, 28, 5);     // R5: NE room (6×4)
+    hCorridor(21, 23, 3);   // R4→R5
 
     // ========================================
-    //  NORTHEAST EXTENSION (L-shaped wing)
+    //  NE EXTENSION (breaks rectangle)
     // ========================================
-    hCorridor(38, 50, 8);     // continue east
-    room(44, 2, 51, 7);       // R7: corner room (8x6)
-    vCorridor(7, 8, 47);      // R7→corridor
-
-    room(52, 4, 58, 10);      // R8: extension room (7x7)
-    hCorridor(51, 52, 7);     // R7→R8
-
-    // Dead-end alcove off R8
-    room(60, 5, 62, 8);       // A2: side closet (3x4)
-    hCorridor(58, 60, 6);     // door
-
-    room(52, 12, 58, 17);     // R9: south of R8 (7x6)
-    vCorridor(10, 12, 54);    // R8→R9
-    pillar(55, 14);            // cover
+    room(34, 2, 38, 5);     // R18: far-east wing (5×4)
+    hCorridor(28, 34, 3);   // R5→R18 (long corridor)
 
     // ========================================
-    //  CENTRAL MAZE (irregular intersections)
+    //  CENTRAL ROOMS
     // ========================================
-    // NOT a clean open hub — maze-like corridors through the middle
-    room(24, 12, 31, 18);     // R10: central-north room (8x7)
-    vCorridor(5, 12, 26);     // north corridor→R10
-    hCorridor(19, 24, 13);    // R4→R10
+    room(9, 7, 14, 11);     // R6: central-west (6×5)
+    vCorridor(5, 7, 11);    // R3→R6
+    hCorridor(5, 9, 8);     // R2→R6
+    pillar(11, 9);
 
-    room(34, 12, 40, 17);     // R11: central-north-east (7x6)
-    hCorridor(31, 34, 14);    // R10→R11
-    hCorridor(40, 44, 14);    // R11→east corridor
-    vCorridor(8, 12, 37);     // north corridor→R11
+    room(16, 7, 22, 11);    // R7: center hub (7×5)
+    hCorridor(14, 16, 9);   // R6→R7
+    vCorridor(5, 7, 18);    // R4→R7
 
-    // Central cross corridors (NOT straight — staggered)
-    vCorridor(18, 25, 27);    // R10 south, offset left
-    vCorridor(18, 25, 36);    // R11 south, offset right
-    hCorridor(22, 38, 22);    // horizontal through center
+    room(24, 7, 29, 11);    // R8: center-east (6×5)
+    hCorridor(22, 24, 9);   // R7→R8
+    vCorridor(5, 7, 26);    // R5→R8
+    pillar(26, 9);
 
-    room(22, 20, 26, 25);     // R12: left-center (5x6)
-    room(37, 20, 42, 25);     // R13: right-center (6x6)
-    pillar(39, 22);            // cover in R13
-
-    room(29, 19, 34, 24);     // R14: center hub (6x6) — small, maze-like
-    pillar(31, 21);            // hub pillar
+    room(31, 7, 35, 10);    // R9: NE room (5×4)
+    hCorridor(29, 31, 8);   // R8→R9
+    room(36, 7, 38, 9);     // A2: NE dead-end (3×3)
+    hCorridor(35, 36, 8);   // R9→A2
 
     // ========================================
-    //  WEST WING (extends south from NW)
+    //  WEST WING
     // ========================================
-    vCorridor(17, 28, 5);     // left corridor going south
-    room(2, 24, 8, 30);       // R15: mid-west room (7x7)
-    hCorridor(6, 8, 25);      // corridor→R15 (already overlaps)
-    pillar(4, 27);
+    room(2, 16, 6, 20);     // R10: west room (5×5)
+    vCorridor(10, 16, 3);   // R2/A1 area→R10
+    room(8, 16, 12, 20);    // R11: inner-west (5×5)
+    hCorridor(6, 8, 17);    // R10→R11
+    vCorridor(11, 16, 10);  // R6→R11
 
-    room(10, 22, 15, 27);     // R16: inner-west room (6x6)
-    hCorridor(8, 10, 24);     // R15→R16
-    vCorridor(18, 22, 12);    // R4 area→R16
-
-    // Alcove off R15 (dead-end)
-    room(2, 32, 4, 34);       // A3: west closet (3x3)
-    vCorridor(30, 32, 3);     // door
+    // SW dead-end
+    room(2, 22, 4, 25);     // A3: SW closet (3×4)
+    vCorridor(20, 22, 3);   // R10→A3
 
     // ========================================
-    //  SOUTHWEST SPRAWL (irregular extension)
+    //  SOUTH CORRIDOR
     // ========================================
-    vCorridor(28, 38, 5);     // continue south
-    room(2, 36, 9, 42);       // R17: SW room (8x7)
-    hCorridor(5, 8, 37);      // corridor overlaps
+    room(14, 14, 19, 18);   // R12: south-center (6×5)
+    vCorridor(11, 14, 16);  // R7→R12
+    hCorridor(12, 14, 16);  // R11→R12
 
-    room(11, 35, 17, 40);     // R18: adjacent (7x6)
-    hCorridor(9, 11, 37);     // R17→R18
+    room(14, 20, 19, 24);   // R13: lower-center (6×5)
+    vCorridor(18, 20, 16);  // R12→R13
+    pillar(16, 22);
 
-    room(2, 44, 7, 49);       // R19: deep SW room (6x6)
-    vCorridor(42, 44, 4);     // R17→R19
-    pillar(4, 46);
-
-    // Dead-end off R19
-    room(9, 46, 11, 49);      // A4: closet (3x4)
-    hCorridor(7, 9, 47);      // door
+    // Bottom dead-end
+    room(14, 26, 16, 28);   // A4: bottom nook (3×3)
+    vCorridor(24, 26, 15);  // R13→A4
 
     // ========================================
-    //  SOUTH CORRIDOR (winding path)
+    //  SE WING (hider spawn)
     // ========================================
-    hCorridor(17, 28, 37);    // south main corridor
-    vCorridor(27, 37, 20);    // R12→south
+    room(22, 14, 27, 18);   // R14: SE-north (6×5)
+    hCorridor(19, 22, 15);  // R12→R14
+    vCorridor(11, 14, 24);  // R8→R14
 
-    room(22, 30, 27, 35);     // R20: south-center-left (6x6)
-    vCorridor(25, 30, 24);    // R12→R20
-    hCorridor(17, 22, 32);    // R18→R20 area
+    room(29, 14, 34, 18);   // R15: east room (6×5)
+    hCorridor(27, 29, 16);  // R14→R15
+    pillar(31, 16);
 
-    room(30, 30, 36, 35);     // R21: south-center-right (7x6)
-    hCorridor(27, 30, 32);    // R20→R21
-    vCorridor(24, 30, 33);    // R14→R21
+    room(22, 20, 27, 24);   // R16: SE-south (6×5)
+    vCorridor(18, 20, 24);  // R14→R16
+    hCorridor(19, 22, 22);  // R13→R16
 
-    room(24, 40, 31, 46);     // R22: lower-center room (8x7)
-    vCorridor(37, 40, 26);    // south corridor→R22
-    pillar(27, 43);
+    room(29, 20, 34, 24);   // R17: HIDER SPAWN (6×5)
+    hCorridor(27, 29, 22);  // R16→R17
+    vCorridor(18, 20, 31);  // R15→R17
 
-    // Alcove off R22
-    room(24, 48, 27, 50);     // A5: bottom nook (4x3)
-    vCorridor(46, 48, 25);    // door
-
-    // ========================================
-    //  SOUTHEAST WING (hider spawn, deep)
-    // ========================================
-    hCorridor(36, 48, 32);    // east corridor at mid-south
-    vCorridor(25, 32, 42);    // R13→south-east corridor
-
-    room(40, 28, 47, 33);     // R23: SE mid room (8x6)
-    pillar(43, 30);
-
-    room(44, 35, 51, 41);     // R24: SE room (8x7)
-    vCorridor(33, 35, 47);    // R23→R24
-    hCorridor(48, 54, 37);    // R24→east
-
-    room(52, 34, 58, 40);     // R25: deep east room (7x7)
-    pillar(55, 37);
-
-    room(54, 42, 60, 48);     // R26: HIDER SPAWN (7x7)
-    vCorridor(40, 42, 56);    // R25→R26
-    pillar(55, 43);           // moved pillar away from hider spawn
-
-    // Dead-end alcoves near hider spawn
-    room(62, 43, 64, 46);     // A6: east closet (3x4)
-    hCorridor(60, 62, 44);    // door
-
-    room(54, 50, 57, 53);     // A7: south closet (4x4)
-    vCorridor(48, 50, 55);    // door
-
-    // ========================================
-    //  EAST CORRIDOR (connecting NE to SE)
-    // ========================================
-    vCorridor(17, 28, 50);    // east spine
-    room(46, 19, 52, 24);     // R27: mid-east room (7x6)
-    hCorridor(42, 46, 21);    // R13→R27
-    pillar(49, 21);
-
-    room(55, 20, 60, 26);     // R28: far-east room (6x7)
-    hCorridor(52, 55, 22);    // R27→R28
-
-    // Dead-end off R28
-    room(62, 22, 64, 25);     // A8: far-east closet (3x4)
-    hCorridor(60, 62, 23);    // door
-
-    room(46, 26, 51, 30);     // R29: east-south connector (6x5)
-    vCorridor(24, 26, 48);    // R27→R29
-
-    // ========================================
-    //  ADDITIONAL NOOKS AND CRANNIES
-    // ========================================
-    // Hidden room between R18 and south corridor
-    room(15, 42, 19, 46);     // R30: hidden south room (5x5)
-    vCorridor(40, 42, 16);    // R18→R30
-
-    // Extra room north of R22
-    room(33, 38, 38, 42);     // R31: south-mid room (6x5)
-    hCorridor(31, 33, 40);    // R22→R31
-    vCorridor(35, 38, 35);    // R21→R31
-
-    // Small nook off central-north
-    room(41, 10, 44, 12);     // A9: nook (4x3)
-    vCorridor(8, 10, 42);     // corridor→A9 (off north corridor)
-
-    // Room between NE and east corridor
-    room(44, 14, 49, 18);     // R32: connector room (6x5)
-    hCorridor(40, 44, 15);    // R11→R32
-    vCorridor(18, 19, 47);    // R32→east corridor
-
-    // Extra alcove off west wing
-    room(10, 30, 13, 33);     // A10: inner-west nook (4x4)
-    hCorridor(8, 10, 31);     // R15→A10
-
-    // ========================================
-    //  SIDE EXTENSIONS (break the rectangular shape)
-    // ========================================
-
-    // --- FAR EAST wing extension (sticks out beyond main body) ---
-    room(66, 15, 72, 20);     // R33: far-east upper wing (7x6)
-    hCorridor(58, 66, 16);    // R9→R33 (long corridor bridging the gap)
-    pillar(69, 17);
-
-    room(68, 22, 74, 27);     // R34: far-east mid wing (7x6)
-    vCorridor(20, 22, 69);    // R33→R34
-    pillar(71, 24);
-
-    // Dead-end off R34
-    room(75, 23, 77, 26);     // A11: far-east dead-end (3x4)
-    hCorridor(74, 75, 24);    // door
-
-    // --- FAR SOUTH extension (sticks out below main body) ---
-    room(32, 48, 38, 53);     // R35: south extension (7x6)
-    vCorridor(42, 48, 35);    // R31→R35 (bridge from R31 bottom to R35 top)
-    hCorridor(31, 32, 50);    // side door into R35
-
-    room(38, 51, 43, 56);     // R36: deep south room (6x6)
-    hCorridor(38, 39, 52);    // R35→R36
-    pillar(40, 53);
-
-    // Dead-end alcove off R36
-    room(44, 54, 46, 57);     // A12: south dead-end (3x4)
-    hCorridor(43, 44, 55);    // door
-
-    // --- NORTHWEST extension (extends beyond NW corner) ---
-    room(2, 52, 7, 56);       // R37: deep NW room (6x5)
-    vCorridor(49, 52, 4);     // R19→R37
-
-    // Dead-end alcove off R37
-    room(9, 53, 11, 56);      // A13: NW side closet (3x4)
-    hCorridor(7, 9, 54);      // door
-
-    // --- MID-SOUTH connector rooms ---
-    room(14, 48, 19, 52);     // R38: mid-south pocket (6x5)
-    vCorridor(46, 48, 16);    // R30→R38
-
-    room(20, 50, 24, 54);     // R39: south-center-left deep (5x5)
-    hCorridor(19, 20, 51);    // R38→R39
-    pillar(22, 52);
-
-    // --- FAR EAST lower extension ---
-    room(62, 34, 67, 39);     // R40: east-south wing (6x6)
-    hCorridor(58, 62, 36);    // R25→R40 (bridge from R25 right edge)
-
-    room(66, 40, 70, 44);     // R41: east-south deep (5x5)
-    vCorridor(39, 40, 67);    // R40→R41
-
-    // Dead-end off R41
-    room(71, 41, 73, 44);     // A14: east-south closet (3x4)
-    hCorridor(70, 71, 42);    // door
+    // Dead-ends near hider spawn
+    room(36, 21, 38, 23);   // A5: east closet (3×3)
+    hCorridor(34, 36, 22);  // R17→A5
+    room(30, 26, 32, 28);   // A6: south closet (3×3)
+    vCorridor(24, 26, 31);  // R17→A6
 
     // ========================================
     //  ENSURE BORDERS ARE WALLS
@@ -1293,7 +1130,7 @@ const LEVELS = {
       widthTiles: W,
       heightTiles: H,
       isHideSeek: true,
-      spawns: { seeker: { tx: 6, ty: 6 }, hider: { tx: 57, ty: 45 }, p1: { tx: 6, ty: 6 } },
+      spawns: { seeker: { tx: 4, ty: 3 }, hider: { tx: 31, ty: 22 }, p1: { tx: 4, ty: 3 } },
       collisionAscii: ascii,
       entities: []
     };
