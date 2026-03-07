@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inHideSeek ? '#0a0a10' : Scene.inLobby ? '#080810' : '#1e1e26';
+  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inHideSeek ? '#0a0a10' : Scene.inSkeld ? '#050508' : Scene.inLobby ? '#080810' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -367,6 +367,68 @@ function drawLevelBackground(camX, camY) {
             ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.8, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = 'rgba(255,154,64,0.06)';
             ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.4, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === THE SKELD TILES (spaceship interior) ===
+      if (Scene.inSkeld) {
+        if (collisionGrid[ty][tx] === 1) {
+          // Wall — dark metal hull panels
+          const sv = ((tx * 5 + ty * 3) % 4);
+          ctx.fillStyle = `rgb(${28 + sv},${28 + sv},${36 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = `rgb(${34 + sv},${34 + sv},${44 + sv})`;
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Panel seam lines
+          if ((tx + ty) % 3 === 0) {
+            ctx.strokeStyle = 'rgba(100,100,130,0.12)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 4, y + 4, TILE - 8, TILE - 8);
+          }
+          // Bolt rivets
+          if ((tx + ty * 3) % 5 === 0) {
+            ctx.fillStyle = 'rgba(80,80,110,0.18)';
+            ctx.beginPath(); ctx.arc(x + 6, y + 6, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + TILE - 6, y + 6, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + 6, y + TILE - 6, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + TILE - 6, y + TILE - 6, 1.5, 0, Math.PI * 2); ctx.fill();
+          }
+          // Colored accent stripe on some walls (Among Us style)
+          if ((tx * 7 + ty * 11) % 19 === 0) {
+            ctx.fillStyle = 'rgba(60,90,140,0.12)';
+            ctx.fillRect(x + 4, y + TILE - 8, TILE - 8, 4);
+          }
+        } else {
+          // Floor — lighter gray metal grating
+          const sv = ((tx * 3 + ty * 7) % 5);
+          ctx.fillStyle = `rgb(${48 + sv * 2},${48 + sv * 2},${56 + sv * 2})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Subtle grid lines (metal floor panels)
+          ctx.strokeStyle = 'rgba(80,80,110,0.08)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Floor grate pattern (sparse)
+          if ((tx + ty * 3) % 11 === 0) {
+            ctx.strokeStyle = 'rgba(60,60,85,0.1)';
+            ctx.lineWidth = 1;
+            for (let sl = 0; sl < 3; sl++) {
+              ctx.beginPath();
+              ctx.moveTo(x + 10, y + 12 + sl * 10);
+              ctx.lineTo(x + TILE - 10, y + 12 + sl * 10);
+              ctx.stroke();
+            }
+          }
+          // Emergency floor lighting (dim blue pools)
+          if ((tx % 8 === 0) && (ty % 8 === 0)) {
+            ctx.fillStyle = 'rgba(80,120,200,0.06)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.7, 0, Math.PI * 2); ctx.fill();
+          }
+          // Hazard stripe at corridor edges (yellow-black, sparse)
+          if ((tx % 12 === 0) && (ty % 6 === 0)) {
+            ctx.fillStyle = 'rgba(200,180,40,0.06)';
+            ctx.fillRect(x, y, TILE, 3);
           }
         }
         continue;

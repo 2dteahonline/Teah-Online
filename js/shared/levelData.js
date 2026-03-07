@@ -112,6 +112,9 @@ const LEVELS = {
       // === HIDE & SEEK ARENA (west district, next to deli) ===
       { type: 'building_hideseek', tx: 14, ty: 12, w: 7, h: 8, solid: true },
       { type: 'hideseek_entrance', tx: 16, ty: 19, w: 3, h: 2, solid: false, target: 'hide_01', spawnTX: 5, spawnTY: 5 },
+      // === THE SKELD (west district, next to H&S) ===
+      { type: 'building_skeld', tx: 25, ty: 12, w: 7, h: 8, solid: true },
+      { type: 'skeld_entrance', tx: 27, ty: 19, w: 3, h: 2, solid: false, target: 'skeld_01' },
       // === EAST DISTRICT BUILDINGS ===
       { type: 'building_gunsmith', tx: 69, ty: 12, w: 7, h: 8, solid: true },
       { type: 'gunsmith_entrance', tx: 71, ty: 19, w: 3, h: 2, solid: false, target: 'gunsmith_01', spawnTX: 22, spawnTY: 26 },
@@ -1197,6 +1200,173 @@ const LEVELS = {
       spawns: { seeker: { tx: 5, ty: 4 }, hider: { tx: 45, ty: 38 }, p1: { tx: 5, ty: 4 } },
       collisionAscii: ascii,
       entities: []
+    };
+  })(),
+
+  // ===================== THE SKELD (Among Us) =====================
+  // 96×64 spaceship map — 14 rooms connected by hallways.
+  // Only geometry: rooms, corridors, walls, floors. No gameplay systems.
+  skeld_01: (function() {
+    const W = 96, H = 64;
+    const g = [];
+    for (let y = 0; y < H; y++) { g[y] = []; for (let x = 0; x < W; x++) g[y][x] = 1; }
+
+    function room(x1, y1, x2, y2) {
+      for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) {
+        if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 0;
+      }
+    }
+    function hCorridor(x1, x2, y) {
+      const lo = Math.min(x1,x2), hi = Math.max(x1,x2);
+      for (let x = lo; x <= hi; x++) { if(y>0&&y<H-1) g[y][x]=0; if(y+1>0&&y+1<H-1) g[y+1][x]=0; }
+    }
+    function vCorridor(y1, y2, x) {
+      const lo = Math.min(y1,y2), hi = Math.max(y1,y2);
+      for (let y = lo; y <= hi; y++) { if(x>0&&x<W-1) g[y][x]=0; if(x+1>0&&x+1<W-1) g[y][x+1]=0; }
+    }
+    function pillar(px, py) {
+      g[py][px]=1; g[py][px+1]=1; g[py+1][px]=1; g[py+1][px+1]=1;
+    }
+    function wall(x, y) { if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 1; }
+
+    // ========================================
+    //  ROOMS (14 total)
+    // ========================================
+
+    // === CAFETERIA (top center, main hub — 22×14) ===
+    room(36, 4, 57, 17);
+
+    // === UPPER ENGINE (upper left — 12×10) ===
+    room(8, 6, 19, 15);
+
+    // === REACTOR (far left — 12×10) ===
+    room(2, 22, 13, 31);
+
+    // === SECURITY (left mid — 8×6) ===
+    room(8, 34, 15, 39);
+
+    // === LOWER ENGINE (lower left — 12×10) ===
+    room(8, 42, 19, 51);
+
+    // === MEDBAY (left of center — 8×8) ===
+    room(30, 20, 37, 27);
+
+    // === ELECTRICAL (bottom left — 10×10) ===
+    room(22, 46, 31, 55);
+
+    // === STORAGE (bottom center — 18×11, largest after cafe) ===
+    room(36, 42, 53, 52);
+
+    // === ADMIN (center-right — 10×8) ===
+    room(44, 30, 53, 37);
+
+    // === WEAPONS (upper right — 12×10) ===
+    room(66, 4, 77, 13);
+
+    // === O2 (right mid — 8×8) ===
+    room(64, 20, 71, 27);
+
+    // === NAVIGATION (far right — 12×10) ===
+    room(80, 20, 91, 29);
+
+    // === SHIELDS (right mid-low — 10×8) ===
+    room(68, 32, 77, 39);
+
+    // === COMMUNICATIONS (bottom right — 8×7) ===
+    room(68, 44, 75, 50);
+
+    // ========================================
+    //  CAFETERIA OCTAGONAL CORNER CUTS
+    // ========================================
+    // Top-left corner
+    wall(36,4); wall(37,4); wall(38,4); wall(36,5); wall(37,5); wall(36,6);
+    // Top-right corner
+    wall(55,4); wall(56,4); wall(57,4); wall(56,5); wall(57,5); wall(57,6);
+    // Bottom-left corner
+    wall(36,15); wall(36,16); wall(37,16); wall(36,17); wall(37,17); wall(38,17);
+    // Bottom-right corner
+    wall(55,17); wall(56,17); wall(57,17); wall(57,16); wall(56,16); wall(57,15);
+
+    // ========================================
+    //  CORRIDORS (all 2 tiles wide)
+    // ========================================
+
+    // --- Top connections ---
+    hCorridor(19, 36, 10);    // Cafeteria ← → Upper Engine
+    hCorridor(57, 66, 8);     // Cafeteria ← → Weapons
+
+    // --- Cafeteria south exits ---
+    vCorridor(17, 20, 36);    // Cafeteria ← → MedBay (left exit, x=36-37)
+    vCorridor(17, 30, 48);    // Cafeteria ← → Admin  (long south corridor, x=48-49)
+
+    // --- Left wing vertical ---
+    vCorridor(15, 22, 12);    // Upper Engine → Reactor (x=12-13)
+    vCorridor(31, 34, 10);    // Reactor → Security     (x=10-11)
+    vCorridor(39, 42, 12);    // Security → Lower Engine (x=12-13)
+
+    // --- Left wing horizontal cross-connection ---
+    hCorridor(13, 30, 22);    // Reactor area ← → MedBay (y=22-23)
+
+    // --- Bottom left ---
+    hCorridor(19, 22, 48);    // Lower Engine → Electrical (y=48-49)
+    hCorridor(31, 36, 49);    // Electrical → Storage      (y=49-50)
+
+    // --- Bottom center ---
+    vCorridor(37, 42, 48);    // Admin ← → Storage (x=48-49)
+    hCorridor(53, 68, 47);    // Storage → Communications (y=47-48)
+
+    // --- Right wing vertical ---
+    vCorridor(13, 20, 68);    // Weapons → O2     (x=68-69)
+    vCorridor(27, 32, 68);    // O2 → Shields     (x=68-69)
+    vCorridor(39, 44, 72);    // Shields → Communications (x=72-73)
+
+    // --- Right wing horizontal ---
+    hCorridor(71, 80, 23);    // O2 → Navigation   (y=23-24)
+    hCorridor(53, 68, 34);    // Admin → Shields area (y=34-35)
+
+    // ========================================
+    //  PILLARS (2×2 solid blocks — furniture/equipment)
+    // ========================================
+
+    // Cafeteria tables
+    pillar(42, 8); pillar(51, 8); pillar(42, 13); pillar(51, 13);
+
+    // Engine cores
+    pillar(12, 9); pillar(15, 9);    // Upper Engine
+    pillar(12, 45); pillar(15, 45);  // Lower Engine
+
+    // Reactor core
+    pillar(6, 25); pillar(9, 25);
+
+    // Equipment / furniture
+    pillar(33, 23);   // MedBay bed
+    pillar(25, 49); pillar(28, 49);  // Electrical panels
+    pillar(42, 46); pillar(47, 46);  // Storage crates
+    pillar(48, 33);   // Admin table
+    pillar(70, 7); pillar(73, 7);    // Weapons stations
+    pillar(67, 23);   // O2 equipment
+    pillar(84, 24); pillar(87, 24);  // Navigation consoles
+    pillar(72, 35);   // Shield generator
+    pillar(71, 47);   // Comms equipment
+
+    // ========================================
+    //  BORDERS
+    // ========================================
+    for (let x = 0; x < W; x++) { g[0][x] = 1; g[H-1][x] = 1; }
+    for (let y = 0; y < H; y++) { g[y][0] = 1; g[y][W-1] = 1; }
+
+    const ascii = g.map(row => row.map(v => v ? '#' : '.').join(''));
+
+    return {
+      id: 'skeld_01',
+      widthTiles: W,
+      heightTiles: H,
+      isSkeld: true,
+      spawns: { p1: { tx: 46, ty: 10 } },
+      collisionAscii: ascii,
+      entities: [
+        { type: 'skeld_exit', tx: 45, ty: 4, w: 4, h: 2, solid: false, target: 'lobby_01' }
+      ]
     };
   })()
 };

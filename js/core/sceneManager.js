@@ -45,6 +45,7 @@ const Scene = {
     else if (level.isGunsmith) this._current = 'gunsmith';
     else if (level.isTestArena) this._current = 'test_arena';
     else if (level.isHideSeek) this._current = 'hideseek';
+    else if (level.isSkeld) this._current = 'skeld';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -63,6 +64,7 @@ const Scene = {
   get inGunsmith() { return this._current === 'gunsmith'; },
   get inTestArena() { return this._current === 'test_arena'; },
   get inHideSeek() { return this._current === 'hideseek'; },
+  get inSkeld() { return this._current === 'skeld'; },
 };
 
 // ---- PORTAL TYPE REGISTRY ----
@@ -77,10 +79,11 @@ const PORTAL_SCENES = {
   azurine_entrance: 'lobby', azurine_exit: 'azurine',
   gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
   hideseek_entrance: 'lobby',
+  skeld_entrance: 'lobby',  skeld_exit: 'skeld',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
-const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith']);
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld']);
 
 // ---- ZONE TRANSITIONS ----
 let transitioning = false;

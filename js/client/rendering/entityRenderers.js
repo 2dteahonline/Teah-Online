@@ -2094,6 +2094,148 @@ const ENTITY_RENDERERS = {
       ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ff9a40'; ctx.textAlign = "center";
       ctx.fillText("Hide & Seek", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
   },
+
+  // ===================== THE SKELD BUILDING (lobby) =====================
+  building_skeld: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath(); ctx.ellipse(ex+cw/2+6, ey+ch+7, cw*0.45, 9, 0, 0, Math.PI*2); ctx.fill();
+      // Main structure — dark blue-gray spaceship hull
+      ctx.fillStyle = '#0c0e14';
+      ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
+      // Hull panel lines
+      ctx.strokeStyle = '#1a1e2a'; ctx.lineWidth = 1;
+      for (let r = 0; r < 5; r++) {
+        const ly = ey+ch*0.3+r*ch*0.14;
+        ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
+      }
+      // Vertical panel seams
+      ctx.strokeStyle = 'rgba(60,80,140,0.06)'; ctx.lineWidth = 1;
+      for (let ridge = 0; ridge < 10; ridge++) {
+        const rx = ex + 10 + ridge * (cw - 20) / 10;
+        ctx.beginPath(); ctx.moveTo(rx, ey+ch*0.26); ctx.lineTo(rx, ey+ch*0.95); ctx.stroke();
+      }
+      // Roof — angular spaceship shape
+      ctx.fillStyle = '#10121a';
+      ctx.beginPath();
+      ctx.moveTo(ex-4, ey+ch*0.24); ctx.lineTo(ex+cw*0.2, ey+ch*0.04);
+      ctx.lineTo(ex+cw*0.8, ey+ch*0.04); ctx.lineTo(ex+cw+4, ey+ch*0.24);
+      ctx.closePath(); ctx.fill();
+      // Roof highlight
+      ctx.fillStyle = '#181c28';
+      ctx.beginPath();
+      ctx.moveTo(ex+cw*0.2, ey+ch*0.04); ctx.lineTo(ex+cw*0.8, ey+ch*0.04);
+      ctx.lineTo(ex+cw+4, ey+ch*0.24); ctx.lineTo(ex+cw*0.5, ey+ch*0.24);
+      ctx.closePath(); ctx.fill();
+      // Neon blue trim on roof edge
+      ctx.strokeStyle = '#4a8aff'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(ex-4, ey+ch*0.24); ctx.lineTo(ex+cw*0.2, ey+ch*0.04);
+      ctx.lineTo(ex+cw*0.8, ey+ch*0.04); ctx.lineTo(ex+cw+4, ey+ch*0.24);
+      ctx.stroke();
+      // Viewport windows with blue glow
+      const glow = 0.5 + Math.sin(t * 1.5) * 0.15;
+      for (let wr = 0; wr < 2; wr++) {
+        for (let wc = 0; wc < 3; wc++) {
+          const wx = ex + cw*0.08 + wc*cw*0.3;
+          const wy = ey + ch*0.32 + wr*ch*0.22;
+          ctx.fillStyle = '#060810';
+          ctx.fillRect(wx, wy, cw*0.22, ch*0.14);
+          ctx.fillStyle = `rgba(60,120,255,${glow * 0.15})`;
+          ctx.fillRect(wx+1, wy+1, cw*0.22-2, ch*0.14-2);
+          ctx.strokeStyle = `rgba(60,120,255,${glow * 0.4})`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(wx, wy, cw*0.22, ch*0.14);
+          // Star dots inside windows
+          ctx.fillStyle = `rgba(200,220,255,${0.3 + Math.sin(t*2+wc+wr)*0.2})`;
+          ctx.beginPath(); ctx.arc(wx+cw*0.06, wy+ch*0.05, 1.5, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(wx+cw*0.16, wy+ch*0.09, 1, 0, Math.PI*2); ctx.fill();
+        }
+      }
+      // Airlock door
+      ctx.fillStyle = '#08080e';
+      ctx.fillRect(ex+cw*0.32, ey+ch*0.75, cw*0.36, ch*0.25);
+      ctx.strokeStyle = '#1a2030'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ex+cw*0.5, ey+ch*0.77); ctx.lineTo(ex+cw*0.5, ey+ch*0.98); ctx.stroke();
+      // Door neon frame
+      ctx.strokeStyle = `rgba(60,140,255,${0.6 + Math.sin(t*2)*0.2})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ex+cw*0.32, ey+ch*0.75, cw*0.36, ch*0.25);
+      // Neon side strips (blue)
+      ctx.fillStyle = `rgba(60,140,255,${0.12 + Math.sin(t*1.2)*0.06})`;
+      ctx.fillRect(ex+4, ey+ch*0.25, 3, ch*0.7);
+      ctx.fillRect(ex+cw-7, ey+ch*0.25, 3, ch*0.7);
+      // Running light on roof
+      const flicker = Math.sin(t * 3) > 0 ? 0.6 : 0.15;
+      ctx.fillStyle = `rgba(60,140,255,${flicker})`;
+      ctx.beginPath(); ctx.arc(ex+cw*0.5, ey+ch*0.01, 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgba(60,140,255,${flicker * 0.3})`;
+      ctx.beginPath(); ctx.arc(ex+cw*0.5, ey+ch*0.01, 8, 0, Math.PI*2); ctx.fill();
+      // Neon "THE SKELD" sign
+      const signGlow = 0.7 + Math.sin(t * 2.5) * 0.2;
+      ctx.font = "bold 9px monospace";
+      ctx.fillStyle = `rgba(60,160,255,${signGlow})`;
+      ctx.textAlign = "center";
+      ctx.fillText("THE SKELD", ex+cw/2, ey+ch*0.16);
+      ctx.fillStyle = `rgba(60,160,255,${signGlow * 0.15})`;
+      ctx.fillRect(ex+cw*0.15, ey+ch*0.09, cw*0.7, ch*0.1);
+      // Label below
+      ctx.font = "bold 11px monospace"; ctx.fillStyle = '#4a8aff'; ctx.textAlign = "center";
+      ctx.fillText("The Skeld", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
+  },
+
+  // ===================== SKELD ENTRANCE (lobby portal) =====================
+  skeld_entrance: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      const pulse = 0.5 + Math.sin(t * 2) * 0.3;
+      // Glowing blue portal pad
+      ctx.fillStyle = `rgba(40,100,220,${0.08 + pulse * 0.06})`;
+      ctx.beginPath(); ctx.ellipse(ex+cw/2, ey+ch/2, cw*0.45, ch*0.35, 0, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = `rgba(60,140,255,${0.3 + pulse * 0.3})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(ex+cw/2, ey+ch/2, cw*0.45, ch*0.35, 0, 0, Math.PI*2); ctx.stroke();
+      // Inner ring
+      ctx.strokeStyle = `rgba(60,140,255,${0.15 + pulse * 0.15})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(ex+cw/2, ey+ch/2, cw*0.3, ch*0.2, 0, 0, Math.PI*2); ctx.stroke();
+      // Arrow indicator
+      ctx.fillStyle = `rgba(60,160,255,${0.5 + pulse * 0.3})`;
+      ctx.beginPath();
+      ctx.moveTo(ex+cw/2, ey+ch*0.2); ctx.lineTo(ex+cw/2+8, ey+ch*0.45); ctx.lineTo(ex+cw/2-8, ey+ch*0.45);
+      ctx.closePath(); ctx.fill();
+  },
+
+  // ===================== SKELD EXIT (airlock door inside map) =====================
+  skeld_exit: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      const pulse = 0.5 + Math.sin(t * 1.5) * 0.3;
+      // Airlock door frame
+      ctx.fillStyle = '#1a1e28';
+      ctx.fillRect(ex, ey, cw, ch);
+      // Door panels (split in middle)
+      ctx.fillStyle = '#10141c';
+      ctx.fillRect(ex+4, ey+4, cw/2-6, ch-8);
+      ctx.fillRect(ex+cw/2+2, ey+4, cw/2-6, ch-8);
+      // Warning stripes
+      ctx.fillStyle = 'rgba(200,180,40,0.15)';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(ex + 6 + i * (cw-12)/4, ey + ch - 10, (cw-12)/8, 6);
+      }
+      // Neon exit glow
+      ctx.strokeStyle = `rgba(60,200,120,${0.4 + pulse * 0.3})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ex+2, ey+2, cw-4, ch-4);
+      // EXIT text
+      ctx.font = "bold 10px monospace";
+      ctx.fillStyle = `rgba(60,200,120,${0.6 + pulse * 0.2})`;
+      ctx.textAlign = "center";
+      ctx.fillText("EXIT", ex+cw/2, ey+ch/2+4);
+      ctx.textAlign = "left";
+  },
 };
 
 // ---- Grocery Shelf Renderer Data ----
