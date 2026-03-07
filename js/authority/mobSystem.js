@@ -14,7 +14,7 @@ function positionClear(px, py, hw) {
 // BFS pathfinder — finds shortest tile path from (sx,sy) to (ex,ey)
 // Returns array of {x,y} tile coords, or null if no path
 // Capped at 400 tiles explored to avoid lag
-function bfsPath(sx, sy, ex, ey) {
+function bfsPath(sx, sy, ex, ey, maxExplore) {
   if (sx === ex && sy === ey) return [{x:sx,y:sy}];
   const w = level.widthTiles, h = level.heightTiles;
   if (sx < 0 || sy < 0 || sx >= w || sy >= h) return null;
@@ -25,8 +25,9 @@ function bfsPath(sx, sy, ex, ey) {
   visited.add(sy * w + sx);
   const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]; // 8-directional
   let explored = 0;
+  const cap = maxExplore || 600;
 
-  while (queue.length > 0 && explored < 600) {
+  while (queue.length > 0 && explored < cap) {
     const cur = queue.shift();
     explored++;
     for (const [ddx, ddy] of dirs) {

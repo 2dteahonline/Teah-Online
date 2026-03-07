@@ -335,7 +335,7 @@ window.HideSeekSystem = {
       const pick = spots[Math.floor(Math.random() * spots.length)];
 
       if (typeof bfsPath === 'function') {
-        const path = bfsPath(botTX, botTY, pick.tx, pick.ty);
+        const path = bfsPath(botTX, botTY, pick.tx, pick.ty, 3000);
         if (path && path.length > 0) {
           hs._botHideSpot = { tx: pick.tx, ty: pick.ty };
           hs._botPath = path;
@@ -573,7 +573,7 @@ window.HideSeekSystem = {
         if (!hs._botPath || hs._botPathIdx >= hs._botPath.length ||
             !hs._botTarget || hs._botTarget.tx !== hiderTX || hs._botTarget.ty !== hiderTY) {
           if (typeof bfsPath === 'function') {
-            hs._botPath = bfsPath(botTX, botTY, hiderTX, hiderTY);
+            hs._botPath = bfsPath(botTX, botTY, hiderTX, hiderTY, 3000);
           }
           hs._botPathIdx = 0;
           hs._botTarget = { tx: hiderTX, ty: hiderTY };
@@ -598,7 +598,7 @@ window.HideSeekSystem = {
     if (!hs._botPath || hs._botPathIdx >= (hs._botPath ? hs._botPath.length : 0) ||
         !hs._botTarget || hs._botTarget.tx !== wp.tx || hs._botTarget.ty !== wp.ty) {
       if (typeof bfsPath === 'function') {
-        hs._botPath = bfsPath(botTX, botTY, wp.tx, wp.ty);
+        hs._botPath = bfsPath(botTX, botTY, wp.tx, wp.ty, 3000);
       }
       hs._botPathIdx = 0;
       hs._botTarget = { tx: wp.tx, ty: wp.ty };
