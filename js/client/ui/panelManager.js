@@ -835,6 +835,14 @@ window.addEventListener("keydown", e => {
     }
   }
 
+  // G key toggles grid coordinate overlay
+  if (key === "g" && !chatInputActive && !nameEditActive && !statusEditActive && !rebindingKey) {
+    if (typeof gridOverlayOpen !== 'undefined') {
+      gridOverlayOpen = !gridOverlayOpen;
+      return;
+    }
+  }
+
   // R key toggles remove mode when placement tool is active
   if (key === "r" && activePlaceTool && !isTyping && !UI.isOpen('toolbox')) {
     removeModeActive = !removeModeActive;

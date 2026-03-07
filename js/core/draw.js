@@ -4,6 +4,7 @@
 
 let renderTime = 0;
 let minimapOpen = false;
+let gridOverlayOpen = false;
 
 // ---- MINIMAP ROOM LABELS (per-level) ----
 const MINIMAP_LABELS = {
@@ -149,6 +150,42 @@ function draw() {
 
   // Draw level entity overlays (barriers, spawn pads, zones) — uses own cam offset
   drawLevelEntities(cx, cy);
+
+  // Grid coordinate overlay (toggle with G key)
+  if (gridOverlayOpen && level) {
+    ctx.save();
+    ctx.translate(-cx, -cy);
+    const T = TILE;
+    const startTX = Math.max(0, Math.floor(cx / T) - 1);
+    const startTY = Math.max(0, Math.floor(cy / T) - 1);
+    const endTX = Math.min(level.widthTiles - 1, startTX + Math.ceil(BASE_W / (T * WORLD_ZOOM)) + 2);
+    const endTY = Math.min(level.heightTiles - 1, startTY + Math.ceil(BASE_H / (T * WORLD_ZOOM)) + 2);
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let ty = startTY; ty <= endTY; ty++) {
+      for (let tx = startTX; tx <= endTX; tx++) {
+        if (tx % 5 === 0 && ty % 5 === 0) {
+          const px = tx * T + T / 2;
+          const py = ty * T + T / 2;
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(px - 16, py - 8, 32, 16);
+          ctx.fillStyle = '#ffcc00';
+          ctx.fillText(tx + ',' + ty, px, py);
+        } else if (tx % 5 === 0 || ty % 5 === 0) {
+          const px = tx * T + T / 2;
+          const py = ty * T + T / 2;
+          ctx.fillStyle = 'rgba(255,204,0,0.3)';
+          ctx.fillRect(tx * T, ty * T, T, T);
+          ctx.fillStyle = '#ffcc00';
+          ctx.font = '8px monospace';
+          ctx.fillText(tx + ',' + ty, px, py);
+          ctx.font = 'bold 10px monospace';
+        }
+      }
+    }
+    ctx.restore();
+  }
 
   ctx.save();
   ctx.translate(-cx, -cy);
