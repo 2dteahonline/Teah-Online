@@ -1299,41 +1299,39 @@ const LEVELS = {
     wall(67,18); wall(68,18); wall(69,18); wall(69,17); wall(68,17); wall(69,16);
 
     // ========================================
-    //  CORRIDORS (17 segments + 3 junction pieces = 20 calls)
+    //  CORRIDORS — matched to reference
     // ========================================
 
-    // --- Top wing: Cafe is the hub ---
-    hCorridor3(23, 42, 11);    // UE → Cafe (y=11-13, wide)
-    hCorridor3(69, 90, 10);    // Cafe → Weapons (y=10-12, wide)
+    // --- Top wing ---
+    hCorridor3(23, 42, 11);    // UE → Cafe (wide, y=11-13)
+    hCorridor3(69, 90, 10);    // Cafe → Weapons (wide, y=10-12)
 
-    // --- Cafeteria south: asymmetric fork ---
-    room(50, 18, 60, 22);      // South vestibule below Cafe center
-    vCorridor(22, 26, 48);     // Left fork → MedBay area (x=48-49)
-    hCorridor(45, 48, 27);     // Branch left into MedBay (y=27-28)
-    vCorridor(22, 38, 58);     // Right fork → Admin area (x=58-59)
-    hCorridor(58, 66, 37);     // Branch right into Admin (y=37-38)
+    // --- Cafeteria south: wide channel matching reference ---
+    room(47, 18, 63, 28);      // Wide south corridor from Cafe (17×11)
+    room(44, 24, 50, 28);      // Left branch widening toward MedBay
+    vCorridor3(28, 38, 54);    // South spine continues down (x=54-56)
+    hCorridor3(56, 66, 36);    // Branch right into Admin (y=36-38)
 
-    // --- Left wing: Security cluster ---
-    vCorridor(19, 33, 20);     // UE ↓ Security (x=20-21)
-    hCorridor(13, 18, 36);     // Reactor → Security (y=36-37)
-    vCorridor(39, 50, 20);     // Security ↓ LE (x=20-21)
-    hCorridor(27, 36, 30);     // Security area → MedBay (y=30-31)
+    // --- Left wing: Security cluster (3-wide corridors) ---
+    vCorridor3(19, 33, 19);    // UE ↓ Security (x=19-21)
+    hCorridor3(13, 18, 35);    // Reactor → Security (y=35-37)
+    vCorridor3(39, 50, 19);    // Security ↓ LE (x=19-21)
+    hCorridor3(27, 36, 33);    // Security → MedBay (y=33-35)
 
     // --- Bottom left ---
-    hCorridor(23, 32, 57);     // LE → Electrical (y=57-58)
-    hCorridor(43, 50, 60);     // Electrical → Storage (y=60-61)
+    hCorridor3(23, 32, 56);    // LE → Electrical (y=56-58)
+    hCorridor3(43, 50, 59);    // Electrical → Storage (y=59-61)
 
     // --- Center / bottom ---
-    vCorridor(44, 56, 68);     // Admin ↓ Storage (x=68-69)
-    hCorridor(71, 82, 65);     // Storage → Comms (y=65-66)
+    vCorridor3(44, 56, 67);    // Admin ↓ Storage (x=67-69)
+    hCorridor3(71, 82, 64);    // Storage → Comms (y=64-66)
 
-    // --- Right wing: clean vertical spine ---
-    vCorridor(17, 26, 90);     // Weapons ↓ O2 (x=90-91)
-    hCorridor(91, 104, 31);    // O2 → Navigation (y=31-32)
-    vCorridor(35, 50, 90);     // O2 ↓ Shields (x=90-91)
-    hCorridor(77, 88, 43);     // Admin → right wing (y=43-44)
-    room(89, 43, 91, 46);      // Right wing junction (3×4)
-    vCorridor(59, 63, 88);     // Shields ↓ Comms (x=88-89)
+    // --- Right wing: large junction matching reference ---
+    vCorridor3(17, 26, 90);    // Weapons ↓ O2 (x=90-92)
+    hCorridor3(91, 104, 30);   // O2 → Navigation (y=30-32)
+    room(77, 42, 90, 50);      // Right wing junction: Admin→Shields (wide)
+    room(88, 35, 92, 50);      // Right wing spine: O2↓Shields (wide)
+    vCorridor3(59, 63, 88);    // Shields ↓ Comms (x=88-90)
 
     // ========================================
     //  BORDERS
