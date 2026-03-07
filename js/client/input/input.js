@@ -83,11 +83,11 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
-  // Hide & Seek "Show Seeker" toggle click
-  if (typeof HideSeekState !== 'undefined' && HideSeekState.phase === 'seek' && window._hsShowSeekerBtn) {
-    const sb = window._hsShowSeekerBtn;
+  // Hide & Seek "Show Bot" toggle click (works in both hide and seek phases)
+  if (typeof HideSeekState !== 'undefined' && window._hsShowBotBtn) {
+    const sb = window._hsShowBotBtn;
     if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
-      _showSeekerOverlay = !_showSeekerOverlay;
+      _showBotOverlay = !_showBotOverlay;
       return;
     }
   }

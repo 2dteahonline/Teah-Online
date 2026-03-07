@@ -6,8 +6,8 @@
 let _phaseFlashTimer = 0;
 let _lastHideSeekPhase = '';
 
-// "Show Seeker" toggle for hider during seek phase
-let _showSeekerOverlay = false;
+// "Show Bot" toggle — reveals bot position on map overlays (testing/debug)
+let _showBotOverlay = false;
 
 // ─────────────────────────────────────────────────────────────────
 // 1. FOV — dark overlay with circular cutout around the seeker
@@ -66,8 +66,8 @@ function drawHideSeekFOV() {
       ctx.fillStyle = 'rgba(60,140,255,0.8)';
       ctx.fillText('YOUR SPAWN', spawnDotX, spawnDotY + dotR + 16);
 
-      // Show bot position on minimap (testing: see where it's going)
-      if (HideSeekState.botMob) {
+      // Show bot position on minimap (only when toggle is on)
+      if (_showBotOverlay && HideSeekState.botMob) {
         const bot = HideSeekState.botMob;
         const botDotX = mapX + (bot.x / TILE) * mapScale;
         const botDotY = mapY + (bot.y / TILE) * mapScale;
@@ -94,6 +94,22 @@ function drawHideSeekFOV() {
         ctx.font = 'bold 10px monospace';
         ctx.fillStyle = 'rgba(255,80,80,0.8)';
         ctx.fillText('BOT', botDotX, botDotY - 8);
+      }
+
+      // --- "Show Hider" toggle button (top-right of map overview) ---
+      {
+        const tbW = 130, tbH = 28;
+        const tbX = BASE_W - tbW - 30;
+        const tbY = mapY - 5;
+        ctx.fillStyle = _showBotOverlay ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.06)';
+        ctx.beginPath(); ctx.roundRect(tbX, tbY, tbW, tbH, 6); ctx.fill();
+        ctx.strokeStyle = _showBotOverlay ? '#ff5050' : 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(tbX, tbY, tbW, tbH, 6); ctx.stroke();
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = _showBotOverlay ? '#ff5050' : 'rgba(255,255,255,0.5)';
+        ctx.fillText(_showBotOverlay ? 'HIDE HIDER' : 'SHOW HIDER', tbX + tbW / 2, tbY + tbH / 2 + 4);
+        window._hsShowBotBtn = { x: tbX, y: tbY, w: tbW, h: tbH };
       }
 
       // Border
@@ -319,13 +335,13 @@ function drawHideSeekHUD() {
     const btnY = 20;
 
     // Button background
-    ctx.fillStyle = _showSeekerOverlay ? 'rgba(255,154,64,0.2)' : 'rgba(255,255,255,0.06)';
+    ctx.fillStyle = _showBotOverlay ? 'rgba(255,154,64,0.2)' : 'rgba(255,255,255,0.06)';
     ctx.beginPath();
     ctx.roundRect(btnX, btnY, btnW, btnH, 6);
     ctx.fill();
 
     // Button border
-    ctx.strokeStyle = _showSeekerOverlay ? '#ff9a40' : 'rgba(255,255,255,0.25)';
+    ctx.strokeStyle = _showBotOverlay ? '#ff9a40' : 'rgba(255,255,255,0.25)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.roundRect(btnX, btnY, btnW, btnH, 6);
@@ -333,18 +349,18 @@ function drawHideSeekHUD() {
 
     // Button text
     ctx.font = 'bold 12px monospace';
-    ctx.fillStyle = _showSeekerOverlay ? '#ff9a40' : 'rgba(255,255,255,0.6)';
-    ctx.fillText(_showSeekerOverlay ? 'HIDE SEEKER' : 'SHOW SEEKER', btnX + btnW / 2, btnY + btnH / 2 + 4);
+    ctx.fillStyle = _showBotOverlay ? '#ff9a40' : 'rgba(255,255,255,0.6)';
+    ctx.fillText(_showBotOverlay ? 'HIDE SEEKER' : 'SHOW SEEKER', btnX + btnW / 2, btnY + btnH / 2 + 4);
 
     // Store bounds for click detection
-    window._hsShowSeekerBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+    window._hsShowBotBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
 
     // --- Draw seeker tracking minimap when toggled on ---
-    if (_showSeekerOverlay && HideSeekState.botMob) {
+    if (_showBotOverlay && HideSeekState.botMob) {
       _drawSeekerTrackingMinimap();
     }
   } else {
-    window._hsShowSeekerBtn = null;
+    window._hsShowBotBtn = null;
   }
 
   // --- Phase transition flash ("SEEK PHASE BEGINS!") ---

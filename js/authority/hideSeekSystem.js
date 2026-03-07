@@ -74,7 +74,7 @@ window.HideSeekSystem = {
     const hs = HideSeekState;
 
     // Reset UI toggles
-    if (typeof _showSeekerOverlay !== 'undefined') _showSeekerOverlay = false;
+    if (typeof _showBotOverlay !== 'undefined') _showBotOverlay = false;
 
     // Assign roles
     hs.playerRole = playerRole;
