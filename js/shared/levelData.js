@@ -1251,8 +1251,8 @@ const LEVELS = {
     // === MEDBAY (center-right — 12×10) ===
     room(38, 18, 49, 27);
 
-    // === STORAGE (bottom center — 16×22, tall rectangle) ===
-    room(58, 53, 73, 74);
+    // === STORAGE (bottom center — 18×22, tall rectangle) ===
+    room(58, 53, 75, 74);
 
     // === LOWER ENGINE (lower left — 20×14) ===
     room(4, 52, 23, 65);
@@ -1296,6 +1296,9 @@ const LEVELS = {
 
     // --- Cafe ↓ Storage (5 wide, from new Cafe bottom to Storage) ---
     room(68, 34, 72, 53);     // Cafe bottom → Storage (x=68-72, y=35-52)
+
+    // --- LE → Storage (5 tall, horizontal) ---
+    room(23, 57, 58, 61);     // Lower Engine → Storage (x=24-57, y=57-61)
 
     // ========================================
     //  BORDERS
