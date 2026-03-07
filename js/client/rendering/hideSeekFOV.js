@@ -63,6 +63,36 @@ function drawHideSeekFOV() {
       ctx.fillStyle = 'rgba(60,140,255,0.8)';
       ctx.fillText('YOUR SPAWN', spawnDotX, spawnDotY + dotR + 16);
 
+      // Show bot position on minimap (testing: see where it's going)
+      if (HideSeekState.botMob) {
+        const bot = HideSeekState.botMob;
+        const botDotX = mapX + (bot.x / TILE) * mapScale;
+        const botDotY = mapY + (bot.y / TILE) * mapScale;
+
+        // Bot dot (red, pulsing)
+        ctx.fillStyle = `rgba(255,80,80,${0.7 + pulse * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(botDotX, botDotY, 3 + pulse * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bot target spot (orange X)
+        if (HideSeekState._botHideSpot) {
+          const tgtX = mapX + (HideSeekState._botHideSpot.tx + 0.5) * mapScale;
+          const tgtY = mapY + (HideSeekState._botHideSpot.ty + 0.5) * mapScale;
+          ctx.strokeStyle = 'rgba(255,160,40,0.8)';
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(tgtX - 4, tgtY - 4); ctx.lineTo(tgtX + 4, tgtY + 4); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(tgtX + 4, tgtY - 4); ctx.lineTo(tgtX - 4, tgtY + 4); ctx.stroke();
+          ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = 'rgba(255,160,40,0.7)';
+          ctx.fillText('TARGET', tgtX, tgtY - 8);
+        }
+
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = 'rgba(255,80,80,0.8)';
+        ctx.fillText('BOT', botDotX, botDotY - 8);
+      }
+
       // Border
       ctx.strokeStyle = 'rgba(255,255,255,0.1)';
       ctx.lineWidth = 1;

@@ -1171,7 +1171,7 @@ const LEVELS = {
 
     room(54, 42, 60, 48);     // R26: HIDER SPAWN (7x7)
     vCorridor(40, 42, 56);    // R25→R26
-    pillar(57, 45);
+    pillar(55, 43);           // moved pillar away from hider spawn
 
     // Dead-end alcoves near hider spawn
     room(62, 43, 64, 46);     // A6: east closet (3x4)

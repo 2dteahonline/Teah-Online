@@ -90,27 +90,28 @@ function meleeSwing() {
   const isCleave = melee.special === 'cleave';
   const stormHits = []; // track hits for chain lightning
   const cleaveHits = []; // track hits for piercing blood
+
+  // Hide & Seek tag check — bot is standalone (not in mobs[])
+  if (typeof HideSeekState !== 'undefined' && HideSeekState.phase === 'seek' &&
+      HideSeekState.playerRole === 'seeker' && HideSeekState.botMob) {
+    const bot = HideSeekState.botMob;
+    const tdx = bot.x - player.x;
+    const tdy = bot.y - player.y;
+    const tDist = Math.sqrt(tdx * tdx + tdy * tdy);
+    if (tDist < melee.range) {
+      const angleToBot = Math.atan2(tdy, tdx);
+      let angleDiff = angleToBot - melee.swingDir;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      if (Math.abs(angleDiff) < halfArc) {
+        HideSeekSystem.onTag();
+        hitEffects.push({ x: bot.x, y: bot.y - 20, life: 30, maxLife: 30, type: "heal", dmg: "TAG!" });
+      }
+    }
+  }
+
   for (const m of mobs) {
     if (m.hp <= 0) continue;
-
-    // Hide & Seek tag intercept — melee swing tags the hider bot instead of dealing damage
-    if (typeof HideSeekState !== 'undefined' && HideSeekState.phase === 'seek' && m === HideSeekState.botMob) {
-      const tdx = m.x - player.x;
-      const tdy = m.y - player.y;
-      const tDist = Math.sqrt(tdx * tdx + tdy * tdy);
-      if (tDist < melee.range) {
-        const angleToMob = Math.atan2(tdy, tdx);
-        let angleDiff = angleToMob - melee.swingDir;
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        if (Math.abs(angleDiff) < halfArc) {
-          HideSeekSystem.onTag();
-          hitEffects.push({ x: m.x, y: m.y - 20, life: 30, maxLife: 30, type: "heal", dmg: "TAG!" });
-          continue; // skip normal damage
-        }
-      }
-      continue; // don't deal normal damage to the hideseek bot
-    }
 
     const dx = m.x - player.x;
     const dy = m.y - player.y;

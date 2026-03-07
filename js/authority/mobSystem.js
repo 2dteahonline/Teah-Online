@@ -90,8 +90,7 @@ function updateMobs() {
 
   for (const m of mobs) {
     if (m.hp <= 0) continue;
-    // Hide & Seek bot — skip normal mob AI, use custom bot tick
-    if (typeof HideSeekState !== 'undefined' && Scene.inHideSeek && m === HideSeekState.botMob) continue;
+    // (Hide & Seek bot is a standalone entity, not in mobs[])
     // /freeze — auto-freeze any mob not yet flagged (catches summoned mobs like skeletons)
     if (window._mobsFrozen && !m._frozen) {
       m._savedSpeed = m.speed;

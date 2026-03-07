@@ -91,7 +91,7 @@ window.HideSeekSystem = {
       if (typeof activeSlot !== 'undefined') activeSlot = 1; // force melee slot
     }
 
-    // Clear existing mobs
+    // Clear existing mobs (don't use mobs[] for the bot)
     mobs.length = 0;
 
     // Read spawn points from the current level
@@ -108,7 +108,7 @@ window.HideSeekSystem = {
     player.vx = 0;
     player.vy = 0;
 
-    // Create bot mob
+    // Create bot as standalone entity (NOT a mob — moves like a player)
     const bot = {
       x: botSpawn.tx * TILE + TILE / 2,
       y: botSpawn.ty * TILE + TILE / 2,
@@ -118,12 +118,6 @@ window.HideSeekSystem = {
       maxHp: 999,
       speed: HIDESEEK.BOT_SPEED,
       type: 'hideseek_bot',
-      ai: null,
-      _specials: [],
-      _specialTimer: 9999,
-      radius: GAME_CONFIG.MOB_RADIUS,
-      wallHW: GAME_CONFIG.MOB_WALL_HW,
-      hitboxR: 15,
       skin: '#4a6a8a',
       hair: '#2a3a4a',
       shirt: '#3a5a7a',
@@ -132,12 +126,9 @@ window.HideSeekSystem = {
       frame: 0,
       dir: 0,
       moving: false,
-      contactRange: 0,
-      killHeal: 0,
-      goldReward: 0,
-      isBoss: false,
+      hitboxR: 15,
     };
-    mobs.push(bot);
+    // Bot is NOT pushed to mobs[] — it's its own entity
     hs.botMob = bot;
 
     // Enter hide phase
@@ -257,8 +248,7 @@ window.HideSeekSystem = {
       activeSlot = hs._savedSlot || 0;
     }
 
-    // Clear all mobs
-    mobs.length = 0;
+    // Bot is not in mobs[] so no need to clear it — just null the reference
 
     // Reset all HideSeekState fields to defaults
     for (const key in _HIDESEEK_DEFAULTS) {
@@ -624,21 +614,20 @@ window.HideSeekSystem = {
   },
 
 
-  // ===================== BOT MOVEMENT =====================
+  // ===================== BOT MOVEMENT (player-style) =====================
 
-  // Move bot along its current BFS path, respecting wall collision
+  // Move bot along its BFS path using the EXACT same collision rules as the player.
+  // Uses PLAYER_WALL_HW, separate-axis AABB, and corner unsticking.
   _moveBotAlongPath(bot) {
     const hs = HideSeekState;
     const path = hs._botPath;
 
     if (!path || path.length === 0) {
-      bot.moving = false;
+      bot.vx = 0; bot.vy = 0; bot.moving = false;
       return;
     }
-
-    // Clamp path index
     if (hs._botPathIdx >= path.length) {
-      bot.moving = false;
+      bot.vx = 0; bot.vy = 0; bot.moving = false;
       return;
     }
 
@@ -652,112 +641,76 @@ window.HideSeekSystem = {
     const dy = targetY - bot.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // If close enough to this step, advance to the next
-    if (dist < 4) {
+    // If within one frame of reaching this step, snap and advance
+    if (dist <= bot.speed) {
+      bot.x = targetX;
+      bot.y = targetY;
       hs._botPathIdx++;
       if (hs._botPathIdx >= path.length) {
-        bot.moving = false;
+        bot.vx = 0; bot.vy = 0; bot.moving = false;
         return;
       }
-      // Recurse to start moving toward next step immediately
       this._moveBotAlongPath(bot);
       return;
     }
 
-    // Normalize and apply speed
+    // Normalize direction and set velocity
     const ndx = dx / dist;
     const ndy = dy / dist;
-    const moveX = ndx * bot.speed;
-    const moveY = ndy * bot.speed;
+    bot.vx = ndx * bot.speed;
+    bot.vy = ndy * bot.speed;
 
-    // Apply movement with wall collision
-    this._applyBotMovement(bot, moveX, moveY);
+    // ---- Player-style AABB collision (same as inventory.js update()) ----
+    const hw = GAME_CONFIG.PLAYER_WALL_HW; // 16px — same as player
+    const nx = bot.x + bot.vx;
+    const ny = bot.y + bot.vy;
 
-    // Update facing direction based on movement
-    if (Math.abs(dx) > Math.abs(dy)) {
-      bot.dir = dx > 0 ? 3 : 2; // right : left
-    } else {
-      bot.dir = dy > 0 ? 0 : 1; // down : up
+    // X axis
+    let canX = true;
+    {
+      const cL = Math.floor((nx - hw) / TILE);
+      const cR = Math.floor((nx + hw) / TILE);
+      const rT = Math.floor((bot.y - hw) / TILE);
+      const rB = Math.floor((bot.y + hw) / TILE);
+      if (isSolid(cL, rT) || isSolid(cR, rT) || isSolid(cL, rB) || isSolid(cR, rB)) canX = false;
     }
+    if (canX) bot.x = nx;
 
-    // Animate
-    bot.moving = true;
-    bot.frame += 0.15;
-  },
-
-
-  // Apply movement to a bot with AABB wall collision + sliding
-  // Matches the mob collision pattern from mobSystem.js
-  _applyBotMovement(bot, moveX, moveY) {
-    if (typeof isSolid !== 'function') {
-      // Fallback: no collision system loaded, move freely
-      bot.x += moveX;
-      bot.y += moveY;
-      return;
+    // Y axis (use updated X)
+    let canY = true;
+    {
+      const cL = Math.floor((bot.x - hw) / TILE);
+      const cR = Math.floor((bot.x + hw) / TILE);
+      const rT = Math.floor((ny - hw) / TILE);
+      const rB = Math.floor((ny + hw) / TILE);
+      if (isSolid(cL, rT) || isSolid(cR, rT) || isSolid(cL, rB) || isSolid(cR, rB)) canY = false;
     }
+    if (canY) bot.y = ny;
 
-    const mhw = bot.wallHW || GAME_CONFIG.MOB_WALL_HW;
-    const nx = bot.x + moveX;
-    const ny = bot.y + moveY;
-    let movedX = false;
-    let movedY = false;
-
-    // Try X axis
-    let cL = Math.floor((nx - mhw) / TILE);
-    let cR = Math.floor((nx + mhw) / TILE);
-    let rT = Math.floor((bot.y - mhw) / TILE);
-    let rB = Math.floor((bot.y + mhw) / TILE);
-    if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
-      bot.x = nx;
-      movedX = true;
-    }
-
-    // Try Y axis (use updated X if it moved)
-    cL = Math.floor((bot.x - mhw) / TILE);
-    cR = Math.floor((bot.x + mhw) / TILE);
-    rT = Math.floor((ny - mhw) / TILE);
-    rB = Math.floor((ny + mhw) / TILE);
-    if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
-      bot.y = ny;
-      movedY = true;
-    }
-
-    // Sliding: if blocked on one axis, nudge along the other
-    if (!movedX && movedY) {
-      const nudge = moveX > 0 ? 1.5 : -1.5;
-      if (typeof positionClear === 'function') {
-        if (positionClear(bot.x + nudge, bot.y, mhw)) bot.x += nudge;
-        else if (positionClear(bot.x - nudge, bot.y, mhw)) bot.x -= nudge;
-      }
-    }
-    if (movedX && !movedY) {
-      const nudge = moveY > 0 ? 1.5 : -1.5;
-      if (typeof positionClear === 'function') {
-        if (positionClear(bot.x, bot.y + nudge, mhw)) bot.y += nudge;
-        else if (positionClear(bot.x, bot.y - nudge, mhw)) bot.y -= nudge;
-      }
-    }
-
-    // Fully stuck: try half-speed on each axis independently
-    if (!movedX && !movedY) {
-      const halfX = moveX * 0.5;
-      const halfY = moveY * 0.5;
-      const hxL = Math.floor((bot.x + halfX - mhw) / TILE);
-      const hxR = Math.floor((bot.x + halfX + mhw) / TILE);
-      const hyT = Math.floor((bot.y - mhw) / TILE);
-      const hyB = Math.floor((bot.y + mhw) / TILE);
-      if (!isSolid(hxL, hyT) && !isSolid(hxR, hyT) && !isSolid(hxL, hyB) && !isSolid(hxR, hyB)) {
-        bot.x += halfX;
-      } else {
-        const hyL = Math.floor((bot.x - mhw) / TILE);
-        const hyR = Math.floor((bot.x + mhw) / TILE);
-        const hyT2 = Math.floor((bot.y + halfY - mhw) / TILE);
-        const hyB2 = Math.floor((bot.y + halfY + mhw) / TILE);
-        if (!isSolid(hyL, hyT2) && !isSolid(hyR, hyT2) && !isSolid(hyL, hyB2) && !isSolid(hyR, hyB2)) {
-          bot.y += halfY;
+    // Corner unstick — same 2px nudge as player
+    if (!canX && !canY && (bot.vx !== 0 || bot.vy !== 0)) {
+      const nudge = 2;
+      for (const [ndx2, ndy2] of [[nudge,0],[-nudge,0],[0,nudge],[0,-nudge]]) {
+        const tx = bot.x + ndx2, ty = bot.y + ndy2;
+        const tL = Math.floor((tx - hw) / TILE);
+        const tR = Math.floor((tx + hw) / TILE);
+        const tT = Math.floor((ty - hw) / TILE);
+        const tB = Math.floor((ty + hw) / TILE);
+        if (!isSolid(tL, tT) && !isSolid(tR, tT) && !isSolid(tL, tB) && !isSolid(tR, tB)) {
+          bot.x = tx; bot.y = ty; break;
         }
       }
     }
+
+    // Facing direction
+    if (Math.abs(dx) > Math.abs(dy)) {
+      bot.dir = dx > 0 ? 3 : 2;
+    } else {
+      bot.dir = dy > 0 ? 0 : 1;
+    }
+
+    bot.moving = true;
+    bot.frame += 0.15;
   },
 };
 

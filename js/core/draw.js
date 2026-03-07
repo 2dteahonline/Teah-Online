@@ -40,6 +40,10 @@ function draw() {
 
   sortedChars.push({ y: player.y, type: "player" });
   for (const m of mobs) if (m.hp > 0) sortedChars.push({ y: m.y, type: "mob", mob: m });
+  // Hide & Seek bot — standalone entity, not in mobs[]
+  if (typeof HideSeekState !== 'undefined' && HideSeekState.botMob && Scene.inHideSeek) {
+    sortedChars.push({ y: HideSeekState.botMob.y, type: "mob", mob: HideSeekState.botMob });
+  }
   // Deli customer NPCs
   if (typeof deliNPCs !== 'undefined' && Scene.inCooking) {
     for (const npc of deliNPCs) sortedChars.push({ y: npc.y, type: "deliNPC", npc: npc });
