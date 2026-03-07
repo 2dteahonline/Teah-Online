@@ -9,9 +9,10 @@ let minimapOpen = false;
 const MINIMAP_LABELS = {
   skeld_01: [
     { name: 'Cafeteria',    x: 42, y: 3,  w: 28, h: 16 },
-    { name: 'Upper Engine', x: 8,  y: 8,  w: 16, h: 12 },
-    { name: 'Reactor',      x: 2,  y: 28, w: 12, h: 12 },
-    { name: 'Lower Engine', x: 8,  y: 50, w: 16, h: 12 },
+    { name: 'Upper Engine', x: 6,  y: 4,  w: 20, h: 14 },
+    { name: 'Reactor',      x: 2,  y: 28, w: 14, h: 14 },
+    { name: 'Security',     x: 30, y: 30, w: 12, h: 10 },
+    { name: 'Lower Engine', x: 6,  y: 52, w: 20, h: 14 },
     { name: 'Weapons',      x: 90, y: 6,  w: 16, h: 12 },
   ],
 };

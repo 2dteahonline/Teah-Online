@@ -1233,20 +1233,23 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (5 kept — building outward from here)
+    //  ROOMS (6 total — bigger rooms, building outward)
     // ========================================
 
     // === CAFETERIA (top center, dominant hub — 28×16) ===
     room(42, 3, 69, 18);
 
-    // === UPPER ENGINE (upper left — 16×12) ===
-    room(8, 8, 23, 19);
+    // === UPPER ENGINE (upper left — 20×14) ===
+    room(6, 4, 25, 17);
 
-    // === REACTOR (far left — 12×12) ===
-    room(2, 28, 13, 39);
+    // === REACTOR (far left — 14×14) ===
+    room(2, 28, 15, 41);
 
-    // === LOWER ENGINE (lower left — 16×12) ===
-    room(8, 50, 23, 61);
+    // === SECURITY (right of cross — 12×10) ===
+    room(30, 30, 41, 39);
+
+    // === LOWER ENGINE (lower left — 20×14) ===
+    room(6, 52, 25, 65);
 
     // === WEAPONS (upper right — arrow shape, 16×12) ===
     room(90, 6, 105, 17);
@@ -1266,16 +1269,19 @@ const LEVELS = {
     wall(67,18); wall(68,18); wall(69,18); wall(69,17); wall(68,17); wall(69,16);
 
     // ========================================
-    //  CORRIDORS (only between the 5 kept rooms)
+    //  CORRIDORS
     // ========================================
 
     // --- Top wing ---
-    hCorridor3(23, 42, 11);    // UE → Cafe (wide, y=11-13)
+    hCorridor3(25, 42, 9);     // UE → Cafe (wide, y=9-11)
     hCorridor3(69, 90, 10);    // Cafe → Weapons (wide, y=10-12)
 
-    // --- Left wing: UE ↓ Reactor ↓ LE ---
-    vCorridor3(19, 28, 12);    // UE ↓ Reactor (x=12-14)
-    vCorridor3(39, 50, 12);    // Reactor ↓ LE (x=12-14)
+    // --- Vertical spine: UE ↓ LE (bypasses Reactor) ---
+    vCorridor3(17, 52, 20);    // Main spine (x=20-22), straight through
+
+    // --- Cross branches at y=33-35 ---
+    hCorridor3(15, 20, 33);    // LEFT: spine → Reactor (turn left)
+    hCorridor3(22, 30, 33);    // RIGHT: spine → Security (turn right)
 
     // ========================================
     //  BORDERS
