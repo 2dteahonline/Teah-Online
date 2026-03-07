@@ -32,8 +32,8 @@ let _minimapCacheLevel = null;
 function _buildMinimapCache() {
   if (!level || !collisionGrid) return null;
   const W = level.widthTiles, H = level.heightTiles;
-  // Scale so map fits nicely on screen (max ~900px wide or ~600px tall)
-  const S = Math.max(2, Math.min(Math.floor(900 / W), Math.floor(560 / H)));
+  // Scale to fill most of the screen (max ~1600px wide or ~900px tall)
+  const S = Math.max(3, Math.min(Math.floor(1600 / W), Math.floor(900 / H)));
   const c = document.createElement('canvas');
   c.width = W * S; c.height = H * S;
   const mc = c.getContext('2d');
@@ -73,10 +73,12 @@ function _buildMinimapCache() {
     mc.strokeRect(r.x * S + 1, r.y * S + 1, r.w * S - 2, r.h * S - 2);
     const cx = (r.x + r.w / 2) * S;
     const cy = (r.y + r.h / 2) * S;
-    const fontSize = Math.max(9, Math.min(13, S * 1.5)) | 0;
+    const fontSize = Math.max(10, Math.min(18, S * 1.4)) | 0;
     mc.font = `bold ${fontSize}px monospace`;
     mc.fillStyle = '#000';
-    mc.fillText(r.name, cx + 1, cy + 1);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      if (dx || dy) mc.fillText(r.name, cx + dx, cy + dy);
+    }
     mc.fillStyle = '#0ff';
     mc.fillText(r.name, cx, cy);
   });
