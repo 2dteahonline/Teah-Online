@@ -1236,8 +1236,8 @@ const LEVELS = {
     //  ROOMS (6 total)
     // ========================================
 
-    // === CAFETERIA (top center — 28×20) ===
-    room(49, 3, 76, 22);
+    // === CAFETERIA (top center — 28×26, 30% taller) ===
+    room(49, 3, 76, 28);
 
     // === UPPER ENGINE (upper left — 20×14) ===
     room(4, 4, 23, 17);
@@ -1252,13 +1252,13 @@ const LEVELS = {
     room(4, 52, 23, 65);
 
     // === WEAPONS (upper right — arrow shape, 16×12) ===
-    room(102, 6, 117, 17);
-    for (let x = 115; x <= 117; x++) {
-      const indent = x - 114;
+    room(87, 6, 102, 17);
+    for (let x = 100; x <= 102; x++) {
+      const indent = x - 99;
       for (let y = 6; y < 6 + indent; y++) wall(x, y);
       for (let y = 18 - indent; y <= 17; y++) wall(x, y);
     }
-    carve(118, 11); carve(118, 12);
+    carve(103, 11); carve(103, 12);
 
     // ========================================
     //  CAFETERIA OCTAGONAL CORNER CUTS
@@ -1267,8 +1267,8 @@ const LEVELS = {
     wall(49,3); wall(50,3); wall(51,3); wall(49,4); wall(50,4); wall(49,5);
     wall(74,3); wall(75,3); wall(76,3); wall(75,4); wall(76,4); wall(76,5);
     // Bottom corners
-    wall(49,20); wall(49,21); wall(50,21); wall(49,22); wall(50,22); wall(51,22);
-    wall(74,22); wall(75,22); wall(76,22); wall(76,21); wall(75,21); wall(76,20);
+    wall(49,26); wall(49,27); wall(50,27); wall(49,28); wall(50,28); wall(51,28);
+    wall(74,28); wall(75,28); wall(76,28); wall(76,27); wall(75,27); wall(76,26);
 
     // ========================================
     //  CORRIDORS — all 5 tiles wide
@@ -1276,7 +1276,7 @@ const LEVELS = {
 
     // --- Top wing (5 tall, 25 blocks long each) ---
     room(23, 8, 49, 12);      // UE → Cafe (25 blocks: x=24-48)
-    room(76, 9, 102, 13);     // Cafe → Weapons (25 blocks: x=77-101)
+    room(76, 9, 87, 13);      // Cafe → Weapons (10 blocks: x=77-86)
 
     // --- Vertical spine: UE ↓ LE (5 wide, bypasses Reactor) ---
     room(19, 17, 23, 52);     // Main spine (x=19-23)
