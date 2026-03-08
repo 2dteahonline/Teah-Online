@@ -1532,7 +1532,10 @@ const LEVELS = {
         { type: 'skeld_vent', tx: 102 + XO, ty: 34, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'nav_hallway', room: 'nav_hallway' },
         // Network 3: Shields ↔ Navigation (back and forth)
         { type: 'skeld_vent', tx: 114 + XO, ty: 67, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'shields', room: 'shields' },
-        { type: 'skeld_vent', tx: 125 + XO, ty: 42, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'navigation', room: 'navigation' }
+        { type: 'skeld_vent', tx: 125 + XO, ty: 42, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'navigation', room: 'navigation' },
+        // Network 4: Weapons ↔ Nav Upper (back and forth)
+        { type: 'skeld_vent', tx: 96 + XO, ty: 2, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'weapons_upper', room: 'weapons' },
+        { type: 'skeld_vent', tx: 125 + XO, ty: 27, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'nav_upper', room: 'navigation' }
       ]
     };
   })()

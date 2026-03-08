@@ -108,8 +108,10 @@ const VENT_NETWORK = {
   admin:        ['cafe_hallway', 'nav_hallway'],
   cafe_hallway: ['admin', 'nav_hallway'],
   nav_hallway:  ['admin', 'cafe_hallway'],
-  shields:      ['navigation'],
-  navigation:   ['shields'],
+  shields:        ['navigation'],
+  navigation:     ['shields'],
+  weapons_upper:  ['nav_upper'],
+  nav_upper:      ['weapons_upper'],
 };
 
 const VentSystem = {
