@@ -114,7 +114,7 @@ const LEVELS = {
       { type: 'hideseek_entrance', tx: 16, ty: 19, w: 3, h: 2, solid: false, target: 'hide_01', spawnTX: 5, spawnTY: 5 },
       // === THE SKELD (west district, next to H&S) ===
       { type: 'building_skeld', tx: 25, ty: 12, w: 7, h: 8, solid: true },
-      { type: 'skeld_entrance', tx: 27, ty: 19, w: 3, h: 2, solid: false, target: 'skeld_01' },
+      { type: 'skeld_entrance', tx: 27, ty: 19, w: 3, h: 2, solid: false, target: 'skeld_01', spawnTX: 76, spawnTY: 10 },
       // === EAST DISTRICT BUILDINGS ===
       { type: 'building_gunsmith', tx: 69, ty: 12, w: 7, h: 8, solid: true },
       { type: 'gunsmith_entrance', tx: 71, ty: 19, w: 3, h: 2, solid: false, target: 'gunsmith_01', spawnTX: 22, spawnTY: 26 },
