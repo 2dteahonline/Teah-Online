@@ -835,6 +835,15 @@ window.addEventListener("keydown", e => {
     }
   }
 
+  // Tab key toggles Skeld task list
+  if (key === "Tab" && !chatInputActive && !nameEditActive && !statusEditActive && !rebindingKey) {
+    if (typeof _taskListOpen !== 'undefined' && Scene.inSkeld) {
+      _taskListOpen = !_taskListOpen;
+      e.preventDefault();
+      return;
+    }
+  }
+
   // G key toggles grid coordinate overlay
   if (key === "g" && !chatInputActive && !nameEditActive && !statusEditActive && !rebindingKey) {
     if (typeof gridOverlayOpen !== 'undefined') {

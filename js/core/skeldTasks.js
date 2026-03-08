@@ -64,10 +64,106 @@ const SkeldTasks = {
     }
     return { done, total };
   },
+
+  // Build display list for the task list panel
+  // Returns array of { label, room, done, stepsText } — one entry per unique taskId
+  getTaskList() {
+    const skeld = typeof LEVELS !== 'undefined' && LEVELS.skeld_01;
+    if (!skeld || !skeld.entities) return [];
+    const seen = new Set();
+    const list = [];
+    for (const e of skeld.entities) {
+      if (e.type !== 'skeld_task' || seen.has(e.taskId)) continue;
+      seen.add(e.taskId);
+      const s = this._state[e.taskId];
+      if (!s) continue;
+      const nextStep = s.done ? null : skeld.entities.find(
+        en => en.taskId === e.taskId && en.type === 'skeld_task' && !s.stepsCompleted.has(en.taskStep || 1)
+      );
+      const roomName = nextStep ? nextStep.room : e.room;
+      const room = roomName.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+      list.push({
+        label: e.label,
+        room,
+        done: s.done,
+        stepsText: s.totalSteps > 1 ? '(' + s.stepsCompleted.size + '/' + s.totalSteps + ')' : '',
+      });
+    }
+    return list;
+  },
 };
 
 // Initialize on load
 SkeldTasks.reset();
+
+// ---- Task List Side Panel (Among Us style) ----
+let _taskListOpen = false;
+
+function drawSkeldTaskList() {
+  if (!Scene.inSkeld || !_taskListOpen) return;
+  if (UI.isOpen('skeldTask')) return; // hide while doing a task
+
+  const tasks = SkeldTasks.getTaskList();
+  const prog = SkeldTasks.getProgress();
+
+  // Panel dimensions
+  const pw = 280, lineH = 20, padY = 10, padX = 12;
+  const headerH = 40; // progress bar area
+  const ph = headerH + padY + tasks.length * lineH + padY;
+  const px = 8, py = 60;
+
+  // Background
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, ph, 6);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(100,100,100,0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Progress bar — "TOTAL TASKS COMPLETED"
+  const barX = px + padX, barY = py + 8;
+  const barW = pw - padX * 2, barH = 12;
+  ctx.font = 'bold 9px monospace';
+  ctx.fillStyle = '#aaa';
+  ctx.textAlign = 'left';
+  ctx.fillText('TOTAL TASKS COMPLETED', barX, barY + 1);
+  const pbarY = barY + 10;
+  ctx.fillStyle = '#333';
+  ctx.fillRect(barX, pbarY, barW, barH);
+  const pct = prog.total > 0 ? prog.done / prog.total : 0;
+  ctx.fillStyle = '#44dd44';
+  ctx.fillRect(barX, pbarY, barW * pct, barH);
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX, pbarY, barW, barH);
+
+  // Task list
+  ctx.font = '12px monospace';
+  const listY = py + headerH + padY;
+  for (let i = 0; i < tasks.length; i++) {
+    const t = tasks[i];
+    const ty = listY + i * lineH;
+    const text = t.room + ': ' + t.label + (t.stepsText ? ' ' + t.stepsText : '');
+    if (t.done) {
+      ctx.fillStyle = '#44cc44';
+      ctx.fillText('\u2713 ' + text, px + padX, ty + 13);
+      // strikethrough
+      const tw = ctx.measureText('\u2713 ' + text).width;
+      ctx.strokeStyle = '#44cc44';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px + padX, ty + 9);
+      ctx.lineTo(px + padX + tw, ty + 9);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#eedd55';
+      ctx.fillText('\u25CB ' + text, px + padX, ty + 13);
+    }
+  }
+
+  ctx.textAlign = 'left';
+}
 
 // ---- Task Panel (canvas overlay) ----
 const _taskPanel = {

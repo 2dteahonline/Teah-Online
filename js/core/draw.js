@@ -1719,6 +1719,7 @@ function draw() {
   if (typeof drawGunsmithPanel === 'function') drawGunsmithPanel();
   if (typeof drawMiningShopPanel === 'function') drawMiningShopPanel();
   if (typeof drawSkeldTaskPanel === 'function') drawSkeldTaskPanel();
+  if (typeof drawSkeldTaskList === 'function') drawSkeldTaskList();
 
   // (Skeld task progress bar moved below HP bar)
 
