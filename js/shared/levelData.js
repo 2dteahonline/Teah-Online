@@ -1326,6 +1326,12 @@ const LEVELS = {
     // --- Communications corridor (5 wide, drops from Storage→Shields hallway) ---
     room(85, 62, 89, 67);     // Hallway → Comms (x=85-89, 5 blocks down)
 
+    // --- Shields → right wing (4-wide, backwards-Z path) ---
+    room(104, 34, 107, 54);   // Seg 1: Up 20 from Shields top-center
+    room(107, 34, 122, 37);   // Seg 2: Right 15
+    room(119, 19, 122, 37);   // Seg 3: Up 15
+    room(102, 19, 122, 22);   // Seg 4: Left 20
+
     // ========================================
     //  BORDERS
     // ========================================
