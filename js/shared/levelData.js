@@ -1233,7 +1233,7 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (11 total)
+    //  ROOMS (12 total)
     // ========================================
 
     // === CAFETERIA (top center — 28×32) ===
@@ -1262,6 +1262,9 @@ const LEVELS = {
 
     // === SHIELDS (right side — 14×12) ===
     room(99, 54, 112, 65);
+
+    // === COMMUNICATIONS (bottom center-right — 14×12) ===
+    room(80, 67, 93, 78);
 
     // === LOWER ENGINE (lower left — 20×14) ===
     room(4, 52, 23, 65);
@@ -1319,6 +1322,9 @@ const LEVELS = {
 
     // --- Storage → Shields (5 tall, ~23 blocks, bottom at y=62) ---
     room(75, 58, 99, 62);     // Storage right → Shields (x=76-98, y=58-62)
+
+    // --- Communications corridor (5 wide, drops from Storage→Shields hallway) ---
+    room(85, 62, 89, 67);     // Hallway → Comms (x=85-89, 5 blocks down)
 
     // ========================================
     //  BORDERS

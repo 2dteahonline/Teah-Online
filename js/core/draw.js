@@ -19,6 +19,7 @@ const MINIMAP_LABELS = {
     { name: 'Admin',         x: 78, y: 38, w: 15, h: 13 },
     { name: 'Storage',      x: 58, y: 53, w: 18, h: 22 },
     { name: 'Shields',      x: 99, y: 54, w: 14, h: 12 },
+    { name: 'Comms',        x: 80, y: 67, w: 14, h: 12 },
     { name: 'Weapons',      x: 95, y: 6,  w: 16, h: 12 },
   ],
 };
