@@ -385,19 +385,23 @@ function drawSkeldTaskPanel() {
 const TASK_HANDLERS = {};
 
 // ===== TASK 1: TAP SEQUENCE (Cafeteria) =====
-// 5 buttons light up in sequence, player must tap them in order.
+// 5 buttons, 2 rounds: Round 1 = 5-step, Round 2 = 7-step (faster display).
 TASK_HANDLERS.tap_sequence = {
   init(entity) {
-    const seq = [];
-    for (let i = 0; i < 5; i++) seq.push(Math.floor(Math.random() * 4));
+    function genSeq(len) {
+      const seq = [];
+      for (let i = 0; i < len; i++) seq.push(Math.floor(Math.random() * 5));
+      return seq;
+    }
+    const rounds = [genSeq(5), genSeq(7)];
     return {
-      sequence: seq,         // which buttons light up (0-3)
-      showPhase: true,       // true = showing sequence, false = player input
-      showIndex: 0,          // current index being shown
-      showTimer: 0,          // frames for timing
-      inputIndex: 0,         // which input the player is on
-      buttons: [0, 1, 2, 3], // button ids
-      flash: -1,             // which button is flashing (-1 = none)
+      round: 1,
+      rounds,                // [round1Seq, round2Seq]
+      showPhase: true,
+      showIndex: 0,
+      showTimer: 0,
+      inputIndex: 0,
+      flash: -1,
       flashTimer: 0,
       failed: false,
       done: false,
@@ -405,14 +409,18 @@ TASK_HANDLERS.tap_sequence = {
     };
   },
   draw(g, ctx, x, y, w, h, panel) {
-    const colors = ['#ff4444', '#44cc44', '#4488ff', '#ffcc44'];
-    const labels = ['R', 'G', 'B', 'Y'];
-    const dimColors = ['#441111', '#114411', '#112244', '#443311'];
-    const btnSize = 80;
-    const gap = 20;
-    const totalW = 4 * btnSize + 3 * gap;
+    const colors = ['#ff4444', '#44cc44', '#4488ff', '#ffcc44', '#cc44cc'];
+    const labels = ['R', 'G', 'B', 'Y', 'P'];
+    const dimColors = ['#441111', '#114411', '#112244', '#443311', '#441144'];
+    const btnSize = 70;
+    const gap = 12;
+    const totalW = 5 * btnSize + 4 * gap;
     const bx = x + (w - totalW) / 2;
     const by = y + h / 2 - btnSize / 2 + 20;
+    const sequence = g.rounds[g.round - 1];
+    // Timing per round
+    const litFrames = g.round === 1 ? 25 : 18;
+    const darkFrames = g.round === 1 ? 12 : 10;
 
     // Instruction text
     ctx.font = 'bold 14px monospace';
@@ -424,10 +432,10 @@ TASK_HANDLERS.tap_sequence = {
     }
     if (g.failed) {
       ctx.fillStyle = '#ff4444';
-      ctx.fillText('WRONG! Restarting...', x + w / 2, y + 30);
+      ctx.fillText('WRONG! Restarting round ' + g.round + '...', x + w / 2, y + 30);
       g.failTimer++;
       if (g.failTimer > 60) {
-        // Reset for retry
+        // Reset current round only
         g.showPhase = true;
         g.showIndex = 0;
         g.showTimer = 0;
@@ -438,25 +446,33 @@ TASK_HANDLERS.tap_sequence = {
       }
       return;
     }
+
+    // Round indicator
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = '#666';
+    ctx.fillText('Round ' + g.round + ' of 2', x + w / 2, y + 15);
+
     if (g.showPhase) {
+      ctx.font = 'bold 14px monospace';
       ctx.fillStyle = '#aaa';
-      ctx.fillText('Watch the sequence... (' + (g.showIndex + 1) + '/' + g.sequence.length + ')', x + w / 2, y + 30);
+      ctx.fillText('Watch the sequence... (' + (g.showIndex + 1) + '/' + sequence.length + ')', x + w / 2, y + 35);
     } else {
+      ctx.font = 'bold 14px monospace';
       ctx.fillStyle = '#0ff';
-      ctx.fillText('Your turn! Tap button ' + (g.inputIndex + 1) + ' of ' + g.sequence.length, x + w / 2, y + 30);
+      ctx.fillText('Your turn! Tap button ' + (g.inputIndex + 1) + ' of ' + sequence.length, x + w / 2, y + 35);
     }
 
     // Show sequence phase
     if (g.showPhase) {
       g.showTimer++;
-      if (g.showTimer < 30) {
-        g.flash = g.sequence[g.showIndex];
-      } else if (g.showTimer < 45) {
+      if (g.showTimer < litFrames) {
+        g.flash = sequence[g.showIndex];
+      } else if (g.showTimer < litFrames + darkFrames) {
         g.flash = -1;
       } else {
         g.showIndex++;
         g.showTimer = 0;
-        if (g.showIndex >= g.sequence.length) {
+        if (g.showIndex >= sequence.length) {
           g.showPhase = false;
           g.flash = -1;
         }
@@ -470,7 +486,7 @@ TASK_HANDLERS.tap_sequence = {
     }
 
     // Draw buttons
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       const bxx = bx + i * (btnSize + gap);
       const lit = (g.flash === i);
       ctx.fillStyle = lit ? colors[i] : dimColors[i];
@@ -489,17 +505,27 @@ TASK_HANDLERS.tap_sequence = {
       if (!g.showPhase && !g.done && !g.failed && panel.mouseJustClicked) {
         if (panel.mouseX >= bxx && panel.mouseX <= bxx + btnSize &&
             panel.mouseY >= by && panel.mouseY <= by + btnSize) {
-          if (i === g.sequence[g.inputIndex]) {
+          if (i === sequence[g.inputIndex]) {
             // Correct
             g.flash = i;
             g.flashTimer = 12;
             g.inputIndex++;
-            if (g.inputIndex >= g.sequence.length) {
-              g.done = true;
-              completeCurrentTask();
+            if (g.inputIndex >= sequence.length) {
+              if (g.round >= 2) {
+                g.done = true;
+                completeCurrentTask();
+              } else {
+                // Advance to round 2
+                g.round++;
+                g.showPhase = true;
+                g.showIndex = 0;
+                g.showTimer = 0;
+                g.inputIndex = 0;
+                g.flash = -1;
+              }
             }
           } else {
-            // Wrong
+            // Wrong — reset current round only
             g.failed = true;
             g.flash = -1;
           }
@@ -509,23 +535,28 @@ TASK_HANDLERS.tap_sequence = {
 
     // Progress dots
     const dotY = by + btnSize + 25;
-    for (let i = 0; i < g.sequence.length; i++) {
+    for (let i = 0; i < sequence.length; i++) {
       ctx.fillStyle = i < g.inputIndex ? '#44ff44' : (i === g.inputIndex && !g.showPhase ? '#0ff' : '#333');
       ctx.beginPath();
-      ctx.arc(x + w / 2 - (g.sequence.length - 1) * 12 / 2 + i * 12, dotY, 4, 0, Math.PI * 2);
+      ctx.arc(x + w / 2 - (sequence.length - 1) * 12 / 2 + i * 12, dotY, 4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 };
 
 // ===== TASK 2: CODE ENTRY (Admin) =====
-// Enter a 4-digit code shown briefly at the top.
+// Enter a 6-digit code shown briefly. 2 rounds with different codes.
 TASK_HANDLERS.code_entry = {
   init(entity) {
-    const code = [];
-    for (let i = 0; i < 4; i++) code.push(Math.floor(Math.random() * 10));
+    function genCode() {
+      const c = [];
+      for (let i = 0; i < 6; i++) c.push(Math.floor(Math.random() * 10));
+      return c;
+    }
+    const codes = [genCode(), genCode()];
     return {
-      code,
+      round: 1,
+      codes,
       input: [],
       showCode: true,
       showTimer: 0,
@@ -536,6 +567,8 @@ TASK_HANDLERS.code_entry = {
   },
   draw(g, ctx, x, y, w, h, panel) {
     ctx.textAlign = 'center';
+    const code = g.codes[g.round - 1];
+    const codeLen = 6;
 
     if (g.done) {
       ctx.font = 'bold 18px monospace';
@@ -547,13 +580,16 @@ TASK_HANDLERS.code_entry = {
     // Show code phase
     if (g.showCode) {
       g.showTimer++;
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#666';
+      ctx.fillText('Round ' + g.round + ' of 2', x + w / 2, y + 15);
       ctx.font = 'bold 14px monospace';
       ctx.fillStyle = '#aaa';
-      ctx.fillText('Memorize this code:', x + w / 2, y + 30);
+      ctx.fillText('Memorize this code:', x + w / 2, y + 35);
       ctx.font = 'bold 36px monospace';
       ctx.fillStyle = '#0ff';
-      ctx.fillText(g.code.join(' '), x + w / 2, y + 80);
-      if (g.showTimer > 120) {
+      ctx.fillText(code.join(' '), x + w / 2, y + 80);
+      if (g.showTimer > 80) {
         g.showCode = false;
       }
       return;
@@ -565,6 +601,10 @@ TASK_HANDLERS.code_entry = {
       ctx.fillText('WRONG CODE', x + w / 2, y + 30);
       g.failTimer++;
       if (g.failTimer > 60) {
+        // Generate brand new code for this round
+        const newCode = [];
+        for (let i = 0; i < 6; i++) newCode.push(Math.floor(Math.random() * 10));
+        g.codes[g.round - 1] = newCode;
         g.input = [];
         g.failed = false;
         g.failTimer = 0;
@@ -574,17 +614,22 @@ TASK_HANDLERS.code_entry = {
       return;
     }
 
+    // Round indicator
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = '#666';
+    ctx.fillText('Round ' + g.round + ' of 2', x + w / 2, y + 10);
+
     // Input display
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#aaa';
-    ctx.fillText('Enter the code:', x + w / 2, y + 20);
+    ctx.fillText('Enter the code:', x + w / 2, y + 25);
 
-    // Code slots
-    const slotW = 50, slotH = 60, slotGap = 15;
-    const totalSW = 4 * slotW + 3 * slotGap;
+    // Code slots (6 slots)
+    const slotW = 42, slotH = 55, slotGap = 10;
+    const totalSW = codeLen * slotW + (codeLen - 1) * slotGap;
     const sx = x + (w - totalSW) / 2;
-    const sy = y + 40;
-    for (let i = 0; i < 4; i++) {
+    const sy = y + 38;
+    for (let i = 0; i < codeLen; i++) {
       const sxx = sx + i * (slotW + slotGap);
       ctx.fillStyle = '#0a1520';
       ctx.fillRect(sxx, sy, slotW, slotH);
@@ -592,9 +637,9 @@ TASK_HANDLERS.code_entry = {
       ctx.lineWidth = i === g.input.length ? 2 : 1;
       ctx.strokeRect(sxx, sy, slotW, slotH);
       if (i < g.input.length) {
-        ctx.font = 'bold 28px monospace';
+        ctx.font = 'bold 26px monospace';
         ctx.fillStyle = '#0ff';
-        ctx.fillText(g.input[i], sxx + slotW / 2, sy + slotH / 2 + 10);
+        ctx.fillText(g.input[i], sxx + slotW / 2, sy + slotH / 2 + 9);
       }
     }
 
@@ -603,7 +648,7 @@ TASK_HANDLERS.code_entry = {
     const btnW = 60, btnH = 50, btnGap = 10;
     const padW = padCols * btnW + (padCols - 1) * btnGap;
     const padX = x + (w - padW) / 2;
-    const padY = sy + slotH + 30;
+    const padY = sy + slotH + 25;
 
     for (let n = 0; n < 10; n++) {
       const col = n % padCols;
@@ -623,17 +668,25 @@ TASK_HANDLERS.code_entry = {
       ctx.fillStyle = hover ? '#0ff' : '#668';
       ctx.fillText(n.toString(), bxx + btnW / 2, byy + btnH / 2 + 8);
 
-      if (panel.mouseJustClicked && hover && g.input.length < 4) {
+      if (panel.mouseJustClicked && hover && g.input.length < codeLen) {
         g.input.push(n);
-        // Check when 4 digits entered
-        if (g.input.length === 4) {
+        // Check when all digits entered
+        if (g.input.length === codeLen) {
           let correct = true;
-          for (let i = 0; i < 4; i++) {
-            if (g.input[i] !== g.code[i]) { correct = false; break; }
+          for (let i = 0; i < codeLen; i++) {
+            if (g.input[i] !== code[i]) { correct = false; break; }
           }
           if (correct) {
-            g.done = true;
-            completeCurrentTask();
+            if (g.round >= 2) {
+              g.done = true;
+              completeCurrentTask();
+            } else {
+              // Advance to round 2
+              g.round++;
+              g.input = [];
+              g.showCode = true;
+              g.showTimer = 0;
+            }
           } else {
             g.failed = true;
           }
@@ -659,20 +712,55 @@ TASK_HANDLERS.code_entry = {
 };
 
 // ===== TASK 3: SIMPLE MATH (Lower Engine) =====
-// Solve 3 simple math problems.
+// Solve 5 math problems with ramping difficulty and countdown timer.
 TASK_HANDLERS.simple_math = {
   init(entity) {
-    function genProblem() {
-      const ops = ['+', '-', '*'];
-      const op = ops[Math.floor(Math.random() * ops.length)];
-      let a, b;
-      if (op === '*') { a = 2 + Math.floor(Math.random() * 8); b = 2 + Math.floor(Math.random() * 8); }
-      else if (op === '-') { a = 10 + Math.floor(Math.random() * 40); b = 1 + Math.floor(Math.random() * a); }
-      else { a = 5 + Math.floor(Math.random() * 45); b = 5 + Math.floor(Math.random() * 45); }
-      const ans = op === '+' ? a + b : op === '-' ? a - b : a * b;
+    function genProblem(idx) {
+      let a, b, op, ans;
+      if (idx < 2) {
+        // P1-2: single digit +/-
+        const ops = ['+', '-'];
+        op = ops[Math.floor(Math.random() * ops.length)];
+        a = 2 + Math.floor(Math.random() * 8);
+        b = 2 + Math.floor(Math.random() * 8);
+        if (op === '-' && b > a) { const t = a; a = b; b = t; }
+        ans = op === '+' ? a + b : a - b;
+      } else if (idx < 4) {
+        // P3-4: two digit with * or larger +/-
+        const ops = ['+', '-', '*'];
+        op = ops[Math.floor(Math.random() * ops.length)];
+        if (op === '*') {
+          a = 10 + Math.floor(Math.random() * 41);
+          b = 5 + Math.floor(Math.random() * 21);
+        } else {
+          a = 10 + Math.floor(Math.random() * 41);
+          b = 5 + Math.floor(Math.random() * 21);
+          if (op === '-' && b > a) { const t = a; a = b; b = t; }
+        }
+        ans = op === '+' ? a + b : op === '-' ? a - b : a * b;
+      } else {
+        // P5: hard — three-digit result possible, includes /
+        const ops = ['+', '-', '*', '/'];
+        op = ops[Math.floor(Math.random() * ops.length)];
+        if (op === '/') {
+          b = 2 + Math.floor(Math.random() * 49);
+          ans = 2 + Math.floor(Math.random() * 48);
+          a = ans * b;
+        } else if (op === '*') {
+          a = 20 + Math.floor(Math.random() * 80);
+          b = 10 + Math.floor(Math.random() * 41);
+          ans = a * b;
+        } else {
+          a = 20 + Math.floor(Math.random() * 80);
+          b = 10 + Math.floor(Math.random() * 41);
+          if (op === '-' && b > a) { const t = a; a = b; b = t; }
+          ans = op === '+' ? a + b : a - b;
+        }
+      }
       return { text: a + ' ' + op + ' ' + b, answer: ans };
     }
-    const problems = [genProblem(), genProblem(), genProblem()];
+    const problems = [];
+    for (let i = 0; i < 5; i++) problems.push(genProblem(i));
     return {
       problems,
       current: 0,
@@ -680,6 +768,9 @@ TASK_HANDLERS.simple_math = {
       done: false,
       wrong: false,
       wrongTimer: 0,
+      timer: 900,
+      maxTimer: 900,
+      _genProblem: genProblem,
     };
   },
   draw(g, ctx, x, y, w, h, panel) {
@@ -699,6 +790,27 @@ TASK_HANDLERS.simple_math = {
     ctx.fillStyle = '#666';
     ctx.fillText('Problem ' + (g.current + 1) + ' of ' + g.problems.length, x + w / 2, y + 15);
 
+    // Timer bar (above problem)
+    const timerBarW = w - 80, timerBarH = 8;
+    const timerBarX = x + 40, timerBarY = y + 25;
+    const timerPct = Math.max(0, g.timer / g.maxTimer);
+    ctx.fillStyle = '#0c1620';
+    ctx.fillRect(timerBarX, timerBarY, timerBarW, timerBarH);
+    ctx.fillStyle = timerPct > 0.3 ? '#0ff' : (timerPct > 0.15 ? '#ffaa00' : '#ff4444');
+    ctx.fillRect(timerBarX, timerBarY, timerBarW * timerPct, timerBarH);
+    ctx.strokeStyle = '#1a3040';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(timerBarX, timerBarY, timerBarW, timerBarH);
+
+    // Countdown timer tick
+    if (!g.wrong) {
+      g.timer--;
+      if (g.timer <= 0) {
+        g.wrong = true;
+        g.problems[g.current] = g._genProblem(g.current);
+      }
+    }
+
     // Problem text
     ctx.font = 'bold 32px monospace';
     ctx.fillStyle = '#fff';
@@ -715,14 +827,18 @@ TASK_HANDLERS.simple_math = {
       ctx.fillStyle = '#ff4444';
       ctx.fillText('Wrong! Try again.', x + w / 2, y + 150);
       g.wrongTimer++;
-      if (g.wrongTimer > 40) { g.wrong = false; g.wrongTimer = 0; g.input = ''; }
+      if (g.wrongTimer > 40) {
+        g.wrong = false;
+        g.wrongTimer = 0;
+        g.input = '';
+        g.timer = g.maxTimer;
+      }
       return;
     }
 
     // Number pad
     const btnW = 55, btnH = 45, btnGap = 8;
     const padY = y + 160;
-    // Row 1: 1-5, Row 2: 6-9,0, Row 3: -, DEL, ENTER
     const rows = [
       [1, 2, 3, 4, 5],
       [6, 7, 8, 9, 0],
@@ -744,7 +860,7 @@ TASK_HANDLERS.simple_math = {
         ctx.font = 'bold 20px monospace';
         ctx.fillStyle = hover ? '#0ff' : '#668';
         ctx.fillText(row[c].toString(), bxx + btnW / 2, byy + btnH / 2 + 7);
-        if (panel.mouseJustClicked && hover && g.input.length < 5) {
+        if (panel.mouseJustClicked && hover && g.input.length < 6) {
           g.input += row[c].toString();
         }
       }
@@ -762,6 +878,7 @@ TASK_HANDLERS.simple_math = {
           if (val === prob.answer) {
             g.current++;
             g.input = '';
+            g.timer = g.maxTimer;
             if (g.current >= g.problems.length) {
               g.done = true;
               completeCurrentTask();
@@ -792,10 +909,10 @@ TASK_HANDLERS.simple_math = {
 };
 
 // ===== TASK 4: MATCH SYMBOL (Weapons) =====
-// 8 cards face down, find 4 matching pairs.
+// 8 pairs = 16 cards in a 4x4 grid with shuffle confusion on mismatch.
 TASK_HANDLERS.match_symbol = {
   init(entity) {
-    const symbols = ['!', '@', '#', '$'];
+    const symbols = ['\u25C6', '\u2605', '\u2660', '\u2665', '\u25B2', '\u25CF', '\u2666', '\u2726'];
     const cards = [];
     for (const s of symbols) { cards.push(s); cards.push(s); }
     // Shuffle
@@ -805,10 +922,10 @@ TASK_HANDLERS.match_symbol = {
     }
     return {
       cards,
-      revealed: new Array(8).fill(false),
-      matched: new Array(8).fill(false),
-      first: -1,     // index of first flipped card
-      second: -1,    // index of second flipped card
+      revealed: new Array(16).fill(false),
+      matched: new Array(16).fill(false),
+      first: -1,
+      second: -1,
       checkTimer: 0,
       pairs: 0,
       done: false,
@@ -826,7 +943,7 @@ TASK_HANDLERS.match_symbol = {
 
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#aaa';
-    ctx.fillText('Find matching pairs (' + g.pairs + '/4)', x + w / 2, y + 15);
+    ctx.fillText('Find matching pairs (' + g.pairs + '/8)', x + w / 2, y + 15);
 
     // Check phase (two cards revealed, waiting to flip back)
     if (g.checkTimer > 0) {
@@ -836,9 +953,23 @@ TASK_HANDLERS.match_symbol = {
           g.matched[g.first] = true;
           g.matched[g.second] = true;
           g.pairs++;
-          if (g.pairs >= 4) {
+          if (g.pairs >= 8) {
             g.done = true;
             completeCurrentTask();
+          }
+        } else {
+          // Mismatch: randomly swap 2 unmatched unrevealed cards (shuffle confusion)
+          const swappable = [];
+          for (let si = 0; si < 16; si++) {
+            if (!g.matched[si] && si !== g.first && si !== g.second) swappable.push(si);
+          }
+          if (swappable.length >= 2) {
+            const a = swappable[Math.floor(Math.random() * swappable.length)];
+            let b = a;
+            while (b === a) b = swappable[Math.floor(Math.random() * swappable.length)];
+            const tmp = g.cards[a];
+            g.cards[a] = g.cards[b];
+            g.cards[b] = tmp;
           }
         }
         g.revealed[g.first] = false;
@@ -848,15 +979,14 @@ TASK_HANDLERS.match_symbol = {
       }
     }
 
-    // Draw cards (4x2 grid)
-    const cardW = 70, cardH = 80, gap = 15;
-    const cols = 4, rows = 2;
+    // Draw cards (4x4 grid)
+    const cardW = 60, cardH = 70, gap = 10;
+    const cols = 4, rows = 4;
     const gridW = cols * cardW + (cols - 1) * gap;
-    const gridH = rows * cardH + (rows - 1) * gap;
     const gx = x + (w - gridW) / 2;
-    const gy = y + 40;
+    const gy = y + 35;
 
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 16; i++) {
       const col = i % cols, row = Math.floor(i / cols);
       const cx = gx + col * (cardW + gap);
       const cy = gy + row * (cardH + gap);
@@ -868,18 +998,18 @@ TASK_HANDLERS.match_symbol = {
         ctx.strokeStyle = '#44ff44';
         ctx.lineWidth = 2;
         ctx.strokeRect(cx, cy, cardW, cardH);
-        ctx.font = 'bold 28px monospace';
+        ctx.font = 'bold 24px monospace';
         ctx.fillStyle = '#44ff44';
-        ctx.fillText(g.cards[i], cx + cardW / 2, cy + cardH / 2 + 10);
+        ctx.fillText(g.cards[i], cx + cardW / 2, cy + cardH / 2 + 8);
       } else if (show) {
         ctx.fillStyle = '#0a1a30';
         ctx.fillRect(cx, cy, cardW, cardH);
         ctx.strokeStyle = '#0ff';
         ctx.lineWidth = 2;
         ctx.strokeRect(cx, cy, cardW, cardH);
-        ctx.font = 'bold 28px monospace';
+        ctx.font = 'bold 24px monospace';
         ctx.fillStyle = '#0ff';
-        ctx.fillText(g.cards[i], cx + cardW / 2, cy + cardH / 2 + 10);
+        ctx.fillText(g.cards[i], cx + cardW / 2, cy + cardH / 2 + 8);
       } else {
         // Face down
         const hover = panel.mouseX >= cx && panel.mouseX <= cx + cardW &&
@@ -889,9 +1019,9 @@ TASK_HANDLERS.match_symbol = {
         ctx.strokeStyle = hover ? '#0ff' : '#1a3040';
         ctx.lineWidth = 1;
         ctx.strokeRect(cx, cy, cardW, cardH);
-        ctx.font = 'bold 24px monospace';
+        ctx.font = 'bold 20px monospace';
         ctx.fillStyle = '#333';
-        ctx.fillText('?', cx + cardW / 2, cy + cardH / 2 + 8);
+        ctx.fillText('?', cx + cardW / 2, cy + cardH / 2 + 7);
 
         // Click
         if (panel.mouseJustClicked && hover && g.checkTimer <= 0) {
@@ -901,7 +1031,7 @@ TASK_HANDLERS.match_symbol = {
           } else if (g.second === -1 && i !== g.first) {
             g.second = i;
             g.revealed[i] = true;
-            g.checkTimer = 30; // Show for half a second then check
+            g.checkTimer = 20;
           }
         }
       }
@@ -910,17 +1040,18 @@ TASK_HANDLERS.match_symbol = {
 };
 
 // ===== TASK 5: SLIDER ALIGNMENT (Reactor) =====
-// Drag 3 sliders to match target positions.
+// 5 drifting sliders, must align all then click LOCK IN.
 TASK_HANDLERS.slider_alignment = {
   init(entity) {
     const sliders = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       sliders.push({
         value: 0.1 + Math.random() * 0.3,
         target: 0.3 + Math.random() * 0.5,
+        drift: (Math.random() * 0.004 - 0.002), // -0.002 to +0.002
       });
     }
-    return { sliders, dragging: -1, done: false };
+    return { sliders, dragging: -1, done: false, lockFail: false, lockFailTimer: 0 };
   },
   draw(g, ctx, x, y, w, h, panel) {
     ctx.textAlign = 'center';
@@ -934,13 +1065,29 @@ TASK_HANDLERS.slider_alignment = {
 
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#aaa';
-    ctx.fillText('Align all sliders to the target markers', x + w / 2, y + 15);
+    ctx.fillText('Align all sliders, then LOCK IN', x + w / 2, y + 15);
 
     const sliderW = w - 60;
-    const sliderH = 20;
+    const sliderH = 16;
     const sliderX = x + 30;
-    const startY = y + 50;
-    const spacing = 80;
+    const startY = y + 40;
+    const spacing = 60;
+
+    // Apply drift each frame
+    for (let i = 0; i < g.sliders.length; i++) {
+      const s = g.sliders[i];
+      if (g.dragging !== i) {
+        s.value += s.drift;
+        if (s.value <= 0) { s.value = 0; s.drift = Math.abs(s.drift); }
+        if (s.value >= 1) { s.value = 1; s.drift = -Math.abs(s.drift); }
+      }
+    }
+
+    // Lock fail flash
+    if (g.lockFail) {
+      g.lockFailTimer++;
+      if (g.lockFailTimer > 30) { g.lockFail = false; g.lockFailTimer = 0; }
+    }
 
     let allAligned = true;
 
@@ -958,30 +1105,30 @@ TASK_HANDLERS.slider_alignment = {
       // Target marker
       const targetX = sliderX + s.target * sliderW;
       ctx.fillStyle = 'rgba(0,255,255,0.3)';
-      ctx.fillRect(targetX - 8, sy - 5, 16, sliderH + 10);
+      ctx.fillRect(targetX - 8, sy - 4, 16, sliderH + 8);
       ctx.strokeStyle = '#0ff';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(targetX, sy - 8); ctx.lineTo(targetX, sy + sliderH + 8);
+      ctx.moveTo(targetX, sy - 6); ctx.lineTo(targetX, sy + sliderH + 6);
       ctx.stroke();
 
       // Slider thumb
       const thumbX = sliderX + s.value * sliderW;
-      const thumbW = 18, thumbH = sliderH + 12;
-      const aligned = Math.abs(s.value - s.target) < 0.03;
+      const thumbW = 16, thumbH = sliderH + 10;
+      const aligned = Math.abs(s.value - s.target) < 0.02;
       ctx.fillStyle = aligned ? '#44ff44' : '#ff6644';
-      ctx.fillRect(thumbX - thumbW / 2, sy - 6, thumbW, thumbH);
+      ctx.fillRect(thumbX - thumbW / 2, sy - 5, thumbW, thumbH);
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 1;
-      ctx.strokeRect(thumbX - thumbW / 2, sy - 6, thumbW, thumbH);
+      ctx.strokeRect(thumbX - thumbW / 2, sy - 5, thumbW, thumbH);
 
       if (!aligned) allAligned = false;
 
       // Label
-      ctx.font = '12px monospace';
+      ctx.font = '11px monospace';
       ctx.fillStyle = aligned ? '#44ff44' : '#888';
       ctx.textAlign = 'left';
-      ctx.fillText(aligned ? 'OK' : 'Slider ' + (i + 1), sliderX, sy - 12);
+      ctx.fillText(aligned ? 'OK' : 'Slider ' + (i + 1), sliderX, sy - 10);
       ctx.textAlign = 'center';
 
       // Drag logic
@@ -999,23 +1146,50 @@ TASK_HANDLERS.slider_alignment = {
       }
     }
 
-    if (allAligned) {
-      g.done = true;
-      completeCurrentTask();
+    // LOCK IN button
+    const btnW = 140, btnH = 38;
+    const bx = x + (w - btnW) / 2;
+    const by = startY + g.sliders.length * spacing + 5;
+    const hover = panel.mouseX >= bx && panel.mouseX <= bx + btnW &&
+                  panel.mouseY >= by && panel.mouseY <= by + btnH;
+    ctx.fillStyle = g.lockFail ? '#3a1010' : (hover ? '#1a4030' : '#0c1620');
+    ctx.fillRect(bx, by, btnW, btnH);
+    ctx.strokeStyle = g.lockFail ? '#ff4444' : '#44ff44';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx, by, btnW, btnH);
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = g.lockFail ? '#ff4444' : '#44ff44';
+    ctx.fillText(g.lockFail ? 'NOT ALIGNED!' : 'LOCK IN', bx + btnW / 2, by + btnH / 2 + 6);
+
+    if (panel.mouseJustClicked && hover) {
+      if (allAligned) {
+        g.done = true;
+        completeCurrentTask();
+      } else {
+        g.lockFail = true;
+        g.lockFailTimer = 0;
+      }
     }
   }
 };
 
 // ===== TASK 6: SECURITY AUTH (Security) =====
-// Match a pattern: 3x3 grid, highlight pattern → reproduce it.
+// 4x4 grid, 3 rounds with increasing cell counts and decreasing show times.
 TASK_HANDLERS.security_auth = {
   init(entity) {
-    // Generate pattern (3-5 cells lit)
-    const pattern = new Set();
-    const count = 3 + Math.floor(Math.random() * 3);
-    while (pattern.size < count) pattern.add(Math.floor(Math.random() * 9));
+    function genPattern(count) {
+      const p = new Set();
+      while (p.size < count) p.add(Math.floor(Math.random() * 16));
+      return p;
+    }
+    const counts = [4, 6, 8];
+    const showTimes = [90, 70, 50];
+    const patterns = [genPattern(counts[0]), genPattern(counts[1]), genPattern(counts[2])];
     return {
-      pattern,
+      round: 1,
+      patterns,
+      counts,
+      showTimes,
       playerPattern: new Set(),
       showPhase: true,
       showTimer: 0,
@@ -1026,6 +1200,8 @@ TASK_HANDLERS.security_auth = {
   },
   draw(g, ctx, x, y, w, h, panel) {
     ctx.textAlign = 'center';
+    const pattern = g.patterns[g.round - 1];
+    const showTime = g.showTimes[g.round - 1];
 
     if (g.done) {
       ctx.font = 'bold 18px monospace';
@@ -1039,6 +1215,10 @@ TASK_HANDLERS.security_auth = {
       ctx.fillText('MISMATCH! Retry...', x + w / 2, y + 30);
       g.failTimer++;
       if (g.failTimer > 60) {
+        // Generate new pattern for current round
+        const newP = new Set();
+        while (newP.size < g.counts[g.round - 1]) newP.add(Math.floor(Math.random() * 16));
+        g.patterns[g.round - 1] = newP;
         g.playerPattern = new Set();
         g.showPhase = true;
         g.showTimer = 0;
@@ -1048,31 +1228,36 @@ TASK_HANDLERS.security_auth = {
       return;
     }
 
+    // Round indicator
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = '#666';
+    ctx.fillText('Round ' + g.round + ' of 3', x + w / 2, y + 12);
+
     if (g.showPhase) {
       g.showTimer++;
       ctx.font = 'bold 14px monospace';
       ctx.fillStyle = '#aaa';
-      ctx.fillText('Memorize the pattern...', x + w / 2, y + 15);
-      if (g.showTimer > 90) {
+      ctx.fillText('Memorize the pattern...', x + w / 2, y + 28);
+      if (g.showTimer > showTime) {
         g.showPhase = false;
       }
     } else {
       ctx.font = 'bold 14px monospace';
       ctx.fillStyle = '#0ff';
-      ctx.fillText('Reproduce the pattern', x + w / 2, y + 15);
+      ctx.fillText('Reproduce the pattern', x + w / 2, y + 28);
     }
 
-    // 3x3 grid
-    const cellSize = 70, gap = 10;
-    const gridW = 3 * cellSize + 2 * gap;
+    // 4x4 grid
+    const cellSize = 55, gap = 8;
+    const gridW = 4 * cellSize + 3 * gap;
     const gx = x + (w - gridW) / 2;
-    const gy = y + 40;
+    const gy = y + 42;
 
-    for (let i = 0; i < 9; i++) {
-      const col = i % 3, row = Math.floor(i / 3);
+    for (let i = 0; i < 16; i++) {
+      const col = i % 4, row = Math.floor(i / 4);
       const cx = gx + col * (cellSize + gap);
       const cy = gy + row * (cellSize + gap);
-      const inPattern = g.pattern.has(i);
+      const inPattern = pattern.has(i);
       const playerSel = g.playerPattern.has(i);
       const showLit = g.showPhase ? inPattern : playerSel;
 
@@ -1087,7 +1272,7 @@ TASK_HANDLERS.security_auth = {
 
       if (showLit) {
         ctx.fillStyle = 'rgba(0,255,255,0.15)';
-        ctx.fillRect(cx + 4, cy + 4, cellSize - 8, cellSize - 8);
+        ctx.fillRect(cx + 3, cy + 3, cellSize - 6, cellSize - 6);
       }
 
       // Click (input phase)
@@ -1099,9 +1284,9 @@ TASK_HANDLERS.security_auth = {
 
     // Submit button
     if (!g.showPhase) {
-      const btnW = 120, btnH = 40;
+      const btnW = 120, btnH = 36;
       const bx = x + (w - btnW) / 2;
-      const by = gy + 3 * (cellSize + gap) + 10;
+      const by = gy + 4 * (cellSize + gap) + 6;
       const hover = panel.mouseX >= bx && panel.mouseX <= bx + btnW &&
                     panel.mouseY >= by && panel.mouseY <= by + btnH;
       ctx.fillStyle = hover ? '#1a4030' : '#0c1620';
@@ -1111,19 +1296,27 @@ TASK_HANDLERS.security_auth = {
       ctx.strokeRect(bx, by, btnW, btnH);
       ctx.font = 'bold 14px monospace';
       ctx.fillStyle = '#44ff44';
-      ctx.fillText('SUBMIT', bx + btnW / 2, by + 26);
+      ctx.fillText('SUBMIT', bx + btnW / 2, by + 24);
 
       if (panel.mouseJustClicked && hover) {
         // Check
-        let match = g.pattern.size === g.playerPattern.size;
+        let match = pattern.size === g.playerPattern.size;
         if (match) {
-          for (const v of g.pattern) {
+          for (const v of pattern) {
             if (!g.playerPattern.has(v)) { match = false; break; }
           }
         }
         if (match) {
-          g.done = true;
-          completeCurrentTask();
+          if (g.round >= 3) {
+            g.done = true;
+            completeCurrentTask();
+          } else {
+            // Advance to next round
+            g.round++;
+            g.playerPattern = new Set();
+            g.showPhase = true;
+            g.showTimer = 0;
+          }
         } else {
           g.failed = true;
         }
@@ -1133,10 +1326,10 @@ TASK_HANDLERS.security_auth = {
 };
 
 // ===== TASK 7: HOLD TO CHARGE (Upper Engine) =====
-// Hold mouse button on the charge zone until bar fills.
+// Moving charge zone (Lissajous), hold mouse inside to charge. Decays when outside.
 TASK_HANDLERS.hold_to_charge = {
   init(entity) {
-    return { charge: 0, maxCharge: 100, done: false, charging: false };
+    return { charge: 0, maxCharge: 200, done: false, charging: false, frameCount: 0 };
   },
   draw(g, ctx, x, y, w, h, panel) {
     ctx.textAlign = 'center';
@@ -1148,50 +1341,69 @@ TASK_HANDLERS.hold_to_charge = {
       return;
     }
 
+    g.frameCount++;
+
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#aaa';
-    ctx.fillText('Hold the button to charge the engine', x + w / 2, y + 15);
+    ctx.fillText('Chase the zone and hold to charge!', x + w / 2, y + 15);
 
-    // Big circular button
-    const bcx = x + w / 2, bcy = y + h / 2 - 10;
-    const radius = 70;
-    const hover = Math.sqrt((panel.mouseX - bcx) ** 2 + (panel.mouseY - bcy) ** 2) < radius;
-    g.charging = hover && panel.mouseDown;
+    // Moving zone center (Lissajous pattern)
+    const panelCenterX = x + w / 2;
+    const panelCenterY = y + h / 2 - 20;
+    const zoneX = panelCenterX + Math.sin(g.frameCount * 0.02) * 80;
+    const zoneY = panelCenterY + Math.cos(g.frameCount * 0.015) * 50;
+    const zoneRadius = 60;
 
+    // Check if mouse is in zone
+    const dist = Math.sqrt((panel.mouseX - zoneX) ** 2 + (panel.mouseY - zoneY) ** 2);
+    const inZone = dist < zoneRadius;
+    g.charging = inZone && panel.mouseDown;
+
+    // Charge/decay logic
     if (g.charging) {
-      g.charge = Math.min(g.maxCharge, g.charge + 1);
+      g.charge = Math.min(g.maxCharge, g.charge + 0.8);
       if (g.charge >= g.maxCharge) {
         g.done = true;
         completeCurrentTask();
       }
+    } else if (panel.mouseDown && !inZone) {
+      // Mouse held but outside zone
+      g.charge = Math.max(0, g.charge - 1.0);
     } else {
-      g.charge = Math.max(0, g.charge - 0.5);
+      // Not held at all
+      g.charge = Math.max(0, g.charge - 2.0);
     }
 
-    // Background circle
-    ctx.fillStyle = '#0c1620';
-    ctx.beginPath(); ctx.arc(bcx, bcy, radius, 0, Math.PI * 2); ctx.fill();
+    // Draw zone — pulsing circle
+    const pulse = 1 + Math.sin(g.frameCount * 0.1) * 0.08;
+    const drawRadius = zoneRadius * pulse;
 
-    // Charge arc
+    // Zone glow
+    ctx.fillStyle = g.charging ? 'rgba(255,136,0,0.12)' : 'rgba(26,48,64,0.5)';
+    ctx.beginPath(); ctx.arc(zoneX, zoneY, drawRadius, 0, Math.PI * 2); ctx.fill();
+
+    // Charge arc around zone
     const pct = g.charge / g.maxCharge;
-    ctx.strokeStyle = pct > 0.8 ? '#44ff44' : '#ff8800';
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.arc(bcx, bcy, radius - 8, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
-    ctx.stroke();
+    if (pct > 0) {
+      ctx.strokeStyle = pct > 0.8 ? '#44ff44' : '#ff8800';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(zoneX, zoneY, drawRadius - 6, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
+      ctx.stroke();
+    }
 
-    // Border
-    ctx.strokeStyle = g.charging ? '#ff8800' : '#1a3040';
+    // Zone border
+    ctx.strokeStyle = g.charging ? '#ff8800' : (inZone ? '#557' : '#1a3040');
     ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(bcx, bcy, radius, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(zoneX, zoneY, drawRadius, 0, Math.PI * 2); ctx.stroke();
 
     // Center text
-    ctx.font = 'bold 20px monospace';
+    ctx.font = 'bold 18px monospace';
     ctx.fillStyle = g.charging ? '#ff8800' : '#555';
-    ctx.fillText(Math.round(pct * 100) + '%', bcx, bcy + 8);
-    ctx.font = '12px monospace';
+    ctx.fillText(Math.round(pct * 100) + '%', zoneX, zoneY + 6);
+    ctx.font = '11px monospace';
     ctx.fillStyle = '#888';
-    ctx.fillText(g.charging ? 'CHARGING...' : 'HOLD HERE', bcx, bcy + 28);
+    ctx.fillText(g.charging ? 'CHARGING...' : 'HOLD HERE', zoneX, zoneY + 22);
 
     // Charge bar at bottom
     const barW = w - 60, barH = 16;
@@ -1207,17 +1419,13 @@ TASK_HANDLERS.hold_to_charge = {
 };
 
 // ===== TASK 8: ROTATE PIPES (O2) =====
-// 3x3 grid of pipe segments, rotate them to connect from left to right.
+// 4x4 grid of pipe segments, rotate them to connect from left to right.
 TASK_HANDLERS.rotate_pipes = {
   init(entity) {
-    // Simple: generate a path and randomize rotations
-    // Pipe types: 0=straight H, 1=straight V, 2=L bend (connects right+down), etc.
-    // Simplified: each cell has rotation 0-3. Target is rotation 0 for all.
     const grid = [];
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 16; i++) {
       grid.push({
         rotation: Math.floor(Math.random() * 3) + 1, // 1-3 (0 = solved)
-        targetRotation: 0,
       });
     }
     return { grid, done: false };
@@ -1236,15 +1444,15 @@ TASK_HANDLERS.rotate_pipes = {
     ctx.fillStyle = '#aaa';
     ctx.fillText('Click to rotate each pipe segment', x + w / 2, y + 15);
 
-    const cellSize = 70, gap = 8;
-    const gridW = 3 * cellSize + 2 * gap;
+    const cellSize = 55, gap = 6;
+    const gridW = 4 * cellSize + 3 * gap;
     const gx = x + (w - gridW) / 2;
-    const gy = y + 40;
+    const gy = y + 35;
 
     let allSolved = true;
 
-    for (let i = 0; i < 9; i++) {
-      const col = i % 3, row = Math.floor(i / 3);
+    for (let i = 0; i < 16; i++) {
+      const col = i % 4, row = Math.floor(i / 4);
       const cx = gx + col * (cellSize + gap);
       const cy = gy + row * (cellSize + gap);
       const cell = g.grid[i];
@@ -1259,31 +1467,34 @@ TASK_HANDLERS.rotate_pipes = {
       ctx.lineWidth = solved ? 2 : 1;
       ctx.strokeRect(cx, cy, cellSize, cellSize);
 
-      // Draw pipe based on rotation
+      // Draw pipe based on position in 4x4 grid
       const pcx = cx + cellSize / 2, pcy = cy + cellSize / 2;
       ctx.save();
       ctx.translate(pcx, pcy);
       ctx.rotate(cell.rotation * Math.PI / 2);
 
-      // Pipe segment (horizontal with bend)
+      const edgeRow = (row === 0 || row === 3);
+      const edgeCol = (col === 0 || col === 3);
+      const interior = !edgeRow && !edgeCol; // row 1-2, col 1-2
+
       ctx.strokeStyle = solved ? '#44ff44' : '#668';
       ctx.lineWidth = 6;
       ctx.beginPath();
-      if (row === 1 && col !== 1) {
-        // Straight horizontal
-        ctx.moveTo(-cellSize / 2 + 5, 0);
-        ctx.lineTo(cellSize / 2 - 5, 0);
-      } else if (col === 1) {
-        // T-junction (cross)
+      if (interior) {
+        // Cross (both row and col are interior)
         ctx.moveTo(-cellSize / 2 + 5, 0);
         ctx.lineTo(cellSize / 2 - 5, 0);
         ctx.moveTo(0, -cellSize / 2 + 5);
         ctx.lineTo(0, cellSize / 2 - 5);
-      } else {
-        // L-bend
+      } else if (edgeRow && edgeCol) {
+        // Corner: L-bend
         ctx.moveTo(-cellSize / 2 + 5, 0);
         ctx.lineTo(0, 0);
         ctx.lineTo(0, -cellSize / 2 + 5);
+      } else {
+        // Edge but not corner: straight
+        ctx.moveTo(-cellSize / 2 + 5, 0);
+        ctx.lineTo(cellSize / 2 - 5, 0);
       }
       ctx.stroke();
       ctx.restore();
@@ -1304,16 +1515,16 @@ TASK_HANDLERS.rotate_pipes = {
 };
 
 // ===== TASK 9: CALIBRATE DIAL (Shields) =====
-// Spinning dial — click when needle is in the green zone. Do it 3 times.
+// Spinning dial — click when needle is in the green zone. Do it 5 times.
 TASK_HANDLERS.calibrate_dial = {
   init(entity) {
     return {
       angle: 0,
       speed: 0.04,
-      targetMin: -0.3,
-      targetMax: 0.3,
+      targetMin: -0.25,
+      targetMax: 0.25,
       hits: 0,
-      needed: 3,
+      needed: 5,
       done: false,
       flash: 0,
       miss: 0,
@@ -1337,9 +1548,8 @@ TASK_HANDLERS.calibrate_dial = {
     g.angle += g.speed;
     if (g.angle > Math.PI) g.angle -= Math.PI * 2;
 
-    // Speed up each hit
-    const spd = 0.04 + g.hits * 0.015;
-    g.speed = spd;
+    // Speed ramp: 0.04 + hits * 0.02
+    g.speed = 0.04 + g.hits * 0.02;
 
     const dcx = x + w / 2, dcy = y + h / 2 + 10;
     const R = 90;
@@ -1383,8 +1593,8 @@ TASK_HANDLERS.calibrate_dial = {
     if (g.flash > 0) g.flash--;
     if (g.miss > 0) g.miss--;
 
-    // Recalculate target zone based on current hits (prevents permanent shrink on miss)
-    const baseTMin = -0.3, baseTMax = 0.3, shrinkPerHit = 0.1;
+    // Recalculate target zone based on current hits (shrink per hit = 0.06)
+    const baseTMin = -0.25, baseTMax = 0.25, shrinkPerHit = 0.06;
     g.targetMin = baseTMin + (g.hits * shrinkPerHit) / 2;
     g.targetMax = baseTMax - (g.hits * shrinkPerHit) / 2;
 
@@ -1399,11 +1609,11 @@ TASK_HANDLERS.calibrate_dial = {
         }
       } else {
         g.miss = 15;
-        g.hits = Math.max(0, g.hits - 1);
+        g.hits = 0; // Reset to zero on miss
       }
     }
 
-    // Progress dots
+    // Progress dots (5)
     const dotY = dcy + R + 25;
     for (let i = 0; i < g.needed; i++) {
       ctx.fillStyle = i < g.hits ? '#44ff44' : '#333';
@@ -1416,24 +1626,23 @@ TASK_HANDLERS.calibrate_dial = {
 
 // ===== LONG TASKS =====
 
-// TASK 10: CIRCUIT PATHS (3-step: Electrical → Admin → Security)
-// Each step: trace a wire path by clicking nodes in order.
+// TASK 10: CIRCUIT PATHS (3-step: Electrical -> Admin -> Security)
+// Each step: trace a wire path by clicking nodes in order. 10 real nodes + 4 decoys on 8x5 grid.
 TASK_HANDLERS.circuit_paths = {
   init(entity) {
-    // Generate a path of 5 nodes on a grid
+    // Generate a path of 10 nodes on an 8x5 grid
     const nodes = [];
     const used = new Set();
-    let cx = 0, cy = Math.floor(Math.random() * 4);
-    for (let i = 0; i < 6; i++) {
+    let cx = 0, cy = Math.floor(Math.random() * 5);
+    for (let i = 0; i < 10; i++) {
       nodes.push({ x: cx, y: cy, index: i });
       used.add(cx + ',' + cy);
       // Move right or up/down
-      if (Math.random() < 0.6 && cx < 5) cx++;
-      else cy = Math.max(0, Math.min(3, cy + (Math.random() < 0.5 ? 1 : -1)));
-      // Avoid duplicates — try neighbors, not just incrementing cx
+      if (Math.random() < 0.6 && cx < 7) cx++;
+      else cy = Math.max(0, Math.min(4, cy + (Math.random() < 0.5 ? 1 : -1)));
+      // Avoid duplicates
       if (used.has(cx + ',' + cy)) {
         let placed = false;
-        // Try all adjacent cells in random order
         const dirs = [[1,0],[0,1],[0,-1],[-1,0],[1,1],[1,-1]];
         for (let d = dirs.length - 1; d > 0; d--) {
           const j = Math.floor(Math.random() * (d + 1));
@@ -1441,26 +1650,42 @@ TASK_HANDLERS.circuit_paths = {
         }
         for (const [dx, dy] of dirs) {
           const nx = cx + dx, ny = cy + dy;
-          if (nx >= 0 && nx <= 5 && ny >= 0 && ny <= 3 && !used.has(nx + ',' + ny)) {
+          if (nx >= 0 && nx <= 7 && ny >= 0 && ny <= 4 && !used.has(nx + ',' + ny)) {
             cx = nx; cy = ny; placed = true; break;
           }
         }
-        // Fallback: scan entire grid for any free cell
         if (!placed) {
-          for (let gx = 0; gx <= 5 && !placed; gx++) {
-            for (let gy = 0; gy <= 3 && !placed; gy++) {
+          for (let gx = 0; gx <= 7 && !placed; gx++) {
+            for (let gy = 0; gy <= 4 && !placed; gy++) {
               if (!used.has(gx + ',' + gy)) { cx = gx; cy = gy; placed = true; }
             }
           }
         }
       }
     }
+    // Generate 4 decoy nodes on unused positions
+    const decoys = [];
+    const allFree = [];
+    for (let gx = 0; gx <= 7; gx++) {
+      for (let gy = 0; gy <= 4; gy++) {
+        if (!used.has(gx + ',' + gy)) allFree.push({ x: gx, y: gy });
+      }
+    }
+    // Shuffle and pick 4
+    for (let i = allFree.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allFree[i], allFree[j]] = [allFree[j], allFree[i]];
+    }
+    for (let i = 0; i < Math.min(4, allFree.length); i++) {
+      decoys.push(allFree[i]);
+    }
     return {
       nodes,
-      clicked: 0, // how many nodes player has clicked in order
+      decoys,
+      clicked: 0,
       done: false,
-      wrong: false,
-      wrongTimer: 0,
+      errorText: '',
+      errorTimer: 0,
     };
   },
   draw(g, ctx, x, y, w, h, panel) {
@@ -1477,20 +1702,21 @@ TASK_HANDLERS.circuit_paths = {
     ctx.fillStyle = '#aaa';
     ctx.fillText('Click the nodes in order (1 to ' + g.nodes.length + ')', x + w / 2, y + 15);
 
-    if (g.wrong) {
+    // Error text display
+    if (g.errorTimer > 0) {
       ctx.fillStyle = '#ff4444';
-      ctx.fillText('Wrong node!', x + w / 2, y + 35);
-      g.wrongTimer++;
-      if (g.wrongTimer > 30) { g.wrong = false; g.wrongTimer = 0; }
+      ctx.fillText(g.errorText, x + w / 2, y + 35);
+      g.errorTimer--;
+      if (g.errorTimer <= 0) { g.errorText = ''; }
     }
 
-    const cellW = (w - 40) / 6;
-    const cellH = (h - 80) / 4;
+    const cellW = (w - 40) / 8;
+    const cellH = (h - 80) / 5;
     const ox = x + 20, oy = y + 50;
 
-    // Draw wires between consecutive nodes
-    ctx.strokeStyle = '#1a3040';
-    ctx.lineWidth = 3;
+    // Draw wires between real nodes (dim, thin lines)
+    ctx.strokeStyle = '#152030';
+    ctx.lineWidth = 2;
     for (let i = 0; i < g.nodes.length - 1; i++) {
       const a = g.nodes[i], b = g.nodes[i + 1];
       const ax = ox + a.x * cellW + cellW / 2;
@@ -1502,7 +1728,7 @@ TASK_HANDLERS.circuit_paths = {
 
     // Draw lit wires (already clicked)
     ctx.strokeStyle = '#44ff44';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     for (let i = 0; i < g.clicked - 1; i++) {
       const a = g.nodes[i], b = g.nodes[i + 1];
       const ax = ox + a.x * cellW + cellW / 2;
@@ -1512,12 +1738,37 @@ TASK_HANDLERS.circuit_paths = {
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
     }
 
-    // Draw nodes
+    // Draw decoy nodes
+    for (let i = 0; i < g.decoys.length; i++) {
+      const d = g.decoys[i];
+      const dx = ox + d.x * cellW + cellW / 2;
+      const dy = oy + d.y * cellH + cellH / 2;
+      const dr = 10;
+      const hover = Math.sqrt((panel.mouseX - dx) ** 2 + (panel.mouseY - dy) ** 2) < dr + 5;
+
+      ctx.fillStyle = hover ? '#2a1a1a' : '#181818';
+      ctx.beginPath(); ctx.arc(dx, dy, dr, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(dx, dy, dr, 0, Math.PI * 2); ctx.stroke();
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#666';
+      ctx.fillText('?', dx, dy + 4);
+
+      // Click decoy: reset progress
+      if (panel.mouseJustClicked && hover && g.errorTimer <= 0) {
+        g.clicked = 0;
+        g.errorText = 'DECOY!';
+        g.errorTimer = 30;
+      }
+    }
+
+    // Draw real nodes
     for (let i = 0; i < g.nodes.length; i++) {
       const n = g.nodes[i];
       const nx = ox + n.x * cellW + cellW / 2;
       const ny = oy + n.y * cellH + cellH / 2;
-      const r = 15;
+      const r = 13;
       const clicked = i < g.clicked;
       const next = i === g.clicked;
       const hover = Math.sqrt((panel.mouseX - nx) ** 2 + (panel.mouseY - ny) ** 2) < r + 5;
@@ -1528,30 +1779,39 @@ TASK_HANDLERS.circuit_paths = {
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(nx, ny, r, 0, Math.PI * 2); ctx.stroke();
 
-      ctx.font = 'bold 14px monospace';
+      ctx.font = 'bold 12px monospace';
       ctx.fillStyle = clicked ? '#44ff44' : (next ? '#0ff' : '#555');
-      ctx.fillText((i + 1).toString(), nx, ny + 5);
+      ctx.fillText((i + 1).toString(), nx, ny + 4);
 
-      if (panel.mouseJustClicked && hover && !g.wrong) {
+      if (panel.mouseJustClicked && hover && g.errorTimer <= 0) {
         if (i === g.clicked) {
           g.clicked++;
           if (g.clicked >= g.nodes.length) {
             g.done = true;
             completeCurrentTask();
           }
-        } else if (i >= g.clicked) {
-          g.wrong = true;
+        } else if (i > g.clicked) {
+          g.clicked = 0;
+          g.errorText = 'Wrong node!';
+          g.errorTimer = 30;
         }
       }
     }
   }
 };
 
-// TASK 11: SAMPLE ANALYZER (MedBay)
-// Press Start, wait for progress bar, then press Collect.
+// TASK 11: TEMPERATURE MONITOR (MedBay)
+// Keep temperature in optimal zone (35-65) by clicking COOL/HEAT buttons. Progress only while in zone.
 TASK_HANDLERS.sample_analyzer = {
   init(entity) {
-    return { phase: 'start', progress: 0, done: false }; // phases: start, analyzing, collect
+    return {
+      phase: 'start', // 'start', 'monitoring', 'collect'
+      temperature: 50,
+      tempVelocity: 0,
+      progress: 0, // needs 300 to complete
+      done: false,
+      errorTimer: 0,
+    };
   },
   draw(g, ctx, x, y, w, h, panel) {
     ctx.textAlign = 'center';
@@ -1563,9 +1823,13 @@ TASK_HANDLERS.sample_analyzer = {
       return;
     }
 
-    // Sample tube visual
-    const tubeW = 40, tubeH = 120;
-    const tx = x + w / 2 - tubeW / 2, ty = y + 30;
+    // --- START PHASE ---
+    if (g.phase === 'start') {
+      ctx.font = 'bold 14px monospace';
+      ctx.fillStyle = '#aaa';
+      ctx.fillText('Press START to begin temperature monitoring', x + w / 2, y + h / 2 - 40);
+      const btnW = 120, btnH = 40;
+      const bx = x + (w - btnW) / 2, by = y + h / 2 - 10;
     ctx.fillStyle = '#0c1620';
     ctx.fillRect(tx, ty, tubeW, tubeH);
     ctx.strokeStyle = '#1a3040';
