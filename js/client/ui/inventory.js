@@ -2315,6 +2315,9 @@ function update() {
   if (typeof HideSeekSystem !== 'undefined') HideSeekSystem.tick();
   if (typeof VentSystem !== 'undefined') VentSystem.tick();
 
+  // Skeld: force no weapon held (activeSlot -1 = empty hands)
+  if (Scene.inSkeld) activeSlot = -1;
+
   if (UI.isOpen('shop') && !isNearInteractable('shop_station')) { UI.close(); }
   if (UI.isOpen('shop') && waveState === "active") { UI.close(); }
 
@@ -2485,7 +2488,9 @@ function update() {
     }
     // Hotbar slot keys (1/2/3) — blocked during hide & seek (only Seeking Baton allowed)
     if (InputIntent.slot1Pressed || InputIntent.slot2Pressed || InputIntent.slot3Pressed) {
-      if (typeof Scene !== 'undefined' && Scene.inHideSeek) {
+      if (typeof Scene !== 'undefined' && Scene.inSkeld) {
+        // In Skeld: no items/weapons
+      } else if (typeof Scene !== 'undefined' && Scene.inHideSeek) {
         // In Hide & Seek: ignore slot switching, stay on melee
       } else {
         const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : 2;
@@ -2499,11 +2504,11 @@ function update() {
       }
     }
     // Potion (direct press from hotbar click, if not already handled by slot keys)
-    if (InputIntent.potionPressed && !InputIntent.slot1Pressed && !InputIntent.slot2Pressed && !InputIntent.slot3Pressed) {
+    if (!Scene.inSkeld && InputIntent.potionPressed && !InputIntent.slot1Pressed && !InputIntent.slot2Pressed && !InputIntent.slot3Pressed) {
       usePotion();
     }
-    // Grab
-    if (InputIntent.slot5Pressed) {
+    // Grab (disabled in Skeld)
+    if (!Scene.inSkeld && InputIntent.slot5Pressed) {
       tryGrab();
     }
     // Extra item slot
