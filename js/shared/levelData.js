@@ -1261,7 +1261,7 @@ const LEVELS = {
     room(58, 53, 75, 74);
 
     // === SHIELDS (right side — 14×12) ===
-    room(104, 54, 117, 65);
+    room(99, 54, 112, 65);
 
     // === LOWER ENGINE (lower left — 20×14) ===
     room(4, 52, 23, 65);
@@ -1317,8 +1317,8 @@ const LEVELS = {
     // --- Admin corridor (5 tall, from Cafe→Storage corridor to Admin) ---
     room(72, 42, 78, 46);     // Corridor → Admin (x=73-77, y=42-46)
 
-    // --- Storage → Shields (5 tall, ~28 blocks, bottom at y=62) ---
-    room(75, 58, 104, 62);    // Storage right → Shields (x=76-103, y=58-62)
+    // --- Storage → Shields (5 tall, ~23 blocks, bottom at y=62) ---
+    room(75, 58, 99, 62);     // Storage right → Shields (x=76-98, y=58-62)
 
     // ========================================
     //  BORDERS
