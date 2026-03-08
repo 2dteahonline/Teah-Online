@@ -1236,190 +1236,189 @@ const LEVELS = {
     //  ROOMS (14 total)
     // ========================================
 
-    // === CAFETERIA (top center — 28×32) ===
-    room(57, 3, 84, 34);
+    // === CAFETERIA (top center — 28×34) ===
+    room(57, 1, 84, 34);
 
-    // === UPPER ENGINE (upper left — 20×14) ===
-    room(4, 4, 23, 17);
+    // === UPPER ENGINE (upper left — 23×17) ===
+    room(1, 1, 23, 17);
 
-    // === REACTOR (far left — 8×14) ===
-    room(1, 28, 8, 41);
+    // === REACTOR (far left — 8×24) ===
+    room(1, 23, 8, 46);
 
-    // === SECURITY (right of cross — 12×10) ===
-    room(24, 30, 35, 39);
+    // === SECURITY (right of cross — 13×14) ===
+    room(24, 28, 36, 41);
 
-    // === MEDBAY (center-right — 12×10) ===
-    room(38, 18, 49, 27);
+    // === MEDBAY (center-right — 16×15) ===
+    room(38, 18, 53, 32);
 
-    // === ELECTRICAL (center — 14×18) ===
-    room(37, 45, 50, 62);
+    // === ELECTRICAL (center — 19×21) ===
+    room(37, 42, 55, 62);
 
-    // === ADMIN (right of Cafe→Storage corridor — 15×13) ===
-    room(78, 38, 92, 50);
+    // === ADMIN (right of Cafe→Storage corridor — 19×18) ===
+    room(78, 37, 96, 54);
 
-    // === STORAGE (bottom center — 18×22, tall rectangle) ===
-    room(58, 53, 75, 74);
+    // === STORAGE (bottom center — 18×26, tall rectangle) ===
+    room(58, 53, 75, 78);
 
-    // === SHIELDS (right side — 14×12) ===
-    room(99, 54, 112, 65);
+    // === SHIELDS (right side — 19×17) ===
+    room(99, 54, 117, 70);
 
-    // === COMMUNICATIONS (bottom center-right — 14×12) ===
-    room(80, 67, 93, 78);
+    // === COMMUNICATIONS (bottom center-right — 18×12) ===
+    room(80, 67, 97, 78);
 
-    // === LOWER ENGINE (lower left — 20×14) ===
-    room(4, 52, 23, 65);
+    // === LOWER ENGINE (lower left — 23×17) ===
+    room(1, 52, 23, 68);
 
-    // === WEAPONS (upper right — arrow shape, 16×12) ===
-    room(95, 6, 110, 17);
-    for (let x = 108; x <= 110; x++) {
-      const indent = x - 107;
-      for (let y = 6; y < 6 + indent; y++) wall(x, y);
+    // === WEAPONS (upper right — arrow shape, 21×17) ===
+    room(95, 1, 115, 17);
+    for (let x = 111; x <= 115; x++) {
+      const indent = x - 110;
+      for (let y = 1; y < 1 + indent; y++) wall(x, y);
       for (let y = 18 - indent; y <= 17; y++) wall(x, y);
     }
-    carve(111, 11); carve(111, 12);
+    carve(116, 8); carve(116, 9);
 
-    // === O2 (right side, left of Shields spine — 14×12) ===
-    room(86, 25, 99, 36);
+    // === O2 (right side, left of Shields spine — 14×14) ===
+    room(86, 22, 99, 35);
 
-    // === NAVIGATION (far right — arrow shape, 9×12) ===
-    room(117, 28, 125, 39);
-    for (let x = 123; x <= 125; x++) {
-      const indent = x - 122;
-      for (let y = 28; y < 28 + indent; y++) wall(x, y);
-      for (let y = 40 - indent; y <= 39; y++) wall(x, y);
+    // === NAVIGATION (far right — arrow shape, 10×21) ===
+    room(117, 24, 126, 44);
+    for (let x = 123; x <= 126; x++) {
+      const indent = (x - 122) * 2;
+      for (let y = 24; y < 24 + indent; y++) wall(x, y);
+      for (let y = 45 - indent; y <= 44; y++) wall(x, y);
     }
-    carve(126, 33); carve(126, 34);
 
     // ========================================
     //  ROOM SHAPE CUTS (corner cuts, edges, silhouettes)
     // ========================================
 
-    // --- Cafeteria — octagonal corners ---
-    wall(57,3); wall(58,3); wall(59,3); wall(57,4); wall(58,4); wall(57,5);
-    wall(82,3); wall(83,3); wall(84,3); wall(83,4); wall(84,4); wall(84,5);
+    // --- Cafeteria — octagonal corners (3-step all 4) ---
+    wall(57,1); wall(58,1); wall(59,1); wall(57,2); wall(58,2); wall(57,3);
+    wall(82,1); wall(83,1); wall(84,1); wall(83,2); wall(84,2); wall(84,3);
     wall(57,32); wall(57,33); wall(58,33); wall(57,34); wall(58,34); wall(59,34);
     wall(82,34); wall(83,34); wall(84,34); wall(84,33); wall(83,33); wall(84,32);
 
     // --- Upper Engine — pentagon: big 5-step diagonal on TL + BL (angled left side) ---
-    wall(4,4); wall(5,4); wall(6,4); wall(7,4); wall(8,4);
-    wall(4,5); wall(5,5); wall(6,5); wall(7,5);
-    wall(4,6); wall(5,6); wall(6,6);
-    wall(4,7); wall(5,7);
-    wall(4,8);
-    wall(4,13);
-    wall(4,14); wall(5,14);
-    wall(4,15); wall(5,15); wall(6,15);
-    wall(4,16); wall(5,16); wall(6,16); wall(7,16);
-    wall(4,17); wall(5,17); wall(6,17); wall(7,17); wall(8,17);
+    wall(1,1); wall(2,1); wall(3,1); wall(4,1); wall(5,1);
+    wall(1,2); wall(2,2); wall(3,2); wall(4,2);
+    wall(1,3); wall(2,3); wall(3,3);
+    wall(1,4); wall(2,4);
+    wall(1,5);
+    wall(1,13);
+    wall(1,14); wall(2,14);
+    wall(1,15); wall(2,15); wall(3,15);
+    wall(1,16); wall(2,16); wall(3,16); wall(4,16);
+    wall(1,17); wall(2,17); wall(3,17); wall(4,17); wall(5,17);
 
-    // --- Reactor — vertical hexagon: 4-step diags on all 4 corners ---
-    wall(1,28); wall(2,28); wall(3,28); wall(4,28);
-    wall(1,29); wall(2,29); wall(3,29);
-    wall(1,30); wall(2,30);
-    wall(1,31);
-    wall(1,38);
-    wall(1,39); wall(2,39);
-    wall(1,40); wall(2,40); wall(3,40);
-    wall(1,41); wall(2,41); wall(3,41); wall(4,41);
-    wall(6,28); wall(7,28); wall(8,28);
-    wall(7,29); wall(8,29);
-    wall(8,30);
-    wall(8,39);
-    wall(7,40); wall(8,40);
-    wall(6,41); wall(7,41); wall(8,41);
+    // --- Reactor — vertical hexagon: 4-step TL+BL, 3-step TR+BR ---
+    wall(1,23); wall(2,23); wall(3,23); wall(4,23);
+    wall(1,24); wall(2,24); wall(3,24);
+    wall(1,25); wall(2,25);
+    wall(1,26);
+    wall(1,43);
+    wall(1,44); wall(2,44);
+    wall(1,45); wall(2,45); wall(3,45);
+    wall(1,46); wall(2,46); wall(3,46); wall(4,46);
+    wall(6,23); wall(7,23); wall(8,23);
+    wall(7,24); wall(8,24);
+    wall(8,25);
+    wall(8,44);
+    wall(7,45); wall(8,45);
+    wall(6,46); wall(7,46); wall(8,46);
 
     // --- Security — small: 2-step cuts on TR + BR only ---
-    wall(34,30); wall(35,30);
-    wall(35,31);
-    wall(35,38);
-    wall(34,39); wall(35,39);
+    wall(35,28); wall(36,28);
+    wall(36,29);
+    wall(36,40);
+    wall(35,41); wall(36,41);
 
     // --- MedBay — big 5-step diagonal on BR, small 2-step on TL ---
     wall(38,18); wall(39,18);
     wall(38,19);
-    wall(49,23);
-    wall(48,24); wall(49,24);
-    wall(47,25); wall(48,25); wall(49,25);
-    wall(46,26); wall(47,26); wall(48,26); wall(49,26);
-    wall(45,27); wall(46,27); wall(47,27); wall(48,27); wall(49,27);
+    wall(53,28);
+    wall(52,29); wall(53,29);
+    wall(51,30); wall(52,30); wall(53,30);
+    wall(50,31); wall(51,31); wall(52,31); wall(53,31);
+    wall(49,32); wall(50,32); wall(51,32); wall(52,32); wall(53,32);
 
     // --- Lower Engine — pentagon: big 5-step diagonal on TL + BL (mirrors UE) ---
-    wall(4,52); wall(5,52); wall(6,52); wall(7,52); wall(8,52);
-    wall(4,53); wall(5,53); wall(6,53); wall(7,53);
-    wall(4,54); wall(5,54); wall(6,54);
-    wall(4,55); wall(5,55);
-    wall(4,56);
-    wall(4,61);
-    wall(4,62); wall(5,62);
-    wall(4,63); wall(5,63); wall(6,63);
-    wall(4,64); wall(5,64); wall(6,64); wall(7,64);
-    wall(4,65); wall(5,65); wall(6,65); wall(7,65); wall(8,65);
+    wall(1,52); wall(2,52); wall(3,52); wall(4,52); wall(5,52);
+    wall(1,53); wall(2,53); wall(3,53); wall(4,53);
+    wall(1,54); wall(2,54); wall(3,54);
+    wall(1,55); wall(2,55);
+    wall(1,56);
+    wall(1,64);
+    wall(1,65); wall(2,65);
+    wall(1,66); wall(2,66); wall(3,66);
+    wall(1,67); wall(2,67); wall(3,67); wall(4,67);
+    wall(1,68); wall(2,68); wall(3,68); wall(4,68); wall(5,68);
 
     // --- Electrical — 4-step TR, 3-step BR, 2-step TL ---
-    wall(37,45); wall(38,45);
-    wall(37,46);
-    wall(47,45); wall(48,45); wall(49,45); wall(50,45);
-    wall(48,46); wall(49,46); wall(50,46);
-    wall(49,47); wall(50,47);
-    wall(50,48);
-    wall(50,60);
-    wall(49,61); wall(50,61);
-    wall(48,62); wall(49,62); wall(50,62);
+    wall(37,42); wall(38,42);
+    wall(37,43);
+    wall(52,42); wall(53,42); wall(54,42); wall(55,42);
+    wall(53,43); wall(54,43); wall(55,43);
+    wall(54,44); wall(55,44);
+    wall(55,45);
+    wall(55,60);
+    wall(54,61); wall(55,61);
+    wall(53,62); wall(54,62); wall(55,62);
 
     // --- Admin — octagonal: 3-step TL, 4-step TR, 2-step BL, 4-step BR ---
-    wall(78,38); wall(79,38); wall(80,38);
-    wall(78,39); wall(79,39);
-    wall(78,40);
-    wall(89,38); wall(90,38); wall(91,38); wall(92,38);
-    wall(90,39); wall(91,39); wall(92,39);
-    wall(91,40); wall(92,40);
-    wall(92,41);
-    wall(78,49);
-    wall(78,50); wall(79,50);
-    wall(92,47);
-    wall(91,48); wall(92,48);
-    wall(90,49); wall(91,49); wall(92,49);
-    wall(89,50); wall(90,50); wall(91,50); wall(92,50);
+    wall(78,37); wall(79,37); wall(80,37);
+    wall(78,38); wall(79,38);
+    wall(78,39);
+    wall(93,37); wall(94,37); wall(95,37); wall(96,37);
+    wall(94,38); wall(95,38); wall(96,38);
+    wall(95,39); wall(96,39);
+    wall(96,40);
+    wall(78,53);
+    wall(78,54); wall(79,54);
+    wall(96,51);
+    wall(95,52); wall(96,52);
+    wall(94,53); wall(95,53); wall(96,53);
+    wall(93,54); wall(94,54); wall(95,54); wall(96,54);
 
     // --- Storage — 4-step diagonal on TL + BR (diagonal pair) ---
     wall(58,53); wall(59,53); wall(60,53); wall(61,53);
     wall(58,54); wall(59,54); wall(60,54);
     wall(58,55); wall(59,55);
     wall(58,56);
-    wall(75,71);
-    wall(74,72); wall(75,72);
-    wall(73,73); wall(74,73); wall(75,73);
-    wall(72,74); wall(73,74); wall(74,74); wall(75,74);
+    wall(75,75);
+    wall(74,76); wall(75,76);
+    wall(73,77); wall(74,77); wall(75,77);
+    wall(72,78); wall(73,78); wall(74,78); wall(75,78);
 
     // --- Shields — hexagonal: 4-step TR+BR, 2-step TL+BL ---
     wall(99,54); wall(100,54);
     wall(99,55);
-    wall(109,54); wall(110,54); wall(111,54); wall(112,54);
-    wall(110,55); wall(111,55); wall(112,55);
-    wall(111,56); wall(112,56);
-    wall(112,57);
-    wall(99,64);
-    wall(99,65); wall(100,65);
-    wall(112,62);
-    wall(111,63); wall(112,63);
-    wall(110,64); wall(111,64); wall(112,64);
-    wall(109,65); wall(110,65); wall(111,65); wall(112,65);
+    wall(114,54); wall(115,54); wall(116,54); wall(117,54);
+    wall(115,55); wall(116,55); wall(117,55);
+    wall(116,56); wall(117,56);
+    wall(117,57);
+    wall(99,69);
+    wall(99,70); wall(100,70);
+    wall(117,67);
+    wall(116,68); wall(117,68);
+    wall(115,69); wall(116,69); wall(117,69);
+    wall(114,70); wall(115,70); wall(116,70); wall(117,70);
 
     // --- Communications — 3-step TL + 3-step BR (diagonal pair) ---
     wall(80,67); wall(81,67); wall(82,67);
     wall(80,68); wall(81,68);
     wall(80,69);
-    wall(93,76);
-    wall(92,77); wall(93,77);
-    wall(91,78); wall(92,78); wall(93,78);
+    wall(97,76);
+    wall(96,77); wall(97,77);
+    wall(95,78); wall(96,78); wall(97,78);
 
     // --- O2 — angled left side: 3-step TL + 3-step BL ---
-    wall(86,25); wall(87,25); wall(88,25);
-    wall(86,26); wall(87,26);
-    wall(86,27);
-    wall(86,34);
-    wall(86,35); wall(87,35);
-    wall(86,36); wall(87,36); wall(88,36);
+    wall(86,22); wall(87,22); wall(88,22);
+    wall(86,23); wall(87,23);
+    wall(86,24);
+    wall(86,33);
+    wall(86,34); wall(87,34);
+    wall(86,35); wall(87,35); wall(88,35);
 
     // ========================================
     //  CORRIDORS — all 5 tiles wide
