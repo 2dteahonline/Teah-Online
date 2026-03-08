@@ -2208,35 +2208,6 @@ const ENTITY_RENDERERS = {
       ctx.closePath(); ctx.fill();
   },
 
-  // ===================== SKELD EXIT (airlock door inside map) =====================
-  skeld_exit: (e, ctx, ex, ey, w, h) => {
-      const cw = w * TILE, ch = h * TILE;
-      const t = Date.now() / 1000;
-      const pulse = 0.5 + Math.sin(t * 1.5) * 0.3;
-      // Airlock door frame
-      ctx.fillStyle = '#1a1e28';
-      ctx.fillRect(ex, ey, cw, ch);
-      // Door panels (split in middle)
-      ctx.fillStyle = '#10141c';
-      ctx.fillRect(ex+4, ey+4, cw/2-6, ch-8);
-      ctx.fillRect(ex+cw/2+2, ey+4, cw/2-6, ch-8);
-      // Warning stripes
-      ctx.fillStyle = 'rgba(200,180,40,0.15)';
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(ex + 6 + i * (cw-12)/4, ey + ch - 10, (cw-12)/8, 6);
-      }
-      // Neon exit glow
-      ctx.strokeStyle = `rgba(60,200,120,${0.4 + pulse * 0.3})`;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(ex+2, ey+2, cw-4, ch-4);
-      // EXIT text
-      ctx.font = "bold 10px monospace";
-      ctx.fillStyle = `rgba(60,200,120,${0.6 + pulse * 0.2})`;
-      ctx.textAlign = "center";
-      ctx.fillText("EXIT", ex+cw/2, ey+ch/2+4);
-      ctx.textAlign = "left";
-  },
-
   // ===================== SKELD TASK CONSOLE (cyan wall-mounted) =====================
   skeld_task: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;

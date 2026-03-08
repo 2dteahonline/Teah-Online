@@ -1489,8 +1489,6 @@ const LEVELS = {
       spawns: { p1: { tx: 70 + XO, ty: 15 } },
       collisionAscii: ascii,
       entities: [
-        { type: 'skeld_exit', tx: 69 + XO, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' },
-
         // ===== COMMON TASKS =====
         { type: 'skeld_task', tx: 72 + XO, ty: 2, w: 2, h: 1, solid: true, label: 'Tap Sequence', taskId: 'tap_sequence', room: 'cafeteria' },
         { type: 'skeld_task', tx: 92 + XO, ty: 45, w: 2, h: 1, solid: true, label: 'Code Entry', taskId: 'code_entry', room: 'admin' },
