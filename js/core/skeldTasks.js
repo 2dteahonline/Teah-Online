@@ -393,10 +393,10 @@ TASK_HANDLERS.tap_sequence = {
       for (let i = 0; i < len; i++) seq.push(Math.floor(Math.random() * 5));
       return seq;
     }
-    const rounds = [genSeq(5), genSeq(7)];
+    const rounds = [genSeq(4)];
     return {
       round: 1,
-      rounds,                // [round1Seq, round2Seq]
+      rounds,                // [round1Seq]
       showPhase: true,
       showIndex: 0,
       showTimer: 0,
@@ -450,7 +450,7 @@ TASK_HANDLERS.tap_sequence = {
     // Round indicator
     ctx.font = 'bold 12px monospace';
     ctx.fillStyle = '#666';
-    ctx.fillText('Round ' + g.round + ' of 2', x + w / 2, y + 15);
+    ctx.fillText('Round ' + g.round + ' of ' + g.rounds.length, x + w / 2, y + 15);
 
     if (g.showPhase) {
       ctx.font = 'bold 14px monospace';
@@ -511,11 +511,11 @@ TASK_HANDLERS.tap_sequence = {
             g.flashTimer = 12;
             g.inputIndex++;
             if (g.inputIndex >= sequence.length) {
-              if (g.round >= 2) {
+              if (g.round >= g.rounds.length) {
                 g.done = true;
                 completeCurrentTask();
               } else {
-                // Advance to round 2
+                // Advance to next round
                 g.round++;
                 g.showPhase = true;
                 g.showIndex = 0;
@@ -1899,14 +1899,14 @@ TASK_HANDLERS.sample_analyzer = {
     }
 
     // --- MONITORING PHASE ---
-    // Update temperature physics
-    g.tempVelocity += (Math.random() - 0.5) * 0.15;
-    if (g.tempVelocity > 1.5) g.tempVelocity = 1.5;
-    if (g.tempVelocity < -1.5) g.tempVelocity = -1.5;
+    // Update temperature physics (gentle drift)
+    g.tempVelocity += (Math.random() - 0.5) * 0.08;
+    if (g.tempVelocity > 0.8) g.tempVelocity = 0.8;
+    if (g.tempVelocity < -0.8) g.tempVelocity = -0.8;
     g.temperature += g.tempVelocity;
 
-    // Check fail conditions
-    if (g.temperature < 10 || g.temperature > 90) {
+    // Check fail conditions (wider safe range)
+    if (g.temperature < 5 || g.temperature > 95) {
       g.phase = 'start';
       g.errorTimer = 45;
       g.temperature = 50;
@@ -1918,17 +1918,17 @@ TASK_HANDLERS.sample_analyzer = {
     // Clamp display
     const temp = Math.max(0, Math.min(100, g.temperature));
 
-    // Progress in optimal zone (35-65)
-    const inZone = temp >= 35 && temp <= 65;
-    if (inZone) g.progress += 0.5;
-    if (g.progress >= 300) {
+    // Progress in optimal zone (25-75)
+    const inZone = temp >= 25 && temp <= 75;
+    if (inZone) g.progress += 1;
+    if (g.progress >= 200) {
       g.phase = 'collect';
       return;
     }
 
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#aaa';
-    ctx.fillText('Keep temperature in the green zone (35-65)', x + w / 2, y + 15);
+    ctx.fillText('Keep temperature in the green zone (25-75)', x + w / 2, y + 15);
 
     // Draw thermometer (left side)
     const thermoX = x + 60, thermoY = y + 35, thermoW = 30, thermoH = 220;
@@ -1938,9 +1938,9 @@ TASK_HANDLERS.sample_analyzer = {
     ctx.lineWidth = 2;
     ctx.strokeRect(thermoX, thermoY, thermoW, thermoH);
 
-    // Optimal zone band (35-65 mapped to thermometer)
-    const zoneTop = thermoY + thermoH * (1 - 65 / 100);
-    const zoneBot = thermoY + thermoH * (1 - 35 / 100);
+    // Optimal zone band (25-75 mapped to thermometer)
+    const zoneTop = thermoY + thermoH * (1 - 75 / 100);
+    const zoneBot = thermoY + thermoH * (1 - 25 / 100);
     ctx.fillStyle = 'rgba(40,200,60,0.25)';
     ctx.fillRect(thermoX + 1, zoneTop, thermoW - 2, zoneBot - zoneTop);
     ctx.strokeStyle = '#44ff44';
@@ -1950,9 +1950,9 @@ TASK_HANDLERS.sample_analyzer = {
     ctx.moveTo(thermoX, zoneBot); ctx.lineTo(thermoX + thermoW, zoneBot);
     ctx.stroke();
 
-    // Danger zones (below 10, above 90)
-    const dangerTop = thermoY + thermoH * (1 - 90 / 100);
-    const dangerBot = thermoY + thermoH * (1 - 10 / 100);
+    // Danger zones (below 5, above 95)
+    const dangerTop = thermoY + thermoH * (1 - 95 / 100);
+    const dangerBot = thermoY + thermoH * (1 - 5 / 100);
     ctx.fillStyle = 'rgba(255,50,50,0.15)';
     ctx.fillRect(thermoX + 1, thermoY + 1, thermoW - 2, dangerTop - thermoY);
     ctx.fillRect(thermoX + 1, dangerBot, thermoW - 2, thermoY + thermoH - dangerBot - 1);
@@ -1974,8 +1974,8 @@ TASK_HANDLERS.sample_analyzer = {
     ctx.fillStyle = '#555';
     ctx.fillText('100', thermoX + thermoW + 5, thermoY + 10);
     ctx.fillText('0', thermoX + thermoW + 5, thermoY + thermoH);
-    ctx.fillText('65', thermoX + thermoW + 5, zoneTop + 4);
-    ctx.fillText('35', thermoX + thermoW + 5, zoneBot + 4);
+    ctx.fillText('75', thermoX + thermoW + 5, zoneTop + 4);
+    ctx.fillText('25', thermoX + thermoW + 5, zoneBot + 4);
     ctx.textAlign = 'center';
 
     // Progress bar (right side)
@@ -1985,7 +1985,7 @@ TASK_HANDLERS.sample_analyzer = {
     ctx.fillText('Monitoring Progress', pBarX + pBarW / 2, pBarY - 5);
     ctx.fillStyle = '#0c1620';
     ctx.fillRect(pBarX, pBarY, pBarW, pBarH);
-    const pct = Math.min(1, g.progress / 300);
+    const pct = Math.min(1, g.progress / 200);
     ctx.fillStyle = inZone ? '#44ff44' : '#333';
     ctx.fillRect(pBarX, pBarY, pBarW * pct, pBarH);
     ctx.strokeStyle = '#1a3040';
@@ -2037,8 +2037,8 @@ TASK_HANDLERS.sample_analyzer = {
 
     // Button click handling
     if (panel.mouseJustClicked) {
-      if (coolHover) g.tempVelocity -= 0.8;
-      if (heatHover) g.tempVelocity += 0.8;
+      if (coolHover) g.tempVelocity -= 1.2;
+      if (heatHover) g.tempVelocity += 1.2;
     }
   }
 };
