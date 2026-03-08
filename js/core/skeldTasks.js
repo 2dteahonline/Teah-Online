@@ -96,6 +96,157 @@ const SkeldTasks = {
 // Initialize on load
 SkeldTasks.reset();
 
+// ===================== VENT SYSTEM =====================
+const VENT_NETWORK = {
+  security:   { prev: 'electrical', next: 'medbay' },
+  medbay:     { prev: 'security',   next: 'electrical' },
+  electrical: { prev: 'medbay',     next: 'security' },
+};
+
+const VENT_NAMES = {
+  security: 'Security',
+  medbay: 'MedBay',
+  electrical: 'Electrical',
+};
+
+const VENT_ORDER = ['security', 'medbay', 'electrical'];
+
+const VentSystem = {
+  active: false,
+  currentVentId: null,
+  animTimer: 0,
+  animType: null, // 'enter' | 'exit'
+  ANIM_DURATION: 20,
+  _cycleHeld: false, // debounce for arrow keys
+
+  getVentEntity(ventId) {
+    if (typeof levelEntities === 'undefined') return null;
+    return levelEntities.find(e => e.type === 'skeld_vent' && e.ventId === ventId);
+  },
+
+  isNearVent(ventId) {
+    const e = this.getVentEntity(ventId);
+    if (!e || typeof player === 'undefined') return false;
+    const cx = e.tx * TILE + TILE;
+    const cy = e.ty * TILE + TILE;
+    const dx = player.x - cx, dy = player.y - cy;
+    return Math.sqrt(dx * dx + dy * dy) < 100;
+  },
+
+  enter(ventId) {
+    if (this.active || this.animTimer > 0) return;
+    this.currentVentId = ventId;
+    this.animType = 'enter';
+    this.animTimer = this.ANIM_DURATION;
+    // Snap player to vent center
+    const e = this.getVentEntity(ventId);
+    if (e) {
+      player.x = e.tx * TILE + TILE;
+      player.y = e.ty * TILE + TILE;
+    }
+    player.vx = 0;
+    player.vy = 0;
+  },
+
+  exit() {
+    if (!this.active || this.animTimer > 0) return;
+    // Teleport player to current vent center
+    const e = this.getVentEntity(this.currentVentId);
+    if (e) {
+      player.x = e.tx * TILE + TILE;
+      player.y = e.ty * TILE + TILE;
+    }
+    player.vx = 0;
+    player.vy = 0;
+    this.animType = 'exit';
+    this.animTimer = this.ANIM_DURATION;
+  },
+
+  cycleVent(direction) {
+    if (!this.active || this.animTimer > 0) return;
+    const net = VENT_NETWORK[this.currentVentId];
+    if (!net) return;
+    this.currentVentId = direction > 0 ? net.next : net.prev;
+    // Move player to new vent so camera follows
+    const e = this.getVentEntity(this.currentVentId);
+    if (e) {
+      player.x = e.tx * TILE + TILE;
+      player.y = e.ty * TILE + TILE;
+    }
+  },
+
+  tick() {
+    if (this.animTimer > 0) {
+      this.animTimer--;
+      if (this.animTimer <= 0) {
+        if (this.animType === 'enter') {
+          this.active = true;
+        } else if (this.animType === 'exit') {
+          this.active = false;
+          this.currentVentId = null;
+        }
+        this.animType = null;
+      }
+    }
+  },
+
+  reset() {
+    this.active = false;
+    this.currentVentId = null;
+    this.animTimer = 0;
+    this.animType = null;
+    this._cycleHeld = false;
+  },
+};
+
+function drawVentHUD() {
+  if (!VentSystem.active) return;
+
+  const idx = VENT_ORDER.indexOf(VentSystem.currentVentId);
+  const pw = 300, ph = 44;
+  const px = (typeof BASE_W !== 'undefined' ? BASE_W : 960) / 2 - pw / 2;
+  const py = (typeof BASE_H !== 'undefined' ? BASE_H : 540) - 110;
+
+  // Background
+  ctx.fillStyle = 'rgba(10,14,20,0.9)';
+  ctx.fillRect(px, py, pw, ph);
+  ctx.strokeStyle = 'rgba(40,255,80,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(px, py, pw, ph);
+
+  ctx.textAlign = 'center';
+
+  // Left arrow
+  ctx.font = 'bold 16px monospace';
+  ctx.fillStyle = 'rgba(200,200,200,0.6)';
+  ctx.fillText('\u25C0', px + 18, py + 20);
+
+  // Right arrow
+  ctx.fillText('\u25B6', px + pw - 18, py + 20);
+
+  // Vent names
+  const nameSpacing = 80;
+  const nameStartX = px + pw / 2 - nameSpacing;
+  for (let i = 0; i < VENT_ORDER.length; i++) {
+    const name = VENT_NAMES[VENT_ORDER[i]];
+    const nx = nameStartX + i * nameSpacing;
+    if (i === idx) {
+      ctx.font = 'bold 14px monospace';
+      ctx.fillStyle = '#40ff80';
+    } else {
+      ctx.font = '12px monospace';
+      ctx.fillStyle = 'rgba(180,180,180,0.4)';
+    }
+    ctx.fillText(name, nx, py + 20);
+  }
+
+  // Instructions
+  ctx.font = '10px monospace';
+  ctx.fillStyle = 'rgba(180,180,180,0.5)';
+  ctx.fillText('\u2190\u2192 Switch     [E] Exit', px + pw / 2, py + 38);
+  ctx.textAlign = 'left';
+}
+
 // ---- Task List Side Panel (Among Us style) ----
 // Always visible in Skeld. Click "Tasks" tab to expand/collapse.
 let _taskListExpanded = true;

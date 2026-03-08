@@ -274,6 +274,21 @@ function draw() {
         ctx.restore();
       } else if (playerDead) {
         // During countdown, don't draw player (they're dead)
+      } else if (typeof VentSystem !== 'undefined' && VentSystem.active) {
+        // Player is inside vent — invisible
+      } else if (typeof VentSystem !== 'undefined' && VentSystem.animTimer > 0) {
+        // Enter/exit vent animation — shrink or grow
+        const progress = VentSystem.animTimer / VentSystem.ANIM_DURATION;
+        const scale = VentSystem.animType === 'enter' ? progress : (1 - progress);
+        ctx.save();
+        const px = player.x - camera.x;
+        const py = player.y - camera.y;
+        ctx.translate(px, py);
+        ctx.scale(scale, scale);
+        ctx.translate(-px, -py);
+        drawChar(player.x, player.y, player.dir, 0, false,
+          player.skin, player.hair, player.shirt, player.pants, player.name, 0, true);
+        ctx.restore();
       } else {
         const flashAlpha = contactCooldown > 0 && Math.floor(renderTime / 80) % 2 === 0;
         if (flashAlpha) ctx.globalAlpha = 0.5;
@@ -1720,6 +1735,7 @@ function draw() {
   if (typeof drawMiningShopPanel === 'function') drawMiningShopPanel();
   if (typeof drawSkeldTaskPanel === 'function') drawSkeldTaskPanel();
   if (typeof drawSkeldTaskList === 'function') drawSkeldTaskList();
+  if (typeof drawVentHUD === 'function') drawVentHUD();
 
   // (Skeld task progress bar moved below HP bar)
 

@@ -2313,6 +2313,7 @@ function update() {
   updateTransition();
   updateQueue();
   if (typeof HideSeekSystem !== 'undefined') HideSeekSystem.tick();
+  if (typeof VentSystem !== 'undefined') VentSystem.tick();
 
   if (UI.isOpen('shop') && !isNearInteractable('shop_station')) { UI.close(); }
   if (UI.isOpen('shop') && waveState === "active") { UI.close(); }
@@ -2385,8 +2386,25 @@ function update() {
   // --- Movement: compute held direction from keysDown, write to InputIntent ---
   // When authority-driven, commands.js already set moveX/moveY via translateIntentsToCommands.
   const fishingActive = typeof fishingState !== 'undefined' && fishingState.active;
+  const ventBlocks = typeof VentSystem !== 'undefined' && (VentSystem.active || VentSystem.animTimer > 0);
+
+  // --- Vent arrow-key cycling (Left/Right) ---
+  if (ventBlocks && typeof VentSystem !== 'undefined' && VentSystem.active) {
+    const leftHeld = keysDown[keybinds.moveLeft] || (typeof keybinds.shootLeft !== 'undefined' && keysDown[keybinds.shootLeft]);
+    const rightHeld = keysDown[keybinds.moveRight] || (typeof keybinds.shootRight !== 'undefined' && keysDown[keybinds.shootRight]);
+    if (leftHeld || rightHeld) {
+      if (!VentSystem._cycleHeld) {
+        VentSystem._cycleHeld = true;
+        if (leftHeld) VentSystem.cycleVent(-1);
+        if (rightHeld) VentSystem.cycleVent(1);
+      }
+    } else {
+      VentSystem._cycleHeld = false;
+    }
+  }
+
   if (!_authorityDriven) {
-    if (!isTyping && !panelBlocksMovement && !fishingActive) {
+    if (!isTyping && !panelBlocksMovement && !fishingActive && !ventBlocks) {
       let mdx = 0, mdy = 0;
       if (keysDown[keybinds.moveLeft]) mdx -= 1;
       if (keysDown[keybinds.moveRight]) mdx += 1;
@@ -2405,7 +2423,7 @@ function update() {
   const dy = InputIntent.moveY;
 
   // --- One-frame intent dispatch (consumed once, cleared at end of frame) ---
-  if (!isTyping && !panelBlocksMovement && !fishingActive) {
+  if (!isTyping && !panelBlocksMovement && !fishingActive && !ventBlocks) {
     // Reload
     if (InputIntent.reloadPressed && !gun.reloading && gun.ammo < gun.magSize) {
       gun.reloading = true;
@@ -2426,7 +2444,8 @@ function update() {
     }
     // Interact (E key): stairs, shop close, interactables, queue, inventory
     if (InputIntent.interactPressed) {
-      if (nearStairs) {
+      if (typeof VentSystem !== 'undefined' && VentSystem.active) { VentSystem.exit(); }
+      else if (nearStairs) {
         if (dungeonComplete) { startTransition(dungeonReturnLevel || 'cave_01', 20, 20); }
         else { goToNextFloor(); }
       }

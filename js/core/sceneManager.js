@@ -113,6 +113,7 @@ const LEAVE_HANDLERS = {
     cleanup() {
       if (typeof closeTaskPanel === 'function') closeTaskPanel();
       if (typeof SkeldTasks !== 'undefined') SkeldTasks.reset();
+      if (typeof VentSystem !== 'undefined') VentSystem.reset();
       if (typeof _taskListExpanded !== 'undefined') _taskListExpanded = true;
     },
     returnLevel: 'lobby_01',

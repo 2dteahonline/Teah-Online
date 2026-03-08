@@ -2267,6 +2267,41 @@ const ENTITY_RENDERERS = {
       }
   },
 
+  // ===================== SKELD VENT (dark grate, 2x2) =====================
+  skeld_vent: (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const t = Date.now() / 1000;
+    // Dark recessed floor
+    ctx.fillStyle = '#080a0e';
+    ctx.fillRect(ex, ey, cw, ch);
+    // Vent grate slats (horizontal lines)
+    ctx.strokeStyle = '#2a3040';
+    ctx.lineWidth = 3;
+    const slats = 7;
+    for (let i = 1; i < slats; i++) {
+      const sy = ey + (ch / slats) * i;
+      ctx.beginPath();
+      ctx.moveTo(ex + 6, sy);
+      ctx.lineTo(ex + cw - 6, sy);
+      ctx.stroke();
+    }
+    // Outer frame
+    ctx.strokeStyle = '#3a4555';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ex + 1, ey + 1, cw - 2, ch - 2);
+    // Inner frame
+    ctx.strokeStyle = '#1a2030';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ex + 4, ey + 4, cw - 8, ch - 8);
+    // Green glow when player is nearby
+    if (typeof VentSystem !== 'undefined' && VentSystem.isNearVent(e.ventId)) {
+      const pulse = 0.25 + 0.15 * Math.sin(t * 3);
+      ctx.strokeStyle = 'rgba(40,255,80,' + pulse + ')';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ex - 1, ey - 1, cw + 2, ch + 2);
+    }
+  },
+
   // ===================== SKELD SABOTAGE CONSOLE (red wall-mounted) =====================
   skeld_sabotage: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;

@@ -577,4 +577,22 @@ window._resetShopPrices = () => {
     });
   });
   console.log('[Skeld] Registered', skeldEntities.length, 'task/sabotage interactables');
+
+  // --- Vent interactables ---
+  const ventEntities = skeldLevel.entities.filter(e => e.type === 'skeld_vent');
+  ventEntities.forEach(e => {
+    registerInteractable({
+      id: 'skeld_vent_' + e.ventId,
+      get x() { return e.tx * TILE + TILE; },   // center of 2x2 entity
+      get y() { return e.ty * TILE + TILE; },
+      range: 80,
+      get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Vent'; },
+      type: 'skeld_vent',
+      canInteract() { return Scene.inSkeld && typeof VentSystem !== 'undefined' && !VentSystem.active && !VentSystem.animTimer; },
+      onInteract() {
+        if (typeof VentSystem !== 'undefined') VentSystem.enter(e.ventId);
+      },
+    });
+  });
+  if (ventEntities.length) console.log('[Skeld] Registered', ventEntities.length, 'vent interactables');
 })();

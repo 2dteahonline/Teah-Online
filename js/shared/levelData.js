@@ -1332,11 +1332,9 @@ const LEVELS = {
     wall(7,45); wall(8,45);
     wall(6,46); wall(7,46); wall(8,46);
 
-    // --- Security — small: 2-step cuts on TR + BR only ---
+    // --- Security — small: 2-step cut on TR only (BR cleared for vent) ---
     wall(35,28); wall(36,28);
     wall(36,29);
-    wall(36,40);
-    wall(35,41); wall(36,41);
 
     // --- MedBay — 3-step diagonal on BR, 2-step on TL ---
     wall(38,18); wall(39,18);
@@ -1357,9 +1355,7 @@ const LEVELS = {
     wall(1,67); wall(2,67); wall(3,67); wall(4,67);
     wall(1,68); wall(2,68); wall(3,68); wall(4,68); wall(5,68);
 
-    // --- Electrical — 4-step TR, 3-step BR, 2-step TL ---
-    wall(37,42); wall(38,42);
-    wall(37,43);
+    // --- Electrical — 4-step TR, 3-step BR (TL cleared for vent) ---
     wall(52,42); wall(53,42); wall(54,42); wall(55,42);
     wall(53,43); wall(54,43); wall(55,43);
     wall(54,44); wall(55,44);
@@ -1524,7 +1520,12 @@ const LEVELS = {
         { type: 'skeld_sabotage', tx: 2 + XO, ty: 44, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 2 },
         { type: 'skeld_sabotage', tx: 45 + XO, ty: 43, w: 2, h: 1, solid: true, label: 'Lights Fix', sabotageId: 'lights_out', room: 'electrical' },
         { type: 'skeld_sabotage', tx: 95 + XO, ty: 32, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'o2' },
-        { type: 'skeld_sabotage', tx: 88 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'admin' }
+        { type: 'skeld_sabotage', tx: 88 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'admin' },
+
+        // ===== VENTS =====
+        { type: 'skeld_vent', tx: 35 + XO, ty: 40, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'security', room: 'security' },
+        { type: 'skeld_vent', tx: 38 + XO, ty: 30, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'medbay', room: 'medbay' },
+        { type: 'skeld_vent', tx: 37 + XO, ty: 42, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'electrical', room: 'electrical' }
       ]
     };
   })()
