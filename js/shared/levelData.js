@@ -1529,7 +1529,7 @@ const LEVELS = {
         // Network 2: Shields — Admin — Hallway
         { type: 'skeld_vent', tx: 79 + XO, ty: 52, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'admin', room: 'admin' },
         { type: 'skeld_vent', tx: 114 + XO, ty: 67, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'shields', room: 'shields' },
-        { type: 'skeld_vent', tx: 85 + XO, ty: 59, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'hallway', room: 'hallway' }
+        { type: 'skeld_vent', tx: 103 + XO, ty: 35, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'hallway', room: 'hallway' }
       ]
     };
   })()
