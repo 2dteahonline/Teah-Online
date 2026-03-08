@@ -505,6 +505,11 @@ window.addEventListener("keydown", e => {
           } else if (Scene.inHideSeek && typeof HideSeekSystem !== 'undefined') {
             HideSeekSystem.endMatch();
             chatMessages.push({ name: "SYSTEM", text: "Left Hide & Seek.", time: Date.now() });
+          } else if (Scene.inSkeld) {
+            if (typeof SkeldTasks !== 'undefined') SkeldTasks.reset();
+            if (typeof _taskListExpanded !== 'undefined') _taskListExpanded = true;
+            startTransition('lobby_01', 20, 20);
+            chatMessages.push({ name: "SYSTEM", text: "Leaving The Skeld...", time: Date.now() });
           } else {
             chatMessages.push({ name: "SYSTEM", text: "You're not in a dungeon", time: Date.now() });
           }
@@ -831,15 +836,6 @@ window.addEventListener("keydown", e => {
   if (key === "m" && !chatInputActive && !nameEditActive && !statusEditActive && !rebindingKey) {
     if (typeof minimapOpen !== 'undefined') {
       minimapOpen = !minimapOpen;
-      return;
-    }
-  }
-
-  // Tab key toggles Skeld task list
-  if (key === "Tab" && !chatInputActive && !nameEditActive && !statusEditActive && !rebindingKey) {
-    if (typeof _taskListOpen !== 'undefined' && Scene.inSkeld) {
-      _taskListOpen = !_taskListOpen;
-      e.preventDefault();
       return;
     }
   }

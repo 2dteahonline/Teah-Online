@@ -97,73 +97,127 @@ const SkeldTasks = {
 SkeldTasks.reset();
 
 // ---- Task List Side Panel (Among Us style) ----
-let _taskListOpen = false;
+// Always visible in Skeld. Click "Tasks" tab to expand/collapse.
+let _taskListExpanded = true;
+
+const _taskListTab = {
+  // Tab button geometry (right edge of panel or standalone when collapsed)
+  tabW: 28,
+  tabH: 60,
+};
 
 function drawSkeldTaskList() {
-  if (!Scene.inSkeld || !_taskListOpen) return;
-  if (UI.isOpen('skeldTask')) return; // hide while doing a task
+  if (!Scene.inSkeld) return;
+  if (UI.isOpen('skeldTask')) return; // hide while doing a task mini-game
 
   const tasks = SkeldTasks.getTaskList();
   const prog = SkeldTasks.getProgress();
 
-  // Panel dimensions
-  const pw = 280, lineH = 20, padY = 10, padX = 12;
-  const headerH = 40; // progress bar area
+  // Panel position & sizing
+  const pw = 280, lineH = 18, padY = 8, padX = 12;
+  const headerH = 36;
   const ph = headerH + padY + tasks.length * lineH + padY;
-  const px = 8, py = 60;
+  const px = 0, py = 56;
+  const tabW = _taskListTab.tabW, tabH = _taskListTab.tabH;
 
-  // Background
-  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  if (_taskListExpanded) {
+    // ---- Expanded panel ----
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.78)';
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, ph, [0, 6, 6, 0]);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(80,80,80,0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Progress bar — "TOTAL TASKS COMPLETED"
+    const barX = px + padX, barY = py + 6;
+    const barW = pw - padX * 2 - tabW, barH = 10;
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = '#999';
+    ctx.textAlign = 'left';
+    ctx.fillText('TOTAL TASKS COMPLETED', barX, barY + 2);
+    const pbarY = barY + 10;
+    ctx.fillStyle = '#222';
+    ctx.fillRect(barX, pbarY, barW, barH);
+    const pct = prog.total > 0 ? prog.done / prog.total : 0;
+    ctx.fillStyle = '#44dd44';
+    ctx.fillRect(barX, pbarY, barW * pct, barH);
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, pbarY, barW, barH);
+
+    // Task entries
+    ctx.font = '11px monospace';
+    const listY = py + headerH + padY;
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i];
+      const ty = listY + i * lineH;
+      const text = t.room + ': ' + t.label + (t.stepsText ? ' ' + t.stepsText : '');
+      if (t.done) {
+        ctx.fillStyle = '#44cc44';
+        ctx.fillText('\u2713 ' + text, px + padX, ty + 12);
+        const tw = ctx.measureText('\u2713 ' + text).width;
+        ctx.strokeStyle = '#44cc44';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px + padX, ty + 8);
+        ctx.lineTo(px + padX + tw, ty + 8);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#eedd55';
+        ctx.fillText('\u25CB ' + text, px + padX, ty + 12);
+      }
+    }
+
+    // "Tasks" tab on right edge of panel
+    _taskListTab.x = px + pw;
+    _taskListTab.y = py;
+  } else {
+    // ---- Collapsed: only show "Tasks" tab ----
+    _taskListTab.x = px;
+    _taskListTab.y = py;
+  }
+
+  // Draw the "Tasks" tab
+  const tx = _taskListTab.x, ty = _taskListTab.y;
+  ctx.fillStyle = 'rgba(0,0,0,0.78)';
   ctx.beginPath();
-  ctx.roundRect(px, py, pw, ph, 6);
+  ctx.roundRect(tx, ty, tabW, tabH, [0, 6, 6, 0]);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(100,100,100,0.4)';
+  ctx.strokeStyle = 'rgba(80,80,80,0.5)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Progress bar — "TOTAL TASKS COMPLETED"
-  const barX = px + padX, barY = py + 8;
-  const barW = pw - padX * 2, barH = 12;
-  ctx.font = 'bold 9px monospace';
-  ctx.fillStyle = '#aaa';
-  ctx.textAlign = 'left';
-  ctx.fillText('TOTAL TASKS COMPLETED', barX, barY + 1);
-  const pbarY = barY + 10;
-  ctx.fillStyle = '#333';
-  ctx.fillRect(barX, pbarY, barW, barH);
-  const pct = prog.total > 0 ? prog.done / prog.total : 0;
-  ctx.fillStyle = '#44dd44';
-  ctx.fillRect(barX, pbarY, barW * pct, barH);
-  ctx.strokeStyle = '#666';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(barX, pbarY, barW, barH);
-
-  // Task list
-  ctx.font = '12px monospace';
-  const listY = py + headerH + padY;
-  for (let i = 0; i < tasks.length; i++) {
-    const t = tasks[i];
-    const ty = listY + i * lineH;
-    const text = t.room + ': ' + t.label + (t.stepsText ? ' ' + t.stepsText : '');
-    if (t.done) {
-      ctx.fillStyle = '#44cc44';
-      ctx.fillText('\u2713 ' + text, px + padX, ty + 13);
-      // strikethrough
-      const tw = ctx.measureText('\u2713 ' + text).width;
-      ctx.strokeStyle = '#44cc44';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(px + padX, ty + 9);
-      ctx.lineTo(px + padX + tw, ty + 9);
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = '#eedd55';
-      ctx.fillText('\u25CB ' + text, px + padX, ty + 13);
-    }
-  }
+  // Vertical "Tasks" text
+  ctx.save();
+  ctx.translate(tx + tabW / 2 + 1, ty + tabH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = '#ccc';
+  ctx.textAlign = 'center';
+  ctx.fillText('Tasks', 0, 4);
+  ctx.restore();
 
   ctx.textAlign = 'left';
 }
+
+// Click handler for the "Tasks" tab
+document.addEventListener('click', (ev) => {
+  if (!Scene.inSkeld) return;
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = BASE_W / rect.width;
+  const scaleY = BASE_H / rect.height;
+  const mx = (ev.clientX - rect.left) * scaleX;
+  const my = (ev.clientY - rect.top) * scaleY;
+  const t = _taskListTab;
+  if (mx >= t.x && mx <= t.x + t.tabW && my >= t.y && my <= t.y + t.tabH) {
+    _taskListExpanded = !_taskListExpanded;
+  }
+});
 
 // ---- Task Panel (canvas overlay) ----
 const _taskPanel = {

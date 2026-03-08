@@ -79,7 +79,7 @@ const PORTAL_SCENES = {
   azurine_entrance: 'lobby', azurine_exit: 'azurine',
   gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
   hideseek_entrance: 'lobby',
-  skeld_entrance: 'lobby',  skeld_exit: 'skeld',
+  skeld_entrance: 'lobby',  // skeld_exit removed — use /leave to exit Skeld
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)

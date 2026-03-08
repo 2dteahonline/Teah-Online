@@ -1911,27 +1911,7 @@ function draw() {
     }
   }
 
-  // ===== Skeld task progress bar (below HP bar) =====
-  if (Scene.inSkeld && typeof SkeldTasks !== 'undefined' && !UI.isOpen('skeldTask')) {
-    const prog = SkeldTasks.getProgress();
-    const tBarW = 200, tBarH = 14;
-    const tBarX = BASE_W / 2 - tBarW / 2, tBarY = hpBarY + hpBarH + 12;
-    const pct = prog.total > 0 ? prog.done / prog.total : 0;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(tBarX - 2, tBarY - 2, tBarW + 4, tBarH + 4);
-    ctx.fillStyle = '#0a2a1a';
-    ctx.fillRect(tBarX, tBarY, tBarW, tBarH);
-    ctx.fillStyle = '#44ff44';
-    ctx.fillRect(tBarX, tBarY, tBarW * pct, tBarH);
-    ctx.strokeStyle = '#1a4030';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(tBarX, tBarY, tBarW, tBarH);
-    ctx.font = 'bold 10px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
-    ctx.fillText('Tasks: ' + prog.done + '/' + prog.total, tBarX + tBarW / 2, tBarY + 11);
-    ctx.textAlign = 'left';
-  }
+  // (Skeld task progress bar removed — now in the task list side panel)
 
   // ===== WAVE HUD (below HP bar) — dungeon only =====
   if (Scene.inDungeon) {
