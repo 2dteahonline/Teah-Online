@@ -2184,8 +2184,6 @@ TASK_HANDLERS.package_assembly = {
       available: all,  // shuffled display (10 total)
       placed: [],      // items placed into box
       done: false,
-      showOrderTimer: 180, // show order for 3 seconds
-      penaltyTimer: 0,
       errorTimer: 0,
     };
   },
@@ -2199,55 +2197,26 @@ TASK_HANDLERS.package_assembly = {
       return;
     }
 
-    // Decrement timers
-    if (g.showOrderTimer > 0) g.showOrderTimer--;
-    if (g.penaltyTimer > 0) g.penaltyTimer--;
     if (g.errorTimer > 0) g.errorTimer--;
 
-    // Title line: show order or hint
-    ctx.font = 'bold 13px monospace';
-    if (g.showOrderTimer > 0) {
-      ctx.fillStyle = '#0ff';
-      ctx.fillText('Order: ' + g.items.join(' > '), x + w / 2, y + 15);
-    } else {
-      ctx.fillStyle = '#666';
-      ctx.fillText('Place items in the correct order (' + g.placed.length + '/' + g.items.length + ')', x + w / 2, y + 15);
-    }
+    // Always show the correct order at top
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = '#0ff';
+    ctx.fillText('Order: ' + g.items.join(' > '), x + w / 2, y + 14);
+
+    ctx.font = '11px monospace';
+    ctx.fillStyle = '#666';
+    ctx.fillText('Click items in order. Avoid decoys! (' + g.placed.length + '/' + g.items.length + ')', x + w / 2, y + 30);
 
     // Error flash
     if (g.errorTimer > 0) {
       ctx.fillStyle = '#ff4444';
-      ctx.font = 'bold 14px monospace';
-      ctx.fillText('Wrong item! Progress reset.', x + w / 2, y + 33);
-    }
-
-    // Penalty wait
-    if (g.penaltyTimer > 0) {
-      ctx.fillStyle = '#ff8800';
-      ctx.font = 'bold 14px monospace';
-      ctx.fillText('Wait... ' + Math.ceil(g.penaltyTimer / 60) + 's', x + w / 2, y + 50);
-    }
-
-    // SHOW ORDER button (top right area)
-    const soBtnW = 110, soBtnH = 24;
-    const soBtnX = x + w - soBtnW - 10, soBtnY = y + 30;
-    const soHover = panel.mouseX >= soBtnX && panel.mouseX <= soBtnX + soBtnW &&
-                    panel.mouseY >= soBtnY && panel.mouseY <= soBtnY + soBtnH;
-    ctx.fillStyle = soHover ? '#1a2a3a' : '#0c1620';
-    ctx.fillRect(soBtnX, soBtnY, soBtnW, soBtnH);
-    ctx.strokeStyle = '#668';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(soBtnX, soBtnY, soBtnW, soBtnH);
-    ctx.font = '11px monospace';
-    ctx.fillStyle = '#888';
-    ctx.fillText('SHOW ORDER', soBtnX + soBtnW / 2, soBtnY + 16);
-    if (panel.mouseJustClicked && soHover) {
-      g.showOrderTimer = 180;
-      g.penaltyTimer += 180; // 3 second penalty
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText('Wrong item! Progress reset.', x + w / 2, y + 46);
     }
 
     // Box area (right side)
-    const boxX = x + w - 150, boxY = y + 60, boxW = 130, boxH = h - 80;
+    const boxX = x + w - 140, boxY = y + 55, boxW = 125, boxH = h - 70;
     ctx.fillStyle = '#0c1620';
     ctx.fillRect(boxX, boxY, boxW, boxH);
     ctx.strokeStyle = '#1a3040';
@@ -2257,21 +2226,25 @@ TASK_HANDLERS.package_assembly = {
     ctx.fillStyle = '#555';
     ctx.fillText('Box', boxX + boxW / 2, boxY - 5);
 
-    // Show placed items in box
+    // Show placed items in box (compact)
     for (let i = 0; i < g.placed.length; i++) {
-      const iy = boxY + 5 + i * 36;
+      const iy = boxY + 4 + i * 28;
       ctx.fillStyle = '#0a2a1a';
-      ctx.fillRect(boxX + 8, iy, boxW - 16, 30);
+      ctx.fillRect(boxX + 6, iy, boxW - 12, 24);
       ctx.strokeStyle = '#44ff44';
       ctx.lineWidth = 1;
-      ctx.strokeRect(boxX + 8, iy, boxW - 16, 30);
-      ctx.font = 'bold 12px monospace';
+      ctx.strokeRect(boxX + 6, iy, boxW - 12, 24);
+      ctx.font = 'bold 11px monospace';
       ctx.fillStyle = '#44ff44';
-      ctx.fillText(g.placed[i], boxX + boxW / 2, iy + 20);
+      ctx.fillText(g.placed[i], boxX + boxW / 2, iy + 17);
     }
 
-    // Available items (left side)
-    const itemX = x + 15, itemY = y + 60;
+    // Available items (left side) — compact rows to fit all 10
+    const itemX = x + 12, itemY = y + 55;
+    const maxItemH = h - 70; // available vertical space
+    const itemCount = g.available.length - g.placed.length;
+    const rowH = Math.min(36, Math.floor(maxItemH / Math.max(itemCount, 1)));
+    const ih = rowH - 4;
     ctx.font = '12px monospace';
     ctx.fillStyle = '#aaa';
     ctx.textAlign = 'left';
@@ -2281,10 +2254,10 @@ TASK_HANDLERS.package_assembly = {
     let visIndex = 0;
     for (let i = 0; i < g.available.length; i++) {
       const item = g.available[i];
-      if (g.placed.includes(item)) continue; // Already placed
-      const iy = itemY + visIndex * 38;
+      if (g.placed.includes(item)) continue;
+      const iy = itemY + visIndex * rowH;
       visIndex++;
-      const iw = 130, ih = 32;
+      const iw = 120;
       const hover = panel.mouseX >= itemX && panel.mouseX <= itemX + iw &&
                     panel.mouseY >= iy && panel.mouseY <= iy + ih;
 
@@ -2293,11 +2266,11 @@ TASK_HANDLERS.package_assembly = {
       ctx.strokeStyle = hover ? '#0ff' : '#1a3040';
       ctx.lineWidth = 1;
       ctx.strokeRect(itemX, iy, iw, ih);
-      ctx.font = 'bold 13px monospace';
+      ctx.font = 'bold 12px monospace';
       ctx.fillStyle = hover ? '#0ff' : '#668';
-      ctx.fillText(item, itemX + iw / 2, iy + 22);
+      ctx.fillText(item, itemX + iw / 2, iy + ih / 2 + 4);
 
-      if (panel.mouseJustClicked && hover && g.penaltyTimer <= 0 && g.errorTimer <= 0) {
+      if (panel.mouseJustClicked && hover && g.errorTimer <= 0) {
         const isDecoy = g.decoys.includes(item);
         const nextExpected = g.items[g.placed.length];
         if (!isDecoy && item === nextExpected) {
@@ -2307,7 +2280,6 @@ TASK_HANDLERS.package_assembly = {
             completeCurrentTask();
           }
         } else {
-          // Wrong real item or decoy: reset all placed
           g.placed = [];
           g.errorTimer = 30;
         }
@@ -2317,14 +2289,14 @@ TASK_HANDLERS.package_assembly = {
 };
 
 // TASK 14: EMPTY TRASH (2-step: Comms -> Storage)
-// Pull 3 levers in order (left -> middle -> right), each has a stuck zone requiring RELEASE click.
+// Pull 3 levers all the way down, then hit FLUSH.
 TASK_HANDLERS.empty_trash = {
   init(entity) {
     return {
       levers: [
-        { y: 0, stuckAt: 0.3 + Math.random() * 0.4, stuck: true, released: false, done: false, dragging: false },
-        { y: 0, stuckAt: 0.3 + Math.random() * 0.4, stuck: true, released: false, done: false, dragging: false },
-        { y: 0, stuckAt: 0.3 + Math.random() * 0.4, stuck: true, released: false, done: false, dragging: false },
+        { y: 0, done: false, dragging: false },
+        { y: 0, done: false, dragging: false },
+        { y: 0, done: false, dragging: false },
       ],
       currentLever: 0,
       done: false,
@@ -2385,15 +2357,10 @@ TASK_HANDLERS.empty_trash = {
       ctx.lineWidth = 1;
       ctx.strokeRect(trackX - 4, trackY, 8, trackH);
 
-      // Stuck zone indicator (small line)
-      if (isActive && lever.stuck && !lever.released) {
-        const stuckY = trackY + lever.stuckAt * (trackH - 28);
-        ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(trackX - 18, stuckY);
-        ctx.lineTo(trackX + 18, stuckY);
-        ctx.stroke();
+      // Bottom target zone
+      if (isActive) {
+        ctx.fillStyle = 'rgba(68,255,68,0.08)';
+        ctx.fillRect(trackX - 20, trackY + trackH - 30, 40, 30);
       }
 
       // Lever handle
@@ -2422,18 +2389,13 @@ TASK_HANDLERS.empty_trash = {
             newY = Math.max(0, Math.min(1, newY));
             // Only allow downward movement
             if (newY >= lever.y) {
-              // Check stuck zone
-              if (lever.stuck && !lever.released && newY >= lever.stuckAt) {
-                lever.y = lever.stuckAt;
-              } else {
-                lever.y = newY;
-              }
+              lever.y = newY;
             }
           }
         } else {
           if (lever.dragging) {
             if (lever.y >= 0.95) {
-              // Lever reached bottom
+              // Lever reached bottom — done
               lever.done = true;
               lever.y = 1;
               g.currentLever++;
@@ -2443,33 +2405,9 @@ TASK_HANDLERS.empty_trash = {
             } else {
               // Spring back to top
               lever.y = 0;
-              lever.released = false;
-              lever.stuck = true;
-              lever.stuckAt = 0.3 + Math.random() * 0.4;
             }
           }
           lever.dragging = false;
-        }
-
-        // RELEASE button when stuck
-        if (lever.stuck && !lever.released && lever.y >= lever.stuckAt - 0.01) {
-          const relBtnW = 55, relBtnH = 20;
-          const relBtnX = trackX + handleW / 2 + 5;
-          const relBtnY = handleY + 4;
-          const relHover = panel.mouseX >= relBtnX && panel.mouseX <= relBtnX + relBtnW &&
-                          panel.mouseY >= relBtnY && panel.mouseY <= relBtnY + relBtnH;
-          ctx.fillStyle = relHover ? '#3a1a1a' : '#1a0c0c';
-          ctx.fillRect(relBtnX, relBtnY, relBtnW, relBtnH);
-          ctx.strokeStyle = '#ff4444';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(relBtnX, relBtnY, relBtnW, relBtnH);
-          ctx.font = '9px monospace';
-          ctx.fillStyle = '#ff6644';
-          ctx.fillText('RELEASE', relBtnX + relBtnW / 2, relBtnY + 14);
-          if (panel.mouseJustClicked && relHover) {
-            lever.released = true;
-            lever.stuck = false;
-          }
         }
       }
     }
