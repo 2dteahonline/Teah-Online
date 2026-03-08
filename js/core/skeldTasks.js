@@ -99,14 +99,14 @@ SkeldTasks.reset();
 // ===================== VENT SYSTEM =====================
 // Two separate vent networks (no cross-network travel):
 //   Network 1: MedBay — Security — Electrical
-//   Network 2: Shields — Admin — Hallway
+//   Network 2: Cafe Hallway — Admin — Nav Hallway
 const VENT_NETWORK = {
-  security:   ['medbay', 'electrical'],
-  medbay:     ['security'],
-  electrical: ['security'],
-  admin:      ['shields', 'hallway'],
-  shields:    ['admin'],
-  hallway:    ['admin'],
+  security:     ['medbay', 'electrical'],
+  medbay:       ['security'],
+  electrical:   ['security'],
+  admin:        ['cafe_hallway', 'nav_hallway'],
+  cafe_hallway: ['admin'],
+  nav_hallway:  ['admin'],
 };
 
 const VentSystem = {

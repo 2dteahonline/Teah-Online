@@ -1526,10 +1526,10 @@ const LEVELS = {
         { type: 'skeld_vent', tx: 35 + XO, ty: 40, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'security', room: 'security' },
         { type: 'skeld_vent', tx: 38 + XO, ty: 30, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'medbay', room: 'medbay' },
         { type: 'skeld_vent', tx: 37 + XO, ty: 42, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'electrical', room: 'electrical' },
-        // Network 2: Shields — Admin — Hallway
+        // Network 2: Cafe Hallway — Admin — Nav Hallway
         { type: 'skeld_vent', tx: 79 + XO, ty: 52, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'admin', room: 'admin' },
-        { type: 'skeld_vent', tx: 114 + XO, ty: 67, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'shields', room: 'shields' },
-        { type: 'skeld_vent', tx: 103 + XO, ty: 35, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'hallway', room: 'hallway' }
+        { type: 'skeld_vent', tx: 82 + XO, ty: 32, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'cafe_hallway', room: 'cafe_hallway' },
+        { type: 'skeld_vent', tx: 103 + XO, ty: 35, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'nav_hallway', room: 'nav_hallway' }
       ]
     };
   })()
