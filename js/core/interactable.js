@@ -568,7 +568,11 @@ window._resetShopPrices = () => {
       type: e.type,
       canInteract() { return Scene.inSkeld; },
       onInteract() {
-        console.log('Skeld ' + e.type + ':', e.label, e.taskId || e.sabotageId, e.room, e.taskStep ? 'step ' + e.taskStep : '');
+        if (e.type === 'skeld_task' && typeof openTaskPanel === 'function') {
+          openTaskPanel(e);
+        } else {
+          console.log('Skeld ' + e.type + ':', e.label, e.sabotageId, e.room);
+        }
       },
     });
   });

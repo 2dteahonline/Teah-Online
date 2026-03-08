@@ -2430,6 +2430,7 @@ function update() {
         if (dungeonComplete) { startTransition(dungeonReturnLevel || 'cave_01', 20, 20); }
         else { goToNextFloor(); }
       }
+      else if (UI.isOpen('skeldTask')) { closeTaskPanel(); }
       else if (UI.isOpen('shop')) { UI.close(); }
       else if (UI.isOpen('inventory')) { UI.close(); }
       else if (Scene.inHideSeek) {

@@ -1522,8 +1522,8 @@ const LEVELS = {
         { type: 'skeld_task', tx: 71 + XO, ty: 73, w: 2, h: 1, solid: true, label: 'Empty Trash', taskId: 'empty_trash', room: 'storage', taskStep: 2 },
 
         // ===== SABOTAGE PLACEHOLDERS =====
-        { type: 'skeld_sabotage', tx: 2 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor' },
-        { type: 'skeld_sabotage', tx: 26 + XO, ty: 40, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'security' },
+        { type: 'skeld_sabotage', tx: 2 + XO, ty: 25, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 1 },
+        { type: 'skeld_sabotage', tx: 2 + XO, ty: 44, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 2 },
         { type: 'skeld_sabotage', tx: 45 + XO, ty: 43, w: 2, h: 1, solid: true, label: 'Lights Fix', sabotageId: 'lights_out', room: 'electrical' },
         { type: 'skeld_sabotage', tx: 95 + XO, ty: 32, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'o2' },
         { type: 'skeld_sabotage', tx: 88 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'admin' }

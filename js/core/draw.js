@@ -116,6 +116,31 @@ function drawMinimap() {
   // Draw cached map
   ctx.drawImage(mc.canvas, ox, oy);
 
+  // Task / sabotage dots on minimap
+  if (levelEntities) {
+    const _t = renderTime * 0.006;
+    for (const e of levelEntities) {
+      if (e.type !== 'skeld_task' && e.type !== 'skeld_sabotage') continue;
+      const ex = ox + (e.tx + (e.w || 1) / 2) * S;
+      const ey = oy + (e.ty + (e.h || 1) / 2) * S;
+      const done = typeof SkeldTasks !== 'undefined' && SkeldTasks.isStepDone && SkeldTasks.isStepDone(e);
+      if (e.type === 'skeld_task') {
+        ctx.fillStyle = done ? 'rgba(40,200,60,0.8)' : 'rgba(0,220,240,0.8)';
+      } else {
+        ctx.fillStyle = 'rgba(255,60,30,0.8)';
+      }
+      const r = Math.max(3, S * 0.45);
+      ctx.beginPath();
+      ctx.arc(ex, ey, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (!done && e.type === 'skeld_task') {
+        ctx.strokeStyle = 'rgba(0,220,240,0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+  }
+
   // Player dot (live position)
   const px = ox + (player.x / TILE) * S;
   const py = oy + (player.y / TILE) * S;
@@ -1691,6 +1716,9 @@ function draw() {
   if (typeof drawFarmVendorPanel === 'function') drawFarmVendorPanel();
   if (typeof drawGunsmithPanel === 'function') drawGunsmithPanel();
   if (typeof drawMiningShopPanel === 'function') drawMiningShopPanel();
+  if (typeof drawSkeldTaskPanel === 'function') drawSkeldTaskPanel();
+
+  // (Skeld task progress bar moved below HP bar)
 
   // Malevolent Shrine charge bar (only when War Cleaver equipped)
   if (melee.special === 'cleave' && Scene.inDungeon) {
@@ -1878,6 +1906,28 @@ function draw() {
       ctx.fillStyle = i < lives ? "#e33" : "#333";
       ctx.fillText("♥", hpBarX - 110 + i * 32, hpBarY + 22);
     }
+  }
+
+  // ===== Skeld task progress bar (below HP bar) =====
+  if (Scene.inSkeld && typeof SkeldTasks !== 'undefined' && !UI.isOpen('skeldTask')) {
+    const prog = SkeldTasks.getProgress();
+    const tBarW = 200, tBarH = 14;
+    const tBarX = BASE_W / 2 - tBarW / 2, tBarY = hpBarY + hpBarH + 12;
+    const pct = prog.total > 0 ? prog.done / prog.total : 0;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(tBarX - 2, tBarY - 2, tBarW + 4, tBarH + 4);
+    ctx.fillStyle = '#0a2a1a';
+    ctx.fillRect(tBarX, tBarY, tBarW, tBarH);
+    ctx.fillStyle = '#44ff44';
+    ctx.fillRect(tBarX, tBarY, tBarW * pct, tBarH);
+    ctx.strokeStyle = '#1a4030';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tBarX, tBarY, tBarW, tBarH);
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Tasks: ' + prog.done + '/' + prog.total, tBarX + tBarW / 2, tBarY + 11);
+    ctx.textAlign = 'left';
   }
 
   // ===== WAVE HUD (below HP bar) — dungeon only =====
