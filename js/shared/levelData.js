@@ -1279,7 +1279,7 @@ const LEVELS = {
     carve(111, 11); carve(111, 12);
 
     // === O2 (right side, left of Shields spine — 14×12) ===
-    room(85, 25, 98, 36);
+    room(86, 25, 99, 36);
 
     // === NAVIGATION (far right — arrow shape, 9×12) ===
     room(117, 28, 125, 39);
@@ -1343,9 +1343,6 @@ const LEVELS = {
     room(105, 34, 113, 37);   // Seg 2: Right 8
     room(110, 26, 113, 37);   // Seg 3: Up 8
     room(98, 26, 113, 29);    // Seg 4: Left 12
-
-    // --- O2 corridor (4-wide, left arm of cross) ---
-    room(98, 34, 102, 37);    // O2 right → seg 1 (x=98-102, y=34-37)
 
     // --- Navigation corridor (4-wide, right arm from seg 2) ---
     room(113, 34, 117, 37);   // Seg 2 right → Navigation (x=113-117, y=34-37)
