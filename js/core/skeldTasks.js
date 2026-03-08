@@ -907,138 +907,124 @@ TASK_HANDLERS.code_entry = {
   }
 };
 
-// ===== TASK 3: SIMPLE MATH (Lower Engine) =====
-// Solve 5 math problems with ramping difficulty and countdown timer.
+// ===== TASK 3: FLASH ARITHMETIC (Lower Engine) =====
+// Flash 5 single-digit numbers one at a time (2s each), then enter the sum.
+// Wrong answer = new set of numbers, start over.
 TASK_HANDLERS.simple_math = {
   init(entity) {
-    function genProblem(idx) {
-      let a, b, op, ans;
-      if (idx < 2) {
-        // P1-2: single digit +/-
-        const ops = ['+', '-'];
-        op = ops[Math.floor(Math.random() * ops.length)];
-        a = 2 + Math.floor(Math.random() * 8);
-        b = 2 + Math.floor(Math.random() * 8);
-        if (op === '-' && b > a) { const t = a; a = b; b = t; }
-        ans = op === '+' ? a + b : a - b;
-      } else if (idx < 4) {
-        // P3-4: two digit with * or larger +/-
-        const ops = ['+', '-', '*'];
-        op = ops[Math.floor(Math.random() * ops.length)];
-        if (op === '*') {
-          a = 10 + Math.floor(Math.random() * 41);
-          b = 5 + Math.floor(Math.random() * 21);
-        } else {
-          a = 10 + Math.floor(Math.random() * 41);
-          b = 5 + Math.floor(Math.random() * 21);
-          if (op === '-' && b > a) { const t = a; a = b; b = t; }
-        }
-        ans = op === '+' ? a + b : op === '-' ? a - b : a * b;
-      } else {
-        // P5: hard — three-digit result possible, includes /
-        const ops = ['+', '-', '*', '/'];
-        op = ops[Math.floor(Math.random() * ops.length)];
-        if (op === '/') {
-          b = 2 + Math.floor(Math.random() * 49);
-          ans = 2 + Math.floor(Math.random() * 48);
-          a = ans * b;
-        } else if (op === '*') {
-          a = 20 + Math.floor(Math.random() * 80);
-          b = 10 + Math.floor(Math.random() * 41);
-          ans = a * b;
-        } else {
-          a = 20 + Math.floor(Math.random() * 80);
-          b = 10 + Math.floor(Math.random() * 41);
-          if (op === '-' && b > a) { const t = a; a = b; b = t; }
-          ans = op === '+' ? a + b : a - b;
-        }
-      }
-      return { text: a + ' ' + op + ' ' + b, answer: ans };
+    function genNumbers() {
+      const nums = [];
+      for (let i = 0; i < 5; i++) nums.push(1 + Math.floor(Math.random() * 9));
+      return nums;
     }
-    const problems = [];
-    for (let i = 0; i < 5; i++) problems.push(genProblem(i));
+    const nums = genNumbers();
     return {
-      problems,
-      current: 0,
+      numbers: nums,
+      answer: nums.reduce((a, b) => a + b, 0),
+      phase: 'flash',      // 'flash' | 'input' | 'wrong' | 'done'
+      flashIndex: 0,
+      flashTimer: 0,
+      FLASH_DURATION: 120,  // 2 seconds at 60fps
       input: '',
-      done: false,
-      wrong: false,
       wrongTimer: 0,
-      timer: 900,
-      maxTimer: 900,
-      _genProblem: genProblem,
+      _genNumbers: genNumbers,
     };
   },
   draw(g, ctx, x, y, w, h, panel) {
     ctx.textAlign = 'center';
+    const cx = x + w / 2;
 
-    if (g.done) {
-      ctx.font = 'bold 18px monospace';
+    // === DONE ===
+    if (g.phase === 'done') {
+      ctx.font = 'bold 22px monospace';
       ctx.fillStyle = '#44ff44';
-      ctx.fillText('ALL CORRECT!', x + w / 2, y + h / 2);
+      ctx.fillText('CORRECT!', cx, y + h / 2);
       return;
     }
 
-    const prob = g.problems[g.current];
+    // === FLASH PHASE ===
+    if (g.phase === 'flash') {
+      // Progress dots
+      ctx.font = '12px monospace';
+      ctx.fillStyle = '#444';
+      ctx.fillText('Remember the numbers', cx, y + 20);
 
-    // Progress
-    ctx.font = 'bold 12px monospace';
-    ctx.fillStyle = '#666';
-    ctx.fillText('Problem ' + (g.current + 1) + ' of ' + g.problems.length, x + w / 2, y + 15);
-
-    // Timer bar (above problem)
-    const timerBarW = w - 80, timerBarH = 8;
-    const timerBarX = x + 40, timerBarY = y + 25;
-    const timerPct = Math.max(0, g.timer / g.maxTimer);
-    ctx.fillStyle = '#0c1620';
-    ctx.fillRect(timerBarX, timerBarY, timerBarW, timerBarH);
-    ctx.fillStyle = timerPct > 0.3 ? '#0ff' : (timerPct > 0.15 ? '#ffaa00' : '#ff4444');
-    ctx.fillRect(timerBarX, timerBarY, timerBarW * timerPct, timerBarH);
-    ctx.strokeStyle = '#1a3040';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(timerBarX, timerBarY, timerBarW, timerBarH);
-
-    // Countdown timer tick
-    if (!g.wrong) {
-      g.timer--;
-      if (g.timer <= 0) {
-        g.wrong = true;
-        g.problems[g.current] = g._genProblem(g.current);
+      // Dot indicators
+      const dotY = y + 38;
+      const dotGap = 20;
+      const dotStartX = cx - (4 * dotGap) / 2;
+      for (let i = 0; i < 5; i++) {
+        const dx = dotStartX + i * dotGap;
+        ctx.fillStyle = i < g.flashIndex ? '#0ff' : i === g.flashIndex ? '#fff' : '#222';
+        ctx.beginPath();
+        ctx.arc(dx, dotY, 4, 0, Math.PI * 2);
+        ctx.fill();
       }
+
+      // Big flashing number
+      const t = g.flashTimer / g.FLASH_DURATION;
+      const scale = t < 0.1 ? t / 0.1 : 1; // pop-in
+      ctx.font = 'bold ' + Math.round(64 * scale) + 'px monospace';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(g.numbers[g.flashIndex].toString(), cx, y + 120);
+
+      // Timer bar under number
+      const barW = w - 100, barH = 6;
+      const barX = x + 50, barY = y + 145;
+      ctx.fillStyle = '#0c1620';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = '#0ff';
+      ctx.fillRect(barX, barY, barW * (1 - t), barH);
+
+      // Advance
+      g.flashTimer++;
+      if (g.flashTimer >= g.FLASH_DURATION) {
+        g.flashTimer = 0;
+        g.flashIndex++;
+        if (g.flashIndex >= g.numbers.length) {
+          g.phase = 'input';
+        }
+      }
+      return;
     }
 
-    // Problem text
-    ctx.font = 'bold 32px monospace';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(prob.text + ' = ?', x + w / 2, y + 70);
+    // === WRONG ===
+    if (g.phase === 'wrong') {
+      ctx.font = 'bold 18px monospace';
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText('WRONG!', cx, y + 60);
+      ctx.font = '14px monospace';
+      ctx.fillStyle = '#884444';
+      ctx.fillText('New numbers incoming...', cx, y + 90);
+      g.wrongTimer++;
+      if (g.wrongTimer > 80) {
+        // Reset with new numbers
+        const nums = g._genNumbers();
+        g.numbers = nums;
+        g.answer = nums.reduce((a, b) => a + b, 0);
+        g.phase = 'flash';
+        g.flashIndex = 0;
+        g.flashTimer = 0;
+        g.input = '';
+        g.wrongTimer = 0;
+      }
+      return;
+    }
+
+    // === INPUT PHASE ===
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = '#888';
+    ctx.fillText('What was the total?', cx, y + 20);
 
     // Input display
-    ctx.font = 'bold 28px monospace';
-    ctx.fillStyle = g.wrong ? '#ff4444' : '#0ff';
-    const displayText = g.input || '_';
-    ctx.fillText(displayText, x + w / 2, y + 120);
-
-    if (g.wrong) {
-      ctx.font = 'bold 14px monospace';
-      ctx.fillStyle = '#ff4444';
-      ctx.fillText('Wrong! Try again.', x + w / 2, y + 150);
-      g.wrongTimer++;
-      if (g.wrongTimer > 40) {
-        g.wrong = false;
-        g.wrongTimer = 0;
-        g.input = '';
-        g.timer = g.maxTimer;
-      }
-      return;
-    }
+    ctx.font = 'bold 40px monospace';
+    ctx.fillStyle = '#0ff';
+    ctx.fillText(g.input || '_', cx, y + 75);
 
     // Number pad
     const btnW = 55, btnH = 45, btnGap = 8;
-    const padY = y + 160;
-    const rows = [
-      [1, 2, 3, 4, 5],
-      [6, 7, 8, 9, 0],
-    ];
+    const padY = y + 100;
+    const rows = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 0]];
     for (let r = 0; r < rows.length; r++) {
       const row = rows[r];
       const rw = row.length * btnW + (row.length - 1) * btnGap;
@@ -1056,31 +1042,26 @@ TASK_HANDLERS.simple_math = {
         ctx.font = 'bold 20px monospace';
         ctx.fillStyle = hover ? '#0ff' : '#668';
         ctx.fillText(row[c].toString(), bxx + btnW / 2, byy + btnH / 2 + 7);
-        if (panel.mouseJustClicked && hover && g.input.length < 6) {
+        if (panel.mouseJustClicked && hover && g.input.length < 3) {
           g.input += row[c].toString();
         }
       }
     }
 
-    // Bottom row: minus, DEL, ENTER
+    // Bottom row: DEL + ENTER
     const bRow3Y = padY + 2 * (btnH + btnGap);
     const specials = [
-      { label: '-', w: btnW, action() { if (g.input === '') g.input = '-'; } },
-      { label: 'DEL', w: btnW, action() { g.input = g.input.slice(0, -1); } },
+      { label: 'DEL', w: btnW * 2 + btnGap, action() { g.input = g.input.slice(0, -1); } },
       { label: 'ENTER', w: btnW * 2 + btnGap, action() {
-          if (g.input === '' || g.input === '-') return;
+          if (g.input === '') return;
           const val = parseInt(g.input);
           if (isNaN(val)) return;
-          if (val === prob.answer) {
-            g.current++;
-            g.input = '';
-            g.timer = g.maxTimer;
-            if (g.current >= g.problems.length) {
-              g.done = true;
-              completeCurrentTask();
-            }
+          if (val === g.answer) {
+            g.phase = 'done';
+            completeCurrentTask();
           } else {
-            g.wrong = true;
+            g.phase = 'wrong';
+            g.wrongTimer = 0;
           }
         }
       },
