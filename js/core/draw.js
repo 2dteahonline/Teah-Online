@@ -1724,9 +1724,9 @@ function draw() {
 
   // HUD (screen space)
   if (typeof drawHideSeekHUD === 'function') drawHideSeekHUD();
-  if (showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
-  if (showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
-  drawHotbar();
+  if (!Scene.inSkeld && showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
+  if (!Scene.inSkeld && showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
+  if (!Scene.inSkeld) drawHotbar();
   if (typeof drawCookingHUD === 'function') drawCookingHUD();
   if (typeof drawFishingHUD === 'function') drawFishingHUD();
   if (typeof drawFishVendorPanel === 'function') drawFishVendorPanel();
@@ -1881,7 +1881,8 @@ function draw() {
     drawPlacementPreview(cx, cy);
   }
 
-  // ===== PLAYER HP BAR (top center) =====
+  // ===== PLAYER HP BAR (top center) — hidden in Skeld =====
+  if (Scene.inSkeld) { /* skip HP bar */ } else {
   const hpBarW = 360, hpBarH = 24;
   const hpBarX = BASE_W / 2 - hpBarW / 2;
   const hpBarY = 16;
@@ -1928,7 +1929,7 @@ function draw() {
     }
   }
 
-  // (Skeld task progress bar removed — now in the task list side panel)
+  } // end HP bar skip for Skeld
 
   // ===== WAVE HUD (below HP bar) — dungeon only =====
   if (Scene.inDungeon) {

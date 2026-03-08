@@ -2415,13 +2415,13 @@ function update() {
 
   // --- One-frame intent dispatch (consumed once, cleared at end of frame) ---
   if (!isTyping && !panelBlocksMovement && !fishingActive && !ventBlocks) {
-    // Reload
-    if (InputIntent.reloadPressed && !gun.reloading && gun.ammo < gun.magSize) {
+    // Reload (disabled in Skeld)
+    if (!Scene.inSkeld && InputIntent.reloadPressed && !gun.reloading && gun.ammo < gun.magSize) {
       gun.reloading = true;
       gun.reloadTimer = getReloadTime();
     }
-    // Melee swing
-    if (InputIntent.meleePressed) {
+    // Melee swing (disabled in Skeld)
+    if (!Scene.inSkeld && InputIntent.meleePressed) {
       meleeSwing();
     }
     // Ninja dash activation
