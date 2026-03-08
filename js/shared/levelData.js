@@ -1255,7 +1255,7 @@ const LEVELS = {
     room(37, 45, 50, 62);
 
     // === ADMIN (right of Cafe→Storage corridor — 15×13) ===
-    room(78, 36, 92, 48);
+    room(78, 38, 92, 50);
 
     // === STORAGE (bottom center — 18×22, tall rectangle) ===
     room(58, 53, 75, 74);
@@ -1312,7 +1312,7 @@ const LEVELS = {
     room(39, 62, 43, 67);     // Electrical → Z-corridor (x=39-43, 5 blocks)
 
     // --- Admin corridor (5 tall, from Cafe→Storage corridor to Admin) ---
-    room(72, 40, 78, 44);     // Corridor → Admin (x=73-77, y=40-44)
+    room(72, 42, 78, 46);     // Corridor → Admin (x=73-77, y=42-46)
 
     // ========================================
     //  BORDERS
