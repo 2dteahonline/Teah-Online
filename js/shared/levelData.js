@@ -1300,10 +1300,19 @@ const LEVELS = {
     wall(57,32); wall(57,33); wall(58,33); wall(57,34); wall(58,34); wall(59,34);
     wall(82,34); wall(83,34); wall(84,34); wall(84,33); wall(83,33); wall(84,32);
 
-    // --- Upper Engine — L-shape: top-left 6×4 block removed ---
-    for (let y = 4; y <= 7; y++) for (let x = 4; x <= 9; x++) wall(x, y);
+    // --- Upper Engine — pentagon: big 5-step diagonal on TL + BL (angled left side) ---
+    wall(4,4); wall(5,4); wall(6,4); wall(7,4); wall(8,4);
+    wall(4,5); wall(5,5); wall(6,5); wall(7,5);
+    wall(4,6); wall(5,6); wall(6,6);
+    wall(4,7); wall(5,7);
+    wall(4,8);
+    wall(4,13);
+    wall(4,14); wall(5,14);
+    wall(4,15); wall(5,15); wall(6,15);
+    wall(4,16); wall(5,16); wall(6,16); wall(7,16);
+    wall(4,17); wall(5,17); wall(6,17); wall(7,17); wall(8,17);
 
-    // --- Reactor — left-pointing arrow/diamond ---
+    // --- Reactor — vertical hexagon: 4-step diags on all 4 corners ---
     wall(1,28); wall(2,28); wall(3,28); wall(4,28);
     wall(1,29); wall(2,29); wall(3,29);
     wall(1,30); wall(2,30);
@@ -1312,35 +1321,105 @@ const LEVELS = {
     wall(1,39); wall(2,39);
     wall(1,40); wall(2,40); wall(3,40);
     wall(1,41); wall(2,41); wall(3,41); wall(4,41);
+    wall(6,28); wall(7,28); wall(8,28);
+    wall(7,29); wall(8,29);
+    wall(8,30);
+    wall(8,39);
+    wall(7,40); wall(8,40);
+    wall(6,41); wall(7,41); wall(8,41);
 
-    // --- Security — right-wall indent (concave right side) ---
-    for (let y = 30; y <= 32; y++) { wall(34, y); wall(35, y); }
-    for (let y = 37; y <= 39; y++) { wall(34, y); wall(35, y); }
+    // --- Security — small: 2-step cuts on TR + BR only ---
+    wall(34,30); wall(35,30);
+    wall(35,31);
+    wall(35,38);
+    wall(34,39); wall(35,39);
 
-    // --- MedBay — L-shape: bottom-right 5×4 block removed ---
-    for (let y = 24; y <= 27; y++) for (let x = 45; x <= 49; x++) wall(x, y);
+    // --- MedBay — big 5-step diagonal on BR, small 2-step on TL ---
+    wall(38,18); wall(39,18);
+    wall(38,19);
+    wall(49,23);
+    wall(48,24); wall(49,24);
+    wall(47,25); wall(48,25); wall(49,25);
+    wall(46,26); wall(47,26); wall(48,26); wall(49,26);
+    wall(45,27); wall(46,27); wall(47,27); wall(48,27); wall(49,27);
 
-    // --- Lower Engine — L-shape: bottom-left 6×4 block removed ---
-    for (let y = 62; y <= 65; y++) for (let x = 4; x <= 9; x++) wall(x, y);
+    // --- Lower Engine — pentagon: big 5-step diagonal on TL + BL (mirrors UE) ---
+    wall(4,52); wall(5,52); wall(6,52); wall(7,52); wall(8,52);
+    wall(4,53); wall(5,53); wall(6,53); wall(7,53);
+    wall(4,54); wall(5,54); wall(6,54);
+    wall(4,55); wall(5,55);
+    wall(4,56);
+    wall(4,61);
+    wall(4,62); wall(5,62);
+    wall(4,63); wall(5,63); wall(6,63);
+    wall(4,64); wall(5,64); wall(6,64); wall(7,64);
+    wall(4,65); wall(5,65); wall(6,65); wall(7,65); wall(8,65);
 
-    // --- Electrical — step: right wall jogs in halfway down ---
-    for (let y = 54; y <= 62; y++) for (let x = 48; x <= 50; x++) wall(x, y);
+    // --- Electrical — 4-step TR, 3-step BR, 2-step TL ---
+    wall(37,45); wall(38,45);
+    wall(37,46);
+    wall(47,45); wall(48,45); wall(49,45); wall(50,45);
+    wall(48,46); wall(49,46); wall(50,46);
+    wall(49,47); wall(50,47);
+    wall(50,48);
+    wall(50,60);
+    wall(49,61); wall(50,61);
+    wall(48,62); wall(49,62); wall(50,62);
 
-    // --- Admin — L-shape: top-right 5×4 block removed ---
-    for (let y = 38; y <= 41; y++) for (let x = 88; x <= 92; x++) wall(x, y);
+    // --- Admin — octagonal: 3-step TL, 4-step TR, 2-step BL, 4-step BR ---
+    wall(78,38); wall(79,38); wall(80,38);
+    wall(78,39); wall(79,39);
+    wall(78,40);
+    wall(89,38); wall(90,38); wall(91,38); wall(92,38);
+    wall(90,39); wall(91,39); wall(92,39);
+    wall(91,40); wall(92,40);
+    wall(92,41);
+    wall(78,49);
+    wall(78,50); wall(79,50);
+    wall(92,47);
+    wall(91,48); wall(92,48);
+    wall(90,49); wall(91,49); wall(92,49);
+    wall(89,50); wall(90,50); wall(91,50); wall(92,50);
 
-    // --- Storage — L-shape: top-left 5×5 block removed ---
-    for (let y = 53; y <= 57; y++) for (let x = 58; x <= 62; x++) wall(x, y);
+    // --- Storage — 4-step diagonal on TL + BR (diagonal pair) ---
+    wall(58,53); wall(59,53); wall(60,53); wall(61,53);
+    wall(58,54); wall(59,54); wall(60,54);
+    wall(58,55); wall(59,55);
+    wall(58,56);
+    wall(75,71);
+    wall(74,72); wall(75,72);
+    wall(73,73); wall(74,73); wall(75,73);
+    wall(72,74); wall(73,74); wall(74,74); wall(75,74);
 
-    // --- Shields — hexagonal: top-right + bottom-right 4×3 blocks ---
-    for (let y = 54; y <= 56; y++) for (let x = 109; x <= 112; x++) wall(x, y);
-    for (let y = 63; y <= 65; y++) for (let x = 109; x <= 112; x++) wall(x, y);
+    // --- Shields — hexagonal: 4-step TR+BR, 2-step TL+BL ---
+    wall(99,54); wall(100,54);
+    wall(99,55);
+    wall(109,54); wall(110,54); wall(111,54); wall(112,54);
+    wall(110,55); wall(111,55); wall(112,55);
+    wall(111,56); wall(112,56);
+    wall(112,57);
+    wall(99,64);
+    wall(99,65); wall(100,65);
+    wall(112,62);
+    wall(111,63); wall(112,63);
+    wall(110,64); wall(111,64); wall(112,64);
+    wall(109,65); wall(110,65); wall(111,65); wall(112,65);
 
-    // --- Communications — L-shape: bottom-left 5×4 block removed ---
-    for (let y = 75; y <= 78; y++) for (let x = 80; x <= 84; x++) wall(x, y);
+    // --- Communications — 3-step TL + 3-step BR (diagonal pair) ---
+    wall(80,67); wall(81,67); wall(82,67);
+    wall(80,68); wall(81,68);
+    wall(80,69);
+    wall(93,76);
+    wall(92,77); wall(93,77);
+    wall(91,78); wall(92,78); wall(93,78);
 
-    // --- O2 — L-shape: bottom-right 4×4 block removed ---
-    for (let y = 33; y <= 36; y++) for (let x = 96; x <= 99; x++) wall(x, y);
+    // --- O2 — angled left side: 3-step TL + 3-step BL ---
+    wall(86,25); wall(87,25); wall(88,25);
+    wall(86,26); wall(87,26);
+    wall(86,27);
+    wall(86,34);
+    wall(86,35); wall(87,35);
+    wall(86,36); wall(87,36); wall(88,36);
 
     // ========================================
     //  CORRIDORS — all 5 tiles wide
