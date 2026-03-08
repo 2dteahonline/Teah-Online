@@ -251,7 +251,7 @@ const _taskPanel = {
   mouseJustClicked: false,
   // Panel geometry (centered on screen)
   W: 500,
-  H: 380,
+  H: 440,
   get X() { return (BASE_W - this.W) / 2; },
   get Y() { return (BASE_H - this.H) / 2; },
 };
@@ -1830,56 +1830,6 @@ TASK_HANDLERS.sample_analyzer = {
       ctx.fillText('Press START to begin temperature monitoring', x + w / 2, y + h / 2 - 40);
       const btnW = 120, btnH = 40;
       const bx = x + (w - btnW) / 2, by = y + h / 2 - 10;
-    ctx.fillStyle = '#0c1620';
-    ctx.fillRect(tx, ty, tubeW, tubeH);
-    ctx.strokeStyle = '#1a3040';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(tx, ty, tubeW, tubeH);
-
-    // Liquid level
-    const fillH = tubeH * (g.progress / 100);
-    ctx.fillStyle = g.phase === 'collect' ? '#44ff44' : '#0088aa';
-    ctx.fillRect(tx + 2, ty + tubeH - fillH, tubeW - 4, fillH);
-
-    // Bubbles during analysis
-    if (g.phase === 'analyzing') {
-      g.progress += 0.5;
-      const t = renderTime * 0.01;
-      for (let i = 0; i < 3; i++) {
-        const bx = tx + 10 + Math.sin(t + i * 2) * 10;
-        const by = ty + tubeH - fillH + 10 + Math.sin(t * 1.5 + i) * 20;
-        ctx.fillStyle = 'rgba(100,220,255,0.4)';
-        ctx.beginPath(); ctx.arc(bx, by, 3 + Math.sin(t + i) * 1, 0, Math.PI * 2); ctx.fill();
-      }
-      if (g.progress >= 100) {
-        g.phase = 'collect';
-        g.progress = 100;
-      }
-    }
-
-    // Progress bar
-    const barW = w - 80, barH = 20;
-    const barX = x + 40, barY = ty + tubeH + 20;
-    ctx.fillStyle = '#0c1620';
-    ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = g.phase === 'collect' ? '#44ff44' : '#0088aa';
-    ctx.fillRect(barX, barY, barW * g.progress / 100, barH);
-    ctx.strokeStyle = '#1a3040';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(barX, barY, barW, barH);
-    ctx.font = '12px monospace';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(Math.round(g.progress) + '%', x + w / 2, barY + 15);
-
-    // Status
-    ctx.font = 'bold 14px monospace';
-    ctx.fillStyle = '#aaa';
-    const statusY = barY + 50;
-    if (g.phase === 'start') {
-      ctx.fillText('Press START to begin analysis', x + w / 2, statusY);
-      // Start button
-      const btnW = 120, btnH = 40;
-      const bx = x + (w - btnW) / 2, by = statusY + 15;
       const hover = panel.mouseX >= bx && panel.mouseX <= bx + btnW &&
                     panel.mouseY >= by && panel.mouseY <= by + btnH;
       ctx.fillStyle = hover ? '#1a3050' : '#0c1620';
@@ -1890,13 +1840,29 @@ TASK_HANDLERS.sample_analyzer = {
       ctx.font = 'bold 16px monospace';
       ctx.fillStyle = '#0ff';
       ctx.fillText('START', bx + btnW / 2, by + 27);
-      if (panel.mouseJustClicked && hover) g.phase = 'analyzing';
-    } else if (g.phase === 'analyzing') {
-      ctx.fillText('Analyzing sample... Please wait.', x + w / 2, statusY);
-    } else if (g.phase === 'collect') {
-      ctx.fillText('Analysis complete! Collect results.', x + w / 2, statusY);
+      if (panel.mouseJustClicked && hover) {
+        g.phase = 'monitoring';
+        g.temperature = 50;
+        g.tempVelocity = 0;
+        g.progress = 0;
+      }
+      // Show error flash from previous fail
+      if (g.errorTimer > 0) {
+        g.errorTimer--;
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = '#ff4444';
+        ctx.fillText('TEMPERATURE CRITICAL! Try again.', x + w / 2, y + h / 2 + 50);
+      }
+      return;
+    }
+
+    // --- COLLECT PHASE ---
+    if (g.phase === 'collect') {
+      ctx.font = 'bold 14px monospace';
+      ctx.fillStyle = '#aaa';
+      ctx.fillText('Monitoring complete! Collect results.', x + w / 2, y + h / 2 - 40);
       const btnW = 140, btnH = 40;
-      const bx = x + (w - btnW) / 2, by = statusY + 15;
+      const bx = x + (w - btnW) / 2, by = y + h / 2 - 10;
       const hover = panel.mouseX >= bx && panel.mouseX <= bx + btnW &&
                     panel.mouseY >= by && panel.mouseY <= by + btnH;
       ctx.fillStyle = hover ? '#1a4030' : '#0c1620';
@@ -1911,27 +1877,181 @@ TASK_HANDLERS.sample_analyzer = {
         g.done = true;
         completeCurrentTask();
       }
+      return;
+    }
+
+    // --- MONITORING PHASE ---
+    // Update temperature physics
+    g.tempVelocity += (Math.random() - 0.5) * 0.15;
+    if (g.tempVelocity > 1.5) g.tempVelocity = 1.5;
+    if (g.tempVelocity < -1.5) g.tempVelocity = -1.5;
+    g.temperature += g.tempVelocity;
+
+    // Check fail conditions
+    if (g.temperature < 10 || g.temperature > 90) {
+      g.phase = 'start';
+      g.errorTimer = 45;
+      g.temperature = 50;
+      g.tempVelocity = 0;
+      g.progress = 0;
+      return;
+    }
+
+    // Clamp display
+    const temp = Math.max(0, Math.min(100, g.temperature));
+
+    // Progress in optimal zone (35-65)
+    const inZone = temp >= 35 && temp <= 65;
+    if (inZone) g.progress += 0.5;
+    if (g.progress >= 300) {
+      g.phase = 'collect';
+      return;
+    }
+
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Keep temperature in the green zone (35-65)', x + w / 2, y + 15);
+
+    // Draw thermometer (left side)
+    const thermoX = x + 60, thermoY = y + 35, thermoW = 30, thermoH = 220;
+    ctx.fillStyle = '#0c1620';
+    ctx.fillRect(thermoX, thermoY, thermoW, thermoH);
+    ctx.strokeStyle = '#1a3040';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(thermoX, thermoY, thermoW, thermoH);
+
+    // Optimal zone band (35-65 mapped to thermometer)
+    const zoneTop = thermoY + thermoH * (1 - 65 / 100);
+    const zoneBot = thermoY + thermoH * (1 - 35 / 100);
+    ctx.fillStyle = 'rgba(40,200,60,0.25)';
+    ctx.fillRect(thermoX + 1, zoneTop, thermoW - 2, zoneBot - zoneTop);
+    ctx.strokeStyle = '#44ff44';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(thermoX, zoneTop); ctx.lineTo(thermoX + thermoW, zoneTop);
+    ctx.moveTo(thermoX, zoneBot); ctx.lineTo(thermoX + thermoW, zoneBot);
+    ctx.stroke();
+
+    // Danger zones (below 10, above 90)
+    const dangerTop = thermoY + thermoH * (1 - 90 / 100);
+    const dangerBot = thermoY + thermoH * (1 - 10 / 100);
+    ctx.fillStyle = 'rgba(255,50,50,0.15)';
+    ctx.fillRect(thermoX + 1, thermoY + 1, thermoW - 2, dangerTop - thermoY);
+    ctx.fillRect(thermoX + 1, dangerBot, thermoW - 2, thermoY + thermoH - dangerBot - 1);
+
+    // Temperature fill
+    const tFillH = thermoH * (temp / 100);
+    const tempColor = inZone ? '#44ff44' : (temp < 35 ? '#4488ff' : '#ff6644');
+    ctx.fillStyle = tempColor;
+    ctx.fillRect(thermoX + 3, thermoY + thermoH - tFillH, thermoW - 6, tFillH);
+
+    // Temperature label
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'left';
+    ctx.fillText(Math.round(temp) + '\u00B0', thermoX + thermoW + 8, thermoY + thermoH - tFillH + 5);
+
+    // Scale labels
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#555';
+    ctx.fillText('100', thermoX + thermoW + 5, thermoY + 10);
+    ctx.fillText('0', thermoX + thermoW + 5, thermoY + thermoH);
+    ctx.fillText('65', thermoX + thermoW + 5, zoneTop + 4);
+    ctx.fillText('35', thermoX + thermoW + 5, zoneBot + 4);
+    ctx.textAlign = 'center';
+
+    // Progress bar (right side)
+    const pBarX = x + 160, pBarY = y + 40, pBarW = w - 200, pBarH = 20;
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Monitoring Progress', pBarX + pBarW / 2, pBarY - 5);
+    ctx.fillStyle = '#0c1620';
+    ctx.fillRect(pBarX, pBarY, pBarW, pBarH);
+    const pct = Math.min(1, g.progress / 300);
+    ctx.fillStyle = inZone ? '#44ff44' : '#333';
+    ctx.fillRect(pBarX, pBarY, pBarW * pct, pBarH);
+    ctx.strokeStyle = '#1a3040';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pBarX, pBarY, pBarW, pBarH);
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(Math.round(pct * 100) + '%', pBarX + pBarW / 2, pBarY + 15);
+
+    // Status text
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = inZone ? '#44ff44' : '#ff8800';
+    ctx.fillText(inZone ? 'IN OPTIMAL ZONE' : 'OUT OF ZONE - No progress!', pBarX + pBarW / 2, pBarY + 45);
+
+    // Velocity indicator
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#888';
+    const velText = g.tempVelocity > 0.1 ? 'Rising...' : (g.tempVelocity < -0.1 ? 'Falling...' : 'Stable');
+    ctx.fillText('Trend: ' + velText, pBarX + pBarW / 2, pBarY + 65);
+
+    // COOL and HEAT buttons
+    const btnW = 100, btnH = 50;
+    const btnY = y + h - 80;
+    // COOL button (left)
+    const coolX = x + w / 2 - btnW - 20;
+    const coolHover = panel.mouseX >= coolX && panel.mouseX <= coolX + btnW &&
+                      panel.mouseY >= btnY && panel.mouseY <= btnY + btnH;
+    ctx.fillStyle = coolHover ? '#0a3040' : '#0c1620';
+    ctx.fillRect(coolX, btnY, btnW, btnH);
+    ctx.strokeStyle = '#00cccc';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(coolX, btnY, btnW, btnH);
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = '#00cccc';
+    ctx.fillText('COOL', coolX + btnW / 2, btnY + 32);
+
+    // HEAT button (right)
+    const heatX = x + w / 2 + 20;
+    const heatHover = panel.mouseX >= heatX && panel.mouseX <= heatX + btnW &&
+                      panel.mouseY >= btnY && panel.mouseY <= btnY + btnH;
+    ctx.fillStyle = heatHover ? '#3a2010' : '#0c1620';
+    ctx.fillRect(heatX, btnY, btnW, btnH);
+    ctx.strokeStyle = '#ff8800';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(heatX, btnY, btnW, btnH);
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = '#ff8800';
+    ctx.fillText('HEAT', heatX + btnW / 2, btnY + 32);
+
+    // Button click handling
+    if (panel.mouseJustClicked) {
+      if (coolHover) g.tempVelocity -= 0.8;
+      if (heatHover) g.tempVelocity += 0.8;
     }
   }
 };
 
-// TASK 12: PATH TRACE (2-step: Admin → Navigation)
-// Trace a dotted path with mouse from start to end without going off-path.
+// TASK 12: PATH TRACE (2-step: Admin -> Navigation)
+// Trace a winding path with mouse through 12 checkpoints while avoiding scanner bars.
 TASK_HANDLERS.path_trace = {
   init(entity) {
-    // Generate waypoints for a winding path
+    // Generate 12 waypoints for a tighter winding path
     const pts = [];
-    const segments = 6;
+    const segments = 10;
     for (let i = 0; i <= segments; i++) {
       pts.push({
         x: 0.05 + (i / segments) * 0.9,
-        y: 0.2 + Math.sin(i * 1.2 + Math.random()) * 0.25 + Math.random() * 0.1,
+        y: 0.2 + Math.sin(i * 1.8 + Math.random() * 0.5) * 0.25 + Math.random() * 0.1,
       });
     }
+    // Add one extra point to reach 12
+    pts.push({
+      x: 0.97,
+      y: 0.2 + Math.sin(11 * 1.8 + Math.random() * 0.5) * 0.25 + Math.random() * 0.1,
+    });
     return {
       points: pts,
-      traceIndex: 0, // how many waypoints reached
+      traceIndex: 0,
       done: false,
+      scanners: [
+        { y: 0.2, speed: 0.003, dir: 1 },
+        { y: 0.7, speed: 0.004, dir: -1 },
+      ],
+      scanHitTimer: 0,
     };
   },
   draw(g, ctx, x, y, w, h, panel) {
@@ -1946,7 +2066,22 @@ TASK_HANDLERS.path_trace = {
 
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#aaa';
-    ctx.fillText('Move mouse along the path through each checkpoint', x + w / 2, y + 15);
+    ctx.fillText('Hold mouse along the path through each checkpoint', x + w / 2, y + 15);
+
+    // Scanner hit flash
+    if (g.scanHitTimer > 0) {
+      g.scanHitTimer--;
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText('SCANNER HIT!', x + w / 2, y + 35);
+    }
+
+    // Update scanners
+    for (const sc of g.scanners) {
+      sc.y += sc.speed * sc.dir;
+      if (sc.y > 0.95) { sc.y = 0.95; sc.dir = -1; }
+      if (sc.y < 0.05) { sc.y = 0.05; sc.dir = 1; }
+    }
 
     // Draw path
     ctx.strokeStyle = '#1a3040';
@@ -1975,13 +2110,37 @@ TASK_HANDLERS.path_trace = {
     }
     ctx.lineCap = 'butt';
 
+    // Draw scanner bars
+    for (const sc of g.scanners) {
+      const scY = y + 30 + sc.y * (h - 50);
+      ctx.fillStyle = 'rgba(255, 50, 50, 0.25)';
+      ctx.fillRect(x, scY - 3, w, 6);
+      ctx.strokeStyle = 'rgba(255, 80, 80, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, scY); ctx.lineTo(x + w, scY);
+      ctx.stroke();
+    }
+
+    // Check scanner collision with mouse (while mouseDown)
+    if (panel.mouseDown && g.scanHitTimer <= 0) {
+      const mouseRelY = (panel.mouseY - y - 30) / (h - 50);
+      for (const sc of g.scanners) {
+        if (Math.abs(mouseRelY - sc.y) < 0.04) {
+          g.traceIndex = Math.max(0, g.traceIndex - 3);
+          g.scanHitTimer = 15;
+          break;
+        }
+      }
+    }
+
     // Draw checkpoints
     for (let i = 0; i < g.points.length; i++) {
       const px = x + g.points[i].x * w;
       const py = y + 30 + g.points[i].y * (h - 50);
       const reached = i < g.traceIndex;
       const next = i === g.traceIndex;
-      const r = next ? 14 : 10;
+      const r = next ? 12 : 8;
 
       ctx.fillStyle = reached ? '#44ff44' : (next ? '#0ff' : '#333');
       ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
@@ -1994,7 +2153,7 @@ TASK_HANDLERS.path_trace = {
       // Check if mouse is over this checkpoint (must be the next one and mouse is held)
       if (next && panel.mouseDown) {
         const dist = Math.sqrt((panel.mouseX - px) ** 2 + (panel.mouseY - py) ** 2);
-        if (dist < 20) {
+        if (dist < 14) {
           g.traceIndex++;
           if (g.traceIndex >= g.points.length) {
             g.done = true;
@@ -2006,21 +2165,27 @@ TASK_HANDLERS.path_trace = {
   }
 };
 
-// TASK 13: PACKAGE ASSEMBLY (2-step: Storage → Comms)
-// Drag items into a box in the correct order.
+// TASK 13: PACKAGE ASSEMBLY (2-step: Storage -> Comms)
+// Place 7 real items in correct order. 3 decoy items mixed in. Order shown briefly then hidden.
 TASK_HANDLERS.package_assembly = {
   init(entity) {
-    const items = ['Chip', 'Battery', 'Wire', 'Case'];
-    const shuffled = [...items];
-    for (let i = shuffled.length - 1; i > 0; i--) {
+    const items = ['Chip', 'Battery', 'Wire', 'Coolant', 'Board', 'Fuse', 'Case'];
+    const decoys = ['Scrap', 'Dust', 'Rock'];
+    const all = [...items, ...decoys];
+    // Shuffle all 10 together
+    for (let i = all.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      [all[i], all[j]] = [all[j], all[i]];
     }
     return {
-      items,          // correct order
-      available: shuffled, // shuffled display
-      placed: [],     // items placed into box
+      items,           // correct order (7 real items)
+      decoys,          // 3 decoy items
+      available: all,  // shuffled display (10 total)
+      placed: [],      // items placed into box
       done: false,
+      showOrderTimer: 180, // show order for 3 seconds
+      penaltyTimer: 0,
+      errorTimer: 0,
     };
   },
   draw(g, ctx, x, y, w, h, panel) {
@@ -2033,12 +2198,55 @@ TASK_HANDLERS.package_assembly = {
       return;
     }
 
-    ctx.font = 'bold 14px monospace';
-    ctx.fillStyle = '#aaa';
-    ctx.fillText('Place items in order: ' + g.items.join(' → '), x + w / 2, y + 15);
+    // Decrement timers
+    if (g.showOrderTimer > 0) g.showOrderTimer--;
+    if (g.penaltyTimer > 0) g.penaltyTimer--;
+    if (g.errorTimer > 0) g.errorTimer--;
+
+    // Title line: show order or hint
+    ctx.font = 'bold 13px monospace';
+    if (g.showOrderTimer > 0) {
+      ctx.fillStyle = '#0ff';
+      ctx.fillText('Order: ' + g.items.join(' > '), x + w / 2, y + 15);
+    } else {
+      ctx.fillStyle = '#666';
+      ctx.fillText('Place items in the correct order (' + g.placed.length + '/' + g.items.length + ')', x + w / 2, y + 15);
+    }
+
+    // Error flash
+    if (g.errorTimer > 0) {
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('Wrong item! Progress reset.', x + w / 2, y + 33);
+    }
+
+    // Penalty wait
+    if (g.penaltyTimer > 0) {
+      ctx.fillStyle = '#ff8800';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('Wait... ' + Math.ceil(g.penaltyTimer / 60) + 's', x + w / 2, y + 50);
+    }
+
+    // SHOW ORDER button (top right area)
+    const soBtnW = 110, soBtnH = 24;
+    const soBtnX = x + w - soBtnW - 10, soBtnY = y + 30;
+    const soHover = panel.mouseX >= soBtnX && panel.mouseX <= soBtnX + soBtnW &&
+                    panel.mouseY >= soBtnY && panel.mouseY <= soBtnY + soBtnH;
+    ctx.fillStyle = soHover ? '#1a2a3a' : '#0c1620';
+    ctx.fillRect(soBtnX, soBtnY, soBtnW, soBtnH);
+    ctx.strokeStyle = '#668';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(soBtnX, soBtnY, soBtnW, soBtnH);
+    ctx.font = '11px monospace';
+    ctx.fillStyle = '#888';
+    ctx.fillText('SHOW ORDER', soBtnX + soBtnW / 2, soBtnY + 16);
+    if (panel.mouseJustClicked && soHover) {
+      g.showOrderTimer = 180;
+      g.penaltyTimer += 180; // 3 second penalty
+    }
 
     // Box area (right side)
-    const boxX = x + w - 150, boxY = y + 50, boxW = 130, boxH = 200;
+    const boxX = x + w - 150, boxY = y + 60, boxW = 130, boxH = h - 80;
     ctx.fillStyle = '#0c1620';
     ctx.fillRect(boxX, boxY, boxW, boxH);
     ctx.strokeStyle = '#1a3040';
@@ -2050,19 +2258,19 @@ TASK_HANDLERS.package_assembly = {
 
     // Show placed items in box
     for (let i = 0; i < g.placed.length; i++) {
-      const iy = boxY + 10 + i * 45;
+      const iy = boxY + 5 + i * 36;
       ctx.fillStyle = '#0a2a1a';
-      ctx.fillRect(boxX + 10, iy, boxW - 20, 38);
+      ctx.fillRect(boxX + 8, iy, boxW - 16, 30);
       ctx.strokeStyle = '#44ff44';
       ctx.lineWidth = 1;
-      ctx.strokeRect(boxX + 10, iy, boxW - 20, 38);
-      ctx.font = 'bold 14px monospace';
+      ctx.strokeRect(boxX + 8, iy, boxW - 16, 30);
+      ctx.font = 'bold 12px monospace';
       ctx.fillStyle = '#44ff44';
-      ctx.fillText(g.placed[i], boxX + boxW / 2, iy + 24);
+      ctx.fillText(g.placed[i], boxX + boxW / 2, iy + 20);
     }
 
     // Available items (left side)
-    const itemX = x + 20, itemY = y + 50;
+    const itemX = x + 15, itemY = y + 60;
     ctx.font = '12px monospace';
     ctx.fillStyle = '#aaa';
     ctx.textAlign = 'left';
@@ -2073,9 +2281,9 @@ TASK_HANDLERS.package_assembly = {
     for (let i = 0; i < g.available.length; i++) {
       const item = g.available[i];
       if (g.placed.includes(item)) continue; // Already placed
-      const iy = itemY + visIndex * 50;
+      const iy = itemY + visIndex * 38;
       visIndex++;
-      const iw = 140, ih = 40;
+      const iw = 130, ih = 32;
       const hover = panel.mouseX >= itemX && panel.mouseX <= itemX + iw &&
                     panel.mouseY >= iy && panel.mouseY <= iy + ih;
 
@@ -2084,30 +2292,43 @@ TASK_HANDLERS.package_assembly = {
       ctx.strokeStyle = hover ? '#0ff' : '#1a3040';
       ctx.lineWidth = 1;
       ctx.strokeRect(itemX, iy, iw, ih);
-      ctx.font = 'bold 14px monospace';
+      ctx.font = 'bold 13px monospace';
       ctx.fillStyle = hover ? '#0ff' : '#668';
-      ctx.fillText(item, itemX + iw / 2, iy + 26);
+      ctx.fillText(item, itemX + iw / 2, iy + 22);
 
-      if (panel.mouseJustClicked && hover) {
+      if (panel.mouseJustClicked && hover && g.penaltyTimer <= 0 && g.errorTimer <= 0) {
+        const isDecoy = g.decoys.includes(item);
         const nextExpected = g.items[g.placed.length];
-        if (item === nextExpected) {
+        if (!isDecoy && item === nextExpected) {
           g.placed.push(item);
           if (g.placed.length >= g.items.length) {
             g.done = true;
             completeCurrentTask();
           }
+        } else {
+          // Wrong real item or decoy: reset all placed
+          g.placed = [];
+          g.errorTimer = 30;
         }
-        // Wrong item = no effect, just doesn't add
       }
     }
   }
 };
 
-// TASK 14: EMPTY TRASH (2-step: Comms → Storage)
-// Pull a lever down (drag down) to empty the chute.
+// TASK 14: EMPTY TRASH (2-step: Comms -> Storage)
+// Pull 3 levers in order (left -> middle -> right), each has a stuck zone requiring RELEASE click.
 TASK_HANDLERS.empty_trash = {
   init(entity) {
-    return { leverY: 0, target: 1, done: false, dragging: false };
+    return {
+      levers: [
+        { y: 0, stuckAt: 0.3 + Math.random() * 0.4, stuck: true, released: false, done: false, dragging: false },
+        { y: 0, stuckAt: 0.3 + Math.random() * 0.4, stuck: true, released: false, done: false, dragging: false },
+        { y: 0, stuckAt: 0.3 + Math.random() * 0.4, stuck: true, released: false, done: false, dragging: false },
+      ],
+      currentLever: 0,
+      done: false,
+      showFlush: false,
+    };
   },
   draw(g, ctx, x, y, w, h, panel) {
     ctx.textAlign = 'center';
@@ -2121,62 +2342,155 @@ TASK_HANDLERS.empty_trash = {
 
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#aaa';
-    ctx.fillText('Pull the lever all the way down', x + w / 2, y + 15);
+    if (g.showFlush) {
+      ctx.fillText('All levers pulled! Press FLUSH to empty.', x + w / 2, y + 15);
+    } else {
+      ctx.fillText('Pull lever ' + (g.currentLever + 1) + ' of 3 all the way down', x + w / 2, y + 15);
+    }
 
-    // Trash chute visual
-    const chuteX = x + w / 2 - 60, chuteY = y + 40, chuteW = 120, chuteH = 180;
-    ctx.fillStyle = '#0c1620';
+    // Trash chute visual (behind levers)
+    const chuteX = x + w / 2 - 80, chuteY = y + 35, chuteW = 160, chuteH = 200;
+    ctx.fillStyle = '#0a0e14';
     ctx.fillRect(chuteX, chuteY, chuteW, chuteH);
     ctx.strokeStyle = '#1a3040';
     ctx.lineWidth = 2;
     ctx.strokeRect(chuteX, chuteY, chuteW, chuteH);
 
-    // Trash items (disappear as lever goes down)
-    const trashCount = Math.max(0, Math.floor(5 * (1 - g.leverY)));
+    // Trash items in chute (fewer as more levers complete)
+    const trashCount = Math.max(0, 6 - g.currentLever * 2 - (g.showFlush ? 6 : 0));
     for (let i = 0; i < trashCount; i++) {
-      const tx = chuteX + 15 + (i % 3) * 30;
-      const ty = chuteY + 20 + Math.floor(i / 3) * 40 + i * 10;
-      ctx.fillStyle = ['#665533', '#888855', '#556644', '#887766', '#554433'][i];
-      ctx.fillRect(tx, ty, 25, 20);
+      const tx = chuteX + 10 + (i % 4) * 35;
+      const ty = chuteY + 20 + Math.floor(i / 4) * 50 + (i % 3) * 15;
+      ctx.fillStyle = ['#665533', '#888855', '#556644', '#887766', '#554433', '#776644'][i];
+      ctx.fillRect(tx, ty, 25, 18);
     }
 
-    // Lever track
-    const trackX = x + w / 2 + 100;
-    const trackY = chuteY;
-    const trackH = chuteH;
-    ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(trackX - 5, trackY, 10, trackH);
+    // Draw 3 lever tracks
+    const trackW = 40, trackH = chuteH - 20;
+    const spacing = 55;
+    const baseTrackX = x + w / 2 - spacing;
+    const trackY = chuteY + 10;
 
-    // Lever handle
-    const handleY = trackY + g.leverY * (trackH - 30);
-    const handleW = 40, handleH = 30;
-    const hover = panel.mouseX >= trackX - handleW / 2 && panel.mouseX <= trackX + handleW / 2 &&
-                  panel.mouseY >= handleY && panel.mouseY <= handleY + handleH;
+    for (let li = 0; li < 3; li++) {
+      const lever = g.levers[li];
+      const trackX = baseTrackX + li * spacing;
+      const isActive = li === g.currentLever && !g.showFlush;
+      const isDone = lever.done;
 
-    ctx.fillStyle = g.dragging ? '#ff8800' : (hover ? '#1a3050' : '#0c1620');
-    ctx.fillRect(trackX - handleW / 2, handleY, handleW, handleH);
-    ctx.strokeStyle = g.dragging ? '#ff8800' : '#0ff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(trackX - handleW / 2, handleY, handleW, handleH);
+      // Track rail
+      ctx.fillStyle = isActive ? '#1a1a3a' : '#111';
+      ctx.fillRect(trackX - 4, trackY, 8, trackH);
+      ctx.strokeStyle = isActive ? '#334' : '#222';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(trackX - 4, trackY, 8, trackH);
 
-    // Drag logic
-    if (panel.mouseDown) {
-      if (g.dragging || (panel.mouseJustClicked && hover)) {
-        g.dragging = true;
-        const newY = (panel.mouseY - trackY) / (trackH - 30);
-        g.leverY = Math.max(0, Math.min(1, newY));
+      // Stuck zone indicator (small line)
+      if (isActive && lever.stuck && !lever.released) {
+        const stuckY = trackY + lever.stuckAt * (trackH - 28);
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(trackX - 18, stuckY);
+        ctx.lineTo(trackX + 18, stuckY);
+        ctx.stroke();
       }
-    } else {
-      if (g.dragging && g.leverY >= 0.95) {
+
+      // Lever handle
+      const handleY = trackY + lever.y * (trackH - 28);
+      const handleW = 36, handleH = 28;
+      const hover = panel.mouseX >= trackX - handleW / 2 && panel.mouseX <= trackX + handleW / 2 &&
+                    panel.mouseY >= handleY && panel.mouseY <= handleY + handleH;
+
+      ctx.fillStyle = isDone ? '#0a3a0a' : (lever.dragging ? '#ff8800' : (isActive && hover ? '#1a3050' : '#0c1620'));
+      ctx.fillRect(trackX - handleW / 2, handleY, handleW, handleH);
+      ctx.strokeStyle = isDone ? '#44ff44' : (isActive ? (lever.dragging ? '#ff8800' : '#0ff') : '#333');
+      ctx.lineWidth = isDone ? 2 : 1;
+      ctx.strokeRect(trackX - handleW / 2, handleY, handleW, handleH);
+
+      // Lever label
+      ctx.font = '10px monospace';
+      ctx.fillStyle = isDone ? '#44ff44' : (isActive ? '#fff' : '#444');
+      ctx.fillText(isDone ? 'OK' : (li + 1).toString(), trackX, handleY + 18);
+
+      // Drag logic (only for active lever)
+      if (isActive && !g.showFlush) {
+        if (panel.mouseDown) {
+          if (lever.dragging || (panel.mouseJustClicked && hover)) {
+            lever.dragging = true;
+            let newY = (panel.mouseY - trackY) / (trackH - 28);
+            newY = Math.max(0, Math.min(1, newY));
+            // Only allow downward movement
+            if (newY >= lever.y) {
+              // Check stuck zone
+              if (lever.stuck && !lever.released && newY >= lever.stuckAt) {
+                lever.y = lever.stuckAt;
+              } else {
+                lever.y = newY;
+              }
+            }
+          }
+        } else {
+          if (lever.dragging) {
+            if (lever.y >= 0.95) {
+              // Lever reached bottom
+              lever.done = true;
+              lever.y = 1;
+              g.currentLever++;
+              if (g.currentLever >= 3) {
+                g.showFlush = true;
+              }
+            } else {
+              // Spring back to top
+              lever.y = 0;
+              lever.released = false;
+              lever.stuck = true;
+              lever.stuckAt = 0.3 + Math.random() * 0.4;
+            }
+          }
+          lever.dragging = false;
+        }
+
+        // RELEASE button when stuck
+        if (lever.stuck && !lever.released && lever.y >= lever.stuckAt - 0.01) {
+          const relBtnW = 55, relBtnH = 20;
+          const relBtnX = trackX + handleW / 2 + 5;
+          const relBtnY = handleY + 4;
+          const relHover = panel.mouseX >= relBtnX && panel.mouseX <= relBtnX + relBtnW &&
+                          panel.mouseY >= relBtnY && panel.mouseY <= relBtnY + relBtnH;
+          ctx.fillStyle = relHover ? '#3a1a1a' : '#1a0c0c';
+          ctx.fillRect(relBtnX, relBtnY, relBtnW, relBtnH);
+          ctx.strokeStyle = '#ff4444';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(relBtnX, relBtnY, relBtnW, relBtnH);
+          ctx.font = '9px monospace';
+          ctx.fillStyle = '#ff6644';
+          ctx.fillText('RELEASE', relBtnX + relBtnW / 2, relBtnY + 14);
+          if (panel.mouseJustClicked && relHover) {
+            lever.released = true;
+            lever.stuck = false;
+          }
+        }
+      }
+    }
+
+    // FLUSH button (after all 3 levers done)
+    if (g.showFlush) {
+      const btnW = 140, btnH = 45;
+      const btnX = x + (w - btnW) / 2, btnY = y + h - 65;
+      const hover = panel.mouseX >= btnX && panel.mouseX <= btnX + btnW &&
+                    panel.mouseY >= btnY && panel.mouseY <= btnY + btnH;
+      ctx.fillStyle = hover ? '#1a4030' : '#0c1620';
+      ctx.fillRect(btnX, btnY, btnW, btnH);
+      ctx.strokeStyle = '#44ff44';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(btnX, btnY, btnW, btnH);
+      ctx.font = 'bold 18px monospace';
+      ctx.fillStyle = '#44ff44';
+      ctx.fillText('FLUSH', btnX + btnW / 2, btnY + 30);
+      if (panel.mouseJustClicked && hover) {
         g.done = true;
         completeCurrentTask();
       }
-      g.dragging = false;
     }
-
-    // Percentage
-    ctx.font = '12px monospace';
-    ctx.fillStyle = '#888';
-    ctx.fillText(Math.round(g.leverY * 100) + '%', trackX, trackY + trackH + 20);
   }
 };
