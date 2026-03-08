@@ -1291,14 +1291,80 @@ const LEVELS = {
     carve(126, 33); carve(126, 34);
 
     // ========================================
-    //  CAFETERIA OCTAGONAL CORNER CUTS
+    //  ROOM SHAPE CUTS (corner cuts, edges, silhouettes)
     // ========================================
-    // Top corners
+
+    // --- Cafeteria — octagonal corners ---
     wall(57,3); wall(58,3); wall(59,3); wall(57,4); wall(58,4); wall(57,5);
     wall(82,3); wall(83,3); wall(84,3); wall(83,4); wall(84,4); wall(84,5);
-    // Bottom corners
     wall(57,32); wall(57,33); wall(58,33); wall(57,34); wall(58,34); wall(59,34);
     wall(82,34); wall(83,34); wall(84,34); wall(84,33); wall(83,33); wall(84,32);
+
+    // --- Upper Engine — compact corner cuts ---
+    wall(4,4); wall(5,4); wall(4,5);
+    wall(22,4); wall(23,4); wall(23,5);
+    wall(4,16); wall(4,17); wall(5,17);
+    wall(23,16); wall(22,17); wall(23,17);
+
+    // --- Reactor — left-pointing pentagon ---
+    wall(1,28); wall(2,28); wall(3,28); wall(1,29); wall(2,29); wall(1,30);
+    wall(1,39); wall(1,40); wall(2,40); wall(1,41); wall(2,41); wall(3,41);
+    wall(7,28); wall(8,28); wall(8,29);
+    wall(8,40); wall(7,41); wall(8,41);
+
+    // --- Security — tight notched corners ---
+    wall(24,30); wall(25,30); wall(24,31);
+    wall(34,30); wall(35,30); wall(35,31);
+    wall(24,38); wall(24,39); wall(25,39);
+    wall(35,38); wall(34,39); wall(35,39);
+
+    // --- MedBay — angled lower-right corner ---
+    wall(38,18); wall(39,18); wall(38,19);
+    wall(48,18); wall(49,18); wall(49,19);
+    wall(38,26); wall(38,27); wall(39,27);
+    wall(47,27); wall(48,27); wall(49,27); wall(48,26); wall(49,26); wall(49,25);
+
+    // --- Lower Engine — mirrors Upper Engine ---
+    wall(4,52); wall(5,52); wall(4,53);
+    wall(22,52); wall(23,52); wall(23,53);
+    wall(4,64); wall(4,65); wall(5,65);
+    wall(23,64); wall(22,65); wall(23,65);
+
+    // --- Electrical — angled right side ---
+    wall(37,45); wall(38,45); wall(37,46);
+    wall(48,45); wall(49,45); wall(50,45); wall(49,46); wall(50,46); wall(50,47);
+    wall(37,61); wall(37,62); wall(38,62);
+    wall(50,60); wall(50,61); wall(49,61); wall(50,62); wall(49,62); wall(48,62);
+
+    // --- Admin — enclosed compact, larger cuts on right ---
+    wall(78,38); wall(79,38); wall(78,39);
+    wall(90,38); wall(91,38); wall(92,38); wall(91,39); wall(92,39); wall(92,40);
+    wall(78,49); wall(78,50); wall(79,50);
+    wall(92,48); wall(92,49); wall(91,49); wall(92,50); wall(91,50); wall(90,50);
+
+    // --- Storage — irregular large room ---
+    wall(58,53); wall(59,53); wall(60,53); wall(58,54); wall(59,54); wall(58,55);
+    wall(74,53); wall(75,53); wall(75,54);
+    wall(58,73); wall(58,74); wall(59,74);
+    wall(75,72); wall(75,73); wall(74,73); wall(75,74); wall(74,74); wall(73,74);
+
+    // --- Shields — angled right side ---
+    wall(99,54); wall(100,54); wall(99,55);
+    wall(110,54); wall(111,54); wall(112,54); wall(111,55); wall(112,55); wall(112,56);
+    wall(99,64); wall(99,65); wall(100,65);
+    wall(112,63); wall(112,64); wall(111,64); wall(112,65); wall(111,65); wall(110,65);
+
+    // --- Communications — small enclosed ---
+    wall(80,67); wall(81,67); wall(80,68);
+    wall(92,67); wall(93,67); wall(93,68);
+    wall(80,77); wall(80,78); wall(81,78);
+    wall(93,77); wall(92,78); wall(93,78);
+
+    // --- O2 — compact with notches ---
+    wall(86,25); wall(87,25); wall(86,26);
+    wall(99,25);
+    wall(86,34); wall(86,35); wall(87,35); wall(86,36); wall(87,36); wall(88,36);
+    wall(99,35); wall(98,36); wall(99,36);
 
     // ========================================
     //  CORRIDORS — all 5 tiles wide
