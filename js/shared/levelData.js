@@ -1233,7 +1233,7 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (9 total)
+    //  ROOMS (10 total)
     // ========================================
 
     // === CAFETERIA (top center — 28×32) ===
@@ -1253,6 +1253,9 @@ const LEVELS = {
 
     // === ELECTRICAL (center — 14×18) ===
     room(37, 45, 50, 62);
+
+    // === ADMIN (right of Cafe→Storage corridor — 15×13) ===
+    room(78, 36, 92, 48);
 
     // === STORAGE (bottom center — 18×22, tall rectangle) ===
     room(58, 53, 75, 74);
@@ -1307,6 +1310,9 @@ const LEVELS = {
 
     // --- Electrical corridor (5 wide, from room to Z-corridor) ---
     room(39, 62, 43, 67);     // Electrical → Z-corridor (x=39-43, 5 blocks)
+
+    // --- Admin corridor (5 tall, from Cafe→Storage corridor to Admin) ---
+    room(72, 40, 78, 44);     // Corridor → Admin (x=73-77, y=40-44)
 
     // ========================================
     //  BORDERS
