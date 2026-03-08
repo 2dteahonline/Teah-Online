@@ -2518,6 +2518,18 @@ function update() {
     queuePlayers = Math.max(0, queuePlayers - 1);
   }
 
+  // --- Vent lock: freeze player at vent center, skip all movement ---
+  if (ventBlocks) {
+    player.vx = 0; player.vy = 0;
+    player.knockVx = 0; player.knockVy = 0;
+    player.moving = false;
+    // Snap to current vent center every frame
+    if (typeof VentSystem !== 'undefined' && VentSystem.currentVentId) {
+      const _ve = VentSystem.getVentEntity(VentSystem.currentVentId);
+      if (_ve) { player.x = _ve.tx * TILE + TILE; player.y = _ve.ty * TILE + TILE; }
+    }
+  }
+
   // Normalize direction
   let mx = dx, my = dy;
 
