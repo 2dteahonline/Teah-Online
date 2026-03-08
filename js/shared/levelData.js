@@ -1329,8 +1329,8 @@ const LEVELS = {
     // --- Shields → right wing (4-wide, backwards-Z path) ---
     room(102, 34, 105, 54);   // Seg 1: Up 20 from Shields (slightly left of center)
     room(105, 34, 113, 37);   // Seg 2: Right 8
-    room(110, 26, 113, 37);   // Seg 3: Up 8
-    room(100, 26, 113, 29);   // Seg 4: Left 10
+    room(110, 22, 113, 37);   // Seg 3: Up 12
+    room(98, 22, 113, 25);    // Seg 4: Left 12
 
     // ========================================
     //  BORDERS
