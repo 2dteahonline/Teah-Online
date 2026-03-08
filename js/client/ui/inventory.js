@@ -2440,7 +2440,7 @@ function update() {
         const nearby = getNearestInteractable();
         if (nearby) { nearby.onInteract(); }
         else if (nearQueue) { joinQueue(); }
-        else { UI.open('inventory'); }
+        else if (!Scene.inSkeld) { UI.open('inventory'); }
       }
     }
     // Ultimate ability (F key — Shrine or Godspeed)
