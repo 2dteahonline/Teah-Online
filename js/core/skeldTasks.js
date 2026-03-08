@@ -912,7 +912,7 @@ TASK_HANDLERS.simple_math = {
 // 8 pairs = 16 cards in a 4x4 grid with shuffle confusion on mismatch.
 TASK_HANDLERS.match_symbol = {
   init(entity) {
-    const symbols = ['\u25C6', '\u2605', '\u2660', '\u2665', '\u25B2', '\u25CF', '\u2666', '\u2726'];
+    const symbols = ['\u2605', '\u2665', '\u25B2', '\u25CF', '\u2702', '\u266B', '\u2622', '\u2618'];
     const cards = [];
     for (const s of symbols) { cards.push(s); cards.push(s); }
     // Shuffle
@@ -1441,14 +1441,34 @@ TASK_HANDLERS.rotate_pipes = {
       return;
     }
 
+    // Count remaining
+    let remaining = 0;
+    for (let i = 0; i < 16; i++) if (g.grid[i].rotation !== 0) remaining++;
+
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#aaa';
-    ctx.fillText('Click to rotate each pipe segment', x + w / 2, y + 15);
+    ctx.fillText('Rotate all pipes to green (' + remaining + ' left)', x + w / 2, y + 15);
 
     const cellSize = 55, gap = 6;
     const gridW = 4 * cellSize + 3 * gap;
     const gx = x + (w - gridW) / 2;
     const gy = y + 35;
+
+    // Draw source arrow (left side)
+    const srcY = gy + 1.5 * (cellSize + gap);
+    ctx.fillStyle = '#0ff';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('IN\u25B6', gx - 6, srcY + 5);
+    ctx.textAlign = 'center';
+
+    // Draw drain arrow (right side)
+    const drnY = gy + 1.5 * (cellSize + gap);
+    ctx.fillStyle = '#ff8800';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('\u25B6OUT', gx + gridW + 6, drnY + 5);
+    ctx.textAlign = 'center';
 
     let allSolved = true;
 
@@ -1476,24 +1496,21 @@ TASK_HANDLERS.rotate_pipes = {
 
       const edgeRow = (row === 0 || row === 3);
       const edgeCol = (col === 0 || col === 3);
-      const interior = !edgeRow && !edgeCol; // row 1-2, col 1-2
+      const interior = !edgeRow && !edgeCol;
 
       ctx.strokeStyle = solved ? '#44ff44' : '#668';
       ctx.lineWidth = 6;
       ctx.beginPath();
       if (interior) {
-        // Cross (both row and col are interior)
         ctx.moveTo(-cellSize / 2 + 5, 0);
         ctx.lineTo(cellSize / 2 - 5, 0);
         ctx.moveTo(0, -cellSize / 2 + 5);
         ctx.lineTo(0, cellSize / 2 - 5);
       } else if (edgeRow && edgeCol) {
-        // Corner: L-bend
         ctx.moveTo(-cellSize / 2 + 5, 0);
         ctx.lineTo(0, 0);
         ctx.lineTo(0, -cellSize / 2 + 5);
       } else {
-        // Edge but not corner: straight
         ctx.moveTo(-cellSize / 2 + 5, 0);
         ctx.lineTo(cellSize / 2 - 5, 0);
       }
@@ -1525,7 +1542,7 @@ TASK_HANDLERS.calibrate_dial = {
       targetMin: -0.25,
       targetMax: 0.25,
       hits: 0,
-      needed: 5,
+      needed: 3,
       done: false,
       flash: 0,
       miss: 0,
@@ -1614,7 +1631,7 @@ TASK_HANDLERS.calibrate_dial = {
       }
     }
 
-    // Progress dots (5)
+    // Progress dots
     const dotY = dcy + R + 25;
     for (let i = 0; i < g.needed; i++) {
       ctx.fillStyle = i < g.hits ? '#44ff44' : '#333';
