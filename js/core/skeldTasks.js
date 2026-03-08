@@ -97,9 +97,10 @@ const SkeldTasks = {
 SkeldTasks.reset();
 
 // ===================== VENT SYSTEM =====================
-// Two separate vent networks (fully connected triangles):
-//   Network 1: Security ↔ MedBay ↔ Electrical
-//   Network 2: Admin ↔ Cafe Hallway ↔ Nav Hallway
+// Three separate vent networks (no cross-network travel):
+//   Network 1: Security ↔ MedBay ↔ Electrical (triangle)
+//   Network 2: Admin ↔ Cafe Hallway ↔ Nav Hallway (triangle)
+//   Network 3: Shields ↔ Navigation (back and forth)
 const VENT_NETWORK = {
   security:     ['medbay', 'electrical'],
   medbay:       ['security', 'electrical'],
@@ -107,6 +108,8 @@ const VENT_NETWORK = {
   admin:        ['cafe_hallway', 'nav_hallway'],
   cafe_hallway: ['admin', 'nav_hallway'],
   nav_hallway:  ['admin', 'cafe_hallway'],
+  shields:      ['navigation'],
+  navigation:   ['shields'],
 };
 
 const VentSystem = {
