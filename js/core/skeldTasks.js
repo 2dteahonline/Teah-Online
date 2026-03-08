@@ -156,6 +156,7 @@ function drawSkeldTaskList() {
       const ty = listY + i * lineH;
       const text = t.room + ': ' + t.label + (t.stepsText ? ' ' + t.stepsText : '');
       if (t.done) {
+        // Completed — green with strikethrough
         ctx.fillStyle = '#44cc44';
         ctx.fillText('\u2713 ' + text, px + padX, ty + 12);
         const tw = ctx.measureText('\u2713 ' + text).width;
@@ -166,8 +167,23 @@ function drawSkeldTaskList() {
         ctx.lineTo(px + padX + tw, ty + 8);
         ctx.stroke();
       } else {
+        // Pending — yellow text with highlight outline
+        const pulse = 0.6 + 0.2 * Math.sin(renderTime * 0.004 + i * 0.5);
+        // Highlight background
+        ctx.fillStyle = `rgba(238,221,85,${0.08 * pulse})`;
+        ctx.fillRect(px + 4, ty, pw - 8 - tabW, lineH);
+        // Yellow outline
+        ctx.strokeStyle = `rgba(238,221,85,${0.35 * pulse})`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 4, ty, pw - 8 - tabW, lineH);
+        // Arrow indicator
+        ctx.fillStyle = `rgba(238,221,85,${0.7 * pulse})`;
+        ctx.font = '10px monospace';
+        ctx.fillText('\u25B6', px + 6, ty + 12);
+        // Task text
+        ctx.font = '11px monospace';
         ctx.fillStyle = '#eedd55';
-        ctx.fillText('\u25CB ' + text, px + padX, ty + 12);
+        ctx.fillText(text, px + padX + 10, ty + 12);
       }
     }
 
