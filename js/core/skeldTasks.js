@@ -1073,10 +1073,11 @@ TASK_HANDLERS.slider_alignment = {
     const startY = y + 40;
     const spacing = 60;
 
-    // Apply drift each frame
+    // Apply drift each frame — only to sliders that aren't aligned and aren't being dragged
     for (let i = 0; i < g.sliders.length; i++) {
       const s = g.sliders[i];
-      if (g.dragging !== i) {
+      const aligned = Math.abs(s.value - s.target) < 0.02;
+      if (g.dragging !== i && !aligned) {
         s.value += s.drift;
         if (s.value <= 0) { s.value = 0; s.drift = Math.abs(s.drift); }
         if (s.value >= 1) { s.value = 1; s.drift = -Math.abs(s.drift); }
