@@ -97,18 +97,16 @@ const SkeldTasks = {
 SkeldTasks.reset();
 
 // ===================== VENT SYSTEM =====================
-// Linear chain: MedBay — Security — Electrical
-// Security is the hub (2 connections), ends have 1 each
+// Two separate vent networks (no cross-network travel):
+//   Network 1: MedBay — Security — Electrical
+//   Network 2: Shields — Admin — Hallway
 const VENT_NETWORK = {
   security:   ['medbay', 'electrical'],
   medbay:     ['security'],
   electrical: ['security'],
-};
-
-const VENT_NAMES = {
-  security: 'Security',
-  medbay: 'MedBay',
-  electrical: 'Electrical',
+  admin:      ['shields', 'hallway'],
+  shields:    ['admin'],
+  hallway:    ['admin'],
 };
 
 const VentSystem = {
