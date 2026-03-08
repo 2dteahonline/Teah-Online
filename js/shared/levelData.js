@@ -1344,8 +1344,11 @@ const LEVELS = {
     room(110, 26, 113, 37);   // Seg 3: Up 8
     room(98, 26, 113, 29);    // Seg 4: Left 12
 
-    // --- Navigation corridor (4-wide, right arm from seg 2) ---
-    room(113, 34, 117, 37);   // Seg 2 right → Navigation (x=113-117, y=34-37)
+    // --- Navigation corridor (4-wide, middle of seg 3) ---
+    room(113, 30, 117, 33);   // Seg 3 mid → Navigation (x=113-117, y=30-33)
+
+    // --- Weapons corridor (4-wide, from seg 4 area straight up to Weapons) ---
+    room(101, 17, 104, 25);   // x=101-104, y=17-25
 
     // ========================================
     //  BORDERS
