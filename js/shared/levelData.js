@@ -1207,30 +1207,35 @@ const LEVELS = {
   // 128×80 spaceship map — 14 rooms connected by long hallways.
   // Scaled up for spacious corridors matching the reference layout.
   skeld_01: (function() {
-    const W = 128, H = 80;
+    const W = 135, H = 80;
+    // XO = x-offset: all room/wall/carve coordinates are in "virtual" space.
+    // Actual grid position = x + XO.  Allows Reactor to use negative x values
+    // (e.g. room(-3,...) → actual grid x=1) without touching 200+ existing coords.
+    const XO = 4;
     const g = [];
     for (let y = 0; y < H; y++) { g[y] = []; for (let x = 0; x < W; x++) g[y][x] = 1; }
 
     function room(x1, y1, x2, y2) {
-      for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) {
+      for (let y = y1; y <= y2; y++) for (let x = x1+XO; x <= x2+XO; x++) {
         if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 0;
       }
     }
     function hCorridor(x1, x2, y) {
-      const lo = Math.min(x1,x2), hi = Math.max(x1,x2);
+      const lo = Math.min(x1+XO,x2+XO), hi = Math.max(x1+XO,x2+XO);
       for (let x = lo; x <= hi; x++) { if(y>0&&y<H-1) g[y][x]=0; if(y+1>0&&y+1<H-1) g[y+1][x]=0; }
     }
     function vCorridor(y1, y2, x) {
+      const ax = x+XO;
       const lo = Math.min(y1,y2), hi = Math.max(y1,y2);
-      for (let y = lo; y <= hi; y++) { if(x>0&&x<W-1) g[y][x]=0; if(x+1>0&&x+1<W-1) g[y][x+1]=0; }
+      for (let y = lo; y <= hi; y++) { if(ax>0&&ax<W-1) g[y][ax]=0; if(ax+1>0&&ax+1<W-1) g[y][ax+1]=0; }
     }
     function pillar(px, py) {
-      g[py][px]=1; g[py][px+1]=1; g[py+1][px]=1; g[py+1][px+1]=1;
+      const ax=px+XO; g[py][ax]=1; g[py][ax+1]=1; g[py+1][ax]=1; g[py+1][ax+1]=1;
     }
-    function wall(x, y) { if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 1; }
-    function carve(x, y) { if (x > 0 && x < W-1 && y > 0 && y < H-1) g[y][x] = 0; }
-    function hCorridor3(x1, x2, y) { hCorridor(x1, x2, y); const lo=Math.min(x1,x2),hi=Math.max(x1,x2); for(let x=lo;x<=hi;x++){if(y+2>0&&y+2<H-1)g[y+2][x]=0;} }
-    function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
+    function wall(x, y) { const ax=x+XO; if (ax > 0 && ax < W-1 && y > 0 && y < H-1) g[y][ax] = 1; }
+    function carve(x, y) { const ax=x+XO; if (ax > 0 && ax < W-1 && y > 0 && y < H-1) g[y][ax] = 0; }
+    function hCorridor3(x1, x2, y) { hCorridor(x1, x2, y); const lo=Math.min(x1+XO,x2+XO),hi=Math.max(x1+XO,x2+XO); for(let x=lo;x<=hi;x++){if(y+2>0&&y+2<H-1)g[y+2][x]=0;} }
+    function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const ax=x+XO; const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(ax+2>0&&ax+2<W-1)g[y][ax+2]=0;} }
 
     // ========================================
     //  ROOMS (14 total)
@@ -1242,8 +1247,8 @@ const LEVELS = {
     // === UPPER ENGINE (upper left — 23×17) ===
     room(1, 1, 23, 17);
 
-    // === REACTOR (far left — 8×24) ===
-    room(1, 23, 8, 46);
+    // === REACTOR (far left — 12×24) ===
+    room(-3, 23, 8, 46);
 
     // === SECURITY (right of cross — 13×14) ===
     room(24, 28, 36, 41);
@@ -1281,10 +1286,10 @@ const LEVELS = {
     // === O2 (right side, left of Shields spine — 14×14) ===
     room(86, 22, 99, 35);
 
-    // === NAVIGATION (far right — arrow shape, 10×21) ===
-    room(117, 24, 126, 44);
-    for (let x = 123; x <= 126; x++) {
-      const indent = (x - 122) * 2;
+    // === NAVIGATION (far right — arrow shape, 13×21) ===
+    room(117, 24, 129, 44);
+    for (let x = 126; x <= 129; x++) {
+      const indent = (x - 125) * 2;
       for (let y = 24; y < 24 + indent; y++) wall(x, y);
       for (let y = 45 - indent; y <= 44; y++) wall(x, y);
     }
@@ -1312,14 +1317,14 @@ const LEVELS = {
     wall(1,17); wall(2,17); wall(3,17); wall(4,17); wall(5,17);
 
     // --- Reactor — vertical hexagon: 4-step TL+BL, 3-step TR+BR ---
-    wall(1,23); wall(2,23); wall(3,23); wall(4,23);
-    wall(1,24); wall(2,24); wall(3,24);
-    wall(1,25); wall(2,25);
-    wall(1,26);
-    wall(1,43);
-    wall(1,44); wall(2,44);
-    wall(1,45); wall(2,45); wall(3,45);
-    wall(1,46); wall(2,46); wall(3,46); wall(4,46);
+    wall(-3,23); wall(-2,23); wall(-1,23); wall(0,23);
+    wall(-3,24); wall(-2,24); wall(-1,24);
+    wall(-3,25); wall(-2,25);
+    wall(-3,26);
+    wall(-3,43);
+    wall(-3,44); wall(-2,44);
+    wall(-3,45); wall(-2,45); wall(-1,45);
+    wall(-3,46); wall(-2,46); wall(-1,46); wall(0,46);
     wall(6,23); wall(7,23); wall(8,23);
     wall(7,24); wall(8,24);
     wall(8,25);
@@ -1481,10 +1486,10 @@ const LEVELS = {
       widthTiles: W,
       heightTiles: H,
       isSkeld: true,
-      spawns: { p1: { tx: 70, ty: 15 } },
+      spawns: { p1: { tx: 70 + XO, ty: 15 } },
       collisionAscii: ascii,
       entities: [
-        { type: 'skeld_exit', tx: 69, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' }
+        { type: 'skeld_exit', tx: 69 + XO, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' }
       ]
     };
   })()
