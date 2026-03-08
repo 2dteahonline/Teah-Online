@@ -1251,8 +1251,8 @@ const LEVELS = {
     // === MEDBAY (center-right — 12×10) ===
     room(38, 18, 49, 27);
 
-    // === ELECTRICAL (center — 14×14) ===
-    room(35, 53, 48, 66);
+    // === ELECTRICAL (center — 14×14, 2-tile gap from vertical corridor) ===
+    room(37, 53, 50, 66);
 
     // === STORAGE (bottom center — 18×22, tall rectangle) ===
     room(58, 53, 75, 74);
