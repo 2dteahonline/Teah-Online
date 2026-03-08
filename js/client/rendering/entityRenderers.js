@@ -2235,14 +2235,36 @@ const ENTITY_RENDERERS = {
       ctx.beginPath();
       ctx.arc(ex + cw - 8, ey + ch - 5, 2, 0, Math.PI * 2);
       ctx.fill();
-      // Cyan halo glow around console
-      ctx.shadowColor = 'rgba(0,220,240,0.35)';
-      ctx.shadowBlur = 8 + pulse * 4;
-      ctx.strokeStyle = `rgba(0,220,240,${0.15 + pulse * 0.1})`;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(ex + 1, ey + 1, cw - 2, ch - 2);
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
+      // Yellow outline for pending tasks / cyan done check
+      if (typeof SkeldTasks !== 'undefined') {
+        const done = SkeldTasks.isStepDone(e);
+        const canDo = !done && SkeldTasks.canDoStep(e);
+        if (canDo) {
+          // Bright yellow outline — this is the next task to do
+          const yp = 0.7 + 0.3 * Math.sin(t * 3);
+          ctx.shadowColor = `rgba(255,220,40,${0.6 * yp})`;
+          ctx.shadowBlur = 10 + yp * 6;
+          ctx.strokeStyle = `rgba(255,220,40,${0.8 * yp})`;
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(ex - 2, ey - 2, cw + 4, ch + 4);
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+        } else if (done) {
+          // Green checkmark overlay — task step completed
+          ctx.fillStyle = 'rgba(0,0,0,0.4)';
+          ctx.fillRect(ex, ey, cw, ch);
+          ctx.font = 'bold 16px monospace';
+          ctx.fillStyle = '#44dd44';
+          ctx.textAlign = 'center';
+          ctx.fillText('\u2713', ex + cw / 2, ey + ch / 2 + 6);
+          ctx.textAlign = 'left';
+        } else {
+          // Future step — subtle cyan glow only
+          ctx.strokeStyle = `rgba(0,220,240,${0.15 + pulse * 0.1})`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(ex + 1, ey + 1, cw - 2, ch - 2);
+        }
+      }
   },
 
   // ===================== SKELD SABOTAGE CONSOLE (red wall-mounted) =====================
