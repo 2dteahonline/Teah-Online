@@ -11,7 +11,7 @@ const MINIMAP_LABELS = {
   skeld_01: [
     { name: 'Cafeteria',    x: 57, y: 1,  w: 28, h: 34 },
     { name: 'Upper Engine', x: 1,  y: 1,  w: 23, h: 17 },
-    { name: 'Reactor',      x: 1,  y: 23, w: 8,  h: 24 },
+    { name: 'Reactor',      x: 1,  y: 23, w: 12, h: 24 },
     { name: 'MedBay',       x: 38, y: 18, w: 16, h: 15 },
     { name: 'Security',     x: 24, y: 28, w: 13, h: 14 },
     { name: 'Lower Engine', x: 1,  y: 52, w: 23, h: 17 },
@@ -22,7 +22,7 @@ const MINIMAP_LABELS = {
     { name: 'Comms',        x: 80, y: 67, w: 18, h: 12 },
     { name: 'Weapons',      x: 95, y: 1,  w: 21, h: 17 },
     { name: 'O2',           x: 86, y: 22, w: 14, h: 14 },
-    { name: 'Navigation',   x: 117, y: 24, w: 10, h: 21 },
+    { name: 'Navigation',   x: 114, y: 24, w: 13, h: 21 },
   ],
 };
 

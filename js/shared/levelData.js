@@ -1242,8 +1242,8 @@ const LEVELS = {
     // === UPPER ENGINE (upper left — 23×17) ===
     room(1, 1, 23, 17);
 
-    // === REACTOR (far left — 8×24) ===
-    room(1, 23, 8, 46);
+    // === REACTOR (far left — 12×24) ===
+    room(1, 23, 12, 46);
 
     // === SECURITY (right of cross — 13×14) ===
     room(24, 28, 36, 41);
@@ -1281,8 +1281,8 @@ const LEVELS = {
     // === O2 (right side, left of Shields spine — 14×14) ===
     room(86, 22, 99, 35);
 
-    // === NAVIGATION (far right — arrow shape, 10×21) ===
-    room(117, 24, 126, 44);
+    // === NAVIGATION (far right — arrow shape, 13×21) ===
+    room(114, 24, 126, 44);
     for (let x = 123; x <= 126; x++) {
       const indent = (x - 122) * 2;
       for (let y = 24; y < 24 + indent; y++) wall(x, y);
@@ -1320,12 +1320,12 @@ const LEVELS = {
     wall(1,44); wall(2,44);
     wall(1,45); wall(2,45); wall(3,45);
     wall(1,46); wall(2,46); wall(3,46); wall(4,46);
-    wall(6,23); wall(7,23); wall(8,23);
-    wall(7,24); wall(8,24);
-    wall(8,25);
-    wall(8,44);
-    wall(7,45); wall(8,45);
-    wall(6,46); wall(7,46); wall(8,46);
+    wall(10,23); wall(11,23); wall(12,23);
+    wall(11,24); wall(12,24);
+    wall(12,25);
+    wall(12,44);
+    wall(11,45); wall(12,45);
+    wall(10,46); wall(11,46); wall(12,46);
 
     // --- Security — small: 2-step cuts on TR + BR only ---
     wall(35,28); wall(36,28);
@@ -1333,14 +1333,12 @@ const LEVELS = {
     wall(36,40);
     wall(35,41); wall(36,41);
 
-    // --- MedBay — big 5-step diagonal on BR, small 2-step on TL ---
+    // --- MedBay — 3-step diagonal on BR, 2-step on TL ---
     wall(38,18); wall(39,18);
     wall(38,19);
-    wall(53,28);
-    wall(52,29); wall(53,29);
-    wall(51,30); wall(52,30); wall(53,30);
-    wall(50,31); wall(51,31); wall(52,31); wall(53,31);
-    wall(49,32); wall(50,32); wall(51,32); wall(52,32); wall(53,32);
+    wall(53,30);
+    wall(52,31); wall(53,31);
+    wall(51,32); wall(52,32); wall(53,32);
 
     // --- Lower Engine — pentagon: big 5-step diagonal on TL + BL (mirrors UE) ---
     wall(1,52); wall(2,52); wall(3,52); wall(4,52); wall(5,52);
