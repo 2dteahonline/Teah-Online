@@ -101,6 +101,16 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Vent arrow click detection (Among Us-style directional arrows)
+  if (typeof VentSystem !== 'undefined' && VentSystem.active && window._ventArrowButtons) {
+    for (const btn of window._ventArrowButtons) {
+      if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+        VentSystem.cycleVent(btn.targetId);
+        return;
+      }
+    }
+  }
+
   // Hotbar slot click detection
   const slotW = 64, slotH = 64, gap = 6;
   const slotCount = 5;

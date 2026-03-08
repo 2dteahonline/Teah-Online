@@ -97,10 +97,12 @@ const SkeldTasks = {
 SkeldTasks.reset();
 
 // ===================== VENT SYSTEM =====================
+// Linear chain: MedBay — Security — Electrical
+// Security is the hub (2 connections), ends have 1 each
 const VENT_NETWORK = {
-  security:   { prev: 'electrical', next: 'medbay' },
-  medbay:     { prev: 'security',   next: 'electrical' },
-  electrical: { prev: 'medbay',     next: 'security' },
+  security:   ['medbay', 'electrical'],
+  medbay:     ['security'],
+  electrical: ['security'],
 };
 
 const VENT_NAMES = {
@@ -109,15 +111,13 @@ const VENT_NAMES = {
   electrical: 'Electrical',
 };
 
-const VENT_ORDER = ['security', 'medbay', 'electrical'];
-
 const VentSystem = {
   active: false,
   currentVentId: null,
   animTimer: 0,
   animType: null, // 'enter' | 'exit'
   ANIM_DURATION: 20,
-  _cycleHeld: false, // debounce for arrow keys
+  // Arrow buttons stored in window._ventArrowButtons for click detection
 
   getVentEntity(ventId) {
     if (typeof levelEntities === 'undefined') return null;
@@ -162,13 +162,13 @@ const VentSystem = {
     this.animTimer = this.ANIM_DURATION;
   },
 
-  cycleVent(direction) {
+  cycleVent(targetId) {
     if (!this.active || this.animTimer > 0) return;
-    const net = VENT_NETWORK[this.currentVentId];
-    if (!net) return;
-    this.currentVentId = direction > 0 ? net.next : net.prev;
+    const connections = VENT_NETWORK[this.currentVentId];
+    if (!connections || !connections.includes(targetId)) return;
+    this.currentVentId = targetId;
     // Move player to new vent so camera follows
-    const e = this.getVentEntity(this.currentVentId);
+    const e = this.getVentEntity(targetId);
     if (e) {
       player.x = e.tx * TILE + TILE;
       player.y = e.ty * TILE + TILE;
@@ -195,55 +195,107 @@ const VentSystem = {
     this.currentVentId = null;
     this.animTimer = 0;
     this.animType = null;
-    this._cycleHeld = false;
+    window._ventArrowButtons = null;
   },
 };
 
 function drawVentHUD() {
   if (!VentSystem.active) return;
 
-  const idx = VENT_ORDER.indexOf(VentSystem.currentVentId);
-  const pw = 300, ph = 44;
-  const px = (typeof BASE_W !== 'undefined' ? BASE_W : 960) / 2 - pw / 2;
-  const py = (typeof BASE_H !== 'undefined' ? BASE_H : 540) - 110;
+  const currentId = VentSystem.currentVentId;
+  const connections = VENT_NETWORK[currentId];
+  if (!connections) return;
 
-  // Background
-  ctx.fillStyle = 'rgba(10,14,20,0.9)';
-  ctx.fillRect(px, py, pw, ph);
-  ctx.strokeStyle = 'rgba(40,255,80,0.5)';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(px, py, pw, ph);
+  const currentEntity = VentSystem.getVentEntity(currentId);
+  if (!currentEntity) return;
 
+  // Current vent screen position (account for camera + world zoom)
+  const wz = typeof WORLD_ZOOM !== 'undefined' ? WORLD_ZOOM : 1;
+  const ventWorldX = currentEntity.tx * TILE + TILE;
+  const ventWorldY = currentEntity.ty * TILE + TILE;
+  const ventSX = (ventWorldX - camera.x) * wz;
+  const ventSY = (ventWorldY - camera.y) * wz;
+
+  window._ventArrowButtons = [];
+
+  // Draw directional arrows pointing toward each connected vent
+  const t = Date.now() / 1000;
+  const pulse = 0.7 + 0.3 * Math.sin(t * 3);
+
+  connections.forEach(targetId => {
+    const targetEntity = VentSystem.getVentEntity(targetId);
+    if (!targetEntity) return;
+
+    const targetWorldX = targetEntity.tx * TILE + TILE;
+    const targetWorldY = targetEntity.ty * TILE + TILE;
+
+    // Direction from current to target vent
+    const dx = targetWorldX - ventWorldX;
+    const dy = targetWorldY - ventWorldY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const nx = dx / dist;
+    const ny = dy / dist;
+
+    // Arrow button position (offset from vent center)
+    const arrowDist = 70 * wz;
+    const ax = ventSX + nx * arrowDist;
+    const ay = ventSY + ny * arrowDist;
+    const btnR = 24;
+
+    // Outer glow
+    ctx.fillStyle = `rgba(40,255,80,${0.08 * pulse})`;
+    ctx.beginPath();
+    ctx.arc(ax, ay, btnR + 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Circle background
+    ctx.fillStyle = 'rgba(10,14,20,0.88)';
+    ctx.beginPath();
+    ctx.arc(ax, ay, btnR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Circle border
+    ctx.strokeStyle = `rgba(40,255,80,${0.5 * pulse})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Arrow triangle pointing toward target
+    ctx.save();
+    ctx.translate(ax, ay);
+    ctx.rotate(Math.atan2(ny, nx));
+    ctx.fillStyle = `rgba(64,255,128,${pulse})`;
+    ctx.beginPath();
+    ctx.moveTo(13, 0);
+    ctx.lineTo(-7, -9);
+    ctx.lineTo(-7, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Room name label below arrow
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = '#40ff80';
+    // Place label offset in arrow direction
+    const labelDist = btnR + 16;
+    ctx.fillText(VENT_NAMES[targetId], ax + nx * labelDist, ay + ny * labelDist + 4);
+
+    // Store for click detection (screen-space coords)
+    window._ventArrowButtons.push({
+      x: ax - btnR,
+      y: ay - btnR,
+      w: btnR * 2,
+      h: btnR * 2,
+      targetId: targetId,
+    });
+  });
+
+  // "Press E to exit" text below vent
   ctx.textAlign = 'center';
-
-  // Left arrow
-  ctx.font = 'bold 16px monospace';
+  ctx.font = '12px monospace';
   ctx.fillStyle = 'rgba(200,200,200,0.6)';
-  ctx.fillText('\u25C0', px + 18, py + 20);
-
-  // Right arrow
-  ctx.fillText('\u25B6', px + pw - 18, py + 20);
-
-  // Vent names
-  const nameSpacing = 80;
-  const nameStartX = px + pw / 2 - nameSpacing;
-  for (let i = 0; i < VENT_ORDER.length; i++) {
-    const name = VENT_NAMES[VENT_ORDER[i]];
-    const nx = nameStartX + i * nameSpacing;
-    if (i === idx) {
-      ctx.font = 'bold 14px monospace';
-      ctx.fillStyle = '#40ff80';
-    } else {
-      ctx.font = '12px monospace';
-      ctx.fillStyle = 'rgba(180,180,180,0.4)';
-    }
-    ctx.fillText(name, nx, py + 20);
-  }
-
-  // Instructions
-  ctx.font = '10px monospace';
-  ctx.fillStyle = 'rgba(180,180,180,0.5)';
-  ctx.fillText('\u2190\u2192 Switch     [E] Exit', px + pw / 2, py + 38);
+  const keyName = typeof getKeyDisplayName === 'function' ? getKeyDisplayName(keybinds.interact) : 'E';
+  ctx.fillText('[' + keyName + '] Exit Vent', ventSX, ventSY + 55 * wz);
   ctx.textAlign = 'left';
 }
 

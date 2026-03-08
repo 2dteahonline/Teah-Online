@@ -2388,19 +2388,10 @@ function update() {
   const fishingActive = typeof fishingState !== 'undefined' && fishingState.active;
   const ventBlocks = typeof VentSystem !== 'undefined' && (VentSystem.active || VentSystem.animTimer > 0);
 
-  // --- Vent arrow-key cycling (Left/Right) ---
-  if (ventBlocks && typeof VentSystem !== 'undefined' && VentSystem.active) {
-    const leftHeld = keysDown[keybinds.moveLeft] || (typeof keybinds.shootLeft !== 'undefined' && keysDown[keybinds.shootLeft]);
-    const rightHeld = keysDown[keybinds.moveRight] || (typeof keybinds.shootRight !== 'undefined' && keysDown[keybinds.shootRight]);
-    if (leftHeld || rightHeld) {
-      if (!VentSystem._cycleHeld) {
-        VentSystem._cycleHeld = true;
-        if (leftHeld) VentSystem.cycleVent(-1);
-        if (rightHeld) VentSystem.cycleVent(1);
-      }
-    } else {
-      VentSystem._cycleHeld = false;
-    }
+  // --- Vent E-key exit (must be checked BEFORE ventBlocks guard) ---
+  if (!isTyping && InputIntent.interactPressed && typeof VentSystem !== 'undefined' && VentSystem.active) {
+    VentSystem.exit();
+    InputIntent.interactPressed = false; // consume so it doesn't fire below
   }
 
   if (!_authorityDriven) {
@@ -2444,8 +2435,7 @@ function update() {
     }
     // Interact (E key): stairs, shop close, interactables, queue, inventory
     if (InputIntent.interactPressed) {
-      if (typeof VentSystem !== 'undefined' && VentSystem.active) { VentSystem.exit(); }
-      else if (nearStairs) {
+      if (nearStairs) {
         if (dungeonComplete) { startTransition(dungeonReturnLevel || 'cave_01', 20, 20); }
         else { goToNextFloor(); }
       }
