@@ -1233,7 +1233,7 @@ const LEVELS = {
     function vCorridor3(y1, y2, x) { vCorridor(y1, y2, x); const lo=Math.min(y1,y2),hi=Math.max(y1,y2); for(let y=lo;y<=hi;y++){if(x+2>0&&x+2<W-1)g[y][x+2]=0;} }
 
     // ========================================
-    //  ROOMS (8 total)
+    //  ROOMS (9 total)
     // ========================================
 
     // === CAFETERIA (top center — 28×32) ===
@@ -1250,6 +1250,9 @@ const LEVELS = {
 
     // === MEDBAY (center-right — 12×10) ===
     room(38, 18, 49, 27);
+
+    // === ELECTRICAL (center — 14×14) ===
+    room(35, 53, 48, 66);
 
     // === STORAGE (bottom center — 18×22, tall rectangle) ===
     room(58, 53, 75, 74);
@@ -1301,6 +1304,9 @@ const LEVELS = {
     room(30, 67, 58, 71);     // Bottom: Storage left → x=30 (y=67-71)
     room(30, 58, 34, 67);     // Vertical: straight up (x=30-34, aligned with bottom)
     room(23, 58, 30, 62);     // Top: left into LE (y=58-62)
+
+    // --- Electrical entrance (6 wide, connects to Z-corridor) ---
+    room(39, 66, 44, 67);     // Electrical bottom → Z-corridor (x=39-44)
 
     // ========================================
     //  BORDERS
