@@ -111,6 +111,7 @@ const LEAVE_HANDLERS = {
   },
   skeld: {
     cleanup() {
+      if (typeof closeTaskPanel === 'function') closeTaskPanel();
       if (typeof SkeldTasks !== 'undefined') SkeldTasks.reset();
       if (typeof _taskListExpanded !== 'undefined') _taskListExpanded = true;
     },

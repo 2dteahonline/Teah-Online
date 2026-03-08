@@ -104,6 +104,8 @@ const _taskListTab = {
   // Tab button geometry (right edge of panel or standalone when collapsed)
   tabW: 28,
   tabH: 60,
+  x: 280, // default = right edge of expanded panel (pw=280, px=0)
+  y: 56,  // default = py
 };
 
 function drawSkeldTaskList() {
@@ -222,6 +224,8 @@ function drawSkeldTaskList() {
 // Click handler for the "Tasks" tab
 document.addEventListener('click', (ev) => {
   if (!Scene.inSkeld) return;
+  if (UI.isOpen('skeldTask') || UI.anyOpen()) return; // don't toggle while panels are open
+  if (ev.target && ev.target.tagName !== 'CANVAS') return;
   const canvas = document.querySelector('canvas');
   if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
@@ -293,7 +297,7 @@ function completeCurrentTask() {
 
 // Register with panel manager
 UI.register('skeldTask', {
-  onClose() { _taskPanel.active = false; _taskPanel.game = null; },
+  onClose() { _taskPanel.active = false; _taskPanel.game = null; _taskPanel.entity = null; },
 });
 
 // ---- Mouse tracking for task panel ----
@@ -309,6 +313,7 @@ document.addEventListener('mousemove', (ev) => {
 });
 document.addEventListener('mousedown', (ev) => {
   if (!_taskPanel.active) return;
+  if (ev.target && ev.target.tagName !== 'CANVAS') return;
   _taskPanel.mouseDown = true;
   _taskPanel.mouseJustClicked = true;
 });
@@ -751,7 +756,9 @@ TASK_HANDLERS.simple_math = {
       { label: '-', w: btnW, action() { if (g.input === '') g.input = '-'; } },
       { label: 'DEL', w: btnW, action() { g.input = g.input.slice(0, -1); } },
       { label: 'ENTER', w: btnW * 2 + btnGap, action() {
+          if (g.input === '' || g.input === '-') return;
           const val = parseInt(g.input);
+          if (isNaN(val)) return;
           if (val === prob.answer) {
             g.current++;
             g.input = '';
@@ -1376,15 +1383,16 @@ TASK_HANDLERS.calibrate_dial = {
     if (g.flash > 0) g.flash--;
     if (g.miss > 0) g.miss--;
 
+    // Recalculate target zone based on current hits (prevents permanent shrink on miss)
+    const baseTMin = -0.3, baseTMax = 0.3, shrinkPerHit = 0.1;
+    g.targetMin = baseTMin + (g.hits * shrinkPerHit) / 2;
+    g.targetMax = baseTMax - (g.hits * shrinkPerHit) / 2;
+
     // Click anywhere to "lock"
     if (panel.mouseJustClicked) {
       if (g.angle >= g.targetMin && g.angle <= g.targetMax) {
         g.hits++;
         g.flash = 15;
-        // Shrink target zone for next hit
-        const shrink = 0.1;
-        g.targetMin += shrink / 2;
-        g.targetMax -= shrink / 2;
         if (g.hits >= g.needed) {
           g.done = true;
           completeCurrentTask();
@@ -1422,11 +1430,29 @@ TASK_HANDLERS.circuit_paths = {
       // Move right or up/down
       if (Math.random() < 0.6 && cx < 5) cx++;
       else cy = Math.max(0, Math.min(3, cy + (Math.random() < 0.5 ? 1 : -1)));
-      // Avoid duplicates
-      let tries = 0;
-      while (used.has(cx + ',' + cy) && tries < 10) {
-        cx = Math.min(5, cx + 1);
-        tries++;
+      // Avoid duplicates — try neighbors, not just incrementing cx
+      if (used.has(cx + ',' + cy)) {
+        let placed = false;
+        // Try all adjacent cells in random order
+        const dirs = [[1,0],[0,1],[0,-1],[-1,0],[1,1],[1,-1]];
+        for (let d = dirs.length - 1; d > 0; d--) {
+          const j = Math.floor(Math.random() * (d + 1));
+          [dirs[d], dirs[j]] = [dirs[j], dirs[d]];
+        }
+        for (const [dx, dy] of dirs) {
+          const nx = cx + dx, ny = cy + dy;
+          if (nx >= 0 && nx <= 5 && ny >= 0 && ny <= 3 && !used.has(nx + ',' + ny)) {
+            cx = nx; cy = ny; placed = true; break;
+          }
+        }
+        // Fallback: scan entire grid for any free cell
+        if (!placed) {
+          for (let gx = 0; gx <= 5 && !placed; gx++) {
+            for (let gy = 0; gy <= 3 && !placed; gy++) {
+              if (!used.has(gx + ',' + gy)) { cx = gx; cy = gy; placed = true; }
+            }
+          }
+        }
       }
     }
     return {
@@ -1779,10 +1805,12 @@ TASK_HANDLERS.package_assembly = {
     ctx.fillText('Available:', itemX, itemY - 5);
     ctx.textAlign = 'center';
 
+    let visIndex = 0;
     for (let i = 0; i < g.available.length; i++) {
       const item = g.available[i];
       if (g.placed.includes(item)) continue; // Already placed
-      const iy = itemY + i * 50;
+      const iy = itemY + visIndex * 50;
+      visIndex++;
       const iw = 140, ih = 40;
       const hover = panel.mouseX >= itemX && panel.mouseX <= itemX + iw &&
                     panel.mouseY >= iy && panel.mouseY <= iy + ih;
