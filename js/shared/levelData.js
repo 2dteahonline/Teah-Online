@@ -1327,10 +1327,10 @@ const LEVELS = {
     room(85, 62, 89, 67);     // Hallway → Comms (x=85-89, 5 blocks down)
 
     // --- Shields → right wing (4-wide, backwards-Z path) ---
-    room(104, 34, 107, 54);   // Seg 1: Up 20 from Shields top-center
-    room(107, 34, 112, 37);   // Seg 2: Right 5
-    room(109, 29, 112, 37);   // Seg 3: Up 5
-    room(101, 29, 112, 32);   // Seg 4: Left 8
+    room(102, 34, 105, 54);   // Seg 1: Up 20 from Shields (slightly left of center)
+    room(105, 34, 113, 37);   // Seg 2: Right 8
+    room(110, 26, 113, 37);   // Seg 3: Up 8
+    room(100, 26, 113, 29);   // Seg 4: Left 10
 
     // ========================================
     //  BORDERS
