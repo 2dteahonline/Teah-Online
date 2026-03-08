@@ -245,6 +245,7 @@ const SETTINGS_DATA = {
     { label: "Death Animation", key: "deathAnim", type: "toggle" },
     { label: "Hotbar Position", key: "hotbarPosition", type: "select", options: ["right", "bottom"] },
     { label: "Sprite Mode", key: "spriteMode", type: "toggle" },
+    { label: "Debug Overlay", key: "showDebugOverlay", type: "toggle" },
   ],
   Sounds: [
     { label: "Master Volume", key: "masterVolume", type: "toggle" },

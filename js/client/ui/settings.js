@@ -69,6 +69,7 @@ const gameSettings = {
   deathAnim: true,
   hotbarPosition: "right", // "right" or "bottom"
   spriteMode: false,
+  showDebugOverlay: false,
   // Sounds
   masterVolume: true,
   sfx: true,

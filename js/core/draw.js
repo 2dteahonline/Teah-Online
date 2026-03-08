@@ -2056,7 +2056,7 @@ function draw() {
   }
 
   // === DEBUG OVERLAY — zoom/scale tuning info (top-left, below debug flags) ===
-  {
+  if (gameSettings.showDebugOverlay) {
     const tilesX = Math.round(VIEW_W / TILE * 10) / 10;
     const tilesY = Math.round(VIEW_H / TILE * 10) / 10;
     const charH = Math.round(CHAR_SCALE * 68);  // 68 = base body height approx
