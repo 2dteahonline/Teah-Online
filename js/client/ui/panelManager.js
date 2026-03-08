@@ -492,26 +492,8 @@ window.addEventListener("keydown", e => {
           enterLevel('warehouse_01', 20, 20);
           chatMessages.push({ name: "SYSTEM", text: "Teleported to dungeon (Floor 1)", time: Date.now() });
         } else if (cmdLower === "/leave") {
-          if (Scene.inDungeon) {
-            // Immediately clear all combat so nothing damages player during fade
-            mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
-            deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
-            if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
-            if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
-            if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
-            gold = 0;
-            startTransition(dungeonReturnLevel || 'cave_01', 20, 20);
-            chatMessages.push({ name: "SYSTEM", text: "Leaving dungeon...", time: Date.now() });
-          } else if (Scene.inHideSeek && typeof HideSeekSystem !== 'undefined') {
-            HideSeekSystem.endMatch();
-            chatMessages.push({ name: "SYSTEM", text: "Left Hide & Seek.", time: Date.now() });
-          } else if (Scene.inSkeld) {
-            if (typeof SkeldTasks !== 'undefined') SkeldTasks.reset();
-            if (typeof _taskListExpanded !== 'undefined') _taskListExpanded = true;
-            startTransition('lobby_01', 20, 20);
-            chatMessages.push({ name: "SYSTEM", text: "Leaving The Skeld...", time: Date.now() });
-          } else {
-            chatMessages.push({ name: "SYSTEM", text: "You're not in a dungeon", time: Date.now() });
+          if (!handleLeave()) {
+            chatMessages.push({ name: "SYSTEM", text: "Nothing to leave.", time: Date.now() });
           }
         } else if (cmdLower === "/skip") {
           // Debug: skip current hide & seek phase

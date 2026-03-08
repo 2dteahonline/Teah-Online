@@ -85,6 +85,49 @@ const PORTAL_SCENES = {
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
 const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld']);
 
+// ---- /LEAVE SYSTEM ----
+// Registry for enclosed scenes that require /leave to exit (no walkable door).
+// Each entry: scene name → { cleanup(), returnLevel, message }
+// cleanup() is called before transition. returnLevel can be a string or function.
+const LEAVE_HANDLERS = {
+  dungeon: {
+    cleanup() {
+      mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
+      deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
+      if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+      if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+      if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
+      gold = 0;
+    },
+    get returnLevel() { return dungeonReturnLevel || 'cave_01'; },
+    message: 'Leaving dungeon...',
+  },
+  hideseek: {
+    cleanup() {
+      if (typeof HideSeekSystem !== 'undefined') HideSeekSystem.endMatch();
+    },
+    returnLevel: null, // endMatch handles its own transition
+    message: 'Left Hide & Seek.',
+  },
+  skeld: {
+    cleanup() {
+      if (typeof SkeldTasks !== 'undefined') SkeldTasks.reset();
+      if (typeof _taskListExpanded !== 'undefined') _taskListExpanded = true;
+    },
+    returnLevel: 'lobby_01',
+    message: 'Leaving The Skeld...',
+  },
+};
+
+function handleLeave() {
+  const handler = LEAVE_HANDLERS[Scene.current];
+  if (!handler) return false;
+  if (handler.cleanup) handler.cleanup();
+  if (handler.returnLevel) startTransition(handler.returnLevel, 20, 20);
+  chatMessages.push({ name: 'SYSTEM', text: handler.message, time: Date.now() });
+  return true;
+}
+
 // ---- ZONE TRANSITIONS ----
 let transitioning = false;
 let transitionAlpha = 0;
