@@ -2530,6 +2530,9 @@ function update() {
     }
   }
 
+  // Skip ALL movement, collision, knockback, nudge when in vent
+  if (!ventBlocks) {
+
   // Normalize direction
   let mx = dx, my = dy;
 
@@ -2627,6 +2630,8 @@ function update() {
       }
     }
   }
+
+  } // end !ventBlocks
 
   // Face movement direction instantly
   if (dx !== 0 || dy !== 0) {
