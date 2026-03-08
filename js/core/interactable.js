@@ -547,3 +547,30 @@ window._resetShopPrices = () => {
   shopState.buffsBought.fill(0);
   lifestealPerKill = 25;
 };
+
+// ===================== SKELD TASK / SABOTAGE INTERACTABLES =====================
+// Register an interactable for every skeld_task and skeld_sabotage entity.
+// Uses canInteract() guard so prompts only show while inside the Skeld.
+(function _registerSkeldInteractables() {
+  const skeldLevel = typeof LEVELS !== 'undefined' && LEVELS.skeld_01;
+  if (!skeldLevel || !skeldLevel.entities) return;
+  const skeldEntities = skeldLevel.entities.filter(
+    e => e.type === 'skeld_task' || e.type === 'skeld_sabotage'
+  );
+  skeldEntities.forEach((e, idx) => {
+    const eid = (e.taskId || e.sabotageId) + (e.taskStep ? '_step' + e.taskStep : '') + '_' + e.room;
+    registerInteractable({
+      id: 'skeld_' + eid,
+      get x() { return e.tx * TILE + TILE; },   // center of 2-wide entity
+      get y() { return e.ty * TILE + TILE / 2; }, // center of 1-tall entity
+      range: 100,
+      get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] ' + e.label; },
+      type: e.type,
+      canInteract() { return Scene.inSkeld; },
+      onInteract() {
+        console.log('Skeld ' + e.type + ':', e.label, e.taskId || e.sabotageId, e.room, e.taskStep ? 'step ' + e.taskStep : '');
+      },
+    });
+  });
+  console.log('[Skeld] Registered', skeldEntities.length, 'task/sabotage interactables');
+})();

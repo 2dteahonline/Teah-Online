@@ -1489,7 +1489,44 @@ const LEVELS = {
       spawns: { p1: { tx: 70 + XO, ty: 15 } },
       collisionAscii: ascii,
       entities: [
-        { type: 'skeld_exit', tx: 69 + XO, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' }
+        { type: 'skeld_exit', tx: 69 + XO, ty: 3, w: 4, h: 2, solid: false, target: 'lobby_01' },
+
+        // ===== COMMON TASKS =====
+        { type: 'skeld_task', tx: 72 + XO, ty: 2, w: 2, h: 1, solid: true, label: 'Tap Sequence', taskId: 'tap_sequence', room: 'cafeteria' },
+        { type: 'skeld_task', tx: 92 + XO, ty: 45, w: 2, h: 1, solid: true, label: 'Code Entry', taskId: 'code_entry', room: 'admin' },
+        { type: 'skeld_task', tx: 21 + XO, ty: 66, w: 2, h: 1, solid: true, label: 'Simple Math', taskId: 'simple_math', room: 'lower_engine' },
+        { type: 'skeld_task', tx: 96 + XO, ty: 8, w: 2, h: 1, solid: true, label: 'Match Symbol', taskId: 'match_symbol', room: 'weapons' },
+
+        // ===== SHORT TASKS =====
+        { type: 'skeld_task', tx: -2 + XO, ty: 30, w: 2, h: 1, solid: true, label: 'Slider Alignment', taskId: 'slider_alignment', room: 'reactor' },
+        { type: 'skeld_task', tx: 34 + XO, ty: 34, w: 2, h: 1, solid: true, label: 'Security Auth', taskId: 'security_auth', room: 'security' },
+        { type: 'skeld_task', tx: 10 + XO, ty: 2, w: 2, h: 1, solid: true, label: 'Hold to Charge', taskId: 'hold_to_charge', room: 'upper_engine' },
+        { type: 'skeld_task', tx: 89 + XO, ty: 27, w: 2, h: 1, solid: true, label: 'Rotate Pipes', taskId: 'rotate_pipes', room: 'o2' },
+        { type: 'skeld_task', tx: 113 + XO, ty: 62, w: 2, h: 1, solid: true, label: 'Calibrate Dial', taskId: 'calibrate_dial', room: 'shields' },
+
+        // ===== LONG TASKS =====
+        // Circuit Paths (3-step)
+        { type: 'skeld_task', tx: 38 + XO, ty: 48, w: 2, h: 1, solid: true, label: 'Circuit Paths', taskId: 'circuit_paths', room: 'electrical', taskStep: 1 },
+        { type: 'skeld_task', tx: 84 + XO, ty: 52, w: 2, h: 1, solid: true, label: 'Circuit Paths', taskId: 'circuit_paths', room: 'admin', taskStep: 2 },
+        { type: 'skeld_task', tx: 26 + XO, ty: 29, w: 2, h: 1, solid: true, label: 'Circuit Paths', taskId: 'circuit_paths', room: 'security', taskStep: 3 },
+        // Sample Analyzer (single)
+        { type: 'skeld_task', tx: 39 + XO, ty: 25, w: 2, h: 1, solid: true, label: 'Sample Analyzer', taskId: 'sample_analyzer', room: 'medbay' },
+        // Path Trace (2-step)
+        { type: 'skeld_task', tx: 83 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'Path Trace', taskId: 'path_trace', room: 'admin', taskStep: 1 },
+        { type: 'skeld_task', tx: 119 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'Path Trace', taskId: 'path_trace', room: 'navigation', taskStep: 2 },
+        // Package Assembly (2-step)
+        { type: 'skeld_task', tx: 59 + XO, ty: 62, w: 2, h: 1, solid: true, label: 'Package Assembly', taskId: 'package_assembly', room: 'storage', taskStep: 1 },
+        { type: 'skeld_task', tx: 93 + XO, ty: 75, w: 2, h: 1, solid: true, label: 'Package Assembly', taskId: 'package_assembly', room: 'comms', taskStep: 2 },
+        // Empty Trash (2-step)
+        { type: 'skeld_task', tx: 83 + XO, ty: 73, w: 2, h: 1, solid: true, label: 'Empty Trash', taskId: 'empty_trash', room: 'comms', taskStep: 1 },
+        { type: 'skeld_task', tx: 71 + XO, ty: 73, w: 2, h: 1, solid: true, label: 'Empty Trash', taskId: 'empty_trash', room: 'storage', taskStep: 2 },
+
+        // ===== SABOTAGE PLACEHOLDERS =====
+        { type: 'skeld_sabotage', tx: 2 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor' },
+        { type: 'skeld_sabotage', tx: 26 + XO, ty: 40, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'security' },
+        { type: 'skeld_sabotage', tx: 45 + XO, ty: 43, w: 2, h: 1, solid: true, label: 'Lights Fix', sabotageId: 'lights_out', room: 'electrical' },
+        { type: 'skeld_sabotage', tx: 95 + XO, ty: 32, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'o2' },
+        { type: 'skeld_sabotage', tx: 88 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'admin' }
       ]
     };
   })()

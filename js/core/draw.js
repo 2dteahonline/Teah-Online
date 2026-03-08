@@ -1643,6 +1643,36 @@ function draw() {
     ctx.restore();
   }
 
+  // Generic interactable prompt (world-space, above console)
+  if (Scene.inSkeld) {
+    const _nearI = getNearestInteractable();
+    if (_nearI && (_nearI.type === 'skeld_task' || _nearI.type === 'skeld_sabotage') && !UI.anyOpen()) {
+      ctx.save();
+      ctx.translate(-cx, -cy);
+      const isSab = _nearI.type === 'skeld_sabotage';
+      const px = _nearI.x, py = _nearI.y - 28;
+      const txt = _nearI.label;
+      ctx.font = 'bold 12px monospace';
+      const tw = ctx.measureText(txt).width;
+      // Background pill
+      ctx.fillStyle = isSab ? 'rgba(60,10,10,0.85)' : 'rgba(10,30,40,0.85)';
+      const pad = 6;
+      ctx.beginPath();
+      ctx.roundRect(px - tw / 2 - pad, py - 8 - pad, tw + pad * 2, 16 + pad, 4);
+      ctx.fill();
+      // Border
+      ctx.strokeStyle = isSab ? 'rgba(255,60,30,0.6)' : 'rgba(0,220,240,0.6)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Text
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isSab ? '#ff8060' : '#80f0ff';
+      ctx.fillText(txt, px, py + 2);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+  }
+
   // End world-space zoom — everything below is screen-space HUD/UI at native 1920x1080
   ctx.restore();
 

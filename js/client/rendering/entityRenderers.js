@@ -2236,6 +2236,96 @@ const ENTITY_RENDERERS = {
       ctx.fillText("EXIT", ex+cw/2, ey+ch/2+4);
       ctx.textAlign = "left";
   },
+
+  // ===================== SKELD TASK CONSOLE (cyan wall-mounted) =====================
+  skeld_task: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      const pulse = 0.5 + Math.sin(t * 2 + e.tx * 0.3) * 0.3;
+      // Console body — dark metal
+      ctx.fillStyle = '#14181e';
+      ctx.fillRect(ex, ey, cw, ch);
+      ctx.fillStyle = '#1a2028';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+      // Screen area (inset)
+      const sx = ex + 6, sy = ey + 4, sw = cw - 12, sh = ch - 10;
+      ctx.fillStyle = '#041818';
+      ctx.fillRect(sx, sy, sw, sh);
+      // Cyan screen glow
+      ctx.fillStyle = `rgba(0,220,240,${0.12 + pulse * 0.08})`;
+      ctx.fillRect(sx + 1, sy + 1, sw - 2, sh - 2);
+      // Scan lines
+      ctx.fillStyle = 'rgba(0,255,255,0.04)';
+      for (let i = 0; i < sh; i += 3) {
+        ctx.fillRect(sx + 1, sy + i, sw - 2, 1);
+      }
+      // Green LED (bottom-right of console)
+      ctx.fillStyle = `rgba(40,255,80,${0.5 + pulse * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(ex + cw - 8, ey + ch - 5, 2, 0, Math.PI * 2);
+      ctx.fill();
+      // Cyan halo glow around console
+      ctx.shadowColor = 'rgba(0,220,240,0.35)';
+      ctx.shadowBlur = 8 + pulse * 4;
+      ctx.strokeStyle = `rgba(0,220,240,${0.15 + pulse * 0.1})`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(ex + 1, ey + 1, cw - 2, ch - 2);
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+  },
+
+  // ===================== SKELD SABOTAGE CONSOLE (red wall-mounted) =====================
+  skeld_sabotage: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      const pulse = 0.5 + Math.sin(t * 2.5 + e.tx * 0.5) * 0.4;
+      // Console body — dark metal with red undertone
+      ctx.fillStyle = '#1a1210';
+      ctx.fillRect(ex, ey, cw, ch);
+      ctx.fillStyle = '#221816';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+      // Yellow/black warning stripes along bottom
+      const stripeY = ey + ch - 6;
+      for (let i = 0; i < cw - 4; i += 8) {
+        ctx.fillStyle = (Math.floor(i / 8) % 2 === 0) ? '#c0a020' : '#1a1210';
+        ctx.fillRect(ex + 2 + i, stripeY, Math.min(8, cw - 4 - i), 4);
+      }
+      // Screen area (inset)
+      const sx = ex + 6, sy = ey + 4, sw = cw - 12, sh = ch - 14;
+      ctx.fillStyle = '#180808';
+      ctx.fillRect(sx, sy, sw, sh);
+      // Red/orange screen glow
+      ctx.fillStyle = `rgba(255,60,30,${0.12 + pulse * 0.1})`;
+      ctx.fillRect(sx + 1, sy + 1, sw - 2, sh - 2);
+      // Caution triangle with "!"
+      const tcx = sx + sw / 2, tcy = sy + sh / 2;
+      ctx.strokeStyle = `rgba(255,200,40,${0.5 + pulse * 0.3})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(tcx, tcy - 6);
+      ctx.lineTo(tcx + 6, tcy + 4);
+      ctx.lineTo(tcx - 6, tcy + 4);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.font = "bold 7px monospace";
+      ctx.fillStyle = `rgba(255,200,40,${0.6 + pulse * 0.3})`;
+      ctx.textAlign = "center";
+      ctx.fillText("!", tcx, tcy + 3);
+      ctx.textAlign = "left";
+      // Red LED (bottom-right)
+      ctx.fillStyle = `rgba(255,40,20,${0.5 + pulse * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(ex + cw - 8, ey + ch - 9, 2, 0, Math.PI * 2);
+      ctx.fill();
+      // Red halo glow
+      ctx.shadowColor = 'rgba(255,40,20,0.35)';
+      ctx.shadowBlur = 8 + pulse * 5;
+      ctx.strokeStyle = `rgba(255,40,20,${0.15 + pulse * 0.1})`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(ex + 1, ey + 1, cw - 2, ch - 2);
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+  },
 };
 
 // ---- Grocery Shelf Renderer Data ----
