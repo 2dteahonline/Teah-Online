@@ -1363,8 +1363,8 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   const drawFreeArm = (ax, ay) => {
     ctx.fillStyle = black; ctx.fillRect(ax, ay, 7, 16);
     ctx.fillStyle = skin; ctx.fillRect(ax + 1, ay + 15, 6, 5);
-    // Ninja dual katanas — second black katana in free hand (skip in Skeld)
-    if (!(typeof Scene !== 'undefined' && Scene.inSkeld) && activeSlot === 1 && melee.special === 'ninja') {
+    // Ninja dual katanas — second black katana in free hand
+    if (activeSlot >= 0 && activeSlot === 1 && melee.special === 'ninja') {
       const handX = ax + 3, handY = ay + 17;
       // During swing — animate off-hand katana in opposite direction
       if (melee.swinging) {
@@ -1412,10 +1412,10 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   };
 
   // Draw gun arm (short stub + hand + weapon with animations)
+  // activeSlot: 0=gun, 1=melee, -1=nothing (empty hands)
   const drawGunArm = (hx, hy, rifleX, rifleY, rifleDir) => {
     ctx.fillStyle = skin; ctx.fillRect(hx, hy, 5, 5);
-    // Skeld: empty hands, no weapon
-    if (typeof Scene !== 'undefined' && Scene.inSkeld) return;
+    if (activeSlot < 0) return; // empty hands — no weapon
     if (activeSlot === 1) {
       // Katana slash animation — rotate blade during swing
       if (melee.swinging) {
