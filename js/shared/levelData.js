@@ -1251,8 +1251,8 @@ const LEVELS = {
     // === MEDBAY (center-right — 12×10) ===
     room(38, 18, 49, 27);
 
-    // === ELECTRICAL (center — 14×14, 2-tile gap from vertical corridor) ===
-    room(37, 53, 50, 66);
+    // === ELECTRICAL (center — 14×10) ===
+    room(37, 53, 50, 62);
 
     // === STORAGE (bottom center — 18×22, tall rectangle) ===
     room(58, 53, 75, 74);
@@ -1305,8 +1305,8 @@ const LEVELS = {
     room(30, 58, 34, 67);     // Vertical: straight up (x=30-34, aligned with bottom)
     room(23, 58, 30, 62);     // Top: left into LE (y=58-62)
 
-    // --- Electrical entrance (6 wide, connects to Z-corridor) ---
-    room(39, 66, 44, 67);     // Electrical bottom → Z-corridor (x=39-44)
+    // --- Electrical corridor (5 wide, from room to Z-corridor) ---
+    room(39, 62, 43, 67);     // Electrical → Z-corridor (x=39-43, 5 blocks)
 
     // ========================================
     //  BORDERS
