@@ -238,7 +238,7 @@ function drawVentHUD() {
     const ny = dy / dist;
 
     // Arrow button position (offset from vent center)
-    const arrowDist = 70 * wz;
+    const arrowDist = 140 * wz;
     const ax = ventSX + nx * arrowDist;
     const ay = ventSY + ny * arrowDist;
     const btnR = 24;
@@ -288,7 +288,7 @@ function drawVentHUD() {
   ctx.font = '12px monospace';
   ctx.fillStyle = 'rgba(200,200,200,0.6)';
   const keyName = typeof getKeyDisplayName === 'function' ? getKeyDisplayName(keybinds.interact) : 'E';
-  ctx.fillText('[' + keyName + '] Exit Vent', ventSX, ventSY + 55 * wz);
+  ctx.fillText('[' + keyName + '] Exit Vent', ventSX, ventSY + 80 * wz);
   ctx.textAlign = 'left';
 }
 
