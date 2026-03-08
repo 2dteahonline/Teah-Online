@@ -272,14 +272,6 @@ function drawVentHUD() {
     ctx.fill();
     ctx.restore();
 
-    // Room name label below arrow
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 11px monospace';
-    ctx.fillStyle = '#40ff80';
-    // Place label offset in arrow direction
-    const labelDist = btnR + 16;
-    ctx.fillText(VENT_NAMES[targetId], ax + nx * labelDist, ay + ny * labelDist + 4);
-
     // Store for click detection (screen-space coords)
     window._ventArrowButtons.push({
       x: ax - btnR,
