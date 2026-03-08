@@ -117,23 +117,25 @@ function drawMinimap() {
   ctx.drawImage(mc.canvas, ox, oy);
 
   // Task / sabotage dots on minimap
+  // For multi-step tasks, only show the NEXT step (like Among Us)
   if (levelEntities) {
-    const _t = renderTime * 0.006;
     for (const e of levelEntities) {
       if (e.type !== 'skeld_task' && e.type !== 'skeld_sabotage') continue;
+      if (e.type === 'skeld_task' && typeof SkeldTasks !== 'undefined') {
+        const stepDone = SkeldTasks.isStepDone(e);
+        const taskDone = SkeldTasks.isDone(e.taskId);
+        // Hide completed steps; for pending multi-step, only show if it's the next step
+        if (taskDone || stepDone) continue;
+        if (!SkeldTasks.canDoStep(e)) continue;
+      }
       const ex = ox + (e.tx + (e.w || 1) / 2) * S;
       const ey = oy + (e.ty + (e.h || 1) / 2) * S;
-      const done = typeof SkeldTasks !== 'undefined' && SkeldTasks.isStepDone && SkeldTasks.isStepDone(e);
-      if (e.type === 'skeld_task') {
-        ctx.fillStyle = done ? 'rgba(40,200,60,0.8)' : 'rgba(0,220,240,0.8)';
-      } else {
-        ctx.fillStyle = 'rgba(255,60,30,0.8)';
-      }
       const r = Math.max(3, S * 0.45);
+      ctx.fillStyle = e.type === 'skeld_task' ? 'rgba(0,220,240,0.8)' : 'rgba(255,60,30,0.8)';
       ctx.beginPath();
       ctx.arc(ex, ey, r, 0, Math.PI * 2);
       ctx.fill();
-      if (!done && e.type === 'skeld_task') {
+      if (e.type === 'skeld_task') {
         ctx.strokeStyle = 'rgba(0,220,240,0.4)';
         ctx.lineWidth = 1;
         ctx.stroke();
