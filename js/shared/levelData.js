@@ -1300,71 +1300,47 @@ const LEVELS = {
     wall(57,32); wall(57,33); wall(58,33); wall(57,34); wall(58,34); wall(59,34);
     wall(82,34); wall(83,34); wall(84,34); wall(84,33); wall(83,33); wall(84,32);
 
-    // --- Upper Engine — compact corner cuts ---
-    wall(4,4); wall(5,4); wall(4,5);
-    wall(22,4); wall(23,4); wall(23,5);
-    wall(4,16); wall(4,17); wall(5,17);
-    wall(23,16); wall(22,17); wall(23,17);
+    // --- Upper Engine — L-shape: top-left 6×4 block removed ---
+    for (let y = 4; y <= 7; y++) for (let x = 4; x <= 9; x++) wall(x, y);
 
-    // --- Reactor — left-pointing pentagon ---
-    wall(1,28); wall(2,28); wall(3,28); wall(1,29); wall(2,29); wall(1,30);
-    wall(1,39); wall(1,40); wall(2,40); wall(1,41); wall(2,41); wall(3,41);
-    wall(7,28); wall(8,28); wall(8,29);
-    wall(8,40); wall(7,41); wall(8,41);
+    // --- Reactor — left-pointing arrow/diamond ---
+    wall(1,28); wall(2,28); wall(3,28); wall(4,28);
+    wall(1,29); wall(2,29); wall(3,29);
+    wall(1,30); wall(2,30);
+    wall(1,31);
+    wall(1,38);
+    wall(1,39); wall(2,39);
+    wall(1,40); wall(2,40); wall(3,40);
+    wall(1,41); wall(2,41); wall(3,41); wall(4,41);
 
-    // --- Security — tight notched corners ---
-    wall(24,30); wall(25,30); wall(24,31);
-    wall(34,30); wall(35,30); wall(35,31);
-    wall(24,38); wall(24,39); wall(25,39);
-    wall(35,38); wall(34,39); wall(35,39);
+    // --- Security — right-wall indent (concave right side) ---
+    for (let y = 30; y <= 32; y++) { wall(34, y); wall(35, y); }
+    for (let y = 37; y <= 39; y++) { wall(34, y); wall(35, y); }
 
-    // --- MedBay — angled lower-right corner ---
-    wall(38,18); wall(39,18); wall(38,19);
-    wall(48,18); wall(49,18); wall(49,19);
-    wall(38,26); wall(38,27); wall(39,27);
-    wall(47,27); wall(48,27); wall(49,27); wall(48,26); wall(49,26); wall(49,25);
+    // --- MedBay — L-shape: bottom-right 5×4 block removed ---
+    for (let y = 24; y <= 27; y++) for (let x = 45; x <= 49; x++) wall(x, y);
 
-    // --- Lower Engine — mirrors Upper Engine ---
-    wall(4,52); wall(5,52); wall(4,53);
-    wall(22,52); wall(23,52); wall(23,53);
-    wall(4,64); wall(4,65); wall(5,65);
-    wall(23,64); wall(22,65); wall(23,65);
+    // --- Lower Engine — L-shape: bottom-left 6×4 block removed ---
+    for (let y = 62; y <= 65; y++) for (let x = 4; x <= 9; x++) wall(x, y);
 
-    // --- Electrical — angled right side ---
-    wall(37,45); wall(38,45); wall(37,46);
-    wall(48,45); wall(49,45); wall(50,45); wall(49,46); wall(50,46); wall(50,47);
-    wall(37,61); wall(37,62); wall(38,62);
-    wall(50,60); wall(50,61); wall(49,61); wall(50,62); wall(49,62); wall(48,62);
+    // --- Electrical — step: right wall jogs in halfway down ---
+    for (let y = 54; y <= 62; y++) for (let x = 48; x <= 50; x++) wall(x, y);
 
-    // --- Admin — enclosed compact, larger cuts on right ---
-    wall(78,38); wall(79,38); wall(78,39);
-    wall(90,38); wall(91,38); wall(92,38); wall(91,39); wall(92,39); wall(92,40);
-    wall(78,49); wall(78,50); wall(79,50);
-    wall(92,48); wall(92,49); wall(91,49); wall(92,50); wall(91,50); wall(90,50);
+    // --- Admin — L-shape: top-right 5×4 block removed ---
+    for (let y = 38; y <= 41; y++) for (let x = 88; x <= 92; x++) wall(x, y);
 
-    // --- Storage — irregular large room ---
-    wall(58,53); wall(59,53); wall(60,53); wall(58,54); wall(59,54); wall(58,55);
-    wall(74,53); wall(75,53); wall(75,54);
-    wall(58,73); wall(58,74); wall(59,74);
-    wall(75,72); wall(75,73); wall(74,73); wall(75,74); wall(74,74); wall(73,74);
+    // --- Storage — L-shape: top-left 5×5 block removed ---
+    for (let y = 53; y <= 57; y++) for (let x = 58; x <= 62; x++) wall(x, y);
 
-    // --- Shields — angled right side ---
-    wall(99,54); wall(100,54); wall(99,55);
-    wall(110,54); wall(111,54); wall(112,54); wall(111,55); wall(112,55); wall(112,56);
-    wall(99,64); wall(99,65); wall(100,65);
-    wall(112,63); wall(112,64); wall(111,64); wall(112,65); wall(111,65); wall(110,65);
+    // --- Shields — hexagonal: top-right + bottom-right 4×3 blocks ---
+    for (let y = 54; y <= 56; y++) for (let x = 109; x <= 112; x++) wall(x, y);
+    for (let y = 63; y <= 65; y++) for (let x = 109; x <= 112; x++) wall(x, y);
 
-    // --- Communications — small enclosed ---
-    wall(80,67); wall(81,67); wall(80,68);
-    wall(92,67); wall(93,67); wall(93,68);
-    wall(80,77); wall(80,78); wall(81,78);
-    wall(93,77); wall(92,78); wall(93,78);
+    // --- Communications — L-shape: bottom-left 5×4 block removed ---
+    for (let y = 75; y <= 78; y++) for (let x = 80; x <= 84; x++) wall(x, y);
 
-    // --- O2 — compact with notches ---
-    wall(86,25); wall(87,25); wall(86,26);
-    wall(99,25);
-    wall(86,34); wall(86,35); wall(87,35); wall(86,36); wall(87,36); wall(88,36);
-    wall(99,35); wall(98,36); wall(99,36);
+    // --- O2 — L-shape: bottom-right 4×4 block removed ---
+    for (let y = 33; y <= 36; y++) for (let x = 96; x <= 99; x++) wall(x, y);
 
     // ========================================
     //  CORRIDORS — all 5 tiles wide
