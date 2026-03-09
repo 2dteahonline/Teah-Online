@@ -212,12 +212,14 @@ canvas.addEventListener("mousedown", e => {
   // Icon clicks (top-left column)
   const iconX = ICON_X, iconW = ICON_SIZE;
 
-  // Toolbox icon (top-right)
+  // Toolbox icon (top-right) — blocked in Skeld
   const tbX = BASE_W - ICON_SIZE - 12;
   const tbY = 12;
   if (mx >= tbX && mx <= tbX + ICON_SIZE && my >= tbY && my <= tbY + ICON_SIZE && e.button === 0) {
-    UI.toggle('toolbox');
-    return;
+    if (typeof Scene !== 'undefined' && Scene.inSkeld) { /* blocked */ } else {
+      UI.toggle('toolbox');
+      return;
+    }
   }
 
   // Selected items toolbar clicks (top-right, left of toolbox icon)
@@ -294,17 +296,21 @@ canvas.addEventListener("mousedown", e => {
     // Consume clicks inside panel
     if (mx >= px2 && mx <= px2 + pw && my >= py2 && my <= py2 + ph) return;
   }
-  // Chat icon (first)
+  // Chat icon (first) — blocked in Skeld
   const chatY = 12;
-  if (mx >= iconX && mx <= iconX + iconW && my >= chatY && my <= chatY + ICON_SIZE && e.button === 0) {
-    UI.toggle('chat');
-    return;
+  if (!(typeof Scene !== 'undefined' && Scene.inSkeld)) {
+    if (mx >= iconX && mx <= iconX + iconW && my >= chatY && my <= chatY + ICON_SIZE && e.button === 0) {
+      UI.toggle('chat');
+      return;
+    }
   }
-  // Profile icon (second)
+  // Profile icon (second) — blocked in Skeld
   const profY = 12 + ICON_SIZE + ICON_GAP;
-  if (mx >= iconX && mx <= iconX + iconW && my >= profY && my <= profY + ICON_SIZE && e.button === 0) {
-    UI.toggle('profile');
-    return;
+  if (!(typeof Scene !== 'undefined' && Scene.inSkeld)) {
+    if (mx >= iconX && mx <= iconX + iconW && my >= profY && my <= profY + ICON_SIZE && e.button === 0) {
+      UI.toggle('profile');
+      return;
+    }
   }
 
   // Settings panel clicks
