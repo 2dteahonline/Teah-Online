@@ -922,6 +922,12 @@ window.addEventListener("keydown", e => {
       MafiaSystem.tryKill();
     }
   }
+  // Mafia report (R key — near a body, Skeld scene)
+  if (key === "r" && !chatInputActive && !nameEditActive && !statusEditActive) {
+    if (typeof MafiaSystem !== 'undefined' && typeof Scene !== 'undefined' && Scene.inSkeld) {
+      MafiaSystem.tryReport();
+    }
+  }
   if (key === "shift" && !chatInputActive && !nameEditActive && !statusEditActive) {
     InputIntent.dashPressed = true;
   }

@@ -15,6 +15,8 @@ const MAFIA_GAME = {
   DISCUSSION_TIME: 900,      // 15s discussion before voting
   VOTING_TIME: 1800,         // 30s to vote
   EJECTION_TIME: 300,        // 5s ejection animation
+  REPORT_RANGE: 150,         // px — distance to body to report
+  EMERGENCY_RANGE: 120,      // px — distance to cafeteria table button
   SABOTAGE_COOLDOWN: 1800,   // 30s between sabotages
   REACTOR_TIMER: 1800,       // 30s to fix reactor
   O2_TIMER: 1800,            // 30s to fix O2

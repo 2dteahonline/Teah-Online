@@ -250,6 +250,256 @@ window.MafiaSystem = {
   },
 
 
+  // ===================== REPORT + MEETING =====================
+
+  // Find nearest body within report range
+  getNearestReportableBody() {
+    const mk = MafiaState;
+    if (mk.phase !== 'playing' || mk.playerIsGhost) return null;
+
+    let nearest = null;
+    let nearestDist = MAFIA_GAME.REPORT_RANGE;
+
+    for (const body of mk.bodies) {
+      const dx = body.x - player.x;
+      const dy = body.y - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = body;
+      }
+    }
+    return nearest;
+  },
+
+  // Check if player is near cafeteria table for emergency meeting
+  canCallEmergency() {
+    const mk = MafiaState;
+    if (mk.phase !== 'playing' || mk.playerIsGhost) return false;
+
+    const localP = this.getLocalPlayer();
+    if (!localP || !localP.alive) return false;
+
+    // Check if already used emergency (1 per player per match)
+    if (localP.emergenciesUsed >= 1) return false;
+
+    // Check proximity to cafeteria table (spawn point)
+    const mapData = this._getMapData();
+    if (!mapData) return false;
+
+    const tableX = mapData.SPAWN.tx * TILE + TILE / 2;
+    const tableY = mapData.SPAWN.ty * TILE + TILE / 2;
+    const dx = tableX - player.x;
+    const dy = tableY - player.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    return dist < MAFIA_GAME.EMERGENCY_RANGE;
+  },
+
+  // Report a body → start meeting
+  report(bodyId) {
+    const mk = MafiaState;
+    if (mk.phase !== 'playing' || mk.playerIsGhost) return false;
+
+    const body = mk.bodies.find(b => b.id === bodyId);
+    if (!body) return false;
+
+    // Distance check
+    const dx = body.x - player.x;
+    const dy = body.y - player.y;
+    if (Math.sqrt(dx * dx + dy * dy) > MAFIA_GAME.REPORT_RANGE) return false;
+
+    const localP = this.getLocalPlayer();
+    this._startMeeting(localP ? localP.name : 'Player', 'report');
+    return true;
+  },
+
+  // Try to report the nearest body
+  tryReport() {
+    const body = this.getNearestReportableBody();
+    if (!body) return false;
+    return this.report(body.id);
+  },
+
+  // Call emergency meeting at cafeteria button
+  callEmergencyMeeting() {
+    const mk = MafiaState;
+    if (!this.canCallEmergency()) return false;
+
+    const localP = this.getLocalPlayer();
+    if (localP) localP.emergenciesUsed++;
+
+    this._startMeeting(localP ? localP.name : 'Player', 'emergency');
+    return true;
+  },
+
+  // Internal: start a meeting (report or emergency)
+  _startMeeting(callerName, type) {
+    const mk = MafiaState;
+
+    mk.phase = 'meeting';
+    mk.meeting = {
+      caller: callerName,
+      type: type,  // 'report' | 'emergency'
+      votes: {},
+      discussionTimer: MAFIA_GAME.DISCUSSION_TIME,
+      votingTimer: MAFIA_GAME.VOTING_TIME,
+    };
+
+    // Reset all votes
+    for (const p of mk.participants) {
+      p.votedFor = null;
+    }
+
+    // Teleport everyone to spawn (cafeteria)
+    const mapData = this._getMapData();
+    if (mapData) {
+      const spawn = mapData.SPAWN;
+      const cx = spawn.tx * TILE + TILE / 2;
+      const cy = spawn.ty * TILE + TILE / 2;
+
+      for (let i = 0; i < mk.participants.length; i++) {
+        const p = mk.participants[i];
+        if (!p.alive) continue;
+        const offsetX = ((i % 5) - 2) * 40;
+        const offsetY = (Math.floor(i / 5) - 0.5) * 40;
+        p.entity.x = cx + offsetX;
+        p.entity.y = cy + offsetY;
+        p.entity.vx = 0;
+        p.entity.vy = 0;
+        p.entity.moving = false;
+      }
+    }
+
+    // Stop player movement
+    player.vx = 0;
+    player.vy = 0;
+  },
+
+  // Player votes for a participant (or 'skip')
+  castVote(targetId) {
+    const mk = MafiaState;
+    if (mk.phase !== 'voting') return false;
+
+    const localP = this.getLocalPlayer();
+    if (!localP || !localP.alive || localP.votedFor !== null) return false;
+
+    localP.votedFor = targetId; // participant id or 'skip'
+    mk.meeting.votes[localP.id] = targetId;
+
+    // Check if all alive players have voted → end voting early
+    this._checkAllVoted();
+    return true;
+  },
+
+  // Bot voting (random: mostly random crewmate, small chance to skip)
+  _botVote(participant) {
+    const mk = MafiaState;
+    if (participant.votedFor !== null) return;
+
+    // 20% chance to skip
+    if (Math.random() < 0.2) {
+      participant.votedFor = 'skip';
+      mk.meeting.votes[participant.id] = 'skip';
+    } else {
+      // Vote for a random alive player (not self)
+      const candidates = mk.participants.filter(p => p.alive && p.id !== participant.id);
+      if (candidates.length > 0) {
+        const target = candidates[Math.floor(Math.random() * candidates.length)];
+        participant.votedFor = target.id;
+        mk.meeting.votes[participant.id] = target.id;
+      } else {
+        participant.votedFor = 'skip';
+        mk.meeting.votes[participant.id] = 'skip';
+      }
+    }
+  },
+
+  _checkAllVoted() {
+    const mk = MafiaState;
+    const alivePlayers = mk.participants.filter(p => p.alive);
+    const allVoted = alivePlayers.every(p => p.votedFor !== null);
+    if (allVoted) {
+      this._tallyVotes();
+    }
+  },
+
+  _tallyVotes() {
+    const mk = MafiaState;
+
+    // Count votes
+    const voteCounts = {};
+    let skipCount = 0;
+
+    for (const p of mk.participants) {
+      if (!p.alive || p.votedFor === null) continue;
+      if (p.votedFor === 'skip') {
+        skipCount++;
+      } else {
+        voteCounts[p.votedFor] = (voteCounts[p.votedFor] || 0) + 1;
+      }
+    }
+
+    // Find most voted
+    let maxVotes = skipCount;
+    let ejectedId = null; // null means skip wins
+    let tie = false;
+
+    for (const [id, count] of Object.entries(voteCounts)) {
+      if (count > maxVotes) {
+        maxVotes = count;
+        ejectedId = id;
+        tie = false;
+      } else if (count === maxVotes && count > 0) {
+        tie = true;
+      }
+    }
+
+    // Tie or skip → no ejection
+    if (tie || ejectedId === null) {
+      mk.ejection = {
+        name: null,
+        wasImpostor: false,
+        timer: MAFIA_GAME.EJECTION_TIME,
+        message: 'No one was ejected. (Skipped)',
+      };
+    } else {
+      const ejected = mk.participants.find(p => p.id === ejectedId);
+      if (ejected) {
+        ejected.alive = false;
+        mk.ejection = {
+          name: ejected.name,
+          wasImpostor: ejected.role === 'impostor',
+          timer: MAFIA_GAME.EJECTION_TIME,
+          message: ejected.name + (ejected.role === 'impostor' ? ' was The Impostor.' : ' was not The Impostor.'),
+        };
+        // If ejected player is local player, set ghost
+        if (ejected.isLocal) {
+          mk.playerIsGhost = true;
+        }
+      }
+    }
+
+    mk.phase = 'ejecting';
+  },
+
+  // After ejection animation finishes → return to playing
+  _endEjection() {
+    const mk = MafiaState;
+
+    // Clear all bodies
+    mk.bodies = [];
+
+    // Reset kill cooldown
+    mk.killCooldown = MAFIA_GAME.KILL_COOLDOWN;
+
+    // Return to playing
+    mk.phase = 'playing';
+    mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
+    mk.ejection = { name: null, wasImpostor: false, timer: 0 };
+  },
+
+
   // ===================== MAIN TICK =====================
   tick() {
     const mk = MafiaState;
@@ -261,6 +511,12 @@ window.MafiaSystem = {
 
     if (mk.phase === 'playing') {
       this._tickPlaying();
+    } else if (mk.phase === 'meeting') {
+      this._tickMeeting();
+    } else if (mk.phase === 'voting') {
+      this._tickVoting();
+    } else if (mk.phase === 'ejecting') {
+      this._tickEjecting();
     }
   },
 
@@ -271,6 +527,56 @@ window.MafiaSystem = {
 
     // Tick kill cooldown
     if (mk.killCooldown > 0) mk.killCooldown--;
+  },
+
+  // ---- Meeting (discussion) phase tick ----
+  _tickMeeting() {
+    const mk = MafiaState;
+
+    mk.meeting.discussionTimer--;
+    if (mk.meeting.discussionTimer <= 0) {
+      mk.phase = 'voting';
+    }
+  },
+
+  // ---- Voting phase tick ----
+  _tickVoting() {
+    const mk = MafiaState;
+
+    mk.meeting.votingTimer--;
+
+    // Bots vote at random times during voting phase
+    const aliveBots = mk.participants.filter(p => p.isBot && p.alive && p.votedFor === null);
+    for (const bot of aliveBots) {
+      // Each bot has a small chance per frame to vote (spread out naturally)
+      if (Math.random() < 0.008) {
+        this._botVote(bot);
+      }
+    }
+
+    // Timer expired → force remaining votes as skip
+    if (mk.meeting.votingTimer <= 0) {
+      for (const p of mk.participants) {
+        if (p.alive && p.votedFor === null) {
+          p.votedFor = 'skip';
+          mk.meeting.votes[p.id] = 'skip';
+        }
+      }
+      this._tallyVotes();
+    }
+
+    // Check if all voted (may have been triggered by bot votes)
+    this._checkAllVoted();
+  },
+
+  // ---- Ejecting phase tick ----
+  _tickEjecting() {
+    const mk = MafiaState;
+
+    mk.ejection.timer--;
+    if (mk.ejection.timer <= 0) {
+      this._endEjection();
+    }
   },
 
 

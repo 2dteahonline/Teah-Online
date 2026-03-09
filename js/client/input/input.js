@@ -110,6 +110,49 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Mafia REPORT button click
+  if (typeof MafiaSystem !== 'undefined' && window._mafiaReportBtn) {
+    const rb = window._mafiaReportBtn;
+    if (mx >= rb.x && mx <= rb.x + rb.w && my >= rb.y && my <= rb.y + rb.h) {
+      MafiaSystem.tryReport();
+      return;
+    }
+  }
+
+  // Mafia EMERGENCY button click
+  if (typeof MafiaSystem !== 'undefined' && window._mafiaEmergencyBtn) {
+    const eb = window._mafiaEmergencyBtn;
+    if (mx >= eb.x && mx <= eb.x + eb.w && my >= eb.y && my <= eb.y + eb.h) {
+      MafiaSystem.callEmergencyMeeting();
+      return;
+    }
+  }
+
+  // Mafia vote portrait clicks (during voting phase)
+  if (typeof MafiaSystem !== 'undefined' && window._mafiaVotePortraits) {
+    for (const vp of window._mafiaVotePortraits) {
+      if (mx >= vp.x && mx <= vp.x + vp.w && my >= vp.y && my <= vp.y + vp.h) {
+        MafiaSystem.castVote(vp.id);
+        return;
+      }
+    }
+  }
+
+  // Mafia SKIP vote button click
+  if (typeof MafiaSystem !== 'undefined' && window._mafiaSkipBtn) {
+    const sb = window._mafiaSkipBtn;
+    if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
+      MafiaSystem.castVote('skip');
+      return;
+    }
+  }
+
+  // Block all other clicks during Mafia meeting/voting/ejecting phases
+  if (typeof MafiaState !== 'undefined' &&
+      (MafiaState.phase === 'meeting' || MafiaState.phase === 'voting' || MafiaState.phase === 'ejecting')) {
+    return;
+  }
+
   // Mafia settings gear icon click
   if (typeof _mafiaSettingsOpen !== 'undefined' && window._mafiaSettingsBtn) {
     const sb = window._mafiaSettingsBtn;
