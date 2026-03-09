@@ -240,6 +240,12 @@ function draw() {
       if (!p.isLocal && p.entity) sortedChars.push({ y: p.entity.y, type: "mob", mob: p.entity });
     }
   }
+  // Skeld participants — standalone entities, not in mobs[]
+  if (typeof SkeldState !== 'undefined' && Scene.inSkeld && SkeldState.participants) {
+    for (const p of SkeldState.participants) {
+      if (!p.isLocal && p.alive && p.entity) sortedChars.push({ y: p.entity.y, type: "mob", mob: p.entity });
+    }
+  }
   // Deli customer NPCs
   if (typeof deliNPCs !== 'undefined' && Scene.inCooking) {
     for (const npc of deliNPCs) sortedChars.push({ y: npc.y, type: "deliNPC", npc: npc });
@@ -1721,9 +1727,12 @@ function draw() {
 
   // Hide & Seek FOV mask (screen-space, covers world)
   if (typeof drawHideSeekFOV === 'function') drawHideSeekFOV();
+  // Skeld FOV mask (screen-space, covers world)
+  if (typeof drawSkeldFOV === 'function') drawSkeldFOV();
 
   // HUD (screen space)
   if (typeof drawHideSeekHUD === 'function') drawHideSeekHUD();
+  if (typeof drawSkeldHUD === 'function') drawSkeldHUD();
   if (!Scene.inSkeld && showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
   if (!Scene.inSkeld && showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
   if (!Scene.inSkeld) drawHotbar();

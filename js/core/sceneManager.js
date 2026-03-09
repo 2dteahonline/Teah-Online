@@ -114,6 +114,12 @@ const LEAVE_HANDLERS = {
       if (typeof closeTaskPanel === 'function') closeTaskPanel();
       if (typeof SkeldTasks !== 'undefined') SkeldTasks.reset();
       if (typeof VentSystem !== 'undefined') VentSystem.reset();
+      if (typeof SkeldState !== 'undefined') {
+        SkeldState.phase = 'idle';
+        SkeldState.participants = [];
+        SkeldState.bodies = [];
+        SkeldState.playerRole = null;
+      }
       if (typeof _taskListExpanded !== 'undefined') _taskListExpanded = true;
     },
     returnLevel: 'lobby_01',

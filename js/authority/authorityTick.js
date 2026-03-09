@@ -108,6 +108,19 @@ window.authorityTick = function() {
     }
   }
 
+  // ---- Skeld authority freeze: block ALL intents during meetings/voting/ejection ----
+  if (typeof SkeldSystem !== 'undefined' && SkeldSystem.isPlayerFrozen()) {
+    InputIntent.moveX = 0;
+    InputIntent.moveY = 0;
+    InputIntent.meleePressed = false;
+    InputIntent.shootHeld = false;
+    InputIntent.shootPressed = false;
+    InputIntent.dashPressed = false;
+    InputIntent.interactPressed = false;
+    InputIntent.ultimatePressed = false;
+    InputIntent.reloadPressed = false;
+  }
+
   // ---- Hide & Seek authority freeze: block ALL intents when player is frozen ----
   if (typeof HideSeekSystem !== 'undefined' && HideSeekSystem.isPlayerFrozen()) {
     InputIntent.moveX = 0;

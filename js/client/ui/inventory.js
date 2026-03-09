@@ -2314,6 +2314,7 @@ function update() {
   updateQueue();
   if (typeof HideSeekSystem !== 'undefined') HideSeekSystem.tick();
   if (typeof VentSystem !== 'undefined') VentSystem.tick();
+  if (typeof SkeldSystem !== 'undefined' && Scene.inSkeld) SkeldSystem.tick();
 
   // Skeld: force no weapon held (activeSlot -1 = empty hands)
   if (Scene.inSkeld) activeSlot = -1;
