@@ -391,7 +391,7 @@ const HazardSystem = {
                 // Pull player 2 tiles in sweep direction + slow
                 player.x += h.sweepDir * (TILE * 2);
                 player.x = Math.max(TILE * 2, Math.min(MAP_W - TILE * 2, player.x));
-                StatusFX.applyToPlayer('slow', { duration: 90, slow: 0.3 });
+                StatusFX.applyToPlayer('slow', { duration: 90, amount: 0.3 });
                 dealDamageToPlayer(Math.round(h._damage * getMobDamageMultiplier()), 'hazard', null);
                 hitEffects.push({ x: player.x, y: player.y - 20, life: 15, type: 'shockwave' });
               }
@@ -478,7 +478,7 @@ const HazardSystem = {
             // Slow + pull player if standing on sticky tile
             const tdx = player.x - tile.x, tdy = player.y - tile.y;
             if (tdx * tdx + tdy * tdy <= (TILE * 1.5) * (TILE * 1.5)) {
-              StatusFX.applyToPlayer('slow', { duration: h._slowDuration, slow: h._slowAmount });
+              StatusFX.applyToPlayer('slow', { duration: h._slowDuration, amount: h._slowAmount });
             }
           }
           return;
@@ -506,7 +506,7 @@ const HazardSystem = {
           if (tile.life <= 0) { h.stickyTiles.splice(i, 1); continue; }
           const tdx = player.x - tile.x, tdy = player.y - tile.y;
           if (tdx * tdx + tdy * tdy <= (TILE * 1.5) * (TILE * 1.5)) {
-            StatusFX.applyToPlayer('slow', { duration: h._slowDuration, slow: h._slowAmount });
+            StatusFX.applyToPlayer('slow', { duration: h._slowDuration, amount: h._slowAmount });
           }
         }
       },

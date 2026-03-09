@@ -524,7 +524,7 @@ function spawnWave() {
 function spawnPhase(comp, phase, isBossWave) {
 
   // Farm waves get more mobs (only applies to legacy composition)
-  const isLegacy = !comp.forceBoss && !comp.forceGolem || (!comp.forceBoss && comp.forceGolem);
+  const isLegacy = !comp.forceBoss && !comp.forceGolem;
   const isFarmWave = isLegacy && (wave % 8 === 1 || wave % 8 === 3); // Grunt Rush & Speed Swarm
   const farmMult = isFarmWave ? 1.6 : 1.0;
   const count = Math.floor(getMobCountForWave(wave) * farmMult);

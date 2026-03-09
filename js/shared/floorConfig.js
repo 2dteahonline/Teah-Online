@@ -126,12 +126,12 @@ function _buildCaveFloor(floorNum) {
   });
 }
 
-var _caveConfig = {};
-for (var _f = 1; _f <= 5; _f++) _caveConfig[_f] = _buildCaveFloor(_f);
+const _caveConfig = {};
+for (let _f = 1; _f <= 5; _f++) _caveConfig[_f] = _buildCaveFloor(_f);
 
 // ===================== AZURINE CITY =====================
 // Each floor has unique compositions — all defined inline, wrapped in _buildFloor().
-var _azurineConfig = {
+const _azurineConfig = {
   1: _buildFloor({
     name: 'Azurine City',
     subFloors: [
