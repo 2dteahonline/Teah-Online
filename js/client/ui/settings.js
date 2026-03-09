@@ -70,6 +70,7 @@ const gameSettings = {
   hotbarPosition: "right", // "right" or "bottom"
   spriteMode: false,
   showDebugOverlay: false,
+  showSpeedTracker: false,
   // Sounds
   masterVolume: true,
   sfx: true,

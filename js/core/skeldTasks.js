@@ -317,7 +317,7 @@ function drawSkeldTaskList() {
   const pw = 280, lineH = 18, padY = 8, padX = 12;
   const headerH = 36;
   const ph = headerH + padY + tasks.length * lineH + padY;
-  const px = 0, py = 56;
+  const px = 0, py = 76;
   const tabW = _taskListTab.tabW, tabH = _taskListTab.tabH;
 
   if (_taskListExpanded) {

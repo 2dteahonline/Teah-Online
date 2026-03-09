@@ -2073,8 +2073,8 @@ function draw() {
 
   // Zone indicator — removed (was behind HP bar)
 
-  // Speed tracker (top-right)
-  {
+  // Speed tracker (top-right) — hidden in Skeld, off by default
+  if (gameSettings.showSpeedTracker && !Scene.inSkeld) {
     const spActual = Math.sqrt(player.vx * player.vx + player.vy * player.vy) * 60;
     ctx.font = "bold 11px monospace";
     ctx.fillStyle = "rgba(255,255,255,0.5)";

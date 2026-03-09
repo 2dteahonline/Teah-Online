@@ -246,6 +246,7 @@ const SETTINGS_DATA = {
     { label: "Hotbar Position", key: "hotbarPosition", type: "select", options: ["right", "bottom"] },
     { label: "Sprite Mode", key: "spriteMode", type: "toggle" },
     { label: "Debug Overlay", key: "showDebugOverlay", type: "toggle" },
+    { label: "Speed Tracker", key: "showSpeedTracker", type: "toggle" },
   ],
   Sounds: [
     { label: "Master Volume", key: "masterVolume", type: "toggle" },
