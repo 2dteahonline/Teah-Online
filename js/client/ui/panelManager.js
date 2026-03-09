@@ -823,7 +823,7 @@ window.addEventListener("keydown", e => {
   }
 
   // G key toggles grid coordinate overlay
-  if (key === "g" && !chatInputActive && !nameEditActive && !statusEditActive && !rebindingKey) {
+  if (key === "p" && !chatInputActive && !nameEditActive && !statusEditActive && !rebindingKey) {
     if (typeof gridOverlayOpen !== 'undefined') {
       gridOverlayOpen = !gridOverlayOpen;
       return;
