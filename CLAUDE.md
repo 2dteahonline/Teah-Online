@@ -72,6 +72,26 @@ When modifying The Skeld map in `js/shared/levelData.js`:
 
 5 tiers (Common → Uncommon → Rare → Epic → Legendary) × 25 levels = 125 power steps per weapon. Defined in `PROG_ITEMS` (`progressionData.js`). Helpers: `getProgressedStats()`, `_getGunProgress()`, `_setGunProgress()`. Evolution at T(N) L25 → T(N+1) L1.
 
+## Sprite Pipeline
+
+`AssetLoader` (`js/core/assetLoader.js`) loads sprites from `assets/manifest.json`. Renderers check `AssetLoader.get(key)` first, fall back to procedural if null.
+
+**Layer system** (Graal-style, for mix-and-match cosmetics):
+- Body: 32×40 cells, 4 cols (dirs) × 32 rows (anims) = 128×1280
+- Head: 32×32 cells, 4 cols × 5 rows = 128×160
+- Hat: 32×32 cells, 5 cols × 5 rows = 160×160
+
+Templates in `assets/sprites/` — clean grids for artists + labeled references.
+
+**MANDATORY: When adding any new player/character animation** (e.g. new skill, emote, action):
+1. ASK the user if a new spritesheet row is needed for body/head/hat templates
+2. If yes, add the row to the templates and references, update `assets/manifest.json` frameSize
+3. Update this section with the new row count
+
+**Current body rows (32)**: Idle, Walk 1-4, Swing 1-4, Shoot Idle/1/2, Dash, Grab, Push 1-2, Pull, Lift, Idle Hold, Walk Hold 1-2, Fish Cast/Idle/Reel, Mine 1-2, Farm 1-2, Cook 1-2, Hurt, Dead
+
+**Current head/hat rows (5)**: Walk & Idle, Attack, Shoot, Hurt & Dying, Skill (Fish/Mine/etc)
+
 ## Conventions
 
 - **`let` in `<script>` tags** are in global lexical scope — accessible from other scripts and `eval()`, but NOT on `window`
