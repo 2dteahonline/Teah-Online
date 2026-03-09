@@ -1,0 +1,494 @@
+// ===================== TILE RENDERER =====================
+// Background tile rendering for all scene types.
+//
+// Depends on: ctx, BASE_W, BASE_H (inline canvas setup)
+//             TILE (levelData.js)
+//             Scene, level, collisionGrid (sceneManager.js)
+
+// ---- BACKGROUND RENDERER (placeholder until bg.png) ----
+function drawLevelBackground(camX, camY) {
+  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inHideSeek ? '#0a0a10' : Scene.inSkeld ? '#050508' : Scene.inLobby ? '#080810' : '#1e1e26';
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  const startTX = Math.max(0, Math.floor(camX / TILE));
+  const startTY = Math.max(0, Math.floor(camY / TILE));
+  const endTX = Math.min(level.widthTiles - 1, startTX + Math.ceil(VIEW_W / TILE) + 1);
+  const endTY = Math.min(level.heightTiles - 1, startTY + Math.ceil(VIEW_H / TILE) + 1);
+
+  for (let ty = startTY; ty <= endTY; ty++) {
+    for (let tx = startTX; tx <= endTX; tx++) {
+      const x = tx * TILE - camX;
+      const y = ty * TILE - camY;
+      const isBorder = tx === 0 || ty === 0 || tx === level.widthTiles-1 || ty === level.heightTiles-1;
+
+      // === LOBBY TILES (Cyberpunk) ===
+      if (Scene.inLobby) {
+        const ascii = level.collisionAscii[ty]?.[tx];
+        if (ascii === '@') {
+          // Dark steel wall border with neon edge
+          ctx.fillStyle = '#0a0a14';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#141420';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Neon cyan edge accents
+          ctx.fillStyle = 'rgba(0,204,255,0.12)';
+          ctx.fillRect(x + 3, y + 3, TILE - 6, 1);
+          ctx.fillRect(x + 3, y + TILE - 4, TILE - 6, 1);
+          // Occasional panel rivet
+          if ((tx + ty * 3) % 4 === 0) {
+            ctx.fillStyle = 'rgba(0,204,255,0.08)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        } else {
+          // Dark metallic floor grid
+          const sv = ((tx * 7 + ty * 13) % 5);
+          const fr = 16 + sv, fg = 16 + sv, fb = 22 + sv * 2;
+          ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Subtle grid lines (cyan)
+          ctx.strokeStyle = 'rgba(0,204,255,0.04)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Circuit trace accents (sparse)
+          if ((tx + ty * 3) % 8 === 0) {
+            ctx.strokeStyle = 'rgba(0,204,255,0.06)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x + 6, y + TILE/2); ctx.lineTo(x + TILE - 6, y + TILE/2);
+            ctx.stroke();
+          }
+          if ((tx * 5 + ty * 11) % 12 === 0) {
+            ctx.strokeStyle = 'rgba(0,204,255,0.05)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x + TILE/2, y + 6); ctx.lineTo(x + TILE/2, y + TILE - 6);
+            ctx.stroke();
+          }
+          // Circuit node at intersections
+          if ((tx % 8 === 0) && (ty % 8 === 0)) {
+            ctx.fillStyle = 'rgba(0,204,255,0.06)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, 4, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === FARM / HOUSE TILES ===
+      if (Scene.inFarm) {
+        const ascii = level.collisionAscii[ty]?.[tx];
+        if (ascii === '@') {
+          // Stone wall border
+          ctx.fillStyle = '#4a4038';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#5a5048';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Brick pattern
+          if ((tx + ty) % 3 === 0) {
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 4, y + 4, TILE / 2 - 4, TILE / 2 - 4);
+          }
+        } else if (ty >= 20) {
+          // Indoor area — wooden floor planks
+          const plankShade = ((tx * 3 + ty * 7) % 3);
+          const pr = 130 + plankShade * 8, pg = 100 + plankShade * 6, pb = 60 + plankShade * 4;
+          ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Plank lines (horizontal)
+          ctx.strokeStyle = 'rgba(80,60,30,0.15)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, y + TILE / 3); ctx.lineTo(x + TILE, y + TILE / 3);
+          ctx.moveTo(x, y + TILE * 2 / 3); ctx.lineTo(x + TILE, y + TILE * 2 / 3);
+          ctx.stroke();
+          // Vertical joint
+          if ((tx + ty) % 2 === 0) {
+            ctx.strokeStyle = 'rgba(60,40,20,0.1)';
+            ctx.beginPath(); ctx.moveTo(x + TILE / 2, y); ctx.lineTo(x + TILE / 2, y + TILE); ctx.stroke();
+          }
+        } else {
+          // Farm area — brown dirt
+          const sv = ((tx * 5 + ty * 11) % 5);
+          ctx.fillStyle = `rgb(${90 + sv * 3},${70 + sv * 2},${45 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Dirt speckles
+          if ((tx + ty * 3) % 5 === 0) {
+            ctx.fillStyle = 'rgba(110,85,55,0.3)';
+            ctx.beginPath(); ctx.arc(x + 16, y + 20, 2, 0, Math.PI * 2); ctx.fill();
+          }
+          if ((tx * 7 + ty) % 7 === 0) {
+            ctx.fillStyle = 'rgba(80,60,35,0.25)';
+            ctx.beginPath(); ctx.arc(x + 34, y + 12, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === CAVE TILES ===
+      if (Scene.inCave) {
+        const isOuterEdge = tx === 0 || ty === 0 || tx === level.widthTiles - 1 || ty === level.heightTiles - 1;
+        if (collisionGrid[ty][tx] === 1 && isOuterEdge) {
+          // Outer border — dark stone wall
+          ctx.fillStyle = '#1a1818';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#242220';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          if ((tx + ty * 5) % 7 === 0) {
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 8, y + 10); ctx.lineTo(x + 20, y + 30); ctx.stroke();
+          }
+        } else {
+          // Gray stone floor — uniform across entire interior
+          const sv = ((tx * 3 + ty * 7) % 5);
+          ctx.fillStyle = `rgb(${48 + sv * 2},${46 + sv * 2},${52 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          if ((tx + ty) % 8 === 0) {
+            ctx.fillStyle = 'rgba(80,75,70,0.3)';
+            ctx.beginPath(); ctx.arc(x + 20, y + 24, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === AZURINE CITY INTERIOR TILES ===
+      if (Scene.inAzurine) {
+        const isOuterEdge = tx === 0 || ty === 0 || tx === level.widthTiles - 1 || ty === level.heightTiles - 1;
+        if (collisionGrid[ty][tx] === 1 && isOuterEdge) {
+          // Dark steel wall with neon accent
+          ctx.fillStyle = '#0e0e1a';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#181828';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Cyan accent line on some wall tiles
+          if ((tx + ty) % 3 === 0) {
+            ctx.fillStyle = 'rgba(0,204,255,0.12)';
+            ctx.fillRect(x + 4, y + TILE - 4, TILE - 8, 2);
+          }
+        } else {
+          // Dark blue-gray floor
+          const sv = ((tx * 3 + ty * 7) % 5);
+          ctx.fillStyle = `rgb(${32 + sv},${32 + sv},${42 + sv * 2})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(0,204,255,0.03)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Occasional neon floor crack
+          if ((tx + ty * 3) % 11 === 0) {
+            ctx.strokeStyle = 'rgba(0,204,255,0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 8, y + 12); ctx.lineTo(x + 32, y + 36); ctx.stroke();
+          }
+          if ((tx * 7 + ty) % 13 === 0) {
+            ctx.strokeStyle = 'rgba(255,0,170,0.06)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 30, y + 8); ctx.lineTo(x + 10, y + 38); ctx.stroke();
+          }
+        }
+        continue;
+      }
+
+      // === MINE TILES ===
+      if (Scene.inMine) {
+        const isOuterEdge = tx === 0 || ty === 0 || tx === level.widthTiles - 1 || ty === level.heightTiles - 1;
+        if (collisionGrid[ty][tx] === 1) {
+          // Rocky cave wall
+          ctx.fillStyle = '#2a2010';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#342818';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Rock texture
+          if ((tx + ty * 3) % 5 === 0) {
+            ctx.fillStyle = 'rgba(60,50,30,0.4)';
+            ctx.beginPath(); ctx.arc(x + 18, y + 14, 6, 0, Math.PI * 2); ctx.fill();
+          }
+          if ((tx * 7 + ty) % 6 === 0) {
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 6, y + 12); ctx.lineTo(x + 22, y + 28); ctx.stroke();
+          }
+        } else {
+          // Mine floor — earthy brown stone
+          const sv = ((tx * 5 + ty * 11) % 5);
+          ctx.fillStyle = `rgb(${52 + sv * 2},${44 + sv * 2},${32 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Occasional pebbles
+          if ((tx + ty * 3) % 7 === 0) {
+            ctx.fillStyle = 'rgba(70,60,40,0.3)';
+            ctx.beginPath(); ctx.arc(x + 16, y + 20, 2, 0, Math.PI * 2); ctx.fill();
+          }
+          if ((tx * 3 + ty) % 9 === 0) {
+            ctx.fillStyle = 'rgba(90,75,50,0.2)';
+            ctx.beginPath(); ctx.arc(x + 32, y + 12, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === GUNSMITH TILES ===
+      if (Scene.inGunsmith) {
+        if (collisionGrid[ty][tx] === 1) {
+          // Stone workshop walls
+          ctx.fillStyle = '#3a3238';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#443840';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Brick pattern
+          if ((tx + ty) % 3 === 0) {
+            ctx.strokeStyle = 'rgba(80,60,50,0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 4, y + 8, 20, 12);
+          }
+        } else {
+          // Workshop floor — dark wooden planks
+          const sv = ((tx * 3 + ty * 7) % 4);
+          ctx.fillStyle = `rgb(${58 + sv * 3},${42 + sv * 2},${28 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Plank lines (horizontal)
+          ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(x, y + TILE * 0.33); ctx.lineTo(x + TILE, y + TILE * 0.33); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x, y + TILE * 0.67); ctx.lineTo(x + TILE, y + TILE * 0.67); ctx.stroke();
+          // Occasional nail
+          if ((tx * 5 + ty) % 8 === 0) {
+            ctx.fillStyle = 'rgba(100,90,70,0.3)';
+            ctx.beginPath(); ctx.arc(x + 24, y + 16, 1.5, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === DELI / COOKING TILES ===
+      if (Scene.inCooking) {
+        if (collisionGrid[ty][tx] === 1) {
+          // Deli walls — warm cream/tan
+          ctx.fillStyle = '#c8b898';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = '#b0a080';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Brick accent
+          if ((tx + ty) % 4 === 0) {
+            ctx.fillStyle = 'rgba(160,120,80,0.15)';
+            ctx.fillRect(x + 4, y + 4, TILE - 8, TILE - 8);
+          }
+        } else {
+          // Deli floor — checkered tile pattern
+          const checker = (tx + ty) % 2 === 0;
+          ctx.fillStyle = checker ? '#e0d8c8' : '#d0c8b0';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+        }
+        continue;
+      }
+
+      // === HIDE & SEEK TILES (abandoned warehouse / dark facility) ===
+      if (Scene.inHideSeek) {
+        const isOuterEdge = tx === 0 || ty === 0 || tx === level.widthTiles - 1 || ty === level.heightTiles - 1;
+        if (collisionGrid[ty][tx] === 1) {
+          if (isOuterEdge) {
+            // Outer boundary — heavy dark charcoal wall
+            ctx.fillStyle = '#0e0e14';
+            ctx.fillRect(x, y, TILE, TILE);
+            ctx.fillStyle = '#141420';
+            ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+            // Subtle rust streak on some wall tiles
+            if ((tx + ty * 5) % 7 === 0) {
+              ctx.fillStyle = 'rgba(120,60,20,0.08)';
+              ctx.fillRect(x + 8, y + 4, 3, TILE - 8);
+            }
+          } else {
+            // Interior wall — dark slate with vent grate details
+            ctx.fillStyle = '#1a1a22';
+            ctx.fillRect(x, y, TILE, TILE);
+            ctx.fillStyle = '#202030';
+            ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+            // Vent grate pattern (horizontal slats on some wall tiles)
+            if ((tx + ty * 3) % 4 === 0) {
+              ctx.strokeStyle = 'rgba(255,154,64,0.06)';
+              ctx.lineWidth = 1;
+              for (let sl = 0; sl < 4; sl++) {
+                const sy = y + 8 + sl * 8;
+                ctx.beginPath(); ctx.moveTo(x + 6, sy); ctx.lineTo(x + TILE - 6, sy); ctx.stroke();
+              }
+            }
+            // Rust streak accent
+            if ((tx * 7 + ty) % 9 === 0) {
+              ctx.fillStyle = 'rgba(120,60,20,0.1)';
+              ctx.fillRect(x + 12, y + 2, 2, TILE - 4);
+            }
+            // Bolt rivets on corners
+            if ((tx + ty) % 3 === 0) {
+              ctx.fillStyle = 'rgba(80,80,100,0.15)';
+              ctx.beginPath(); ctx.arc(x + 6, y + 6, 2, 0, Math.PI * 2); ctx.fill();
+              ctx.beginPath(); ctx.arc(x + TILE - 6, y + TILE - 6, 2, 0, Math.PI * 2); ctx.fill();
+            }
+          }
+        } else {
+          // Floor — dusty concrete with faint tile grid
+          const sv = ((tx * 3 + ty * 7) % 5);
+          const fr = 30 + sv, fg = 30 + sv, fb = 38 + sv;
+          ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Faint tile grid lines
+          ctx.strokeStyle = 'rgba(80,80,100,0.06)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Scuff marks (sparse diagonal scratches)
+          if ((tx * 11 + ty * 3) % 13 === 0) {
+            ctx.strokeStyle = 'rgba(60,60,70,0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 6, y + 10); ctx.lineTo(x + 28, y + 34); ctx.stroke();
+          }
+          if ((tx * 5 + ty * 9) % 17 === 0) {
+            ctx.strokeStyle = 'rgba(50,50,60,0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 30, y + 8); ctx.lineTo(x + 12, y + 32); ctx.stroke();
+          }
+          // Dust speckles
+          if ((tx + ty * 3) % 9 === 0) {
+            ctx.fillStyle = 'rgba(80,75,70,0.12)';
+            ctx.beginPath(); ctx.arc(x + 20, y + 24, 2, 0, Math.PI * 2); ctx.fill();
+          }
+          // Dim amber light pools near intersections (warm glow spots)
+          if ((tx % 6 === 0) && (ty % 6 === 0)) {
+            ctx.fillStyle = 'rgba(255,154,64,0.04)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,154,64,0.06)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.4, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === THE SKELD TILES (spaceship interior) ===
+      if (Scene.inSkeld) {
+        if (collisionGrid[ty][tx] === 1) {
+          // Wall — dark metal hull panels
+          const sv = ((tx * 5 + ty * 3) % 4);
+          ctx.fillStyle = `rgb(${28 + sv},${28 + sv},${36 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = `rgb(${34 + sv},${34 + sv},${44 + sv})`;
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Panel seam lines
+          if ((tx + ty) % 3 === 0) {
+            ctx.strokeStyle = 'rgba(100,100,130,0.12)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 4, y + 4, TILE - 8, TILE - 8);
+          }
+          // Bolt rivets
+          if ((tx + ty * 3) % 5 === 0) {
+            ctx.fillStyle = 'rgba(80,80,110,0.18)';
+            ctx.beginPath(); ctx.arc(x + 6, y + 6, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + TILE - 6, y + 6, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + 6, y + TILE - 6, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + TILE - 6, y + TILE - 6, 1.5, 0, Math.PI * 2); ctx.fill();
+          }
+          // Colored accent stripe on some walls (Among Us style)
+          if ((tx * 7 + ty * 11) % 19 === 0) {
+            ctx.fillStyle = 'rgba(60,90,140,0.12)';
+            ctx.fillRect(x + 4, y + TILE - 8, TILE - 8, 4);
+          }
+        } else {
+          // Floor — lighter gray metal grating
+          const sv = ((tx * 3 + ty * 7) % 5);
+          ctx.fillStyle = `rgb(${48 + sv * 2},${48 + sv * 2},${56 + sv * 2})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          // Subtle grid lines (metal floor panels)
+          ctx.strokeStyle = 'rgba(80,80,110,0.08)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Floor grate pattern (sparse)
+          if ((tx + ty * 3) % 11 === 0) {
+            ctx.strokeStyle = 'rgba(60,60,85,0.1)';
+            ctx.lineWidth = 1;
+            for (let sl = 0; sl < 3; sl++) {
+              ctx.beginPath();
+              ctx.moveTo(x + 10, y + 12 + sl * 10);
+              ctx.lineTo(x + TILE - 10, y + 12 + sl * 10);
+              ctx.stroke();
+            }
+          }
+          // Emergency floor lighting (dim blue pools)
+          if ((tx % 8 === 0) && (ty % 8 === 0)) {
+            ctx.fillStyle = 'rgba(80,120,200,0.06)';
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.7, 0, Math.PI * 2); ctx.fill();
+          }
+          // Hazard stripe at corridor edges (yellow-black, sparse)
+          if ((tx % 12 === 0) && (ty % 6 === 0)) {
+            ctx.fillStyle = 'rgba(200,180,40,0.06)';
+            ctx.fillRect(x, y, TILE, 3);
+          }
+        }
+        continue;
+      }
+
+      // === DUNGEON TILES ===
+
+      if (collisionGrid[ty][tx] === 1) {
+        if (isBorder) {
+          // Outer wall — dark concrete
+          ctx.fillStyle = '#2a2a32';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = '#222230';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+        } else {
+          // Interior cover block — dark stone bricks
+          ctx.fillStyle = '#3a3a44';
+          ctx.fillRect(x, y, TILE, TILE);
+          // Brick pattern
+          ctx.strokeStyle = '#2e2e38';
+          ctx.lineWidth = 1;
+          const bh = TILE / 2;
+          const off = ty % 2 === 0 ? 0 : TILE / 3;
+          ctx.strokeRect(x + off, y, TILE/2, bh);
+          ctx.strokeRect(x + off - TILE/2, y, TILE/2, bh);
+          ctx.strokeRect(x, y + bh, TILE/2, bh);
+          ctx.strokeRect(x + TILE/2, y + bh, TILE/2, bh);
+          // Top highlight
+          ctx.fillStyle = '#454552';
+          ctx.fillRect(x, y, TILE, 2);
+          // Bottom shadow
+          ctx.fillStyle = '#28283a';
+          ctx.fillRect(x, y + TILE - 2, TILE, 2);
+        }
+      } else {
+        // Floor tile — lighter toward center
+        const cx = level.widthTiles / 2, cy = level.heightTiles / 2;
+        const distFromCenter = Math.sqrt((tx - cx) ** 2 + (ty - cy) ** 2);
+        const maxDist = 20;
+        const centerFade = Math.max(0, 1 - distFromCenter / maxDist);
+        const baseR = 58 + Math.round(centerFade * 25);
+        const baseG = 55 + Math.round(centerFade * 20);
+        const baseB = 55 + Math.round(centerFade * 15);
+        const gv = ((tx + ty) % 2 === 0) ? 0 : 2;
+        ctx.fillStyle = `rgb(${baseR+gv},${baseG+gv},${baseB+gv})`;
+        ctx.fillRect(x, y, TILE, TILE);
+        // Subtle grid lines
+        ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, TILE, TILE);
+
+        // Blood splatters near center
+        if (centerFade > 0.5 && (tx * 13 + ty * 7) % 19 === 0) {
+          ctx.fillStyle = `rgba(120,20,20,${0.15 + centerFade * 0.15})`;
+          ctx.beginPath();
+          ctx.arc(x + TILE*0.4, y + TILE*0.5, 5 + (tx%3)*2, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "sprites": {},
+  "tiles": {},
+  "entities": {},
+  "frameSize": {
+    "default": [48, 48],
+    "character": [48, 64],
+    "tile": [48, 48]
+  }
+}
