@@ -413,10 +413,9 @@ const COLOR_PALETTE = [
 window.addEventListener("keydown", e => {
   const key = e.key.toLowerCase();
 
-  // Chat toggle (blocked in Skeld — no chat panel)
+  // Chat toggle
   if (key === keybinds.chat) {
     if (keybinds.chat === "tab") e.preventDefault();
-    if (typeof Scene !== 'undefined' && Scene.inSkeld) return;
     UI.toggle('chat');
     nameEditActive = false;
     keysDown[keybinds.moveUp] = false; keysDown[keybinds.moveDown] = false; keysDown[keybinds.moveLeft] = false; keysDown[keybinds.moveRight] = false;

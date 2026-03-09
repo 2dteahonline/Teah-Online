@@ -296,13 +296,11 @@ canvas.addEventListener("mousedown", e => {
     // Consume clicks inside panel
     if (mx >= px2 && mx <= px2 + pw && my >= py2 && my <= py2 + ph) return;
   }
-  // Chat icon (first) — blocked in Skeld
+  // Chat icon (first)
   const chatY = 12;
-  if (!(typeof Scene !== 'undefined' && Scene.inSkeld)) {
-    if (mx >= iconX && mx <= iconX + iconW && my >= chatY && my <= chatY + ICON_SIZE && e.button === 0) {
-      UI.toggle('chat');
-      return;
-    }
+  if (mx >= iconX && mx <= iconX + iconW && my >= chatY && my <= chatY + ICON_SIZE && e.button === 0) {
+    UI.toggle('chat');
+    return;
   }
   // Profile icon (second) — blocked in Skeld
   const profY = 12 + ICON_SIZE + ICON_GAP;

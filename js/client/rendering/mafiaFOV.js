@@ -97,35 +97,7 @@ function drawMafiaHUD() {
     ctx.restore();
   }
 
-  // ---- Role indicator (top-left corner) ----
-  const text = role.toUpperCase();
   const isImpostor = role === 'impostor';
-
-  ctx.save();
-  ctx.font = 'bold 28px monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-
-  const x = 20;
-  const y = 20;
-  const metrics = ctx.measureText(text);
-  const padX = 16;
-  const padY = 8;
-  const pillW = metrics.width + padX * 2;
-  const pillH = 36 + padY;
-
-  ctx.fillStyle = isImpostor ? 'rgba(200, 20, 20, 0.7)' : 'rgba(20, 100, 200, 0.7)';
-  ctx.beginPath();
-  ctx.roundRect(x, y, pillW, pillH, 8);
-  ctx.fill();
-
-  ctx.strokeStyle = isImpostor ? '#ff4444' : '#44aaff';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(text, x + padX, y + padY);
-  ctx.restore();
 
   // ---- KILL button (bottom-right, impostor only, not ghost) ----
   if (isImpostor && !mk.playerIsGhost) {

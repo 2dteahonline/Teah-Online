@@ -1872,8 +1872,8 @@ function draw() {
     }
     ctx.textAlign = "left";
   }
+  drawChatIcon();
   if (!Scene.inSkeld) {
-    drawChatIcon();
     drawProfileIcon();
     drawMapIcon();
     drawToolboxIcon();
@@ -1882,8 +1882,8 @@ function draw() {
   // Mafia settings gear (top-right, Skeld only)
   if (Scene.inSkeld && typeof drawMafiaSettingsIcon === 'function') drawMafiaSettingsIcon();
   if (Scene.inSkeld && typeof drawMafiaSettingsPanel === 'function') drawMafiaSettingsPanel();
+  drawChatPanel();
   if (!Scene.inSkeld) {
-    drawChatPanel();
     drawProfilePanel();
     drawShopPanel();
     drawIdentityPanel();
