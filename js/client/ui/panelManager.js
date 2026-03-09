@@ -733,6 +733,18 @@ window.addEventListener("keydown", e => {
             const ids = typeof MAIN_GUNS !== 'undefined' ? Object.keys(MAIN_GUNS).join(', ') : 'none';
             chatMessages.push({ name: "SYSTEM", text: "Usage: /gun <id> [tier level] or /gun <id> [level]. IDs: " + ids, time: Date.now() });
           }
+        } else if (cmdLower === "/ghost") {
+          // /ghost — toggle alive/dead (ghost mode) for testing in Mafia
+          if (typeof MafiaState !== 'undefined' && Scene.inSkeld && MafiaState.phase !== 'idle') {
+            const localP = MafiaSystem.getLocalPlayer();
+            if (localP) {
+              localP.alive = !localP.alive;
+              MafiaState.playerIsGhost = !localP.alive;
+              chatMessages.push({ name: "SYSTEM", text: localP.alive ? "Revived — no longer a ghost." : "You are now a GHOST.", time: Date.now() });
+            }
+          } else {
+            chatMessages.push({ name: "SYSTEM", text: "/ghost only works in Mafia mode.", time: Date.now() });
+          }
         } else if (cmdLower.startsWith("/role")) {
           // /role impostor  or  /role crewmate — Mafia debug command
           const rolePart = cmd.split(" ")[1] || "";
