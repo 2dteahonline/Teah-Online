@@ -1,5 +1,5 @@
 // ===================== MAFIA SYSTEM (Among Us-style Gameplay) =====================
-// Authority: state machine, bot AI, role assignment for the Mafia game mode.
+// Authority: state machine, bot AI, role assignment, kill/body/ghost for the Mafia game mode.
 // Depends on: MAFIA_GAME (mafiaGameData.js), bfsPath/isSolid (mobSystem.js),
 //             Scene/enterLevel (sceneManager.js), gameState globals (player, level, gameFrame)
 
@@ -9,26 +9,14 @@ window.MafiaState = {
   phaseTimer: 0,
   playerRole: null,           // 'crewmate' | 'impostor'
   participants: [],           // array of participant objects (see startMatch)
-  bodies: [],                 // [{ x, y, color, name, reportable }]
+  bodies: [],                 // [{ x, y, color, name, id }]
   killCooldown: 0,
   sabotage: { active: null, timer: 0, cooldown: 0 },
   meeting: { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 },
   ejection: { name: null, wasImpostor: false, timer: 0 },
   taskProgress: { done: 0, total: 0 },
-};
-
-// ---- Default state snapshot for resets ----
-const _MAFIA_DEFAULTS = {
-  phase: 'idle',
-  phaseTimer: 0,
-  playerRole: null,
-  participants: [],
-  bodies: [],
-  killCooldown: 0,
-  sabotage: { active: null, timer: 0, cooldown: 0 },
-  meeting: { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 },
-  ejection: { name: null, wasImpostor: false, timer: 0 },
-  taskProgress: { done: 0, total: 0 },
+  // Ghost state
+  playerIsGhost: false,       // true after local player dies
 };
 
 
@@ -64,23 +52,21 @@ window.MafiaSystem = {
   startMatch() {
     const mk = MafiaState;
     const mapData = this._getMapData();
-    if (!mapData) return; // no map data for this level
+    if (!mapData) return;
 
-    // Clear existing mobs (bots are standalone entities, not in mobs[])
     mobs.length = 0;
 
-    // ---- Assign colors: shuffle 10 colors, pick 9 ----
+    // Shuffle colors
     const colorPool = MAFIA_GAME.COLORS.slice();
     for (let i = colorPool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [colorPool[i], colorPool[j]] = [colorPool[j], colorPool[i]];
     }
 
-    // ---- Build participants array ----
     const spawn = mapData.SPAWN;
     const participants = [];
 
-    // Player (index 0) — always crewmate for now (hardcoded)
+    // Player — always crewmate (use /role to switch for testing)
     mk.playerRole = 'crewmate';
     const playerColor = colorPool[0];
     participants.push({
@@ -97,20 +83,15 @@ window.MafiaSystem = {
       _aiState: null,
     });
 
-    // Position player at spawn
     player.x = spawn.tx * TILE + TILE / 2;
     player.y = spawn.ty * TILE + TILE / 2;
     player.vx = 0;
     player.vy = 0;
 
-    // ---- Create 8 bots ----
-    const impostorIdx = Math.floor(Math.random() * MAFIA_GAME.BOT_COUNT);
-
+    // All bots are crewmate (use /role to test impostor features)
     for (let i = 0; i < MAFIA_GAME.BOT_COUNT; i++) {
       const color = colorPool[i + 1];
-      const role = (i === impostorIdx) ? 'impostor' : 'crewmate';
 
-      // Spread bots slightly around spawn to avoid stacking
       const offsetX = ((i % 4) - 1.5) * 30;
       const offsetY = (Math.floor(i / 4) - 0.5) * 30;
 
@@ -137,7 +118,7 @@ window.MafiaSystem = {
       participants.push({
         id: 'bot_' + i,
         name: color.name,
-        role: role,
+        role: 'crewmate',
         entity: bot,
         isBot: true,
         isLocal: false,
@@ -162,17 +143,110 @@ window.MafiaSystem = {
     mk.phaseTimer = 0;
     mk.bodies = [];
     mk.killCooldown = MAFIA_GAME.KILL_COOLDOWN;
+    mk.playerIsGhost = false;
     mk.sabotage = { active: null, timer: 0, cooldown: 0 };
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.taskProgress = { done: 0, total: 0 };
 
-    // Reset Skeld tasks if available
     if (typeof SkeldTasks !== 'undefined' && typeof SkeldTasks.reset === 'function') {
       SkeldTasks.reset();
     }
+  },
 
-    // Bot AI disabled for now — will be enabled in a later phase
+
+  // ===================== ROLE COMMAND =====================
+  // /role impostor  or  /role crewmate
+  setRole(roleName) {
+    const mk = MafiaState;
+    if (mk.phase === 'idle') return;
+
+    const role = roleName.toLowerCase();
+    if (role !== 'impostor' && role !== 'crewmate') return;
+
+    mk.playerRole = role;
+    const localP = this.getLocalPlayer();
+    if (localP) localP.role = role;
+
+    // Reset kill cooldown when switching to impostor
+    if (role === 'impostor') {
+      mk.killCooldown = 0;
+    }
+  },
+
+
+  // ===================== KILL SYSTEM =====================
+
+  // Find nearest alive crewmate within kill range (for impostor player)
+  getNearestKillTarget() {
+    const mk = MafiaState;
+    if (mk.playerRole !== 'impostor' || mk.playerIsGhost) return null;
+    if (mk.killCooldown > 0) return null;
+
+    let nearest = null;
+    let nearestDist = MAFIA_GAME.KILL_RANGE;
+
+    for (const p of mk.participants) {
+      if (p.isLocal || !p.alive || p.role === 'impostor') continue;
+      const dx = p.entity.x - player.x;
+      const dy = p.entity.y - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = p;
+      }
+    }
+
+    return nearest;
+  },
+
+  // Execute a kill on a target participant
+  kill(targetId) {
+    const mk = MafiaState;
+    if (mk.playerRole !== 'impostor' || mk.playerIsGhost) return false;
+    if (mk.killCooldown > 0) return false;
+
+    const target = mk.participants.find(p => p.id === targetId);
+    if (!target || !target.alive || target.role === 'impostor') return false;
+
+    // Distance check
+    const dx = target.entity.x - player.x;
+    const dy = target.entity.y - player.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > MAFIA_GAME.KILL_RANGE) return false;
+
+    // Kill the target
+    target.alive = false;
+
+    // Spawn body at target's location
+    mk.bodies.push({
+      x: target.entity.x,
+      y: target.entity.y,
+      color: target.color,
+      name: target.name,
+      id: target.id,
+    });
+
+    // Teleport player to the kill location (Among Us snap)
+    player.x = target.entity.x;
+    player.y = target.entity.y;
+
+    // Reset cooldown
+    mk.killCooldown = MAFIA_GAME.KILL_COOLDOWN;
+
+    // Visual feedback
+    if (typeof hitEffects !== 'undefined') {
+      hitEffects.push({ x: target.entity.x, y: target.entity.y, life: 25, type: 'blood_slash', dmg: 0 });
+    }
+
+    return true;
+  },
+
+  // Try to kill nearest target (called from input)
+  tryKill() {
+    const target = this.getNearestKillTarget();
+    if (!target) return false;
+    return this.kill(target.id);
   },
 
 
@@ -180,7 +254,6 @@ window.MafiaSystem = {
   tick() {
     const mk = MafiaState;
 
-    // Auto-start match when entering a Mafia map and no match is active
     if (mk.phase === 'idle') {
       this.startMatch();
       return;
@@ -189,7 +262,6 @@ window.MafiaSystem = {
     if (mk.phase === 'playing') {
       this._tickPlaying();
     }
-    // Future phases: meeting, voting, ejecting handled here
   },
 
 
@@ -199,24 +271,15 @@ window.MafiaSystem = {
 
     // Tick kill cooldown
     if (mk.killCooldown > 0) mk.killCooldown--;
-
-    // Bot AI disabled for now — will be enabled in a later phase
-    // for (const p of mk.participants) {
-    //   if (!p.isBot || !p.alive) continue;
-    //   this._tickBotCrewmate(p);
-    // }
   },
 
 
   // ===================== BOT AI — CREWMATE =====================
-  // Pick random room → BFS pathfind → walk there → pause 3-5s → repeat
-
   _tickBotCrewmate(participant) {
     const ai = participant._aiState;
     const bot = participant.entity;
     if (!ai || !bot) return;
 
-    // ---- Pause at "task" location ----
     if (ai.pauseTimer > 0) {
       ai.pauseTimer--;
       bot.moving = false;
@@ -228,7 +291,6 @@ window.MafiaSystem = {
       return;
     }
 
-    // ---- Stuck detection ----
     const dxLast = bot.x - (ai.lastX || 0);
     const dyLast = bot.y - (ai.lastY || 0);
     if (Math.abs(dxLast) < 2 && Math.abs(dyLast) < 2) {
@@ -245,7 +307,6 @@ window.MafiaSystem = {
       return;
     }
 
-    // ---- Move along path ----
     if (!ai.path || ai.pathIdx >= ai.path.length) {
       ai.pauseTimer = MAFIA_GAME.BOT_TASK_PAUSE_MIN +
         Math.floor(Math.random() * (MAFIA_GAME.BOT_TASK_PAUSE_MAX - MAFIA_GAME.BOT_TASK_PAUSE_MIN));
@@ -258,8 +319,6 @@ window.MafiaSystem = {
     this._moveBotAlongPath(bot, ai);
   },
 
-
-  // ---- Pick a random room destination for bot ----
   _pickBotDestination(participant) {
     const ai = participant._aiState;
     const bot = participant.entity;
@@ -311,16 +370,11 @@ window.MafiaSystem = {
   },
 
 
-  // ===================== BOT MOVEMENT (player-style AABB) =====================
-
+  // ===================== BOT MOVEMENT =====================
   _moveBotAlongPath(bot, ai) {
     const path = ai.path;
 
-    if (!path || path.length === 0) {
-      bot.vx = 0; bot.vy = 0; bot.moving = false;
-      return;
-    }
-    if (ai.pathIdx >= path.length) {
+    if (!path || path.length === 0 || ai.pathIdx >= path.length) {
       bot.vx = 0; bot.vy = 0; bot.moving = false;
       return;
     }
@@ -416,6 +470,7 @@ window.MafiaSystem = {
     mk.participants = [];
     mk.bodies = [];
     mk.killCooldown = 0;
+    mk.playerIsGhost = false;
     mk.sabotage = { active: null, timer: 0, cooldown: 0 };
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };

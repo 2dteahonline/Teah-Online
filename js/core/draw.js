@@ -240,6 +240,8 @@ function draw() {
       if (!p.isLocal && p.entity) sortedChars.push({ y: p.entity.y, type: "mob", mob: p.entity });
     }
   }
+  // Mafia dead bodies (render before characters, on the ground)
+  if (typeof drawMafiaBodies === 'function' && Scene.inSkeld) drawMafiaBodies();
   // Mafia participants — standalone entities, not in mobs[]
   if (typeof MafiaState !== 'undefined' && Scene.inSkeld && MafiaState.participants) {
     for (const p of MafiaState.participants) {

@@ -9,8 +9,9 @@ const MAFIA_GAME = {
   IMPOSTOR_COUNT: 1,         // 1 impostor per match (hardcoded for now)
   BOT_SPEED: 6.25,           // matches PLAYER_BASE_SPEED
 
-  // ---- Timers (frames @ 60fps) ----
-  KILL_COOLDOWN: 1800,       // 30s between kills
+  // ---- Kill mechanics ----
+  KILL_RANGE: 120,             // px — distance to target for kill
+  KILL_COOLDOWN: 1800,         // 30s between kills (frames @ 60fps)
   DISCUSSION_TIME: 900,      // 15s discussion before voting
   VOTING_TIME: 1800,         // 30s to vote
   EJECTION_TIME: 300,        // 5s ejection animation

@@ -101,6 +101,15 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Mafia KILL button click
+  if (typeof MafiaSystem !== 'undefined' && window._mafiaKillBtn) {
+    const kb = window._mafiaKillBtn;
+    if (mx >= kb.x && mx <= kb.x + kb.w && my >= kb.y && my <= kb.y + kb.h) {
+      MafiaSystem.tryKill();
+      return;
+    }
+  }
+
   // Vent arrow click detection (Among Us-style directional arrows)
   if (typeof VentSystem !== 'undefined' && VentSystem.active && window._ventArrowButtons) {
     for (const btn of window._ventArrowButtons) {

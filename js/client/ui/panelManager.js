@@ -733,6 +733,18 @@ window.addEventListener("keydown", e => {
             const ids = typeof MAIN_GUNS !== 'undefined' ? Object.keys(MAIN_GUNS).join(', ') : 'none';
             chatMessages.push({ name: "SYSTEM", text: "Usage: /gun <id> [tier level] or /gun <id> [level]. IDs: " + ids, time: Date.now() });
           }
+        } else if (cmdLower.startsWith("/role")) {
+          // /role impostor  or  /role crewmate — Mafia debug command
+          const rolePart = cmd.split(" ")[1] || "";
+          const roleNorm = rolePart.toLowerCase();
+          // Accept both "impostor" and "imposter"
+          const resolvedRole = (roleNorm === 'imposter') ? 'impostor' : roleNorm;
+          if (typeof MafiaSystem !== 'undefined' && Scene.inSkeld && (resolvedRole === 'impostor' || resolvedRole === 'crewmate')) {
+            MafiaSystem.setRole(resolvedRole);
+            chatMessages.push({ name: "SYSTEM", text: "Role set to " + resolvedRole.toUpperCase(), time: Date.now() });
+          } else {
+            chatMessages.push({ name: "SYSTEM", text: "Usage: /role impostor | /role crewmate (must be in Skeld)", time: Date.now() });
+          }
         } else {
           chatMessages.push({ name: player.name, text: cmd, time: Date.now() });
         }
@@ -890,6 +902,12 @@ window.addEventListener("keydown", e => {
   if (key === "f") {
     InputIntent.meleePressed = true;
     InputIntent.ultimatePressed = true;
+  }
+  // Mafia kill (Q key — impostor only, Skeld scene)
+  if (key === "q" && !chatInputActive && !nameEditActive && !statusEditActive) {
+    if (typeof MafiaSystem !== 'undefined' && typeof Scene !== 'undefined' && Scene.inSkeld) {
+      MafiaSystem.tryKill();
+    }
   }
   if (key === "shift" && !chatInputActive && !nameEditActive && !statusEditActive) {
     InputIntent.dashPressed = true;
