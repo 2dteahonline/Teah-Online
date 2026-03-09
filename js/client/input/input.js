@@ -110,6 +110,49 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Mafia settings gear icon click
+  if (typeof _mafiaSettingsOpen !== 'undefined' && window._mafiaSettingsBtn) {
+    const sb = window._mafiaSettingsBtn;
+    if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
+      _mafiaSettingsOpen = !_mafiaSettingsOpen;
+      return;
+    }
+  }
+
+  // Mafia settings panel button clicks
+  if (typeof _mafiaSettingsOpen !== 'undefined' && _mafiaSettingsOpen && window._mafiaSettingsBtns) {
+    const btns = window._mafiaSettingsBtns;
+    // Leave button
+    if (btns.leave && mx >= btns.leave.x && mx <= btns.leave.x + btns.leave.w &&
+        my >= btns.leave.y && my <= btns.leave.y + btns.leave.h) {
+      _mafiaSettingsOpen = false;
+      if (typeof handleLeave === 'function') handleLeave();
+      return;
+    }
+    // Sounds button — open the main settings panel on Sounds tab
+    if (btns.sounds && mx >= btns.sounds.x && mx <= btns.sounds.x + btns.sounds.w &&
+        my >= btns.sounds.y && my <= btns.sounds.y + btns.sounds.h) {
+      _mafiaSettingsOpen = false;
+      if (typeof settingsActiveTab !== 'undefined') settingsActiveTab = 2; // Sounds tab
+      UI.open('settings');
+      return;
+    }
+    // General button — open the main settings panel on General tab
+    if (btns.general && mx >= btns.general.x && mx <= btns.general.x + btns.general.w &&
+        my >= btns.general.y && my <= btns.general.y + btns.general.h) {
+      _mafiaSettingsOpen = false;
+      if (typeof settingsActiveTab !== 'undefined') settingsActiveTab = 0; // General tab
+      UI.open('settings');
+      return;
+    }
+  }
+
+  // Close mafia settings if clicking outside panel while open
+  if (typeof _mafiaSettingsOpen !== 'undefined' && _mafiaSettingsOpen) {
+    _mafiaSettingsOpen = false;
+    return;
+  }
+
   // Vent arrow click detection (Among Us-style directional arrows)
   if (typeof VentSystem !== 'undefined' && VentSystem.active && window._ventArrowButtons) {
     for (const btn of window._ventArrowButtons) {

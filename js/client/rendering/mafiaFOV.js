@@ -186,3 +186,126 @@ function drawMafiaHUD() {
     window._mafiaKillBtn = null;
   }
 }
+
+
+// ===================== MAFIA SETTINGS ICON + PANEL =====================
+// Replaces the normal HUD icons (chat, profile, map, toolbox) in Skeld.
+// Gear icon top-right → opens small panel with Leave, Sounds, General.
+
+let _mafiaSettingsOpen = false;
+window._mafiaSettingsBtn = null;     // gear icon click region
+window._mafiaSettingsBtns = null;    // { leave, sounds, general } click regions
+
+function drawMafiaSettingsIcon() {
+  const size = 48;
+  const x = ctx.canvas.width - size - 12;
+  const y = 12;
+
+  ctx.save();
+
+  // Background
+  ctx.fillStyle = _mafiaSettingsOpen ? 'rgba(60,60,70,0.85)' : 'rgba(20,20,28,0.8)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, size, size, 10);
+  ctx.fill();
+
+  // Border
+  ctx.strokeStyle = _mafiaSettingsOpen ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(x, y, size, size, 10);
+  ctx.stroke();
+
+  // Gear icon (simple)
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  ctx.fillStyle = _mafiaSettingsOpen ? '#fff' : '#bbb';
+  ctx.font = '24px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('\u2699', cx, cy + 1);  // ⚙
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.restore();
+
+  window._mafiaSettingsBtn = { x, y, w: size, h: size };
+}
+
+function drawMafiaSettingsPanel() {
+  if (!_mafiaSettingsOpen) {
+    window._mafiaSettingsBtns = null;
+    return;
+  }
+
+  const panelW = 200;
+  const panelH = 180;
+  const panelX = ctx.canvas.width - panelW - 12;
+  const panelY = 70;
+
+  ctx.save();
+
+  // Panel background
+  ctx.fillStyle = 'rgba(15, 15, 25, 0.92)';
+  ctx.beginPath();
+  ctx.roundRect(panelX, panelY, panelW, panelH, 10);
+  ctx.fill();
+
+  // Border
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(panelX, panelY, panelW, panelH, 10);
+  ctx.stroke();
+
+  // Title
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ccc';
+  ctx.fillText('SETTINGS', panelX + panelW / 2, panelY + 28);
+
+  // Buttons
+  const btnW = panelW - 30;
+  const btnH = 36;
+  const btnX = panelX + 15;
+  const startY = panelY + 45;
+  const gap = 8;
+
+  const buttons = [
+    { key: 'general', label: 'General',  color: 'rgba(60, 100, 180, 0.7)', border: '#4488cc' },
+    { key: 'sounds',  label: 'Sounds',   color: 'rgba(60, 140, 80, 0.7)',  border: '#44aa66' },
+    { key: 'leave',   label: 'Leave',    color: 'rgba(180, 40, 40, 0.7)',  border: '#cc4444' },
+  ];
+
+  const regions = {};
+
+  for (let i = 0; i < buttons.length; i++) {
+    const btn = buttons[i];
+    const by = startY + i * (btnH + gap);
+
+    ctx.fillStyle = btn.color;
+    ctx.beginPath();
+    ctx.roundRect(btnX, by, btnW, btnH, 8);
+    ctx.fill();
+
+    ctx.strokeStyle = btn.border;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(btnX, by, btnW, btnH, 8);
+    ctx.stroke();
+
+    ctx.font = 'bold 15px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(btn.label, btnX + btnW / 2, by + btnH / 2);
+
+    regions[btn.key] = { x: btnX, y: by, w: btnW, h: btnH };
+  }
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+
+  window._mafiaSettingsBtns = regions;
+}

@@ -1872,20 +1872,27 @@ function draw() {
     }
     ctx.textAlign = "left";
   }
-  drawChatIcon();
-  drawProfileIcon();
-  drawMapIcon();
-  drawToolboxIcon();
-  drawSelectedToolbar();
-  drawChatPanel();
-  drawProfilePanel();
+  if (!Scene.inSkeld) {
+    drawChatIcon();
+    drawProfileIcon();
+    drawMapIcon();
+    drawToolboxIcon();
+    drawSelectedToolbar();
+  }
+  // Mafia settings gear (top-right, Skeld only)
+  if (Scene.inSkeld && typeof drawMafiaSettingsIcon === 'function') drawMafiaSettingsIcon();
+  if (Scene.inSkeld && typeof drawMafiaSettingsPanel === 'function') drawMafiaSettingsPanel();
+  if (!Scene.inSkeld) {
+    drawChatPanel();
+    drawProfilePanel();
+    drawShopPanel();
+    drawIdentityPanel();
+    drawStatsPanel();
+    drawToolboxPanel();
+    drawModifyGunPanel();
+    if (typeof drawTestMobPanel === 'function') drawTestMobPanel();
+  }
   if (typeof drawSettingsPanel === 'function') drawSettingsPanel();
-  drawShopPanel();
-  drawIdentityPanel();
-  drawStatsPanel();
-  drawToolboxPanel();
-  drawModifyGunPanel();
-  if (typeof drawTestMobPanel === 'function') drawTestMobPanel();
 
   // Placement preview (draw after panels so it shows under them)
   if (activePlaceTool && !UI.isOpen('toolbox')) {
