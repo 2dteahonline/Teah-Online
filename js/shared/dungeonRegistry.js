@@ -21,7 +21,7 @@ const DUNGEON_REGISTRY = {
     name: 'Azurine City',
     maxFloors: 5,
     returnLevel: 'azurine_01',
-    hasHazards: true,       // HazardSystem active per floor
+    hasHazards: false,
     spawnTX: 20,
     spawnTY: 20,
     requiredLevel: 0,

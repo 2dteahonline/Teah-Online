@@ -178,7 +178,6 @@ const _azurineConfig = {
           theme: 'Velocity & Renegades',
           forceGolem: false,
           forceBoss: 'velocity',
-          activateHazard: 'traffic_lane',
           support: [
             { type: 'renegade_bruiser', count: 2 },
             { type: 'renegade_shadowknife', count: 2 },
@@ -196,7 +195,7 @@ const _azurineConfig = {
       accent2: '#ff00aa',
       gridLine: '#333348',
     },
-    hazards: ['neon_zap'],
+    hazards: [],
   }),
 
   2: _buildFloor({
@@ -220,7 +219,6 @@ const _azurineConfig = {
           theme: 'Voltmaster',
           forceGolem: false,
           forceBoss: 'voltmaster',
-          activateHazard: 'corner_conduit',
           support: [
             { type: 'circuit_thief', count: 2 },
             { type: 'arc_welder', count: 2 },
@@ -246,7 +244,6 @@ const _azurineConfig = {
           theme: 'E-Mortis & Corporate',
           forceGolem: false,
           forceBoss: 'e_mortis',
-          activateHazard: 'conveyor_belt',
           support: [
             { type: 'suit_enforcer', count: 2 },
             { type: 'compliance_officer', count: 2 },
@@ -264,7 +261,7 @@ const _azurineConfig = {
       accent2: '#ffaa00',
       gridLine: '#283838',
     },
-    hazards: ['corner_conduit'],
+    hazards: [],
   }),
 
   3: _buildFloor({
@@ -288,7 +285,6 @@ const _azurineConfig = {
           theme: 'Mourn',
           forceGolem: false,
           forceBoss: 'mourn',
-          activateHazard: 'magnet_crane',
           support: [
             { type: 'scrap_rat', count: 2 },
             { type: 'magnet_scavenger', count: 2 },
@@ -314,7 +310,6 @@ const _azurineConfig = {
           theme: 'Centipede & Swarm',
           forceGolem: false,
           forceBoss: 'centipede',
-          activateHazard: 'mud_suction',
           support: [
             { type: 'toxic_leechling', count: 2 },
             { type: 'bog_stalker', count: 2 },
@@ -332,7 +327,7 @@ const _azurineConfig = {
       accent2: '#aa6600',
       gridLine: '#383828',
     },
-    hazards: ['magnet_crane'],
+    hazards: [],
   }),
 
   4: _buildFloor({
@@ -356,7 +351,6 @@ const _azurineConfig = {
           theme: 'Game Master',
           forceGolem: false,
           forceBoss: 'game_master',
-          activateHazard: 'pressure_plate',
           support: [
             { type: 'tripwire_tech', count: 2 },
             { type: 'holo_jester', count: 2 },
@@ -382,7 +376,6 @@ const _azurineConfig = {
           theme: 'J.U.N.Z & R.E.G.I.M.E',
           forceGolem: false,
           forceBoss: 'junz',
-          activateHazard: 'energy_pylon',
           support: [
             { type: 'enforcer_drone', count: 2 },
             { type: 'synth_builder', count: 2 },
@@ -400,7 +393,7 @@ const _azurineConfig = {
       accent2: '#44aaff',
       gridLine: '#382838',
     },
-    hazards: ['pressure_plate'],
+    hazards: [],
   }),
 
   // ===================== FLOOR 5: WASTE PLANET → SLIME/DUSK =====================
@@ -426,7 +419,6 @@ const _azurineConfig = {
           forceGolem: false,
           forceBoss: 'lehvius',
           duoBoss: 'jackman',
-          activateHazard: 'radioactive_wind',
           support: [
             { type: 'rabid_hyenaoid', count: 2 },
             { type: 'spore_stag', count: 1 },
@@ -453,7 +445,6 @@ const _azurineConfig = {
           forceGolem: false,
           forceBoss: 'malric',
           duoBoss: 'vale',
-          activateHazard: 'slime_tiles',
           support: [
             { type: 'gel_swordsman', count: 2 },
             { type: 'viscosity_mage', count: 2 },
@@ -471,7 +462,7 @@ const _azurineConfig = {
       accent2: '#aa44ff',
       gridLine: '#283828',
     },
-    hazards: ['radioactive_wind', 'slime_tiles'],
+    hazards: [],
   }),
 };
 

@@ -482,15 +482,25 @@ window.addEventListener("keydown", e => {
           }
         } else if (cmdLower === "/heal") {
           player.hp = player.maxHp; chatMessages.push({ name: "SYSTEM", text: "Healed to full", time: Date.now() });
-        } else if (cmdLower === "/dung" || cmdLower === "/dungeon") {
-          // Set proper dungeon state for direct teleport (bypasses queue)
-          const _dType = currentDungeon || 'cave';
-          const _dEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[_dType];
-          queueFloorStart = 1;
-          queueDungeonType = _dType;
-          queueReturnLevel = _dEntry ? _dEntry.returnLevel : 'cave_01';
-          enterLevel('warehouse_01', 20, 20);
-          chatMessages.push({ name: "SYSTEM", text: "Teleported to dungeon (Floor 1)", time: Date.now() });
+        } else if (cmdLower.startsWith("/dung")) {
+          // /dung <type> — teleport to a specific dungeon
+          const _dArg = cmdLower.split(" ")[1];
+          if (!_dArg) {
+            const _dNames = typeof DUNGEON_REGISTRY !== 'undefined' ? Object.keys(DUNGEON_REGISTRY).filter(k => DUNGEON_REGISTRY[k].returnLevel !== '') : [];
+            chatMessages.push({ name: "SYSTEM", text: "Usage: /dung <type>  |  Available: " + _dNames.join(", "), time: Date.now() });
+          } else {
+            const _dType = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[_dArg] && DUNGEON_REGISTRY[_dArg].returnLevel !== '' ? _dArg : null;
+            if (!_dType) {
+              chatMessages.push({ name: "SYSTEM", text: "Unknown dungeon: " + _dArg, time: Date.now() });
+            } else {
+              const _dEntry = DUNGEON_REGISTRY[_dType];
+              queueFloorStart = 1;
+              queueDungeonType = _dType;
+              queueReturnLevel = _dEntry.returnLevel;
+              enterLevel('warehouse_01', 20, 20);
+              chatMessages.push({ name: "SYSTEM", text: "Teleported to " + _dEntry.name + " (Floor 1)", time: Date.now() });
+            }
+          }
         } else if (cmdLower === "/leave") {
           if (!handleLeave()) {
             chatMessages.push({ name: "SYSTEM", text: "Nothing to leave.", time: Date.now() });
@@ -513,7 +523,7 @@ window.addEventListener("keydown", e => {
           if (fl > 0) { dungeonFloor = fl; resetCombatState('floor'); }
           chatMessages.push({ name: "SYSTEM", text: "Set to floor " + dungeonFloor, time: Date.now() });
         } else if (cmdLower === "/help") {
-          chatMessages.push({ name: "SYSTEM", text: "/testmob | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung | /leave | /op | /stairs | /floor [n] | /freeze | /god | /nofire | /speed <n> | /hp <n|max> | /skipw | /info | /gun <id> [lvl] | /sprites | /export | /save | /resetsave | /mg", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "/testmob | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung <type> | /leave | /op | /stairs | /floor [n] | /freeze | /god | /nofire | /speed <n> | /hp <n|max> | /skipw | /info | /gun <id> [lvl] | /sprites | /export | /save | /resetsave | /mg", time: Date.now() });
         } else if (cmdLower === "/save") {
           SaveLoad.save();
           chatMessages.push({ name: "SYSTEM", text: "Game saved!", time: Date.now() });
