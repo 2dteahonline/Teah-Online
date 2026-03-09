@@ -1,18 +1,18 @@
-// ===================== SKELD FOV & HUD =====================
-// Client: FOV overlay, meeting UI, HUD buttons, ejection animation for Among Us mode.
+// ===================== MAFIA FOV & HUD =====================
+// Client: FOV overlay, meeting UI, HUD buttons, ejection animation for Mafia mode.
 // Phase 1: Stub — just shows role indicator text.
-// Depends on: SkeldState (skeldSystem.js), Scene (sceneManager.js), ctx (global canvas)
+// Depends on: MafiaState (mafiaSystem.js), Scene (sceneManager.js), ctx (global canvas)
 
-function drawSkeldFOV() {
+function drawMafiaFOV() {
   // Phase 1: no FOV overlay yet (coming in Phase 4)
 }
 
-function drawSkeldHUD() {
-  if (typeof SkeldState === 'undefined' || SkeldState.phase === 'idle') return;
+function drawMafiaHUD() {
+  if (typeof MafiaState === 'undefined' || MafiaState.phase === 'idle') return;
   if (typeof Scene === 'undefined' || !Scene.inSkeld) return;
 
   // ---- Role indicator (top-left corner) ----
-  const role = SkeldState.playerRole;
+  const role = MafiaState.playerRole;
   if (!role) return;
 
   const text = role.toUpperCase();

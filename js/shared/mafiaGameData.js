@@ -1,8 +1,9 @@
-// ===================== SKELD GAME DATA =====================
-// Shared constants for Among Us-style gameplay on The Skeld.
+// ===================== MAFIA GAME DATA =====================
+// Shared constants for the Mafia game mode (Among Us-style gameplay).
 // Loaded in Phase A (shared data), no dependencies.
+// Maps provide room layouts; this file provides mode-level config.
 
-const SKELD_GAME = {
+const MAFIA_GAME = {
   // ---- Match config ----
   BOT_COUNT: 8,              // 8 bots + 1 player = 9 participants
   IMPOSTOR_COUNT: 1,         // 1 impostor per match (hardcoded for now)
@@ -22,12 +23,10 @@ const SKELD_GAME = {
   BOT_TASK_PAUSE_MAX: 300,   // 5s max pause at "task" location
   BOT_PATH_LIMIT: 8000,      // BFS node limit for pathfinding
 
-  // ---- Map reference ----
-  MAP_ID: 'skeld_01',
+  // ---- Return destination ----
   RETURN_LEVEL: 'lobby_01',
   RETURN_TX: 20,
   RETURN_TY: 20,
-  CAFETERIA_SPAWN: { tx: 74, ty: 15 }, // actual grid coords (virtual + XO=4)
 
   // ---- Among Us color palette (10 colors) ----
   COLORS: [
@@ -48,22 +47,27 @@ const SKELD_GAME = {
     'Red', 'Blue', 'Green', 'Pink', 'Orange', 'Yellow', 'Black', 'White', 'Purple', 'Cyan'
   ],
 
-  // ---- Room centers (actual grid coords, virtual + XO=4) for bot navigation ----
-  // These are approximate walkable centers of each room
-  ROOM_CENTERS: {
-    cafeteria:    { tx: 74, ty: 17 },
-    upper_engine: { tx: 16, ty: 9 },
-    reactor:      { tx: 6,  ty: 35 },
-    security:     { tx: 34, ty: 35 },
-    medbay:       { tx: 49, ty: 25 },
-    electrical:   { tx: 50, ty: 52 },
-    admin:        { tx: 91, ty: 46 },
-    storage:      { tx: 70, ty: 66 },
-    shields:      { tx: 112, ty: 62 },
-    communications: { tx: 92, ty: 73 },
-    lower_engine: { tx: 16, ty: 60 },
-    weapons:      { tx: 109, ty: 9 },
-    o2:           { tx: 96, ty: 29 },
-    navigation:   { tx: 127, ty: 34 },
+  // ---- Per-map data (room centers, spawn points) ----
+  // Each map (skeld_01, etc.) registers its own room centers here
+  MAPS: {
+    skeld_01: {
+      SPAWN: { tx: 74, ty: 15 }, // Cafeteria spawn (actual grid coords, virtual + XO=4)
+      ROOM_CENTERS: {
+        cafeteria:    { tx: 74, ty: 17 },
+        upper_engine: { tx: 16, ty: 9 },
+        reactor:      { tx: 6,  ty: 35 },
+        security:     { tx: 34, ty: 35 },
+        medbay:       { tx: 49, ty: 25 },
+        electrical:   { tx: 50, ty: 52 },
+        admin:        { tx: 91, ty: 46 },
+        storage:      { tx: 70, ty: 66 },
+        shields:      { tx: 112, ty: 62 },
+        communications: { tx: 92, ty: 73 },
+        lower_engine: { tx: 16, ty: 60 },
+        weapons:      { tx: 109, ty: 9 },
+        o2:           { tx: 96, ty: 29 },
+        navigation:   { tx: 127, ty: 34 },
+      },
+    },
   },
 };

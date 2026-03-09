@@ -1,10 +1,10 @@
-// ===================== SKELD SYSTEM (Among Us Gameplay) =====================
-// Authority: state machine, bot AI, role assignment for Among Us mode on The Skeld.
-// Depends on: SKELD_GAME (skeldGameData.js), bfsPath/isSolid (mobSystem.js),
+// ===================== MAFIA SYSTEM (Among Us-style Gameplay) =====================
+// Authority: state machine, bot AI, role assignment for the Mafia game mode.
+// Depends on: MAFIA_GAME (mafiaGameData.js), bfsPath/isSolid (mobSystem.js),
 //             Scene/enterLevel (sceneManager.js), gameState globals (player, level, gameFrame)
 
 // ---- Global State ----
-window.SkeldState = {
+window.MafiaState = {
   phase: 'idle',              // 'idle' | 'playing' | 'meeting' | 'voting' | 'ejecting' | 'post_match'
   phaseTimer: 0,
   playerRole: null,           // 'crewmate' | 'impostor'
@@ -18,7 +18,7 @@ window.SkeldState = {
 };
 
 // ---- Default state snapshot for resets ----
-const _SKELD_DEFAULTS = {
+const _MAFIA_DEFAULTS = {
   phase: 'idle',
   phaseTimer: 0,
   playerRole: null,
@@ -32,47 +32,56 @@ const _SKELD_DEFAULTS = {
 };
 
 
-// ===================== SkeldSystem =====================
-window.SkeldSystem = {
+// ===================== MafiaSystem =====================
+window.MafiaSystem = {
 
   // ---- Participant helpers ----
   getLocalPlayer() {
-    return SkeldState.participants.find(p => p.isLocal) || null;
+    return MafiaState.participants.find(p => p.isLocal) || null;
   },
   getAlivePlayers() {
-    return SkeldState.participants.filter(p => p.alive);
+    return MafiaState.participants.filter(p => p.alive);
   },
   getAliveCrewmates() {
-    return SkeldState.participants.filter(p => p.alive && p.role === 'crewmate');
+    return MafiaState.participants.filter(p => p.alive && p.role === 'crewmate');
   },
   getAliveImpostors() {
-    return SkeldState.participants.filter(p => p.alive && p.role === 'impostor');
+    return MafiaState.participants.filter(p => p.alive && p.role === 'impostor');
   },
   getBots() {
-    return SkeldState.participants.filter(p => p.isBot);
+    return MafiaState.participants.filter(p => p.isBot);
+  },
+
+
+  // ---- Get current map data from MAFIA_GAME.MAPS ----
+  _getMapData() {
+    if (!level || !level.id) return null;
+    return MAFIA_GAME.MAPS[level.id] || null;
   },
 
 
   // ===================== START MATCH =====================
   startMatch() {
-    const sk = SkeldState;
+    const mk = MafiaState;
+    const mapData = this._getMapData();
+    if (!mapData) return; // no map data for this level
 
     // Clear existing mobs (bots are standalone entities, not in mobs[])
     mobs.length = 0;
 
     // ---- Assign colors: shuffle 10 colors, pick 9 ----
-    const colorPool = SKELD_GAME.COLORS.slice();
+    const colorPool = MAFIA_GAME.COLORS.slice();
     for (let i = colorPool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [colorPool[i], colorPool[j]] = [colorPool[j], colorPool[i]];
     }
 
     // ---- Build participants array ----
-    const spawn = SKELD_GAME.CAFETERIA_SPAWN;
+    const spawn = mapData.SPAWN;
     const participants = [];
 
     // Player (index 0) — always crewmate for now (hardcoded)
-    sk.playerRole = 'crewmate';
+    mk.playerRole = 'crewmate';
     const playerColor = colorPool[0];
     participants.push({
       id: 'player',
@@ -85,25 +94,23 @@ window.SkeldSystem = {
       votedFor: null,
       emergenciesUsed: 0,
       color: playerColor,
-      // Bot AI state (unused for player)
       _aiState: null,
     });
 
-    // Position player at cafeteria
+    // Position player at spawn
     player.x = spawn.tx * TILE + TILE / 2;
     player.y = spawn.ty * TILE + TILE / 2;
     player.vx = 0;
     player.vy = 0;
 
     // ---- Create 8 bots ----
-    // Pick impostor: random bot index (0-7 → bot indices)
-    const impostorIdx = Math.floor(Math.random() * SKELD_GAME.BOT_COUNT);
+    const impostorIdx = Math.floor(Math.random() * MAFIA_GAME.BOT_COUNT);
 
-    for (let i = 0; i < SKELD_GAME.BOT_COUNT; i++) {
-      const color = colorPool[i + 1]; // skip index 0 (player's color)
+    for (let i = 0; i < MAFIA_GAME.BOT_COUNT; i++) {
+      const color = colorPool[i + 1];
       const role = (i === impostorIdx) ? 'impostor' : 'crewmate';
 
-      // Spread bots slightly around cafeteria spawn to avoid stacking
+      // Spread bots slightly around spawn to avoid stacking
       const offsetX = ((i % 4) - 1.5) * 30;
       const offsetY = (Math.floor(i / 4) - 0.5) * 30;
 
@@ -114,9 +121,8 @@ window.SkeldSystem = {
         vy: 0,
         hp: -1,
         maxHp: -1,
-        speed: SKELD_GAME.BOT_SPEED,
-        type: 'skeld_bot',
-        // Visual colors — used by drawChar() procedural renderer
+        speed: MAFIA_GAME.BOT_SPEED,
+        type: 'mafia_bot',
         skin: color.body,
         hair: color.dark,
         shirt: color.body,
@@ -139,52 +145,48 @@ window.SkeldSystem = {
         votedFor: null,
         emergenciesUsed: 0,
         color: color,
-        // Bot AI state
         _aiState: {
-          targetRoom: null,     // key from ROOM_CENTERS
-          path: null,           // BFS path array
-          pathIdx: 0,           // current index in path
-          pauseTimer: 0,        // frames remaining at current "task"
-          stuckTimer: 0,        // frames stuck in same spot
+          targetRoom: null,
+          path: null,
+          pathIdx: 0,
+          pauseTimer: 0,
+          stuckTimer: 0,
           lastX: 0,
           lastY: 0,
         },
       });
     }
 
-    sk.participants = participants;
-    sk.phase = 'playing';
-    sk.phaseTimer = 0;
-    sk.bodies = [];
-    sk.killCooldown = SKELD_GAME.KILL_COOLDOWN;
-    sk.sabotage = { active: null, timer: 0, cooldown: 0 };
-    sk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
-    sk.ejection = { name: null, wasImpostor: false, timer: 0 };
-    sk.taskProgress = { done: 0, total: 0 };
+    mk.participants = participants;
+    mk.phase = 'playing';
+    mk.phaseTimer = 0;
+    mk.bodies = [];
+    mk.killCooldown = MAFIA_GAME.KILL_COOLDOWN;
+    mk.sabotage = { active: null, timer: 0, cooldown: 0 };
+    mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
+    mk.ejection = { name: null, wasImpostor: false, timer: 0 };
+    mk.taskProgress = { done: 0, total: 0 };
 
     // Reset Skeld tasks if available
     if (typeof SkeldTasks !== 'undefined' && typeof SkeldTasks.reset === 'function') {
       SkeldTasks.reset();
     }
 
-    // Assign initial bot destinations
-    for (const p of participants) {
-      if (p.isBot) this._pickBotDestination(p);
-    }
+    // Bot AI disabled for now — will be enabled in a later phase
   },
 
 
   // ===================== MAIN TICK =====================
   tick() {
-    const sk = SkeldState;
+    const mk = MafiaState;
 
-    // Auto-start match when entering Skeld and no match is active
-    if (sk.phase === 'idle') {
+    // Auto-start match when entering a Mafia map and no match is active
+    if (mk.phase === 'idle') {
       this.startMatch();
       return;
     }
 
-    if (sk.phase === 'playing') {
+    if (mk.phase === 'playing') {
       this._tickPlaying();
     }
     // Future phases: meeting, voting, ejecting handled here
@@ -193,13 +195,13 @@ window.SkeldSystem = {
 
   // ---- Playing phase tick ----
   _tickPlaying() {
-    const sk = SkeldState;
+    const mk = MafiaState;
 
     // Tick kill cooldown
-    if (sk.killCooldown > 0) sk.killCooldown--;
+    if (mk.killCooldown > 0) mk.killCooldown--;
 
     // Bot AI disabled for now — will be enabled in a later phase
-    // for (const p of sk.participants) {
+    // for (const p of mk.participants) {
     //   if (!p.isBot || !p.alive) continue;
     //   this._tickBotCrewmate(p);
     // }
@@ -221,7 +223,6 @@ window.SkeldSystem = {
       bot.vx = 0;
       bot.vy = 0;
       if (ai.pauseTimer <= 0) {
-        // Done pausing, pick next destination
         this._pickBotDestination(participant);
       }
       return;
@@ -238,7 +239,6 @@ window.SkeldSystem = {
     ai.lastX = bot.x;
     ai.lastY = bot.y;
 
-    // If stuck for 90+ frames, pick new destination
     if (ai.stuckTimer > 90) {
       ai.stuckTimer = 0;
       this._pickBotDestination(participant);
@@ -247,9 +247,8 @@ window.SkeldSystem = {
 
     // ---- Move along path ----
     if (!ai.path || ai.pathIdx >= ai.path.length) {
-      // Arrived or no path — start pause
-      ai.pauseTimer = SKELD_GAME.BOT_TASK_PAUSE_MIN +
-        Math.floor(Math.random() * (SKELD_GAME.BOT_TASK_PAUSE_MAX - SKELD_GAME.BOT_TASK_PAUSE_MIN));
+      ai.pauseTimer = MAFIA_GAME.BOT_TASK_PAUSE_MIN +
+        Math.floor(Math.random() * (MAFIA_GAME.BOT_TASK_PAUSE_MAX - MAFIA_GAME.BOT_TASK_PAUSE_MIN));
       bot.moving = false;
       bot.vx = 0;
       bot.vy = 0;
@@ -266,8 +265,10 @@ window.SkeldSystem = {
     const bot = participant.entity;
     if (!ai || !bot) return;
 
-    const roomKeys = Object.keys(SKELD_GAME.ROOM_CENTERS);
-    // Pick a random room that isn't the current target
+    const mapData = this._getMapData();
+    if (!mapData) return;
+
+    const roomKeys = Object.keys(mapData.ROOM_CENTERS);
     let attempts = 0;
     let targetKey;
     do {
@@ -276,47 +277,41 @@ window.SkeldSystem = {
     } while (targetKey === ai.targetRoom && attempts < 5);
 
     ai.targetRoom = targetKey;
-    const target = SKELD_GAME.ROOM_CENTERS[targetKey];
+    const target = mapData.ROOM_CENTERS[targetKey];
 
-    // Add some randomness to target position (±3 tiles)
     const jitterX = Math.floor(Math.random() * 7) - 3;
     const jitterY = Math.floor(Math.random() * 7) - 3;
     let destTX = target.tx + jitterX;
     let destTY = target.ty + jitterY;
 
-    // Clamp to level bounds
     if (level) {
       destTX = Math.max(2, Math.min(level.widthTiles - 3, destTX));
       destTY = Math.max(2, Math.min(level.heightTiles - 3, destTY));
     }
 
-    // Ensure destination is walkable — if not, fall back to room center
     if (typeof isSolid === 'function' && isSolid(destTX, destTY)) {
       destTX = target.tx;
       destTY = target.ty;
     }
 
-    // BFS pathfind
     const botTX = Math.floor(bot.x / TILE);
     const botTY = Math.floor(bot.y / TILE);
 
     if (typeof bfsPath === 'function') {
-      ai.path = bfsPath(botTX, botTY, destTX, destTY, SKELD_GAME.BOT_PATH_LIMIT);
+      ai.path = bfsPath(botTX, botTY, destTX, destTY, MAFIA_GAME.BOT_PATH_LIMIT);
     } else {
       ai.path = null;
     }
     ai.pathIdx = 0;
     ai.stuckTimer = 0;
 
-    // If pathfind failed, just pause and try again later
     if (!ai.path) {
-      ai.pauseTimer = 60; // 1s before retry
+      ai.pauseTimer = 60;
     }
   },
 
 
   // ===================== BOT MOVEMENT (player-style AABB) =====================
-  // Copied from HideSeekSystem._moveBotAlongPath — exact same collision rules
 
   _moveBotAlongPath(bot, ai) {
     const path = ai.path;
@@ -330,17 +325,14 @@ window.SkeldSystem = {
       return;
     }
 
-    // Get target tile center
     const step = path[ai.pathIdx];
     const targetX = step.x * TILE + TILE / 2;
     const targetY = step.y * TILE + TILE / 2;
 
-    // Direction to target
     const dx = targetX - bot.x;
     const dy = targetY - bot.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // If within one frame of reaching this step, snap and advance
     if (dist <= bot.speed) {
       bot.x = targetX;
       bot.y = targetY;
@@ -353,18 +345,15 @@ window.SkeldSystem = {
       return;
     }
 
-    // Normalize direction and set velocity
     const ndx = dx / dist;
     const ndy = dy / dist;
     bot.vx = ndx * bot.speed;
     bot.vy = ndy * bot.speed;
 
-    // ---- Player-style AABB collision ----
     const hw = GAME_CONFIG.PLAYER_WALL_HW;
     const nx = bot.x + bot.vx;
     const ny = bot.y + bot.vy;
 
-    // X axis
     let canX = true;
     {
       const cL = Math.floor((nx - hw) / TILE);
@@ -375,7 +364,6 @@ window.SkeldSystem = {
     }
     if (canX) bot.x = nx;
 
-    // Y axis (use updated X)
     let canY = true;
     {
       const cL = Math.floor((bot.x - hw) / TILE);
@@ -386,7 +374,6 @@ window.SkeldSystem = {
     }
     if (canY) bot.y = ny;
 
-    // Corner unstick — same 2px nudge as player
     if (!canX && !canY && (bot.vx !== 0 || bot.vy !== 0)) {
       const nudge = 2;
       for (const [ndx2, ndy2] of [[nudge,0],[-nudge,0],[0,nudge],[0,-nudge]]) {
@@ -401,7 +388,6 @@ window.SkeldSystem = {
       }
     }
 
-    // Facing direction
     if (Math.abs(dx) > Math.abs(dy)) {
       bot.dir = dx > 0 ? 3 : 2;
     } else {
@@ -415,31 +401,28 @@ window.SkeldSystem = {
 
   // ===================== FREEZE CHECK =====================
   isPlayerFrozen() {
-    const sk = SkeldState;
-    // Freeze player during meeting, voting, ejection phases
-    return sk.phase === 'meeting' || sk.phase === 'voting' || sk.phase === 'ejecting';
+    const mk = MafiaState;
+    return mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'ejecting';
   },
 
 
   // ===================== END MATCH =====================
   endMatch() {
-    const sk = SkeldState;
+    const mk = MafiaState;
 
-    // Reset all state to defaults
-    sk.phase = 'idle';
-    sk.phaseTimer = 0;
-    sk.playerRole = null;
-    sk.participants = [];
-    sk.bodies = [];
-    sk.killCooldown = 0;
-    sk.sabotage = { active: null, timer: 0, cooldown: 0 };
-    sk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
-    sk.ejection = { name: null, wasImpostor: false, timer: 0 };
-    sk.taskProgress = { done: 0, total: 0 };
+    mk.phase = 'idle';
+    mk.phaseTimer = 0;
+    mk.playerRole = null;
+    mk.participants = [];
+    mk.bodies = [];
+    mk.killCooldown = 0;
+    mk.sabotage = { active: null, timer: 0, cooldown: 0 };
+    mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
+    mk.ejection = { name: null, wasImpostor: false, timer: 0 };
+    mk.taskProgress = { done: 0, total: 0 };
 
-    // Return to lobby
     if (typeof enterLevel === 'function') {
-      enterLevel(SKELD_GAME.RETURN_LEVEL, SKELD_GAME.RETURN_TX, SKELD_GAME.RETURN_TY);
+      enterLevel(MAFIA_GAME.RETURN_LEVEL, MAFIA_GAME.RETURN_TX, MAFIA_GAME.RETURN_TY);
     }
   },
 };

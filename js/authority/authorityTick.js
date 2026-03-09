@@ -108,8 +108,8 @@ window.authorityTick = function() {
     }
   }
 
-  // ---- Skeld authority freeze: block ALL intents during meetings/voting/ejection ----
-  if (typeof SkeldSystem !== 'undefined' && SkeldSystem.isPlayerFrozen()) {
+  // ---- Mafia authority freeze: block ALL intents during meetings/voting/ejection ----
+  if (typeof MafiaSystem !== 'undefined' && MafiaSystem.isPlayerFrozen()) {
     InputIntent.moveX = 0;
     InputIntent.moveY = 0;
     InputIntent.meleePressed = false;
