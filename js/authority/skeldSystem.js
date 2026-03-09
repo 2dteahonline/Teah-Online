@@ -112,8 +112,8 @@ window.SkeldSystem = {
         y: spawn.ty * TILE + TILE / 2 + offsetY,
         vx: 0,
         vy: 0,
-        hp: 999,
-        maxHp: 999,
+        hp: -1,
+        maxHp: -1,
         speed: SKELD_GAME.BOT_SPEED,
         type: 'skeld_bot',
         // Visual colors — used by drawChar() procedural renderer
@@ -198,11 +198,11 @@ window.SkeldSystem = {
     // Tick kill cooldown
     if (sk.killCooldown > 0) sk.killCooldown--;
 
-    // Tick each bot's AI
-    for (const p of sk.participants) {
-      if (!p.isBot || !p.alive) continue;
-      this._tickBotCrewmate(p);
-    }
+    // Bot AI disabled for now — will be enabled in a later phase
+    // for (const p of sk.participants) {
+    //   if (!p.isBot || !p.alive) continue;
+    //   this._tickBotCrewmate(p);
+    // }
   },
 
 

@@ -3899,7 +3899,7 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
 function drawNameTag(sx, sy, hy, name, hp, isPlayer, maxHp) {
   if (name === "" || name == null) return; // skip for afterimages with no name
   // Health bar ABOVE character (above hair spikes) — skip for deli NPCs (hp < 0)
-  if (hp >= 0 && (!isPlayer || gameSettings.playerHpBar)) {
+  if (hp >= 0 && (!isPlayer || gameSettings.playerHpBar) && !(typeof Scene !== 'undefined' && Scene.inSkeld)) {
     const bw = 44;
     const hpY = hy - 28;
     const hpMax = maxHp || 100;
@@ -3917,7 +3917,7 @@ function drawNameTag(sx, sy, hy, name, hp, isPlayer, maxHp) {
   }
 
   // HP text above bar (mobs only, not player)
-  if (!isPlayer && gameSettings.mobHpText) {
+  if (!isPlayer && gameSettings.mobHpText && !(typeof Scene !== 'undefined' && Scene.inSkeld)) {
     ctx.font = "bold 10px monospace";
     ctx.textAlign = "center";
     ctx.fillStyle = "#ddd";
