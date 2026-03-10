@@ -272,8 +272,8 @@ function drawMafiaHUD() {
     window._mafiaSabO2Btn = null;
   }
 
-  // ---- Sabotage timer + alert overlay (visible to all during active sabotage) ----
-  if (mk.sabotage.active && mk.phase === 'playing') {
+  // ---- Sabotage timer + alert overlay (visible to all during active sabotage, not lights) ----
+  if (mk.sabotage.active && mk.phase === 'playing' && mk.sabotage.active !== 'lights_out') {
     _drawSabotageOverlay();
   }
 
