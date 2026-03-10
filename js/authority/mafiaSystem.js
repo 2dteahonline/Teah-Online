@@ -1050,6 +1050,8 @@ window.MafiaSystem = {
     if (mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'vote_results' || mk.phase === 'ejecting') return true;
     // Freeze while emergency popup is open
     if (window._mafiaEmergencyPopup) return true;
+    // Freeze while sabotage fix panel is open
+    if (typeof _sabPanel !== 'undefined' && _sabPanel.active) return true;
     return false;
   },
 

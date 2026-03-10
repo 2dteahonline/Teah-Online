@@ -577,13 +577,12 @@ window._resetShopPrices = () => {
       onInteract() {
         if (e.type === 'skeld_task' && typeof openTaskPanel === 'function') {
           openTaskPanel(e);
-        } else if (e.type === 'skeld_sabotage' && typeof MafiaSystem !== 'undefined') {
-          // Build panel key: sabotageId panel identifier
+        } else if (e.type === 'skeld_sabotage' && typeof openSabFixPanel === 'function') {
+          // Build panel key and open the fix UI
           const panelKey = e.sabotageId === 'reactor_meltdown'
             ? 'reactor_p' + e.fixPanel
             : 'o2_' + e.room;
-          const localP = MafiaSystem.getLocalPlayer();
-          if (localP) MafiaSystem.tryFixSabotage(panelKey, localP.id);
+          openSabFixPanel(panelKey);
         }
       },
     });

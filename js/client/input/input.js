@@ -110,6 +110,36 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Sabotage fix panel clicks (close, hand hold, keypad)
+  if (typeof _sabPanel !== 'undefined' && _sabPanel.active) {
+    // Close button
+    if (window._sabFixCloseBtn) {
+      const cb = window._sabFixCloseBtn;
+      if (mx >= cb.x && mx <= cb.x + cb.w && my >= cb.y && my <= cb.y + cb.h) {
+        closeSabFixPanel();
+        return;
+      }
+    }
+    // Reactor hand — start holding on mousedown
+    if (_sabPanel.type === 'reactor' && window._sabFixHandBtn) {
+      const hb = window._sabFixHandBtn;
+      if (mx >= hb.x && mx <= hb.x + hb.w && my >= hb.y && my <= hb.y + hb.h) {
+        _sabPanel.holding = true;
+        return;
+      }
+    }
+    // O2 keypad buttons
+    if (_sabPanel.type === 'o2' && window._sabFixKeypadBtns) {
+      for (const btn of window._sabFixKeypadBtns) {
+        if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+          handleSabKeypadPress(btn.key);
+          return;
+        }
+      }
+    }
+    return; // consume all clicks while panel is open
+  }
+
   // Mafia SABOTAGE menu option clicks (must be before menu toggle check)
   if (typeof MafiaSystem !== 'undefined' && window._mafiaSabotageMenu) {
     if (window._mafiaSabReactorBtn) {
@@ -1023,6 +1053,10 @@ canvas.addEventListener("mouseup", e => {
     mouse.down = false;
     draggingSV = false; draggingHue = false; isDraggingTile = false; handleModifyGunUp();
     hotbarHoldSlot = -1; hotbarHoldTime = 0; showWeaponStats = false;
+    // Release reactor hand hold
+    if (typeof _sabPanel !== 'undefined' && _sabPanel.active && _sabPanel.type === 'reactor') {
+      _sabPanel.holding = false;
+    }
     // Intent: release mouse
     InputIntent.mouseDown = false;
     if (!InputIntent.arrowShooting) InputIntent.shootHeld = false;

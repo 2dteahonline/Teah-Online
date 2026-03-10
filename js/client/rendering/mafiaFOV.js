@@ -14,6 +14,21 @@ window._mafiaSabotageMenu = false;       // true when sabotage picker is open
 window._mafiaSabReactorBtn = null;       // Reactor option click region
 window._mafiaSabO2Btn = null;            // O2 option click region
 
+// ---- Sabotage fix panel state ----
+const _sabPanel = {
+  active: false,
+  type: null,           // 'reactor' | 'o2'
+  panelKey: null,       // which panel opened this
+  // Reactor: hold state
+  holding: false,
+  holdProgress: 0,      // 0→1, fills while mouse held on hand
+  // O2: keypad state
+  code: '',             // target code (5 digits)
+  input: '',            // player input so far
+  codeWrong: false,
+  wrongTimer: 0,
+};
+
 function drawMafiaFOV() {
   // Phase 4: FOV overlay will go here
 
@@ -261,6 +276,11 @@ function drawMafiaHUD() {
     _drawSabotageOverlay();
   }
 
+  // ---- Sabotage fix panel (hand scanner / keypad) ----
+  if (_sabPanel.active) {
+    drawSabFixPanel();
+  }
+
   // ---- Meeting / Voting / Vote Results / Ejection overlays ----
   if (mk.phase === 'meeting' || mk.phase === 'voting') {
     _drawMeetingUI();
@@ -271,6 +291,346 @@ function drawMafiaHUD() {
   } else {
     window._mafiaVotePortraits = null;
     window._mafiaSkipBtn = null;
+  }
+}
+
+
+// ===================== SABOTAGE FIX PANELS =====================
+
+function openSabFixPanel(panelKey) {
+  if (_sabPanel.active) return;
+  const mk = MafiaState;
+  if (!mk.sabotage.active) return;
+
+  _sabPanel.active = true;
+  _sabPanel.panelKey = panelKey;
+  _sabPanel.holding = false;
+  _sabPanel.holdProgress = 0;
+
+  if (mk.sabotage.active === 'reactor_meltdown') {
+    _sabPanel.type = 'reactor';
+  } else if (mk.sabotage.active === 'o2_depletion') {
+    _sabPanel.type = 'o2';
+    // Generate random 5-digit code
+    _sabPanel.code = '';
+    for (let i = 0; i < 5; i++) _sabPanel.code += Math.floor(Math.random() * 10);
+    _sabPanel.input = '';
+    _sabPanel.codeWrong = false;
+    _sabPanel.wrongTimer = 0;
+  }
+}
+
+function closeSabFixPanel() {
+  if (_sabPanel.active && _sabPanel.type === 'reactor') {
+    // Release reactor hold
+    if (typeof MafiaSystem !== 'undefined') {
+      MafiaSystem.releaseSabotagePanel(_sabPanel.panelKey);
+    }
+  }
+  _sabPanel.active = false;
+  _sabPanel.type = null;
+  _sabPanel.panelKey = null;
+  _sabPanel.holding = false;
+  _sabPanel.holdProgress = 0;
+}
+
+function drawSabFixPanel() {
+  if (!_sabPanel.active) return;
+  const mk = MafiaState;
+
+  // Auto-close if sabotage ended
+  if (!mk.sabotage.active) { closeSabFixPanel(); return; }
+
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+
+  // Dark overlay
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  const pw = 420, ph = 460;
+  const px = (cw - pw) / 2, py = (ch - ph) / 2;
+
+  // Panel background
+  ctx.fillStyle = '#3a3a42';
+  ctx.beginPath();
+  ctx.roundRect(px - 6, py - 6, pw + 12, ph + 12, 16);
+  ctx.fill();
+  ctx.fillStyle = '#55555e';
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, ph, 12);
+  ctx.fill();
+
+  // Close button (X) top-right
+  const cbx = px + pw - 36, cby = py + 6, cbs = 28;
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.roundRect(cbx, cby, cbs, cbs, 4);
+  ctx.fill();
+  ctx.font = 'bold 16px monospace';
+  ctx.fillStyle = '#ff4444';
+  ctx.textAlign = 'center';
+  ctx.fillText('X', cbx + cbs / 2, cby + 20);
+  window._sabFixCloseBtn = { x: cbx, y: cby, w: cbs, h: cbs };
+
+  if (_sabPanel.type === 'reactor') {
+    _drawReactorFixPanel(px, py, pw, ph);
+  } else if (_sabPanel.type === 'o2') {
+    _drawO2FixPanel(px, py, pw, ph);
+  }
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
+function _drawReactorFixPanel(px, py, pw, ph) {
+  const mk = MafiaState;
+  const cx = px + pw / 2;
+
+  // Title bar
+  ctx.fillStyle = '#ddd';
+  ctx.beginPath();
+  ctx.roundRect(px + 30, py + 16, pw - 60, 36, 6);
+  ctx.fill();
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.font = 'bold 18px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#222';
+  ctx.fillText('HOLD TO STOP MELTDOWN', cx, py + 40);
+
+  // Hand scanner area
+  const handY = py + 80;
+  const handW = 220, handH = 280;
+  const handX = cx - handW / 2;
+
+  // Scanner background (dark)
+  ctx.fillStyle = _sabPanel.holding ? '#4a2020' : '#2a2a30';
+  ctx.beginPath();
+  ctx.roundRect(handX, handY, handW, handH, 12);
+  ctx.fill();
+
+  // Draw hand shape (simplified)
+  ctx.save();
+  ctx.translate(cx, handY + handH / 2 + 10);
+  const s = 1.1;
+  ctx.scale(s, s);
+
+  // Palm
+  ctx.fillStyle = _sabPanel.holding ? '#ff4444' : '#cc3333';
+  ctx.beginPath();
+  ctx.ellipse(0, 20, 55, 55, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Fingers
+  const fingerW = 18;
+  const fingers = [
+    { x: -40, y: -30, h: 60, angle: -0.15 },  // pinky
+    { x: -18, y: -55, h: 75, angle: -0.05 },  // ring
+    { x: 5,   y: -60, h: 80, angle: 0 },       // middle
+    { x: 28,  y: -50, h: 70, angle: 0.05 },    // index
+    { x: 52,  y: -5,  h: 50, angle: 0.5 },     // thumb
+  ];
+  for (const f of fingers) {
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.rotate(f.angle);
+    ctx.beginPath();
+    ctx.roundRect(-fingerW / 2, -f.h, fingerW, f.h, fingerW / 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Grid lines on hand
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1;
+  for (let gx = -50; gx <= 50; gx += 10) {
+    ctx.beginPath(); ctx.moveTo(gx, -70); ctx.lineTo(gx, 75); ctx.stroke();
+  }
+  for (let gy = -70; gy <= 75; gy += 10) {
+    ctx.beginPath(); ctx.moveTo(-55, gy); ctx.lineTo(55, gy); ctx.stroke();
+  }
+
+  // White outline
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(0, 20, 57, 57, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  for (const f of fingers) {
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.rotate(f.angle);
+    ctx.beginPath();
+    ctx.roundRect(-fingerW / 2 - 1, -f.h - 1, fingerW + 2, f.h + 2, fingerW / 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  // Click region for the hand (the whole scanner area)
+  window._sabFixHandBtn = { x: handX, y: handY, w: handW, h: handH };
+
+  // Hold progress — while holding, register with system and fill progress
+  if (_sabPanel.holding) {
+    _sabPanel.holdProgress = Math.min(1, _sabPanel.holdProgress + 1 / 60); // ~1s to fill (visual only)
+
+    // Register hold with authority each frame
+    const localP = MafiaSystem.getLocalPlayer();
+    if (localP) MafiaSystem.tryFixSabotage(_sabPanel.panelKey, localP.id);
+
+    // Progress bar at bottom of scanner
+    const barY2 = handY + handH + 10;
+    const barW2 = handW;
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.roundRect(handX, barY2, barW2, 14, 4);
+    ctx.fill();
+    ctx.fillStyle = '#44cc66';
+    ctx.beginPath();
+    ctx.roundRect(handX, barY2, barW2 * _sabPanel.holdProgress, 14, 4);
+    ctx.fill();
+  } else {
+    _sabPanel.holdProgress = 0;
+    // Release hold
+    MafiaSystem.releaseSabotagePanel(_sabPanel.panelKey);
+  }
+}
+
+function _drawO2FixPanel(px, py, pw, ph) {
+  const mk = MafiaState;
+  const cx = px + pw / 2;
+
+  // Title
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ddd';
+  ctx.fillText('O2', cx, py + ph - 12);
+
+  // Keypad background
+  const kpW = 280, kpH = 340;
+  const kpX = cx - kpW / 2;
+  const kpY = py + 30;
+
+  ctx.fillStyle = '#c8c8c8';
+  ctx.beginPath();
+  ctx.roundRect(kpX, kpY, kpW, kpH, 10);
+  ctx.fill();
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Display screen
+  const dispX = kpX + 20, dispY = kpY + 14, dispW = kpW - 40, dispH = 50;
+  ctx.fillStyle = '#dde8dd';
+  ctx.fillRect(dispX, dispY, dispW, dispH);
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(dispX, dispY, dispW, dispH);
+
+  // Show input
+  ctx.font = 'bold 32px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = _sabPanel.codeWrong ? '#cc2222' : '#222';
+  const displayText = _sabPanel.input + '_'.repeat(Math.max(0, 5 - _sabPanel.input.length));
+  ctx.fillText(displayText, dispX + dispW / 2, dispY + 38);
+
+  // Sticky note with code (top-right, tilted)
+  ctx.save();
+  ctx.translate(kpX + kpW - 30, kpY + 20);
+  ctx.rotate(0.12);
+  ctx.fillStyle = '#ffffaa';
+  ctx.fillRect(-55, -10, 110, 70);
+  ctx.strokeStyle = '#cccc66';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-55, -10, 110, 70);
+  ctx.font = 'italic 12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#555';
+  ctx.fillText("today's code:", 0, 10);
+  ctx.font = 'bold 22px monospace';
+  ctx.fillStyle = '#333';
+  ctx.fillText(_sabPanel.code, 0, 40);
+  ctx.restore();
+
+  // Number pad (3x4 grid: 1-9, X, 0, ✓)
+  const btnS = 60, btnGap = 8;
+  const gridW = 3 * btnS + 2 * btnGap;
+  const gridX = cx - gridW / 2;
+  const gridY = kpY + 80;
+  const keys = ['1','2','3','4','5','6','7','8','9','X','0','✓'];
+
+  window._sabFixKeypadBtns = [];
+
+  for (let i = 0; i < 12; i++) {
+    const col = i % 3, row = Math.floor(i / 3);
+    const bx = gridX + col * (btnS + btnGap);
+    const by = gridY + row * (btnS + btnGap);
+    const key = keys[i];
+
+    // Button style
+    if (key === 'X') {
+      ctx.fillStyle = '#cc3333';
+    } else if (key === '✓') {
+      ctx.fillStyle = '#33aa44';
+    } else {
+      ctx.fillStyle = '#e0e0e0';
+    }
+    ctx.beginPath();
+    ctx.roundRect(bx, by, btnS, btnS, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = 'bold 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = (key === 'X' || key === '✓') ? '#fff' : '#333';
+    ctx.fillText(key, bx + btnS / 2, by + btnS / 2);
+
+    window._sabFixKeypadBtns.push({ key, x: bx, y: by, w: btnS, h: btnS });
+  }
+  ctx.textBaseline = 'alphabetic';
+
+  // Wrong code flash timer
+  if (_sabPanel.codeWrong) {
+    _sabPanel.wrongTimer--;
+    if (_sabPanel.wrongTimer <= 0) {
+      _sabPanel.codeWrong = false;
+      _sabPanel.input = '';
+    }
+  }
+}
+
+function handleSabKeypadPress(key) {
+  if (!_sabPanel.active || _sabPanel.type !== 'o2') return;
+  if (_sabPanel.codeWrong) return; // locked during wrong flash
+
+  if (key === 'X') {
+    // Clear
+    _sabPanel.input = '';
+  } else if (key === '✓') {
+    // Submit
+    if (_sabPanel.input === _sabPanel.code) {
+      // Correct! Fix this panel
+      const localP = MafiaSystem.getLocalPlayer();
+      if (localP) MafiaSystem.tryFixSabotage(_sabPanel.panelKey, localP.id);
+      closeSabFixPanel();
+    } else {
+      // Wrong code
+      _sabPanel.codeWrong = true;
+      _sabPanel.wrongTimer = 30; // 0.5s flash
+    }
+  } else {
+    // Digit
+    if (_sabPanel.input.length < 5) {
+      _sabPanel.input += key;
+    }
   }
 }
 
@@ -381,14 +741,13 @@ function _drawSabotageOverlay() {
 
   ctx.save();
 
-  // Pulsing red vignette — flashes entire duration, faster as timer runs out
-  // Pulse speed: slow (800ms) at start → fast (200ms) at end
-  const pulseSpeed = 800 - progress * 600; // 800→200ms
-  const pulseBase = 0.04 + progress * 0.12; // 0.04→0.16
-  const pulseRange = 0.03 + progress * 0.08; // 0.03→0.11
-  const pulseAlpha = pulseBase + Math.sin(Date.now() / pulseSpeed * Math.PI * 2) * pulseRange;
-  ctx.fillStyle = 'rgba(200, 30, 30, ' + Math.max(0, pulseAlpha) + ')';
-  ctx.fillRect(0, 0, cw, ctx.canvas.height);
+  // Flashing red vignette — toggles every 1.5s (like Among Us reactor alert)
+  const flashOn = Math.floor(Date.now() / 1500) % 2 === 0;
+  if (flashOn) {
+    const flashAlpha = 0.08 + progress * 0.07; // subtle early, stronger late
+    ctx.fillStyle = 'rgba(200, 30, 30, ' + flashAlpha + ')';
+    ctx.fillRect(0, 0, cw, ctx.canvas.height);
+  }
 
   // Top-center alert bar
   const barW = 400;
@@ -430,11 +789,11 @@ function _drawSabotageOverlay() {
       barX + barW / 2, barY + barH + 20
     );
   } else if (mk.sabotage.active === 'o2_depletion') {
-    const o2Held = mk.sabotage.fixers.o2_o2 !== null;
-    const adminHeld = mk.sabotage.fixers.o2_admin !== null;
+    const o2Fixed = mk.sabotage.fixedPanels.o2_o2 === true;
+    const adminFixed = mk.sabotage.fixedPanels.o2_admin === true;
     ctx.fillText(
-      'O2 Room: ' + (o2Held ? 'HELD' : 'EMPTY') +
-      '  |  Admin: ' + (adminHeld ? 'HELD' : 'EMPTY'),
+      'O2 Room: ' + (o2Fixed ? 'FIXED' : 'NEEDS FIX') +
+      '  |  Admin: ' + (adminFixed ? 'FIXED' : 'NEEDS FIX'),
       barX + barW / 2, barY + barH + 20
     );
   }

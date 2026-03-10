@@ -434,6 +434,11 @@ window.addEventListener("keydown", e => {
 
   // Escape closes any panel
   if (e.key === "Escape") {
+    // Close sabotage fix panel
+    if (typeof _sabPanel !== 'undefined' && _sabPanel.active) {
+      closeSabFixPanel();
+      return;
+    }
     // Cancel active fishing
     if (typeof fishingState !== 'undefined' && fishingState.active) {
       cancelFishing();
