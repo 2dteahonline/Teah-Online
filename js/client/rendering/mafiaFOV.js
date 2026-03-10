@@ -213,9 +213,11 @@ function drawMafiaHUD() {
     window._mafiaEmergencyConfirmBtn = null;
   }
 
-  // ---- Meeting / Voting / Ejection overlays ----
+  // ---- Meeting / Voting / Vote Results / Ejection overlays ----
   if (mk.phase === 'meeting' || mk.phase === 'voting') {
     _drawMeetingUI();
+  } else if (mk.phase === 'vote_results') {
+    _drawVoteResultsUI();
   } else if (mk.phase === 'ejecting') {
     _drawEjectionUI();
   } else {
@@ -866,6 +868,163 @@ function _drawMeetingChatView(frameX, frameY, frameW, frameH, panelCX) {
   ctx.textAlign = 'left';
 
   // Don't show vote portraits in chat view
+  window._mafiaVotePortraits = null;
+  window._mafiaSkipBtn = null;
+}
+
+
+// ===================== VOTE RESULTS UI =====================
+function _drawVoteResultsUI() {
+  const mk = MafiaState;
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+
+  // Full-screen dark overlay
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Tablet frame (same as meeting UI)
+  const frameW = 920;
+  const frameH = 600;
+  const frameX = (cw - frameW) / 2;
+  const frameY = (ch - frameH) / 2 - 10;
+  const frameR = 24;
+
+  ctx.fillStyle = '#2a2d35';
+  ctx.beginPath();
+  ctx.roundRect(frameX - 8, frameY - 8, frameW + 16, frameH + 16, frameR + 6);
+  ctx.fill();
+  ctx.strokeStyle = '#404550';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#c2ccd8';
+  ctx.beginPath();
+  ctx.roundRect(frameX, frameY, frameW, frameH, frameR);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(frameX + 2, frameY + 2, frameW - 4, frameH - 4, frameR - 2);
+  ctx.stroke();
+
+  // Title
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillText('Voting Results', frameX + frameW / 2, frameY + 42);
+
+  // Vote results data
+  const voteResults = mk.meeting.voteResults || {};
+  const skipVoters = mk.meeting.skipVoters || [];
+
+  // ---- Player cards with vote icons ----
+  const gridCols = 2;
+  const cardW = 390;
+  const cardH = 82;
+  const gapX = 16;
+  const gapY = 6;
+  const gridStartX = frameX + (frameW - (gridCols * cardW + (gridCols - 1) * gapX)) / 2;
+  const gridStartY = frameY + 58;
+
+  // Keep same order as voting screen
+  const aliveBefore = mk.participants.filter(p => p.alive || (mk.ejection.name && p.name === mk.ejection.name));
+  const deadBefore = mk.participants.filter(p => !p.alive && !(mk.ejection.name && p.name === mk.ejection.name));
+  const orderedPlayers = [...aliveBefore, ...deadBefore];
+
+  for (let i = 0; i < orderedPlayers.length; i++) {
+    const p = orderedPlayers[i];
+    const col = i % gridCols;
+    const row = Math.floor(i / gridCols);
+    const px = gridStartX + col * (cardW + gapX);
+    const py = gridStartY + row * (cardH + gapY);
+
+    const isDead = !p.alive && !(mk.ejection.name && p.name === mk.ejection.name);
+    const isEjected = mk.ejection.name === p.name;
+
+    // Card background
+    if (isDead) {
+      ctx.fillStyle = '#8a8a8a';
+    } else if (isEjected) {
+      ctx.fillStyle = '#d8b8b8';
+    } else {
+      ctx.fillStyle = '#dde0e6';
+    }
+    ctx.beginPath();
+    ctx.roundRect(px, py, cardW, cardH, 8);
+    ctx.fill();
+    ctx.strokeStyle = isEjected ? '#aa4444' : 'rgba(0,0,0,0.1)';
+    ctx.lineWidth = isEjected ? 2 : 1;
+    ctx.beginPath();
+    ctx.roundRect(px, py, cardW, cardH, 8);
+    ctx.stroke();
+
+    // Crewmate sprite
+    const spriteX = px + 42;
+    const spriteY = py + cardH / 2;
+    const bodyCol = p.color ? p.color.body : '#888';
+    const darkCol = p.color ? p.color.dark : '#555';
+    _drawMiniCrewmate(spriteX, spriteY, bodyCol, darkCol, 1.5, isDead);
+
+    // Name
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = isDead ? '#555' : '#1a1a2e';
+    ctx.fillText(p.name, px + 80, py + 28);
+
+    // ---- Small voter icons next to the card ----
+    const voters = voteResults[p.id] || [];
+    if (voters.length > 0) {
+      const iconStartX = px + 80;
+      const iconY = py + cardH - 18;
+      for (let v = 0; v < voters.length; v++) {
+        const voter = mk.participants.find(pp => pp.id === voters[v]);
+        if (voter) {
+          const vCol = voter.color ? voter.color.body : '#888';
+          const vDark = voter.color ? voter.color.dark : '#555';
+          _drawMiniCrewmate(iconStartX + v * 28, iconY, vCol, vDark, 0.45, false);
+        }
+      }
+    }
+  }
+
+  // ---- SKIPPED VOTING section at bottom-left ----
+  const bottomY = frameY + frameH - 52;
+  if (skipVoters.length > 0) {
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#444';
+    ctx.fillText('SKIPPED VOTING', frameX + 24, bottomY + 10);
+
+    for (let s = 0; s < skipVoters.length; s++) {
+      const skipper = mk.participants.find(pp => pp.id === skipVoters[s]);
+      if (skipper) {
+        const sCol = skipper.color ? skipper.color.body : '#888';
+        const sDark = skipper.color ? skipper.color.dark : '#555';
+        _drawMiniCrewmate(frameX + 190 + s * 30, bottomY + 6, sCol, sDark, 0.45, false);
+      }
+    }
+  } else {
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#444';
+    ctx.fillText('No one skipped', frameX + 24, bottomY + 10);
+  }
+
+  // Timer (bottom-right)
+  const timerSec = Math.ceil((mk.meeting.resultsTimer || 0) / 60);
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#333';
+  ctx.fillText('Proceeding In: ' + timerSec + 's', frameX + frameW - 24, bottomY + 10);
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+
+  // No clickable regions during results
   window._mafiaVotePortraits = null;
   window._mafiaSkipBtn = null;
 }

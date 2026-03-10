@@ -5,7 +5,7 @@
 
 // ---- Global State ----
 window.MafiaState = {
-  phase: 'idle',              // 'idle' | 'playing' | 'meeting' | 'voting' | 'ejecting' | 'post_match'
+  phase: 'idle',              // 'idle' | 'playing' | 'meeting' | 'voting' | 'vote_results' | 'ejecting' | 'post_match'
   phaseTimer: 0,
   playerRole: null,           // 'crewmate' | 'impostor'
   participants: [],           // array of participant objects (see startMatch)
@@ -467,21 +467,48 @@ window.MafiaSystem = {
     } else {
       const ejected = mk.participants.find(p => p.id === ejectedId);
       if (ejected) {
-        ejected.alive = false;
+        // Don't kill yet — wait for vote_results phase to finish
         mk.ejection = {
           name: ejected.name,
           wasImpostor: ejected.role === 'impostor',
           timer: MAFIA_GAME.EJECTION_TIME,
           message: ejected.name + (ejected.role === 'impostor' ? ' was The Impostor.' : ' was not The Impostor.'),
         };
-        // If ejected player is local player, set ghost
-        if (ejected.isLocal) {
-          mk.playerIsGhost = true;
-        }
       }
     }
 
-    mk.phase = 'ejecting';
+    // Store vote results for display (who voted for whom)
+    mk.meeting.voteResults = {};  // targetId → [voterId, voterId, ...]
+    mk.meeting.skipVoters = [];
+    for (const p of mk.participants) {
+      if (!p.alive || p.votedFor === null) continue;
+      if (p.votedFor === 'skip') {
+        mk.meeting.skipVoters.push(p.id);
+      } else {
+        if (!mk.meeting.voteResults[p.votedFor]) mk.meeting.voteResults[p.votedFor] = [];
+        mk.meeting.voteResults[p.votedFor].push(p.id);
+      }
+    }
+
+    mk.meeting.resultsTimer = MAFIA_GAME.VOTE_RESULTS_TIME;
+    mk.phase = 'vote_results';
+  },
+
+  // ---- Vote results phase tick ----
+  _tickVoteResults() {
+    const mk = MafiaState;
+    mk.meeting.resultsTimer--;
+    if (mk.meeting.resultsTimer <= 0) {
+      // Now do the actual ejection
+      if (mk.ejection.name) {
+        const ejected = mk.participants.find(p => p.name === mk.ejection.name);
+        if (ejected) {
+          ejected.alive = false;
+          if (ejected.isLocal) mk.playerIsGhost = true;
+        }
+      }
+      mk.phase = 'ejecting';
+    }
   },
 
   // After ejection animation finishes → return to playing
@@ -516,6 +543,8 @@ window.MafiaSystem = {
       this._tickMeeting();
     } else if (mk.phase === 'voting') {
       this._tickVoting();
+    } else if (mk.phase === 'vote_results') {
+      this._tickVoteResults();
     } else if (mk.phase === 'ejecting') {
       this._tickEjecting();
     }
@@ -781,7 +810,7 @@ window.MafiaSystem = {
   // ===================== FREEZE CHECK =====================
   isPlayerFrozen() {
     const mk = MafiaState;
-    if (mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'ejecting') return true;
+    if (mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'vote_results' || mk.phase === 'ejecting') return true;
     // Freeze while emergency popup is open
     if (window._mafiaEmergencyPopup) return true;
     return false;

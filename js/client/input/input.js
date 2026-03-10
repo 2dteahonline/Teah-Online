@@ -202,7 +202,7 @@ canvas.addEventListener("mousedown", e => {
 
   // Block all other clicks during Mafia meeting/voting/ejecting phases
   if (typeof MafiaState !== 'undefined' &&
-      (MafiaState.phase === 'meeting' || MafiaState.phase === 'voting' || MafiaState.phase === 'ejecting')) {
+      (MafiaState.phase === 'meeting' || MafiaState.phase === 'voting' || MafiaState.phase === 'vote_results' || MafiaState.phase === 'ejecting')) {
     return;
   }
 

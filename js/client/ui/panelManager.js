@@ -416,7 +416,7 @@ window.addEventListener("keydown", e => {
   // Chat toggle — block during Mafia meeting/voting (use chat input box instead)
   if (key === keybinds.chat) {
     if (keybinds.chat === "tab") e.preventDefault();
-    if (typeof MafiaState !== 'undefined' && (MafiaState.phase === 'meeting' || MafiaState.phase === 'voting')) return;
+    if (typeof MafiaState !== 'undefined' && (MafiaState.phase === 'meeting' || MafiaState.phase === 'voting' || MafiaState.phase === 'vote_results' || MafiaState.phase === 'ejecting')) return;
     UI.toggle('chat');
     nameEditActive = false;
     keysDown[keybinds.moveUp] = false; keysDown[keybinds.moveDown] = false; keysDown[keybinds.moveLeft] = false; keysDown[keybinds.moveRight] = false;
