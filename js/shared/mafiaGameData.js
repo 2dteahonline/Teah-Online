@@ -77,7 +77,7 @@ const MAFIA_GAME = {
     reactor_p2: { tx: 6, ty: 44 },
     o2_o2:      { tx: 99, ty: 32 },   // 95+XO=99
     o2_admin:       { tx: 92, ty: 38 },   // 88+XO=92
-    lights_electrical: { tx: 41, ty: 52 }, // 37+XO=41
+    lights_electrical: { tx: 41, ty: 55 }, // 37+XO=41, bottom of box
   },
 
   // ---- Per-map data (room centers, spawn points) ----

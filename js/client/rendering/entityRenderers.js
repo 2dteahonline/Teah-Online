@@ -2496,11 +2496,12 @@ const ENTITY_RENDERERS = {
         }
       }
 
-      // Small LEDs along bottom
+      // Small LEDs along bottom — slow flicker (each LED toggles on its own ~2s cycle)
+      const t2 = Date.now() / 1000;
       for (let i = 0; i < 6; i++) {
         const lx = ex + 20 + i * ((cw - 40) / 5);
         const ly = ey + ch - 12;
-        const isOn = Math.random() > 0.4; // randomize each frame for flicker
+        const isOn = Math.sin(t2 * 1.5 + i * 1.8) > -0.2;
         ctx.fillStyle = isOn ? 'rgba(100,200,100,0.8)' : 'rgba(50,50,50,0.5)';
         ctx.beginPath();
         ctx.arc(lx, ly, 3, 0, Math.PI * 2);
