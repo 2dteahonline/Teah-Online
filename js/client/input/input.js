@@ -869,8 +869,8 @@ canvas.addEventListener("mousedown", e => {
     return;
   }
 
-  // Click on self to open identity panel
-  if (!UI.anyOpen() && e.button === 0) {
+  // Click on self to open identity panel (blocked in Skeld/Mafia)
+  if (!UI.anyOpen() && e.button === 0 && !(typeof Scene !== 'undefined' && Scene.inSkeld)) {
     const wmx = mx / WORLD_ZOOM + camera.x;
     const wmy = my / WORLD_ZOOM + camera.y;
     const dist = Math.sqrt((wmx - player.x) ** 2 + (wmy - player.y) ** 2);
