@@ -2,24 +2,78 @@
 // State tracking, task UI panel, and all task mini-game implementations.
 // Each task: player presses E → panel opens → complete mini-game → task marked done.
 
+// ---- Task Categories ----
+const TASK_CATEGORIES = {
+  // Common — given to ALL crewmates (if any faked, everyone knows)
+  tap_sequence:     'common',
+  code_entry:       'common',
+  simple_math:      'common',
+  match_symbol:     'common',
+  // Short — single-step, quick mini-games
+  slider_alignment: 'short',
+  security_auth:    'short',
+  hold_to_charge:   'short',
+  rotate_pipes:     'short',
+  calibrate_dial:   'short',
+  // Long — multi-step or time-based
+  circuit_paths:    'long',
+  sample_analyzer:  'long',
+  path_trace:       'long',
+  package_assembly: 'long',
+  empty_trash:      'long',
+};
+
 // ---- Task State Tracker ----
 const SkeldTasks = {
   // taskId → { done: bool, stepsCompleted: Set<number> }
   _state: {},
+  // Set of active taskIds for this match (null = all tasks active)
+  _activeTasks: null,
 
-  reset() {
+  reset(settings) {
     this._state = {};
     const skeld = typeof LEVELS !== 'undefined' && LEVELS.skeld_01;
     if (!skeld || !skeld.entities) return;
-    const taskIds = new Set();
+
+    // Collect all unique taskIds grouped by category
+    const byCategory = { common: [], short: [], long: [] };
+    const seen = new Set();
     for (const e of skeld.entities) {
-      if (e.type === 'skeld_task' && e.taskId && !taskIds.has(e.taskId)) {
-        taskIds.add(e.taskId);
-        const totalSteps = skeld.entities.filter(
-          en => en.taskId === e.taskId && en.type === 'skeld_task'
-        ).length;
-        this._state[e.taskId] = { done: false, stepsCompleted: new Set(), totalSteps };
+      if (e.type === 'skeld_task' && e.taskId && !seen.has(e.taskId)) {
+        seen.add(e.taskId);
+        const cat = TASK_CATEGORIES[e.taskId] || 'short';
+        byCategory[cat].push(e.taskId);
       }
+    }
+
+    // Determine how many of each category to use
+    const wantCommon = settings ? (settings.commonTasks != null ? settings.commonTasks : 1) : byCategory.common.length;
+    const wantShort  = settings ? (settings.shortTasks  != null ? settings.shortTasks  : 2) : byCategory.short.length;
+    const wantLong   = settings ? (settings.longTasks   != null ? settings.longTasks   : 1) : byCategory.long.length;
+
+    // Shuffle helper
+    const shuffle = (arr) => {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+
+    // Pick random subset from each category
+    const selected = new Set();
+    shuffle(byCategory.common).slice(0, wantCommon).forEach(id => selected.add(id));
+    shuffle(byCategory.short).slice(0, wantShort).forEach(id => selected.add(id));
+    shuffle(byCategory.long).slice(0, wantLong).forEach(id => selected.add(id));
+
+    this._activeTasks = selected;
+
+    // Initialize state only for selected tasks
+    for (const taskId of selected) {
+      const totalSteps = skeld.entities.filter(
+        en => en.taskId === taskId && en.type === 'skeld_task'
+      ).length;
+      this._state[taskId] = { done: false, stepsCompleted: new Set(), totalSteps };
     }
   },
 

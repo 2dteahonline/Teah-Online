@@ -174,7 +174,7 @@ window.MafiaSystem = {
     mk._settings = Object.assign({}, settings);
 
     if (typeof SkeldTasks !== 'undefined' && typeof SkeldTasks.reset === 'function') {
-      SkeldTasks.reset();
+      SkeldTasks.reset(settings);
     }
   },
 
