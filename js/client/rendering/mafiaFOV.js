@@ -627,7 +627,7 @@ function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
     }
 
     // Click region for voting (only if no confirm popup active, or this is not the confirm target)
-    if (mk.phase === 'voting' && isAlive && !isLocalPlayer && !localHasVoted) {
+    if (mk.phase === 'voting' && isAlive && !localHasVoted) {
       portraits.push({ id: p.id, x: px, y: py, w: cardW, h: cardH });
     }
   }
