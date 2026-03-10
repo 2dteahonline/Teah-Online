@@ -310,6 +310,15 @@ function drawSkeldTaskList() {
   if (!Scene.inSkeld) return;
   if (UI.isOpen('skeldTask')) return; // hide while doing a task mini-game
 
+  // Task Bar Updates setting: 'Never' hides entirely, 'Meetings' only during meeting/voting
+  const tbSetting = (typeof MafiaState !== 'undefined' && MafiaState._settings)
+    ? MafiaState._settings.taskBarUpdates : 'Always';
+  if (tbSetting === 'Never') return;
+  if (tbSetting === 'Meetings') {
+    const phase = typeof MafiaState !== 'undefined' ? MafiaState.phase : 'idle';
+    if (phase !== 'meeting' && phase !== 'voting' && phase !== 'vote_results') return;
+  }
+
   const tasks = SkeldTasks.getTaskList();
   const prog = SkeldTasks.getProgress();
 

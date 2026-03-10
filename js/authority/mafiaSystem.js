@@ -17,6 +17,8 @@ window.MafiaState = {
   taskProgress: { done: 0, total: 0 },
   // Ghost state
   playerIsGhost: false,       // true after local player dies
+  // Emergency cooldown tracking
+  lastMeetingEndFrame: 0,     // gameFrame when last meeting ended
 };
 
 
@@ -167,6 +169,7 @@ window.MafiaSystem = {
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.taskProgress = { done: 0, total: 0 };
+    mk.lastMeetingEndFrame = 0;
     // Store settings snapshot for use during match
     mk._settings = Object.assign({}, settings);
 
@@ -305,6 +308,11 @@ window.MafiaSystem = {
     // Emergency meetings limit from settings
     const maxEmergencies = mk._settings ? mk._settings.emergencyMeetings : 1;
     if (localP.emergenciesUsed >= maxEmergencies) return false;
+
+    // Emergency cooldown — seconds since last meeting ended
+    const emergCooldownSec = mk._settings ? mk._settings.emergencyCooldown : 15;
+    const framesSinceLastMeeting = (typeof gameFrame !== 'undefined' ? gameFrame : 0) - mk.lastMeetingEndFrame;
+    if (mk.lastMeetingEndFrame > 0 && framesSinceLastMeeting < emergCooldownSec * 60) return false;
 
     return true;
   },
@@ -581,6 +589,7 @@ window.MafiaSystem = {
     mk.phase = 'playing';
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
+    mk.lastMeetingEndFrame = typeof gameFrame !== 'undefined' ? gameFrame : 0;
   },
 
 
@@ -1098,6 +1107,7 @@ window.MafiaSystem = {
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.taskProgress = { done: 0, total: 0 };
+    mk.lastMeetingEndFrame = 0;
 
     if (typeof enterLevel === 'function') {
       enterLevel(MAFIA_GAME.RETURN_LEVEL, MAFIA_GAME.RETURN_TX, MAFIA_GAME.RETURN_TY);

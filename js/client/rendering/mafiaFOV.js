@@ -1788,11 +1788,12 @@ function _drawVoteResultsUI() {
     if (visibleVoters.length > 0) {
       const iconStartX = px + 80;
       const iconY = py + cardH - 16;
+      const isAnon = mk._settings && mk._settings.anonymousVotes;
       for (let v = 0; v < visibleVoters.length; v++) {
         const voter = mk.participants.find(pp => pp.id === visibleVoters[v]);
         if (voter) {
-          const vCol = voter.color ? voter.color.body : '#888';
-          const vDark = voter.color ? voter.color.dark : '#555';
+          const vCol = isAnon ? '#888' : (voter.color ? voter.color.body : '#888');
+          const vDark = isAnon ? '#555' : (voter.color ? voter.color.dark : '#555');
           _drawMiniCrewmate(iconStartX + v * 28, iconY, vCol, vDark, 0.5, false);
         }
       }
@@ -1818,11 +1819,12 @@ function _drawVoteResultsUI() {
     ctx.fillStyle = '#444';
     ctx.fillText('SKIPPED VOTING', frameX + 24, bottomY + 10);
 
+    const isAnonSkip = mk._settings && mk._settings.anonymousVotes;
     for (let s = 0; s < visibleSkippers.length; s++) {
       const skipper = mk.participants.find(pp => pp.id === visibleSkippers[s]);
       if (skipper) {
-        const sCol = skipper.color ? skipper.color.body : '#888';
-        const sDark = skipper.color ? skipper.color.dark : '#555';
+        const sCol = isAnonSkip ? '#888' : (skipper.color ? skipper.color.body : '#888');
+        const sDark = isAnonSkip ? '#555' : (skipper.color ? skipper.color.dark : '#555');
         _drawMiniCrewmate(frameX + 200 + s * 32, bottomY + 6, sCol, sDark, 0.55, false);
       }
     }
