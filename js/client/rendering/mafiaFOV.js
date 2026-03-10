@@ -353,7 +353,10 @@ function drawSabFixPanel() {
   ctx.fillStyle = 'rgba(0,0,0,0.75)';
   ctx.fillRect(0, 0, cw, ch);
 
-  const pw = 420, ph = 460;
+  // Lights panel is bigger and more square to match Among Us reference
+  const isLights = _sabPanel.type === 'lights';
+  const pw = isLights ? 540 : 420;
+  const ph = isLights ? 560 : 460;
   const px = (cw - pw) / 2, py = (ch - ph) / 2;
 
   // Panel background
@@ -654,29 +657,44 @@ function _drawLightsFixPanel(px, py, pw, ph) {
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Display screens (3 dark bars with waveform lines)
-  const screenX = px + 30, screenW = pw - 60;
+  // Inner bevel
+  ctx.strokeStyle = '#c0c6cc';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px + 14, py + 14, pw - 28, ph - 28);
+
+  // ---- 3 display screens (top ~55% of panel) ----
+  const screenPad = 36;
+  const screenX = px + screenPad;
+  const screenW = pw - screenPad * 2;
+  const screenH = 80;
+  const screenGap = 16;
+  const screenStartY = py + 30;
   const screens = [
-    { y: py + 30, h: 60, active: switches[0] && switches[1] },
-    { y: py + 105, h: 50, active: switches[2] },
-    { y: py + 170, h: 50, active: switches[3] && switches[4] },
+    { y: screenStartY, h: screenH, active: switches[0] && switches[1] },
+    { y: screenStartY + screenH + screenGap, h: screenH, active: switches[2] },
+    { y: screenStartY + (screenH + screenGap) * 2, h: screenH, active: switches[3] && switches[4] },
   ];
+
   for (const scr of screens) {
+    // Screen bezel
+    ctx.fillStyle = '#666';
+    ctx.fillRect(screenX - 3, scr.y - 3, screenW + 6, scr.h + 6);
+    // Screen
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(screenX, scr.y, screenW, scr.h);
-    ctx.strokeStyle = '#666';
+    ctx.strokeStyle = '#555';
     ctx.lineWidth = 2;
     ctx.strokeRect(screenX, scr.y, screenW, scr.h);
 
-    // Draw waveform if active
+    // Waveform if active
     if (scr.active) {
       ctx.strokeStyle = '#44ff44';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.beginPath();
       const waveY = scr.y + scr.h / 2;
       for (let x = 0; x < screenW - 8; x += 2) {
         const val = Math.sin((x + Date.now() * 0.003) * 0.1) * (scr.h * 0.3)
-                  + Math.sin((x + Date.now() * 0.007) * 0.25) * (scr.h * 0.1);
+                  + Math.sin((x + Date.now() * 0.007) * 0.25) * (scr.h * 0.12);
         if (x === 0) ctx.moveTo(screenX + 4 + x, waveY + val);
         else ctx.lineTo(screenX + 4 + x, waveY + val);
       }
@@ -684,23 +702,28 @@ function _drawLightsFixPanel(px, py, pw, ph) {
     }
   }
 
-  // Small wire/pipe details on sides
+  // Wire/pipe details connecting screens to sides
   ctx.strokeStyle = '#99886a';
-  ctx.lineWidth = 2;
-  // Left pipes
-  ctx.beginPath(); ctx.moveTo(px + 14, py + 50); ctx.lineTo(px + 28, py + 50); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(px + 14, py + 140); ctx.lineTo(px + 28, py + 140); ctx.stroke();
-  // Right pipes
-  ctx.beginPath(); ctx.moveTo(px + pw - 14, py + 70); ctx.lineTo(px + pw - 28, py + 70); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(px + pw - 14, py + 160); ctx.lineTo(px + pw - 28, py + 160); ctx.stroke();
+  ctx.lineWidth = 3;
+  const pipeX1 = px + 16, pipeX2 = px + screenPad - 4;
+  const pipeRX1 = px + pw - screenPad + 4, pipeRX2 = px + pw - 16;
+  for (let i = 0; i < 3; i++) {
+    const sy = screens[i].y + screens[i].h / 2;
+    // Left
+    ctx.beginPath(); ctx.moveTo(pipeX1, sy - 10); ctx.lineTo(pipeX2, sy - 10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pipeX1, sy + 10); ctx.lineTo(pipeX2, sy + 10); ctx.stroke();
+    // Right
+    ctx.beginPath(); ctx.moveTo(pipeRX1, sy - 10); ctx.lineTo(pipeRX2, sy - 10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pipeRX1, sy + 10); ctx.lineTo(pipeRX2, sy + 10); ctx.stroke();
+  }
 
-  // ---- 5 toggle switches at the bottom ----
+  // ---- 5 toggle switches (bottom ~40%) ----
   const switchCount = 5;
-  const swW = 44, swH = 100;
-  const swGap = 14;
+  const swW = 56, swH = 120;
+  const swGap = 18;
   const totalSwW = switchCount * swW + (switchCount - 1) * swGap;
   const swStartX = cx - totalSwW / 2;
-  const swY = py + ph - swH - 40;
+  const swY = screens[2].y + screens[2].h + 30;
 
   window._sabFixSwitchBtns = [];
 
@@ -709,50 +732,51 @@ function _drawLightsFixPanel(px, py, pw, ph) {
     const isOn = switches[i];
 
     // Switch slot background
-    ctx.fillStyle = '#666';
+    ctx.fillStyle = '#6a6a6a';
     ctx.beginPath();
-    ctx.roundRect(sx, swY, swW, swH, 6);
+    ctx.roundRect(sx, swY, swW, swH, 8);
     ctx.fill();
     ctx.fillStyle = '#555';
     ctx.beginPath();
-    ctx.roundRect(sx + 4, swY + 4, swW - 8, swH - 8, 4);
+    ctx.roundRect(sx + 4, swY + 4, swW - 8, swH - 8, 6);
     ctx.fill();
 
-    // Switch lever
-    const leverH = 36;
-    const leverW = 24;
-    const leverX = sx + (swW - leverW) / 2;
-    const leverY = isOn ? swY + 8 : swY + swH - leverH - 8;
-
-    // Lever base (circle)
-    ctx.fillStyle = '#888';
+    // Lever base (larger circle)
+    ctx.fillStyle = '#7a7a7a';
     ctx.beginPath();
-    ctx.arc(sx + swW / 2, swY + swH / 2, 14, 0, Math.PI * 2);
+    ctx.arc(sx + swW / 2, swY + swH / 2, 20, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-    // Lever handle
-    ctx.fillStyle = isOn ? '#bbb' : '#999';
+    // Switch lever handle (chunky)
+    const leverH = 44;
+    const leverW = 28;
+    const leverX = sx + (swW - leverW) / 2;
+    const leverY = isOn ? swY + 10 : swY + swH - leverH - 10;
+
+    ctx.fillStyle = isOn ? '#c8c8c8' : '#999';
     ctx.beginPath();
     ctx.roundRect(leverX, leverY, leverW, leverH, leverW / 2);
     ctx.fill();
     ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Indicator light below switch
-    const ledY = swY + swH + 10;
-    ctx.fillStyle = isOn ? '#22cc44' : '#333';
-    ctx.beginPath();
-    ctx.arc(sx + swW / 2, ledY, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#222';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    // LED shine
+
+    // Indicator LED below switch
+    const ledY = swY + swH + 16;
+    ctx.fillStyle = isOn ? '#22cc44' : '#333';
+    ctx.beginPath();
+    ctx.arc(sx + swW / 2, ledY, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 2;
+    ctx.stroke();
     if (isOn) {
-      ctx.fillStyle = 'rgba(100,255,120,0.3)';
+      ctx.fillStyle = 'rgba(100,255,120,0.35)';
       ctx.beginPath();
-      ctx.arc(sx + swW / 2, ledY - 2, 4, 0, Math.PI * 2);
+      ctx.arc(sx + swW / 2, ledY - 2, 5, 0, Math.PI * 2);
       ctx.fill();
     }
 
