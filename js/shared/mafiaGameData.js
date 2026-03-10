@@ -63,6 +63,11 @@ const MAFIA_GAME = {
       fixPanels: ['o2_o2', 'o2_admin'],
       simultaneous: false,  // each panel fixed independently via keypad code
     },
+    lights_out: {
+      timer: 0, label: 'Lights Out',     // no timer — stays until fixed
+      fixPanels: ['lights_electrical'],
+      simultaneous: false,  // single panel, flip switches to fix
+    },
   },
 
   // ---- Sabotage fix panel positions (tile coords, for range checks) ----
@@ -71,7 +76,8 @@ const MAFIA_GAME = {
     reactor_p1: { tx: 6, ty: 25 },   // 2+XO=6 in actual grid
     reactor_p2: { tx: 6, ty: 44 },
     o2_o2:      { tx: 99, ty: 32 },   // 95+XO=99
-    o2_admin:   { tx: 92, ty: 38 },   // 88+XO=92
+    o2_admin:       { tx: 92, ty: 38 },   // 88+XO=92
+    lights_electrical: { tx: 41, ty: 52 }, // 37+XO=41
   },
 
   // ---- Per-map data (room centers, spawn points) ----

@@ -1521,7 +1521,8 @@ const LEVELS = {
         // ===== SABOTAGE PLACEHOLDERS =====
         { type: 'skeld_sabotage', tx: 2 + XO, ty: 25, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 1 },
         { type: 'skeld_sabotage', tx: 2 + XO, ty: 44, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 2 },
-        { type: 'skeld_sabotage', tx: 45 + XO, ty: 43, w: 2, h: 1, solid: true, label: 'Lights Fix', sabotageId: 'lights_out', room: 'electrical' },
+        { type: 'skeld_electrical_box', tx: 37 + XO, ty: 51, w: 10, h: 5, solid: true, label: 'Electrical Box' },
+        { type: 'skeld_sabotage', tx: 37 + XO, ty: 52, w: 2, h: 2, solid: false, label: 'Lights Fix', sabotageId: 'lights_out', room: 'electrical' },
         { type: 'skeld_sabotage', tx: 95 + XO, ty: 32, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'o2' },
         { type: 'skeld_sabotage', tx: 88 + XO, ty: 38, w: 2, h: 1, solid: true, label: 'O2 Fix', sabotageId: 'o2_depletion', room: 'admin' },
 

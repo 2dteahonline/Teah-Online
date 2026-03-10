@@ -137,6 +137,15 @@ canvas.addEventListener("mousedown", e => {
         }
       }
     }
+    // Lights toggle switches
+    if (_sabPanel.type === 'lights' && window._sabFixSwitchBtns) {
+      for (const btn of window._sabFixSwitchBtns) {
+        if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+          handleLightsSwitchToggle(btn.idx);
+          return;
+        }
+      }
+    }
     return; // consume all clicks while panel is open
   }
 
@@ -154,6 +163,14 @@ canvas.addEventListener("mousedown", e => {
       const ob = window._mafiaSabO2Btn;
       if (mx >= ob.x && mx <= ob.x + ob.w && my >= ob.y && my <= ob.y + ob.h) {
         MafiaSystem.triggerSabotage('o2_depletion');
+        window._mafiaSabotageMenu = false;
+        return;
+      }
+    }
+    if (window._mafiaSabLightsBtn) {
+      const lb = window._mafiaSabLightsBtn;
+      if (mx >= lb.x && mx <= lb.x + lb.w && my >= lb.y && my <= lb.y + lb.h) {
+        MafiaSystem.triggerSabotage('lights_out');
         window._mafiaSabotageMenu = false;
         return;
       }

@@ -667,15 +667,17 @@ window.MafiaSystem = {
       }
     }
 
-    // --- Tick timer ---
-    mk.sabotage.timer--;
-
     // --- Bot AI: some bots go fix sabotage ---
     this._tickBotSabotageResponse();
 
-    // --- Timer expired = impostor wins ---
-    if (mk.sabotage.timer <= 0) {
-      this._sabotageWin(mk.sabotage.active);
+    // --- Tick timer (only for timed sabotages) ---
+    if (sabType.timer > 0) {
+      mk.sabotage.timer--;
+
+      // Timer expired = impostor wins
+      if (mk.sabotage.timer <= 0) {
+        this._sabotageWin(mk.sabotage.active);
+      }
     }
   },
 

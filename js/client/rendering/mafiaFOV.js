@@ -13,6 +13,7 @@ window._mafiaSabotageBtn = null;         // SABOTAGE button click region
 window._mafiaSabotageMenu = false;       // true when sabotage picker is open
 window._mafiaSabReactorBtn = null;       // Reactor option click region
 window._mafiaSabO2Btn = null;            // O2 option click region
+window._mafiaSabLightsBtn = null;        // Lights option click region
 
 // ---- Sabotage fix panel state ----
 const _sabPanel = {
@@ -311,12 +312,15 @@ function openSabFixPanel(panelKey) {
     _sabPanel.type = 'reactor';
   } else if (mk.sabotage.active === 'o2_depletion') {
     _sabPanel.type = 'o2';
-    // Generate random 5-digit code
     _sabPanel.code = '';
     for (let i = 0; i < 5; i++) _sabPanel.code += Math.floor(Math.random() * 10);
     _sabPanel.input = '';
     _sabPanel.codeWrong = false;
     _sabPanel.wrongTimer = 0;
+  } else if (mk.sabotage.active === 'lights_out') {
+    _sabPanel.type = 'lights';
+    // 5 switches, all start OFF (down), must flick all to ON (up)
+    _sabPanel.switches = [false, false, false, false, false];
   }
 }
 
@@ -378,6 +382,8 @@ function drawSabFixPanel() {
     _drawReactorFixPanel(px, py, pw, ph);
   } else if (_sabPanel.type === 'o2') {
     _drawO2FixPanel(px, py, pw, ph);
+  } else if (_sabPanel.type === 'lights') {
+    _drawLightsFixPanel(px, py, pw, ph);
   }
 
   ctx.textAlign = 'left';
@@ -635,6 +641,140 @@ function handleSabKeypadPress(key) {
 }
 
 
+function _drawLightsFixPanel(px, py, pw, ph) {
+  const cx = px + pw / 2;
+  const switches = _sabPanel.switches || [];
+
+  // Panel background — grey metal like Among Us
+  ctx.fillStyle = '#aab0b8';
+  ctx.beginPath();
+  ctx.roundRect(px + 10, py + 10, pw - 20, ph - 20, 8);
+  ctx.fill();
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Display screens (3 dark bars with waveform lines)
+  const screenX = px + 30, screenW = pw - 60;
+  const screens = [
+    { y: py + 30, h: 60, active: switches[0] && switches[1] },
+    { y: py + 105, h: 50, active: switches[2] },
+    { y: py + 170, h: 50, active: switches[3] && switches[4] },
+  ];
+  for (const scr of screens) {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(screenX, scr.y, screenW, scr.h);
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(screenX, scr.y, screenW, scr.h);
+
+    // Draw waveform if active
+    if (scr.active) {
+      ctx.strokeStyle = '#44ff44';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      const waveY = scr.y + scr.h / 2;
+      for (let x = 0; x < screenW - 8; x += 2) {
+        const val = Math.sin((x + Date.now() * 0.003) * 0.1) * (scr.h * 0.3)
+                  + Math.sin((x + Date.now() * 0.007) * 0.25) * (scr.h * 0.1);
+        if (x === 0) ctx.moveTo(screenX + 4 + x, waveY + val);
+        else ctx.lineTo(screenX + 4 + x, waveY + val);
+      }
+      ctx.stroke();
+    }
+  }
+
+  // Small wire/pipe details on sides
+  ctx.strokeStyle = '#99886a';
+  ctx.lineWidth = 2;
+  // Left pipes
+  ctx.beginPath(); ctx.moveTo(px + 14, py + 50); ctx.lineTo(px + 28, py + 50); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px + 14, py + 140); ctx.lineTo(px + 28, py + 140); ctx.stroke();
+  // Right pipes
+  ctx.beginPath(); ctx.moveTo(px + pw - 14, py + 70); ctx.lineTo(px + pw - 28, py + 70); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px + pw - 14, py + 160); ctx.lineTo(px + pw - 28, py + 160); ctx.stroke();
+
+  // ---- 5 toggle switches at the bottom ----
+  const switchCount = 5;
+  const swW = 44, swH = 100;
+  const swGap = 14;
+  const totalSwW = switchCount * swW + (switchCount - 1) * swGap;
+  const swStartX = cx - totalSwW / 2;
+  const swY = py + ph - swH - 40;
+
+  window._sabFixSwitchBtns = [];
+
+  for (let i = 0; i < switchCount; i++) {
+    const sx = swStartX + i * (swW + swGap);
+    const isOn = switches[i];
+
+    // Switch slot background
+    ctx.fillStyle = '#666';
+    ctx.beginPath();
+    ctx.roundRect(sx, swY, swW, swH, 6);
+    ctx.fill();
+    ctx.fillStyle = '#555';
+    ctx.beginPath();
+    ctx.roundRect(sx + 4, swY + 4, swW - 8, swH - 8, 4);
+    ctx.fill();
+
+    // Switch lever
+    const leverH = 36;
+    const leverW = 24;
+    const leverX = sx + (swW - leverW) / 2;
+    const leverY = isOn ? swY + 8 : swY + swH - leverH - 8;
+
+    // Lever base (circle)
+    ctx.fillStyle = '#888';
+    ctx.beginPath();
+    ctx.arc(sx + swW / 2, swY + swH / 2, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Lever handle
+    ctx.fillStyle = isOn ? '#bbb' : '#999';
+    ctx.beginPath();
+    ctx.roundRect(leverX, leverY, leverW, leverH, leverW / 2);
+    ctx.fill();
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Indicator light below switch
+    const ledY = swY + swH + 10;
+    ctx.fillStyle = isOn ? '#22cc44' : '#333';
+    ctx.beginPath();
+    ctx.arc(sx + swW / 2, ledY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // LED shine
+    if (isOn) {
+      ctx.fillStyle = 'rgba(100,255,120,0.3)';
+      ctx.beginPath();
+      ctx.arc(sx + swW / 2, ledY - 2, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    window._sabFixSwitchBtns.push({ idx: i, x: sx, y: swY, w: swW, h: swH });
+  }
+
+  // Check if all switches are on → fix complete
+  if (switches.every(s => s)) {
+    const localP = MafiaSystem.getLocalPlayer();
+    if (localP) MafiaSystem.tryFixSabotage(_sabPanel.panelKey, localP.id);
+    closeSabFixPanel();
+  }
+}
+
+function handleLightsSwitchToggle(idx) {
+  if (!_sabPanel.active || _sabPanel.type !== 'lights') return;
+  if (idx >= 0 && idx < _sabPanel.switches.length) {
+    _sabPanel.switches[idx] = !_sabPanel.switches[idx];
+  }
+}
+
+
 // ===================== SABOTAGE BUTTON & OVERLAY =====================
 
 function _drawSabotageButton() {
@@ -680,7 +820,7 @@ function _drawSabotageButton() {
   // Sabotage picker menu (appears above button when toggled)
   if (window._mafiaSabotageMenu && canSab) {
     const menuW = 200;
-    const menuH = 110;
+    const menuH = 160;
     const menuX = cw / 2 - menuW / 2;
     const menuY = btnY - menuH - 10;
 
@@ -693,32 +833,43 @@ function _drawSabotageButton() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Reactor option
-    const optH = 40;
-    const optY1 = menuY + 10;
-    const optY2 = menuY + 10 + optH + 8;
+    const optH = 36;
+    const optGap = 8;
+    const optX = menuX + 12;
+    const optW = menuW - 24;
 
+    // Reactor option
+    const optY1 = menuY + 10;
     ctx.fillStyle = '#cc3333';
     ctx.beginPath();
-    ctx.roundRect(menuX + 12, optY1, menuW - 24, optH, 8);
+    ctx.roundRect(optX, optY1, optW, optH, 8);
     ctx.fill();
     ctx.font = 'bold 16px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
     ctx.fillText('Reactor', menuX + menuW / 2, optY1 + optH / 2);
-
-    window._mafiaSabReactorBtn = { x: menuX + 12, y: optY1, w: menuW - 24, h: optH };
+    window._mafiaSabReactorBtn = { x: optX, y: optY1, w: optW, h: optH };
 
     // O2 option
+    const optY2 = optY1 + optH + optGap;
     ctx.fillStyle = '#3388cc';
     ctx.beginPath();
-    ctx.roundRect(menuX + 12, optY2, menuW - 24, optH, 8);
+    ctx.roundRect(optX, optY2, optW, optH, 8);
     ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.fillText('O2', menuX + menuW / 2, optY2 + optH / 2);
+    window._mafiaSabO2Btn = { x: optX, y: optY2, w: optW, h: optH };
 
-    window._mafiaSabO2Btn = { x: menuX + 12, y: optY2, w: menuW - 24, h: optH };
+    // Lights option
+    const optY3 = optY2 + optH + optGap;
+    ctx.fillStyle = '#cc9922';
+    ctx.beginPath();
+    ctx.roundRect(optX, optY3, optW, optH, 8);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Lights', menuX + menuW / 2, optY3 + optH / 2);
+    window._mafiaSabLightsBtn = { x: optX, y: optY3, w: optW, h: optH };
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
@@ -726,6 +877,7 @@ function _drawSabotageButton() {
   } else {
     window._mafiaSabReactorBtn = null;
     window._mafiaSabO2Btn = null;
+    window._mafiaSabLightsBtn = null;
   }
 }
 

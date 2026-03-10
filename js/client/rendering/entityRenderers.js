@@ -2435,6 +2435,78 @@ const ENTITY_RENDERERS = {
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
   },
+
+  // ===================== SKELD ELECTRICAL BOX (large block in Electrical room) =====================
+  skeld_electrical_box: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      // Main box body — dark grey metal
+      ctx.fillStyle = '#2a2a2e';
+      ctx.fillRect(ex, ey, cw, ch);
+      ctx.fillStyle = '#363640';
+      ctx.fillRect(ex + 3, ey + 3, cw - 6, ch - 6);
+      // Border
+      ctx.strokeStyle = '#1a1a1e';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(ex, ey, cw, ch);
+
+      // Left panel area (where the lights fix is) — slightly lighter
+      const lpW = Math.floor(cw * 0.25);
+      ctx.fillStyle = '#40404a';
+      ctx.fillRect(ex + 4, ey + 4, lpW, ch - 8);
+      ctx.strokeStyle = '#2a2a30';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(ex + 4, ey + 4, lpW, ch - 8);
+
+      // Hazard sign on left panel
+      const hcx = ex + 4 + lpW / 2, hcy = ey + 20;
+      ctx.fillStyle = '#ccaa20';
+      ctx.beginPath();
+      ctx.moveTo(hcx, hcy - 10);
+      ctx.lineTo(hcx + 10, hcy + 6);
+      ctx.lineTo(hcx - 10, hcy + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('!', hcx, hcy + 4);
+      ctx.textAlign = 'left';
+
+      // Right area — horizontal black display bars (like circuit breaker panels)
+      const barX = ex + 4 + lpW + 8;
+      const barW = cw - lpW - 20;
+      const barH = 20;
+      const barGap = 8;
+      for (let i = 0; i < 4; i++) {
+        const by = ey + 16 + i * (barH + barGap);
+        if (by + barH > ey + ch - 8) break;
+        ctx.fillStyle = '#0a0a0e';
+        ctx.fillRect(barX, by, barW, barH);
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, by, barW, barH);
+        // Random wires / circuit lines
+        ctx.strokeStyle = 'rgba(100,100,110,0.4)';
+        ctx.lineWidth = 1;
+        for (let j = 0; j < 3; j++) {
+          const lx = barX + 4 + j * (barW / 3);
+          ctx.beginPath();
+          ctx.moveTo(lx, by); ctx.lineTo(lx + 10, by + barH);
+          ctx.stroke();
+        }
+      }
+
+      // Small LEDs along bottom
+      for (let i = 0; i < 6; i++) {
+        const lx = ex + 20 + i * ((cw - 40) / 5);
+        const ly = ey + ch - 12;
+        const isOn = Math.random() > 0.4; // randomize each frame for flicker
+        ctx.fillStyle = isOn ? 'rgba(100,200,100,0.8)' : 'rgba(50,50,50,0.5)';
+        ctx.beginPath();
+        ctx.arc(lx, ly, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+  },
 };
 
 // ---- Grocery Shelf Renderer Data ----
