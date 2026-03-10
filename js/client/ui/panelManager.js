@@ -760,6 +760,13 @@ window.addEventListener("keydown", e => {
           }
         } else {
           chatMessages.push({ name: player.name, text: cmd, time: Date.now() });
+          // Also push to meeting chat if in a meeting phase
+          if (typeof MafiaState !== 'undefined' && typeof _meetingChatMessages !== 'undefined' &&
+              (MafiaState.phase === 'meeting' || MafiaState.phase === 'voting')) {
+            const localP = typeof MafiaSystem !== 'undefined' ? MafiaSystem.getLocalPlayer() : null;
+            const pColor = localP && localP.color ? localP.color.body : '#aaa';
+            _meetingChatMessages.push({ name: player.name, text: cmd, color: pColor, time: Date.now() });
+          }
         }
         if (chatMessages.length > 50) chatMessages.shift();
       }

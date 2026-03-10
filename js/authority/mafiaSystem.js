@@ -327,6 +327,11 @@ window.MafiaSystem = {
   _startMeeting(callerName, type) {
     const mk = MafiaState;
 
+    // Clear meeting chat
+    if (typeof _meetingChatMessages !== 'undefined') {
+      _meetingChatMessages.length = 0;
+    }
+
     mk.phase = 'meeting';
     mk.meeting = {
       caller: callerName,
@@ -524,6 +529,24 @@ window.MafiaSystem = {
     const mk = MafiaState;
 
     mk.meeting.discussionTimer--;
+
+    // Bots send chat messages occasionally during discussion
+    if (typeof _meetingChatMessages !== 'undefined' && Math.random() < 0.003) {
+      const aliveBots = mk.participants.filter(p => p.isBot && p.alive);
+      if (aliveBots.length > 0) {
+        const bot = aliveBots[Math.floor(Math.random() * aliveBots.length)];
+        const phrases = [
+          'Where?', 'I was in Electrical', 'I saw nothing', 'Who?',
+          'I was doing tasks', 'Trust me', 'Skip?', 'Seems sus',
+          'I was in MedBay', 'Not me', 'I was in Security watching cams',
+          'Vote them out', 'Idk who it is', 'I was with someone',
+          'Lets just skip', 'Anyone have proof?', 'I was in Navigation',
+        ];
+        const text = phrases[Math.floor(Math.random() * phrases.length)];
+        _meetingChatMessages.push({ name: bot.name, text: text, color: bot.color ? bot.color.body : '#aaa', time: Date.now() });
+      }
+    }
+
     if (mk.meeting.discussionTimer <= 0) {
       mk.phase = 'voting';
     }
@@ -752,7 +775,10 @@ window.MafiaSystem = {
   // ===================== FREEZE CHECK =====================
   isPlayerFrozen() {
     const mk = MafiaState;
-    return mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'ejecting';
+    if (mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'ejecting') return true;
+    // Freeze while emergency popup is open
+    if (window._mafiaEmergencyPopup) return true;
+    return false;
   },
 
 
