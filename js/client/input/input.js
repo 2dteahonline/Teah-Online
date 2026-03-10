@@ -181,6 +181,7 @@ canvas.addEventListener("mousedown", e => {
         if (typeof _voteConfirmTarget !== 'undefined') {
           _voteConfirmTarget = (_voteConfirmTarget === vp.id) ? null : vp.id;
         }
+        _skipConfirmActive = false;
         return;
       }
     }
@@ -190,11 +191,31 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
-  // Mafia SKIP vote button click
+  // Mafia SKIP confirm button (green checkmark)
+  if (typeof _skipConfirmActive !== 'undefined' && _skipConfirmActive && window._mafiaSkipConfirmBtn) {
+    const sc = window._mafiaSkipConfirmBtn;
+    if (mx >= sc.x && mx <= sc.x + sc.w && my >= sc.y && my <= sc.y + sc.h) {
+      MafiaSystem.castVote('skip');
+      _skipConfirmActive = false;
+      _voteConfirmTarget = null;
+      return;
+    }
+  }
+
+  // Mafia SKIP cancel button (red X)
+  if (typeof _skipConfirmActive !== 'undefined' && _skipConfirmActive && window._mafiaSkipCancelBtn) {
+    const sx = window._mafiaSkipCancelBtn;
+    if (mx >= sx.x && mx <= sx.x + sx.w && my >= sx.y && my <= sx.y + sx.h) {
+      _skipConfirmActive = false;
+      return;
+    }
+  }
+
+  // Mafia SKIP vote button click (shows confirm, doesn't vote directly)
   if (typeof MafiaSystem !== 'undefined' && window._mafiaSkipBtn) {
     const sb = window._mafiaSkipBtn;
     if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
-      MafiaSystem.castVote('skip');
+      _skipConfirmActive = true;
       _voteConfirmTarget = null;
       return;
     }

@@ -337,6 +337,9 @@ window.MafiaSystem = {
     if (typeof _voteConfirmTarget !== 'undefined') {
       _voteConfirmTarget = null;
     }
+    if (typeof _skipConfirmActive !== 'undefined') {
+      _skipConfirmActive = false;
+    }
 
     mk.phase = 'meeting';
     mk.meeting = {

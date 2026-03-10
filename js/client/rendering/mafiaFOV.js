@@ -324,8 +324,11 @@ let _meetingChatMessages = [];
 let _meetingShowChat = false;  // toggle between voting view and chat view
 window._meetingChatToggleBtn = null;  // click region for chat icon
 let _voteConfirmTarget = null;  // participant id being confirmed (null = no confirm popup)
+let _skipConfirmActive = false; // true when skip vote needs confirmation
 window._mafiaVoteConfirmBtn = null;   // { x, y, w, h } green checkmark
 window._mafiaVoteCancelBtn = null;    // { x, y, w, h } red X
+window._mafiaSkipConfirmBtn = null;   // { x, y, w, h } green checkmark for skip
+window._mafiaSkipCancelBtn = null;    // { x, y, w, h } red X for skip
 window._meetingChatInputBtn = null;   // click region for chat input box
 
 // Draw a mini Among Us crewmate at (cx, cy) with given color and scale
@@ -667,6 +670,54 @@ function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
     ctx.fillText('SKIP VOTE', skipX + skipW / 2, skipY + skipH / 2);
 
     window._mafiaSkipBtn = canVote ? { x: skipX, y: skipY, w: skipW, h: skipH } : null;
+
+    // Green checkmark + Red X for skip confirmation
+    if (_skipConfirmActive && canVote) {
+      const btnSize = 34;
+      const confirmX = skipX + skipW + 10;
+      const cancelX = confirmX + btnSize + 8;
+      const btnY2 = skipY + (skipH - btnSize) / 2;
+
+      // Green checkmark
+      ctx.fillStyle = '#44bb66';
+      ctx.beginPath();
+      ctx.roundRect(confirmX, btnY2, btnSize, btnSize, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#228844';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(confirmX + 8, btnY2 + btnSize / 2);
+      ctx.lineTo(confirmX + 14, btnY2 + btnSize / 2 + 6);
+      ctx.lineTo(confirmX + btnSize - 8, btnY2 + btnSize / 2 - 6);
+      ctx.stroke();
+
+      window._mafiaSkipConfirmBtn = { x: confirmX, y: btnY2, w: btnSize, h: btnSize };
+
+      // Red X
+      ctx.fillStyle = '#cc4444';
+      ctx.beginPath();
+      ctx.roundRect(cancelX, btnY2, btnSize, btnSize, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#992222';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cancelX + 9, btnY2 + 9);
+      ctx.lineTo(cancelX + btnSize - 9, btnY2 + btnSize - 9);
+      ctx.moveTo(cancelX + btnSize - 9, btnY2 + 9);
+      ctx.lineTo(cancelX + 9, btnY2 + btnSize - 9);
+      ctx.stroke();
+
+      window._mafiaSkipCancelBtn = { x: cancelX, y: btnY2, w: btnSize, h: btnSize };
+    } else {
+      window._mafiaSkipConfirmBtn = null;
+      window._mafiaSkipCancelBtn = null;
+    }
 
     // Timer (right side)
     const timerSec = Math.ceil(mk.meeting.votingTimer / 60);
