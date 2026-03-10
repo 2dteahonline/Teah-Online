@@ -11,7 +11,7 @@ window.MafiaState = {
   participants: [],           // array of participant objects (see startMatch)
   bodies: [],                 // [{ x, y, color, name, id }]
   killCooldown: 0,
-  sabotage: { active: null, timer: 0, cooldown: 0 },
+  sabotage: { active: null, timer: 0, cooldown: 0, fixers: {}, fixedPanels: {} },
   meeting: { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 },
   ejection: { name: null, wasImpostor: false, timer: 0 },
   taskProgress: { done: 0, total: 0 },
@@ -144,7 +144,7 @@ window.MafiaSystem = {
     mk.bodies = [];
     mk.killCooldown = MAFIA_GAME.KILL_COOLDOWN;
     mk.playerIsGhost = false;
-    mk.sabotage = { active: null, timer: 0, cooldown: 0 };
+    mk.sabotage = { active: null, timer: 0, cooldown: 0, fixers: {}, fixedPanels: {} };
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.taskProgress = { done: 0, total: 0 };
@@ -276,6 +276,7 @@ window.MafiaSystem = {
   canCallEmergency() {
     const mk = MafiaState;
     if (mk.phase !== 'playing' || mk.playerIsGhost) return false;
+    if (mk.sabotage.active !== null) return false; // blocked during sabotage
 
     const localP = this.getLocalPlayer();
     if (!localP || !localP.alive) return false;
@@ -374,6 +375,11 @@ window.MafiaSystem = {
         p.entity.moving = false;
       }
     }
+
+    // Clear any active sabotage (meeting resolves sabotage, like Among Us)
+    mk.sabotage = { active: null, timer: 0, cooldown: MAFIA_GAME.SABOTAGE_COOLDOWN, fixers: {}, fixedPanels: {} };
+    // Clear bot sabotage assignments
+    for (const p of mk.participants) { p._sabotageTarget = null; }
 
     // Stop player movement
     player.vx = 0;
@@ -506,7 +512,6 @@ window.MafiaSystem = {
     // Calculate total time: reveal phase + hold phase
     const revealTime = mk.meeting.voteOrder.length * 45 + 60; // 45 frames per vote + 1s buffer
     mk.meeting.resultsTimer = revealTime + MAFIA_GAME.VOTE_RESULTS_TIME;
-    console.log('[Mafia] Vote results:', JSON.stringify({ voteResults: mk.meeting.voteResults, skipVoters: mk.meeting.skipVoters, voteOrder: mk.meeting.voteOrder, resultsTimer: mk.meeting.resultsTimer }));
     mk.phase = 'vote_results';
   },
 
@@ -554,6 +559,209 @@ window.MafiaSystem = {
   },
 
 
+  // ===================== SABOTAGE =====================
+
+  canSabotage() {
+    const mk = MafiaState;
+    if (mk.phase !== 'playing') return false;
+    if (mk.playerRole !== 'impostor' || mk.playerIsGhost) return false;
+    if (mk.sabotage.active !== null) return false;
+    if (mk.sabotage.cooldown > 0) return false;
+    return true;
+  },
+
+  triggerSabotage(sabotageId) {
+    const mk = MafiaState;
+    if (!this.canSabotage()) return false;
+
+    const sabType = MAFIA_GAME.SABOTAGE_TYPES[sabotageId];
+    if (!sabType) return false;
+
+    mk.sabotage.active = sabotageId;
+    mk.sabotage.timer = sabType.timer;
+    mk.sabotage.fixers = {};
+    mk.sabotage.fixedPanels = {};
+
+    // Initialize fixer slots for each panel
+    for (const panelKey of sabType.fixPanels) {
+      mk.sabotage.fixers[panelKey] = null;
+      mk.sabotage.fixedPanels[panelKey] = false;
+    }
+
+    console.log('[Mafia] Sabotage triggered:', sabType.label);
+    return true;
+  },
+
+  // Called when a crewmate interacts with a fix panel
+  tryFixSabotage(panelKey, participantId) {
+    const mk = MafiaState;
+    if (!mk.sabotage.active) return false;
+
+    const sabType = MAFIA_GAME.SABOTAGE_TYPES[mk.sabotage.active];
+    if (!sabType) return false;
+
+    // Must be a valid panel for this sabotage
+    if (!sabType.fixPanels.includes(panelKey)) return false;
+
+    if (sabType.simultaneous) {
+      // Reactor: register as holding this panel
+      mk.sabotage.fixers[panelKey] = participantId;
+    } else {
+      // O2: mark panel as fixed permanently
+      mk.sabotage.fixedPanels[panelKey] = true;
+    }
+    return true;
+  },
+
+  // Release a reactor panel (player walked away)
+  releaseSabotagePanel(panelKey) {
+    const mk = MafiaState;
+    if (!mk.sabotage.active) return;
+    mk.sabotage.fixers[panelKey] = null;
+  },
+
+  _tickSabotage() {
+    const mk = MafiaState;
+
+    // Tick cooldown
+    if (mk.sabotage.cooldown > 0) mk.sabotage.cooldown--;
+
+    // No active sabotage
+    if (!mk.sabotage.active) return;
+
+    const sabType = MAFIA_GAME.SABOTAGE_TYPES[mk.sabotage.active];
+    if (!sabType) return;
+
+    // --- Check if fixed ---
+    if (sabType.simultaneous) {
+      // Reactor: validate fixers are still in range, then check if all panels held
+      for (const panelKey of sabType.fixPanels) {
+        const fixerId = mk.sabotage.fixers[panelKey];
+        if (fixerId) {
+          const fixer = mk.participants.find(p => p.id === fixerId);
+          const panelPos = MAFIA_GAME.SABOTAGE_PANELS[panelKey];
+          if (fixer && fixer.alive && panelPos) {
+            const dx = fixer.entity.x - (panelPos.tx * TILE + TILE);
+            const dy = fixer.entity.y - (panelPos.ty * TILE + TILE / 2);
+            if (Math.sqrt(dx * dx + dy * dy) > 120) {
+              mk.sabotage.fixers[panelKey] = null; // walked away
+            }
+          } else {
+            mk.sabotage.fixers[panelKey] = null;
+          }
+        }
+      }
+
+      // Check if ALL panels are held simultaneously
+      const allHeld = sabType.fixPanels.every(pk => mk.sabotage.fixers[pk] !== null);
+      if (allHeld) {
+        this._clearSabotage();
+        return;
+      }
+    } else {
+      // O2: check if all panels are fixed
+      const allFixed = sabType.fixPanels.every(pk => mk.sabotage.fixedPanels[pk] === true);
+      if (allFixed) {
+        this._clearSabotage();
+        return;
+      }
+    }
+
+    // --- Tick timer ---
+    mk.sabotage.timer--;
+
+    // --- Bot AI: some bots go fix sabotage ---
+    this._tickBotSabotageResponse();
+
+    // --- Timer expired = impostor wins ---
+    if (mk.sabotage.timer <= 0) {
+      this._sabotageWin(mk.sabotage.active);
+    }
+  },
+
+  _clearSabotage() {
+    const mk = MafiaState;
+    console.log('[Mafia] Sabotage fixed!');
+    mk.sabotage = { active: null, timer: 0, cooldown: MAFIA_GAME.SABOTAGE_COOLDOWN, fixers: {}, fixedPanels: {} };
+  },
+
+  _sabotageWin(sabotageId) {
+    const mk = MafiaState;
+    const sabType = MAFIA_GAME.SABOTAGE_TYPES[sabotageId];
+    const label = sabType ? sabType.label : 'Sabotage';
+    console.log('[Mafia] Impostor wins by', label);
+
+    // Show ejection-style screen with impostor win message
+    mk.ejection = {
+      name: null,
+      wasImpostor: false,
+      timer: MAFIA_GAME.EJECTION_TIME,
+      message: 'Defeat — ' + label + '!',
+    };
+    mk.sabotage = { active: null, timer: 0, cooldown: 0, fixers: {}, fixedPanels: {} };
+    mk.phase = 'ejecting'; // reuse ejection screen for the defeat message
+  },
+
+  // Bot AI: crewmate bots respond to active sabotage
+  _tickBotSabotageResponse() {
+    const mk = MafiaState;
+    if (!mk.sabotage.active) return;
+
+    const sabType = MAFIA_GAME.SABOTAGE_TYPES[mk.sabotage.active];
+    if (!sabType) return;
+
+    const aliveBots = mk.participants.filter(p => p.isBot && p.alive && p.role === 'crewmate');
+    if (aliveBots.length === 0) return;
+
+    // Assign bots to panels (one bot per panel, only once)
+    for (let pi = 0; pi < sabType.fixPanels.length; pi++) {
+      const panelKey = sabType.fixPanels[pi];
+      const panelPos = MAFIA_GAME.SABOTAGE_PANELS[panelKey];
+      if (!panelPos) continue;
+
+      // Check if a bot is already assigned/heading to this panel
+      const alreadyAssigned = aliveBots.some(b => b._sabotageTarget === panelKey);
+      if (alreadyAssigned) continue;
+
+      // Pick closest unassigned bot
+      let bestBot = null;
+      let bestDist = Infinity;
+      for (const bot of aliveBots) {
+        if (bot._sabotageTarget) continue; // already going to another panel
+        const dx = bot.entity.x - panelPos.tx * TILE;
+        const dy = bot.entity.y - panelPos.ty * TILE;
+        const dist = dx * dx + dy * dy;
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestBot = bot;
+        }
+      }
+
+      if (bestBot) {
+        bestBot._sabotageTarget = panelKey;
+        // Set destination to the panel tile
+        bestBot._destTx = panelPos.tx;
+        bestBot._destTy = panelPos.ty;
+        bestBot._path = null; // force re-pathfind
+        bestBot._pauseTimer = 0;
+      }
+    }
+
+    // Bots that reached their panel try to fix it
+    for (const bot of aliveBots) {
+      if (!bot._sabotageTarget) continue;
+      const panelPos = MAFIA_GAME.SABOTAGE_PANELS[bot._sabotageTarget];
+      if (!panelPos) continue;
+
+      const dx = bot.entity.x - (panelPos.tx * TILE + TILE);
+      const dy = bot.entity.y - (panelPos.ty * TILE + TILE / 2);
+      if (Math.sqrt(dx * dx + dy * dy) < 80) {
+        this.tryFixSabotage(bot._sabotageTarget, bot.id);
+      }
+    }
+  },
+
+
   // ===================== MAIN TICK =====================
   tick() {
     const mk = MafiaState;
@@ -583,6 +791,9 @@ window.MafiaSystem = {
 
     // Tick kill cooldown
     if (mk.killCooldown > 0) mk.killCooldown--;
+
+    // Tick sabotage (cooldown, timer, fix checks, bot AI, win condition)
+    this._tickSabotage();
   },
 
   // ---- Meeting (discussion) phase tick ----
@@ -854,7 +1065,7 @@ window.MafiaSystem = {
     mk.bodies = [];
     mk.killCooldown = 0;
     mk.playerIsGhost = false;
-    mk.sabotage = { active: null, timer: 0, cooldown: 0 };
+    mk.sabotage = { active: null, timer: 0, cooldown: 0, fixers: {}, fixedPanels: {} };
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.taskProgress = { done: 0, total: 0 };

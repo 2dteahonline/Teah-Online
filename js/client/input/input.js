@@ -110,6 +110,38 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Mafia SABOTAGE menu option clicks (must be before menu toggle check)
+  if (typeof MafiaSystem !== 'undefined' && window._mafiaSabotageMenu) {
+    if (window._mafiaSabReactorBtn) {
+      const rb = window._mafiaSabReactorBtn;
+      if (mx >= rb.x && mx <= rb.x + rb.w && my >= rb.y && my <= rb.y + rb.h) {
+        MafiaSystem.triggerSabotage('reactor_meltdown');
+        window._mafiaSabotageMenu = false;
+        return;
+      }
+    }
+    if (window._mafiaSabO2Btn) {
+      const ob = window._mafiaSabO2Btn;
+      if (mx >= ob.x && mx <= ob.x + ob.w && my >= ob.y && my <= ob.y + ob.h) {
+        MafiaSystem.triggerSabotage('o2_depletion');
+        window._mafiaSabotageMenu = false;
+        return;
+      }
+    }
+    // Click outside menu → close it
+    window._mafiaSabotageMenu = false;
+    return;
+  }
+
+  // Mafia SABOTAGE button click (toggles menu)
+  if (typeof MafiaSystem !== 'undefined' && window._mafiaSabotageBtn) {
+    const sb = window._mafiaSabotageBtn;
+    if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
+      window._mafiaSabotageMenu = !window._mafiaSabotageMenu;
+      return;
+    }
+  }
+
   // Mafia emergency popup — confirm button or click-outside-to-cancel
   if (window._mafiaEmergencyPopup) {
     if (window._mafiaEmergencyConfirmBtn) {

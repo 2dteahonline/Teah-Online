@@ -9,9 +9,42 @@ window._mafiaVotePortraits = null; // [{ id, x, y, w, h }]
 window._mafiaSkipBtn = null;
 window._mafiaEmergencyPopup = false;    // true when E pressed at table, shows confirm button
 window._mafiaEmergencyConfirmBtn = null; // { x, y, w, h } click region
+window._mafiaSabotageBtn = null;         // SABOTAGE button click region
+window._mafiaSabotageMenu = false;       // true when sabotage picker is open
+window._mafiaSabReactorBtn = null;       // Reactor option click region
+window._mafiaSabO2Btn = null;            // O2 option click region
 
 function drawMafiaFOV() {
   // Phase 4: FOV overlay will go here
+
+  // O2 fog effect — progressive fog for crewmates during O2 sabotage
+  if (typeof MafiaState !== 'undefined' && MafiaState.sabotage.active === 'o2_depletion'
+      && MafiaState.playerRole === 'crewmate' && !MafiaState.playerIsGhost) {
+    const sabType = MAFIA_GAME.SABOTAGE_TYPES.o2_depletion;
+    const fogProgress = 1 - (MafiaState.sabotage.timer / sabType.timer); // 0→1
+    if (fogProgress > 0) {
+      const cw = ctx.canvas.width;
+      const ch = ctx.canvas.height;
+      const maxRadius = Math.max(cw, ch) * 0.6;
+      const clearRadius = maxRadius * (1 - fogProgress * 0.9); // shrinks to 10% at max
+
+      ctx.save();
+      // Dark smoky overlay with radial clear zone around player center
+      const pcx = cw / 2;
+      const pcy = ch / 2;
+      const grad = ctx.createRadialGradient(pcx, pcy, clearRadius * 0.3, pcx, pcy, clearRadius);
+      grad.addColorStop(0, 'rgba(20, 30, 40, 0)');
+      grad.addColorStop(0.6, 'rgba(20, 30, 40, ' + (fogProgress * 0.4) + ')');
+      grad.addColorStop(1, 'rgba(20, 30, 40, ' + (fogProgress * 0.85) + ')');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, cw, ch);
+
+      // Extra edge fog for intensity
+      ctx.fillStyle = 'rgba(15, 20, 30, ' + (fogProgress * 0.3) + ')';
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.restore();
+    }
+  }
 }
 
 // ---- Draw dead bodies (world-space, called from draw.js before characters) ----
@@ -213,6 +246,21 @@ function drawMafiaHUD() {
     window._mafiaEmergencyConfirmBtn = null;
   }
 
+  // ---- SABOTAGE button (bottom-center, impostor only) ----
+  if (isImpostor && !mk.playerIsGhost && mk.phase === 'playing') {
+    _drawSabotageButton();
+  } else {
+    window._mafiaSabotageBtn = null;
+    window._mafiaSabotageMenu = false;
+    window._mafiaSabReactorBtn = null;
+    window._mafiaSabO2Btn = null;
+  }
+
+  // ---- Sabotage timer + alert overlay (visible to all during active sabotage) ----
+  if (mk.sabotage.active && mk.phase === 'playing') {
+    _drawSabotageOverlay();
+  }
+
   // ---- Meeting / Voting / Vote Results / Ejection overlays ----
   if (mk.phase === 'meeting' || mk.phase === 'voting') {
     _drawMeetingUI();
@@ -224,6 +272,170 @@ function drawMafiaHUD() {
     window._mafiaVotePortraits = null;
     window._mafiaSkipBtn = null;
   }
+}
+
+
+// ===================== SABOTAGE BUTTON & OVERLAY =====================
+
+function _drawSabotageButton() {
+  const mk = MafiaState;
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const canSab = MafiaSystem.canSabotage();
+  const cooldownSec = Math.ceil(mk.sabotage.cooldown / 60);
+
+  // Main SABOTAGE button (bottom-center)
+  const btnW = 140;
+  const btnH = 50;
+  const btnX = cw / 2 - btnW / 2;
+  const btnY = ch - btnH - 30;
+
+  ctx.save();
+  ctx.fillStyle = canSab ? 'rgba(180, 50, 180, 0.85)' : 'rgba(80, 30, 80, 0.5)';
+  ctx.beginPath();
+  ctx.roundRect(btnX, btnY, btnW, btnH, 10);
+  ctx.fill();
+  ctx.strokeStyle = canSab ? '#cc66cc' : '#664466';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.font = 'bold 18px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = canSab ? '#fff' : '#886688';
+
+  if (mk.sabotage.cooldown > 0 && !mk.sabotage.active) {
+    ctx.fillText('SABOTAGE', btnX + btnW / 2, btnY + btnH / 2 - 8);
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText(cooldownSec + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
+  } else {
+    ctx.fillText('SABOTAGE', btnX + btnW / 2, btnY + btnH / 2);
+  }
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+
+  window._mafiaSabotageBtn = canSab ? { x: btnX, y: btnY, w: btnW, h: btnH } : null;
+
+  // Sabotage picker menu (appears above button when toggled)
+  if (window._mafiaSabotageMenu && canSab) {
+    const menuW = 200;
+    const menuH = 110;
+    const menuX = cw / 2 - menuW / 2;
+    const menuY = btnY - menuH - 10;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(30, 20, 40, 0.95)';
+    ctx.beginPath();
+    ctx.roundRect(menuX, menuY, menuW, menuH, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#cc66cc';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Reactor option
+    const optH = 40;
+    const optY1 = menuY + 10;
+    const optY2 = menuY + 10 + optH + 8;
+
+    ctx.fillStyle = '#cc3333';
+    ctx.beginPath();
+    ctx.roundRect(menuX + 12, optY1, menuW - 24, optH, 8);
+    ctx.fill();
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Reactor', menuX + menuW / 2, optY1 + optH / 2);
+
+    window._mafiaSabReactorBtn = { x: menuX + 12, y: optY1, w: menuW - 24, h: optH };
+
+    // O2 option
+    ctx.fillStyle = '#3388cc';
+    ctx.beginPath();
+    ctx.roundRect(menuX + 12, optY2, menuW - 24, optH, 8);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText('O2', menuX + menuW / 2, optY2 + optH / 2);
+
+    window._mafiaSabO2Btn = { x: menuX + 12, y: optY2, w: menuW - 24, h: optH };
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  } else {
+    window._mafiaSabReactorBtn = null;
+    window._mafiaSabO2Btn = null;
+  }
+}
+
+function _drawSabotageOverlay() {
+  const mk = MafiaState;
+  const cw = ctx.canvas.width;
+  const sabType = MAFIA_GAME.SABOTAGE_TYPES[mk.sabotage.active];
+  if (!sabType) return;
+
+  const timerSec = Math.ceil(mk.sabotage.timer / 60);
+  const urgent = timerSec <= 10;
+
+  ctx.save();
+
+  // Red/orange pulsing vignette at screen edges
+  const pulseAlpha = urgent ? 0.15 + Math.sin(Date.now() / 200) * 0.1 : 0.06;
+  ctx.fillStyle = 'rgba(200, 30, 30, ' + pulseAlpha + ')';
+  ctx.fillRect(0, 0, cw, ctx.canvas.height);
+
+  // Top-center alert bar
+  const barW = 400;
+  const barH = 50;
+  const barX = (cw - barW) / 2;
+  const barY = 10;
+
+  const bgAlpha = urgent ? 0.95 : 0.85;
+  ctx.fillStyle = urgent ? 'rgba(180, 20, 20, ' + bgAlpha + ')' : 'rgba(160, 60, 20, ' + bgAlpha + ')';
+  ctx.beginPath();
+  ctx.roundRect(barX, barY, barW, barH, 10);
+  ctx.fill();
+  ctx.strokeStyle = urgent ? '#ff4444' : '#ff8844';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Alert text
+  ctx.font = 'bold 18px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(sabType.label.toUpperCase(), barX + barW / 2, barY + barH / 2 - 10);
+
+  // Timer
+  ctx.font = 'bold 22px monospace';
+  ctx.fillStyle = urgent ? '#ffaaaa' : '#ffddaa';
+  ctx.fillText(timerSec + 's', barX + barW / 2, barY + barH / 2 + 12);
+
+  // Fix instructions below the bar
+  ctx.font = '14px monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  if (mk.sabotage.active === 'reactor_meltdown') {
+    const p1Held = mk.sabotage.fixers.reactor_p1 !== null;
+    const p2Held = mk.sabotage.fixers.reactor_p2 !== null;
+    ctx.fillText(
+      'Reactor Panel 1: ' + (p1Held ? 'HELD' : 'EMPTY') +
+      '  |  Panel 2: ' + (p2Held ? 'HELD' : 'EMPTY'),
+      barX + barW / 2, barY + barH + 20
+    );
+  } else if (mk.sabotage.active === 'o2_depletion') {
+    const o2Fixed = mk.sabotage.fixedPanels.o2_o2 === true;
+    const adminFixed = mk.sabotage.fixedPanels.o2_admin === true;
+    ctx.fillText(
+      'O2 Room: ' + (o2Fixed ? 'FIXED' : 'NEEDS FIX') +
+      '  |  Admin: ' + (adminFixed ? 'FIXED' : 'NEEDS FIX'),
+      barX + barW / 2, barY + barH + 20
+    );
+  }
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
 }
 
 

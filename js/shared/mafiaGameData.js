@@ -51,6 +51,29 @@ const MAFIA_GAME = {
     'Red', 'Blue', 'Green', 'Pink', 'Orange', 'Yellow', 'Black', 'White', 'Purple', 'Cyan'
   ],
 
+  // ---- Sabotage types ----
+  SABOTAGE_TYPES: {
+    reactor_meltdown: {
+      timer: 1800, label: 'Reactor Meltdown',
+      fixPanels: ['reactor_p1', 'reactor_p2'],
+      simultaneous: true,   // both panels must be held at once
+    },
+    o2_depletion: {
+      timer: 1800, label: 'O2 Depleted',
+      fixPanels: ['o2_o2', 'o2_admin'],
+      simultaneous: false,  // each panel fixed independently
+    },
+  },
+
+  // ---- Sabotage fix panel positions (tile coords, for range checks) ----
+  // These match the skeld_sabotage entities in levelData.js
+  SABOTAGE_PANELS: {
+    reactor_p1: { tx: 6, ty: 25 },   // 2+XO=6 in actual grid
+    reactor_p2: { tx: 6, ty: 44 },
+    o2_o2:      { tx: 99, ty: 32 },   // 95+XO=99
+    o2_admin:   { tx: 92, ty: 38 },   // 88+XO=92
+  },
+
   // ---- Per-map data (room centers, spawn points) ----
   // Each map (skeld_01, etc.) registers its own room centers here
   MAPS: {

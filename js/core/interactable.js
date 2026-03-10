@@ -566,12 +566,24 @@ window._resetShopPrices = () => {
       range: 100,
       get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] ' + e.label; },
       type: e.type,
-      canInteract() { return Scene.inSkeld; },
+      canInteract() {
+        if (!Scene.inSkeld) return false;
+        if (e.type === 'skeld_sabotage') {
+          // Only show prompt when this sabotage is active
+          return typeof MafiaState !== 'undefined' && MafiaState.sabotage.active === e.sabotageId;
+        }
+        return true;
+      },
       onInteract() {
         if (e.type === 'skeld_task' && typeof openTaskPanel === 'function') {
           openTaskPanel(e);
-        } else {
-          console.log('Skeld ' + e.type + ':', e.label, e.sabotageId, e.room);
+        } else if (e.type === 'skeld_sabotage' && typeof MafiaSystem !== 'undefined') {
+          // Build panel key: sabotageId panel identifier
+          const panelKey = e.sabotageId === 'reactor_meltdown'
+            ? 'reactor_p' + e.fixPanel
+            : 'o2_' + e.room;
+          const localP = MafiaSystem.getLocalPlayer();
+          if (localP) MafiaSystem.tryFixSabotage(panelKey, localP.id);
         }
       },
     });
