@@ -376,13 +376,18 @@ function _drawSabotageOverlay() {
   if (!sabType) return;
 
   const timerSec = Math.ceil(mk.sabotage.timer / 60);
-  const urgent = timerSec <= 10;
+  const totalSec = Math.ceil(sabType.timer / 60);
+  const progress = 1 - (mk.sabotage.timer / sabType.timer); // 0→1 as time runs out
 
   ctx.save();
 
-  // Red/orange pulsing vignette at screen edges
-  const pulseAlpha = urgent ? 0.15 + Math.sin(Date.now() / 200) * 0.1 : 0.06;
-  ctx.fillStyle = 'rgba(200, 30, 30, ' + pulseAlpha + ')';
+  // Pulsing red vignette — flashes entire duration, faster as timer runs out
+  // Pulse speed: slow (800ms) at start → fast (200ms) at end
+  const pulseSpeed = 800 - progress * 600; // 800→200ms
+  const pulseBase = 0.04 + progress * 0.12; // 0.04→0.16
+  const pulseRange = 0.03 + progress * 0.08; // 0.03→0.11
+  const pulseAlpha = pulseBase + Math.sin(Date.now() / pulseSpeed * Math.PI * 2) * pulseRange;
+  ctx.fillStyle = 'rgba(200, 30, 30, ' + Math.max(0, pulseAlpha) + ')';
   ctx.fillRect(0, 0, cw, ctx.canvas.height);
 
   // Top-center alert bar
@@ -390,9 +395,10 @@ function _drawSabotageOverlay() {
   const barH = 50;
   const barX = (cw - barW) / 2;
   const barY = 10;
+  const urgent = timerSec <= 10;
 
-  const bgAlpha = urgent ? 0.95 : 0.85;
-  ctx.fillStyle = urgent ? 'rgba(180, 20, 20, ' + bgAlpha + ')' : 'rgba(160, 60, 20, ' + bgAlpha + ')';
+  const bgAlpha = 0.85 + progress * 0.1;
+  ctx.fillStyle = 'rgba(' + (160 + Math.round(progress * 40)) + ', ' + Math.round(60 - progress * 40) + ', 20, ' + bgAlpha + ')';
   ctx.beginPath();
   ctx.roundRect(barX, barY, barW, barH, 10);
   ctx.fill();
@@ -424,11 +430,11 @@ function _drawSabotageOverlay() {
       barX + barW / 2, barY + barH + 20
     );
   } else if (mk.sabotage.active === 'o2_depletion') {
-    const o2Fixed = mk.sabotage.fixedPanels.o2_o2 === true;
-    const adminFixed = mk.sabotage.fixedPanels.o2_admin === true;
+    const o2Held = mk.sabotage.fixers.o2_o2 !== null;
+    const adminHeld = mk.sabotage.fixers.o2_admin !== null;
     ctx.fillText(
-      'O2 Room: ' + (o2Fixed ? 'FIXED' : 'NEEDS FIX') +
-      '  |  Admin: ' + (adminFixed ? 'FIXED' : 'NEEDS FIX'),
+      'O2 Room: ' + (o2Held ? 'HELD' : 'EMPTY') +
+      '  |  Admin: ' + (adminHeld ? 'HELD' : 'EMPTY'),
       barX + barW / 2, barY + barH + 20
     );
   }

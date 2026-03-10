@@ -61,7 +61,7 @@ const MAFIA_GAME = {
     o2_depletion: {
       timer: 1800, label: 'O2 Depleted',
       fixPanels: ['o2_o2', 'o2_admin'],
-      simultaneous: false,  // each panel fixed independently
+      simultaneous: true,   // both panels must be held at once (same as reactor)
     },
   },
 
