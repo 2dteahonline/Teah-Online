@@ -321,6 +321,10 @@ function _drawEmergencyPopup() {
 let _meetingChatMessages = [];
 let _meetingShowChat = false;  // toggle between voting view and chat view
 window._meetingChatToggleBtn = null;  // click region for chat icon
+let _voteConfirmTarget = null;  // participant id being confirmed (null = no confirm popup)
+window._mafiaVoteConfirmBtn = null;   // { x, y, w, h } green checkmark
+window._mafiaVoteCancelBtn = null;    // { x, y, w, h } red X
+window._meetingChatInputBtn = null;   // click region for chat input box
 
 // Draw a mini Among Us crewmate at (cx, cy) with given color and scale
 function _drawMiniCrewmate(cx, cy, color, darkColor, scale, isDead) {
@@ -474,16 +478,19 @@ function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
 
   // ---- Player cards in 2-column grid ----
   const gridCols = 2;
-  const cardW = 380;
-  const cardH = 64;
-  const gapX = 20;
-  const gapY = 8;
+  const cardW = 390;
+  const cardH = 82;
+  const gapX = 16;
+  const gapY = 6;
   const gridStartX = frameX + (frameW - (gridCols * cardW + (gridCols - 1) * gapX)) / 2;
-  const gridStartY = frameY + 62;
+  const gridStartY = frameY + 58;
 
   const alivePlayers = mk.participants.filter(p => p.alive);
   const deadPlayers = mk.participants.filter(p => !p.alive);
   const orderedPlayers = [...alivePlayers, ...deadPlayers];
+
+  const localP = MafiaSystem.getLocalPlayer();
+  const localHasVoted = localP && localP.votedFor !== null;
 
   for (let i = 0; i < orderedPlayers.length; i++) {
     const p = orderedPlayers[i];
@@ -495,14 +502,16 @@ function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
     const isAlive = p.alive;
     const hasVoted = p.votedFor !== null;
     const isLocalPlayer = p.isLocal;
-    const localP = MafiaSystem.getLocalPlayer();
     const votedForThis = localP && localP.votedFor === p.id;
+    const isConfirmTarget = _voteConfirmTarget === p.id;
 
     // Card background
     if (!isAlive) {
       ctx.fillStyle = '#8a8a8a';
     } else if (votedForThis) {
       ctx.fillStyle = '#e8c8c8';
+    } else if (isConfirmTarget) {
+      ctx.fillStyle = '#d8e8f8';
     } else {
       ctx.fillStyle = '#f0f2f5';
     }
@@ -511,27 +520,35 @@ function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
     ctx.fill();
 
     // Card border
-    ctx.strokeStyle = votedForThis ? '#cc4444' : 'rgba(0,0,0,0.12)';
-    ctx.lineWidth = votedForThis ? 2.5 : 1;
+    if (votedForThis) {
+      ctx.strokeStyle = '#cc4444';
+      ctx.lineWidth = 2.5;
+    } else if (isConfirmTarget) {
+      ctx.strokeStyle = '#4488cc';
+      ctx.lineWidth = 2.5;
+    } else {
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 1;
+    }
     ctx.beginPath();
     ctx.roundRect(px, py, cardW, cardH, 8);
     ctx.stroke();
 
-    // Crewmate sprite
-    const spriteX = px + 36;
-    const spriteY = py + cardH / 2 - 2;
+    // Crewmate sprite (bigger)
+    const spriteX = px + 42;
+    const spriteY = py + cardH / 2;
     const bodyCol = p.color ? p.color.body : '#888';
     const darkCol = p.color ? p.color.dark : '#555';
-    _drawMiniCrewmate(spriteX, spriteY, bodyCol, darkCol, 1.1, !isAlive);
+    _drawMiniCrewmate(spriteX, spriteY, bodyCol, darkCol, 1.5, !isAlive);
 
     // Name
-    ctx.font = 'bold 16px monospace';
+    ctx.font = 'bold 18px monospace';
     ctx.textAlign = 'left';
     ctx.fillStyle = isAlive ? '#1a1a2e' : '#555';
-    ctx.fillText(p.name, px + 68, py + cardH / 2 + 5);
+    ctx.fillText(p.name, px + 80, py + cardH / 2 + 6);
 
     // VOTED stamp (rotated red text)
-    if (hasVoted && isAlive && mk.phase === 'voting') {
+    if (hasVoted && isAlive && mk.phase === 'voting' && !isConfirmTarget) {
       ctx.save();
       ctx.translate(px + cardW - 50, py + cardH / 2);
       ctx.rotate(-0.2);
@@ -540,42 +557,91 @@ function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
       ctx.strokeStyle = 'rgba(200, 40, 40, 0.7)';
       ctx.lineWidth = 1.5;
       ctx.textAlign = 'center';
-      // Stamp circle
       ctx.beginPath();
-      ctx.arc(0, 0, 18, 0, Math.PI * 2);
+      ctx.arc(0, 0, 20, 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillText('VOTED', 0, 5);
       ctx.restore();
     }
 
     // Vote count (after local player has voted)
-    if (mk.phase === 'voting') {
-      const localP2 = MafiaSystem.getLocalPlayer();
-      if (localP2 && localP2.votedFor !== null) {
-        let voteCount = 0;
-        for (const pp of mk.participants) {
-          if (pp.alive && pp.votedFor === p.id) voteCount++;
-        }
-        if (voteCount > 0) {
-          ctx.font = 'bold 13px monospace';
-          ctx.textAlign = 'right';
-          ctx.fillStyle = '#cc3333';
-          ctx.fillText(voteCount + (voteCount > 1 ? ' votes' : ' vote'), px + cardW - 10, py + cardH - 8);
-        }
+    if (mk.phase === 'voting' && localHasVoted) {
+      let voteCount = 0;
+      for (const pp of mk.participants) {
+        if (pp.alive && pp.votedFor === p.id) voteCount++;
+      }
+      if (voteCount > 0) {
+        ctx.font = 'bold 13px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#cc3333';
+        ctx.fillText(voteCount + (voteCount > 1 ? ' votes' : ' vote'), px + cardW - 10, py + cardH - 8);
       }
     }
 
-    // Click region for voting
-    if (mk.phase === 'voting' && isAlive && !isLocalPlayer) {
+    // ---- Confirm/Cancel buttons on the selected card ----
+    if (isConfirmTarget && mk.phase === 'voting' && !localHasVoted) {
+      const btnSize = 36;
+      const btnGap = 12;
+      const btnY2 = py + (cardH - btnSize) / 2;
+      const confirmX = px + cardW - btnSize * 2 - btnGap - 14;
+      const cancelX = px + cardW - btnSize - 10;
+
+      // Green checkmark button
+      ctx.fillStyle = '#44bb66';
+      ctx.beginPath();
+      ctx.roundRect(confirmX, btnY2, btnSize, btnSize, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#228844';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Checkmark
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(confirmX + 9, btnY2 + btnSize / 2);
+      ctx.lineTo(confirmX + 15, btnY2 + btnSize / 2 + 7);
+      ctx.lineTo(confirmX + btnSize - 8, btnY2 + btnSize / 2 - 7);
+      ctx.stroke();
+
+      window._mafiaVoteConfirmBtn = { x: confirmX, y: btnY2, w: btnSize, h: btnSize };
+
+      // Red X button
+      ctx.fillStyle = '#cc4444';
+      ctx.beginPath();
+      ctx.roundRect(cancelX, btnY2, btnSize, btnSize, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#992222';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // X
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cancelX + 10, btnY2 + 10);
+      ctx.lineTo(cancelX + btnSize - 10, btnY2 + btnSize - 10);
+      ctx.moveTo(cancelX + btnSize - 10, btnY2 + 10);
+      ctx.lineTo(cancelX + 10, btnY2 + btnSize - 10);
+      ctx.stroke();
+
+      window._mafiaVoteCancelBtn = { x: cancelX, y: btnY2, w: btnSize, h: btnSize };
+    }
+
+    // Click region for voting (only if no confirm popup active, or this is not the confirm target)
+    if (mk.phase === 'voting' && isAlive && !isLocalPlayer && !localHasVoted) {
       portraits.push({ id: p.id, x: px, y: py, w: cardW, h: cardH });
     }
   }
 
-  // ---- Bottom bar: SKIP VOTE + timer ----
+  // Clear confirm buttons if no target
+  if (!_voteConfirmTarget) {
+    window._mafiaVoteConfirmBtn = null;
+    window._mafiaVoteCancelBtn = null;
+  }
+
+  // ---- Bottom bar: SKIP VOTE + green check + red X + timer ----
   const bottomY = frameY + frameH - 52;
 
   if (mk.phase === 'voting') {
-    const localP = MafiaSystem.getLocalPlayer();
     const canVote = localP && localP.alive && localP.votedFor === null;
 
     // SKIP VOTE button (left side)
@@ -744,6 +810,7 @@ function _drawMeetingChatView(frameX, frameY, frameW, frameH, panelCX) {
   ctx.stroke();
 
   // Input text or placeholder
+  const isChatActive = typeof chatInputActive !== 'undefined' && chatInputActive;
   ctx.font = '14px monospace';
   ctx.textAlign = 'left';
   if (typeof chatInput !== 'undefined' && chatInput.length > 0) {
@@ -751,8 +818,20 @@ function _drawMeetingChatView(frameX, frameY, frameW, frameH, panelCX) {
     ctx.fillText(chatInput, inputX + 12, inputY + inputH / 2 + 5);
   } else {
     ctx.fillStyle = '#999';
-    ctx.fillText('Press Tab to type...', inputX + 12, inputY + inputH / 2 + 5);
+    ctx.fillText(isChatActive ? 'Type a message...' : 'Click here to type...', inputX + 12, inputY + inputH / 2 + 5);
   }
+
+  // Highlight border when active
+  if (isChatActive) {
+    ctx.strokeStyle = '#4a8eff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(inputX, inputY, inputW, inputH, 8);
+    ctx.stroke();
+  }
+
+  // Store click region for input box
+  window._meetingChatInputBtn = { x: inputX, y: inputY, w: inputW, h: inputH };
 
   // Send arrow button (right side of input)
   const sendSize = 32;

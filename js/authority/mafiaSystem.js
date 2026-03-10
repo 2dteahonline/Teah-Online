@@ -334,6 +334,9 @@ window.MafiaSystem = {
     if (typeof _meetingShowChat !== 'undefined') {
       _meetingShowChat = false;
     }
+    if (typeof _voteConfirmTarget !== 'undefined') {
+      _voteConfirmTarget = null;
+    }
 
     mk.phase = 'meeting';
     mk.meeting = {

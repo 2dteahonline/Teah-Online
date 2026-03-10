@@ -143,13 +143,50 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
-  // Mafia vote portrait clicks (during voting phase)
+  // Meeting chat input box click (opens chat without Tab)
+  if (typeof _meetingShowChat !== 'undefined' && _meetingShowChat && window._meetingChatInputBtn) {
+    const ci = window._meetingChatInputBtn;
+    if (mx >= ci.x && mx <= ci.x + ci.w && my >= ci.y && my <= ci.y + ci.h) {
+      if (typeof UI !== 'undefined' && !chatInputActive) {
+        UI.open('chat');
+      }
+      return;
+    }
+  }
+
+  // Mafia vote CONFIRM button (green checkmark)
+  if (typeof MafiaSystem !== 'undefined' && typeof _voteConfirmTarget !== 'undefined' && _voteConfirmTarget && window._mafiaVoteConfirmBtn) {
+    const cb = window._mafiaVoteConfirmBtn;
+    if (mx >= cb.x && mx <= cb.x + cb.w && my >= cb.y && my <= cb.y + cb.h) {
+      MafiaSystem.castVote(_voteConfirmTarget);
+      _voteConfirmTarget = null;
+      return;
+    }
+  }
+
+  // Mafia vote CANCEL button (red X)
+  if (typeof _voteConfirmTarget !== 'undefined' && _voteConfirmTarget && window._mafiaVoteCancelBtn) {
+    const xb = window._mafiaVoteCancelBtn;
+    if (mx >= xb.x && mx <= xb.x + xb.w && my >= xb.y && my <= xb.y + xb.h) {
+      _voteConfirmTarget = null;
+      return;
+    }
+  }
+
+  // Mafia vote portrait clicks (sets confirm target, doesn't vote directly)
   if (typeof MafiaSystem !== 'undefined' && window._mafiaVotePortraits) {
     for (const vp of window._mafiaVotePortraits) {
       if (mx >= vp.x && mx <= vp.x + vp.w && my >= vp.y && my <= vp.y + vp.h) {
-        MafiaSystem.castVote(vp.id);
+        // If clicking a different player, switch target; if same, deselect
+        if (typeof _voteConfirmTarget !== 'undefined') {
+          _voteConfirmTarget = (_voteConfirmTarget === vp.id) ? null : vp.id;
+        }
         return;
       }
+    }
+    // Clicked outside all portraits — cancel confirm
+    if (typeof _voteConfirmTarget !== 'undefined' && _voteConfirmTarget) {
+      _voteConfirmTarget = null;
     }
   }
 
@@ -158,6 +195,7 @@ canvas.addEventListener("mousedown", e => {
     const sb = window._mafiaSkipBtn;
     if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
       MafiaSystem.castVote('skip');
+      _voteConfirmTarget = null;
       return;
     }
   }
