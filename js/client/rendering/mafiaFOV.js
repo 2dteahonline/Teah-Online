@@ -631,8 +631,8 @@ function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
       window._mafiaVoteCancelBtn = { x: cancelX, y: btnY2, w: btnSize, h: btnSize };
     }
 
-    // Click region for voting (only if no confirm popup active, or this is not the confirm target)
-    if (mk.phase === 'voting' && isAlive && !localHasVoted) {
+    // Click region for voting (exclude local player — can't vote for yourself)
+    if (mk.phase === 'voting' && isAlive && !localHasVoted && !isLocalPlayer) {
       portraits.push({ id: p.id, x: px, y: py, w: cardW, h: cardH });
     }
   }
