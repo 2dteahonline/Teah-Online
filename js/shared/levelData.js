@@ -1482,9 +1482,12 @@ const LEVELS = {
       widthTiles: W,
       heightTiles: H,
       isSkeld: true,
-      spawns: { p1: { tx: 70 + XO, ty: 15 } },
+      spawns: { p1: { tx: 70 + XO, ty: 18 } },
       collisionAscii: ascii,
       entities: [
+        // ===== EMERGENCY TABLE (Cafeteria center) =====
+        { type: 'skeld_emergency_table', tx: 69 + XO, ty: 14, w: 3, h: 3, solid: true, label: 'Emergency Meeting', room: 'cafeteria' },
+
         // ===== COMMON TASKS =====
         { type: 'skeld_task', tx: 72 + XO, ty: 2, w: 2, h: 1, solid: true, label: 'Tap Sequence', taskId: 'tap_sequence', room: 'cafeteria' },
         { type: 'skeld_task', tx: 92 + XO, ty: 45, w: 2, h: 1, solid: true, label: 'Code Entry', taskId: 'code_entry', room: 'admin' },

@@ -595,4 +595,29 @@ window._resetShopPrices = () => {
     });
   });
   if (ventEntities.length) console.log('[Skeld] Registered', ventEntities.length, 'vent interactables');
+
+  // --- Emergency table interactable ---
+  const emergencyTable = skeldLevel.entities.find(e => e.type === 'skeld_emergency_table');
+  if (emergencyTable) {
+    registerInteractable({
+      id: 'skeld_emergency_table',
+      get x() { return emergencyTable.tx * TILE + (emergencyTable.w || 3) * TILE / 2; },
+      get y() { return emergencyTable.ty * TILE + (emergencyTable.h || 3) * TILE / 2; },
+      range: 100,
+      get label() {
+        if (typeof MafiaSystem !== 'undefined' && MafiaSystem.canCallEmergency()) {
+          return '[' + getKeyDisplayName(keybinds.interact) + '] Emergency Meeting';
+        }
+        return '';  // hide prompt when can't use
+      },
+      type: 'skeld_emergency_table',
+      canInteract() {
+        return Scene.inSkeld && typeof MafiaSystem !== 'undefined' && MafiaSystem.canCallEmergency();
+      },
+      onInteract() {
+        if (typeof MafiaSystem !== 'undefined') MafiaSystem.callEmergencyMeeting();
+      },
+    });
+    console.log('[Skeld] Registered emergency table interactable');
+  }
 })();

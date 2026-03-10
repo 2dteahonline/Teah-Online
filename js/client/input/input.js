@@ -119,15 +119,6 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
-  // Mafia EMERGENCY button click
-  if (typeof MafiaSystem !== 'undefined' && window._mafiaEmergencyBtn) {
-    const eb = window._mafiaEmergencyBtn;
-    if (mx >= eb.x && mx <= eb.x + eb.w && my >= eb.y && my <= eb.y + eb.h) {
-      MafiaSystem.callEmergencyMeeting();
-      return;
-    }
-  }
-
   // Mafia vote portrait clicks (during voting phase)
   if (typeof MafiaSystem !== 'undefined' && window._mafiaVotePortraits) {
     for (const vp of window._mafiaVotePortraits) {

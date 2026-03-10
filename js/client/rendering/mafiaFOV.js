@@ -5,7 +5,6 @@
 // ---- Click regions ----
 window._mafiaKillBtn = null; // { x, y, w, h } — set each frame when drawn
 window._mafiaReportBtn = null;
-window._mafiaEmergencyBtn = null;
 window._mafiaVotePortraits = null; // [{ id, x, y, w, h }]
 window._mafiaSkipBtn = null;
 
@@ -200,37 +199,8 @@ function drawMafiaHUD() {
     ctx.restore();
 
     window._mafiaReportBtn = canReport ? { x: rBtnX, y: rBtnY, w: rBtnW, h: rBtnH } : null;
-
-    // ---- EMERGENCY button (bottom-left, stacked above report) ----
-    const canEmergency = MafiaSystem.canCallEmergency();
-
-    const eBtnW = 110;
-    const eBtnH = 44;
-    const eBtnX = 30;
-    const eBtnY = rBtnY - eBtnH - 12;
-
-    ctx.save();
-    ctx.fillStyle = canEmergency ? 'rgba(180, 40, 40, 0.85)' : 'rgba(60, 20, 20, 0.3)';
-    ctx.beginPath();
-    ctx.roundRect(eBtnX, eBtnY, eBtnW, eBtnH, 10);
-    ctx.fill();
-    ctx.strokeStyle = canEmergency ? '#ff4444' : '#442222';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.font = 'bold 13px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = canEmergency ? '#ffffff' : '#664444';
-    ctx.fillText('EMERGENCY', eBtnX + eBtnW / 2, eBtnY + eBtnH / 2);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.restore();
-
-    window._mafiaEmergencyBtn = canEmergency ? { x: eBtnX, y: eBtnY, w: eBtnW, h: eBtnH } : null;
   } else {
     window._mafiaReportBtn = null;
-    window._mafiaEmergencyBtn = null;
   }
 
   // ---- Meeting / Voting / Ejection overlays ----

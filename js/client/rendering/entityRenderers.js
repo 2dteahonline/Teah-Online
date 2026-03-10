@@ -2302,6 +2302,87 @@ const ENTITY_RENDERERS = {
     }
   },
 
+  // ===================== SKELD EMERGENCY TABLE (Among Us cafeteria button) =====================
+  skeld_emergency_table: (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const t = Date.now() / 1000;
+    const cx = ex + cw / 2;
+    const cy = ey + ch / 2;
+
+    // Table shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 6, cw / 2 - 2, ch / 2 - 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Table surface — dark metallic grey, round
+    ctx.fillStyle = '#2a2a35';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, cw / 2 - 4, ch / 2 - 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Table edge ring (lighter rim)
+    ctx.strokeStyle = '#444450';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, cw / 2 - 4, ch / 2 - 6, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Inner detail ring
+    ctx.strokeStyle = '#333340';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, cw / 2 - 14, ch / 2 - 14, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // ---- Red emergency button (center) ----
+    // Check if player can call emergency for glow effect
+    const canCall = typeof MafiaSystem !== 'undefined' && MafiaSystem.canCallEmergency();
+    const pulse = canCall ? (0.5 + Math.sin(t * 3) * 0.5) : 0;
+
+    // Button glow ring (when available)
+    if (canCall) {
+      ctx.shadowColor = 'rgba(255,50,30,0.6)';
+      ctx.shadowBlur = 10 + pulse * 8;
+    }
+
+    // Button base (darker red circle)
+    ctx.fillStyle = '#4a1515';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Button top (bright red dome)
+    ctx.fillStyle = canCall ? `rgb(${200 + pulse * 55}, ${30 + pulse * 20}, ${20 + pulse * 10})` : '#882020';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 2, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Button highlight (glossy shine)
+    ctx.fillStyle = canCall ? `rgba(255,180,150,${0.25 + pulse * 0.2})` : 'rgba(255,150,120,0.1)';
+    ctx.beginPath();
+    ctx.arc(cx - 3, cy - 5, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Button ring
+    ctx.strokeStyle = canCall ? '#ff4444' : '#662222';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 1, 12, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // "EMERGENCY" label on table (small text, curved feel)
+    ctx.font = 'bold 7px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = canCall ? `rgba(255,100,80,${0.5 + pulse * 0.3})` : 'rgba(180,80,60,0.3)';
+    ctx.fillText('EMERGENCY', cx, cy + 22);
+    ctx.textAlign = 'left';
+  },
+
   // ===================== SKELD SABOTAGE CONSOLE (red wall-mounted) =====================
   skeld_sabotage: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;

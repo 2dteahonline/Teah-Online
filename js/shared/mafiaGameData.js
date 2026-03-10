@@ -54,7 +54,7 @@ const MAFIA_GAME = {
   // Each map (skeld_01, etc.) registers its own room centers here
   MAPS: {
     skeld_01: {
-      SPAWN: { tx: 74, ty: 15 }, // Cafeteria spawn (actual grid coords, virtual + XO=4)
+      SPAWN: { tx: 74, ty: 18 }, // Cafeteria spawn — below the emergency table
       ROOM_CENTERS: {
         cafeteria:    { tx: 74, ty: 17 },
         upper_engine: { tx: 16, ty: 9 },
