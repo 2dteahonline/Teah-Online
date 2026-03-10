@@ -45,6 +45,7 @@ const Scene = {
     else if (level.isGunsmith) this._current = 'gunsmith';
     else if (level.isTestArena) this._current = 'test_arena';
     else if (level.isHideSeek) this._current = 'hideseek';
+    else if (level.isMafiaLobby) this._current = 'mafia_lobby';
     else if (level.isSkeld) this._current = 'skeld';
     else this._current = 'dungeon';
     if (prev !== this._current) {
@@ -64,6 +65,7 @@ const Scene = {
   get inGunsmith() { return this._current === 'gunsmith'; },
   get inTestArena() { return this._current === 'test_arena'; },
   get inHideSeek() { return this._current === 'hideseek'; },
+  get inMafiaLobby() { return this._current === 'mafia_lobby'; },
   get inSkeld() { return this._current === 'skeld'; },
 };
 
@@ -83,7 +85,7 @@ const PORTAL_SCENES = {
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
-const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld']);
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby']);
 
 // ---- /LEAVE SYSTEM ----
 // Registry for enclosed scenes that require /leave to exit (no walkable door).
@@ -109,6 +111,15 @@ const LEAVE_HANDLERS = {
     returnLevel: null, // endMatch handles its own transition
     message: 'Left Hide & Seek.',
   },
+  mafia_lobby: {
+    cleanup() {
+      if (typeof closeMafiaSettingsPanel === 'function') closeMafiaSettingsPanel();
+      if (typeof closeMafiaColorPicker === 'function') closeMafiaColorPicker();
+    },
+    returnLevel: 'lobby_01',
+    returnTX: 28, returnTY: 21,
+    message: 'Leaving Mafia lobby...',
+  },
   skeld: {
     cleanup() {
       if (typeof closeTaskPanel === 'function') closeTaskPanel();
@@ -122,7 +133,8 @@ const LEAVE_HANDLERS = {
       }
       if (typeof _taskListExpanded !== 'undefined') _taskListExpanded = true;
     },
-    returnLevel: 'lobby_01',
+    returnLevel: 'mafia_lobby',
+    returnTX: 12, returnTY: 14,
     message: 'Leaving The Skeld...',
   },
 };
@@ -131,7 +143,7 @@ function handleLeave() {
   const handler = LEAVE_HANDLERS[Scene.current];
   if (!handler) return false;
   if (handler.cleanup) handler.cleanup();
-  if (handler.returnLevel) startTransition(handler.returnLevel, 20, 20);
+  if (handler.returnLevel) startTransition(handler.returnLevel, handler.returnTX || 20, handler.returnTY || 20);
   chatMessages.push({ name: 'SYSTEM', text: handler.message, time: Date.now() });
   return true;
 }

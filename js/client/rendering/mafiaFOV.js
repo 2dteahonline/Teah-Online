@@ -2040,3 +2040,477 @@ function drawMafiaSettingsPanel() {
 
   window._mafiaSettingsBtns = regions;
 }
+
+
+// ===================== MAFIA LOBBY UI =====================
+// Pre-game lobby: game settings panel, color picker, HUD overlay
+
+let _mafiaLobbySettingsOpen = false;
+let _mafiaLobbyColorOpen = false;
+let _mafiaLobbySettingsScroll = 0; // scroll offset for settings list
+
+// Click regions for lobby UI
+window._mafiaLobbySettingsCloseBtn = null;
+window._mafiaLobbyColorCloseBtn = null;
+window._mafiaLobbyColorBtns = null;    // [{ idx, x, y, w, h }]
+window._mafiaLobbySettingBtns = null;  // [{ key, dir, x, y, w, h }] for +/- buttons
+
+function openMafiaSettingsPanel() {
+  _mafiaLobbySettingsOpen = true;
+  _mafiaLobbyColorOpen = false;
+  _mafiaLobbySettingsScroll = 0;
+}
+
+function closeMafiaSettingsPanel() {
+  _mafiaLobbySettingsOpen = false;
+  window._mafiaLobbySettingBtns = null;
+}
+
+function openMafiaColorPicker() {
+  _mafiaLobbyColorOpen = true;
+  _mafiaLobbySettingsOpen = false;
+}
+
+function closeMafiaColorPicker() {
+  _mafiaLobbyColorOpen = false;
+  window._mafiaLobbyColorBtns = null;
+}
+
+function startMafiaFromLobby() {
+  if (_mafiaLobbySettingsOpen || _mafiaLobbyColorOpen) return;
+  const map = MAFIA_SETTINGS.map || 'skeld_01';
+  // Transition to the selected map
+  if (typeof startTransition === 'function') {
+    const mapData = MAFIA_GAME.MAPS[map];
+    const spawnTX = mapData ? mapData.SPAWN.tx : 76;
+    const spawnTY = mapData ? mapData.SPAWN.ty : 10;
+    startTransition(map, spawnTX, spawnTY);
+  }
+}
+
+// ---- Lobby HUD (drawn when in mafia_lobby scene) ----
+function drawMafiaLobbyHUD() {
+  if (!Scene.inMafiaLobby) return;
+  const cw = ctx.canvas.width, ch = ctx.canvas.height;
+
+  ctx.save();
+
+  // Top banner: "MAFIA LOBBY"
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, 0, cw, 50);
+  ctx.fillStyle = '#fff';
+  ctx.fillText('MAFIA LOBBY', cw / 2, 35);
+
+  // Show selected color indicator (bottom-left)
+  const color = MAFIA_GAME.COLORS[mafiaPlayerColorIdx] || MAFIA_GAME.COLORS[0];
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(10, ch - 60, 140, 50, 8);
+  ctx.fill();
+  ctx.fillStyle = color.body;
+  ctx.beginPath();
+  ctx.arc(36, ch - 35, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = color.dark;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.font = 'bold 14px monospace';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'left';
+  ctx.fillText(color.name, 56, ch - 30);
+
+  // Show selected map (bottom-right)
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(cw - 170, ch - 60, 160, 50, 8);
+  ctx.fill();
+  ctx.font = 'bold 14px monospace';
+  ctx.fillStyle = '#aaa';
+  ctx.textAlign = 'right';
+  ctx.fillText('MAP:', cw - 100, ch - 38);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(MAFIA_SETTINGS.map === 'skeld_01' ? 'The Skeld' : MAFIA_SETTINGS.map, cw - 18, ch - 38);
+
+  // Draw open panels
+  if (_mafiaLobbySettingsOpen) _drawLobbySettingsPanel(cw, ch);
+  if (_mafiaLobbyColorOpen) _drawLobbyColorPicker(cw, ch);
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
+// ---- SETTINGS PANEL ----
+const MAFIA_SETTING_DEFS = [
+  // Core gameplay
+  { section: 'IMPOSTORS' },
+  { key: 'impostors', label: '# Impostors', type: 'int', min: 1, max: 3, step: 1 },
+  { key: 'killCooldown', label: 'Kill Cooldown', type: 'float', min: 10, max: 60, step: 2.5, suffix: 's' },
+  { key: 'killDistance', label: 'Kill Distance', type: 'enum', values: ['Short', 'Medium', 'Long'] },
+  { key: 'crewmateVision', label: 'Crewmate Vision', type: 'float', min: 0.25, max: 3.0, step: 0.25, suffix: 'x' },
+  { key: 'impostorVision', label: 'Impostor Vision', type: 'float', min: 0.25, max: 3.0, step: 0.25, suffix: 'x' },
+  { key: 'playerSpeed', label: 'Player Speed', type: 'float', min: 0.5, max: 3.0, step: 0.25, suffix: 'x' },
+  // Meeting / voting
+  { section: 'CREWMATES' },
+  { key: 'discussionTime', label: 'Discussion Time', type: 'int', min: 0, max: 120, step: 5, suffix: 's' },
+  { key: 'votingTime', label: 'Voting Time', type: 'int', min: 10, max: 120, step: 5, suffix: 's' },
+  { key: 'emergencyMeetings', label: 'Emergency Meetings', type: 'int', min: 0, max: 9, step: 1 },
+  { key: 'emergencyCooldown', label: 'Emergency Cooldown', type: 'int', min: 0, max: 60, step: 5, suffix: 's' },
+  { key: 'confirmEjects', label: 'Confirm Ejects', type: 'bool' },
+  { key: 'anonymousVotes', label: 'Anonymous Votes', type: 'bool' },
+  // Tasks
+  { section: 'TASKS' },
+  { key: 'commonTasks', label: 'Common Tasks', type: 'int', min: 0, max: 3, step: 1 },
+  { key: 'longTasks', label: 'Long Tasks', type: 'int', min: 0, max: 3, step: 1 },
+  { key: 'shortTasks', label: 'Short Tasks', type: 'int', min: 0, max: 5, step: 1 },
+  { key: 'visualTasks', label: 'Visual Tasks', type: 'bool' },
+  { key: 'taskBarUpdates', label: 'Task Bar Updates', type: 'enum', values: ['Always', 'Meetings', 'Never'] },
+  // Match setup
+  { section: 'MATCH' },
+  { key: 'maxPlayers', label: 'Max Players', type: 'int', min: 4, max: 15, step: 1 },
+];
+
+function _drawLobbySettingsPanel(cw, ch) {
+  const pw = 680, ph = 520;
+  const px = (cw - pw) / 2, py = (ch - ph) / 2;
+
+  // Dark overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Panel border
+  ctx.fillStyle = '#3a3a44';
+  ctx.beginPath();
+  ctx.roundRect(px - 4, py - 4, pw + 8, ph + 8, 14);
+  ctx.fill();
+
+  // Panel background
+  ctx.fillStyle = '#2a2a32';
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, ph, 12);
+  ctx.fill();
+
+  // Title
+  ctx.font = 'bold 24px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('GAME SETTINGS', px + pw / 2, py + 36);
+
+  // Close button
+  const cbx = px + pw - 44, cby = py + 10, cbs = 32;
+  ctx.fillStyle = '#444';
+  ctx.beginPath();
+  ctx.roundRect(cbx, cby, cbs, cbs, 6);
+  ctx.fill();
+  ctx.font = 'bold 18px monospace';
+  ctx.fillStyle = '#ff4444';
+  ctx.textAlign = 'center';
+  ctx.fillText('X', cbx + cbs / 2, cby + 23);
+  window._mafiaLobbySettingsCloseBtn = { x: cbx, y: cby, w: cbs, h: cbs };
+
+  // Map selection at top
+  const mapY = py + 52;
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#aaa';
+  ctx.fillText('MAP', px + 20, mapY + 14);
+
+  // Map banner
+  ctx.fillStyle = '#444';
+  ctx.beginPath();
+  ctx.roundRect(px + 80, mapY, pw - 100, 30, 6);
+  ctx.fill();
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('THE SKELD', px + pw / 2, mapY + 20);
+
+  // Settings list (scrollable area)
+  const listY = mapY + 42;
+  const listH = ph - (listY - py) - 16;
+  const rowH = 40;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px, listY, pw, listH);
+  ctx.clip();
+
+  const settingBtns = [];
+  let drawY = listY - _mafiaLobbySettingsScroll;
+
+  for (const def of MAFIA_SETTING_DEFS) {
+    if (def.section) {
+      // Section header
+      ctx.fillStyle = 'rgba(50,60,80,0.6)';
+      ctx.fillRect(px + 10, drawY, pw - 20, 28);
+      ctx.font = 'bold 13px monospace';
+      ctx.fillStyle = '#8899bb';
+      ctx.textAlign = 'left';
+      ctx.fillText(def.section, px + 20, drawY + 19);
+      drawY += 32;
+      continue;
+    }
+
+    // Setting row
+    const ry = drawY;
+
+    // Label
+    ctx.font = '14px monospace';
+    ctx.fillStyle = '#ccc';
+    ctx.textAlign = 'left';
+    ctx.fillText(def.label, px + 30, ry + 25);
+
+    // Value + buttons on right side
+    const btnW = 32, btnH = 28;
+    const valW = 80;
+    const rightX = px + pw - 30;
+
+    if (def.type === 'bool') {
+      // Toggle button
+      const val = MAFIA_SETTINGS[def.key];
+      const tW = 80, tH = 28;
+      const tX = rightX - tW;
+      ctx.fillStyle = val ? 'rgba(40,160,80,0.8)' : 'rgba(120,40,40,0.8)';
+      ctx.beginPath();
+      ctx.roundRect(tX, ry + 6, tW, tH, 6);
+      ctx.fill();
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(val ? 'ON' : 'OFF', tX + tW / 2, ry + 24);
+      settingBtns.push({ key: def.key, dir: 'toggle', x: tX, y: ry + 6, w: tW, h: tH });
+    } else {
+      // - button
+      const minusX = rightX - btnW * 2 - valW - 4;
+      ctx.fillStyle = 'rgba(180,40,40,0.7)';
+      ctx.beginPath();
+      ctx.roundRect(minusX, ry + 6, btnW, btnH, 6);
+      ctx.fill();
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('\u2212', minusX + btnW / 2, ry + 25);
+      settingBtns.push({ key: def.key, dir: 'dec', x: minusX, y: ry + 6, w: btnW, h: btnH });
+
+      // Value display
+      const vX = minusX + btnW + 2;
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.roundRect(vX, ry + 6, valW, btnH, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      let valStr = '';
+      const val = MAFIA_SETTINGS[def.key];
+      if (def.type === 'enum') {
+        valStr = String(val);
+      } else if (def.type === 'float') {
+        valStr = val.toFixed(def.step < 1 ? (def.step < 0.1 ? 2 : 1) : 0) + (def.suffix || '');
+      } else {
+        valStr = String(val) + (def.suffix || '');
+      }
+      ctx.font = 'bold 14px monospace';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText(valStr, vX + valW / 2, ry + 24);
+
+      // + button
+      const plusX = vX + valW + 2;
+      ctx.fillStyle = 'rgba(40,140,80,0.7)';
+      ctx.beginPath();
+      ctx.roundRect(plusX, ry + 6, btnW, btnH, 6);
+      ctx.fill();
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('+', plusX + btnW / 2, ry + 25);
+      settingBtns.push({ key: def.key, dir: 'inc', x: plusX, y: ry + 6, w: btnW, h: btnH });
+    }
+
+    drawY += rowH;
+  }
+
+  ctx.restore();
+  window._mafiaLobbySettingBtns = settingBtns;
+
+  // Scroll bar
+  const totalH = MAFIA_SETTING_DEFS.length * rowH;
+  if (totalH > listH) {
+    const barH = Math.max(30, listH * (listH / totalH));
+    const barY = listY + (_mafiaLobbySettingsScroll / (totalH - listH)) * (listH - barH);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.roundRect(px + pw - 10, barY, 6, barH, 3);
+    ctx.fill();
+  }
+}
+
+// ---- COLOR PICKER ----
+function _drawLobbyColorPicker(cw, ch) {
+  const pw = 400, ph = 380;
+  const px = (cw - pw) / 2, py = (ch - ph) / 2;
+
+  // Dark overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Panel border
+  ctx.fillStyle = '#3a3a44';
+  ctx.beginPath();
+  ctx.roundRect(px - 4, py - 4, pw + 8, ph + 8, 14);
+  ctx.fill();
+
+  // Panel background
+  ctx.fillStyle = '#2a2a32';
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, ph, 12);
+  ctx.fill();
+
+  // Title
+  ctx.font = 'bold 22px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('CHOOSE YOUR COLOR', px + pw / 2, py + 36);
+
+  // Close button
+  const cbx = px + pw - 44, cby = py + 10, cbs = 32;
+  ctx.fillStyle = '#444';
+  ctx.beginPath();
+  ctx.roundRect(cbx, cby, cbs, cbs, 6);
+  ctx.fill();
+  ctx.font = 'bold 18px monospace';
+  ctx.fillStyle = '#ff4444';
+  ctx.textAlign = 'center';
+  ctx.fillText('X', cbx + cbs / 2, cby + 23);
+  window._mafiaLobbyColorCloseBtn = { x: cbx, y: cby, w: cbs, h: cbs };
+
+  // Color grid: 2 rows of 5
+  const colors = MAFIA_GAME.COLORS;
+  const dotR = 28;
+  const gapX = 68, gapY = 72;
+  const cols = 5;
+  const gridW = cols * gapX;
+  const startX = px + (pw - gridW) / 2 + gapX / 2;
+  const startY = py + 70;
+
+  const colorBtns = [];
+
+  for (let i = 0; i < colors.length; i++) {
+    const col = Math.floor(i % cols);
+    const row = Math.floor(i / cols);
+    const cx = startX + col * gapX;
+    const cy = startY + row * gapY;
+    const c = colors[i];
+    const selected = i === mafiaPlayerColorIdx;
+
+    // Selection ring
+    if (selected) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, dotR + 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Color circle
+    ctx.fillStyle = c.body;
+    ctx.beginPath();
+    ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = c.dark;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Checkmark if selected
+    if (selected) {
+      ctx.font = 'bold 22px monospace';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('\u2713', cx, cy);
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    // Name below
+    ctx.font = '11px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'center';
+    ctx.fillText(c.name, cx, cy + dotR + 16);
+
+    colorBtns.push({ idx: i, x: cx - dotR - 4, y: cy - dotR - 4, w: (dotR + 4) * 2, h: (dotR + 4) * 2 });
+  }
+
+  // Preview character at bottom
+  const previewY = startY + 2 * gapY + 40;
+  const selectedColor = colors[mafiaPlayerColorIdx];
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#888';
+  ctx.fillText('PREVIEW', px + pw / 2, previewY);
+
+  // Simple Among Us silhouette preview
+  const pcx = px + pw / 2, pcy = previewY + 40;
+  // Body
+  ctx.fillStyle = selectedColor.body;
+  ctx.beginPath();
+  ctx.ellipse(pcx, pcy, 18, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Visor
+  ctx.fillStyle = '#88ccff';
+  ctx.beginPath();
+  ctx.ellipse(pcx + 8, pcy - 8, 10, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Backpack
+  ctx.fillStyle = selectedColor.dark;
+  ctx.beginPath();
+  ctx.ellipse(pcx - 18, pcy + 2, 6, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Legs
+  ctx.fillStyle = selectedColor.dark;
+  ctx.fillRect(pcx - 12, pcy + 20, 10, 12);
+  ctx.fillRect(pcx + 2, pcy + 20, 10, 12);
+
+  window._mafiaLobbyColorBtns = colorBtns;
+}
+
+// Called when player is frozen in lobby panels
+function isMafiaLobbyPanelOpen() {
+  return _mafiaLobbySettingsOpen || _mafiaLobbyColorOpen;
+}
+
+// Handle setting +/- clicks
+function handleMafiaSettingChange(key, dir) {
+  const def = MAFIA_SETTING_DEFS.find(d => d.key === key);
+  if (!def) return;
+
+  if (def.type === 'bool' || dir === 'toggle') {
+    MAFIA_SETTINGS[key] = !MAFIA_SETTINGS[key];
+  } else if (def.type === 'enum') {
+    const vals = def.values;
+    let idx = vals.indexOf(MAFIA_SETTINGS[key]);
+    if (dir === 'inc') idx = Math.min(idx + 1, vals.length - 1);
+    else idx = Math.max(idx - 1, 0);
+    MAFIA_SETTINGS[key] = vals[idx];
+  } else {
+    // int or float
+    let val = MAFIA_SETTINGS[key];
+    if (dir === 'inc') val = Math.min(val + def.step, def.max);
+    else val = Math.max(val - def.step, def.min);
+    // Round to avoid float precision issues
+    MAFIA_SETTINGS[key] = Math.round(val * 100) / 100;
+  }
+}
+
+// Handle scroll in settings panel
+function handleMafiaSettingsScroll(deltaY) {
+  if (!_mafiaLobbySettingsOpen) return;
+  const rowH = 40;
+  const totalH = MAFIA_SETTING_DEFS.length * rowH;
+  const listH = 520 - 94 - 16; // ph - (listY offset) - padding
+  const maxScroll = Math.max(0, totalH - listH);
+  _mafiaLobbySettingsScroll = Math.max(0, Math.min(maxScroll, _mafiaLobbySettingsScroll + deltaY));
+}

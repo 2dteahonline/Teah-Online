@@ -56,11 +56,13 @@ window.MafiaSystem = {
 
     mobs.length = 0;
 
-    // Shuffle colors
-    const colorPool = MAFIA_GAME.COLORS.slice();
-    for (let i = colorPool.length - 1; i > 0; i--) {
+    // Player gets their chosen color; bots get the rest (shuffled)
+    const chosenIdx = typeof mafiaPlayerColorIdx !== 'undefined' ? mafiaPlayerColorIdx : 0;
+    const playerColor = MAFIA_GAME.COLORS[chosenIdx] || MAFIA_GAME.COLORS[0];
+    const botColors = MAFIA_GAME.COLORS.filter((_, i) => i !== chosenIdx);
+    for (let i = botColors.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [colorPool[i], colorPool[j]] = [colorPool[j], colorPool[i]];
+      [botColors[i], botColors[j]] = [botColors[j], botColors[i]];
     }
 
     const spawn = mapData.SPAWN;
@@ -68,7 +70,6 @@ window.MafiaSystem = {
 
     // Player — always crewmate (use /role to switch for testing)
     mk.playerRole = 'crewmate';
-    const playerColor = colorPool[0];
     participants.push({
       id: 'player',
       name: typeof playerName !== 'undefined' ? playerName : 'Player',
@@ -90,7 +91,7 @@ window.MafiaSystem = {
 
     // All bots are crewmate (use /role to test impostor features)
     for (let i = 0; i < MAFIA_GAME.BOT_COUNT; i++) {
-      const color = colorPool[i + 1];
+      const color = botColors[i];
 
       const offsetX = ((i % 4) - 1.5) * 30;
       const offsetY = (Math.floor(i / 4) - 0.5) * 30;

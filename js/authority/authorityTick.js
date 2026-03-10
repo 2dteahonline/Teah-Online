@@ -121,6 +121,13 @@ window.authorityTick = function() {
     InputIntent.reloadPressed = false;
   }
 
+  // ---- Mafia lobby panel freeze ----
+  if (typeof isMafiaLobbyPanelOpen === 'function' && isMafiaLobbyPanelOpen()) {
+    InputIntent.moveX = 0;
+    InputIntent.moveY = 0;
+    InputIntent.interactPressed = false;
+  }
+
   // ---- Hide & Seek authority freeze: block ALL intents when player is frozen ----
   if (typeof HideSeekSystem !== 'undefined' && HideSeekSystem.isPlayerFrozen()) {
     InputIntent.moveX = 0;

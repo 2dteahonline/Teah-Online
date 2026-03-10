@@ -114,7 +114,7 @@ const LEVELS = {
       { type: 'hideseek_entrance', tx: 16, ty: 19, w: 3, h: 2, solid: false, target: 'hide_01', spawnTX: 5, spawnTY: 5 },
       // === THE SKELD (west district, next to H&S) ===
       { type: 'building_skeld', tx: 25, ty: 12, w: 7, h: 8, solid: true },
-      { type: 'skeld_entrance', tx: 27, ty: 19, w: 3, h: 2, solid: false, target: 'skeld_01', spawnTX: 76, spawnTY: 10 },
+      { type: 'skeld_entrance', tx: 27, ty: 19, w: 3, h: 2, solid: false, target: 'mafia_lobby', spawnTX: 12, spawnTY: 14 },
       // === EAST DISTRICT BUILDINGS ===
       { type: 'building_gunsmith', tx: 69, ty: 12, w: 7, h: 8, solid: true },
       { type: 'gunsmith_entrance', tx: 71, ty: 19, w: 3, h: 2, solid: false, target: 'gunsmith_01', spawnTX: 22, spawnTY: 26 },
@@ -1540,6 +1540,47 @@ const LEVELS = {
         // Network 4: Weapons ↔ Nav Upper (back and forth)
         { type: 'skeld_vent', tx: 95 + XO, ty: 1, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'weapons_upper', room: 'weapons' },
         { type: 'skeld_vent', tx: 125 + XO, ty: 26, w: 2, h: 2, solid: false, label: 'Vent', ventId: 'nav_upper', room: 'navigation' }
+      ]
+    };
+  })(),
+
+  // ===================== MAFIA PRE-GAME LOBBY =====================
+  mafia_lobby: (function() {
+    const W = 25, H = 18;
+    // Build collision grid: walls around perimeter, open interior
+    const g = [];
+    for (let y = 0; y < H; y++) {
+      let row = '';
+      for (let x = 0; x < W; x++) {
+        if (y === 0 || y === H - 1 || x === 0 || x === W - 1) row += '#';
+        // Back wall thicker (y=1 also wall for depth)
+        else if (y === 1) row += '#';
+        else row += '.';
+      }
+      g.push(row);
+    }
+    return {
+      id: 'mafia_lobby',
+      widthTiles: W,
+      heightTiles: H,
+      isMafiaLobby: true,
+      spawns: { p1: { tx: 12, ty: 14 } },
+      collisionAscii: g,
+      entities: [
+        // Laptop desk — left side (game settings)
+        { type: 'mafia_lobby_laptop', tx: 4, ty: 4, w: 3, h: 2, solid: true },
+        // Customization mirror — right side (color picker)
+        { type: 'mafia_lobby_customize', tx: 18, ty: 4, w: 3, h: 2, solid: true },
+        // Start button platform — center back
+        { type: 'mafia_lobby_start', tx: 11, ty: 3, w: 3, h: 2, solid: true },
+        // Decorative crates
+        { type: 'mafia_lobby_crate', tx: 2, ty: 10, w: 2, h: 2, solid: true },
+        { type: 'mafia_lobby_crate', tx: 21, ty: 10, w: 2, h: 2, solid: true },
+        { type: 'mafia_lobby_crate', tx: 7, ty: 14, w: 2, h: 2, solid: true },
+        { type: 'mafia_lobby_crate', tx: 16, ty: 14, w: 2, h: 2, solid: true },
+        // Small crate
+        { type: 'mafia_lobby_crate_sm', tx: 1, ty: 15, w: 1, h: 1, solid: true },
+        { type: 'mafia_lobby_crate_sm', tx: 23, ty: 15, w: 1, h: 1, solid: true },
       ]
     };
   })()

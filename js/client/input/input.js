@@ -101,6 +101,46 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // ---- Mafia LOBBY panel clicks ----
+  if (Scene.inMafiaLobby) {
+    // Settings panel close
+    if (window._mafiaLobbySettingsCloseBtn) {
+      const b = window._mafiaLobbySettingsCloseBtn;
+      if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+        if (typeof closeMafiaSettingsPanel === 'function') closeMafiaSettingsPanel();
+        return;
+      }
+    }
+    // Settings +/- buttons
+    if (window._mafiaLobbySettingBtns) {
+      for (const b of window._mafiaLobbySettingBtns) {
+        if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+          if (typeof handleMafiaSettingChange === 'function') handleMafiaSettingChange(b.key, b.dir);
+          return;
+        }
+      }
+    }
+    // Color picker close
+    if (window._mafiaLobbyColorCloseBtn) {
+      const b = window._mafiaLobbyColorCloseBtn;
+      if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+        if (typeof closeMafiaColorPicker === 'function') closeMafiaColorPicker();
+        return;
+      }
+    }
+    // Color selection
+    if (window._mafiaLobbyColorBtns) {
+      for (const b of window._mafiaLobbyColorBtns) {
+        if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+          mafiaPlayerColorIdx = b.idx;
+          return;
+        }
+      }
+    }
+    // Block other clicks when lobby panels are open
+    if (typeof isMafiaLobbyPanelOpen === 'function' && isMafiaLobbyPanelOpen()) return;
+  }
+
   // Mafia KILL button click
   if (typeof MafiaSystem !== 'undefined' && window._mafiaKillBtn) {
     const kb = window._mafiaKillBtn;
@@ -1123,6 +1163,12 @@ canvas.addEventListener("contextmenu", e => {
   }
 });
 canvas.addEventListener("wheel", e => {
+  // Mafia lobby settings scroll
+  if (Scene.inMafiaLobby && typeof handleMafiaSettingsScroll === 'function' && typeof _mafiaLobbySettingsOpen !== 'undefined' && _mafiaLobbySettingsOpen) {
+    handleMafiaSettingsScroll(e.deltaY);
+    e.preventDefault();
+    return;
+  }
   if (UI.isOpen('testmob') && typeof handleTestMobScroll === 'function') {
     handleTestMobScroll(e.deltaY);
     e.preventDefault();

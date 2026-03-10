@@ -28,9 +28,9 @@ const MAFIA_GAME = {
   BOT_PATH_LIMIT: 8000,      // BFS node limit for pathfinding
 
   // ---- Return destination ----
-  RETURN_LEVEL: 'lobby_01',
-  RETURN_TX: 20,
-  RETURN_TY: 20,
+  RETURN_LEVEL: 'mafia_lobby',
+  RETURN_TX: 12,
+  RETURN_TY: 14,
 
   // ---- Among Us color palette (10 colors) ----
   COLORS: [
@@ -80,6 +80,34 @@ const MAFIA_GAME = {
     lights_electrical: { tx: 41, ty: 55 }, // 37+XO=41, bottom of box
   },
 
+  // ---- Lobby settings (editable from pre-game lobby) ----
+  // These are the defaults; the lobby UI modifies MAFIA_SETTINGS at runtime
+  SETTINGS_DEFAULTS: {
+    // Core gameplay
+    impostors: 1,
+    killCooldown: 30,        // seconds
+    killDistance: 'Medium',   // 'Short' | 'Medium' | 'Long'
+    crewmateVision: 1.0,     // multiplier
+    impostorVision: 1.5,
+    playerSpeed: 1.0,
+    // Meeting / voting
+    discussionTime: 15,      // seconds
+    votingTime: 30,
+    emergencyMeetings: 1,
+    emergencyCooldown: 15,   // seconds
+    confirmEjects: true,
+    anonymousVotes: false,
+    // Tasks
+    commonTasks: 1,
+    longTasks: 1,
+    shortTasks: 2,
+    visualTasks: true,
+    taskBarUpdates: 'Always', // 'Always' | 'Meetings' | 'Never'
+    // Match setup
+    map: 'skeld_01',
+    maxPlayers: 10,
+  },
+
   // ---- Per-map data (room centers, spawn points) ----
   // Each map (skeld_01, etc.) registers its own room centers here
   MAPS: {
@@ -104,3 +132,9 @@ const MAFIA_GAME = {
     },
   },
 };
+
+// Runtime settings — cloned from defaults, modified by lobby UI
+const MAFIA_SETTINGS = Object.assign({}, MAFIA_GAME.SETTINGS_DEFAULTS);
+
+// Player's chosen color index (0-9), persisted across lobby visits
+let mafiaPlayerColorIdx = 0;

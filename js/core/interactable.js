@@ -635,3 +635,62 @@ window._resetShopPrices = () => {
     console.log('[Skeld] Registered emergency table interactable');
   }
 })();
+
+// ===================== MAFIA LOBBY INTERACTABLES =====================
+(function _registerMafiaLobbyInteractables() {
+  const lobbyLevel = typeof LEVELS !== 'undefined' && LEVELS.mafia_lobby;
+  if (!lobbyLevel || !lobbyLevel.entities) return;
+
+  // Laptop — game settings
+  const laptop = lobbyLevel.entities.find(e => e.type === 'mafia_lobby_laptop');
+  if (laptop) {
+    registerInteractable({
+      id: 'mafia_lobby_settings',
+      get x() { return laptop.tx * TILE + (laptop.w || 1) * TILE / 2; },
+      get y() { return laptop.ty * TILE + (laptop.h || 1) * TILE / 2; },
+      range: 100,
+      get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Game Settings'; },
+      type: 'mafia_lobby_laptop',
+      canInteract() { return Scene.inMafiaLobby; },
+      onInteract() {
+        if (typeof openMafiaSettingsPanel === 'function') openMafiaSettingsPanel();
+      },
+    });
+  }
+
+  // Customize station — color picker
+  const customize = lobbyLevel.entities.find(e => e.type === 'mafia_lobby_customize');
+  if (customize) {
+    registerInteractable({
+      id: 'mafia_lobby_customize',
+      get x() { return customize.tx * TILE + (customize.w || 1) * TILE / 2; },
+      get y() { return customize.ty * TILE + (customize.h || 1) * TILE / 2; },
+      range: 100,
+      get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Customize'; },
+      type: 'mafia_lobby_customize',
+      canInteract() { return Scene.inMafiaLobby; },
+      onInteract() {
+        if (typeof openMafiaColorPicker === 'function') openMafiaColorPicker();
+      },
+    });
+  }
+
+  // Start button
+  const startBtn = lobbyLevel.entities.find(e => e.type === 'mafia_lobby_start');
+  if (startBtn) {
+    registerInteractable({
+      id: 'mafia_lobby_start',
+      get x() { return startBtn.tx * TILE + (startBtn.w || 1) * TILE / 2; },
+      get y() { return startBtn.ty * TILE + (startBtn.h || 1) * TILE / 2; },
+      range: 100,
+      get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Start Game'; },
+      type: 'mafia_lobby_start',
+      canInteract() { return Scene.inMafiaLobby; },
+      onInteract() {
+        if (typeof startMafiaFromLobby === 'function') startMafiaFromLobby();
+      },
+    });
+  }
+
+  console.log('[Mafia] Registered lobby interactables');
+})();

@@ -434,6 +434,15 @@ window.addEventListener("keydown", e => {
 
   // Escape closes any panel
   if (e.key === "Escape") {
+    // Close mafia lobby panels
+    if (typeof _mafiaLobbySettingsOpen !== 'undefined' && _mafiaLobbySettingsOpen) {
+      closeMafiaSettingsPanel();
+      return;
+    }
+    if (typeof _mafiaLobbyColorOpen !== 'undefined' && _mafiaLobbyColorOpen) {
+      closeMafiaColorPicker();
+      return;
+    }
     // Close sabotage fix panel
     if (typeof _sabPanel !== 'undefined' && _sabPanel.active) {
       closeSabFixPanel();

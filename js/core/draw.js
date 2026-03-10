@@ -1724,6 +1724,32 @@ function draw() {
     }
   }
 
+  // Mafia lobby interactable prompts
+  if (Scene.inMafiaLobby) {
+    const _nearI = getNearestInteractable();
+    if (_nearI && _nearI.type && _nearI.type.startsWith('mafia_lobby_') && !UI.anyOpen() && typeof isMafiaLobbyPanelOpen === 'function' && !isMafiaLobbyPanelOpen()) {
+      ctx.save();
+      ctx.translate(-cx, -cy);
+      const px = _nearI.x, py = _nearI.y - 28;
+      const txt = _nearI.label;
+      ctx.font = 'bold 12px monospace';
+      const tw = ctx.measureText(txt).width;
+      const pad = 6;
+      ctx.fillStyle = 'rgba(10,20,40,0.85)';
+      ctx.beginPath();
+      ctx.roundRect(px - tw / 2 - pad, py - 8 - pad, tw + pad * 2, 16 + pad, 4);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(100,180,255,0.6)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#80c0ff';
+      ctx.fillText(txt, px, py + 2);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+  }
+
   // End world-space zoom — everything below is screen-space HUD/UI at native 1920x1080
   ctx.restore();
 
@@ -1735,9 +1761,10 @@ function draw() {
   // HUD (screen space)
   if (typeof drawHideSeekHUD === 'function') drawHideSeekHUD();
   if (typeof drawMafiaHUD === 'function') drawMafiaHUD();
-  if (!Scene.inSkeld && showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
-  if (!Scene.inSkeld && showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
-  if (!Scene.inSkeld) drawHotbar();
+  if (typeof drawMafiaLobbyHUD === 'function') drawMafiaLobbyHUD();
+  if (!Scene.inSkeld && !Scene.inMafiaLobby && showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
+  if (!Scene.inSkeld && !Scene.inMafiaLobby && showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
+  if (!Scene.inSkeld && !Scene.inMafiaLobby) drawHotbar();
   if (typeof drawCookingHUD === 'function') drawCookingHUD();
   if (typeof drawFishingHUD === 'function') drawFishingHUD();
   if (typeof drawFishVendorPanel === 'function') drawFishVendorPanel();
@@ -1873,7 +1900,7 @@ function draw() {
     ctx.textAlign = "left";
   }
   drawChatIcon();
-  if (!Scene.inSkeld) {
+  if (!Scene.inSkeld && !Scene.inMafiaLobby) {
     drawProfileIcon();
     drawMapIcon();
     drawToolboxIcon();
@@ -1883,7 +1910,7 @@ function draw() {
   if (Scene.inSkeld && typeof drawMafiaSettingsIcon === 'function') drawMafiaSettingsIcon();
   if (Scene.inSkeld && typeof drawMafiaSettingsPanel === 'function') drawMafiaSettingsPanel();
   drawChatPanel();
-  if (!Scene.inSkeld) {
+  if (!Scene.inSkeld && !Scene.inMafiaLobby) {
     drawProfilePanel();
     drawShopPanel();
     drawIdentityPanel();

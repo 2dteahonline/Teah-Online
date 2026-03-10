@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inHideSeek ? '#0a0a10' : Scene.inSkeld ? '#050508' : Scene.inLobby ? '#080810' : '#1e1e26';
+  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inHideSeek ? '#0a0a10' : Scene.inMafiaLobby ? '#0a0a14' : Scene.inSkeld ? '#050508' : Scene.inLobby ? '#080810' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -367,6 +367,41 @@ function drawLevelBackground(camX, camY) {
             ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.8, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = 'rgba(255,154,64,0.06)';
             ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, TILE * 0.4, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === MAFIA LOBBY TILES (dark spaceship waiting room) ===
+      if (Scene.inMafiaLobby) {
+        if (collisionGrid[ty][tx] === 1) {
+          // Wall — dark steel panels
+          const sv = ((tx * 5 + ty * 3) % 4);
+          ctx.fillStyle = `rgb(${24 + sv},${24 + sv},${32 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = `rgb(${30 + sv},${30 + sv},${40 + sv})`;
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          if ((tx + ty * 3) % 5 === 0) {
+            ctx.fillStyle = 'rgba(80,80,110,0.18)';
+            ctx.beginPath(); ctx.arc(x + 6, y + 6, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + TILE - 6, y + 6, 1.5, 0, Math.PI * 2); ctx.fill();
+          }
+        } else {
+          // Floor — brownish metal grating (like Among Us lobby)
+          const sv = ((tx * 3 + ty * 7) % 5);
+          ctx.fillStyle = `rgb(${62 + sv},${56 + sv},${46 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(90,80,65,0.15)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Cross pattern on some tiles
+          if ((tx + ty) % 4 === 0) {
+            ctx.strokeStyle = 'rgba(80,70,55,0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, y); ctx.lineTo(x + TILE, y + TILE);
+            ctx.moveTo(x + TILE, y); ctx.lineTo(x, y + TILE);
+            ctx.stroke();
           }
         }
         continue;

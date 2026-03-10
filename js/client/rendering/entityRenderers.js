@@ -3117,6 +3117,175 @@ ENTITY_RENDERERS.gunsmith_entrance = (e, ctx, ex, ey, w, h) => {
     ctx.textAlign = "left";
 };
 
+// ===================== MAFIA LOBBY ENTITY RENDERERS =====================
+
+ENTITY_RENDERERS.mafia_lobby_laptop = (e, ctx, ex, ey, w, h) => {
+  const tw = w * TILE, th = h * TILE;
+  // Desk body
+  ctx.fillStyle = '#3a3a42';
+  ctx.beginPath();
+  ctx.roundRect(ex + 4, ey + th * 0.4, tw - 8, th * 0.6 - 4, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Desk legs
+  ctx.fillStyle = '#2a2a32';
+  ctx.fillRect(ex + 10, ey + th - 8, 6, 8);
+  ctx.fillRect(ex + tw - 16, ey + th - 8, 6, 8);
+  // Laptop screen (open, tilted back)
+  const scrX = ex + tw * 0.2, scrY = ey + 4;
+  const scrW = tw * 0.6, scrH = th * 0.4;
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.roundRect(scrX, scrY, scrW, scrH, 3);
+  ctx.fill();
+  // Screen glow
+  ctx.fillStyle = '#1a3a5a';
+  ctx.fillRect(scrX + 3, scrY + 3, scrW - 6, scrH - 6);
+  // Screen content — gear icon
+  const gcx = scrX + scrW / 2, gcy = scrY + scrH / 2;
+  ctx.strokeStyle = '#66aaff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(gcx, gcy, 6, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let a = 0; a < 6; a++) {
+    const ang = a * Math.PI / 3;
+    ctx.beginPath();
+    ctx.moveTo(gcx + Math.cos(ang) * 5, gcy + Math.sin(ang) * 5);
+    ctx.lineTo(gcx + Math.cos(ang) * 9, gcy + Math.sin(ang) * 9);
+    ctx.stroke();
+  }
+  // Keyboard on desk
+  ctx.fillStyle = '#444';
+  ctx.fillRect(ex + tw * 0.25, ey + th * 0.5, tw * 0.5, th * 0.15);
+  // Label
+  ctx.font = 'bold 10px monospace';
+  ctx.fillStyle = '#88bbff';
+  ctx.textAlign = 'center';
+  ctx.fillText('SETTINGS', ex + tw / 2, ey + th + 12);
+  ctx.textAlign = 'left';
+};
+
+ENTITY_RENDERERS.mafia_lobby_customize = (e, ctx, ex, ey, w, h) => {
+  const tw = w * TILE, th = h * TILE;
+  // Mirror frame
+  ctx.fillStyle = '#4a4a52';
+  ctx.beginPath();
+  ctx.roundRect(ex + 8, ey, tw - 16, th - 8, 6);
+  ctx.fill();
+  // Mirror surface (reflective gradient)
+  const grad = ctx.createLinearGradient(ex + 14, ey + 6, ex + tw - 14, ey + th - 14);
+  grad.addColorStop(0, '#557788');
+  grad.addColorStop(0.5, '#88aacc');
+  grad.addColorStop(1, '#557788');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(ex + 14, ey + 6, tw - 28, th - 20, 4);
+  ctx.fill();
+  // Mirror shine
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ex + 20, ey + 10);
+  ctx.lineTo(ex + 30, ey + 10);
+  ctx.stroke();
+  // Stand/shelf below
+  ctx.fillStyle = '#3a3a42';
+  ctx.fillRect(ex + 4, ey + th - 12, tw - 8, 12);
+  // Color dots on shelf (preview)
+  const colors = ['#c51111', '#132ed1', '#127f2d', '#ed54ba', '#ef7d0e'];
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = colors[i];
+    ctx.beginPath();
+    ctx.arc(ex + tw * 0.2 + i * (tw * 0.15), ey + th - 6, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Label
+  ctx.font = 'bold 10px monospace';
+  ctx.fillStyle = '#ffaa44';
+  ctx.textAlign = 'center';
+  ctx.fillText('CUSTOMIZE', ex + tw / 2, ey + th + 12);
+  ctx.textAlign = 'left';
+};
+
+ENTITY_RENDERERS.mafia_lobby_start = (e, ctx, ex, ey, w, h) => {
+  const tw = w * TILE, th = h * TILE;
+  const cx = ex + tw / 2, cy = ey + th / 2;
+  // Platform base
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + th * 0.3, tw * 0.4, th * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Button pedestal
+  ctx.fillStyle = '#444';
+  ctx.fillRect(cx - 18, cy - 10, 36, 24);
+  // Big red button
+  const pulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.003);
+  ctx.fillStyle = `rgba(220,40,40,${pulse})`;
+  ctx.beginPath();
+  ctx.arc(cx, cy - 4, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ff6666';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Button shine
+  ctx.fillStyle = 'rgba(255,150,150,0.4)';
+  ctx.beginPath();
+  ctx.arc(cx - 4, cy - 8, 5, 0, Math.PI * 2);
+  ctx.fill();
+  // Label
+  ctx.font = 'bold 12px monospace';
+  ctx.fillStyle = '#ff4444';
+  ctx.textAlign = 'center';
+  ctx.fillText('START', cx, ey + th + 14);
+  ctx.textAlign = 'left';
+};
+
+ENTITY_RENDERERS.mafia_lobby_crate = (e, ctx, ex, ey, w, h) => {
+  const tw = w * TILE, th = h * TILE;
+  // Main crate body — green-grey like Among Us
+  ctx.fillStyle = '#5a7a6a';
+  ctx.beginPath();
+  ctx.roundRect(ex + 2, ey + 4, tw - 4, th - 4, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#4a6a5a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Cross bands
+  ctx.strokeStyle = '#3a5a4a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ex + 2, ey + th / 2);
+  ctx.lineTo(ex + tw - 2, ey + th / 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(ex + tw / 2, ey + 4);
+  ctx.lineTo(ex + tw / 2, ey + th - 4);
+  ctx.stroke();
+  // Lid highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(ex + 4, ey + 6, tw - 8, th * 0.3);
+};
+
+ENTITY_RENDERERS.mafia_lobby_crate_sm = (e, ctx, ex, ey, w, h) => {
+  const tw = w * TILE, th = h * TILE;
+  ctx.fillStyle = '#5a7a6a';
+  ctx.beginPath();
+  ctx.roundRect(ex + 2, ey + 4, tw - 4, th - 4, 3);
+  ctx.fill();
+  ctx.strokeStyle = '#4a6a5a';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.strokeStyle = '#3a5a4a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(ex + 2, ey + th / 2);
+  ctx.lineTo(ex + tw - 2, ey + th / 2);
+  ctx.stroke();
+};
+
 function drawLevelEntities(camX, camY) {
   for (const e of levelEntities) {
     const w = e.w ?? 1;
