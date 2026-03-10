@@ -319,8 +319,11 @@ function openSabFixPanel(panelKey) {
     _sabPanel.wrongTimer = 0;
   } else if (mk.sabotage.active === 'lights_out') {
     _sabPanel.type = 'lights';
-    // 5 switches, all start OFF (down), must flick all to ON (up)
-    _sabPanel.switches = [false, false, false, false, false];
+    // Persist switch states on sabotage object so closing/reopening doesn't reset
+    if (!mk.sabotage._switches) {
+      mk.sabotage._switches = [false, false, false, false, false];
+    }
+    _sabPanel.switches = mk.sabotage._switches;
   }
 }
 
@@ -720,7 +723,7 @@ function _drawLightsFixPanel(px, py, pw, ph) {
   // ---- 5 toggle switches (bottom ~40%) ----
   const switchCount = 5;
   const swW = 56, swH = 120;
-  const swGap = 18;
+  const swGap = 26;
   const totalSwW = switchCount * swW + (switchCount - 1) * swGap;
   const swStartX = cx - totalSwW / 2;
   const swY = screens[2].y + screens[2].h + 30;
