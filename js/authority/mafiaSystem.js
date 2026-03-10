@@ -481,10 +481,13 @@ window.MafiaSystem = {
     }
 
     // Store vote results for display (who voted for whom)
-    mk.meeting.voteResults = {};  // targetId → [voterId, voterId, ...]
+    // Build ordered vote list for sequential reveal
+    mk.meeting.voteResults = {};  // targetId → [voterId, ...]
     mk.meeting.skipVoters = [];
+    mk.meeting.voteOrder = [];    // [{voterId, targetId}] in reveal order
     for (const p of mk.participants) {
       if (!p.alive || p.votedFor === null) continue;
+      mk.meeting.voteOrder.push({ voterId: p.id, targetId: p.votedFor });
       if (p.votedFor === 'skip') {
         mk.meeting.skipVoters.push(p.id);
       } else {
@@ -492,14 +495,34 @@ window.MafiaSystem = {
         mk.meeting.voteResults[p.votedFor].push(p.id);
       }
     }
+    // Shuffle the reveal order for suspense
+    for (let i = mk.meeting.voteOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [mk.meeting.voteOrder[i], mk.meeting.voteOrder[j]] = [mk.meeting.voteOrder[j], mk.meeting.voteOrder[i]];
+    }
+    mk.meeting.revealedCount = 0;
+    mk.meeting.revealTimer = 0;
 
-    mk.meeting.resultsTimer = MAFIA_GAME.VOTE_RESULTS_TIME;
+    // Calculate total time: reveal phase + hold phase
+    const revealTime = mk.meeting.voteOrder.length * 45 + 60; // 45 frames per vote + 1s buffer
+    mk.meeting.resultsTimer = revealTime + MAFIA_GAME.VOTE_RESULTS_TIME;
+    console.log('[Mafia] Vote results:', JSON.stringify({ voteResults: mk.meeting.voteResults, skipVoters: mk.meeting.skipVoters, voteOrder: mk.meeting.voteOrder, resultsTimer: mk.meeting.resultsTimer }));
     mk.phase = 'vote_results';
   },
 
   // ---- Vote results phase tick ----
   _tickVoteResults() {
     const mk = MafiaState;
+
+    // Reveal votes one by one
+    if (mk.meeting.revealedCount < mk.meeting.voteOrder.length) {
+      mk.meeting.revealTimer++;
+      if (mk.meeting.revealTimer >= 45) {  // ~0.75s per vote reveal
+        mk.meeting.revealedCount++;
+        mk.meeting.revealTimer = 0;
+      }
+    }
+
     mk.meeting.resultsTimer--;
     if (mk.meeting.resultsTimer <= 0) {
       // Now do the actual ejection

@@ -1019,41 +1019,41 @@ function _drawVoteResultsUI() {
     const darkCol = p.color ? p.color.dark : '#555';
     _drawMiniCrewmate(spriteX, spriteY, bodyCol, darkCol, 1.5, isDead);
 
-    // Name
-    ctx.font = 'bold 18px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = isDead ? '#555' : '#1a1a2e';
-    ctx.fillText(p.name, px + 80, py + 28);
-
-    // ---- Voter icons next to the card (sequential reveal, colored) ----
+    // ---- Voter icons on the card (sequential reveal, colored) ----
+    // Like Among Us: small crewmate icons lined up after the main sprite
     const allVoters = voteResults[p.id] || [];
-    // Filter to only revealed voters using voteOrder
     const voteOrder = mk.meeting.voteOrder || [];
     const revealedCount = mk.meeting.revealedCount || 0;
+
+    // Build set of revealed voter IDs
     const revealedVoterIds = new Set();
     for (let r = 0; r < Math.min(revealedCount, voteOrder.length); r++) {
       revealedVoterIds.add(voteOrder[r].voterId);
     }
     const visibleVoters = allVoters.filter(vid => revealedVoterIds.has(vid));
-    if (visibleVoters.length > 0) {
-      // Vote count badge
-      ctx.font = 'bold 15px monospace';
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#cc3333';
-      ctx.fillText(visibleVoters.length + (visibleVoters.length > 1 ? ' votes' : ' vote'), px + 80, py + 48);
 
-      // Colored voter crewmate icons
-      const iconStartX = px + 80;
-      const iconY = py + cardH - 12;
+    // Draw voter crewmates right after the main sprite (like Among Us reference)
+    if (visibleVoters.length > 0) {
+      const iconStartX = px + 72;  // right after the main crewmate
+      const iconY = py + cardH / 2 + 4;
       for (let v = 0; v < visibleVoters.length; v++) {
         const voter = mk.participants.find(pp => pp.id === visibleVoters[v]);
         if (voter) {
           const vCol = voter.color ? voter.color.body : '#888';
           const vDark = voter.color ? voter.color.dark : '#555';
-          _drawMiniCrewmate(iconStartX + v * 34, iconY, vCol, vDark, 0.6, false);
+          _drawMiniCrewmate(iconStartX + v * 26, iconY, vCol, vDark, 0.55, false);
         }
       }
     }
+
+    // Name — shift right if there are voter icons
+    const nameX = visibleVoters.length > 0
+      ? px + 72 + visibleVoters.length * 26 + 8
+      : px + 80;
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = isDead ? '#555' : '#1a1a2e';
+    ctx.fillText(p.name, nameX, py + cardH / 2 + 6);
   }
 
   // ---- SKIPPED VOTING section at bottom-left ----
@@ -1080,7 +1080,7 @@ function _drawVoteResultsUI() {
       if (skipper) {
         const sCol = skipper.color ? skipper.color.body : '#888';
         const sDark = skipper.color ? skipper.color.dark : '#555';
-        _drawMiniCrewmate(frameX + 190 + s * 36, bottomY + 6, sCol, sDark, 0.6, false);
+        _drawMiniCrewmate(frameX + 200 + s * 32, bottomY + 6, sCol, sDark, 0.55, false);
       }
     }
   } else if (revealedCount2 >= voteOrder2.length && voteOrder2.length > 0) {
