@@ -569,19 +569,7 @@ function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
       ctx.restore();
     }
 
-    // Vote count (after local player has voted)
-    if (mk.phase === 'voting' && localHasVoted) {
-      let voteCount = 0;
-      for (const pp of mk.participants) {
-        if (pp.alive && pp.votedFor === p.id) voteCount++;
-      }
-      if (voteCount > 0) {
-        ctx.font = 'bold 13px monospace';
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#cc3333';
-        ctx.fillText(voteCount + (voteCount > 1 ? ' votes' : ' vote'), px + cardW - 10, py + cardH - 8);
-      }
-    }
+    // No vote counts shown during voting — results are only revealed after voting ends
 
     // ---- Confirm/Cancel buttons on the selected card ----
     if (isConfirmTarget && mk.phase === 'voting' && !localHasVoted) {
@@ -1019,8 +1007,13 @@ function _drawVoteResultsUI() {
     const darkCol = p.color ? p.color.dark : '#555';
     _drawMiniCrewmate(spriteX, spriteY, bodyCol, darkCol, 1.5, isDead);
 
-    // ---- Voter icons on the card (sequential reveal, colored) ----
-    // Like Among Us: small crewmate icons lined up after the main sprite
+    // Name (always at fixed position, above voter icons)
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = isDead ? '#555' : '#1a1a2e';
+    ctx.fillText(p.name, px + 80, py + 28);
+
+    // ---- Voter icons below the name (sequential reveal, colored) ----
     const allVoters = voteResults[p.id] || [];
     const voteOrder = mk.meeting.voteOrder || [];
     const revealedCount = mk.meeting.revealedCount || 0;
@@ -1032,28 +1025,18 @@ function _drawVoteResultsUI() {
     }
     const visibleVoters = allVoters.filter(vid => revealedVoterIds.has(vid));
 
-    // Draw voter crewmates right after the main sprite (like Among Us reference)
     if (visibleVoters.length > 0) {
-      const iconStartX = px + 72;  // right after the main crewmate
-      const iconY = py + cardH / 2 + 4;
+      const iconStartX = px + 80;
+      const iconY = py + cardH - 16;
       for (let v = 0; v < visibleVoters.length; v++) {
         const voter = mk.participants.find(pp => pp.id === visibleVoters[v]);
         if (voter) {
           const vCol = voter.color ? voter.color.body : '#888';
           const vDark = voter.color ? voter.color.dark : '#555';
-          _drawMiniCrewmate(iconStartX + v * 26, iconY, vCol, vDark, 0.55, false);
+          _drawMiniCrewmate(iconStartX + v * 28, iconY, vCol, vDark, 0.5, false);
         }
       }
     }
-
-    // Name — shift right if there are voter icons
-    const nameX = visibleVoters.length > 0
-      ? px + 72 + visibleVoters.length * 26 + 8
-      : px + 80;
-    ctx.font = 'bold 18px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = isDead ? '#555' : '#1a1a2e';
-    ctx.fillText(p.name, nameX, py + cardH / 2 + 6);
   }
 
   // ---- SKIPPED VOTING section at bottom-left ----
