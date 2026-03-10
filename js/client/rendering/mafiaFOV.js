@@ -302,6 +302,10 @@ function openSabFixPanel(panelKey) {
   if (_sabPanel.active) return;
   const mk = MafiaState;
   if (!mk.sabotage.active) return;
+  // Don't open if this panel is already fixed
+  if (mk.sabotage.fixedPanels[panelKey] === true) return;
+  // Don't open lights if all switches already flipped
+  if (mk.sabotage._switches && mk.sabotage._switches.every(s => s)) return;
 
   _sabPanel.active = true;
   _sabPanel.panelKey = panelKey;
