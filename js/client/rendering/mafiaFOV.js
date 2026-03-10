@@ -1025,13 +1025,21 @@ function _drawVoteResultsUI() {
     ctx.fillStyle = isDead ? '#555' : '#1a1a2e';
     ctx.fillText(p.name, px + 80, py + 28);
 
-    // ---- Small voter icons next to the card ----
-    const voters = voteResults[p.id] || [];
-    if (voters.length > 0) {
+    // ---- Small voter icons next to the card (sequential reveal) ----
+    const allVoters = voteResults[p.id] || [];
+    // Filter to only revealed voters using voteOrder
+    const voteOrder = mk.meeting.voteOrder || [];
+    const revealedCount = mk.meeting.revealedCount || 0;
+    const revealedVoterIds = new Set();
+    for (let r = 0; r < Math.min(revealedCount, voteOrder.length); r++) {
+      revealedVoterIds.add(voteOrder[r].voterId);
+    }
+    const visibleVoters = allVoters.filter(vid => revealedVoterIds.has(vid));
+    if (visibleVoters.length > 0) {
       const iconStartX = px + 80;
       const iconY = py + cardH - 18;
-      for (let v = 0; v < voters.length; v++) {
-        const voter = mk.participants.find(pp => pp.id === voters[v]);
+      for (let v = 0; v < visibleVoters.length; v++) {
+        const voter = mk.participants.find(pp => pp.id === visibleVoters[v]);
         if (voter) {
           const vCol = voter.color ? voter.color.body : '#888';
           const vDark = voter.color ? voter.color.dark : '#555';
@@ -1043,21 +1051,33 @@ function _drawVoteResultsUI() {
 
   // ---- SKIPPED VOTING section at bottom-left ----
   const bottomY = frameY + frameH - 52;
-  if (skipVoters.length > 0) {
+  // Filter skip voters by revealed status
+  const voteOrder2 = mk.meeting.voteOrder || [];
+  const revealedCount2 = mk.meeting.revealedCount || 0;
+  const revealedSkipIds = new Set();
+  for (let r = 0; r < Math.min(revealedCount2, voteOrder2.length); r++) {
+    if (voteOrder2[r].targetId === 'skip') {
+      revealedSkipIds.add(voteOrder2[r].voterId);
+    }
+  }
+  const visibleSkippers = skipVoters.filter(vid => revealedSkipIds.has(vid));
+
+  if (visibleSkippers.length > 0) {
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#444';
     ctx.fillText('SKIPPED VOTING', frameX + 24, bottomY + 10);
 
-    for (let s = 0; s < skipVoters.length; s++) {
-      const skipper = mk.participants.find(pp => pp.id === skipVoters[s]);
+    for (let s = 0; s < visibleSkippers.length; s++) {
+      const skipper = mk.participants.find(pp => pp.id === visibleSkippers[s]);
       if (skipper) {
         const sCol = skipper.color ? skipper.color.body : '#888';
         const sDark = skipper.color ? skipper.color.dark : '#555';
         _drawMiniCrewmate(frameX + 190 + s * 30, bottomY + 6, sCol, sDark, 0.45, false);
       }
     }
-  } else {
+  } else if (revealedCount2 >= voteOrder2.length && voteOrder2.length > 0) {
+    // Only show "No one skipped" after all votes are revealed
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#444';
