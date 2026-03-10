@@ -110,6 +110,21 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Mafia emergency popup — confirm button or click-outside-to-cancel
+  if (window._mafiaEmergencyPopup) {
+    if (window._mafiaEmergencyConfirmBtn) {
+      const eb = window._mafiaEmergencyConfirmBtn;
+      if (mx >= eb.x && mx <= eb.x + eb.w && my >= eb.y && my <= eb.y + eb.h) {
+        window._mafiaEmergencyPopup = false;
+        if (typeof MafiaSystem !== 'undefined') MafiaSystem.callEmergencyMeeting();
+        return;
+      }
+    }
+    // Click outside → cancel
+    window._mafiaEmergencyPopup = false;
+    return;
+  }
+
   // Mafia REPORT button click
   if (typeof MafiaSystem !== 'undefined' && window._mafiaReportBtn) {
     const rb = window._mafiaReportBtn;

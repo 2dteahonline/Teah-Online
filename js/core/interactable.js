@@ -615,7 +615,10 @@ window._resetShopPrices = () => {
         return Scene.inSkeld && typeof MafiaSystem !== 'undefined' && MafiaSystem.canCallEmergency();
       },
       onInteract() {
-        if (typeof MafiaSystem !== 'undefined') MafiaSystem.callEmergencyMeeting();
+        // Show the emergency button popup (player clicks it to confirm)
+        if (typeof window._mafiaEmergencyPopup !== 'undefined') {
+          window._mafiaEmergencyPopup = true;
+        }
       },
     });
     console.log('[Skeld] Registered emergency table interactable');

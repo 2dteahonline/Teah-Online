@@ -7,6 +7,8 @@ window._mafiaKillBtn = null; // { x, y, w, h } — set each frame when drawn
 window._mafiaReportBtn = null;
 window._mafiaVotePortraits = null; // [{ id, x, y, w, h }]
 window._mafiaSkipBtn = null;
+window._mafiaEmergencyPopup = false;    // true when E pressed at table, shows confirm button
+window._mafiaEmergencyConfirmBtn = null; // { x, y, w, h } click region
 
 function drawMafiaFOV() {
   // Phase 4: FOV overlay will go here
@@ -203,6 +205,14 @@ function drawMafiaHUD() {
     window._mafiaReportBtn = null;
   }
 
+  // ---- Emergency meeting popup (shows after pressing E at table) ----
+  if (window._mafiaEmergencyPopup && mk.phase === 'playing') {
+    _drawEmergencyPopup();
+  } else {
+    window._mafiaEmergencyPopup = false;
+    window._mafiaEmergencyConfirmBtn = null;
+  }
+
   // ---- Meeting / Voting / Ejection overlays ----
   if (mk.phase === 'meeting' || mk.phase === 'voting') {
     _drawMeetingUI();
@@ -212,6 +222,97 @@ function drawMafiaHUD() {
     window._mafiaVotePortraits = null;
     window._mafiaSkipBtn = null;
   }
+}
+
+
+// ===================== EMERGENCY POPUP =====================
+function _drawEmergencyPopup() {
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const t = Date.now() / 1000;
+
+  // Dim overlay
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Popup panel
+  const panelW = 360;
+  const panelH = 220;
+  const panelX = (cw - panelW) / 2;
+  const panelY = (ch - panelH) / 2 - 30;
+
+  // Panel background
+  ctx.fillStyle = 'rgba(15, 12, 20, 0.95)';
+  ctx.beginPath();
+  ctx.roundRect(panelX, panelY, panelW, panelH, 16);
+  ctx.fill();
+
+  // Red border glow
+  const pulse = 0.5 + Math.sin(t * 3) * 0.3;
+  ctx.shadowColor = `rgba(255, 40, 30, ${0.3 + pulse * 0.2})`;
+  ctx.shadowBlur = 15;
+  ctx.strokeStyle = `rgba(255, 60, 40, ${0.6 + pulse * 0.2})`;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.roundRect(panelX, panelY, panelW, panelH, 16);
+  ctx.stroke();
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+
+  // Warning icon (triangle with !)
+  ctx.font = 'bold 36px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ff4444';
+  ctx.fillText('\u26A0', cw / 2, panelY + 50);
+
+  // Title text
+  ctx.font = 'bold 20px monospace';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('EMERGENCY MEETING', cw / 2, panelY + 82);
+
+  // Subtitle
+  ctx.font = '14px monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('Call all players to an emergency vote?', cw / 2, panelY + 108);
+
+  // ---- Big red confirm button ----
+  const btnW = 240;
+  const btnH = 56;
+  const btnX = (cw - btnW) / 2;
+  const btnY = panelY + panelH - btnH - 25;
+
+  // Button glow
+  ctx.shadowColor = 'rgba(255,40,20,0.4)';
+  ctx.shadowBlur = 12;
+
+  ctx.fillStyle = `rgba(200, 30, 20, ${0.85 + pulse * 0.1})`;
+  ctx.beginPath();
+  ctx.roundRect(btnX, btnY, btnW, btnH, 12);
+  ctx.fill();
+
+  ctx.strokeStyle = '#ff5544';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+
+  // Button text
+  ctx.font = 'bold 22px monospace';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('CALL MEETING', cw / 2, btnY + btnH / 2 + 2);
+
+  // Close hint
+  ctx.font = '12px monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillText('Click outside to cancel', cw / 2, panelY + panelH + 20);
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+
+  window._mafiaEmergencyConfirmBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
 }
 
 

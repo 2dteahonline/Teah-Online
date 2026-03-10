@@ -272,7 +272,7 @@ window.MafiaSystem = {
     return nearest;
   },
 
-  // Check if player is near cafeteria table for emergency meeting
+  // Check if player can call an emergency meeting (no proximity check — interactable handles that)
   canCallEmergency() {
     const mk = MafiaState;
     if (mk.phase !== 'playing' || mk.playerIsGhost) return false;
@@ -280,20 +280,10 @@ window.MafiaSystem = {
     const localP = this.getLocalPlayer();
     if (!localP || !localP.alive) return false;
 
-    // Check if already used emergency (1 per player per match)
+    // 1 emergency per player per match
     if (localP.emergenciesUsed >= 1) return false;
 
-    // Check proximity to cafeteria table (spawn point)
-    const mapData = this._getMapData();
-    if (!mapData) return false;
-
-    const tableX = mapData.SPAWN.tx * TILE + TILE / 2;
-    const tableY = mapData.SPAWN.ty * TILE + TILE / 2;
-    const dx = tableX - player.x;
-    const dy = tableY - player.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    return dist < MAFIA_GAME.EMERGENCY_RANGE;
+    return true;
   },
 
   // Report a body → start meeting
