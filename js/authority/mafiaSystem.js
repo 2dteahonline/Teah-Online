@@ -42,6 +42,13 @@ window.MafiaSystem = {
 
 
   // ---- Get current map data from MAFIA_GAME.MAPS ----
+  _getKillRange() {
+    const dist = MafiaState._settings ? MafiaState._settings.killDistance : 'Medium';
+    if (dist === 'Short') return 80;
+    if (dist === 'Long') return 180;
+    return 120; // Medium
+  },
+
   _getMapData() {
     if (!level || !level.id) return null;
     return MAFIA_GAME.MAPS[level.id] || null;
@@ -89,8 +96,19 @@ window.MafiaSystem = {
     player.vx = 0;
     player.vy = 0;
 
+    // Read settings from lobby (or defaults)
+    const settings = typeof MAFIA_SETTINGS !== 'undefined' ? MAFIA_SETTINGS : MAFIA_GAME.SETTINGS_DEFAULTS;
+    const botCount = Math.min(settings.maxPlayers - 1, MAFIA_GAME.BOT_COUNT);
+    const speedMult = settings.playerSpeed || 1;
+    const botSpeed = MAFIA_GAME.BOT_SPEED * speedMult;
+    // Apply player speed multiplier
+    if (typeof GAME_CONFIG !== 'undefined') {
+      player.speed = GAME_CONFIG.PLAYER_BASE_SPEED * speedMult;
+      player.baseSpeed = player.speed;
+    }
+
     // All bots are crewmate (use /role to test impostor features)
-    for (let i = 0; i < MAFIA_GAME.BOT_COUNT; i++) {
+    for (let i = 0; i < botCount; i++) {
       const color = botColors[i];
 
       const offsetX = ((i % 4) - 1.5) * 30;
@@ -103,7 +121,7 @@ window.MafiaSystem = {
         vy: 0,
         hp: -1,
         maxHp: -1,
-        speed: MAFIA_GAME.BOT_SPEED,
+        speed: botSpeed,
         type: 'mafia_bot',
         skin: color.body,
         hair: color.dark,
@@ -143,12 +161,14 @@ window.MafiaSystem = {
     mk.phase = 'playing';
     mk.phaseTimer = 0;
     mk.bodies = [];
-    mk.killCooldown = MAFIA_GAME.KILL_COOLDOWN;
+    mk.killCooldown = (settings.killCooldown || 30) * 60; // seconds → frames
     mk.playerIsGhost = false;
     mk.sabotage = { active: null, timer: 0, cooldown: 0, fixers: {}, fixedPanels: {} };
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.taskProgress = { done: 0, total: 0 };
+    // Store settings snapshot for use during match
+    mk._settings = Object.assign({}, settings);
 
     if (typeof SkeldTasks !== 'undefined' && typeof SkeldTasks.reset === 'function') {
       SkeldTasks.reset();
@@ -185,7 +205,7 @@ window.MafiaSystem = {
     if (mk.killCooldown > 0) return null;
 
     let nearest = null;
-    let nearestDist = MAFIA_GAME.KILL_RANGE;
+    let nearestDist = this._getKillRange();
 
     for (const p of mk.participants) {
       if (p.isLocal || !p.alive || p.role === 'impostor') continue;
@@ -214,7 +234,7 @@ window.MafiaSystem = {
     const dx = target.entity.x - player.x;
     const dy = target.entity.y - player.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > MAFIA_GAME.KILL_RANGE) return false;
+    if (dist > this._getKillRange()) return false;
 
     // Kill the target
     target.alive = false;
@@ -233,7 +253,7 @@ window.MafiaSystem = {
     player.y = target.entity.y;
 
     // Reset cooldown
-    mk.killCooldown = MAFIA_GAME.KILL_COOLDOWN;
+    mk.killCooldown = (mk._settings ? mk._settings.killCooldown : 30) * 60;
 
     // Visual feedback
     if (typeof hitEffects !== 'undefined') {
@@ -282,8 +302,9 @@ window.MafiaSystem = {
     const localP = this.getLocalPlayer();
     if (!localP || !localP.alive) return false;
 
-    // 1 emergency per player per match
-    if (localP.emergenciesUsed >= 1) return false;
+    // Emergency meetings limit from settings
+    const maxEmergencies = mk._settings ? mk._settings.emergencyMeetings : 1;
+    if (localP.emergenciesUsed >= maxEmergencies) return false;
 
     return true;
   },
@@ -348,8 +369,8 @@ window.MafiaSystem = {
       caller: callerName,
       type: type,  // 'report' | 'emergency'
       votes: {},
-      discussionTimer: MAFIA_GAME.DISCUSSION_TIME,
-      votingTimer: MAFIA_GAME.VOTING_TIME,
+      discussionTimer: (mk._settings ? mk._settings.discussionTime : 15) * 60,
+      votingTimer: (mk._settings ? mk._settings.votingTime : 30) * 60,
     };
 
     // Reset all votes
@@ -478,11 +499,14 @@ window.MafiaSystem = {
       const ejected = mk.participants.find(p => p.id === ejectedId);
       if (ejected) {
         // Don't kill yet — wait for vote_results phase to finish
+        const confirm = mk._settings ? mk._settings.confirmEjects : true;
         mk.ejection = {
           name: ejected.name,
           wasImpostor: ejected.role === 'impostor',
           timer: MAFIA_GAME.EJECTION_TIME,
-          message: ejected.name + (ejected.role === 'impostor' ? ' was The Impostor.' : ' was not The Impostor.'),
+          message: confirm
+            ? ejected.name + (ejected.role === 'impostor' ? ' was The Impostor.' : ' was not The Impostor.')
+            : ejected.name + ' was ejected.',
         };
       }
     }
@@ -551,7 +575,7 @@ window.MafiaSystem = {
     mk.bodies = [];
 
     // Reset kill cooldown
-    mk.killCooldown = MAFIA_GAME.KILL_COOLDOWN;
+    mk.killCooldown = (mk._settings ? mk._settings.killCooldown : 30) * 60;
 
     // Return to playing
     mk.phase = 'playing';

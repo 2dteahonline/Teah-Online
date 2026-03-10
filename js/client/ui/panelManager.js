@@ -967,7 +967,10 @@ window.addEventListener("keydown", e => {
     InputIntent.readyWavePressed = true;
   }
   // Hotbar keys — set intent flags only (authority applies in update)
-  if (key === keybinds.slot1 || key === keybinds.slot2 || key === keybinds.slot3) {
+  // Block weapon switching in Mafia lobby
+  if ((key === keybinds.slot1 || key === keybinds.slot2 || key === keybinds.slot3) && typeof Scene !== 'undefined' && Scene.inMafiaLobby) {
+    // No weapons in mafia lobby
+  } else if (key === keybinds.slot1 || key === keybinds.slot2 || key === keybinds.slot3) {
     const slot = key === keybinds.slot1 ? 0 : key === keybinds.slot2 ? 1 : 2;
     if (slot === 0) InputIntent.slot1Pressed = true;
     else if (slot === 1) InputIntent.slot2Pressed = true;

@@ -134,7 +134,7 @@ const LEAVE_HANDLERS = {
       if (typeof _taskListExpanded !== 'undefined') _taskListExpanded = true;
     },
     returnLevel: 'mafia_lobby',
-    returnTX: 12, returnTY: 14,
+    returnTX: 25, returnTY: 20,
     message: 'Leaving The Skeld...',
   },
 };

@@ -2453,7 +2453,7 @@ function update() {
         const nearby = getNearestInteractable();
         if (nearby) { nearby.onInteract(); }
         else if (nearQueue) { joinQueue(); }
-        else if (!Scene.inSkeld) { UI.open('inventory'); }
+        else if (!Scene.inSkeld && !Scene.inMafiaLobby) { UI.open('inventory'); }
       }
     }
     // Ultimate ability (F key — Shrine or Godspeed)

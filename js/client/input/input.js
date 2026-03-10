@@ -111,6 +111,26 @@ canvas.addEventListener("mousedown", e => {
         return;
       }
     }
+    // Tab buttons (Game Settings / Role Settings)
+    if (window._mafiaLobbyTabBtns) {
+      for (const key of Object.keys(window._mafiaLobbyTabBtns)) {
+        const b = window._mafiaLobbyTabBtns[key];
+        if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+          _mafiaLobbySettingsTab = key;
+          _mafiaLobbySettingsScroll = 0;
+          return;
+        }
+      }
+    }
+    // Map selection buttons
+    if (window._mafiaLobbyMapBtns) {
+      for (const b of window._mafiaLobbyMapBtns) {
+        if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+          MAFIA_SETTINGS.map = b.mapId;
+          return;
+        }
+      }
+    }
     // Settings +/- buttons
     if (window._mafiaLobbySettingBtns) {
       for (const b of window._mafiaLobbySettingBtns) {
@@ -988,8 +1008,8 @@ canvas.addEventListener("mousedown", e => {
     return;
   }
 
-  // Click on self to open identity panel (blocked in Skeld/Mafia)
-  if (!UI.anyOpen() && e.button === 0 && !(typeof Scene !== 'undefined' && Scene.inSkeld)) {
+  // Click on self to open identity panel (blocked in Skeld/Mafia/Mafia Lobby)
+  if (!UI.anyOpen() && e.button === 0 && !(typeof Scene !== 'undefined' && (Scene.inSkeld || Scene.inMafiaLobby))) {
     const wmx = mx / WORLD_ZOOM + camera.x;
     const wmy = my / WORLD_ZOOM + camera.y;
     const dist = Math.sqrt((wmx - player.x) ** 2 + (wmy - player.y) ** 2);

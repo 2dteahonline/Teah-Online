@@ -29,8 +29,8 @@ const MAFIA_GAME = {
 
   // ---- Return destination ----
   RETURN_LEVEL: 'mafia_lobby',
-  RETURN_TX: 12,
-  RETURN_TY: 14,
+  RETURN_TX: 25,
+  RETURN_TY: 20,
 
   // ---- Among Us color palette (10 colors) ----
   COLORS: [
@@ -85,11 +85,9 @@ const MAFIA_GAME = {
   SETTINGS_DEFAULTS: {
     // Core gameplay
     impostors: 1,
-    killCooldown: 30,        // seconds
+    killCooldown: 30,        // seconds (integer)
     killDistance: 'Medium',   // 'Short' | 'Medium' | 'Long'
-    crewmateVision: 1.0,     // multiplier
-    impostorVision: 1.5,
-    playerSpeed: 1.0,
+    playerSpeed: 1,          // multiplier (integer)
     // Meeting / voting
     discussionTime: 15,      // seconds
     votingTime: 30,
@@ -101,7 +99,6 @@ const MAFIA_GAME = {
     commonTasks: 1,
     longTasks: 1,
     shortTasks: 2,
-    visualTasks: true,
     taskBarUpdates: 'Always', // 'Always' | 'Meetings' | 'Never'
     // Match setup
     map: 'skeld_01',
