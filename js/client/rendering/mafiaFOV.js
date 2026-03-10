@@ -1025,7 +1025,7 @@ function _drawVoteResultsUI() {
     ctx.fillStyle = isDead ? '#555' : '#1a1a2e';
     ctx.fillText(p.name, px + 80, py + 28);
 
-    // ---- Small voter icons next to the card (sequential reveal) ----
+    // ---- Voter icons next to the card (sequential reveal, colored) ----
     const allVoters = voteResults[p.id] || [];
     // Filter to only revealed voters using voteOrder
     const voteOrder = mk.meeting.voteOrder || [];
@@ -1036,14 +1036,21 @@ function _drawVoteResultsUI() {
     }
     const visibleVoters = allVoters.filter(vid => revealedVoterIds.has(vid));
     if (visibleVoters.length > 0) {
+      // Vote count badge
+      ctx.font = 'bold 15px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#cc3333';
+      ctx.fillText(visibleVoters.length + (visibleVoters.length > 1 ? ' votes' : ' vote'), px + 80, py + 48);
+
+      // Colored voter crewmate icons
       const iconStartX = px + 80;
-      const iconY = py + cardH - 18;
+      const iconY = py + cardH - 12;
       for (let v = 0; v < visibleVoters.length; v++) {
         const voter = mk.participants.find(pp => pp.id === visibleVoters[v]);
         if (voter) {
           const vCol = voter.color ? voter.color.body : '#888';
           const vDark = voter.color ? voter.color.dark : '#555';
-          _drawMiniCrewmate(iconStartX + v * 28, iconY, vCol, vDark, 0.45, false);
+          _drawMiniCrewmate(iconStartX + v * 34, iconY, vCol, vDark, 0.6, false);
         }
       }
     }
@@ -1073,7 +1080,7 @@ function _drawVoteResultsUI() {
       if (skipper) {
         const sCol = skipper.color ? skipper.color.body : '#888';
         const sDark = skipper.color ? skipper.color.dark : '#555';
-        _drawMiniCrewmate(frameX + 190 + s * 30, bottomY + 6, sCol, sDark, 0.45, false);
+        _drawMiniCrewmate(frameX + 190 + s * 36, bottomY + 6, sCol, sDark, 0.6, false);
       }
     }
   } else if (revealedCount2 >= voteOrder2.length && voteOrder2.length > 0) {
