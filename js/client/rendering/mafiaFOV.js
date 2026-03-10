@@ -316,9 +316,72 @@ function _drawEmergencyPopup() {
 }
 
 
-// ===================== MEETING UI =====================
+// ===================== MEETING UI (Among Us style) =====================
 // Meeting chat messages (separate from world chat)
 let _meetingChatMessages = [];
+let _meetingShowChat = false;  // toggle between voting view and chat view
+window._meetingChatToggleBtn = null;  // click region for chat icon
+
+// Draw a mini Among Us crewmate at (cx, cy) with given color and scale
+function _drawMiniCrewmate(cx, cy, color, darkColor, scale, isDead) {
+  const s = scale || 1;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(s, s);
+
+  // Body
+  ctx.fillStyle = darkColor || '#555';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 14, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Suit top
+  ctx.fillStyle = color || '#888';
+  ctx.beginPath();
+  ctx.ellipse(0, -2, 13, 15, 0, Math.PI, Math.PI * 2);  // upper half
+  ctx.fill();
+  ctx.fillRect(-13, -2, 26, 10);
+
+  // Visor
+  ctx.fillStyle = '#a8d8ea';
+  ctx.beginPath();
+  ctx.ellipse(5, -4, 8, 7, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  // Visor shine
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(3, -7, 3, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Backpack (left side bump)
+  ctx.fillStyle = darkColor || '#555';
+  ctx.beginPath();
+  ctx.ellipse(-14, 2, 5, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs
+  ctx.fillStyle = darkColor || '#555';
+  ctx.fillRect(-10, 16, 8, 6);
+  ctx.fillRect(2, 16, 8, 6);
+  // Leg bottoms
+  ctx.fillStyle = color || '#888';
+  ctx.fillRect(-11, 19, 10, 4);
+  ctx.fillRect(1, 19, 10, 4);
+
+  // Dead X
+  if (isDead) {
+    ctx.strokeStyle = '#cc3333';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-12, -14);
+    ctx.lineTo(12, 14);
+    ctx.moveTo(12, -14);
+    ctx.lineTo(-12, 14);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
 
 function _drawMeetingUI() {
   const mk = MafiaState;
@@ -327,70 +390,96 @@ function _drawMeetingUI() {
 
   // Full-screen dark overlay
   ctx.save();
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   ctx.fillRect(0, 0, cw, ch);
 
-  // ---- Layout: portraits left, chat right ----
-  const totalW = 1000;
-  const panelH = 540;
-  const panelX = (cw - totalW) / 2;
-  const panelY = (ch - panelH) / 2 - 10;
+  // ---- Tablet frame ----
+  const frameW = 920;
+  const frameH = 600;
+  const frameX = (cw - frameW) / 2;
+  const frameY = (ch - frameH) / 2 - 10;
+  const frameR = 24;
 
-  // Left panel (portraits + voting)
-  const leftW = 620;
-
-  ctx.fillStyle = 'rgba(20, 20, 35, 0.95)';
+  // Outer frame (dark metallic border)
+  ctx.fillStyle = '#2a2d35';
   ctx.beginPath();
-  ctx.roundRect(panelX, panelY, leftW, panelH, 16);
+  ctx.roundRect(frameX - 8, frameY - 8, frameW + 16, frameH + 16, frameR + 6);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  // Frame edge highlight
+  ctx.strokeStyle = '#404550';
   ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(frameX - 8, frameY - 8, frameW + 16, frameH + 16, frameR + 6);
   ctx.stroke();
 
-  // Right panel (chat)
-  const chatX = panelX + leftW + 10;
-  const chatW = totalW - leftW - 10;
-  const chatH = panelH;
-
-  ctx.fillStyle = 'rgba(15, 15, 25, 0.95)';
+  // Inner panel (light blue-grey)
+  ctx.fillStyle = '#c2ccd8';
   ctx.beginPath();
-  ctx.roundRect(chatX, panelY, chatW, chatH, 16);
+  ctx.roundRect(frameX, frameY, frameW, frameH, frameR);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+
+  // Subtle inner shadow
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(frameX + 2, frameY + 2, frameW - 4, frameH - 4, frameR - 2);
+  ctx.stroke();
+
+  const panelCX = frameX + frameW / 2;
+
+  // ---- Chat toggle icon (top-right of panel) ----
+  const chatIconSize = 36;
+  const chatIconX = frameX + frameW - chatIconSize - 18;
+  const chatIconY = frameY + 12;
+
+  ctx.fillStyle = _meetingShowChat ? '#5a7a9a' : 'rgba(80,100,130,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(chatIconX, chatIconY, chatIconSize, chatIconSize, 8);
+  ctx.fill();
+  ctx.strokeStyle = _meetingShowChat ? '#8ab4d8' : 'rgba(100,120,150,0.4)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // ---- Left panel content ----
-  const leftCX = panelX + leftW / 2;
-
-  // Title
-  ctx.font = 'bold 20px monospace';
+  // Chat bubble icon
+  ctx.fillStyle = _meetingShowChat ? '#fff' : '#789';
+  ctx.font = '18px monospace';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#fff';
-  const titleText = mk.meeting.type === 'emergency'
-    ? mk.meeting.caller + ' called an Emergency Meeting!'
-    : mk.meeting.caller + ' reported a body!';
-  ctx.fillText(titleText, leftCX, panelY + 34);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('\u{1F4AC}', chatIconX + chatIconSize / 2, chatIconY + chatIconSize / 2);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 
-  // Timer
-  const isDiscussion = mk.phase === 'meeting';
-  const timerSec = isDiscussion
-    ? Math.ceil(mk.meeting.discussionTimer / 60)
-    : Math.ceil(mk.meeting.votingTimer / 60);
-  const timerLabel = isDiscussion ? 'DISCUSSION' : 'VOTING';
-  ctx.font = 'bold 15px monospace';
-  ctx.fillStyle = isDiscussion ? '#66bbff' : '#ffaa44';
-  ctx.fillText(timerLabel + ': ' + timerSec + 's', leftCX, panelY + 56);
+  window._meetingChatToggleBtn = { x: chatIconX, y: chatIconY, w: chatIconSize, h: chatIconSize };
 
-  // ---- Participant portraits in a 3x3 grid ----
+  if (_meetingShowChat) {
+    // ===================== CHAT VIEW =====================
+    _drawMeetingChatView(frameX, frameY, frameW, frameH, panelCX);
+  } else {
+    // ===================== VOTING VIEW =====================
+    _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX);
+  }
+
+  ctx.restore();
+}
+
+// ---- Voting View (main meeting screen) ----
+function _drawMeetingVoteView(mk, frameX, frameY, frameW, frameH, panelCX) {
   const portraits = [];
-  const gridCols = 3;
-  const portraitW = 170;
-  const portraitH = 72;
-  const gapX = 16;
-  const gapY = 12;
-  const gridStartX = panelX + (leftW - (gridCols * portraitW + (gridCols - 1) * gapX)) / 2;
-  const gridStartY = panelY + 72;
+
+  // Title: "Who Is The Impostor?"
+  ctx.font = 'bold 26px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillText('Who Is The Impostor?', panelCX, frameY + 42);
+
+  // ---- Player cards in 2-column grid ----
+  const gridCols = 2;
+  const cardW = 380;
+  const cardH = 64;
+  const gapX = 20;
+  const gapY = 8;
+  const gridStartX = frameX + (frameW - (gridCols * cardW + (gridCols - 1) * gapX)) / 2;
+  const gridStartY = frameY + 62;
 
   const alivePlayers = mk.participants.filter(p => p.alive);
   const deadPlayers = mk.participants.filter(p => !p.alive);
@@ -400,8 +489,8 @@ function _drawMeetingUI() {
     const p = orderedPlayers[i];
     const col = i % gridCols;
     const row = Math.floor(i / gridCols);
-    const px = gridStartX + col * (portraitW + gapX);
-    const py = gridStartY + row * (portraitH + gapY);
+    const px = gridStartX + col * (cardW + gapX);
+    const py = gridStartY + row * (cardH + gapY);
 
     const isAlive = p.alive;
     const hasVoted = p.votedFor !== null;
@@ -409,211 +498,297 @@ function _drawMeetingUI() {
     const localP = MafiaSystem.getLocalPlayer();
     const votedForThis = localP && localP.votedFor === p.id;
 
-    // Portrait background
+    // Card background
     if (!isAlive) {
-      ctx.fillStyle = 'rgba(40, 40, 40, 0.7)';
+      ctx.fillStyle = '#8a8a8a';
     } else if (votedForThis) {
-      ctx.fillStyle = 'rgba(200, 60, 60, 0.6)';
+      ctx.fillStyle = '#e8c8c8';
     } else {
-      ctx.fillStyle = 'rgba(40, 50, 70, 0.8)';
+      ctx.fillStyle = '#f0f2f5';
     }
     ctx.beginPath();
-    ctx.roundRect(px, py, portraitW, portraitH, 10);
+    ctx.roundRect(px, py, cardW, cardH, 8);
     ctx.fill();
 
-    // Border
-    if (votedForThis) {
-      ctx.strokeStyle = '#ff4444';
-      ctx.lineWidth = 2.5;
-    } else {
-      ctx.strokeStyle = isAlive ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)';
-      ctx.lineWidth = 1.5;
-    }
+    // Card border
+    ctx.strokeStyle = votedForThis ? '#cc4444' : 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = votedForThis ? 2.5 : 1;
     ctx.beginPath();
-    ctx.roundRect(px, py, portraitW, portraitH, 10);
+    ctx.roundRect(px, py, cardW, cardH, 8);
     ctx.stroke();
 
-    // Color swatch
-    const swatchSize = 32;
-    const swatchX = px + 8;
-    const swatchY = py + (portraitH - swatchSize) / 2;
-    ctx.fillStyle = p.color ? p.color.body : '#888';
-    ctx.beginPath();
-    ctx.ellipse(swatchX + swatchSize / 2, swatchY + swatchSize / 2, swatchSize / 2 - 2, swatchSize / 2.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#a8d8ea';
-    ctx.beginPath();
-    ctx.ellipse(swatchX + swatchSize / 2 + 3, swatchY + swatchSize / 2 - 3, 7, 5, 0.2, 0, Math.PI * 2);
-    ctx.fill();
+    // Crewmate sprite
+    const spriteX = px + 36;
+    const spriteY = py + cardH / 2 - 2;
+    const bodyCol = p.color ? p.color.body : '#888';
+    const darkCol = p.color ? p.color.dark : '#555';
+    _drawMiniCrewmate(spriteX, spriteY, bodyCol, darkCol, 1.1, !isAlive);
 
     // Name
-    ctx.font = 'bold 13px monospace';
+    ctx.font = 'bold 16px monospace';
     ctx.textAlign = 'left';
-    ctx.fillStyle = isAlive ? '#fff' : '#666';
-    ctx.fillText(p.name, px + 46, py + 28);
+    ctx.fillStyle = isAlive ? '#1a1a2e' : '#555';
+    ctx.fillText(p.name, px + 68, py + cardH / 2 + 5);
 
-    // Status
-    ctx.font = '11px monospace';
-    if (!isAlive) {
-      ctx.fillStyle = '#ff4444';
-      ctx.fillText('DEAD', px + 46, py + 46);
-    } else if (hasVoted && mk.phase === 'voting') {
-      ctx.fillStyle = '#66ff66';
-      ctx.fillText('VOTED', px + 46, py + 46);
-    } else if (isLocalPlayer && mk.phase === 'voting') {
-      ctx.fillStyle = '#aaa';
-      ctx.fillText('(you)', px + 46, py + 46);
-    }
-
-    // Dead X overlay
-    if (!isAlive) {
+    // VOTED stamp (rotated red text)
+    if (hasVoted && isAlive && mk.phase === 'voting') {
       ctx.save();
-      ctx.strokeStyle = 'rgba(255,50,50,0.5)';
-      ctx.lineWidth = 3;
+      ctx.translate(px + cardW - 50, py + cardH / 2);
+      ctx.rotate(-0.2);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillStyle = 'rgba(200, 40, 40, 0.7)';
+      ctx.strokeStyle = 'rgba(200, 40, 40, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.textAlign = 'center';
+      // Stamp circle
       ctx.beginPath();
-      ctx.moveTo(px + 5, py + 5);
-      ctx.lineTo(px + portraitW - 5, py + portraitH - 5);
-      ctx.moveTo(px + portraitW - 5, py + 5);
-      ctx.lineTo(px + 5, py + portraitH - 5);
+      ctx.arc(0, 0, 18, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.fillText('VOTED', 0, 5);
       ctx.restore();
     }
 
-    // Clickable region for voting
-    if (mk.phase === 'voting' && isAlive && !isLocalPlayer) {
-      portraits.push({ id: p.id, x: px, y: py, w: portraitW, h: portraitH });
-    }
-  }
-
-  // ---- Vote tally ----
-  if (mk.phase === 'voting') {
-    const localP = MafiaSystem.getLocalPlayer();
-    if (localP && localP.votedFor !== null) {
-      const voteCounts = {};
-      for (const p of mk.participants) {
-        if (!p.alive || p.votedFor === null || p.votedFor === 'skip') continue;
-        voteCounts[p.votedFor] = (voteCounts[p.votedFor] || 0) + 1;
-      }
-      for (let i = 0; i < orderedPlayers.length; i++) {
-        const p = orderedPlayers[i];
-        const col = i % gridCols;
-        const row = Math.floor(i / gridCols);
-        const px2 = gridStartX + col * (portraitW + gapX);
-        const py2 = gridStartY + row * (portraitH + gapY);
-        const count = voteCounts[p.id] || 0;
-        if (count > 0) {
+    // Vote count (after local player has voted)
+    if (mk.phase === 'voting') {
+      const localP2 = MafiaSystem.getLocalPlayer();
+      if (localP2 && localP2.votedFor !== null) {
+        let voteCount = 0;
+        for (const pp of mk.participants) {
+          if (pp.alive && pp.votedFor === p.id) voteCount++;
+        }
+        if (voteCount > 0) {
           ctx.font = 'bold 13px monospace';
           ctx.textAlign = 'right';
-          ctx.fillStyle = '#ff6666';
-          ctx.fillText(count + ' vote' + (count > 1 ? 's' : ''), px2 + portraitW - 6, py2 + portraitH - 6);
+          ctx.fillStyle = '#cc3333';
+          ctx.fillText(voteCount + (voteCount > 1 ? ' votes' : ' vote'), px + cardW - 10, py + cardH - 8);
         }
       }
     }
+
+    // Click region for voting
+    if (mk.phase === 'voting' && isAlive && !isLocalPlayer) {
+      portraits.push({ id: p.id, x: px, y: py, w: cardW, h: cardH });
+    }
   }
 
-  // ---- SKIP button / Discussion message ----
+  // ---- Bottom bar: SKIP VOTE + timer ----
+  const bottomY = frameY + frameH - 52;
+
   if (mk.phase === 'voting') {
     const localP = MafiaSystem.getLocalPlayer();
     const canVote = localP && localP.alive && localP.votedFor === null;
 
-    const skipW = 200;
-    const skipH = 44;
-    const skipX = panelX + (leftW - skipW) / 2;
-    const skipY = panelY + panelH - 58;
+    // SKIP VOTE button (left side)
+    const skipW = 160;
+    const skipH = 38;
+    const skipX = frameX + 24;
+    const skipY = bottomY;
 
-    ctx.fillStyle = canVote ? 'rgba(80, 80, 100, 0.85)' : 'rgba(40, 40, 50, 0.5)';
+    ctx.fillStyle = canVote ? '#e8e8ee' : '#aaa';
     ctx.beginPath();
-    ctx.roundRect(skipX, skipY, skipW, skipH, 10);
+    ctx.roundRect(skipX, skipY, skipW, skipH, 6);
     ctx.fill();
-    ctx.strokeStyle = canVote ? '#8888aa' : '#444';
+    ctx.strokeStyle = canVote ? '#555' : '#888';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    ctx.font = 'bold 16px monospace';
+    ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = canVote ? '#ddd' : '#666';
+    ctx.fillStyle = canVote ? '#222' : '#666';
     ctx.fillText('SKIP VOTE', skipX + skipW / 2, skipY + skipH / 2);
 
     window._mafiaSkipBtn = canVote ? { x: skipX, y: skipY, w: skipW, h: skipH } : null;
+
+    // Timer (right side)
+    const timerSec = Math.ceil(mk.meeting.votingTimer / 60);
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#333';
+    ctx.fillText('Voting Ends In: ' + timerSec + 's', frameX + frameW - 24, bottomY + skipH / 2 + 1);
   } else {
     window._mafiaSkipBtn = null;
 
-    ctx.font = 'bold 15px monospace';
+    // Discussion timer
+    const timerSec = Math.ceil(mk.meeting.discussionTimer / 60);
+    ctx.font = 'bold 16px monospace';
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText('Voting begins after discussion...', leftCX, panelY + panelH - 30);
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#334';
+    ctx.fillText('Discussion: ' + timerSec + 's  \u2014  Voting begins soon...', frameX + frameW / 2, bottomY + 19);
   }
-
-  // ---- Right panel: CHAT ----
-  // Chat title
-  ctx.font = 'bold 14px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#aaa';
-  ctx.fillText('CHAT', chatX + chatW / 2, panelY + 24);
-  ctx.textAlign = 'left';
-
-  // Chat divider
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(chatX + 10, panelY + 34);
-  ctx.lineTo(chatX + chatW - 10, panelY + 34);
-  ctx.stroke();
-
-  // Chat messages area
-  const msgAreaY = panelY + 40;
-  const msgAreaH = chatH - 80;
-  const msgX = chatX + 12;
-  const msgMaxW = chatW - 24;
-
-  // Clip to chat area
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(chatX + 4, msgAreaY, chatW - 8, msgAreaH);
-  ctx.clip();
-
-  // Draw messages (most recent at bottom)
-  const msgs = _meetingChatMessages;
-  const lineH = 18;
-  const maxVisible = Math.floor(msgAreaH / lineH);
-  const startIdx = Math.max(0, msgs.length - maxVisible);
-
-  ctx.font = '13px monospace';
-  for (let i = startIdx; i < msgs.length; i++) {
-    const msg = msgs[i];
-    const drawY = msgAreaY + (i - startIdx) * lineH + 14;
-
-    // Name in color
-    const nameColor = msg.color || '#aaa';
-    ctx.fillStyle = nameColor;
-    const nameText = msg.name + ': ';
-    ctx.fillText(nameText, msgX, drawY);
-
-    // Message text
-    const nameW = ctx.measureText(nameText).width;
-    ctx.fillStyle = '#ddd';
-    // Truncate if too long
-    let text = msg.text;
-    while (ctx.measureText(text).width > msgMaxW - nameW - 4 && text.length > 0) {
-      text = text.slice(0, -1);
-    }
-    ctx.fillText(text, msgX + nameW, drawY);
-  }
-
-  ctx.restore();
-
-  // Chat input hint
-  ctx.font = '12px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.fillText('Press Tab to chat', chatX + chatW / 2, panelY + chatH - 14);
 
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
-  ctx.restore();
 
   window._mafiaVotePortraits = mk.phase === 'voting' ? portraits : null;
+}
+
+// ---- Chat View ----
+function _drawMeetingChatView(frameX, frameY, frameW, frameH, panelCX) {
+  const mk = MafiaState;
+
+  // Title
+  ctx.font = 'bold 20px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillText('Meeting Chat', panelCX, frameY + 38);
+
+  // Messages area
+  const msgPadX = 20;
+  const msgAreaX = frameX + msgPadX;
+  const msgAreaY = frameY + 54;
+  const msgAreaW = frameW - msgPadX * 2;
+  const msgAreaH = frameH - 130;
+
+  // Clip messages
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(msgAreaX, msgAreaY, msgAreaW, msgAreaH);
+  ctx.clip();
+
+  const msgs = _meetingChatMessages;
+  const bubbleH = 68;
+  const bubbleGap = 8;
+  const maxVisible = Math.floor(msgAreaH / (bubbleH + bubbleGap));
+  const startIdx = Math.max(0, msgs.length - maxVisible);
+
+  const localName = typeof playerName !== 'undefined' ? playerName : 'Player';
+
+  for (let i = startIdx; i < msgs.length; i++) {
+    const msg = msgs[i];
+    const idx = i - startIdx;
+    const isLocal = msg.name === localName;
+    const by = msgAreaY + idx * (bubbleH + bubbleGap);
+
+    if (isLocal) {
+      // Right-aligned bubble (like Among Us local messages)
+      const bubbleW = msgAreaW * 0.7;
+      const bx = msgAreaX + msgAreaW - bubbleW;
+
+      ctx.fillStyle = '#f0f2f5';
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bubbleW - 50, bubbleH, 10);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Name
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillText(msg.name, bx + bubbleW - 60, by + 22);
+
+      // Message text
+      ctx.font = '13px monospace';
+      ctx.fillStyle = '#333';
+      ctx.fillText(msg.text, bx + 10, by + 46);
+
+      // Crewmate on right
+      const pColor = msg.color || '#888';
+      // Find dark color
+      let darkCol = '#555';
+      const localP = MafiaSystem.getLocalPlayer();
+      if (localP && localP.color) darkCol = localP.color.dark;
+      _drawMiniCrewmate(bx + bubbleW - 24, by + bubbleH / 2, pColor, darkCol, 0.8, false);
+    } else {
+      // Left-aligned bubble
+      const bubbleW = msgAreaW * 0.75;
+      const bx = msgAreaX;
+
+      ctx.fillStyle = '#f0f2f5';
+      ctx.beginPath();
+      ctx.roundRect(bx + 50, by, bubbleW - 50, bubbleH, 10);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Crewmate on left
+      const pColor = msg.color || '#888';
+      // Find dark color from participants
+      let darkCol = '#555';
+      const participant = mk.participants.find(p => p.name === msg.name);
+      if (participant && participant.color) darkCol = participant.color.dark;
+      _drawMiniCrewmate(bx + 24, by + bubbleH / 2, pColor, darkCol, 0.8, false);
+
+      // Name
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillText(msg.name, bx + 58, by + 22);
+
+      // Message text
+      ctx.font = '13px monospace';
+      ctx.fillStyle = '#333';
+      ctx.fillText(msg.text, bx + 58, by + 46);
+    }
+  }
+
+  ctx.restore();
+
+  // ---- Chat input box at bottom ----
+  const inputH = 44;
+  const inputX = frameX + 20;
+  const inputY = frameY + frameH - inputH - 16;
+  const inputW = frameW - 40;
+
+  // Input background
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(inputX, inputY, inputW, inputH, 8);
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Input text or placeholder
+  ctx.font = '14px monospace';
+  ctx.textAlign = 'left';
+  if (typeof chatInput !== 'undefined' && chatInput.length > 0) {
+    ctx.fillStyle = '#111';
+    ctx.fillText(chatInput, inputX + 12, inputY + inputH / 2 + 5);
+  } else {
+    ctx.fillStyle = '#999';
+    ctx.fillText('Press Tab to type...', inputX + 12, inputY + inputH / 2 + 5);
+  }
+
+  // Send arrow button (right side of input)
+  const sendSize = 32;
+  const sendX = inputX + inputW - sendSize - 8;
+  const sendY = inputY + (inputH - sendSize) / 2;
+  ctx.fillStyle = '#4a8eff';
+  ctx.beginPath();
+  ctx.moveTo(sendX + 6, sendY + 4);
+  ctx.lineTo(sendX + sendSize - 4, sendY + sendSize / 2);
+  ctx.lineTo(sendX + 6, sendY + sendSize - 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Character count
+  const charCount = typeof chatInput !== 'undefined' ? chatInput.length : 0;
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#999';
+  ctx.fillText(charCount + '/100', inputX + inputW - sendSize - 16, inputY - 4);
+
+  // Timer at bottom right
+  const isDiscussion = mk.phase === 'meeting';
+  const timerSec = isDiscussion
+    ? Math.ceil(mk.meeting.discussionTimer / 60)
+    : Math.ceil(mk.meeting.votingTimer / 60);
+  const timerLabel = isDiscussion ? 'Discussion' : 'Voting Ends In';
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#334';
+  ctx.fillText(timerLabel + ': ' + timerSec + 's', frameX + frameW - 20, frameY + frameH - 4);
+
+  ctx.textAlign = 'left';
+
+  // Don't show vote portraits in chat view
+  window._mafiaVotePortraits = null;
+  window._mafiaSkipBtn = null;
 }
 
 

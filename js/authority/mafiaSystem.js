@@ -327,9 +327,12 @@ window.MafiaSystem = {
   _startMeeting(callerName, type) {
     const mk = MafiaState;
 
-    // Clear meeting chat
+    // Clear meeting chat and reset to vote view
     if (typeof _meetingChatMessages !== 'undefined') {
       _meetingChatMessages.length = 0;
+    }
+    if (typeof _meetingShowChat !== 'undefined') {
+      _meetingShowChat = false;
     }
 
     mk.phase = 'meeting';

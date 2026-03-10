@@ -134,6 +134,15 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Meeting chat toggle button
+  if (typeof _meetingShowChat !== 'undefined' && window._meetingChatToggleBtn) {
+    const ct = window._meetingChatToggleBtn;
+    if (mx >= ct.x && mx <= ct.x + ct.w && my >= ct.y && my <= ct.y + ct.h) {
+      _meetingShowChat = !_meetingShowChat;
+      return;
+    }
+  }
+
   // Mafia vote portrait clicks (during voting phase)
   if (typeof MafiaSystem !== 'undefined' && window._mafiaVotePortraits) {
     for (const vp of window._mafiaVotePortraits) {
