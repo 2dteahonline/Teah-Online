@@ -60,9 +60,8 @@ function drawMafiaFOV() {
     bctx.fillRect(0, 0, BASE_W, BASE_H);
     // Erase a soft circle hole
     bctx.globalCompositeOperation = 'destination-out';
-    const grad = bctx.createRadialGradient(px, py, 0, px, py, fovR);
+    const grad = bctx.createRadialGradient(px, py, fovR * 0.5, px, py, fovR);
     grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.6, 'rgba(255,255,255,1)');
     grad.addColorStop(1, 'rgba(255,255,255,0)');
     bctx.fillStyle = grad;
     bctx.beginPath();
