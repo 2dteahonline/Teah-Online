@@ -773,6 +773,31 @@ window.addEventListener("keydown", e => {
           } else {
             chatMessages.push({ name: "SYSTEM", text: "Usage: /role impostor | /role crewmate (must be in Skeld)", time: Date.now() });
           }
+        } else if (cmdLower.startsWith("/sabo")) {
+          // /sabo <reactor|o2|lights> — debug: trigger sabotage as crewmate
+          const saboArg = (cmd.split(" ")[1] || "").toLowerCase();
+          const saboMap = { reactor: 'reactor_meltdown', o2: 'o2_depletion', lights: 'lights_out' };
+          if (typeof MafiaState !== 'undefined' && Scene.inSkeld && MafiaState.phase === 'playing' && saboMap[saboArg]) {
+            const sabId = saboMap[saboArg];
+            const sabType = MAFIA_GAME.SABOTAGE_TYPES[sabId];
+            MafiaState.sabotage.active = sabId;
+            MafiaState.sabotage.timer = sabType.timer;
+            MafiaState.sabotage.fixers = {};
+            MafiaState.sabotage.fixedPanels = {};
+            for (const pk of sabType.fixPanels) { MafiaState.sabotage.fixers[pk] = null; MafiaState.sabotage.fixedPanels[pk] = false; }
+            chatMessages.push({ name: "SYSTEM", text: "Sabotage triggered: " + sabType.label, time: Date.now() });
+          } else {
+            chatMessages.push({ name: "SYSTEM", text: "Usage: /sabo <reactor|o2|lights> (must be in Skeld, playing)", time: Date.now() });
+          }
+        } else if (cmdLower === "/fix") {
+          // /fix — debug: instantly resolve active sabotage
+          if (typeof MafiaState !== 'undefined' && Scene.inSkeld && MafiaState.sabotage.active) {
+            const label = MAFIA_GAME.SABOTAGE_TYPES[MafiaState.sabotage.active].label;
+            MafiaSystem._clearSabotage();
+            chatMessages.push({ name: "SYSTEM", text: "Fixed: " + label, time: Date.now() });
+          } else {
+            chatMessages.push({ name: "SYSTEM", text: "No active sabotage to fix.", time: Date.now() });
+          }
         } else {
           chatMessages.push({ name: player.name, text: cmd, time: Date.now() });
           // Also push to meeting chat if in a meeting phase
