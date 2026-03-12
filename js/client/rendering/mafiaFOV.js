@@ -46,22 +46,22 @@ function drawMafiaFOV() {
     const py = (player.y - camera.y) * WORLD_ZOOM;
     const fovR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * TILE * WORLD_ZOOM;
 
-    // Dark overlay with circular hole via path subtraction
+    // Dark overlay with soft-edged circular hole around player
     ctx.save();
+    const innerR = fovR * 0.7;
+    // Solid darkness outside the gradient ring
     ctx.beginPath();
-    ctx.rect(0, 0, BASE_W, BASE_H);                   // outer rect (clockwise)
-    ctx.arc(px, py, fovR, 0, Math.PI * 2, true);       // inner circle (CCW = hole)
+    ctx.rect(0, 0, BASE_W, BASE_H);
+    ctx.arc(px, py, fovR, 0, Math.PI * 2, true);
     ctx.fillStyle = 'rgba(0,0,0,0.97)';
     ctx.fill();
-
-    // Soft gradient ring for fade at the edge
-    const innerR = fovR * 0.7;
+    // Gradient fade from clear center to dark edge
     const grad = ctx.createRadialGradient(px, py, innerR, px, py, fovR);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
     grad.addColorStop(1, 'rgba(0,0,0,0.97)');
-    ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(px, py, fovR, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
     ctx.fill();
 
     ctx.restore();

@@ -10,7 +10,7 @@ const MAFIA_GAME = {
   BOT_SPEED: 6.25,           // matches PLAYER_BASE_SPEED
 
   // ---- Vision ----
-  FOV_BASE_RADIUS: 4.5,       // tiles — same as HIDESEEK.FOV_RADIUS
+  FOV_BASE_RADIUS: 9,          // tiles — vision circle radius
 
   // ---- Kill mechanics ----
   KILL_RANGE: 120,             // px — distance to target for kill
