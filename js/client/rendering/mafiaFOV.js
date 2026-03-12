@@ -46,21 +46,31 @@ function drawMafiaFOV() {
     const py = (player.y - camera.y) * WORLD_ZOOM;
     const fovR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * TILE * WORLD_ZOOM;
 
-    // Single-pass dark overlay with soft-edged hole via destination-out
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.97)';
-    ctx.fillRect(0, 0, BASE_W, BASE_H);
-    // Erase a soft circle using destination-out + radial gradient
-    ctx.globalCompositeOperation = 'destination-out';
-    const grad = ctx.createRadialGradient(px, py, 0, px, py, fovR);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');     // fully clear at center
-    grad.addColorStop(0.75, 'rgba(255,255,255,0.9)'); // mostly clear
-    grad.addColorStop(1, 'rgba(255,255,255,0)');      // no erase at edge
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(px, py, fovR, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    // Render FOV to offscreen canvas, then stamp onto main canvas
+    if (!drawMafiaFOV._buf) {
+      drawMafiaFOV._buf = document.createElement('canvas');
+      drawMafiaFOV._bctx = drawMafiaFOV._buf.getContext('2d');
+    }
+    const buf = drawMafiaFOV._buf;
+    const bctx = drawMafiaFOV._bctx;
+    buf.width = BASE_W;
+    buf.height = BASE_H;
+    // Fill offscreen with darkness
+    bctx.fillStyle = 'rgba(0,0,0,0.97)';
+    bctx.fillRect(0, 0, BASE_W, BASE_H);
+    // Erase a soft circle hole
+    bctx.globalCompositeOperation = 'destination-out';
+    const grad = bctx.createRadialGradient(px, py, 0, px, py, fovR);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.75, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    bctx.fillStyle = grad;
+    bctx.beginPath();
+    bctx.arc(px, py, fovR, 0, Math.PI * 2);
+    bctx.fill();
+    bctx.globalCompositeOperation = 'source-over';
+    // Stamp onto main canvas
+    ctx.drawImage(buf, 0, 0);
   }
 
   // O2 fog effect — progressive fog for crewmates during O2 sabotage
