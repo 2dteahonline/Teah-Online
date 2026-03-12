@@ -62,7 +62,7 @@ function drawMafiaFOV() {
     bctx.globalCompositeOperation = 'destination-out';
     const grad = bctx.createRadialGradient(px, py, 0, px, py, fovR);
     grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.75, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(0.6, 'rgba(255,255,255,1)');
     grad.addColorStop(1, 'rgba(255,255,255,0)');
     bctx.fillStyle = grad;
     bctx.beginPath();
