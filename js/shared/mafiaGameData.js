@@ -9,6 +9,9 @@ const MAFIA_GAME = {
   IMPOSTOR_COUNT: 1,         // 1 impostor per match (hardcoded for now)
   BOT_SPEED: 6.25,           // matches PLAYER_BASE_SPEED
 
+  // ---- Vision ----
+  FOV_BASE_RADIUS: 4.5,       // tiles — same as HIDESEEK.FOV_RADIUS
+
   // ---- Kill mechanics ----
   KILL_RANGE: 120,             // px — distance to target for kill
   KILL_COOLDOWN: 1800,         // 30s between kills (frames @ 60fps)
@@ -100,6 +103,9 @@ const MAFIA_GAME = {
     longTasks: 1,
     shortTasks: 2,
     taskBarUpdates: 'Always', // 'Always' | 'Meetings' | 'Never'
+    // Vision
+    crewVision: 1,             // multiplier (0.25x–5x)
+    impostorVision: 1.5,       // multiplier (0.25x–5x)
     // Match setup
     map: 'skeld_01',
     maxPlayers: 10,

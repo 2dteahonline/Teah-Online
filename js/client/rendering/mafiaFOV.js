@@ -31,7 +31,40 @@ const _sabPanel = {
 };
 
 function drawMafiaFOV() {
-  // Phase 4: FOV overlay will go here
+  // ---- Base FOV overlay (dark circle cutout around player) ----
+  if (typeof MafiaState !== 'undefined' && typeof player !== 'undefined'
+      && typeof camera !== 'undefined' && typeof ctx !== 'undefined'
+      && MafiaState.phase !== 'idle'
+      && !MafiaState.playerIsGhost
+      && MafiaState.phase !== 'meeting' && MafiaState.phase !== 'voting' && MafiaState.phase !== 'ejection') {
+
+    const visionMult = MafiaState.playerRole === 'impostor'
+      ? MAFIA_SETTINGS.impostorVision
+      : MAFIA_SETTINGS.crewVision;
+    const px = (player.x - camera.x) * WORLD_ZOOM;
+    const py = (player.y - camera.y) * WORLD_ZOOM;
+    const fovR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * TILE * WORLD_ZOOM;
+
+    // Dark overlay with circular hole via path subtraction
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, BASE_W, BASE_H);                   // outer rect (clockwise)
+    ctx.arc(px, py, fovR, 0, Math.PI * 2, true);       // inner circle (CCW = hole)
+    ctx.fillStyle = 'rgba(0,0,0,0.97)';
+    ctx.fill();
+
+    // Soft gradient ring for fade at the edge
+    const innerR = fovR * 0.7;
+    const grad = ctx.createRadialGradient(px, py, innerR, px, py, fovR);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.97)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(px, py, fovR, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
 
   // O2 fog effect — progressive fog for crewmates during O2 sabotage
   if (typeof MafiaState !== 'undefined' && MafiaState.sabotage.active === 'o2_depletion'
@@ -2156,7 +2189,9 @@ const MAFIA_SETTING_DEFS = [
   { key: 'killCooldown', label: 'Kill Cooldown', type: 'int', min: 10, max: 60, suffix: 's' },
   { key: 'killDistance', label: 'Kill Distance', type: 'enum', values: ['Short', 'Medium', 'Long'] },
   { key: 'playerSpeed', label: 'Player Speed', type: 'int', min: 1, max: 3, suffix: 'x' },
+  { key: 'impostorVision', label: 'Impostor Vision', type: 'float', min: 0.25, max: 5, step: 0.25, suffix: 'x' },
   { section: 'CREWMATES' },
+  { key: 'crewVision', label: 'Crew Vision', type: 'float', min: 0.25, max: 5, step: 0.25, suffix: 'x' },
   { key: 'discussionTime', label: 'Discussion Time', type: 'int', min: 0, max: 120, suffix: 's' },
   { key: 'votingTime', label: 'Voting Time', type: 'int', min: 10, max: 120, suffix: 's' },
   { key: 'emergencyMeetings', label: 'Emergency Meetings', type: 'int', min: 0, max: 9 },
@@ -2341,6 +2376,8 @@ function _drawLobbySettingsPanel(cw, ch) {
       const val = MAFIA_SETTINGS[def.key];
       if (def.type === 'enum') {
         valStr = String(val);
+      } else if (def.type === 'float') {
+        valStr = parseFloat(val).toFixed(2).replace(/\.?0+$/, '') + (def.suffix || '');
       } else {
         valStr = String(val) + (def.suffix || '');
       }
@@ -2349,7 +2386,7 @@ function _drawLobbySettingsPanel(cw, ch) {
       ctx.textAlign = 'center';
       ctx.fillText(valStr, vX + valW / 2, ry + 24);
       // Clickable value for direct numeric input
-      if (def.type === 'int') {
+      if (def.type === 'int' || def.type === 'float') {
         settingBtns.push({ key: def.key, dir: 'input', x: vX, y: ry + 6, w: valW, h: btnH });
       }
 
@@ -2492,11 +2529,17 @@ function handleMafiaSettingChange(key, dir) {
     const current = MAFIA_SETTINGS[key];
     const input = prompt(def.label + ' (' + def.min + '-' + def.max + '):', String(current));
     if (input !== null) {
-      const num = parseInt(input, 10);
+      const num = def.type === 'float' ? parseFloat(input) : parseInt(input, 10);
       if (!isNaN(num)) {
-        MAFIA_SETTINGS[key] = Math.max(def.min, Math.min(def.max, num));
+        MAFIA_SETTINGS[key] = Math.max(def.min, Math.min(def.max, parseFloat(num.toFixed(2))));
       }
     }
+  } else if (def.type === 'float') {
+    let val = MAFIA_SETTINGS[key];
+    const step = def.step || 0.25;
+    if (dir === 'inc') val = Math.min(val + step, def.max);
+    else val = Math.max(val - step, def.min);
+    MAFIA_SETTINGS[key] = parseFloat(val.toFixed(2));
   } else if (def.type === 'enum') {
     const vals = def.values;
     let idx = vals.indexOf(MAFIA_SETTINGS[key]);
