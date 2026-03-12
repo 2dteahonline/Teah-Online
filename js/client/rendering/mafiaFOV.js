@@ -46,24 +46,20 @@ function drawMafiaFOV() {
     const py = (player.y - camera.y) * WORLD_ZOOM;
     const fovR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * TILE * WORLD_ZOOM;
 
-    // Dark overlay with soft-edged circular hole around player
+    // Single-pass dark overlay with soft-edged hole via destination-out
     ctx.save();
-    const innerR = fovR * 0.7;
-    // Solid darkness outside the gradient ring
-    ctx.beginPath();
-    ctx.rect(0, 0, BASE_W, BASE_H);
-    ctx.arc(px, py, fovR, 0, Math.PI * 2, true);
     ctx.fillStyle = 'rgba(0,0,0,0.97)';
-    ctx.fill();
-    // Gradient fade from clear center to dark edge
-    const grad = ctx.createRadialGradient(px, py, innerR, px, py, fovR);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.97)');
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    // Erase a soft circle using destination-out + radial gradient
+    ctx.globalCompositeOperation = 'destination-out';
+    const grad = ctx.createRadialGradient(px, py, 0, px, py, fovR);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');     // fully clear at center
+    grad.addColorStop(0.75, 'rgba(255,255,255,0.9)'); // mostly clear
+    grad.addColorStop(1, 'rgba(255,255,255,0)');      // no erase at edge
+    ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(px, py, fovR, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
     ctx.fill();
-
     ctx.restore();
   }
 
