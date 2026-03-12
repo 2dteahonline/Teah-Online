@@ -34,6 +34,7 @@ function drawMafiaFOV() {
   // ---- Base FOV overlay (dark circle cutout around player) ----
   if (typeof MafiaState !== 'undefined' && typeof player !== 'undefined'
       && typeof camera !== 'undefined' && typeof ctx !== 'undefined'
+      && Scene.inSkeld
       && MafiaState.phase !== 'idle'
       && !MafiaState.playerIsGhost
       && MafiaState.phase !== 'meeting' && MafiaState.phase !== 'voting' && MafiaState.phase !== 'ejection') {
@@ -67,7 +68,8 @@ function drawMafiaFOV() {
   }
 
   // O2 fog effect — progressive fog for crewmates during O2 sabotage
-  if (typeof MafiaState !== 'undefined' && MafiaState.sabotage.active === 'o2_depletion'
+  if (typeof MafiaState !== 'undefined' && Scene.inSkeld
+      && MafiaState.sabotage.active === 'o2_depletion'
       && MafiaState.playerRole === 'crewmate' && !MafiaState.playerIsGhost) {
     const sabType = MAFIA_GAME.SABOTAGE_TYPES.o2_depletion;
     const fogProgress = 1 - (MafiaState.sabotage.timer / sabType.timer); // 0→1
