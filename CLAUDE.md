@@ -9,7 +9,7 @@ Teah Online is a top-down dungeon crawler (inspired by GraalOnline Era) built wi
 - **Entry point**: `index.html` loads 55+ JS files via `<script>` tags with cache-busting (`?v=70`)
 - **Dev server**: `python -m http.server 8080` (configured in `.claude/launch.json`)
 - **Total codebase**: ~48,800 lines of JavaScript
-- **Comprehensive reference**: `GAME_DOCS.md` contains detailed documentation of all systems
+- **Comprehensive reference**: `docs/README.md` — modular docs index (one file per system)
 
 ## Architecture: Authority/Client Split
 
