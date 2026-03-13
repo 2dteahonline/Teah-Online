@@ -325,7 +325,9 @@ function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
   } else {
     route.push({ tx: 26, ty: 20 });
   }
-  route.push({ tx: 13, ty: 20 });                      // west to approach corridor (horizontal)
+  // Go south to ty:22 BEFORE heading west — ty:20 west of tx:25 is kitchen zone!
+  route.push({ tx: 26, ty: 22 });                      // south to safe counter corridor
+  route.push({ tx: 13, ty: 22 });                      // west along counter corridor
   route.push({ tx: 13, ty: queueSpot.ty });             // south to queue Y level (vertical)
   route.push({ tx: queueSpot.tx, ty: queueSpot.ty });   // west into line (horizontal)
   return route;
@@ -410,6 +412,15 @@ function moveDeliNPC(npc) {
 
   // Kitchen zone restriction — NPCs must not enter kitchen
   if (_isKitchenZone(nextX, nextY)) {
+    // If NPC is already INSIDE the kitchen zone, teleport to safe corridor immediately
+    if (_isKitchenZone(npc.x, npc.y)) {
+      npc.x = 26 * TILE + TILE / 2;
+      npc.y = 22 * TILE + TILE / 2;
+      npc._stuckFrames = 0;
+      // Replace route with direct path to exit so they don't walk back in
+      npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
+      return;
+    }
     npc._stuckFrames = (npc._stuckFrames || 0) + 1;
     return;
   }
@@ -912,14 +923,19 @@ function updateDeliNPCs() {
       moveDeliNPC(npc);
     }
 
-    // Stuck detection — if blocked for 2+ seconds, abandon route and head to exit
-    if ((npc._stuckFrames || 0) >= 120 && npc.state !== '_despawn' && npc.state !== '_despawn_walk') {
+    // Stuck detection — if blocked for 1+ second, abandon route and head to exit
+    if ((npc._stuckFrames || 0) >= 60 && npc.state !== '_despawn' && npc.state !== '_despawn_walk') {
       npc._stuckFrames = 0;
       if (npc.claimedChair !== null) npc.claimedChair = null;
       if (npc._queueIdx >= 0) {
         const leftIdx = npc._queueIdx;
         npc._queueIdx = -1;
         _advanceQueue(leftIdx);
+      }
+      // If stuck in kitchen zone, teleport to safe corridor first
+      if (_isKitchenZone(npc.x, npc.y)) {
+        npc.x = 26 * TILE + TILE / 2;
+        npc.y = 22 * TILE + TILE / 2;
       }
       // Route to exit from current position
       const curTX = Math.floor(npc.x / TILE);
