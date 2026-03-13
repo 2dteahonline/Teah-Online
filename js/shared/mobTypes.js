@@ -370,6 +370,393 @@ const MOB_TYPES = {
     isBoss: true, bossScale: 1.5, specialCD: 360, // 6s — aggressive shadow boss
     kiteRange: 280,
   },
+
+  // ===================== VORTALIS FLOOR 1: PIRATE / NAVAL =====================
+  // Section A — Pirates (waves 1-4)
+  bilge_rat: {
+    name: "Bilge Rat", hp: 60, speed: 3.9, damage: 10, killHeal: 5, goldReward: 3,
+    skin: "#8a7060", hair: "#3a2a1a", shirt: "#5a4030", pants: "#4a3020", contactRange: 74,
+    ai: 'runner', _specials: ['shiv_lunge'], specialCD: 420,
+    deathColors: ["#8a7060","#5a4030","#aa9070","#3a2010"],
+  },
+  powder_keg: {
+    name: "Powder Keg", hp: 90, speed: 3.0, damage: 14, killHeal: 8, goldReward: 4,
+    skin: "#8a7060", hair: "#2a1a0a", shirt: "#6a5040", pants: "#4a3020", contactRange: 76,
+    ai: 'grunt', _specials: ['barrel_drop'], specialCD: 600,
+    deathColors: ["#8a7060","#6a5040","#aa9070","#4a3020"],
+  },
+  deckhand_shooter: {
+    name: "Deckhand Shooter", hp: 70, speed: 2.6, damage: 8, killHeal: 10, goldReward: 4,
+    skin: "#8a7060", hair: "#1a1a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 74,
+    ai: 'archer', _specials: ['scattershot'], specialCD: 540,
+    arrowRate: 100, arrowSpeed: 9, arrowRange: 350, arrowBounces: 0, arrowLife: 400,
+    projectileStyle: 'musket',
+    deathColors: ["#8a7060","#4a3a2a","#aa9070","#3a2a1a"],
+  },
+  anchor_hauler: {
+    name: "Anchor Hauler", hp: 150, speed: 2.4, damage: 18, killHeal: 15, goldReward: 6,
+    skin: "#8a7060", hair: "#1a1a1a", shirt: "#3a3020", pants: "#2a2010", contactRange: 78,
+    ai: 'tank', _specials: ['anchor_sweep'], specialCD: 660,
+    deathColors: ["#8a7060","#3a3020","#aa9070","#2a2010"],
+  },
+
+  // Vortalis Floor 1 — Boss: Captain Husa
+  captain_husa: {
+    name: "Captain Husa", hp: 900, speed: 2.0, damage: 22, killHeal: 40, goldReward: 25,
+    skin: "#8a7060", hair: "#2a1a0a", shirt: "#5a3020", pants: "#3a2010", contactRange: 80,
+    ai: 'archer', _specials: ['flintlock_volley', 'cutlass_cleave', 'call_to_arms', 'weathered_resolve', 'boarding_rush'],
+    isBoss: true, bossScale: 1.4, specialCD: 600,
+    arrowRate: 110, arrowSpeed: 9, arrowRange: 450, arrowBounces: 0, arrowLife: 450,
+    projectileStyle: 'musket',
+    deathColors: ["#8a7060","#5a3020","#aa9070","#3a2010"],
+  },
+
+  // Section B — Naval (waves 6-9)
+  ironclad_marine: {
+    name: "Ironclad Marine", hp: 180, speed: 2.7, damage: 20, killHeal: 15, goldReward: 6,
+    skin: "#7a8a8a", hair: "#1a1a2a", shirt: "#2a3a5a", pants: "#1a2a4a", contactRange: 78,
+    ai: 'tank', _specials: ['tower_shield'], specialCD: 720,
+    _frontalShield: true,
+    deathColors: ["#7a8a8a","#2a3a5a","#9aaaba","#1a2a4a"],
+  },
+  tidecaller_mystic: {
+    name: "Tidecaller Mystic", hp: 80, speed: 2.4, damage: 10, killHeal: 12, goldReward: 5,
+    skin: "#7a8a8a", hair: "#2a2a3a", shirt: "#3a4a6a", pants: "#2a3a5a", contactRange: 76,
+    ai: 'witch', _specials: ['water_geyser'], specialCD: 540,
+    kiteRange: 300,
+    deathColors: ["#7a8a8a","#3a4a6a","#9aaaba","#2a3a5a"],
+  },
+  galleon_sniper: {
+    name: "Galleon Sniper", hp: 70, speed: 2.6, damage: 10, killHeal: 10, goldReward: 5,
+    skin: "#7a8a8a", hair: "#1a1a1a", shirt: "#2a2a4a", pants: "#1a1a3a", contactRange: 74,
+    ai: 'archer', _specials: ['piercing_musket'], specialCD: 480,
+    arrowRate: 90, arrowSpeed: 9, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'musket',
+    deathColors: ["#7a8a8a","#2a2a4a","#9aaaba","#1a1a3a"],
+  },
+  sunken_dreadnought: {
+    name: "Sunken Dreadnought", hp: 220, speed: 2.1, damage: 24, killHeal: 15, goldReward: 7,
+    skin: "#7a8a8a", hair: "#1a1a2a", shirt: "#1a2a3a", pants: "#0a1a2a", contactRange: 78,
+    ai: 'tank', _specials: ['reckless_charge'], specialCD: 720,
+    deathColors: ["#7a8a8a","#1a2a3a","#9aaaba","#0a1a2a"],
+  },
+
+  // Vortalis Floor 1 — Boss: Admiral Von Kael
+  admiral_von_kael: {
+    name: "Admiral Von Kael", hp: 1200, speed: 1.8, damage: 24, killHeal: 40, goldReward: 30,
+    skin: "#7a8a8a", hair: "#1a1a2a", shirt: "#1a2a4a", pants: "#0a1a3a", contactRange: 80,
+    ai: 'archer', _specials: ['naval_artillery', 'spectral_chain_binding', 'tattered_tide', 'command_authority', 'admirals_resolve'],
+    isBoss: true, bossScale: 1.5, specialCD: 540,
+    arrowRate: 100, arrowSpeed: 9, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'cannonball',
+    bulletColor: { main: '#8a8a8a', core: '#cccccc', glow: 'rgba(138,138,138,0.3)' },
+    deathColors: ["#7a8a8a","#1a2a4a","#9aaaba","#0a1a3a"],
+  },
+
+  // ===================== VORTALIS FLOOR 2: JUNGLE / BLOOD =====================
+  // Section A — Jungle (waves 1-4)
+  jungle_headhunter: {
+    name: "Jungle Headhunter", hp: 80, speed: 4.0, damage: 14, killHeal: 5, goldReward: 4,
+    skin: "#5a4030", hair: "#1a1a0a", shirt: "#3a5a2a", pants: "#2a4a1a", contactRange: 74,
+    ai: 'runner', _specials: ['spear_dash'], specialCD: 420,
+    deathColors: ["#5a4030","#3a5a2a","#7a6050","#2a4a1a"],
+  },
+  voodoo_creeper: {
+    name: "Voodoo Creeper", hp: 70, speed: 2.4, damage: 8, killHeal: 12, goldReward: 5,
+    skin: "#5a4030", hair: "#2a1a0a", shirt: "#4a3a1a", pants: "#3a2a0a", contactRange: 76,
+    ai: 'witch', _specials: ['toxic_trail'], specialCD: 540,
+    kiteRange: 320,
+    deathColors: ["#5a4030","#4a3a1a","#7a6050","#3a2a0a"],
+  },
+  canopy_sniper: {
+    name: "Canopy Sniper", hp: 65, speed: 2.7, damage: 10, killHeal: 10, goldReward: 5,
+    skin: "#5a4030", hair: "#1a1a0a", shirt: "#3a4a2a", pants: "#2a3a1a", contactRange: 74,
+    ai: 'archer', _specials: ['paralysis_dart'], specialCD: 600,
+    arrowRate: 100, arrowSpeed: 9, arrowRange: 400, arrowBounces: 0, arrowLife: 400,
+    projectileStyle: 'dart',
+    deathColors: ["#5a4030","#3a4a2a","#7a6050","#2a3a1a"],
+  },
+  temple_silverback: {
+    name: "Temple Silverback", hp: 200, speed: 2.8, damage: 22, killHeal: 15, goldReward: 6,
+    skin: "#5a4030", hair: "#2a2a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 78,
+    ai: 'tank', _specials: ['earthquake_slam'], specialCD: 600,
+    deathColors: ["#5a4030","#4a3a2a","#7a6050","#3a2a1a"],
+  },
+
+  // Vortalis Floor 2 — Boss: Zongo
+  zongo: {
+    name: "Zongo", hp: 1100, speed: 2.2, damage: 26, killHeal: 40, goldReward: 30,
+    skin: "#5a4030", hair: "#1a1a0a", shirt: "#3a4a1a", pants: "#2a3a0a", contactRange: 80,
+    ai: 'tank', _specials: ['spear_barrage', 'vine_snare', 'primal_roar', 'tribal_summon', 'jungle_fury'],
+    isBoss: true, bossScale: 1.4, specialCD: 540,
+    deathColors: ["#5a4030","#3a4a1a","#7a6050","#2a3a0a"],
+  },
+
+  // Section B — Blood (waves 6-9)
+  crimson_corsair: {
+    name: "Crimson Corsair", hp: 85, speed: 3.8, damage: 16, killHeal: 5, goldReward: 4,
+    skin: "#9a7070", hair: "#2a0a0a", shirt: "#6a2020", pants: "#4a1010", contactRange: 74,
+    ai: 'runner', _specials: ['blood_frenzy'], specialCD: 360,
+    deathColors: ["#9a7070","#6a2020","#ba9090","#4a1010"],
+  },
+  crystal_cultist: {
+    name: "Crystal Cultist", hp: 75, speed: 2.4, damage: 10, killHeal: 12, goldReward: 5,
+    skin: "#9a7070", hair: "#1a0a0a", shirt: "#5a1a1a", pants: "#3a0a0a", contactRange: 76,
+    ai: 'witch', _specials: ['shard_spread'], specialCD: 540,
+    kiteRange: 300,
+    deathColors: ["#9a7070","#5a1a1a","#ba9090","#3a0a0a"],
+  },
+  bone_clad_brute: {
+    name: "Bone-Clad Brute", hp: 190, speed: 2.6, damage: 20, killHeal: 15, goldReward: 6,
+    skin: "#9a7070", hair: "#1a0a0a", shirt: "#4a1a1a", pants: "#2a0a0a", contactRange: 78,
+    ai: 'tank', _specials: ['blood_pool'], specialCD: 660,
+    deathColors: ["#9a7070","#4a1a1a","#ba9090","#2a0a0a"],
+  },
+  sanguine_siren: {
+    name: "Sanguine Siren", hp: 70, speed: 2.7, damage: 12, killHeal: 10, goldReward: 5,
+    skin: "#9a7070", hair: "#2a0a0a", shirt: "#6a1a1a", pants: "#4a0a0a", contactRange: 74,
+    ai: 'archer', _specials: ['hamstring_bite'], specialCD: 480,
+    arrowRate: 90, arrowSpeed: 9, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
+    deathColors: ["#9a7070","#6a1a1a","#ba9090","#4a0a0a"],
+  },
+
+  // Vortalis Floor 2 — Boss: Bloodborne Marlon
+  bloodborne_marlon: {
+    name: "Bloodborne Marlon", hp: 1500, speed: 2.0, damage: 28, killHeal: 40, goldReward: 35,
+    skin: "#9a7070", hair: "#1a0a0a", shirt: "#5a0a0a", pants: "#3a0a0a", contactRange: 80,
+    ai: 'tank', _specials: ['chain_grapple', 'crimson_cleave', 'shard_of_betrayal', 'blood_siphon', 'bone_guard', 'demonic_shift'],
+    isBoss: true, bossScale: 1.5, specialCD: 480,
+    deathColors: ["#9a7070","#5a0a0a","#ba9090","#3a0a0a"],
+  },
+
+  // ===================== VORTALIS FLOOR 3: WEREWOLF / GHOST =====================
+  // Section A — Werewolf (waves 1-4)
+  feral_deckhand: {
+    name: "Feral Deckhand", hp: 90, speed: 4.2, damage: 16, killHeal: 5, goldReward: 4,
+    skin: "#6a5a4a", hair: "#3a2a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 74,
+    ai: 'runner', _specials: ['rabid_pounce'], specialCD: 360,
+    deathColors: ["#6a5a4a","#4a3a2a","#8a7a6a","#3a2a1a"],
+  },
+  howling_lookout: {
+    name: "Howling Lookout", hp: 75, speed: 2.7, damage: 10, killHeal: 10, goldReward: 5,
+    skin: "#6a5a4a", hair: "#2a1a0a", shirt: "#4a4a3a", pants: "#3a3a2a", contactRange: 74,
+    ai: 'archer', _specials: ['pack_howl'], specialCD: 600,
+    arrowRate: 100, arrowSpeed: 9, arrowRange: 380, arrowBounces: 0, arrowLife: 400,
+    deathColors: ["#6a5a4a","#4a4a3a","#8a7a6a","#3a3a2a"],
+  },
+  sea_dog_brute: {
+    name: "Sea Dog Brute", hp: 180, speed: 3.0, damage: 22, killHeal: 15, goldReward: 6,
+    skin: "#6a5a4a", hair: "#2a2a1a", shirt: "#3a3a2a", pants: "#2a2a1a", contactRange: 78,
+    ai: 'tank', _specials: ['reckless_charge'], specialCD: 540,
+    deathColors: ["#6a5a4a","#3a3a2a","#8a7a6a","#2a2a1a"],
+  },
+  rabid_wharf_hound: {
+    name: "Rabid Wharf Hound", hp: 100, speed: 3.6, damage: 18, killHeal: 8, goldReward: 4,
+    skin: "#6a5a4a", hair: "#3a3a2a", shirt: "#5a4a3a", pants: "#4a3a2a", contactRange: 76,
+    ai: 'grunt', _specials: ['hamstring_bite'], specialCD: 420,
+    deathColors: ["#6a5a4a","#5a4a3a","#8a7a6a","#4a3a2a"],
+  },
+
+  // Vortalis Floor 3 — Boss: Wolfbeard
+  wolfbeard: {
+    name: "Wolfbeard", hp: 1600, speed: 2.8, damage: 28, killHeal: 40, goldReward: 35,
+    skin: "#6a5a4a", hair: "#2a1a0a", shirt: "#3a2a1a", pants: "#2a1a0a", contactRange: 80,
+    ai: 'tank', _specials: ['quick_draw', 'feral_slash', 'predator_dash', 'hunters_mark', 'howl_of_terror', 'pack_instinct', 'silver_fang_strike', 'alpha_rampage'],
+    isBoss: true, bossScale: 1.5, specialCD: 420,
+    deathColors: ["#6a5a4a","#3a2a1a","#8a7a6a","#2a1a0a"],
+  },
+
+  // Section B — Ghost (waves 6-9)
+  phantom_swashbuckler: {
+    name: "Phantom Swashbuckler", hp: 80, speed: 4.0, damage: 18, killHeal: 5, goldReward: 4,
+    skin: "#8a8a9a", hair: "#5a5a6a", shirt: "#6a6a7a", pants: "#5a5a6a", contactRange: 74,
+    ai: 'runner', _specials: ['phase_lunge'], specialCD: 480,
+    deathColors: ["#8a8a9a","#6a6a7a","#aaaaba","#5a5a6a"],
+  },
+  poltergeist_gunner: {
+    name: "Poltergeist Gunner", hp: 70, speed: 2.6, damage: 12, killHeal: 10, goldReward: 5,
+    skin: "#8a8a9a", hair: "#4a4a5a", shirt: "#5a5a7a", pants: "#4a4a6a", contactRange: 74,
+    ai: 'archer', _specials: ['soul_bullet'], specialCD: 420,
+    arrowRate: 80, arrowSpeed: 9, arrowRange: 450, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'ghost_bolt',
+    deathColors: ["#8a8a9a","#5a5a7a","#aaaaba","#4a4a6a"],
+  },
+  drowned_banshee: {
+    name: "Drowned Banshee", hp: 75, speed: 2.4, damage: 10, killHeal: 12, goldReward: 5,
+    skin: "#8a8a9a", hair: "#5a5a7a", shirt: "#6a6a8a", pants: "#5a5a7a", contactRange: 76,
+    ai: 'witch', _specials: ['wail_of_depths'], specialCD: 600,
+    kiteRange: 300,
+    deathColors: ["#8a8a9a","#6a6a8a","#aaaaba","#5a5a7a"],
+  },
+  cursed_shackler: {
+    name: "Cursed Shackler", hp: 120, speed: 3.0, damage: 16, killHeal: 8, goldReward: 5,
+    skin: "#8a8a9a", hair: "#4a4a5a", shirt: "#5a5a6a", pants: "#4a4a5a", contactRange: 76,
+    ai: 'grunt', _specials: ['spectral_tether'], specialCD: 720,
+    deathColors: ["#8a8a9a","#5a5a6a","#aaaaba","#4a4a5a"],
+  },
+
+  // Vortalis Floor 3 — Boss: Ghostbeard
+  ghostbeard: {
+    name: "Ghostbeard", hp: 1800, speed: 2.4, damage: 26, killHeal: 40, goldReward: 35,
+    skin: "#8a8a9a", hair: "#5a5a6a", shirt: "#4a4a6a", pants: "#3a3a5a", contactRange: 80,
+    ai: 'witch', _specials: ['phantom_slash', 'ghost_dash', 'haunted_cutlass', 'spirit_shield', 'cursed_mark', 'spectral_crew', 'soul_drain', 'ghost_ship'],
+    isBoss: true, bossScale: 1.5, specialCD: 420,
+    kiteRange: 260,
+    deathColors: ["#8a8a9a","#4a4a6a","#aaaaba","#3a3a5a"],
+  },
+
+  // ===================== VORTALIS FLOOR 4: SEA CREATURES / DEEP-SEA =====================
+  // Section A — Sea (waves 1-4)
+  ink_spitter: {
+    name: "Ink Spitter", hp: 80, speed: 3.8, damage: 12, killHeal: 5, goldReward: 4,
+    skin: "#4a8a7a", hair: "#2a6a5a", shirt: "#3a7a6a", pants: "#2a6a5a", contactRange: 74,
+    ai: 'runner', _specials: ['blinding_ink'], specialCD: 480,
+    deathColors: ["#4a8a7a","#3a7a6a","#6aaa9a","#2a6a5a"],
+  },
+  coral_crusher: {
+    name: "Coral Crusher", hp: 200, speed: 2.4, damage: 22, killHeal: 15, goldReward: 6,
+    skin: "#4a8a7a", hair: "#2a5a4a", shirt: "#3a6a5a", pants: "#2a5a4a", contactRange: 78,
+    ai: 'tank', _specials: ['coral_barricade'], specialCD: 660,
+    _frontalShield: true,
+    deathColors: ["#4a8a7a","#3a6a5a","#6aaa9a","#2a5a4a"],
+  },
+  trench_tentacle: {
+    name: "Trench Tentacle", hp: 160, speed: 0, damage: 14, killHeal: 10, goldReward: 5,
+    skin: "#4a8a7a", hair: "#1a5a4a", shirt: "#2a6a5a", pants: "#1a5a4a", contactRange: 76,
+    ai: 'stationary', _specials: ['tentacle_bind'], specialCD: 360,
+    deathColors: ["#4a8a7a","#2a6a5a","#6aaa9a","#1a5a4a"],
+  },
+  barnacle_bomber: {
+    name: "Barnacle Bomber", hp: 90, speed: 3.3, damage: 16, killHeal: 8, goldReward: 4,
+    skin: "#4a8a7a", hair: "#2a6a5a", shirt: "#4a7a6a", pants: "#3a6a5a", contactRange: 76,
+    ai: 'grunt', _specials: ['sticky_trap'], specialCD: 540,
+    deathColors: ["#4a8a7a","#4a7a6a","#6aaa9a","#3a6a5a"],
+  },
+
+  // Vortalis Floor 4 — Boss: Kraken Jim
+  kraken_jim: {
+    name: "Kraken Jim", hp: 2200, speed: 1.6, damage: 28, killHeal: 50, goldReward: 40,
+    skin: "#4a8a7a", hair: "#1a5a4a", shirt: "#2a5a4a", pants: "#1a4a3a", contactRange: 82,
+    ai: 'witch', _specials: ['tentacle_grab', 'coral_armor', 'ink_blast', 'tidal_slam', 'barnacle_trap_boss', 'ocean_regen', 'deep_sea_strike', 'kraken_call'],
+    isBoss: true, bossScale: 1.5, specialCD: 420,
+    kiteRange: 240,
+    deathColors: ["#4a8a7a","#2a5a4a","#6aaa9a","#1a4a3a"],
+  },
+
+  // Section B — Deep-Sea (waves 6-9)
+  gilded_triton: {
+    name: "Gilded Triton", hp: 100, speed: 3.9, damage: 20, killHeal: 5, goldReward: 5,
+    skin: "#3a5a7a", hair: "#1a3a5a", shirt: "#4a5a3a", pants: "#3a4a2a", contactRange: 74,
+    ai: 'runner', _specials: ['tidal_lunge'], specialCD: 420,
+    deathColors: ["#3a5a7a","#4a5a3a","#5a7a9a","#3a4a2a"],
+  },
+  coin_spitter_jelly: {
+    name: "Coin Spitter Jelly", hp: 75, speed: 2.6, damage: 12, killHeal: 10, goldReward: 5,
+    skin: "#3a5a7a", hair: "#1a3a5a", shirt: "#5a6a4a", pants: "#4a5a3a", contactRange: 74,
+    ai: 'archer', _specials: ['wealth_volley'], specialCD: 480,
+    arrowRate: 80, arrowSpeed: 9, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
+    projectileStyle: 'gold_bolt',
+    deathColors: ["#3a5a7a","#5a6a4a","#5a7a9a","#4a5a3a"],
+  },
+  deep_sea_dredger: {
+    name: "Deep-Sea Dredger", hp: 210, speed: 2.2, damage: 24, killHeal: 15, goldReward: 7,
+    skin: "#3a5a7a", hair: "#1a2a4a", shirt: "#2a3a5a", pants: "#1a2a4a", contactRange: 78,
+    ai: 'tank', _specials: ['abyssal_slam'], specialCD: 600,
+    deathColors: ["#3a5a7a","#2a3a5a","#5a7a9a","#1a2a4a"],
+  },
+  royal_cephalopod: {
+    name: "Royal Cephalopod", hp: 85, speed: 2.4, damage: 12, killHeal: 12, goldReward: 5,
+    skin: "#3a5a7a", hair: "#1a3a5a", shirt: "#3a4a6a", pants: "#2a3a5a", contactRange: 76,
+    ai: 'witch', _specials: ['pressure_zone'], specialCD: 540,
+    kiteRange: 280,
+    deathColors: ["#3a5a7a","#3a4a6a","#5a7a9a","#2a3a5a"],
+  },
+
+  // Vortalis Floor 4 — Boss: King Requill
+  king_requill: {
+    name: "King Requill", hp: 2800, speed: 1.8, damage: 30, killHeal: 50, goldReward: 45,
+    skin: "#3a5a7a", hair: "#1a2a4a", shirt: "#2a3a5a", pants: "#1a2a3a", contactRange: 82,
+    ai: 'witch', _specials: ['deepsea_decapitation', 'coiling_constriction', 'gilded_maelstrom', 'pressure_zone_boss', 'silt_cloud', 'abyssal_roar', 'golden_retribution', 'reign_of_deep'],
+    isBoss: true, bossScale: 1.5, specialCD: 360,
+    kiteRange: 260,
+    bulletColor: { main: '#ffd700', core: '#fff8dc', glow: 'rgba(255,215,0,0.3)' },
+    deathColors: ["#3a5a7a","#2a3a5a","#5a7a9a","#1a2a3a"],
+  },
+
+  // ===================== VORTALIS FLOOR 5: MERFOLK / OCEAN DEITY =====================
+  // Section A — Merfolk (waves 1-4)
+  alabaster_sentinel: {
+    name: "Alabaster Sentinel", hp: 180, speed: 3.0, damage: 22, killHeal: 15, goldReward: 6,
+    skin: "#7a9aaa", hair: "#4a6a7a", shirt: "#8a9a7a", pants: "#6a7a5a", contactRange: 78,
+    ai: 'tank', _specials: ['royal_thrust'], specialCD: 540,
+    deathColors: ["#7a9aaa","#8a9a7a","#9abaca","#6a7a5a"],
+  },
+  reef_weaver: {
+    name: "Reef Weaver", hp: 80, speed: 2.4, damage: 12, killHeal: 12, goldReward: 5,
+    skin: "#7a9aaa", hair: "#4a6a8a", shirt: "#5a7a8a", pants: "#4a6a7a", contactRange: 76,
+    ai: 'witch', _specials: ['crashing_surf'], specialCD: 480,
+    kiteRange: 300,
+    deathColors: ["#7a9aaa","#5a7a8a","#9abaca","#4a6a7a"],
+  },
+  gilded_manta: {
+    name: "Gilded Manta", hp: 100, speed: 4.2, damage: 18, killHeal: 5, goldReward: 5,
+    skin: "#7a9aaa", hair: "#5a7a8a", shirt: "#6a8a9a", pants: "#5a7a8a", contactRange: 74,
+    ai: 'runner', _specials: ['shard_glide'], specialCD: 360,
+    deathColors: ["#7a9aaa","#6a8a9a","#9abaca","#5a7a8a"],
+  },
+  royal_shell_knight: {
+    name: "Royal Shell Knight", hp: 220, speed: 2.4, damage: 24, killHeal: 15, goldReward: 7,
+    skin: "#7a9aaa", hair: "#4a6a7a", shirt: "#7a8a6a", pants: "#5a6a4a", contactRange: 78,
+    ai: 'tank', _specials: ['aegis_reflect'], specialCD: 600,
+    deathColors: ["#7a9aaa","#7a8a6a","#9abaca","#5a6a4a"],
+  },
+
+  // Vortalis Floor 5 — Boss: Queen Siralyth
+  queen_siralyth: {
+    name: "Queen Siralyth", hp: 3200, speed: 2.0, damage: 30, killHeal: 50, goldReward: 50,
+    skin: "#7a9aaa", hair: "#4a6a8a", shirt: "#6a8a7a", pants: "#4a6a5a", contactRange: 82,
+    ai: 'witch', _specials: ['golden_shard_volley', 'abyssal_maw', 'coral_aegis', 'royal_gilded_beam', 'tidal_surge', 'sovereigns_cage', 'blessing_of_deep', 'reign_gilded_reef'],
+    isBoss: true, bossScale: 1.5, specialCD: 360,
+    kiteRange: 280,
+    deathColors: ["#7a9aaa","#6a8a7a","#9abaca","#4a6a5a"],
+  },
+
+  // Section B — Ocean Deity (waves 6-9)
+  sea_serpent_spawn: {
+    name: "Sea Serpent Spawn", hp: 110, speed: 4.1, damage: 20, killHeal: 5, goldReward: 5,
+    skin: "#2a4a5a", hair: "#1a2a3a", shirt: "#2a3a4a", pants: "#1a2a3a", contactRange: 74,
+    ai: 'runner', _specials: ['leviathan_lunge'], specialCD: 360,
+    deathColors: ["#2a4a5a","#2a3a4a","#4a6a7a","#1a2a3a"],
+  },
+  living_whirlpool: {
+    name: "Living Whirlpool", hp: 90, speed: 2.2, damage: 14, killHeal: 12, goldReward: 5,
+    skin: "#2a4a5a", hair: "#1a3a4a", shirt: "#2a4a5a", pants: "#1a3a4a", contactRange: 76,
+    ai: 'witch', _specials: ['abyssal_undertow'], specialCD: 480,
+    kiteRange: 280,
+    deathColors: ["#2a4a5a","#2a4a5a","#4a6a7a","#1a3a4a"],
+  },
+  bone_tooth_zealot: {
+    name: "Bone Tooth Zealot", hp: 130, speed: 3.3, damage: 22, killHeal: 8, goldReward: 5,
+    skin: "#2a4a5a", hair: "#1a2a3a", shirt: "#3a4a4a", pants: "#2a3a3a", contactRange: 76,
+    ai: 'grunt', _specials: ['pincer_guillotine'], specialCD: 480,
+    deathColors: ["#2a4a5a","#3a4a4a","#4a6a7a","#2a3a3a"],
+  },
+  tidal_avatar: {
+    name: "Tidal Avatar", hp: 240, speed: 2.6, damage: 26, killHeal: 15, goldReward: 7,
+    skin: "#2a4a5a", hair: "#1a2a3a", shirt: "#1a3a4a", pants: "#0a2a3a", contactRange: 78,
+    ai: 'tank', _specials: ['crashing_surf'], specialCD: 540,
+    deathColors: ["#2a4a5a","#1a3a4a","#4a6a7a","#0a2a3a"],
+  },
+
+  // Vortalis Floor 5 — Boss: Mami Wata
+  mami_wata: {
+    name: "Mami Wata", hp: 4000, speed: 2.2, damage: 34, killHeal: 50, goldReward: 60,
+    skin: "#2a4a5a", hair: "#1a2a3a", shirt: "#1a2a4a", pants: "#0a1a3a", contactRange: 82,
+    ai: 'witch', _specials: ['leviathans_fang', 'serpents_strike', 'tidal_trample', 'abyssal_undertow_mw', 'divine_deluge', 'oceanic_domain', 'wrath_of_sea'],
+    isBoss: true, bossScale: 1.6, specialCD: 300,
+    kiteRange: 260,
+    deathColors: ["#2a4a5a","#1a2a4a","#4a6a7a","#0a1a3a"],
+  },
 };
 
 // Per-type caps per wave
@@ -395,13 +782,38 @@ const MOB_CAPS = {
   rabid_hyenaoid: 4, spore_stag: 3, wasteland_raptor: 4, plague_batwing: 3,
   gel_swordsman: 4, viscosity_mage: 3, core_guardian: 3, biolum_drone: 4,
   lehvius: 1, jackman: 1, malric: 1, vale: 1,
+  // Vortalis Floor 1
+  bilge_rat: 4, powder_keg: 4, deckhand_shooter: 3, anchor_hauler: 3,
+  ironclad_marine: 3, tidecaller_mystic: 3, galleon_sniper: 3, sunken_dreadnought: 3,
+  captain_husa: 1, admiral_von_kael: 1,
+  // Vortalis Floor 2
+  jungle_headhunter: 4, voodoo_creeper: 3, canopy_sniper: 3, temple_silverback: 3,
+  crimson_corsair: 4, crystal_cultist: 3, bone_clad_brute: 3, sanguine_siren: 3,
+  zongo: 1, bloodborne_marlon: 1,
+  // Vortalis Floor 3
+  feral_deckhand: 4, howling_lookout: 3, sea_dog_brute: 3, rabid_wharf_hound: 4,
+  phantom_swashbuckler: 4, poltergeist_gunner: 3, drowned_banshee: 3, cursed_shackler: 3,
+  wolfbeard: 1, ghostbeard: 1,
+  // Vortalis Floor 4
+  ink_spitter: 4, coral_crusher: 3, trench_tentacle: 3, barnacle_bomber: 4,
+  gilded_triton: 4, coin_spitter_jelly: 3, deep_sea_dredger: 3, royal_cephalopod: 3,
+  kraken_jim: 1, king_requill: 1,
+  // Vortalis Floor 5
+  alabaster_sentinel: 3, reef_weaver: 3, gilded_manta: 4, royal_shell_knight: 3,
+  sea_serpent_spawn: 4, living_whirlpool: 3, bone_tooth_zealot: 4, tidal_avatar: 3,
+  queen_siralyth: 1, mami_wata: 1,
 };
 
 const CROWD_EXEMPT_TYPES = new Set(["runner", "golem", "mini_golem", "archer", "healer", "drone_lookout", "renegade_sniper", "the_don",
   "executive_handler", "voltmaster", "e_mortis",
   "chem_frog", "mourn", "centipede",
   "holo_jester", "signal_jammer", "game_master", "junz",
-  "plague_batwing", "viscosity_mage", "lehvius", "jackman", "malric", "vale"]);
+  "plague_batwing", "viscosity_mage", "lehvius", "jackman", "malric", "vale",
+  "deckhand_shooter", "tidecaller_mystic", "galleon_sniper", "captain_husa", "admiral_von_kael",
+  "voodoo_creeper", "canopy_sniper", "crystal_cultist", "sanguine_siren", "zongo", "bloodborne_marlon",
+  "howling_lookout", "poltergeist_gunner", "drowned_banshee", "wolfbeard", "ghostbeard",
+  "trench_tentacle", "coin_spitter_jelly", "royal_cephalopod", "kraken_jim", "king_requill",
+  "reef_weaver", "living_whirlpool", "queen_siralyth", "mami_wata"]);
 
 // All entity sub-arrays a mob can carry. Used for cleanup on death + floor transitions.
 const MOB_ENTITY_ARRAYS = [
@@ -409,4 +821,5 @@ const MOB_ENTITY_ARRAYS = [
   '_meltTargets', '_summonedMinions', '_turrets', '_drones', '_pillars',
   '_eggs', '_lasers', '_baits', '_staticOrbs',
   '_holoClones', '_rocketDrones', '_junzBeam',
+  '_tetherLine', '_geyserZones', '_inkPuddles', '_coralWalls', '_tentacles', '_barnacleTraps', '_whirlpools',
 ];
