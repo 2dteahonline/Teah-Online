@@ -322,36 +322,36 @@ function draw() {
             cookingState.assembly && cookingState.assembly.length > 0) {
           const assembly = cookingState.assembly;
           // Hand-level position, offset by facing direction
-          let offX = 0, offY = -32;
+          let offX = 0, offY = -38;
           if (player.dir === 2) offX = -20;        // facing left → food on left hand
           else if (player.dir === 3) offX = 20;    // facing right → food on right hand
-          else if (player.dir === 0) offY = -28;   // facing down → food slightly lower
-          else if (player.dir === 1) offY = -38;   // facing up → food slightly higher
+          else if (player.dir === 0) offY = -34;   // facing down → food slightly lower
+          else if (player.dir === 1) offY = -44;   // facing up → food slightly higher
           // Walk bob
           const bob = player.moving ? Math.sin(player.frame * Math.PI / 2) * 2 : 0;
           const fx = player.x + offX;
           const fy = player.y + offY + bob;
           // Shadow under plate
           ctx.fillStyle = 'rgba(0,0,0,0.18)';
-          ctx.beginPath(); ctx.ellipse(fx, fy + 10, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
-          // Plate base (40px wide)
+          ctx.beginPath(); ctx.ellipse(fx, fy + 12, 30, 10, 0, 0, Math.PI * 2); ctx.fill();
+          // Plate base (56px wide)
           ctx.fillStyle = '#c8b898';
-          ctx.beginPath(); ctx.ellipse(fx, fy + 6, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(fx, fy + 7, 28, 11, 0, 0, Math.PI * 2); ctx.fill();
           ctx.strokeStyle = '#a09070'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.ellipse(fx, fy + 6, 20, 8, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(fx, fy + 7, 28, 11, 0, 0, Math.PI * 2); ctx.stroke();
           // Plate rim highlight
           ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.ellipse(fx, fy + 5, 18, 6, 0, 0, Math.PI); ctx.stroke();
-          // Stack ingredients as layers (36px wide, 5px tall each)
-          const layerH = 5;
-          const maxW = 36;
+          ctx.beginPath(); ctx.ellipse(fx, fy + 6, 25, 8, 0, 0, Math.PI); ctx.stroke();
+          // Stack ingredients as layers (50px wide, 7px tall each)
+          const layerH = 7;
+          const maxW = 50;
           for (let ai = 0; ai < assembly.length; ai++) {
             const ing = typeof DELI_INGREDIENTS !== 'undefined' ? DELI_INGREDIENTS[assembly[ai]] : null;
             if (!ing) continue;
             const ly = fy + 3 - ai * layerH;
             const isBread = assembly[ai] === 'bread' || assembly[ai] === 'bagel';
-            const lw = isBread ? maxW : maxW - 4;
-            const lh = isBread ? 6 : 5;
+            const lw = isBread ? maxW : maxW - 6;
+            const lh = isBread ? 8 : 7;
             // Bread top gets dome shape
             if (isBread && ai === assembly.length - 1 && ai > 0) {
               ctx.fillStyle = ing.color;
@@ -677,27 +677,27 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
-      // Food indicator — plate + sandwich held at hand level (40px wide)
+      // Food indicator — plate + sandwich held at hand level (52px wide)
       if (npc.hasFood) {
         // Position at hand/arm level, offset by facing direction
-        let fOffX = 0, fOffY = -30; // hand height (mid-torso)
+        let fOffX = 0, fOffY = -36; // hand height (mid-torso)
         if (npc.dir === 2) fOffX = -18;        // facing left → food on left
         else if (npc.dir === 3) fOffX = 18;    // facing right → food on right
-        else if (npc.dir === 0) fOffY = -26;   // facing down → food slightly lower/forward
-        else if (npc.dir === 1) fOffY = -36;   // facing up → food slightly higher
+        else if (npc.dir === 0) fOffY = -32;   // facing down → food slightly lower/forward
+        else if (npc.dir === 1) fOffY = -42;   // facing up → food slightly higher
         const bobF = npc.moving ? Math.sin(npc.frame * Math.PI / 2) * 1.5 : 0;
         const fx = npc.x + fOffX, fy = npc.y + fOffY + bobF;
         // Shadow under plate
         ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.beginPath(); ctx.ellipse(fx, fy + 10, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
-        // Plate (40px wide)
+        ctx.beginPath(); ctx.ellipse(fx, fy + 12, 28, 9, 0, 0, Math.PI * 2); ctx.fill();
+        // Plate (52px wide)
         ctx.fillStyle = '#d4c8a8';
-        ctx.beginPath(); ctx.ellipse(fx, fy + 5, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(fx, fy + 6, 26, 10, 0, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#a09070'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.ellipse(fx, fy + 5, 20, 8, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(fx, fy + 6, 26, 10, 0, 0, Math.PI * 2); ctx.stroke();
         // Plate rim highlight
         ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.ellipse(fx, fy + 4, 18, 6, 0, 0, Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(fx, fy + 5, 23, 7, 0, 0, Math.PI); ctx.stroke();
         // Build sandwich layers from NPC's recipe if available
         let layers = [];
         if (npc._recipeIngredients && typeof DELI_INGREDIENTS !== 'undefined') {
@@ -713,11 +713,11 @@ function draw() {
             { color: '#d4a840', isBread: true },
           ];
         }
-        const npcMaxW = 34, npcLayerH = 5;
+        const npcMaxW = 46, npcLayerH = 7;
         for (let li = 0; li < layers.length; li++) {
-          const ly = fy + 2 - li * npcLayerH;
-          const lw = layers[li].isBread ? npcMaxW : npcMaxW - 4;
-          const lh = layers[li].isBread ? 6 : 5;
+          const ly = fy + 3 - li * npcLayerH;
+          const lw = layers[li].isBread ? npcMaxW : npcMaxW - 6;
+          const lh = layers[li].isBread ? 8 : 7;
           if (layers[li].isBread && li === layers.length - 1 && li > 0) {
             ctx.fillStyle = layers[li].color;
             ctx.beginPath();

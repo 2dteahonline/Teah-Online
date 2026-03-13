@@ -198,10 +198,11 @@ function updateCooking() {
     startCookingShift();
   }
 
-  // Shift-end overlay: press E to dismiss
+  // Shift-end overlay: press E to dismiss and allow new shift
   if (cookingState.shiftEnded) {
     if (InputIntent.interactPressed) {
       cookingState.shiftEnded = false;
+      cookingState.shiftComplete = false; // allow auto-start of next shift
       InputIntent.interactPressed = false; // consume so inventory doesn't open
     }
     return;
@@ -403,15 +404,21 @@ function gradeOrder() {
   const order = cookingState.currentOrder;
   const recipe = order.recipe;
 
-  // Quality: how many correct ingredients in correct order
+  // Quality: set-based matching — count how many of each ingredient match (order doesn't matter)
+  const neededCounts = {};
+  for (const id of recipe.ingredients) neededCounts[id] = (neededCounts[id] || 0) + 1;
+  const assemblyCounts = {};
+  for (const id of cookingState.assembly) assemblyCounts[id] = (assemblyCounts[id] || 0) + 1;
   let correctCount = 0;
-  for (let i = 0; i < recipe.ingredients.length; i++) {
-    if (i < cookingState.assembly.length && cookingState.assembly[i] === recipe.ingredients[i]) {
-      correctCount++;
-    }
+  for (const id in neededCounts) {
+    correctCount += Math.min(neededCounts[id], assemblyCounts[id] || 0);
   }
-  // Also penalize extra wrong ingredients
-  const extraWrong = Math.max(0, cookingState.assembly.length - recipe.ingredients.length);
+  // Penalize extra wrong ingredients (items not in recipe, or excess of a needed item)
+  let extraWrong = 0;
+  for (const id in assemblyCounts) {
+    const excess = assemblyCounts[id] - (neededCounts[id] || 0);
+    if (excess > 0) extraWrong += excess;
+  }
   const qualityScore = Math.max(0, (correctCount / recipe.ingredients.length) - extraWrong * 0.1);
 
   // Time score: how fast relative to total mood time
@@ -430,9 +437,10 @@ function gradeOrder() {
   const basePay = recipe.basePay;
   const pay = Math.round(basePay * grade.payMult);
 
-  // Calculate tip — capped at 20% of pay
-  const rawTip = pay * 0.2 * order.customer.tipMultiplier * (grade.tipMult > 0 ? 1 : 0);
-  const tip = Math.round(Math.min(rawTip, pay * 0.2));
+  // Calculate tip — grade multiplier × customer generosity × combo streak
+  const comboMult = cookingState.comboMultiplier || 1.0;
+  const rawTip = pay * 0.2 * grade.tipMult * order.customer.tipMultiplier * comboMult;
+  const tip = Math.round(rawTip);
 
   // Calculate XP
   const xp = Math.round(recipe.baseXP * grade.xpMult);

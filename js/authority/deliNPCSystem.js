@@ -357,7 +357,7 @@ function moveDeliNPC(npc) {
 
   // NPC-NPC separation — prevent phasing through each other
   const inQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
-  const sepDist = 24; // minimum separation in pixels (half a tile)
+  const sepDist = 40; // minimum separation in pixels (nearly full tile)
   for (const other of deliNPCs) {
     if (other === npc) continue;
     // Only separate from moving/queued NPCs (don't push seated NPCs)
@@ -372,27 +372,18 @@ function moveDeliNPC(npc) {
       if (inQueue) {
         // Queue NPCs only push vertically — never sideways off the line
         npc.y += ny * push;
+        other.y -= ny * push;
       } else {
         npc.x += nx * push;
         npc.y += ny * push;
+        other.x -= nx * push;
+        other.y -= ny * push;
       }
     }
   }
 }
 
 // ===================== QUEUE MANAGEMENT =====================
-
-function _getQueueIndex(npc) {
-  // Find what queue position this NPC is in
-  let idx = 0;
-  for (const other of deliNPCs) {
-    if (other === npc) continue;
-    if ((other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food') && other._queueIdx < npc._queueIdx) {
-      idx++;
-    }
-  }
-  return npc._queueIdx;
-}
 
 function _nextQueueSpot() {
   // Find the next available queue index
@@ -835,18 +826,6 @@ const DELI_NPC_AI = {
 
     // After tipping, leave
     _npcStartRoute(npc, _routeToExit(15, 22), '_despawn', 0);
-  },
-
-  // ─── LEAVING (legacy compat for cookingSystem) ─────────
-  leaving: (npc) => {
-    // cookingSystem may set this state — route to exit
-    if (!npc.route || npc.route.length === 0) {
-      npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
-    }
-    moveDeliNPC(npc);
-    if (!npc.route || npc.route.length === 0) {
-      npc.state = '_despawn';
-    }
   },
 
   // ─── DESPAWN WALK: Walking to exit then despawn ────────
