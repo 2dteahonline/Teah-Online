@@ -127,8 +127,8 @@ const _FOV_LERP_SPEED = 0.35; // blend factor per frame (0=frozen, 1=instant)
 // doorways don't create thin geometric wedges. Walls still block via DDA.
 const _FOV_RAY_COUNT = 120; // every 3 degrees — enough for soft shapes
 const _FOV_BLUR = 36;       // px — heavy blur eliminates sharp edges
-const _FOV_DARKNESS = 0.72;  // darkness opacity — environment stays readable
-const _FOV_AMBIENT = 0.15;   // ambient light in darkness (0 = pure black)
+const _FOV_DARKNESS = 0.92;  // darkness opacity — high contrast like Among Us
+const _FOV_AMBIENT = 0.04;   // minimal ambient light in darkness
 
 // ---- Per-frame FOV visibility cache (for object-level gating) ----
 // Stores ray hit distances so isMafiaWorldPointVisible() is O(1) per query.
@@ -292,23 +292,6 @@ function drawMafiaFOV() {
       }
       bctx.closePath();
       bctx.fill();
-      bctx.restore();
-    }
-
-    // ---- Purple glow ring at FOV boundary (Among Us style) ----
-    if (polyPoints && polyPoints.length > 2) {
-      bctx.globalCompositeOperation = 'source-over';
-      bctx.save();
-      bctx.filter = `blur(${28}px)`;
-      bctx.strokeStyle = 'rgba(140,60,180,0.45)';
-      bctx.lineWidth = 18;
-      bctx.beginPath();
-      bctx.moveTo(polyPoints[0].x, polyPoints[0].y);
-      for (let i = 1; i < polyPoints.length; i++) {
-        bctx.lineTo(polyPoints[i].x, polyPoints[i].y);
-      }
-      bctx.closePath();
-      bctx.stroke();
       bctx.restore();
     }
 
