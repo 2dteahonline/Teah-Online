@@ -241,22 +241,27 @@ function updateMobs() {
       }
 
       // Apply movement with AABB tile collision + sliding
+      // Hover AI mobs ignore wall collision entirely (flying mobs)
       const mhw = m.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
       const nx = m.x + moveX;
       const ny = m.y + moveY;
-      let movedX = false, movedY = false;
+      const isHoverMob = (m.ai === 'hover' || m.type === 'hover');
+      if (isHoverMob) { m.x = nx; m.y = ny; }
+      let movedX = isHoverMob, movedY = isHoverMob;
 
-      // Try X
-      let cL = Math.floor((nx - mhw) / TILE), cR = Math.floor((nx + mhw) / TILE);
-      let rT = Math.floor((m.y - mhw) / TILE), rB = Math.floor((m.y + mhw) / TILE);
-      if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
-        m.x = nx; movedX = true;
-      }
-      // Try Y
-      cL = Math.floor((m.x - mhw) / TILE); cR = Math.floor((m.x + mhw) / TILE);
-      rT = Math.floor((ny - mhw) / TILE); rB = Math.floor((ny + mhw) / TILE);
-      if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
-        m.y = ny; movedY = true;
+      // Try X (skip for hover mobs — they ignore walls)
+      if (!isHoverMob) {
+        let cL = Math.floor((nx - mhw) / TILE), cR = Math.floor((nx + mhw) / TILE);
+        let rT = Math.floor((m.y - mhw) / TILE), rB = Math.floor((m.y + mhw) / TILE);
+        if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
+          m.x = nx; movedX = true;
+        }
+        // Try Y
+        let cL2 = Math.floor((m.x - mhw) / TILE), cR2 = Math.floor((m.x + mhw) / TILE);
+        let rT2 = Math.floor((ny - mhw) / TILE), rB2 = Math.floor((ny + mhw) / TILE);
+        if (!isSolid(cL2, rT2) && !isSolid(cR2, rT2) && !isSolid(cL2, rB2) && !isSolid(cR2, rB2)) {
+          m.y = ny; movedY = true;
+        }
       }
 
       // If blocked on one axis, try to slide along the other with reduced speed
@@ -375,6 +380,22 @@ function updateMobs() {
           m.dir = dx > 0 ? 3 : 2;
         } else {
           m.dir = dy > 0 ? 0 : 1;
+        }
+      }
+    }
+
+    // Contact damage aura — DoT to player if within range (ticks every 30 frames)
+    if (m._contactDamageAura && !playerDead) {
+      if (!m._auraTick) m._auraTick = 0;
+      m._auraTick++;
+      if (m._auraTick >= 30) {
+        m._auraTick = 0;
+        const auraDist = Math.sqrt(dx * dx + dy * dy);
+        const auraRange = m._contactDamageAura.range || 60;
+        if (auraDist <= auraRange && typeof dealDamageToPlayer === 'function') {
+          const auraDmg = m._contactDamageAura.damage || Math.round(m.damage * 0.3);
+          dealDamageToPlayer(auraDmg, 'dot', m);
+          hitEffects.push({ x: player.x, y: player.y - 20, life: 15, type: "burn_hit" });
         }
       }
     }

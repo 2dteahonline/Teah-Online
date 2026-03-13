@@ -119,6 +119,9 @@ const StatusFX = {
     _fearDirY: 0,
     _blind: false,       // black vignette overlay (Vortalis)
     _blindTimer: 0,
+    _blindMode: null,    // 'flash' = white overlay, 'darken' = black (default)
+    _mobilityLocked: false, // disables dash/sprint but not attacks
+    _mobilityLockTimer: 0,
     _armorBreak: false,  // incoming damage multiplier (Vortalis)
     _armorBreakTimer: 0,
     _armorBreakMult: 1.0,
@@ -174,6 +177,11 @@ const StatusFX = {
       case 'blind':
         pe._blind = true;
         pe._blindTimer = params.duration || 120; // 2s default
+        pe._blindMode = params.mode || 'darken';
+        break;
+      case 'mobility_lock':
+        pe._mobilityLocked = true;
+        pe._mobilityLockTimer = params.duration || 120;
         break;
       case 'armor_break':
         pe._armorBreak = true;
@@ -245,7 +253,11 @@ const StatusFX = {
     }
     if (pe._blindTimer > 0) {
       pe._blindTimer--;
-      if (pe._blindTimer <= 0) pe._blind = false;
+      if (pe._blindTimer <= 0) { pe._blind = false; pe._blindMode = null; }
+    }
+    if (pe._mobilityLockTimer > 0) {
+      pe._mobilityLockTimer--;
+      if (pe._mobilityLockTimer <= 0) pe._mobilityLocked = false;
     }
     if (pe._armorBreakTimer > 0) {
       pe._armorBreakTimer--;
@@ -287,7 +299,8 @@ const StatusFX = {
     pe._confuse = false; pe._confuseTimer = 0;
     pe._disorient = false; pe._disorientTimer = 0;
     pe._fear = false; pe._fearTimer = 0; pe._fearDirTimer = 0; pe._fearDirX = 0; pe._fearDirY = 0;
-    pe._blind = false; pe._blindTimer = 0;
+    pe._blind = false; pe._blindTimer = 0; pe._blindMode = null;
+    pe._mobilityLocked = false; pe._mobilityLockTimer = 0;
     pe._armorBreak = false; pe._armorBreakTimer = 0; pe._armorBreakMult = 1.0;
     pe._tether = false; pe._tetherTimer = 0; pe._tetherMobId = null; pe._tetherSlow = 0.6;
   },
@@ -570,6 +583,11 @@ const MOB_AI = {
     return { targetX, targetY };
   },
   stationary: (m, ctx) => ({ targetX: m.x, targetY: m.y }),
+  hover: (m, ctx) => {
+    // Fly directly toward player, ignoring walls (for flying mobs)
+    const { player } = ctx;
+    return { targetX: player.x, targetY: player.y };
+  },
 };
 
 // ===================== MOVEMENT VALIDATION HELPERS =====================

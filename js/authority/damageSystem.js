@@ -57,6 +57,23 @@ function dealDamageToMob(mob, amount, source) {
     }
   }
 
+  // Counter stance — melee attacks are reflected back at player
+  if (mob._counterStance && source === 'melee') {
+    if (typeof dealDamageToPlayer === 'function') {
+      dealDamageToPlayer(mob.damage, 'contact', mob);
+      if (typeof hitEffects !== 'undefined') {
+        hitEffects.push({ x: player.x, y: player.y - 20, life: 15, type: "hit", dmg: mob.damage });
+      }
+    }
+    return false;
+  }
+
+  // Passive damage reduction — percentage-based
+  if (mob._damageReduction) {
+    amount = Math.round(amount * (1 - mob._damageReduction));
+    if (amount < 1) amount = 1;
+  }
+
   // Shield absorb — damage hits shield first, remainder goes to HP
   if (mob._shieldHp > 0) {
     if (amount <= mob._shieldHp) {
@@ -340,6 +357,17 @@ function processKill(mob, source) {
         processKill(s, "witch_skeleton"); // reuse same low-reward source
       }
     }
+  }
+
+  // 6b. Death explosion — AoE damage around dead mob
+  if (mob._deathExplosion) {
+    const expR = mob._deathExplosion.radius || 80;
+    const expDmg = mob._deathExplosion.damage || mob.damage;
+    const ddx = player.x - mob.x, ddy = player.y - mob.y;
+    if (Math.sqrt(ddx * ddx + ddy * ddy) <= expR) {
+      dealDamageToPlayer(expDmg, 'explosion', mob);
+    }
+    hitEffects.push({ x: mob.x, y: mob.y, life: 20, type: "explosion" });
   }
 
   // 7. Emit event — all other kill reactions are subscribers

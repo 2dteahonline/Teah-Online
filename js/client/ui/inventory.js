@@ -2440,9 +2440,10 @@ function update() {
     if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && InputIntent.meleePressed) {
       meleeSwing();
     }
-    // Ninja dash activation
+    // Ninja dash activation (blocked by mobility_lock)
     if (InputIntent.dashPressed && melee.special === 'ninja' && Scene.inDungeon) {
-      if (!melee.dashActive && !melee.dashing && melee.dashCooldown <= 0) {
+      if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._mobilityLocked) { /* blocked */ }
+      else if (!melee.dashActive && !melee.dashing && melee.dashCooldown <= 0) {
         melee.dashActive = true;
         melee.dashesLeft = 3;
         melee.dashChainWindow = 180;

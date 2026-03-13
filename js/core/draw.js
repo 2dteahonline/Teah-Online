@@ -1645,11 +1645,13 @@ function draw() {
   // Blind vignette overlay — black edges, clear center
   if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._blind && !playerDead) {
     ctx.save();
+    const isFlash = StatusFX.playerEffects._blindMode === 'flash';
+    const r = isFlash ? 255 : 0, g = isFlash ? 255 : 0, b = isFlash ? 255 : 0;
     const grad = ctx.createRadialGradient(BASE_W / 2, BASE_H / 2, 80, BASE_W / 2, BASE_H / 2, BASE_W * 0.45);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(0.4, 'rgba(0,0,0,0.3)');
-    grad.addColorStop(0.7, 'rgba(0,0,0,0.75)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.95)');
+    grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+    grad.addColorStop(0.4, `rgba(${r},${g},${b},0.3)`);
+    grad.addColorStop(0.7, `rgba(${r},${g},${b},0.75)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0.95)`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, BASE_W, BASE_H);
     ctx.restore();

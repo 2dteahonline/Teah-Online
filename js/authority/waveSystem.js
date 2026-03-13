@@ -410,6 +410,10 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     _canSplit: mt._canSplit || false,  // for core_guardian split
     _splitDone: false,                // tracks if split already happened
     _frontalShield: mt._frontalShield || false, // permanent frontal damage block
+    _damageReduction: mt._damageReduction || 0,       // passive % damage reduction
+    _contactDamageAura: mt._contactDamageAura || null, // { range, damage } DoT aura
+    _deathExplosion: mt._deathExplosion || null,       // { radius, damage } AoE on death
+    _counterStance: mt._counterStance || false,        // reflects melee damage
     isBoss: mt.isBoss || false,
   };
 
