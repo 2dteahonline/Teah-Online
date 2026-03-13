@@ -2541,22 +2541,34 @@ const MOB_SPECIALS = {
 
     if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 540;
 
-    // --- Pull phase: drag player toward boss over 30 frames ---
+    // --- Pull phase: drag player toward boss over 60 frames (1s) ---
     if (m._takeoverPulling) {
       m._takeoverPullTimer = (m._takeoverPullTimer || 0) - 1;
       if (m._takeoverPullTimer <= 0) {
         // Done pulling — root for 3s
         StatusFX.applyToPlayer('root', { duration: 180 });
-        hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "stun_hit" });
+        hitEffects.push({ x: player.x, y: player.y - 10, life: 25, type: "stun_hit" });
         m._takeoverPulling = false;
         m._specialTimer = m._specialCD || 540;
       } else {
-        // Pull player toward boss each frame
+        // Pull player toward boss each frame — forceful direct position move
         const dx = m.x - player.x, dy = m.y - player.y;
         const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const pullSpeed = 8;
-        player.knockVx = (dx / d) * pullSpeed;
-        player.knockVy = (dy / d) * pullSpeed;
+        if (d > 40) { // stop pulling when very close
+          const pullSpeed = 12;
+          const nx = player.x + (dx / d) * pullSpeed;
+          const ny = player.y + (dy / d) * pullSpeed;
+          // Wall check before moving
+          const hw = GAME_CONFIG.PLAYER_WALL_HW;
+          const cL = Math.floor((nx - hw) / TILE), cR = Math.floor((nx + hw) / TILE);
+          const rT = Math.floor((ny - hw) / TILE), rB = Math.floor((ny + hw) / TILE);
+          if (!isSolid(cL, rT) && !isSolid(cR, rT) && !isSolid(cL, rB) && !isSolid(cR, rB)) {
+            player.x = nx;
+            player.y = ny;
+          }
+        }
+        // Also root during pull so player can't fight it
+        StatusFX.applyToPlayer('root', { duration: 6 });
       }
       return { skip: true };
     }
@@ -2565,18 +2577,18 @@ const MOB_SPECIALS = {
     if (m._takeoverTelegraph) {
       m._takeoverTelegraph--;
       if (m._takeoverTelegraph <= 0) {
-        // Resolve: check if player in range, start pull
-        const radius = 280;
+        // Resolve: always pull if player in range (large radius)
+        const radius = 400;
         if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, radius)) {
           const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
           const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
           m._takeoverPulling = true;
-          m._takeoverPullTimer = 30; // 0.5s pull duration
+          m._takeoverPullTimer = 60; // 1s pull
         } else {
-          m._specialTimer = m._specialCD || 540;
+          m._specialTimer = 120; // short retry
         }
-        hitEffects.push({ x: m.x, y: m.y, life: 20, type: "cast" });
+        hitEffects.push({ x: m.x, y: m.y, life: 25, type: "cast" });
       }
       return { skip: true };
     }
@@ -2586,24 +2598,24 @@ const MOB_SPECIALS = {
       return {};
     }
 
-    // Activate: must be within 400px
-    if (dist >= 400) {
+    // Activate: must be within 500px
+    if (dist >= 500) {
       m._specialTimer = 30;
       return {};
     }
 
-    // Start telegraph (48 frames = 0.8s warning)
-    m._takeoverTelegraph = 48;
+    // Start telegraph (60 frames = 1s warning)
+    m._takeoverTelegraph = 60;
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
         shape: 'circle',
-        params: { cx: m.x, cy: m.y, radius: 280 },
-        delayFrames: 48,
+        params: { cx: m.x, cy: m.y, radius: 400 },
+        delayFrames: 60,
         color: [192, 160, 64],
         owner: m.id,
       });
     }
-    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 20, type: "cast" });
     return { skip: true };
   },
 

@@ -774,6 +774,7 @@ function updateMobs() {
               m._chainTelegraph > 0 || m._empTelegraph > 0 || m._magnetTelegraph > 0 ||
               m._tapeTelegraph > 0 || m._penaltyTelegraph > 0 ||
               m._dividendFiring || m._parachuteDashing ||
+              m._takeoverTelegraph > 0 || m._takeoverPulling ||
               // Floor 3
               m._magTelegraph > 0 || m._magPulling || m._sawTelegraph > 0 ||
               m._pileDriverTelegraph > 0 || m._grabTelegraph > 0 || m._grabHolding > 0 || m._grabPulling || m._grabTossing ||
@@ -832,6 +833,7 @@ function updateMobs() {
               m._chainTelegraph > 0 || m._empTelegraph > 0 || m._magnetTelegraph > 0 ||
               m._tapeTelegraph > 0 || m._penaltyTelegraph > 0 ||
               m._dividendFiring || m._parachuteDashing ||
+              m._takeoverTelegraph > 0 || m._takeoverPulling ||
               // Floor 3
               m._magTelegraph > 0 || m._magPulling || m._sawTelegraph > 0 ||
               m._pileDriverTelegraph > 0 || m._grabTelegraph > 0 || m._grabHolding > 0 || m._grabPulling || m._grabTossing ||
