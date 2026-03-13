@@ -2378,6 +2378,18 @@ function update() {
     }
   }
 
+  // Apply hazard zone slow to player movement
+  if (typeof HazardSystem !== 'undefined' && HazardSystem.zones) {
+    for (const z of HazardSystem.zones) {
+      if (z.slow > 0) {
+        const zdx = player.x - z.cx, zdy = player.y - z.cy;
+        if (zdx * zdx + zdy * zdy <= z.radius * z.radius) {
+          speedMult *= (1 - z.slow);
+        }
+      }
+    }
+  }
+
   // Hide & Seek speed backup freeze (belt-and-suspenders with authorityTick gate)
   if (typeof HideSeekSystem !== 'undefined' && HideSeekSystem.isPlayerFrozen()) {
     speedMult = 0;

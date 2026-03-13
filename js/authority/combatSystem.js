@@ -4676,12 +4676,12 @@ const MOB_SPECIALS = {
             HazardSystem.createZone({
               cx: m._goreTargetX + Math.cos(angle) * offsetDist,
               cy: m._goreTargetY + Math.sin(angle) * offsetDist,
-              radius: 75,
-              duration: 420,
-              tickRate: 40,
-              tickDamage: Math.round(m.damage * 0.5 * getMobDamageMultiplier()),
+              radius: 85,
+              duration: 480,
+              tickRate: 30,
+              tickDamage: Math.round(m.damage * 0.6 * getMobDamageMultiplier()),
               color: [100, 220, 60], // bright green poison
-              slow: 0.15,
+              slow: 0.5,
             });
           }
         }
@@ -4930,12 +4930,12 @@ const MOB_SPECIALS = {
         if (typeof HazardSystem !== 'undefined') {
           HazardSystem.createZone({
             cx: m._stickyTargetX, cy: m._stickyTargetY,
-            radius: 100,
-            duration: 420,
-            tickRate: 60,
-            tickDamage: Math.round(m.damage * 0.3 * getMobDamageMultiplier()),
+            radius: 120,
+            duration: 480,
+            tickRate: 40,
+            tickDamage: Math.round(m.damage * 0.5 * getMobDamageMultiplier()),
             color: [160, 100, 240], // bright purple
-            slow: 0.5,
+            slow: 0.7,             // heavy slow trap
           });
         }
         hitEffects.push({ x: m._stickyTargetX, y: m._stickyTargetY, life: 22, type: "explosion" });
@@ -5122,12 +5122,12 @@ const MOB_SPECIALS = {
       for (const off of offsets) {
         HazardSystem.createZone({
           cx: m.x + off.dx, cy: m.y + off.dy,
-          radius: 65,
-          duration: 420,
-          tickRate: 36,
-          tickDamage: Math.round(m.damage * 0.7 * getMobDamageMultiplier()),
+          radius: 75,
+          duration: 480,
+          tickRate: 30,
+          tickDamage: Math.round(m.damage * 0.8 * getMobDamageMultiplier()),
           color: [120, 255, 60], // bright toxic green
-          slow: 0.15,
+          slow: 0.5,
         });
         hitEffects.push({ x: m.x + off.dx, y: m.y + off.dy - 10, life: 18, type: "spike" });
       }
@@ -5395,7 +5395,7 @@ const MOB_SPECIALS = {
           const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
           if (typeof StatusFX !== 'undefined') {
-            StatusFX.applyToPlayer('slow', { amount: 0.5, duration: 84 }); // 1.4s
+            StatusFX.applyToPlayer('slow', { amount: 0.7, duration: 120 }); // 2s heavy slow
           }
         }
         hitEffects.push({ x: m.x, y: m.y, life: 24, type: "slash" });
@@ -5455,12 +5455,12 @@ const MOB_SPECIALS = {
           for (const zone of m._rampartZones) {
             HazardSystem.createZone({
               cx: zone.x, cy: zone.y,
-              radius: 45,
+              radius: 55,
               duration: 600,
               tickRate: 30,
               tickDamage: Math.round(m.damage * 0.5 * getMobDamageMultiplier()),
               color: [100, 255, 140], // bright slime green
-              slow: 0.45,
+              slow: 0.85,            // nearly impassable wall
             });
             hitEffects.push({ x: zone.x, y: zone.y - 10, life: 18, type: "spike" });
           }
@@ -5524,12 +5524,12 @@ const MOB_SPECIALS = {
           for (const target of m._meltTargets) {
             HazardSystem.createZone({
               cx: target.x, cy: target.y,
-              radius: 75,
-              duration: 420,
-              tickRate: 36,
-              tickDamage: Math.round(m.damage * 0.6 * getMobDamageMultiplier()),
+              radius: 85,
+              duration: 480,
+              tickRate: 30,
+              tickDamage: Math.round(m.damage * 0.8 * getMobDamageMultiplier()),
               color: [150, 255, 50], // bright acid green
-              slow: 0.15,
+              slow: 0.5,
             });
             hitEffects.push({ x: target.x, y: target.y, life: 18, type: "explosion" });
           }
