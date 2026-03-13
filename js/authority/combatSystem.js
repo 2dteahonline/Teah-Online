@@ -112,6 +112,20 @@ const StatusFX = {
     _confuseTimer: 0,
     _disorient: false,   // random drift added to movement (Floor 5)
     _disorientTimer: 0,
+    _fear: false,        // override movement with random walk (Vortalis)
+    _fearTimer: 0,
+    _fearDirTimer: 0,    // frames until next random direction change
+    _fearDirX: 0,
+    _fearDirY: 0,
+    _blind: false,       // black vignette overlay (Vortalis)
+    _blindTimer: 0,
+    _armorBreak: false,  // incoming damage multiplier (Vortalis)
+    _armorBreakTimer: 0,
+    _armorBreakMult: 1.0,
+    _tether: false,      // linked to a mob, heavy slow (Vortalis)
+    _tetherTimer: 0,
+    _tetherMobId: null,
+    _tetherSlow: 0.6,
   },
 
   applyToPlayer(effectId, params = {}) {
@@ -151,6 +165,26 @@ const StatusFX = {
       case 'disorient':
         pe._disorient = true;
         pe._disorientTimer = params.duration || 60; // 1s default
+        break;
+      case 'fear':
+        pe._fear = true;
+        pe._fearTimer = params.duration || 90; // 1.5s default
+        pe._fearDirTimer = 0; // force immediate random dir
+        break;
+      case 'blind':
+        pe._blind = true;
+        pe._blindTimer = params.duration || 120; // 2s default
+        break;
+      case 'armor_break':
+        pe._armorBreak = true;
+        pe._armorBreakTimer = params.duration || 180; // 3s default
+        pe._armorBreakMult = params.mult || 1.5;
+        break;
+      case 'tether':
+        pe._tether = true;
+        pe._tetherTimer = params.duration || 180; // 3s default
+        pe._tetherMobId = params.mobId || null;
+        pe._tetherSlow = params.slow || 0.6;
         break;
     }
   },
@@ -198,7 +232,49 @@ const StatusFX = {
       pe._disorientTimer--;
       if (pe._disorientTimer <= 0) pe._disorient = false;
     }
-    return { speedMult, rooted, marked: pe._mark, markBonus: pe._markBonus, silenced: pe._silence, confused: pe._confuse, disoriented: pe._disorient, bleeding: pe._bleed };
+    if (pe._fearTimer > 0) {
+      pe._fearTimer--;
+      pe._fearDirTimer--;
+      if (pe._fearDirTimer <= 0) {
+        const ang = Math.random() * Math.PI * 2;
+        pe._fearDirX = Math.cos(ang);
+        pe._fearDirY = Math.sin(ang);
+        pe._fearDirTimer = 15 + Math.floor(Math.random() * 10); // change dir every ~20 frames
+      }
+      if (pe._fearTimer <= 0) { pe._fear = false; pe._fearDirX = 0; pe._fearDirY = 0; }
+    }
+    if (pe._blindTimer > 0) {
+      pe._blindTimer--;
+      if (pe._blindTimer <= 0) pe._blind = false;
+    }
+    if (pe._armorBreakTimer > 0) {
+      pe._armorBreakTimer--;
+      if (pe._armorBreakTimer <= 0) { pe._armorBreak = false; pe._armorBreakMult = 1.0; }
+    }
+    if (pe._tetherTimer > 0) {
+      pe._tetherTimer--;
+      // Tether breaks on LoS loss (wall between player and mob)
+      if (pe._tetherMobId !== null && typeof mobs !== 'undefined') {
+        const tm = mobs.find(function(mob) { return mob.id === pe._tetherMobId && mob.hp > 0; });
+        if (!tm) { pe._tetherTimer = 0; pe._tether = false; pe._tetherMobId = null; }
+        else {
+          // LoS check: sample 5 points along line to mob, if any hits wall → break
+          const ddx = tm.x - player.x, ddy = tm.y - player.y;
+          const dLen = Math.sqrt(ddx * ddx + ddy * ddy);
+          let blocked = false;
+          for (let s = 1; s <= 5; s++) {
+            const t = s / 6;
+            const cx = Math.floor((player.x + ddx * t) / TILE);
+            const cy = Math.floor((player.y + ddy * t) / TILE);
+            if (typeof isSolid === 'function' && isSolid(cx, cy)) { blocked = true; break; }
+          }
+          if (blocked) { pe._tetherTimer = 0; pe._tether = false; pe._tetherMobId = null; }
+          else { speedMult *= (1 - pe._tetherSlow); }
+        }
+      }
+      if (pe._tetherTimer <= 0) { pe._tether = false; pe._tetherMobId = null; }
+    }
+    return { speedMult, rooted, marked: pe._mark, markBonus: pe._markBonus, silenced: pe._silence, confused: pe._confuse, disoriented: pe._disorient, bleeding: pe._bleed, feared: pe._fear, blind: pe._blind, armorBreak: pe._armorBreak, armorBreakMult: pe._armorBreakMult, tethered: pe._tether };
   },
 
   clearPlayer() {
@@ -210,6 +286,10 @@ const StatusFX = {
     pe._bleed = false; pe._bleedTimer = 0; pe._bleedDmg = 0; pe._bleedTick = 0;
     pe._confuse = false; pe._confuseTimer = 0;
     pe._disorient = false; pe._disorientTimer = 0;
+    pe._fear = false; pe._fearTimer = 0; pe._fearDirTimer = 0; pe._fearDirX = 0; pe._fearDirY = 0;
+    pe._blind = false; pe._blindTimer = 0;
+    pe._armorBreak = false; pe._armorBreakTimer = 0; pe._armorBreakMult = 1.0;
+    pe._tether = false; pe._tetherTimer = 0; pe._tetherMobId = null; pe._tetherSlow = 0.6;
   },
 
   // Apply a status effect to a mob
@@ -489,6 +569,7 @@ const MOB_AI = {
     }
     return { targetX, targetY };
   },
+  stationary: (m, ctx) => ({ targetX: m.x, targetY: m.y }),
 };
 
 // ===================== MOVEMENT VALIDATION HELPERS =====================

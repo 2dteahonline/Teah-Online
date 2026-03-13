@@ -905,6 +905,380 @@ const HIT_EFFECT_RENDERERS = {
       ctx.fillText(h.text, h.x, floatY);
       ctx.restore();
   },
+  // ===================== VORTALIS DUNGEON HIT EFFECTS =====================
+  water_geyser: (h, ctx, alpha) => {
+      const prog = 1 - alpha;
+      const r = 10 + prog * 50;
+      ctx.strokeStyle = `rgba(60,160,255,${alpha * 0.7})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.stroke();
+      // Water droplets
+      for (let i = 0; i < 5; i++) {
+        const ang = (i / 5) * Math.PI * 2 + prog * 2;
+        const dr = r * 0.7;
+        ctx.fillStyle = `rgba(100,200,255,${alpha * 0.5})`;
+        ctx.beginPath(); ctx.arc(h.x + Math.cos(ang) * dr, h.y + Math.sin(ang) * dr - prog * 20, 3, 0, Math.PI * 2); ctx.fill();
+      }
+  },
+  anchor_sweep: (h, ctx, alpha) => {
+      // Gray metallic arc sweep
+      const prog = 1 - alpha;
+      const sweepLen = 25 + prog * 35;
+      const ang = h.angle || (prog * Math.PI);
+      ctx.save();
+      ctx.translate(h.x, h.y);
+      // Heavy metallic arc
+      ctx.strokeStyle = `rgba(160,170,180,${alpha * 0.85})`;
+      ctx.lineWidth = 5 * alpha;
+      ctx.beginPath(); ctx.arc(0, 0, sweepLen, ang - 0.8, ang + 0.8); ctx.stroke();
+      // Bright edge highlight
+      ctx.strokeStyle = `rgba(220,225,230,${alpha * 0.5})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, sweepLen, ang - 0.5, ang + 0.5); ctx.stroke();
+      // Sparks at tips
+      for (let s = -1; s <= 1; s += 2) {
+        const tipAng = ang + s * 0.8;
+        ctx.fillStyle = `rgba(255,240,200,${alpha * 0.7})`;
+        ctx.beginPath(); ctx.arc(Math.cos(tipAng) * sweepLen, Math.sin(tipAng) * sweepLen, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+  },
+  ink_splash: (h, ctx, alpha) => {
+      // Black/dark purple ink splatter
+      const prog = 1 - alpha;
+      if (!h._blobs) {
+        h._blobs = [];
+        for (let i = 0; i < 8; i++) {
+          h._blobs.push({
+            ang: Math.random() * Math.PI * 2,
+            dist: 5 + Math.random() * 25,
+            size: 3 + Math.random() * 6,
+            purple: Math.random() > 0.5
+          });
+        }
+      }
+      for (const b of h._blobs) {
+        const bx = h.x + Math.cos(b.ang) * b.dist * prog;
+        const by = h.y + Math.sin(b.ang) * b.dist * prog;
+        const col = b.purple ? `rgba(60,20,80,${alpha * 0.8})` : `rgba(15,10,20,${alpha * 0.85})`;
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(bx, by, b.size * alpha, 0, Math.PI * 2); ctx.fill();
+      }
+      // Central dark burst
+      ctx.fillStyle = `rgba(20,10,30,${alpha * 0.5})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 8 + prog * 12, 0, Math.PI * 2); ctx.fill();
+  },
+  coral_spike: (h, ctx, alpha) => {
+      // Teal/pink spikes erupting upward
+      const prog = 1 - alpha;
+      const spikes = [
+        { ox: -8, h: 22, w: 4, teal: true },
+        { ox: 2, h: 30, w: 5, teal: false },
+        { ox: 10, h: 18, w: 3, teal: true },
+        { ox: -3, h: 26, w: 4, teal: false },
+      ];
+      for (const sp of spikes) {
+        const rise = sp.h * Math.min(1, prog * 2.5);
+        const baseX = h.x + sp.ox;
+        const baseY = h.y + 5;
+        ctx.fillStyle = sp.teal ? `rgba(60,200,180,${alpha * 0.8})` : `rgba(220,100,140,${alpha * 0.8})`;
+        ctx.beginPath();
+        ctx.moveTo(baseX - sp.w, baseY);
+        ctx.lineTo(baseX, baseY - rise);
+        ctx.lineTo(baseX + sp.w, baseY);
+        ctx.closePath(); ctx.fill();
+      }
+      // Base foam
+      ctx.fillStyle = `rgba(180,240,230,${alpha * 0.3})`;
+      ctx.beginPath(); ctx.ellipse(h.x, h.y + 6, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+  },
+  fear_swirl: (h, ctx, alpha) => {
+      // Purple spiral on player position
+      const prog = 1 - alpha;
+      ctx.save();
+      ctx.translate(h.x, h.y);
+      ctx.rotate(prog * Math.PI * 4);
+      ctx.strokeStyle = `rgba(140,40,180,${alpha * 0.7})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let t = 0; t < 20; t++) {
+        const angle = t * 0.4;
+        const r = t * 1.8 * alpha;
+        const px = Math.cos(angle) * r;
+        const py = Math.sin(angle) * r;
+        if (t === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      // Inner glow
+      ctx.fillStyle = `rgba(100,20,140,${alpha * 0.2})`;
+      ctx.beginPath(); ctx.arc(0, 0, 12 + prog * 8, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+  },
+  tether_chain: (h, ctx, alpha) => {
+      // Chain link line from source to target
+      const tx = h.tx !== undefined ? h.tx : h.x + 40;
+      const ty = h.ty !== undefined ? h.ty : h.y;
+      const dx = tx - h.x, dy = ty - h.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const linkSize = 8;
+      const links = Math.max(1, Math.floor(dist / linkSize));
+      for (let i = 0; i <= links; i++) {
+        const t = i / links;
+        const lx = h.x + dx * t;
+        const ly = h.y + dy * t;
+        const wobble = Math.sin(t * Math.PI * 4 + (1 - alpha) * 6) * 3;
+        ctx.strokeStyle = `rgba(140,140,150,${alpha * 0.8})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(lx + wobble, ly, 3, 0, Math.PI * 2); ctx.stroke();
+      }
+      // Metallic gleam at endpoints
+      ctx.fillStyle = `rgba(200,200,210,${alpha * 0.6})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fill();
+  },
+  shield_block: (h, ctx, alpha) => {
+      // Metallic flash/spark — bright white-gold burst
+      const prog = 1 - alpha;
+      // White-gold flash
+      ctx.fillStyle = `rgba(255,250,220,${alpha * 0.6})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 12 * alpha, 0, Math.PI * 2); ctx.fill();
+      // Expanding ring
+      ctx.strokeStyle = `rgba(255,215,100,${alpha * 0.8})`;
+      ctx.lineWidth = 3 * alpha;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 8 + prog * 25, 0, Math.PI * 2); ctx.stroke();
+      // Spark rays
+      for (let s = 0; s < 6; s++) {
+        const sa = s * Math.PI / 3 + prog;
+        const sLen = 6 + prog * 14;
+        ctx.strokeStyle = `rgba(255,230,150,${alpha * 0.6})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(h.x + Math.cos(sa) * 6, h.y + Math.sin(sa) * 6);
+        ctx.lineTo(h.x + Math.cos(sa) * sLen, h.y + Math.sin(sa) * sLen);
+        ctx.stroke();
+      }
+  },
+  reflect_spark: (h, ctx, alpha) => {
+      // Blue-white electrical spark on reflect
+      const prog = 1 - alpha;
+      // Bright core flash
+      ctx.fillStyle = `rgba(200,230,255,${alpha * 0.8})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 8 * alpha, 0, Math.PI * 2); ctx.fill();
+      // Electric arcs
+      for (let a = 0; a < 5; a++) {
+        const ang = a * Math.PI * 2 / 5 + prog * 3;
+        const len = 8 + prog * 18;
+        ctx.strokeStyle = `rgba(140,200,255,${alpha * 0.7})`;
+        ctx.lineWidth = 1.5 + Math.random();
+        ctx.beginPath();
+        ctx.moveTo(h.x, h.y);
+        const mx = h.x + Math.cos(ang) * len * 0.5 + (Math.random() - 0.5) * 10;
+        const my = h.y + Math.sin(ang) * len * 0.5 + (Math.random() - 0.5) * 10;
+        ctx.lineTo(mx, my);
+        ctx.lineTo(h.x + Math.cos(ang) * len, h.y + Math.sin(ang) * len);
+        ctx.stroke();
+      }
+  },
+  ghost_ship: (h, ctx, alpha) => {
+      // Large translucent ship silhouette fading away
+      const prog = 1 - alpha;
+      ctx.save();
+      ctx.translate(h.x, h.y - prog * 15);
+      ctx.globalAlpha = alpha * 0.5;
+      // Hull
+      ctx.fillStyle = `rgba(120,160,180,0.6)`;
+      ctx.beginPath();
+      ctx.moveTo(-30, 5); ctx.lineTo(-22, 15); ctx.lineTo(22, 15);
+      ctx.lineTo(30, 5); ctx.lineTo(25, -2); ctx.lineTo(-25, -2);
+      ctx.closePath(); ctx.fill();
+      // Mast
+      ctx.strokeStyle = `rgba(150,170,190,0.7)`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(0, -35); ctx.stroke();
+      // Sail
+      ctx.fillStyle = `rgba(180,210,230,0.4)`;
+      ctx.beginPath();
+      ctx.moveTo(2, -30); ctx.lineTo(18, -18); ctx.lineTo(2, -6);
+      ctx.closePath(); ctx.fill();
+      // Ghostly glow
+      ctx.fillStyle = `rgba(150,200,220,${alpha * 0.15})`;
+      ctx.beginPath(); ctx.arc(0, -5, 35, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+  },
+  kraken_tentacle: (h, ctx, alpha) => {
+      // Green tentacle rising from ground
+      const prog = 1 - alpha;
+      const rise = Math.min(1, prog * 2) * 50;
+      ctx.save();
+      ctx.translate(h.x, h.y);
+      // Tentacle body — curved bezier
+      ctx.strokeStyle = `rgba(40,140,80,${alpha * 0.8})`;
+      ctx.lineWidth = 6 * alpha;
+      ctx.beginPath();
+      ctx.moveTo(0, 8);
+      ctx.bezierCurveTo(-8, 8 - rise * 0.3, 12, 8 - rise * 0.7, -4, 8 - rise);
+      ctx.stroke();
+      // Lighter highlight
+      ctx.strokeStyle = `rgba(80,200,120,${alpha * 0.5})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(1, 7);
+      ctx.bezierCurveTo(-6, 7 - rise * 0.3, 13, 7 - rise * 0.7, -3, 7 - rise);
+      ctx.stroke();
+      // Suckers
+      for (let s = 0; s < 3; s++) {
+        const sy = 8 - rise * (0.2 + s * 0.25);
+        const sx = Math.sin(s * 1.5) * 4;
+        ctx.fillStyle = `rgba(60,160,100,${alpha * 0.6})`;
+        ctx.beginPath(); ctx.arc(sx + 2, sy, 2, 0, Math.PI * 2); ctx.fill();
+      }
+      // Ground splash
+      ctx.fillStyle = `rgba(40,120,80,${alpha * 0.3})`;
+      ctx.beginPath(); ctx.ellipse(0, 10, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+  },
+  whirlpool: (h, ctx, alpha) => {
+      // Spinning water vortex — concentric circles rotating
+      const prog = 1 - alpha;
+      ctx.save();
+      ctx.translate(h.x, h.y);
+      ctx.rotate(prog * Math.PI * 6);
+      for (let r = 0; r < 4; r++) {
+        const radius = 8 + r * 10;
+        const ringAlpha = alpha * (0.7 - r * 0.12);
+        ctx.strokeStyle = `rgba(40,${130 + r * 25},${200 + r * 15},${ringAlpha})`;
+        ctx.lineWidth = 2.5 - r * 0.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, r * 0.5, r * 0.5 + Math.PI * 1.4);
+        ctx.stroke();
+      }
+      // Center dark spot
+      ctx.fillStyle = `rgba(20,60,100,${alpha * 0.4})`;
+      ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+      // Foam particles on outer edge
+      for (let f = 0; f < 5; f++) {
+        const fa = f * Math.PI * 2 / 5;
+        ctx.fillStyle = `rgba(180,220,240,${alpha * 0.4})`;
+        ctx.beginPath(); ctx.arc(Math.cos(fa) * 35, Math.sin(fa) * 35, 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+  },
+  trident_slash: (h, ctx, alpha) => {
+      // Golden/teal slash arc
+      const prog = 1 - alpha;
+      const ang = h.angle || 0;
+      const sLen = 18 + prog * 14;
+      // Main gold slash
+      ctx.strokeStyle = `rgba(220,190,60,${alpha * 0.85})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(h.x - Math.cos(ang) * sLen, h.y - Math.sin(ang) * sLen);
+      ctx.lineTo(h.x + Math.cos(ang) * sLen, h.y + Math.sin(ang) * sLen);
+      ctx.stroke();
+      // Teal inner glow
+      ctx.strokeStyle = `rgba(60,200,180,${alpha * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(h.x - Math.cos(ang) * sLen * 0.7, h.y - Math.sin(ang) * sLen * 0.7);
+      ctx.lineTo(h.x + Math.cos(ang) * sLen * 0.7, h.y + Math.sin(ang) * sLen * 0.7);
+      ctx.stroke();
+      // Prong tips — 3 gold sparks at the end
+      for (let p = -1; p <= 1; p++) {
+        const perpAng = ang + Math.PI / 2;
+        const tipX = h.x + Math.cos(ang) * sLen + Math.cos(perpAng) * p * 5;
+        const tipY = h.y + Math.sin(ang) * sLen + Math.sin(perpAng) * p * 5;
+        ctx.fillStyle = `rgba(255,220,80,${alpha * 0.7})`;
+        ctx.beginPath(); ctx.arc(tipX, tipY, 2, 0, Math.PI * 2); ctx.fill();
+      }
+  },
+  poison_puddle: (h, ctx, alpha) => {
+      // Green/purple puddle on ground with bubbles
+      const prog = 1 - alpha;
+      // Main puddle ellipse
+      ctx.fillStyle = `rgba(60,140,40,${alpha * 0.5})`;
+      ctx.beginPath(); ctx.ellipse(h.x, h.y + 3, 22 + prog * 8, 10 + prog * 3, 0, 0, Math.PI * 2); ctx.fill();
+      // Purple tinge overlay
+      ctx.fillStyle = `rgba(100,40,120,${alpha * 0.25})`;
+      ctx.beginPath(); ctx.ellipse(h.x + 4, h.y + 2, 14, 6, 0.2, 0, Math.PI * 2); ctx.fill();
+      // Rim highlight
+      ctx.strokeStyle = `rgba(80,200,60,${alpha * 0.4})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(h.x, h.y + 3, 22 + prog * 8, 10 + prog * 3, 0, 0, Math.PI * 2); ctx.stroke();
+      // Bubbles
+      for (let b = 0; b < 4; b++) {
+        const bx = h.x + (b - 1.5) * 8 + Math.sin(prog * 10 + b) * 3;
+        const by = h.y + 1 - prog * (5 + b * 3);
+        const bSize = 2 + Math.sin(b + prog * 5) * 1;
+        ctx.strokeStyle = `rgba(120,220,80,${alpha * 0.6})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(bx, by, Math.max(0.5, bSize), 0, Math.PI * 2); ctx.stroke();
+      }
+  },
+  cannon_explosion: (h, ctx, alpha) => {
+      // Orange/red explosion burst for cannonball impacts
+      const prog = 1 - alpha;
+      // White-hot flash at start
+      if (prog < 0.15) {
+        const flashA = (1 - prog / 0.15) * alpha;
+        ctx.fillStyle = `rgba(255,250,200,${flashA * 0.7})`;
+        ctx.beginPath(); ctx.arc(h.x, h.y, 18, 0, Math.PI * 2); ctx.fill();
+      }
+      // Main fireball
+      const r = 10 + prog * 35;
+      ctx.fillStyle = `rgba(255,100,20,${alpha * 0.5})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.fill();
+      // Inner hot core
+      ctx.fillStyle = `rgba(255,200,50,${alpha * 0.4})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.5, 0, Math.PI * 2); ctx.fill();
+      // Shockwave ring
+      ctx.strokeStyle = `rgba(255,140,40,${alpha * 0.6})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r * 1.2, 0, Math.PI * 2); ctx.stroke();
+      // Smoke puffs and embers
+      for (let e = 0; e < 6; e++) {
+        const ea = e * Math.PI / 3 + prog * 1.5;
+        const ed = r * 0.8;
+        ctx.fillStyle = e % 2 === 0
+          ? `rgba(255,${160 - e * 20},30,${alpha * 0.7})`
+          : `rgba(80,70,60,${alpha * 0.3})`;
+        ctx.beginPath(); ctx.arc(h.x + Math.cos(ea) * ed, h.y + Math.sin(ea) * ed - prog * 10, 3 * alpha, 0, Math.PI * 2); ctx.fill();
+      }
+  },
+  blood_slash: (h, ctx, alpha) => {
+      // Dark red slash effect for blood-themed abilities
+      const prog = 1 - alpha;
+      const ang = h.angle || (Math.PI * -0.25);
+      const sLen = 16 + prog * 18;
+      // Dark blood slash
+      ctx.strokeStyle = `rgba(120,10,15,${alpha * 0.85})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(h.x - Math.cos(ang) * sLen, h.y - Math.sin(ang) * sLen);
+      ctx.lineTo(h.x + Math.cos(ang) * sLen, h.y + Math.sin(ang) * sLen);
+      ctx.stroke();
+      // Brighter red core
+      ctx.strokeStyle = `rgba(200,30,40,${alpha * 0.6})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(h.x - Math.cos(ang) * sLen * 0.7, h.y - Math.sin(ang) * sLen * 0.7);
+      ctx.lineTo(h.x + Math.cos(ang) * sLen * 0.7, h.y + Math.sin(ang) * sLen * 0.7);
+      ctx.stroke();
+      // Blood droplets spraying outward
+      const perpAng = ang + Math.PI / 2;
+      for (let d = 0; d < 4; d++) {
+        const side = d % 2 === 0 ? 1 : -1;
+        const dropDist = (4 + d * 3) * prog;
+        const dx = h.x + Math.cos(perpAng) * dropDist * side + Math.cos(ang) * (d - 1.5) * 6;
+        const dy = h.y + Math.sin(perpAng) * dropDist * side + Math.sin(ang) * (d - 1.5) * 6;
+        ctx.fillStyle = `rgba(140,10,20,${alpha * 0.7})`;
+        ctx.beginPath(); ctx.arc(dx, dy, 2 * alpha, 0, Math.PI * 2); ctx.fill();
+      }
+      // Mist behind slash
+      ctx.fillStyle = `rgba(100,5,10,${alpha * 0.2})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 12 + prog * 8, 0, Math.PI * 2); ctx.fill();
+  },
   _default: (h, ctx, alpha) => {
       ctx.fillStyle = `rgba(255,200,100,${alpha})`;
       ctx.beginPath(); ctx.arc(h.x, h.y, 6 * (1 - alpha) + 3, 0, Math.PI * 2); ctx.fill();

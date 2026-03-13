@@ -3344,6 +3344,103 @@ ENTITY_RENDERERS.mafia_lobby_exit = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = 'left';
 };
 
+// ===================== VORTALIS DUNGEON ENTITY RENDERERS =====================
+ENTITY_RENDERERS.building_vortalis = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const t = Date.now() / 1000;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(ex+cw/2+6, ey+ch+7, cw*0.48, 9, 0, 0, Math.PI*2); ctx.fill();
+    // Main structure — dark teal/ocean wood
+    ctx.fillStyle = '#142028';
+    ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
+    // Plank lines (horizontal)
+    ctx.strokeStyle = '#1a2a30'; ctx.lineWidth = 1;
+    for (let r = 0; r < 5; r++) {
+      const ly = ey+ch*0.3+r*ch*0.14;
+      ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
+    }
+    // Roof — nautical/pirate style
+    ctx.fillStyle = '#1a3030';
+    ctx.beginPath();
+    ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.3, ey+ch*0.04);
+    ctx.lineTo(ex+cw*0.7, ey+ch*0.04); ctx.lineTo(ex+cw+6, ey+ch*0.24);
+    ctx.closePath(); ctx.fill();
+    // Roof highlight
+    ctx.fillStyle = '#1a3a3a';
+    ctx.beginPath();
+    ctx.moveTo(ex+cw*0.3, ey+ch*0.04); ctx.lineTo(ex+cw*0.7, ey+ch*0.04);
+    ctx.lineTo(ex+cw+6, ey+ch*0.24); ctx.lineTo(ex+cw*0.5, ey+ch*0.24);
+    ctx.closePath(); ctx.fill();
+    // Teal glow trim on roof edge
+    ctx.strokeStyle = '#22aacc'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.3, ey+ch*0.04);
+    ctx.lineTo(ex+cw*0.7, ey+ch*0.04); ctx.lineTo(ex+cw+6, ey+ch*0.24);
+    ctx.stroke();
+    // Porthole windows
+    const portGlow = 0.5 + Math.sin(t * 1.5) * 0.2;
+    for (let pw = 0; pw < 3; pw++) {
+      const px = ex + cw*0.2 + pw * cw*0.25;
+      const py = ey + ch*0.5;
+      ctx.fillStyle = `rgba(34,170,204,${portGlow * 0.4})`;
+      ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#2a3a3a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.stroke();
+    }
+    // Anchor icon
+    ctx.strokeStyle = `rgba(34,170,204,${portGlow * 0.6})`; ctx.lineWidth = 2;
+    const ax = ex + cw/2, ay = ey + ch*0.75;
+    ctx.beginPath(); ctx.moveTo(ax, ay-10); ctx.lineTo(ax, ay+6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax-6, ay+2); ctx.lineTo(ax+6, ay+2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(ax, ay-12, 4, 0, Math.PI * 2); ctx.stroke();
+    // Sign
+    ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(34,170,204,${portGlow * 0.8})`;
+    ctx.fillText('VORTALIS', ex + cw/2, ey + ch*0.18);
+    ctx.textAlign = 'left';
+};
+ENTITY_RENDERERS.vortalis_entrance = (e, ctx, ex, ey, w, h) => {
+    const ew = w * TILE, eh = h * TILE;
+    const t = Date.now() / 1000;
+    const glow = 0.4 + Math.sin(t * 2) * 0.15;
+    // Glowing floor pad — teal ocean
+    ctx.fillStyle = `rgba(34,170,204,${glow * 0.15})`;
+    ctx.fillRect(ex, ey, ew, eh);
+    ctx.strokeStyle = `rgba(34,170,204,${glow * 0.5})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
+    // Arrow hint
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = `rgba(34,170,204,${glow * 0.7})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u25B2 ENTER", ex + ew/2, ey + eh + 14);
+    ctx.textAlign = "left";
+};
+ENTITY_RENDERERS.vortalis_exit = (e, ctx, ex, ey, w, h) => {
+    const t = Date.now() / 1000;
+    ctx.fillStyle = `rgba(34,170,204,${0.15 + Math.sin(t * 2) * 0.05})`;
+    ctx.fillRect(ex + 4, ey + 4, w * TILE - 8, h * TILE - 8);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = `rgba(34,170,204,${0.6 + Math.sin(t * 3) * 0.2})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u27F5 EXIT \u27F6", ex + w * TILE / 2, ey + h * TILE + 14);
+    ctx.textAlign = "left";
+};
+ENTITY_RENDERERS.ocean_lantern = (e, ctx, ex, ey) => {
+    const t = Date.now() / 1000;
+    const flicker = 0.5 + Math.sin(t * 3 + e.tx * 2) * 0.15;
+    // Glow
+    ctx.fillStyle = `rgba(34,170,204,${flicker * 0.1})`;
+    ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2, 20, 0, Math.PI * 2); ctx.fill();
+    // Lantern body
+    ctx.fillStyle = '#1a2a2a';
+    ctx.fillRect(ex + TILE/2 - 4, ey + TILE/2 - 6, 8, 12);
+    // Flame
+    ctx.fillStyle = `rgba(34,200,220,${flicker})`;
+    ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2 - 2, 3, 0, Math.PI * 2); ctx.fill();
+};
+
 function drawLevelEntities(camX, camY) {
   for (const e of levelEntities) {
     const w = e.w ?? 1;

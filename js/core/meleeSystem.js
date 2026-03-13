@@ -982,6 +982,15 @@ function updateBullets() {
         const mobHitR = m.hitboxR ?? ENTITY_R;
         const mobHitDist = BULLET_R + mobHitR;
         if (dx * dx + dy * dy < mobHitDist * mobHitDist) {
+          // Projectile reflect — reverse bullet and make it a mob bullet
+          if (m._reflectActive) {
+            b.vx = -b.vx; b.vy = -b.vy;
+            b.fromPlayer = false; b.mobBullet = true;
+            b.damage = Math.round(gun.damage * 0.6);
+            b.ownerId = m.id;
+            hitEffects.push({ x: b.x, y: b.y, life: 12, type: 'reflect_spark' });
+            break; // don't destroy or damage — reflected
+          }
           hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: gun.damage });
 
           // Gun special on-hit effects (dispatched via registry)

@@ -31,6 +31,24 @@ function dealDamageToMob(mob, amount, source) {
   // Invulnerability check (mud_dive, nano_armor, etc.)
   if (mob._invulnerable) return false;
 
+  // Frontal shield check — negate damage from mob's facing direction
+  if (mob._frontalShield && source !== 'dot' && source !== 'burn_dot' && source !== 'thorns') {
+    const aDx = player.x - mob.x, aDy = player.y - mob.y;
+    const aDist = Math.sqrt(aDx * aDx + aDy * aDy) || 1;
+    // Mob facing direction (0=down,1=up,2=left,3=right)
+    const facingAngles = [Math.PI / 2, -Math.PI / 2, Math.PI, 0];
+    const faceAng = facingAngles[mob.dir] || Math.PI / 2;
+    const attackAng = Math.atan2(aDy, aDx);
+    let angleDiff = Math.abs(attackAng - faceAng);
+    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+    if (angleDiff < Math.PI / 3) { // within ~60 degree arc from front = blocked
+      if (typeof hitEffects !== 'undefined') {
+        hitEffects.push({ x: mob.x, y: mob.y - 20, life: 15, type: 'shield_block' });
+      }
+      return false;
+    }
+  }
+
   // Shield absorb — damage hits shield first, remainder goes to HP
   if (mob._shieldHp > 0) {
     if (amount <= mob._shieldHp) {
@@ -118,6 +136,11 @@ function dealDamageToPlayer(rawDamage, source, attacker) {
   // 2. Apply projectile/AOE reduction
   if (source === "projectile" || source === "aoe") {
     reduced *= (1 - getProjReduction());
+  }
+
+  // 2b. Armor Break multiplier (Vortalis status effect)
+  if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._armorBreak) {
+    reduced *= StatusFX.playerEffects._armorBreakMult;
   }
 
   // 3. Round and subtract

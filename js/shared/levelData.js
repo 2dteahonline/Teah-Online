@@ -118,6 +118,9 @@ const LEVELS = {
       // === EAST DISTRICT BUILDINGS ===
       { type: 'building_gunsmith', tx: 69, ty: 12, w: 7, h: 8, solid: true },
       { type: 'gunsmith_entrance', tx: 71, ty: 19, w: 3, h: 2, solid: false, target: 'gunsmith_01', spawnTX: 22, spawnTY: 26 },
+      // === VORTALIS DUNGEON (east district, below gunsmith row) ===
+      { type: 'building_vortalis', tx: 50, ty: 12, w: 7, h: 8, solid: true },
+      { type: 'vortalis_entrance', tx: 52, ty: 19, w: 3, h: 2, solid: false, target: 'vortalis_01', spawnTX: 20, spawnTY: 19 },
       // === CRYSTAL FORMATIONS (replacing trees, 3 variants) ===
       { type: 'tree', tx: 10, ty: 38, solid: true, variant: 1 },
       { type: 'tree', tx: 22, ty: 44, solid: true, variant: 0 },
@@ -1597,7 +1600,68 @@ const LEVELS = {
         { type: 'mafia_lobby_exit', tx: 23, ty: 28, w: 5, h: 2, solid: false, target: 'lobby_01', spawnTX: 28, spawnTY: 21 },
       ]
     };
-  })()
+  })(),
+
+  // ===================== VORTALIS DUNGEON ENTRANCE =====================
+  vortalis_01: {
+    id: 'vortalis_01',
+    widthTiles: 40,
+    heightTiles: 24,
+    isVortalis: true,
+    spawns: { p1: { tx: 20, ty: 19 } },
+    collisionAscii: [
+      "########################################",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "########################################"
+    ],
+    entities: [
+      { type: 'vortalis_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 21 },
+      { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'vortalis' },
+      // Ocean lanterns (left wall)
+      { type: 'ocean_lantern', tx: 1, ty: 1, solid: false },
+      { type: 'ocean_lantern', tx: 1, ty: 4, solid: false },
+      { type: 'ocean_lantern', tx: 1, ty: 7, solid: false },
+      { type: 'ocean_lantern', tx: 1, ty: 10, solid: false },
+      { type: 'ocean_lantern', tx: 1, ty: 13, solid: false },
+      { type: 'ocean_lantern', tx: 1, ty: 16, solid: false },
+      { type: 'ocean_lantern', tx: 1, ty: 19, solid: false },
+      { type: 'ocean_lantern', tx: 1, ty: 22, solid: false },
+      // Ocean lanterns (right wall)
+      { type: 'ocean_lantern', tx: 38, ty: 1, solid: false },
+      { type: 'ocean_lantern', tx: 38, ty: 4, solid: false },
+      { type: 'ocean_lantern', tx: 38, ty: 7, solid: false },
+      { type: 'ocean_lantern', tx: 38, ty: 10, solid: false },
+      { type: 'ocean_lantern', tx: 38, ty: 13, solid: false },
+      { type: 'ocean_lantern', tx: 38, ty: 16, solid: false },
+      { type: 'ocean_lantern', tx: 38, ty: 19, solid: false },
+      { type: 'ocean_lantern', tx: 38, ty: 22, solid: false },
+      // Door lanterns
+      { type: 'ocean_lantern', tx: 15, ty: 1, solid: false },
+      { type: 'ocean_lantern', tx: 24, ty: 1, solid: false },
+    ]
+  },
 };
 
 // ===================== PORTAL SPAWN RESOLVER =====================

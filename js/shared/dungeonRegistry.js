@@ -30,10 +30,10 @@ const DUNGEON_REGISTRY = {
     difficulty: 0,
     music: '',
   },
-  dungeon_3: {
-    name: 'Dungeon 3',
+  vortalis: {
+    name: 'Vortalis',
     maxFloors: 5,
-    returnLevel: '',
+    returnLevel: 'vortalis_01',
     hasHazards: false,
     spawnTX: 20,
     spawnTY: 20,

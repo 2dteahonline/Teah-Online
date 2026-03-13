@@ -2554,6 +2554,11 @@ function update() {
   // Normalize direction
   let mx = dx, my = dy;
 
+  // Fear: override movement with random walk direction
+  if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._fear) {
+    mx = StatusFX.playerEffects._fearDirX;
+    my = StatusFX.playerEffects._fearDirY;
+  }
   // Confuse: swap/invert movement directions
   if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._confuse) {
     const tmp = mx; mx = -my; my = -tmp; // rotate 180° + swap axes

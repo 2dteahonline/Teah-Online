@@ -790,7 +790,18 @@ function updateMobs() {
               m._glowTelegraph > 0 || m._stickyTelegraph > 0 || m._lashTelegraph > 0 || m._barrierTelegraph > 0 ||
               m._orbTelegraph > 0 || m._overchargeTelegraph > 0 ||
               m._oozeTelegraph > 0 || m._rampartTelegraph > 0 || m._meltTelegraph > 0 ||
-              m._shadowTeleport > 0 || m._puppetTelegraph > 0 || m._abyssTelegraph > 0;
+              m._shadowTeleport > 0 || m._puppetTelegraph > 0 || m._abyssTelegraph > 0 ||
+              // Vortalis dungeon
+              m._cutlassTele > 0 || m._boardingDash || m._artilleryTele > 0 ||
+              m._chainBindTimer > 0 || m._tideTele > 0 || m._spearBarrageFiring ||
+              m._vineTele > 0 || m._crimsonTele > 0 || m._predDashing ||
+              m._silverTele > 0 || m._rampageDashing || m._ghostDashing ||
+              m._soulDrainTele > 0 || m._ghostShipTele > 0 ||
+              m._tGrabTele > 0 || m._iBlastTele > 0 || m._tSlamTele > 0 || m._deepSeaTele > 0 ||
+              m._decapTele > 0 || m._abyssRoarTele > 0 || m._reignTele > 0 ||
+              m._gsvFiring || m._mawTele > 0 || m._gildedBeamTele > 0 || m._surgeTele > 0 ||
+              m._levFangDashing || m._serpStrikeTele > 0 || m._trampleDashing ||
+              m._mwUndertowTele > 0 || m._delugeTele > 0 || m._wrathPhase;
             if (!stillActive) {
               m._activeAbility = null;
             }
@@ -849,7 +860,18 @@ function updateMobs() {
               m._glowTelegraph > 0 || m._stickyTelegraph > 0 || m._lashTelegraph > 0 || m._barrierTelegraph > 0 ||
               m._orbTelegraph > 0 || m._overchargeTelegraph > 0 ||
               m._oozeTelegraph > 0 || m._rampartTelegraph > 0 || m._meltTelegraph > 0 ||
-              m._shadowTeleport > 0 || m._puppetTelegraph > 0 || m._abyssTelegraph > 0;
+              m._shadowTeleport > 0 || m._puppetTelegraph > 0 || m._abyssTelegraph > 0 ||
+              // Vortalis dungeon
+              m._cutlassTele > 0 || m._boardingDash || m._artilleryTele > 0 ||
+              m._chainBindTimer > 0 || m._tideTele > 0 || m._spearBarrageFiring ||
+              m._vineTele > 0 || m._crimsonTele > 0 || m._predDashing ||
+              m._silverTele > 0 || m._rampageDashing || m._ghostDashing ||
+              m._soulDrainTele > 0 || m._ghostShipTele > 0 ||
+              m._tGrabTele > 0 || m._iBlastTele > 0 || m._tSlamTele > 0 || m._deepSeaTele > 0 ||
+              m._decapTele > 0 || m._abyssRoarTele > 0 || m._reignTele > 0 ||
+              m._gsvFiring || m._mawTele > 0 || m._gildedBeamTele > 0 || m._surgeTele > 0 ||
+              m._levFangDashing || m._serpStrikeTele > 0 || m._trampleDashing ||
+              m._mwUndertowTele > 0 || m._delugeTele > 0 || m._wrathPhase;
             if (isMultiFrame) m._activeAbility = abilKey;
             if (specResult && specResult.skip) skipMovement = true;
             break;

@@ -23,6 +23,12 @@ const WAVE_TEMPLATES = {
   witch_coven:   { primary: [{ type: 'witch', weight: 2 }], support: [{ type: 'grunt', weight: 2 }, { type: 'tank', weight: 1 }], primaryPct: 0.3, theme: 'Witch Coven' },
   blitz_wave:    { primary: [{ type: 'runner', weight: 3 }, { type: 'mummy', weight: 2 }], support: [{ type: 'grunt', weight: 1 }], primaryPct: 0.65, theme: 'Blitz Wave' },
   elite_wave:    { primary: [{ type: 'tank', weight: 2 }, { type: 'witch', weight: 2 }], support: [{ type: 'healer', weight: 1 }, { type: 'archer', weight: 1 }, { type: 'mummy', weight: 1 }, { type: 'runner', weight: 1 }], primaryPct: 0.5, theme: 'Elite Wave' },
+
+  // ---- Vortalis Floor 1 early (Pirates) ----
+  pirate_rush:      { primary: [{ type: 'bilge_rat', weight: 3 }], support: [{ type: 'powder_keg', weight: 1 }], primaryPct: 0.85, theme: 'Pirate Rush' },
+  pirate_gunners:   { primary: [{ type: 'deckhand_shooter', weight: 3 }, { type: 'powder_keg', weight: 2 }], support: [{ type: 'bilge_rat', weight: 1 }], primaryPct: 0.65, theme: 'Pirate Gunners' },
+  pirate_heavy:     { primary: [{ type: 'anchor_hauler', weight: 3 }, { type: 'deckhand_shooter', weight: 2 }], support: [{ type: 'bilge_rat', weight: 1 }, { type: 'powder_keg', weight: 1 }], primaryPct: 0.6, theme: 'Pirate Heavy' },
+  pirate_mixed:     { primary: [{ type: 'powder_keg', weight: 2 }, { type: 'anchor_hauler', weight: 2 }], support: [{ type: 'bilge_rat', weight: 1 }, { type: 'deckhand_shooter', weight: 1 }], primaryPct: 0.6, theme: 'Pirate Mixed' },
 };
 
 // ===================== SUBFLOOR BLUEPRINTS =====================
@@ -466,10 +472,244 @@ const _azurineConfig = {
   }),
 };
 
+// ===================== VORTALIS =====================
+const _vortalisConfig = {
+  1: _buildFloor({
+    name: 'Pirate Shores',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'pirate_shores',
+        waveComps: {
+          1: { primary: [{ type: 'bilge_rat', weight: 3 }], support: [{ type: 'powder_keg', weight: 1 }], primaryPct: 0.85, theme: 'Bilge Rats' },
+          2: { primary: [{ type: 'powder_keg', weight: 3 }, { type: 'bilge_rat', weight: 2 }], support: [{ type: 'deckhand_shooter', weight: 1 }], primaryPct: 0.7, theme: 'Powder Kegs' },
+          3: { primary: [{ type: 'deckhand_shooter', weight: 3 }, { type: 'powder_keg', weight: 1 }], support: [{ type: 'bilge_rat', weight: 2 }, { type: 'anchor_hauler', weight: 1 }], primaryPct: 0.6, theme: 'Deckhand Shooters' },
+          4: { primary: [{ type: 'anchor_hauler', weight: 3 }, { type: 'deckhand_shooter', weight: 2 }], support: [{ type: 'bilge_rat', weight: 1 }, { type: 'powder_keg', weight: 1 }], primaryPct: 0.6, theme: 'Anchor Haulers' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'husa_arena',
+        boss: 'captain_husa',
+        bossComp: {
+          theme: 'Captain Husa',
+          forceGolem: false,
+          forceBoss: 'captain_husa',
+          support: [
+            { type: 'bilge_rat', count: 2 },
+            { type: 'powder_keg', count: 2 },
+            { type: 'deckhand_shooter', count: 1 },
+          ],
+        },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'naval_fleet',
+        waveComps: {
+          6: { primary: [{ type: 'ironclad_marine', weight: 3 }], support: [{ type: 'bilge_rat', weight: 1 }], primaryPct: 0.8, theme: 'Ironclad Marines' },
+          7: { primary: [{ type: 'tidecaller_mystic', weight: 3 }, { type: 'ironclad_marine', weight: 1 }], support: [{ type: 'galleon_sniper', weight: 1 }], primaryPct: 0.7, theme: 'Tidecaller Mystics' },
+          8: { primary: [{ type: 'galleon_sniper', weight: 3 }, { type: 'tidecaller_mystic', weight: 1 }], support: [{ type: 'ironclad_marine', weight: 1 }], primaryPct: 0.65, theme: 'Galleon Snipers' },
+          9: { primary: [{ type: 'sunken_dreadnought', weight: 2 }, { type: 'galleon_sniper', weight: 2 }], support: [{ type: 'ironclad_marine', weight: 1 }, { type: 'tidecaller_mystic', weight: 1 }], primaryPct: 0.6, theme: 'Naval Elite' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'von_kael_arena',
+        boss: 'admiral_von_kael',
+        bossComp: {
+          theme: 'Admiral Von Kael',
+          forceGolem: false,
+          forceBoss: 'admiral_von_kael',
+          support: [
+            { type: 'ironclad_marine', count: 2 },
+            { type: 'tidecaller_mystic', count: 2 },
+            { type: 'galleon_sniper', count: 1 },
+            { type: 'sunken_dreadnought', count: 1 },
+          ],
+        },
+      },
+    ],
+    palette: {
+      floor1: '#1a2028',
+      floor2: '#182028',
+      wall: '#0a1218',
+      wallAccent: '#2288aa',
+      accent2: '#cc8844',
+      gridLine: '#253038',
+    },
+    hazards: [],
+  }),
+
+  // Floor 2: Jungle / Blood
+  2: _buildFloor({
+    name: 'Jungle & Blood Cove',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'jungle_depths',
+        waveComps: {
+          1: { primary: [{ type: 'jungle_headhunter', weight: 3 }], support: [{ type: 'voodoo_creeper', weight: 1 }], primaryPct: 0.85, theme: 'Jungle Headhunters' },
+          2: { primary: [{ type: 'voodoo_creeper', weight: 3 }, { type: 'jungle_headhunter', weight: 2 }], support: [{ type: 'canopy_sniper', weight: 1 }], primaryPct: 0.7, theme: 'Voodoo Creepers' },
+          3: { primary: [{ type: 'canopy_sniper', weight: 3 }, { type: 'voodoo_creeper', weight: 1 }], support: [{ type: 'jungle_headhunter', weight: 2 }, { type: 'temple_silverback', weight: 1 }], primaryPct: 0.6, theme: 'Canopy Snipers' },
+          4: { primary: [{ type: 'temple_silverback', weight: 3 }, { type: 'canopy_sniper', weight: 2 }], support: [{ type: 'jungle_headhunter', weight: 1 }, { type: 'voodoo_creeper', weight: 1 }], primaryPct: 0.6, theme: 'Temple Silverbacks' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'zongo_arena',
+        boss: 'zongo',
+        bossComp: { theme: 'Zongo', forceGolem: false, forceBoss: 'zongo', support: [{ type: 'jungle_headhunter', count: 2 }, { type: 'voodoo_creeper', count: 2 }, { type: 'temple_silverback', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'blood_cove',
+        waveComps: {
+          6: { primary: [{ type: 'crimson_corsair', weight: 3 }], support: [{ type: 'jungle_headhunter', weight: 1 }], primaryPct: 0.8, theme: 'Crimson Corsairs' },
+          7: { primary: [{ type: 'crystal_cultist', weight: 3 }, { type: 'crimson_corsair', weight: 1 }], support: [{ type: 'voodoo_creeper', weight: 1 }], primaryPct: 0.7, theme: 'Crystal Cultists' },
+          8: { primary: [{ type: 'bone_clad_brute', weight: 3 }, { type: 'crystal_cultist', weight: 1 }], support: [{ type: 'crimson_corsair', weight: 1 }], primaryPct: 0.65, theme: 'Bone-Clad Brutes' },
+          9: { primary: [{ type: 'sanguine_siren', weight: 2 }, { type: 'bone_clad_brute', weight: 2 }], support: [{ type: 'crimson_corsair', weight: 1 }, { type: 'crystal_cultist', weight: 1 }], primaryPct: 0.6, theme: 'Blood Elite' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'marlon_arena',
+        boss: 'bloodborne_marlon',
+        bossComp: { theme: 'Bloodborne Marlon', forceGolem: false, forceBoss: 'bloodborne_marlon', support: [{ type: 'crimson_corsair', count: 2 }, { type: 'crystal_cultist', count: 2 }, { type: 'bone_clad_brute', count: 1 }, { type: 'sanguine_siren', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#221a18', floor2: '#201818', wall: '#120a08', wallAccent: '#44aa44', accent2: '#cc2222', gridLine: '#322a28' },
+    hazards: [],
+  }),
+
+  // Floor 3: Werewolf / Ghost
+  3: _buildFloor({
+    name: 'Moonlit Docks & Ghost Ship',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'moonlit_docks',
+        waveComps: {
+          1: { primary: [{ type: 'feral_deckhand', weight: 3 }], support: [{ type: 'rabid_wharf_hound', weight: 1 }], primaryPct: 0.85, theme: 'Feral Deckhands' },
+          2: { primary: [{ type: 'howling_lookout', weight: 3 }, { type: 'feral_deckhand', weight: 2 }], support: [{ type: 'rabid_wharf_hound', weight: 1 }], primaryPct: 0.7, theme: 'Howling Lookouts' },
+          3: { primary: [{ type: 'sea_dog_brute', weight: 3 }, { type: 'howling_lookout', weight: 1 }], support: [{ type: 'feral_deckhand', weight: 2 }, { type: 'rabid_wharf_hound', weight: 1 }], primaryPct: 0.6, theme: 'Sea Dog Brutes' },
+          4: { primary: [{ type: 'rabid_wharf_hound', weight: 3 }, { type: 'sea_dog_brute', weight: 2 }], support: [{ type: 'feral_deckhand', weight: 1 }, { type: 'howling_lookout', weight: 1 }], primaryPct: 0.6, theme: 'Wharf Hounds' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'wolfbeard_arena',
+        boss: 'wolfbeard',
+        bossComp: { theme: 'Wolfbeard', forceGolem: false, forceBoss: 'wolfbeard', support: [{ type: 'feral_deckhand', count: 2 }, { type: 'sea_dog_brute', count: 2 }, { type: 'rabid_wharf_hound', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'ghost_ship',
+        waveComps: {
+          6: { primary: [{ type: 'phantom_swashbuckler', weight: 3 }], support: [{ type: 'feral_deckhand', weight: 1 }], primaryPct: 0.8, theme: 'Phantom Swashbucklers' },
+          7: { primary: [{ type: 'poltergeist_gunner', weight: 3 }, { type: 'phantom_swashbuckler', weight: 1 }], support: [{ type: 'howling_lookout', weight: 1 }], primaryPct: 0.7, theme: 'Poltergeist Gunners' },
+          8: { primary: [{ type: 'drowned_banshee', weight: 3 }, { type: 'poltergeist_gunner', weight: 1 }], support: [{ type: 'phantom_swashbuckler', weight: 1 }], primaryPct: 0.65, theme: 'Drowned Banshees' },
+          9: { primary: [{ type: 'cursed_shackler', weight: 2 }, { type: 'drowned_banshee', weight: 2 }], support: [{ type: 'phantom_swashbuckler', weight: 1 }, { type: 'poltergeist_gunner', weight: 1 }], primaryPct: 0.6, theme: 'Ghost Elite' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'ghostbeard_arena',
+        boss: 'ghostbeard',
+        bossComp: { theme: 'Ghostbeard', forceGolem: false, forceBoss: 'ghostbeard', support: [{ type: 'phantom_swashbuckler', count: 2 }, { type: 'poltergeist_gunner', count: 2 }, { type: 'drowned_banshee', count: 1 }, { type: 'cursed_shackler', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1a22', floor2: '#181822', wall: '#0a0a12', wallAccent: '#8866aa', accent2: '#44aacc', gridLine: '#2a2a32' },
+    hazards: [],
+  }),
+
+  // Floor 4: Sea Creatures / Deep-Sea
+  4: _buildFloor({
+    name: 'Sunken Reef & Abyssal Trench',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'sunken_reef',
+        waveComps: {
+          1: { primary: [{ type: 'ink_spitter', weight: 3 }], support: [{ type: 'barnacle_bomber', weight: 1 }], primaryPct: 0.85, theme: 'Ink Spitters' },
+          2: { primary: [{ type: 'coral_crusher', weight: 3 }, { type: 'ink_spitter', weight: 2 }], support: [{ type: 'barnacle_bomber', weight: 1 }], primaryPct: 0.7, theme: 'Coral Crushers' },
+          3: { primary: [{ type: 'trench_tentacle', weight: 2 }, { type: 'coral_crusher', weight: 2 }], support: [{ type: 'ink_spitter', weight: 2 }, { type: 'barnacle_bomber', weight: 1 }], primaryPct: 0.6, theme: 'Trench Tentacles' },
+          4: { primary: [{ type: 'barnacle_bomber', weight: 3 }, { type: 'trench_tentacle', weight: 2 }], support: [{ type: 'ink_spitter', weight: 1 }, { type: 'coral_crusher', weight: 1 }], primaryPct: 0.6, theme: 'Barnacle Bombers' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'kraken_arena',
+        boss: 'kraken_jim',
+        bossComp: { theme: 'Kraken Jim', forceGolem: false, forceBoss: 'kraken_jim', support: [{ type: 'ink_spitter', count: 2 }, { type: 'coral_crusher', count: 2 }, { type: 'trench_tentacle', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'abyssal_trench',
+        waveComps: {
+          6: { primary: [{ type: 'gilded_triton', weight: 3 }], support: [{ type: 'ink_spitter', weight: 1 }], primaryPct: 0.8, theme: 'Gilded Tritons' },
+          7: { primary: [{ type: 'coin_spitter_jelly', weight: 3 }, { type: 'gilded_triton', weight: 1 }], support: [{ type: 'coral_crusher', weight: 1 }], primaryPct: 0.7, theme: 'Coin-Spitter Jellies' },
+          8: { primary: [{ type: 'deep_sea_dredger', weight: 3 }, { type: 'coin_spitter_jelly', weight: 1 }], support: [{ type: 'gilded_triton', weight: 1 }], primaryPct: 0.65, theme: 'Deep-Sea Dredgers' },
+          9: { primary: [{ type: 'royal_cephalopod', weight: 2 }, { type: 'deep_sea_dredger', weight: 2 }], support: [{ type: 'gilded_triton', weight: 1 }, { type: 'coin_spitter_jelly', weight: 1 }], primaryPct: 0.6, theme: 'Abyssal Elite' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'requill_arena',
+        boss: 'king_requill',
+        bossComp: { theme: 'King Requill', forceGolem: false, forceBoss: 'king_requill', support: [{ type: 'gilded_triton', count: 2 }, { type: 'coin_spitter_jelly', count: 2 }, { type: 'deep_sea_dredger', count: 1 }, { type: 'royal_cephalopod', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#0a1a28', floor2: '#081828', wall: '#040e18', wallAccent: '#22aacc', accent2: '#ffaa22', gridLine: '#1a2a38' },
+    hazards: [],
+  }),
+
+  // Floor 5: Merfolk / Ocean Deity
+  5: _buildFloor({
+    name: 'Coral Throne & Ocean Temple',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'coral_throne',
+        waveComps: {
+          1: { primary: [{ type: 'alabaster_sentinel', weight: 3 }], support: [{ type: 'reef_weaver', weight: 1 }], primaryPct: 0.8, theme: 'Alabaster Sentinels' },
+          2: { primary: [{ type: 'reef_weaver', weight: 3 }, { type: 'alabaster_sentinel', weight: 1 }], support: [{ type: 'gilded_manta', weight: 1 }], primaryPct: 0.7, theme: 'Reef Weavers' },
+          3: { primary: [{ type: 'gilded_manta', weight: 3 }, { type: 'reef_weaver', weight: 1 }], support: [{ type: 'alabaster_sentinel', weight: 1 }, { type: 'royal_shell_knight', weight: 1 }], primaryPct: 0.65, theme: 'Gilded Mantas' },
+          4: { primary: [{ type: 'royal_shell_knight', weight: 2 }, { type: 'gilded_manta', weight: 2 }], support: [{ type: 'alabaster_sentinel', weight: 1 }, { type: 'reef_weaver', weight: 1 }], primaryPct: 0.6, theme: 'Royal Shell Knights' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'siralyth_arena',
+        boss: 'queen_siralyth',
+        bossComp: { theme: 'Queen Siralyth', forceGolem: false, forceBoss: 'queen_siralyth', support: [{ type: 'alabaster_sentinel', count: 2 }, { type: 'reef_weaver', count: 2 }, { type: 'royal_shell_knight', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'ocean_temple',
+        waveComps: {
+          6: { primary: [{ type: 'sea_serpent_spawn', weight: 3 }], support: [{ type: 'gilded_manta', weight: 1 }], primaryPct: 0.8, theme: 'Sea Serpent Spawns' },
+          7: { primary: [{ type: 'living_whirlpool', weight: 3 }, { type: 'sea_serpent_spawn', weight: 1 }], support: [{ type: 'reef_weaver', weight: 1 }], primaryPct: 0.7, theme: 'Living Whirlpools' },
+          8: { primary: [{ type: 'bone_tooth_zealot', weight: 3 }, { type: 'living_whirlpool', weight: 1 }], support: [{ type: 'sea_serpent_spawn', weight: 1 }], primaryPct: 0.65, theme: 'Bone-Tooth Zealots' },
+          9: { primary: [{ type: 'tidal_avatar', weight: 2 }, { type: 'bone_tooth_zealot', weight: 2 }], support: [{ type: 'sea_serpent_spawn', weight: 1 }, { type: 'living_whirlpool', weight: 1 }], primaryPct: 0.6, theme: 'Ocean Deity Elite' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'mami_wata_arena',
+        boss: 'mami_wata',
+        bossComp: { theme: 'Mami Wata', forceGolem: false, forceBoss: 'mami_wata', support: [{ type: 'sea_serpent_spawn', count: 2 }, { type: 'living_whirlpool', count: 2 }, { type: 'bone_tooth_zealot', count: 1 }, { type: 'tidal_avatar', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#0a1828', floor2: '#081628', wall: '#040e18', wallAccent: '#44ccaa', accent2: '#ffcc44', gridLine: '#1a2838' },
+    hazards: [],
+  }),
+};
+
 // ===================== ASSEMBLE FLOOR_CONFIG =====================
 const FLOOR_CONFIG = {
   cave: _caveConfig,
   azurine: _azurineConfig,
+  vortalis: _vortalisConfig,
 };
 
 // Helper: get the wave composition for a floor-configured wave

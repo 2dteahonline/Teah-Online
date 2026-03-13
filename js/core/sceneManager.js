@@ -47,6 +47,7 @@ const Scene = {
     else if (level.isHideSeek) this._current = 'hideseek';
     else if (level.isMafiaLobby) this._current = 'mafia_lobby';
     else if (level.isSkeld) this._current = 'skeld';
+    else if (level.isVortalis) this._current = 'vortalis';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -67,6 +68,7 @@ const Scene = {
   get inHideSeek() { return this._current === 'hideseek'; },
   get inMafiaLobby() { return this._current === 'mafia_lobby'; },
   get inSkeld() { return this._current === 'skeld'; },
+  get inVortalis() { return this._current === 'vortalis'; },
 };
 
 // ---- PORTAL TYPE REGISTRY ----
@@ -83,10 +85,12 @@ const PORTAL_SCENES = {
   hideseek_entrance: 'lobby',
   skeld_entrance: 'lobby',
   mafia_lobby_exit: 'mafia_lobby',
+  vortalis_entrance: 'lobby',
+  vortalis_exit: 'vortalis',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
-const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby']);
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis']);
 
 // ---- /LEAVE SYSTEM ----
 // Registry for enclosed scenes that require /leave to exit (no walkable door).
@@ -135,6 +139,12 @@ const LEAVE_HANDLERS = {
     returnLevel: 'lobby_01',
     returnTX: 72, returnTY: 9,
     message: 'Leaving Azurine City...',
+  },
+  vortalis: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 53, returnTY: 21,
+    message: 'Leaving Vortalis...',
   },
   gunsmith: {
     cleanup() {},
@@ -326,7 +336,7 @@ function checkPortals() {
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }
-    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine) && inZone) {
+    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine || Scene.inVortalis) && inZone) {
       nearQueue = true;
       queueDungeonId = e.dungeonId;
       queueSpawnTX = e.spawnTX;

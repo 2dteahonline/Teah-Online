@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inHideSeek ? '#0a0a10' : Scene.inMafiaLobby ? '#0a0a14' : Scene.inSkeld ? '#050508' : Scene.inLobby ? '#080810' : '#1e1e26';
+  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inVortalis ? '#0a1828' : Scene.inHideSeek ? '#0a0a10' : Scene.inMafiaLobby ? '#0a0a14' : Scene.inSkeld ? '#050508' : Scene.inLobby ? '#080810' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -189,6 +189,41 @@ function drawLevelBackground(camX, camY) {
             ctx.strokeStyle = 'rgba(255,0,170,0.06)';
             ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(x + 30, y + 8); ctx.lineTo(x + 10, y + 38); ctx.stroke();
+          }
+        }
+        continue;
+      }
+
+      // === VORTALIS INTERIOR TILES (Ocean/Pirate) ===
+      if (Scene.inVortalis) {
+        const isOuterEdge = tx === 0 || ty === 0 || tx === level.widthTiles - 1 || ty === level.heightTiles - 1;
+        if (collisionGrid[ty][tx] === 1 && isOuterEdge) {
+          // Dark barnacle-encrusted stone wall
+          ctx.fillStyle = '#0a1820';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#122028';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Barnacle accents
+          if ((tx + ty * 3) % 4 === 0) {
+            ctx.fillStyle = 'rgba(34,170,204,0.08)';
+            ctx.beginPath(); ctx.arc(x + 14, y + 18, 4, 0, Math.PI * 2); ctx.fill();
+          }
+          if ((tx * 5 + ty) % 5 === 0) {
+            ctx.fillStyle = 'rgba(100,200,200,0.06)';
+            ctx.beginPath(); ctx.arc(x + 32, y + 30, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        } else {
+          // Dark teal stone floor
+          const sv = ((tx * 3 + ty * 7) % 5);
+          ctx.fillStyle = `rgb(${16 + sv},${28 + sv},${36 + sv * 2})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(34,170,204,0.03)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Water stain accents
+          if ((tx + ty * 3) % 9 === 0) {
+            ctx.fillStyle = 'rgba(34,170,204,0.05)';
+            ctx.beginPath(); ctx.ellipse(x + 24, y + 24, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
           }
         }
         continue;
