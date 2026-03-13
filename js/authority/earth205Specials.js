@@ -2024,7 +2024,7 @@ MOB_SPECIALS.concealed_stiletto = (m, ctx) => {
   const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
   hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
   hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "stiletto_stab" });
-  StatusFX.applyToPlayer('bleed', { duration: 180 });
+  StatusFX.applyToPlayer('bleed', { duration: 180, dmg: 6 });
   m._abilityCDs.concealed_stiletto = 210;
   return {};
 };
@@ -2082,7 +2082,7 @@ MOB_SPECIALS.toxic_perfume = (m, ctx) => {
     const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
     hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
     StatusFX.applyToPlayer('confuse', { duration: 120 });
-    StatusFX.applyToPlayer('bleed', { duration: 180 });
+    StatusFX.applyToPlayer('bleed', { duration: 180, dmg: 5 });
     hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "chemical_beam" });
   }
   hitEffects.push({ x: m.x, y: m.y - 10, life: 25, type: "chemical_beam" });
@@ -2165,7 +2165,7 @@ MOB_SPECIALS.checkmate = (m, ctx) => {
   }
   // Teleport phase
   if (m._checkPhase === 'teleport') {
-    const behindDir = Math.atan2(player.y - m.y, player.x - m.x);
+    const behindDir = Math.atan2(m.y - player.y, m.x - player.x);
     const tx = player.x + Math.cos(behindDir) * 50;
     const ty = player.y + Math.sin(behindDir) * 50;
     hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
@@ -2337,7 +2337,7 @@ MOB_SPECIALS.the_hit = (m, ctx) => {
   }
   // Phase 2: teleport behind player
   if (m._hitPhase === 2) {
-    const behindDir = Math.atan2(player.y - m.y, player.x - m.x);
+    const behindDir = Math.atan2(m.y - player.y, m.x - player.x);
     const tx = player.x + Math.cos(behindDir) * 50;
     const ty = player.y + Math.sin(behindDir) * 50;
     hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
