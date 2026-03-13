@@ -130,6 +130,52 @@ const _FOV_BLUR = 36;       // px — heavy blur eliminates sharp edges
 const _FOV_DARKNESS = 0.72;  // darkness opacity — environment stays readable
 const _FOV_AMBIENT = 0.15;   // ambient light in darkness (0 = pure black)
 
+// ---- Per-frame FOV visibility cache (for object-level gating) ----
+// Stores ray hit distances so isMafiaWorldPointVisible() is O(1) per query.
+let _fovCacheOriginX = 0, _fovCacheOriginY = 0;
+let _fovCacheMaxDist = 0;
+let _fovCacheDistances = null; // Float32Array[_FOV_RAY_COUNT] — ray distances
+let _fovCacheActive = false;   // true when FOV is active this frame
+const _FOV_VISIBILITY_PAD = 24; // px forgiveness at edge to prevent flicker
+
+function _updateFOVCache(px, py, maxDist, distances) {
+  _fovCacheOriginX = px;
+  _fovCacheOriginY = py;
+  _fovCacheMaxDist = maxDist;
+  _fovCacheDistances = distances;
+  _fovCacheActive = true;
+}
+
+function _clearFOVCache() {
+  _fovCacheActive = false;
+}
+
+// Test if a world point is within the current frame's FOV.
+// Returns true if FOV is inactive (meetings, ghost, idle) or point is visible.
+// Uses cached ray distances — O(1) per query, no raycasting.
+function isMafiaWorldPointVisible(wx, wy) {
+  if (!_fovCacheActive) return true; // no FOV active = everything visible
+  const dx = wx - _fovCacheOriginX;
+  const dy = wy - _fovCacheOriginY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < TILE) return true; // always visible within 1 tile of player
+
+  // Find which ray sector this angle falls in
+  let angle = Math.atan2(dy, dx);
+  if (angle < 0) angle += Math.PI * 2;
+  const sector = angle / (Math.PI * 2) * _FOV_RAY_COUNT;
+  const i0 = Math.floor(sector) % _FOV_RAY_COUNT;
+  const i1 = (i0 + 1) % _FOV_RAY_COUNT;
+  const frac = sector - Math.floor(sector);
+
+  // Interpolate ray distance at this angle
+  const d0 = _fovCacheDistances[i0];
+  const d1 = _fovCacheDistances[i1];
+  const rayDist = d0 + (d1 - d0) * frac;
+
+  return dist <= rayDist + _FOV_VISIBILITY_PAD;
+}
+
 // Get candidate ray angles — uniform ring only, no vertex precision
 // (vertex-driven rays cause thin doorway wedges; broad soft rays match Among Us)
 function getFOVCandidateAngles() {
@@ -141,6 +187,7 @@ function getFOVCandidateAngles() {
 }
 
 // Compute visibility polygon from uniform ray ring (screen coordinates)
+// Also caches ray distances for isMafiaWorldPointVisible() queries.
 function computeVisibilityPolygon(px, py, maxDist, camX, camY) {
   buildFOVOccluderCache();
   if (!_fovGrid) return null;
@@ -150,43 +197,71 @@ function computeVisibilityPolygon(px, py, maxDist, camX, camY) {
 
   const zoom = WORLD_ZOOM;
   const pts = new Array(_FOV_RAY_COUNT);
+  const distances = new Float32Array(_FOV_RAY_COUNT);
   for (let i = 0; i < _FOV_RAY_COUNT; i++) {
     const a = angles[i];
     const dx = Math.cos(a), dy = Math.sin(a);
     const d = _fovCastRay(px, py, dx, dy, maxDist);
+    distances[i] = d;
     pts[i] = {
       x: (px + dx * d - camX) * zoom,
       y: (py + dy * d - camY) * zoom,
     };
   }
+  _updateFOVCache(px, py, maxDist, distances);
   return pts;
+}
+
+// Called early in the frame (before entity rendering) to populate FOV cache
+// so isMafiaWorldPointVisible() works during entity draw calls.
+function updateMafiaFOVCache() {
+  _clearFOVCache();
+  if (typeof MafiaState === 'undefined' || typeof player === 'undefined'
+      || !Scene.inSkeld
+      || MafiaState.phase === 'idle'
+      || MafiaState.playerIsGhost
+      || MafiaState.phase === 'meeting' || MafiaState.phase === 'voting' || MafiaState.phase === 'ejection') {
+    return; // no FOV = everything visible
+  }
+
+  // ---- Lights sabotage: fade crewmate vision down/up over 3s ----
+  const lightsActive = MafiaState.sabotage.active === 'lights_out';
+  const isCrewmate = MafiaState.playerRole === 'crewmate';
+  if (isCrewmate && lightsActive) {
+    _lightsDimProgress = Math.min(1, _lightsDimProgress + 1 / _LIGHTS_FADE_FRAMES);
+  } else {
+    _lightsDimProgress = Math.max(0, _lightsDimProgress - 1 / _LIGHTS_FADE_FRAMES);
+  }
+
+  const visionMult = MafiaState.playerRole === 'impostor'
+    ? MAFIA_SETTINGS.impostorVision
+    : MAFIA_SETTINGS.crewVision;
+  const lightsMult = 1 - (_lightsDimProgress * (1 - _LIGHTS_DIM_AMOUNT));
+  const fovWorldR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * lightsMult * TILE;
+
+  // Smooth raycast origin
+  if (!_fovLerpInit) { _fovLerpX = player.x; _fovLerpY = player.y; _fovLerpInit = true; }
+  _fovLerpX += (player.x - _fovLerpX) * _FOV_LERP_SPEED;
+  _fovLerpY += (player.y - _fovLerpY) * _FOV_LERP_SPEED;
+
+  // Compute and cache
+  computeVisibilityPolygon(_fovLerpX, _fovLerpY, fovWorldR, 0, 0);
+  // Cache is now populated — store the computed polygon for drawMafiaFOV
+  drawMafiaFOV._cachedFovWorldR = fovWorldR;
 }
 
 function drawMafiaFOV() {
   // ---- Base FOV overlay (wall-aware raycasted polygon) ----
-  if (typeof MafiaState !== 'undefined' && typeof player !== 'undefined'
-      && typeof camera !== 'undefined' && typeof ctx !== 'undefined'
-      && Scene.inSkeld
-      && MafiaState.phase !== 'idle'
-      && !MafiaState.playerIsGhost
-      && MafiaState.phase !== 'meeting' && MafiaState.phase !== 'voting' && MafiaState.phase !== 'ejection') {
+  if (!_fovCacheActive) return; // cache was cleared = no FOV needed
 
-    // ---- Lights sabotage: fade crewmate vision down/up over 3s ----
-    const lightsActive = MafiaState.sabotage.active === 'lights_out';
-    const isCrewmate = MafiaState.playerRole === 'crewmate';
-    if (isCrewmate && lightsActive) {
-      _lightsDimProgress = Math.min(1, _lightsDimProgress + 1 / _LIGHTS_FADE_FRAMES);
-    } else {
-      _lightsDimProgress = Math.max(0, _lightsDimProgress - 1 / _LIGHTS_FADE_FRAMES);
-    }
+  if (typeof camera === 'undefined' || typeof ctx === 'undefined') return;
 
-    const visionMult = MafiaState.playerRole === 'impostor'
-      ? MAFIA_SETTINGS.impostorVision
-      : MAFIA_SETTINGS.crewVision;
-    const lightsMult = 1 - (_lightsDimProgress * (1 - _LIGHTS_DIM_AMOUNT));
-    const fovWorldR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * lightsMult * TILE;
+    const fovWorldR = drawMafiaFOV._cachedFovWorldR || 0;
     const screenPX = (player.x - camera.x) * WORLD_ZOOM;
     const screenPY = (player.y - camera.y) * WORLD_ZOOM;
+
+    // Recompute polygon in screen space (cache used world space for visibility tests)
+    const polyPoints = computeVisibilityPolygon(_fovLerpX, _fovLerpY, fovWorldR, camera.x, camera.y);
 
     // Render FOV to offscreen canvas, then stamp onto main canvas
     if (!drawMafiaFOV._buf) {
@@ -197,20 +272,11 @@ function drawMafiaFOV() {
     }
     const buf = drawMafiaFOV._buf;
     const bctx = drawMafiaFOV._bctx;
-    // Clear without reallocating (fast)
     bctx.clearRect(0, 0, BASE_W, BASE_H);
 
     // Fill with soft darkness — environment stays partially readable
     bctx.fillStyle = `rgba(0,0,0,${_FOV_DARKNESS})`;
     bctx.fillRect(0, 0, BASE_W, BASE_H);
-
-    // Smooth raycast origin — lerp toward player position for stable mask
-    if (!_fovLerpInit) { _fovLerpX = player.x; _fovLerpY = player.y; _fovLerpInit = true; }
-    _fovLerpX += (player.x - _fovLerpX) * _FOV_LERP_SPEED;
-    _fovLerpY += (player.y - _fovLerpY) * _FOV_LERP_SPEED;
-    const rayX = _fovLerpX;
-    const rayY = _fovLerpY;
-    const polyPoints = computeVisibilityPolygon(rayX, rayY, fovWorldR, camera.x, camera.y);
 
     if (polyPoints && polyPoints.length > 2) {
       // Cut out visible area with heavy blur for soft Among Us-style edges
@@ -231,7 +297,6 @@ function drawMafiaFOV() {
 
     bctx.globalCompositeOperation = 'source-over';
     ctx.drawImage(buf, 0, 0);
-  }
 
   // O2 fog effect — progressive fog for crewmates during O2 sabotage
   if (typeof MafiaState !== 'undefined' && Scene.inSkeld
@@ -270,6 +335,9 @@ function drawMafiaBodies() {
   if (!MafiaState.bodies || MafiaState.bodies.length === 0) return;
 
   for (const body of MafiaState.bodies) {
+    // Hide bodies outside FOV — players shouldn't see them through darkness
+    if (!isMafiaWorldPointVisible(body.x, body.y)) continue;
+
     const sx = body.x;
     const sy = body.y;
 

@@ -181,6 +181,9 @@ function draw() {
   // Draw user-placed tiles on top of background
   drawPlacedTiles(cx, cy);
 
+  // Update Mafia FOV cache early so isMafiaWorldPointVisible() works during entity draws
+  if (typeof updateMafiaFOVCache === 'function') updateMafiaFOVCache();
+
   // Draw level entity overlays (barriers, spawn pads, zones) — uses own cam offset
   drawLevelEntities(cx, cy);
 
@@ -243,9 +246,13 @@ function draw() {
   // Mafia dead bodies (render before characters, on the ground)
   if (typeof drawMafiaBodies === 'function' && Scene.inSkeld) drawMafiaBodies();
   // Mafia participants — standalone entities, not in mobs[]
+  // Only include if within FOV (hidden players should not be visible through darkness)
   if (typeof MafiaState !== 'undefined' && Scene.inSkeld && MafiaState.participants) {
     for (const p of MafiaState.participants) {
-      if (!p.isLocal && p.alive && p.entity) sortedChars.push({ y: p.entity.y, type: "mob", mob: p.entity });
+      if (!p.isLocal && p.alive && p.entity
+          && (typeof isMafiaWorldPointVisible !== 'function' || isMafiaWorldPointVisible(p.entity.x, p.entity.y))) {
+        sortedChars.push({ y: p.entity.y, type: "mob", mob: p.entity });
+      }
     }
   }
   // Deli customer NPCs

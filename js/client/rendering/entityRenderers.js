@@ -3443,6 +3443,12 @@ ENTITY_RENDERERS.ocean_lantern = (e, ctx, ex, ey) => {
 
 function drawLevelEntities(camX, camY) {
   for (const e of levelEntities) {
+    // In Skeld: hide gameplay entities (tasks, sabotage panels) outside FOV
+    if (Scene.inSkeld && (e.type === 'skeld_task' || e.type === 'skeld_sabotage')
+        && typeof isMafiaWorldPointVisible === 'function'
+        && !isMafiaWorldPointVisible(e.tx * TILE + TILE / 2, e.ty * TILE + TILE / 2)) {
+      continue;
+    }
     const w = e.w ?? 1;
     const h = e.h ?? 1;
     const ex = e.tx * TILE - camX;
