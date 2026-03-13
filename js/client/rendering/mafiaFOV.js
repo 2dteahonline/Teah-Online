@@ -30,6 +30,13 @@ const _sabPanel = {
   wrongTimer: 0,
 };
 
+// ---- Lights sabotage dimming state ----
+// _lightsDimProgress: 0 = normal vision, 1 = fully dimmed (50% radius)
+// Smoothly fades over 3 seconds (~180 frames at 60fps)
+let _lightsDimProgress = 0;
+const _LIGHTS_FADE_FRAMES = 180; // 3 seconds
+const _LIGHTS_DIM_AMOUNT = 0.5;  // shrink to 50% of normal radius
+
 function drawMafiaFOV() {
   // ---- Base FOV overlay (dark circle cutout around player) ----
   if (typeof MafiaState !== 'undefined' && typeof player !== 'undefined'
@@ -39,12 +46,25 @@ function drawMafiaFOV() {
       && !MafiaState.playerIsGhost
       && MafiaState.phase !== 'meeting' && MafiaState.phase !== 'voting' && MafiaState.phase !== 'ejection') {
 
+    // ---- Lights sabotage: fade crewmate vision down/up over 3s ----
+    const lightsActive = MafiaState.sabotage.active === 'lights_out';
+    const isCrewmate = MafiaState.playerRole === 'crewmate';
+    if (isCrewmate && lightsActive) {
+      // Fade toward fully dimmed
+      _lightsDimProgress = Math.min(1, _lightsDimProgress + 1 / _LIGHTS_FADE_FRAMES);
+    } else {
+      // Fade back to normal
+      _lightsDimProgress = Math.max(0, _lightsDimProgress - 1 / _LIGHTS_FADE_FRAMES);
+    }
+
     const visionMult = MafiaState.playerRole === 'impostor'
       ? MAFIA_SETTINGS.impostorVision
       : MAFIA_SETTINGS.crewVision;
+    // Apply lights dimming: lerp from 1.0 to _LIGHTS_DIM_AMOUNT based on progress
+    const lightsMult = 1 - (_lightsDimProgress * (1 - _LIGHTS_DIM_AMOUNT));
     const px = (player.x - camera.x) * WORLD_ZOOM;
     const py = (player.y - camera.y) * WORLD_ZOOM;
-    const fovR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * TILE * WORLD_ZOOM;
+    const fovR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * lightsMult * TILE * WORLD_ZOOM;
 
     // Render FOV to offscreen canvas, then stamp onto main canvas
     if (!drawMafiaFOV._buf) {

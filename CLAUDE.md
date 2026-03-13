@@ -100,4 +100,4 @@ Templates in `assets/sprites/` — clean grids for artists + labeled references.
 - **Adding mobs**: define in `MOB_TYPES`, add AI pattern to `MOB_AI`, add specials to `MOB_SPECIALS`, add renderer entry if custom
 - **Adding entities**: add renderer function to `ENTITY_RENDERERS` registry
 - **Debug commands**: `/gun`, `/tp`, `/heal`, `/mob`, `/freeze` — defined in `commands.js`
-- **MANDATORY: Increment `GAME_CONFIG.GAME_UPDATE`** in `js/shared/gameConfig.js` on every commit+push — this is shown on the lobby version sign so the user can verify they're running the latest build
+- **MANDATORY: Increment `GAME_CONFIG.GAME_UPDATE`** in `js/shared/gameConfig.js` on every commit+push — this is shown on the lobby version sign so the user can verify they're running the latest build. **Always READ the file first** to get the current value, then increment by 1. Never assume what it is — another terminal/session may have already bumped it.
