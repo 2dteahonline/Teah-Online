@@ -94,8 +94,13 @@ function _fovCastRay(px, py, dirX, dirY, maxDist) {
   return maxDist;
 }
 
+// Smooth player position for raycasting (lerped to avoid jitter)
+let _fovLerpX = 0, _fovLerpY = 0;
+let _fovLerpInit = false;
+const _FOV_LERP_SPEED = 0.35; // blend factor per frame (0=frozen, 1=instant)
+
 // Pre-computed cos/sin tables for base rays (allocated once)
-const _FOV_RAY_COUNT = 360;
+const _FOV_RAY_COUNT = 720;
 const _fovCos = new Float32Array(_FOV_RAY_COUNT);
 const _fovSin = new Float32Array(_FOV_RAY_COUNT);
 for (let i = 0; i < _FOV_RAY_COUNT; i++) {
@@ -203,15 +208,19 @@ function drawMafiaFOV() {
     bctx.fillStyle = 'rgba(0,0,0,0.93)';
     bctx.fillRect(0, 0, BASE_W, BASE_H);
 
-    // Snap raycast origin to tile center — shadows only shift when crossing
-    // a tile boundary, eliminating per-pixel jitter for clean Among Us look
-    const rayX = (Math.floor(player.x / TILE) + 0.5) * TILE;
-    const rayY = (Math.floor(player.y / TILE) + 0.5) * TILE;
+    // Smooth raycast origin — lerp toward player position for fluid shadows
+    if (!_fovLerpInit) { _fovLerpX = player.x; _fovLerpY = player.y; _fovLerpInit = true; }
+    _fovLerpX += (player.x - _fovLerpX) * _FOV_LERP_SPEED;
+    _fovLerpY += (player.y - _fovLerpY) * _FOV_LERP_SPEED;
+    const rayX = _fovLerpX;
+    const rayY = _fovLerpY;
     const polyPoints = _castFOVPolygon(rayX, rayY, fovWorldR, camera.x, camera.y);
 
     if (polyPoints && polyPoints.length > 2) {
-      // Cut out the visible polygon from darkness
+      // Cut out the visible polygon from darkness with soft blur for smooth shadow edges
       bctx.globalCompositeOperation = 'destination-out';
+      bctx.save();
+      bctx.filter = 'blur(12px)';
       bctx.fillStyle = 'rgba(255,255,255,1)';
       bctx.beginPath();
       bctx.moveTo(polyPoints[0].x, polyPoints[0].y);
@@ -220,13 +229,33 @@ function drawMafiaFOV() {
       }
       bctx.closePath();
       bctx.fill();
+      bctx.restore();
 
-      // Soft edge at max range — slight vignette near boundary
+      // Second pass: sharp inner cutout so center is fully visible (blur only affects edges)
+      bctx.globalCompositeOperation = 'destination-out';
+      bctx.fillStyle = 'rgba(255,255,255,1)';
+      bctx.beginPath();
+      // Shrink polygon slightly toward center for the sharp inner region
+      const shrink = 14; // px inward
+      for (let i = 0; i < polyPoints.length; i++) {
+        const dx = polyPoints[i].x - screenPX;
+        const dy = polyPoints[i].y - screenPY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const s = len > shrink ? (len - shrink) / len : 0;
+        const sx = screenPX + dx * s;
+        const sy = screenPY + dy * s;
+        if (i === 0) bctx.moveTo(sx, sy);
+        else bctx.lineTo(sx, sy);
+      }
+      bctx.closePath();
+      bctx.fill();
+
+      // Soft edge at max range — vignette near boundary
       bctx.globalCompositeOperation = 'source-over';
       const edgeR = fovWorldR * WORLD_ZOOM;
-      const edgeGrad = bctx.createRadialGradient(screenPX, screenPY, edgeR * 0.8, screenPX, screenPY, edgeR);
+      const edgeGrad = bctx.createRadialGradient(screenPX, screenPY, edgeR * 0.75, screenPX, screenPY, edgeR);
       edgeGrad.addColorStop(0, 'rgba(0,0,0,0)');
-      edgeGrad.addColorStop(1, 'rgba(0,0,0,0.8)');
+      edgeGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
       bctx.fillStyle = edgeGrad;
       bctx.save();
       bctx.beginPath();
