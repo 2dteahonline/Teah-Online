@@ -92,13 +92,6 @@ const DELI_NPC_CONFIG = {
   aisleChance:     0.7,        // chance to browse aisles after eating
   tipChance:       0.4,
   tipAmount:       [1, 5],
-  // Emoji mood bubbles above NPC heads (5-grade system: S/A/B/C/F)
-  emojiBubble: {
-    bubbleDuration: 120,           // 2 sec display time
-    spawnAnimFrames: 12,           // cloud puff expand animation frames
-  },
-  // Per-NPC patience range (frames at 60fps): 20-45 seconds
-  patienceRange: [1200, 2700],
   // Pre-queue aisle browsing
   preQueueBrowseChance: 0.3,      // 30% chance to browse aisles before joining line
   // Mid-queue line leaving
@@ -118,6 +111,11 @@ function _randFromArray(arr) { return arr[Math.floor(Math.random() * arr.length)
 
 function _tilePx(tx, ty) {
   return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 };
+}
+
+// Kitchen zone check — NPCs must not enter kitchen (tx <= 24 && ty <= 20)
+function _isKitchenZone(px, py) {
+  return Math.floor(px / TILE) <= 24 && Math.floor(py / TILE) <= 20;
 }
 
 // ===================== ROUTE BUILDERS =====================
@@ -323,11 +321,12 @@ function moveDeliNPC(npc) {
   }
 
   const wp = npc.route[0];
-  const targetX = wp.tx * TILE + TILE / 2;
-  const targetY = wp.ty * TILE + TILE / 2;
-  const dx = targetX - npc.x;
-  const dy = targetY - npc.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
+  // Per-NPC lane offset prevents perfect overlap on shared routes
+  const targetX = wp.tx * TILE + TILE / 2 + (npc._laneOffX || 0);
+  const targetY = wp.ty * TILE + TILE / 2 + (npc._laneOffY || 0);
+  let dx = targetX - npc.x;
+  let dy = targetY - npc.y;
+  let dist = Math.sqrt(dx * dx + dy * dy);
 
   if (dist < 6) {
     // Snap to waypoint and advance
@@ -340,11 +339,54 @@ function moveDeliNPC(npc) {
     return;
   }
 
-  // Walk toward current waypoint
   npc.moving = true;
-  const spd = npc.speed;
-  npc.x += (dx / dist) * spd;
-  npc.y += (dy / dist) * spd;
+  let spd = npc.speed;
+
+  // NPC-NPC avoidance — lower-ID NPCs have priority, higher-ID yields
+  for (const other of deliNPCs) {
+    if (other === npc) continue;
+    // Don't interact with seated/despawning NPCs
+    if (other.state === 'eating' || other.state === 'at_condiments' ||
+        other.state === 'spawn_wait' || other.state === '_despawn') continue;
+    const sx = npc.x - other.x;
+    const sy = npc.y - other.y;
+    const sd = Math.sqrt(sx * sx + sy * sy);
+    if (sd > 0 && sd < 40) {
+      if (npc.id > other.id) {
+        // Higher-ID yields: slow down and nudge away from the other NPC
+        spd *= 0.3;
+        const pushStr = (40 - sd) * 0.2;
+        const nx = sx / sd, ny = sy / sd;
+        const testX = npc.x + nx * pushStr;
+        const testY = npc.y + ny * pushStr;
+        // Only apply nudge if it doesn't push into a wall or kitchen
+        if (!_isKitchenZone(testX, testY) &&
+            (typeof positionClear !== 'function' || positionClear(testX, testY, 14))) {
+          npc.x = testX;
+          npc.y = testY;
+        }
+      }
+    }
+  }
+
+  // Recalculate direction after any nudge
+  dx = targetX - npc.x;
+  dy = targetY - npc.y;
+  dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 1) return;
+
+  // Calculate next position
+  const nextX = npc.x + (dx / dist) * spd;
+  const nextY = npc.y + (dy / dist) * spd;
+
+  // Kitchen zone restriction — NPCs must not enter kitchen
+  if (_isKitchenZone(nextX, nextY)) return;
+
+  // Wall/solid entity collision check
+  if (typeof positionClear === 'function' && !positionClear(nextX, nextY, 14)) return;
+
+  npc.x = nextX;
+  npc.y = nextY;
 
   // Facing direction
   if (Math.abs(dx) > Math.abs(dy)) {
@@ -354,55 +396,28 @@ function moveDeliNPC(npc) {
   }
 
   npc.frame = (npc.frame + 0.1) % 4;
-
-  // NPC-NPC separation — prevent phasing through each other
-  const inQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
-  const sepDist = 40; // minimum separation in pixels (nearly full tile)
-  for (const other of deliNPCs) {
-    if (other === npc) continue;
-    // Only separate from moving/queued NPCs (don't push seated NPCs)
-    if (other.state === 'eating' || other.state === 'at_condiments' ||
-        other.state === 'spawn_wait' || other.state === '_despawn') continue;
-    const sx = npc.x - other.x;
-    const sy = npc.y - other.y;
-    const sd = Math.sqrt(sx * sx + sy * sy);
-    if (sd > 0 && sd < sepDist) {
-      const push = (sepDist - sd) * 0.3;
-      const nx = sx / sd, ny = sy / sd;
-      if (inQueue) {
-        // Queue NPCs only push vertically — never sideways off the line
-        npc.y += ny * push;
-        other.y -= ny * push;
-      } else {
-        npc.x += nx * push;
-        npc.y += ny * push;
-        other.x -= nx * push;
-        other.y -= ny * push;
-      }
-    }
-  }
 }
 
 // ===================== QUEUE MANAGEMENT =====================
 
 function _nextQueueSpot() {
-  // Find the next available queue index
-  const taken = new Set();
+  // Always join at the BACK of the queue (one past last occupied)
+  let maxOccupied = -1;
   for (const n of deliNPCs) {
     if (n.state === 'in_queue' || n.state === 'ordering' || n.state === 'waiting_food') {
-      taken.add(n._queueIdx);
+      if (n._queueIdx > maxOccupied) maxOccupied = n._queueIdx;
     }
   }
-  for (let i = 0; i < QUEUE_SPOTS.length; i++) {
-    if (!taken.has(i)) return i;
-  }
-  return -1; // queue full
+  const nextIdx = maxOccupied + 1;
+  return nextIdx < QUEUE_SPOTS.length ? nextIdx : -1;
 }
 
-function _advanceQueue() {
-  // Called when front-of-line NPC leaves. Everyone moves forward.
+function _advanceQueue(fromIdx) {
+  // Advance queue NPCs behind the vacated position forward by one.
+  // fromIdx: the index that was just vacated (default 0 for front-of-line departure)
+  const minIdx = fromIdx !== undefined ? fromIdx : 0;
   const inQueue = deliNPCs.filter(n =>
-    (n.state === 'in_queue' || n.state === 'ordering' || n.state === 'waiting_food') && n._queueIdx > 0
+    (n.state === 'in_queue' || n.state === 'ordering' || n.state === 'waiting_food') && n._queueIdx > minIdx
   );
   for (const n of inQueue) {
     n._queueIdx--;
@@ -441,14 +456,10 @@ function spawnDeliNPC() {
     _browseFirst: false,       // true if browsing aisles before joining queue
     _browsedPreQueue: false,   // true after completing pre-queue browse
     _aisleVisits: 0,           // track aisle visit count
-    // Emoji bubble state (5-grade: S/A/B/C/F based on patience ratio)
-    _bubbleTimer: 0,           // countdown to next bubble show
-    _bubbleActive: 0,          // frames remaining for current bubble
-    _bubbleSpawnAnim: 0,       // cloud puff expand timer
-    _bubbleEmoji: null,        // current emoji string being shown
-    _waitFrames: 0,            // total frames spent waiting in queue
-    _patienceMax: _randRange(DELI_NPC_CONFIG.patienceRange[0], DELI_NPC_CONFIG.patienceRange[1]),
     _recipeIngredients: null,  // set when food is picked up (for food visual colors)
+    // Per-NPC lane offset — prevents perfect overlap on shared routes
+    _laneOffX: (Math.random() - 0.5) * 16,  // ±8px
+    _laneOffY: (Math.random() - 0.5) * 16,  // ±8px
     speed: DELI_NPC_CONFIG.baseSpeed + (Math.random() - 0.5) * DELI_NPC_CONFIG.speedVariance * 2,
     isDeliNPC: true,
   };
@@ -586,8 +597,6 @@ const DELI_NPC_AI = {
       npc.y = spot.ty * TILE + TILE / 2;
     }
 
-    npc._waitFrames++; // track how long this NPC has been waiting
-
     // Front of line + shift active → become ordering
     if (npc._queueIdx === 0 && typeof cookingState !== 'undefined' && cookingState.active) {
       npc.state = 'ordering';
@@ -597,14 +606,14 @@ const DELI_NPC_AI = {
     // Mid-queue leave: customers stuck far back may leave to grab items
     if (npc._queueIdx >= DELI_NPC_CONFIG.midQueueMinIdx &&
         Math.random() < DELI_NPC_CONFIG.midQueueLeaveChance) {
-      // Forfeit queue slot
+      // Forfeit queue slot — advance only NPCs behind this position
+      const leftIdx = npc._queueIdx;
       npc._queueIdx = -1;
-      _advanceQueue();
+      _advanceQueue(leftIdx);
       // Reset browse flags for re-entry
       npc._browseFirst = false;
       npc._browsedPreQueue = false;
       npc._aisleVisits = 0;
-      npc._waitFrames = 0;
       const aisle = _randFromArray(DELI_AISLES);
       npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
       _npcStartRoute(npc, _routeCounterToAisle(aisle),
@@ -661,7 +670,7 @@ const DELI_NPC_AI = {
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
       npc.hasOrdered = true;
       npc._queueIdx = -1;
-      _advanceQueue();
+      _advanceQueue(0);
       // Go browse aisles instead
       const aisle = _randFromArray(DELI_AISLES);
       _npcStartRoute(npc, _routeCounterToAisle(aisle),
@@ -682,7 +691,7 @@ const DELI_NPC_AI = {
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
-      _advanceQueue();
+      _advanceQueue(0);
       _npcStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
     }
   },
@@ -693,7 +702,7 @@ const DELI_NPC_AI = {
 
     npc.hasOrdered = true;
     npc._queueIdx = -1;
-    _advanceQueue();
+    _advanceQueue(0);
 
     // Claim a chair
     const claimed = new Set();
@@ -838,72 +847,6 @@ const DELI_NPC_AI = {
   },
 };
 
-// ===================== EMOJI BUBBLE UPDATE =====================
-// 5-grade system based on wait ratio (waitFrames / patienceMax):
-//   ratio < 0.3  → S grade → no bubble (happy, patient)
-//   ratio 0.3-0.6 → A/B grade → occasional 🙂 every 8-12s
-//   ratio 0.6-0.8 → C grade → 😠 every 6-8s
-//   ratio 0.8-0.9 → near-F → 😡 every 3-5s
-//   ratio > 0.9  → F grade → 🤬 every 2-4s
-function _updateNPCBubble(npc) {
-  // Only show bubbles for NPCs waiting in queue
-  if (npc.state !== 'in_queue' && npc.state !== 'waiting_food' && npc.state !== 'ordering') {
-    npc._bubbleActive = 0;
-    npc._bubbleEmoji = null;
-    return;
-  }
-
-  const ratio = npc._patienceMax > 0 ? npc._waitFrames / npc._patienceMax : 0;
-
-  // S grade — happy, no bubble
-  if (ratio < 0.3) {
-    npc._bubbleActive = 0;
-    npc._bubbleEmoji = null;
-    return;
-  }
-
-  // Determine emoji and repeat interval based on grade
-  let emoji, intervalMin, intervalMax;
-  if (ratio < 0.6) {
-    // A/B grade — mild impatience
-    emoji = '🙂';
-    intervalMin = 480; intervalMax = 720; // 8-12s
-  } else if (ratio < 0.8) {
-    // C grade — getting annoyed
-    emoji = '😠';
-    intervalMin = 360; intervalMax = 480; // 6-8s
-  } else if (ratio < 0.9) {
-    // Near-F — angry
-    emoji = '😡';
-    intervalMin = 180; intervalMax = 300; // 3-5s
-  } else {
-    // F grade — furious
-    emoji = '🤬';
-    intervalMin = 120; intervalMax = 240; // 2-4s
-  }
-
-  // Active bubble countdown
-  if (npc._bubbleActive > 0) {
-    npc._bubbleActive--;
-    if (npc._bubbleSpawnAnim < DELI_NPC_CONFIG.emojiBubble.spawnAnimFrames) {
-      npc._bubbleSpawnAnim++;
-    }
-    return;
-  }
-
-  // Cooldown between bubbles
-  if (npc._bubbleTimer > 0) {
-    npc._bubbleTimer--;
-    return;
-  }
-
-  // Trigger new bubble
-  npc._bubbleTimer = _randRange(intervalMin, intervalMax);
-  npc._bubbleActive = DELI_NPC_CONFIG.emojiBubble.bubbleDuration;
-  npc._bubbleSpawnAnim = 0;
-  npc._bubbleEmoji = emoji;
-}
-
 // ===================== MAIN UPDATE =====================
 function updateDeliNPCs() {
   if (typeof Scene === 'undefined' || !Scene.inCooking) return;
@@ -926,9 +869,6 @@ function updateDeliNPCs() {
     const handler = DELI_NPC_AI[npc.state];
     if (handler) handler(npc);
 
-    // Update emoji mood bubble
-    _updateNPCBubble(npc);
-
     // Move along route (walking state — other states that move call moveDeliNPC internally)
     if (npc.state === 'walking') {
       moveDeliNPC(npc);
@@ -937,7 +877,11 @@ function updateDeliNPCs() {
     // Despawn
     if (npc.state === '_despawn') {
       if (npc.claimedChair !== null) npc.claimedChair = null;
-      if (npc._queueIdx >= 0) { npc._queueIdx = -1; _advanceQueue(); }
+      if (npc._queueIdx >= 0) {
+        const leftIdx = npc._queueIdx;
+        npc._queueIdx = -1;
+        _advanceQueue(leftIdx);
+      }
       deliNPCs.splice(i, 1);
     }
   }

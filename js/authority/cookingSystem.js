@@ -290,6 +290,7 @@ function updateCooking() {
         npc.linkedOrderId = null;
         npc.hasOrdered = true;
         npc._queueIdx = -1;
+        if (typeof _advanceQueue === 'function') _advanceQueue(0);
         // Route to exit using new route system
         npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
         npc.state = '_despawn_walk';

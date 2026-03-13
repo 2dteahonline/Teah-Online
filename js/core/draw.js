@@ -740,53 +740,6 @@ function draw() {
         }
       }
 
-      // Emoji mood bubble (cloud puff + emoji) — 5-grade system
-      if (npc._bubbleActive > 0 && npc._bubbleEmoji) {
-        const cfg = DELI_NPC_CONFIG.emojiBubble;
-        const spawnProg = Math.min(1, npc._bubbleSpawnAnim / cfg.spawnAnimFrames);
-        const fadeAlpha = npc._bubbleActive < 15 ? npc._bubbleActive / 15 : 1;
-        const bx = npc.x, by = npc.y - 82;
-
-        ctx.save();
-        ctx.globalAlpha = fadeAlpha;
-
-        // Cloud puff spawn animation — 3 expanding circles
-        if (spawnProg < 1) {
-          const puffScale = spawnProg;
-          for (let p = 0; p < 3; p++) {
-            const angle = p * (Math.PI * 2 / 3) - Math.PI / 2;
-            const dist = 8 * puffScale;
-            const pr = 6 * puffScale;
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
-            ctx.beginPath();
-            ctx.arc(bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist, pr, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-
-        // Main bubble — white rounded cloud (36x32)
-        const scale = Math.min(1, spawnProg * 1.2);
-        const bw = 36 * scale, bh = 32 * scale;
-        ctx.fillStyle = 'rgba(255,255,255,0.94)';
-        ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.stroke();
-
-        // Tail — two small circles leading down to head
-        ctx.fillStyle = 'rgba(255,255,255,0.88)';
-        ctx.beginPath(); ctx.arc(bx - 6, by + bh / 2 + 4, 4 * scale, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(bx - 10, by + bh / 2 + 10, 2.5 * scale, 0, Math.PI * 2); ctx.fill();
-
-        // Emoji inside bubble (20px font)
-        if (scale > 0.5) {
-          ctx.font = Math.round(20 * scale) + 'px sans-serif';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#000';
-          ctx.fillText(npc._bubbleEmoji, bx, by + 1);
-        }
-
-        ctx.restore();
-      }
     } else {
       const m = e.mob;
       // Hide & Seek: skip rendering mob entirely if outside seeker's FOV
@@ -1681,6 +1634,19 @@ function draw() {
   }
 
   ctx.restore();
+
+  // Blind vignette overlay — black edges, clear center
+  if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._blind && !playerDead) {
+    ctx.save();
+    const grad = ctx.createRadialGradient(BASE_W / 2, BASE_H / 2, 80, BASE_W / 2, BASE_H / 2, BASE_W * 0.45);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(0.4, 'rgba(0,0,0,0.3)');
+    grad.addColorStop(0.7, 'rgba(0,0,0,0.75)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.95)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.restore();
+  }
 
   // Poison screen overlay
   // Poison glow on player only
