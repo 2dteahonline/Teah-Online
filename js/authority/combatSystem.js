@@ -5244,16 +5244,16 @@ const MOB_SPECIALS = {
         // Dive toward player
         const odx = player.x - orb.x, ody = player.y - orb.y;
         const oDist = Math.sqrt(odx * odx + ody * ody) || 1;
-        const diveSpeed = 9;
+        const diveSpeed = 13;
         orb.x += (odx / oDist) * diveSpeed;
         orb.y += (ody / oDist) * diveSpeed;
         // Check hit
-        if (oDist < 24) {
-          const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
+        if (oDist < 30) {
+          const dmg = Math.round(m.damage * 0.8 * getMobDamageMultiplier());
           const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "hit", dmg: dealt });
           if (typeof StatusFX !== 'undefined') {
-            StatusFX.applyToPlayer('stun', { duration: 30 }); // 0.5s
+            StatusFX.applyToPlayer('stun', { duration: 54 }); // 0.9s
           }
           hitEffects.push({ x: orb.x, y: orb.y, life: 15, type: "spark" });
           m._staticOrbs.splice(i, 1);
@@ -5655,7 +5655,7 @@ const MOB_SPECIALS = {
 
     hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
     hitEffects.push({ x: m.x, y: m.y - 35, life: 30, maxLife: 30, type: "heal", dmg: "SUMMON!" });
-    m._summonCD = 660; // 11s internal cooldown
+    m._summonCD = 420; // 7s internal cooldown
     return {};
   },
 
@@ -5706,12 +5706,12 @@ const MOB_SPECIALS = {
         // Damage if close to player on arrival — wider threat zone
         const arrDx = player.x - m.x, arrDy = player.y - m.y;
         const arrDist = Math.sqrt(arrDx * arrDx + arrDy * arrDy);
-        if (arrDist < 80) {
-          const dmg = Math.round(m.damage * 0.9 * getMobDamageMultiplier());
+        if (arrDist < 120) {
+          const dmg = Math.round(m.damage * 1.2 * getMobDamageMultiplier());
           const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "hit", dmg: dealt });
           if (typeof StatusFX !== 'undefined') {
-            StatusFX.applyToPlayer('slow', { amount: 0.3, duration: 36 }); // brief slow on shadow strike
+            StatusFX.applyToPlayer('slow', { amount: 0.6, duration: 90 }); // 1.5s heavy slow on shadow strike
           }
         }
         hitEffects.push({ x: m.x, y: m.y - 10, life: 25, type: "smoke" });
@@ -5733,8 +5733,8 @@ const MOB_SPECIALS = {
     }
 
     // Start teleport: vanish
-    m._shadowTeleport = 15;
-    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
+    m._shadowTeleport = 24;
+    hitEffects.push({ x: m.x, y: m.y - 10, life: 24, type: "smoke" });
     return { skip: true };
   },
 
@@ -5751,12 +5751,12 @@ const MOB_SPECIALS = {
       if (m._puppetTelegraph <= 0) {
         // Resolve: damage + confuse if player in line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._puppetX1, m._puppetY1, m._puppetX2, m._puppetY2, 40)) {
-            const dmg = Math.round(m.damage * 1.2 * getMobDamageMultiplier());
+          if (AttackShapes.playerInLine(m._puppetX1, m._puppetY1, m._puppetX2, m._puppetY2, 55)) {
+            const dmg = Math.round(m.damage * 1.4 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
             if (typeof StatusFX !== 'undefined') {
-              StatusFX.applyToPlayer('confuse', { duration: 96 }); // 1.6s
+              StatusFX.applyToPlayer('confuse', { duration: 132 }); // 2.2s
             }
           }
         }
@@ -5782,7 +5782,7 @@ const MOB_SPECIALS = {
     if (typeof TelegraphSystem !== 'undefined') {
       TelegraphSystem.create({
         shape: 'line',
-        params: { x1: m._puppetX1, y1: m._puppetY1, x2: m._puppetX2, y2: m._puppetY2, width: 40 },
+        params: { x1: m._puppetX1, y1: m._puppetY1, x2: m._puppetX2, y2: m._puppetY2, width: 55 },
         delayFrames: 16,
         color: [180, 80, 240], // bright vivid purple
         owner: m.id,
@@ -5825,7 +5825,7 @@ const MOB_SPECIALS = {
             tickRate: 40,
             tickDamage: Math.round(m.damage * 0.5 * getMobDamageMultiplier()),
             color: [120, 60, 180], // visible dark purple (NOT too dark)
-            slow: 0.2,
+            slow: 0.5,
           });
         }
         hitEffects.push({ x: m._abyssTargetX, y: m._abyssTargetY, life: 25, type: "smoke" });
@@ -5870,13 +5870,13 @@ const MOB_SPECIALS = {
       m._regenVeil--;
       // Heal tick every 48 frames (5 ticks total over 240 frames)
       if (m._regenVeil % 48 === 0 && m._regenVeil > 0) {
-        const healAmt = Math.round(m.maxHp * 0.035);
+        const healAmt = Math.round(m.maxHp * 0.06);
         m.hp = Math.min(m.maxHp, m.hp + healAmt);
         hitEffects.push({ x: m.x, y: m.y - 20, life: 18, type: "heal", dmg: "+" + healAmt });
       }
       // Final tick at 0
       if (m._regenVeil <= 0) {
-        const healAmt = Math.round(m.maxHp * 0.035);
+        const healAmt = Math.round(m.maxHp * 0.06);
         m.hp = Math.min(m.maxHp, m.hp + healAmt);
         hitEffects.push({ x: m.x, y: m.y - 20, life: 18, type: "heal", dmg: "+" + healAmt });
       }
