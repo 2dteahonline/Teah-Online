@@ -122,47 +122,35 @@ let _fovLerpX = 0, _fovLerpY = 0;
 let _fovLerpInit = false;
 const _FOV_LERP_SPEED = 0.35; // blend factor per frame (0=frozen, 1=instant)
 
-// Fill ray count — sparse ring to cover open areas with no walls
-const _FOV_FILL_COUNT = 72; // every 5 degrees
-const _fovFillCos = new Float32Array(_FOV_FILL_COUNT);
-const _fovFillSin = new Float32Array(_FOV_FILL_COUNT);
-for (let i = 0; i < _FOV_FILL_COUNT; i++) {
-  const a = (i / _FOV_FILL_COUNT) * Math.PI * 2;
-  _fovFillCos[i] = Math.cos(a);
-  _fovFillSin[i] = Math.sin(a);
-}
+// Among Us-style FOV: soft, readable fog-of-war — not a flashlight sim.
+// Uses uniform ray ring (no boundary vertex precision) + heavy blur so
+// doorways don't create thin geometric wedges. Walls still block via DDA.
+const _FOV_RAY_COUNT = 120; // every 3 degrees — enough for soft shapes
+const _FOV_BLUR = 36;       // px — heavy blur eliminates sharp edges
+const _FOV_DARKNESS = 0.72;  // darkness opacity — environment stays readable
+const _FOV_AMBIENT = 0.15;   // ambient light in darkness (0 = pure black)
 
-// Get candidate ray angles from cached boundary vertices within range
-function getFOVCandidateAngles(px, py, maxDist) {
-  const angles = [];
-  const maxDistSq = maxDist * maxDist * 1.5; // slight over-reach for corners
-  const bv = _fovBoundaryVerts;
-  if (bv) {
-    for (let i = 0; i < bv.length; i += 2) {
-      const dx = bv[i] - px, dy = bv[i + 1] - py;
-      if (dx * dx + dy * dy > maxDistSq) continue;
-      const a = Math.atan2(dy, dx);
-      angles.push(a - 0.0005, a, a + 0.0005);
-    }
-  }
-  // Fill rays — sparse ring to cover open directions
-  for (let i = 0; i < _FOV_FILL_COUNT; i++) {
-    angles.push((i / _FOV_FILL_COUNT) * Math.PI * 2);
+// Get candidate ray angles — uniform ring only, no vertex precision
+// (vertex-driven rays cause thin doorway wedges; broad soft rays match Among Us)
+function getFOVCandidateAngles() {
+  const angles = new Array(_FOV_RAY_COUNT);
+  for (let i = 0; i < _FOV_RAY_COUNT; i++) {
+    angles[i] = (i / _FOV_RAY_COUNT) * Math.PI * 2;
   }
   return angles;
 }
 
-// Compute visibility polygon from candidate angles (screen coordinates)
+// Compute visibility polygon from uniform ray ring (screen coordinates)
 function computeVisibilityPolygon(px, py, maxDist, camX, camY) {
   buildFOVOccluderCache();
   if (!_fovGrid) return null;
 
-  const angles = getFOVCandidateAngles(px, py, maxDist);
-  angles.sort((a, b) => a - b);
+  const angles = getFOVCandidateAngles();
+  // Already sorted (uniform ring)
 
   const zoom = WORLD_ZOOM;
-  const pts = new Array(angles.length);
-  for (let i = 0; i < angles.length; i++) {
+  const pts = new Array(_FOV_RAY_COUNT);
+  for (let i = 0; i < _FOV_RAY_COUNT; i++) {
     const a = angles[i];
     const dx = Math.cos(a), dy = Math.sin(a);
     const d = _fovCastRay(px, py, dx, dy, maxDist);
@@ -212,11 +200,11 @@ function drawMafiaFOV() {
     // Clear without reallocating (fast)
     bctx.clearRect(0, 0, BASE_W, BASE_H);
 
-    // Fill with darkness
-    bctx.fillStyle = 'rgba(0,0,0,0.93)';
+    // Fill with soft darkness — environment stays partially readable
+    bctx.fillStyle = `rgba(0,0,0,${_FOV_DARKNESS})`;
     bctx.fillRect(0, 0, BASE_W, BASE_H);
 
-    // Smooth raycast origin — lerp toward player position for fluid shadows
+    // Smooth raycast origin — lerp toward player position for stable mask
     if (!_fovLerpInit) { _fovLerpX = player.x; _fovLerpY = player.y; _fovLerpInit = true; }
     _fovLerpX += (player.x - _fovLerpX) * _FOV_LERP_SPEED;
     _fovLerpY += (player.y - _fovLerpY) * _FOV_LERP_SPEED;
@@ -225,11 +213,12 @@ function drawMafiaFOV() {
     const polyPoints = computeVisibilityPolygon(rayX, rayY, fovWorldR, camera.x, camera.y);
 
     if (polyPoints && polyPoints.length > 2) {
-      // Cut out the visible polygon from darkness with soft blur for smooth shadow edges
+      // Cut out visible area with heavy blur for soft Among Us-style edges
+      // No sharp geometric wedges — just broad, stable room visibility
       bctx.globalCompositeOperation = 'destination-out';
       bctx.save();
-      bctx.filter = 'blur(12px)';
-      bctx.fillStyle = 'rgba(255,255,255,1)';
+      bctx.filter = `blur(${_FOV_BLUR}px)`;
+      bctx.fillStyle = `rgba(255,255,255,${1 - _FOV_AMBIENT})`;
       bctx.beginPath();
       bctx.moveTo(polyPoints[0].x, polyPoints[0].y);
       for (let i = 1; i < polyPoints.length; i++) {
@@ -238,7 +227,6 @@ function drawMafiaFOV() {
       bctx.closePath();
       bctx.fill();
       bctx.restore();
-
     }
 
     bctx.globalCompositeOperation = 'source-over';
