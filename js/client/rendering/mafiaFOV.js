@@ -31,11 +31,11 @@ const _sabPanel = {
 };
 
 // ---- Lights sabotage dimming state ----
-// _lightsDimProgress: 0 = normal vision, 1 = fully dimmed (25% radius)
+// _lightsDimProgress: 0 = normal vision, 1 = fully dimmed (35% radius)
 // Smoothly fades over 3 seconds (~180 frames at 60fps)
 let _lightsDimProgress = 0;
 const _LIGHTS_FADE_FRAMES = 180; // 3 seconds
-const _LIGHTS_DIM_AMOUNT = 0.25; // shrink to 25% of normal radius (75% reduction)
+const _LIGHTS_DIM_AMOUNT = 0.35; // shrink to 35% of normal radius (65% reduction)
 
 function drawMafiaFOV() {
   // ---- Base FOV overlay (dark circle cutout around player) ----
