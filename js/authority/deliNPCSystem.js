@@ -377,9 +377,12 @@ function moveDeliNPC(npc) {
   // NPC-NPC avoidance — lower-ID NPCs have priority, higher-ID yields
   for (const other of deliNPCs) {
     if (other === npc) continue;
-    // Don't interact with seated/despawning NPCs
+    // Don't interact with seated/despawning/queued NPCs — queue snaps to fixed spots
     if (other.state === 'eating' || other.state === 'at_condiments' ||
-        other.state === 'spawn_wait' || other.state === '_despawn') continue;
+        other.state === 'spawn_wait' || other.state === '_despawn' ||
+        other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food') continue;
+    // Also skip avoidance if WE are in the queue — let us walk to our spot unimpeded
+    if (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food') continue;
     const sx = npc.x - other.x;
     const sy = npc.y - other.y;
     const sd = Math.sqrt(sx * sx + sy * sy);
