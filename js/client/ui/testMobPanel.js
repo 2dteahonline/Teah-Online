@@ -3,7 +3,7 @@
 // and test them live or frozen without typing commands.
 
 // Panel state
-let testMobDungeon = 'azurine';  // 'cave' | 'azurine'
+let testMobDungeon = 'azurine';  // 'cave' | 'azurine' | 'vortalis'
 let testMobFloor = 1;
 let testMobScroll = 0;
 let testMobAbilityPopup = null;  // { typeKey, mobName, abilities[], x, y }
@@ -108,6 +108,123 @@ const MOB_ABILITY_DESCRIPTIONS = {
   puppet_shot:          "Fires projectile. On hit: player is briefly controlled.",
   abyss_grasp:          "Dark circle telegraph at player. On resolve: pull + damage + slow.",
   regen_veil:           "Self-heal over 4 seconds. Regenerates 10% max HP.",
+
+  // --- Vortalis Floor 1: Pirate Shores / Naval Fleet ---
+  shiv_lunge:           "Dash 200px toward player, damage on arrival.",
+  barrel_drop:          "Drops an explosive barrel. Detonates after 1.5s for AoE damage.",
+  scattershot:          "Fires 5 bullets in a cone spread.",
+  anchor_sweep:         "180° melee sweep. Damage + slow on hit.",
+  flintlock_volley:     "Fires 5 bullets in a fan toward player.",
+  cutlass_cleave:       "Telegraphed cone attack. Damage + slow.",
+  call_to_arms:         "Buffs all nearby allies with +20% speed.",
+  weathered_resolve:    "Self-heal 12% max HP.",
+  boarding_rush:        "Dash 250px to player. Stun on arrival.",
+  tower_shield:         "Activates damage-blocking shield for 3 seconds.",
+  water_geyser:         "Telegraphed circle at player. Erupts for damage + slow.",
+  piercing_musket:      "High-damage piercing shot that passes through targets.",
+  reckless_charge:      "Heavy charge toward player. Self-stuns if hits wall.",
+  naval_artillery:      "3 circle telegraphs near player. Each stuns on hit.",
+  spectral_chain_binding: "Circle telegraph at player. Applies tether debuff.",
+  tattered_tide:        "Wide wave telegraph. Damage + pushback.",
+  command_authority:     "Buffs all allies +30% damage. Self +20% speed.",
+  admirals_resolve:     "Self-heal + frontal shield for 3 seconds.",
+
+  // --- Vortalis Floor 2: Jungle / Blood Cove ---
+  spear_dash:           "Quick dash to player with spear. Damage along path.",
+  toxic_trail:          "Leaves poison trail for 3 seconds while moving.",
+  paralysis_dart:       "Dart projectile that roots player for 0.7s.",
+  earthquake_slam:      "AoE slam 120px. Stun 0.5s.",
+  spear_barrage:        "Fires 6 spears rapidly over 18 frames.",
+  vine_snare:           "Circle telegraph. Root + slow zone on resolve.",
+  primal_roar:          "AoE stun 160px radius. Damage + 0.6s stun.",
+  tribal_summon:        "Summons 2 jungle_headhunter reinforcements.",
+  jungle_fury:          "Self-buff: +50% speed, +40% damage for 5 seconds.",
+  blood_frenzy:         "Self-buff: +40% speed, +30% damage for 3 seconds.",
+  shard_spread:         "3 crystal shards in fan. Slow on hit.",
+  blood_pool:           "Creates healing zone. Heals mob while standing in it.",
+  hamstring_bite:       "Melee bite. Applies slow + bleed.",
+  chain_grapple:        "Line telegraph. Pulls player 120px toward mob.",
+  crimson_cleave:       "Wide cone telegraph. Heavy damage + bleed.",
+  shard_of_betrayal:    "8 crystal bullets in a ring. Slow on hit.",
+  blood_siphon:         "Circle telegraph on self. Damage + heals mob.",
+  bone_guard:           "Summons 2 bone_clad_brute minions.",
+  demonic_shift:        "Teleport near player. AoE damage + speed/damage buff.",
+
+  // --- Vortalis Floor 3: Moonlit Docks / Ghost Ship ---
+  rabid_pounce:         "Pounce dash to player. Stun 0.5s on hit.",
+  pack_howl:            "Buffs all nearby allies +30% speed for 4 seconds.",
+  spectral_tether:      "Tethers player to a point. Pulls back if too far.",
+  quick_draw:           "Fast piercing shot toward player.",
+  feral_slash:          "Close-range slash. Damage + bleed.",
+  predator_dash:        "Phase behind player for a backstab.",
+  hunters_mark:         "Marks player: +25% damage taken for 3 seconds.",
+  howl_of_terror:       "AoE fear 200px. Player flees randomly.",
+  pack_instinct:        "Buff self + summon 1 wolf minion.",
+  silver_fang_strike:   "Telegraph then heavy dash. Damage + bleed.",
+  alpha_rampage:        "3 rapid dashes in succession.",
+  phase_lunge:          "Teleport behind player, backstab attack.",
+  soul_bullet:          "Homing ghost projectile.",
+  wail_of_depths:       "AoE 180px. Fear + pushback.",
+  sticky_trap:          "Places root trap. Arms after 0.5s.",
+  phantom_slash:        "Slash from behind. Damage + confuse.",
+  ghost_dash:           "Ghostly dash through player. Afterimages + damage.",
+  haunted_cutlass:      "Close-range slash. Damage + disorient.",
+  spirit_shield:        "Invulnerable for 1.5 seconds.",
+  cursed_mark:          "Marks player: +30% damage taken.",
+  spectral_crew:        "Summons 2 ghost minions.",
+  soul_drain:           "Telegraphed channel. Damage + heals mob.",
+  ghost_ship:           "5 line telegraphs in a fan. Staggered timing.",
+
+  // --- Vortalis Floor 4: Sunken Reef / Abyssal Trench ---
+  blinding_ink:         "Ink blob at player. Blinds for 1.5 seconds.",
+  coral_barricade:      "Spawns coral slow zone between mob and player.",
+  tentacle_bind:        "Circle telegraph at player. Root 1 second.",
+  sticky_trap:          "Places root trap on ground.",
+  tentacle_grab:        "Line telegraph. Pulls player + root on hit.",
+  coral_armor:          "Self-buff: 50% damage reduction for 3 seconds.",
+  ink_blast:            "AoE circle on self. Damage + blind 2 seconds.",
+  tidal_slam:           "Heavy AoE 140px. Damage + stun.",
+  barnacle_trap_boss:   "Places 3 root traps near player.",
+  ocean_regen:          "Self-heal over 5 seconds. 10% max HP total.",
+  deep_sea_strike:      "Dash 300px. Heavy damage + armor break.",
+  kraken_call:          "Summons 2 trench_tentacle minions.",
+  tidal_lunge:          "Water dash. Leaves slow zones along path.",
+  wealth_volley:        "8 coin bullets in a circle.",
+  abyssal_slam:         "Heavy AoE 150px. High damage.",
+  pressure_zone:        "Creates slow zone at player position.",
+  deepsea_decapitation: "Heavy line telegraph. Massive damage + bleed.",
+  coiling_constriction: "Circle telegraph. Root + slow + hazard zone.",
+  gilded_maelstrom:     "12 bullets in expanding spiral.",
+  pressure_zone_boss:   "2 large slow zones near player.",
+  silt_cloud:           "Hazard zone at player. Blinds if in range.",
+  abyssal_roar:         "AoE 200px. Damage + fear.",
+  golden_retribution:   "Reflects projectiles for 3 seconds.",
+  reign_of_deep:        "Massive AoE + stun + 4 hazard zones.",
+
+  // --- Vortalis Floor 5: Coral Throne / Ocean Temple ---
+  royal_thrust:         "Spear thrust 180px line toward player.",
+  crashing_surf:        "Water wave toward player. Damage + push.",
+  shard_glide:          "Glide dash. Leaves crystal shards behind.",
+  aegis_reflect:        "Reflects projectiles for 2 seconds.",
+  golden_shard_volley:  "10 golden shards in arc. Some homing.",
+  abyssal_maw:          "Large circle telegraph. Heavy damage + pull + armor break.",
+  coral_aegis:          "Self-buff: shield + reflect for 2.5 seconds.",
+  royal_gilded_beam:    "Long line telegraph. Heavy damage + burn trail.",
+  tidal_surge:          "Wide wave telegraph. Damage + push + slow trail.",
+  sovereigns_cage:      "16 bullets ring around player, converging inward.",
+  blessing_of_deep:     "Self-heal 15% + heals all nearby allies.",
+  reign_gilded_reef:    "5 circle telegraphs in cross. Damage + hazard zones.",
+  leviathan_lunge:      "Serpentine dash + AoE explosion on arrival.",
+  venom_spit:           "Poison projectile. Applies poison DoT.",
+  pincer_guillotine:    "Close-range snap. Damage + mark debuff.",
+  abyssal_undertow:     "Pull player toward mob + slow.",
+  leviathans_fang:      "Serpentine dash. Heavy damage + bleed.",
+  serpents_strike:      "3 parallel line telegraphs toward player.",
+  tidal_trample:        "Heavy charge 350px. Slow zones + stun.",
+  abyssal_undertow_mw:  "AoE pull 180px. Damage + slow + hazard zone.",
+  divine_deluge:        "Reflect + 8 water bullets outward.",
+  oceanic_domain:       "6 hazard zones in hexagonal pattern.",
+  wrath_of_sea:         "Ultimate: 3 expanding rings + pull + massive hazard.",
 };
 
 // Dungeon → Floor → Mob mapping
@@ -130,6 +247,16 @@ const TESTMOB_DUNGEONS = {
       3: { name: 'Floor 3 — Junkyard', mobs: ['scrap_rat', 'magnet_scavenger', 'rust_sawman', 'junkyard_pyro', 'toxic_leechling', 'bog_stalker', 'chem_frog', 'mosquito_drone', 'mourn', 'centipede'] },
       4: { name: 'Floor 4 — Trap House', mobs: ['tripwire_tech', 'gizmo_hound', 'holo_jester', 'time_prankster', 'enforcer_drone', 'synth_builder', 'shock_trooper', 'signal_jammer', 'game_master', 'junz'] },
       5: { name: 'Floor 5 — Waste Planet', mobs: ['rabid_hyenaoid', 'spore_stag', 'wasteland_raptor', 'plague_batwing', 'gel_swordsman', 'viscosity_mage', 'core_guardian', 'biolum_drone', 'lehvius', 'jackman', 'malric', 'vale'] },
+    }
+  },
+  vortalis: {
+    name: 'Vortalis',
+    floors: {
+      1: { name: 'Floor 1 — Pirate Shores / Naval Fleet', mobs: ['bilge_rat', 'powder_keg', 'deckhand_shooter', 'anchor_hauler', 'captain_husa', 'ironclad_marine', 'tidecaller_mystic', 'galleon_sniper', 'sunken_dreadnought', 'admiral_von_kael'] },
+      2: { name: 'Floor 2 — Jungle / Blood Cove', mobs: ['jungle_headhunter', 'voodoo_creeper', 'canopy_sniper', 'temple_silverback', 'zongo', 'crimson_corsair', 'crystal_cultist', 'bone_clad_brute', 'sanguine_siren', 'bloodborne_marlon'] },
+      3: { name: 'Floor 3 — Moonlit Docks / Ghost Ship', mobs: ['feral_deckhand', 'howling_lookout', 'sea_dog_brute', 'rabid_wharf_hound', 'wolfbeard', 'phantom_swashbuckler', 'poltergeist_gunner', 'drowned_banshee', 'cursed_shackler', 'ghostbeard'] },
+      4: { name: 'Floor 4 — Sunken Reef / Abyssal Trench', mobs: ['ink_spitter', 'coral_crusher', 'trench_tentacle', 'barnacle_bomber', 'kraken_jim', 'gilded_triton', 'coin_spitter_jelly', 'deep_sea_dredger', 'royal_cephalopod', 'king_requill'] },
+      5: { name: 'Floor 5 — Coral Throne / Ocean Temple', mobs: ['alabaster_sentinel', 'reef_weaver', 'gilded_manta', 'royal_shell_knight', 'queen_siralyth', 'sea_serpent_spawn', 'living_whirlpool', 'bone_tooth_zealot', 'tidal_avatar', 'mami_wata'] },
     }
   }
 };
