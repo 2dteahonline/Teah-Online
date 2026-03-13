@@ -1279,6 +1279,225 @@ const HIT_EFFECT_RENDERERS = {
       ctx.fillStyle = `rgba(100,5,10,${alpha * 0.2})`;
       ctx.beginPath(); ctx.arc(h.x, h.y, 12 + prog * 8, 0, Math.PI * 2); ctx.fill();
   },
+  // ===================== EARTH-205 HIT EFFECTS =====================
+  pipe_hit: (h, ctx, alpha) => {
+      // Rust-colored spark burst
+      const prog = 1 - alpha;
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 + prog * 2;
+        const d = prog * 20 + 3;
+        ctx.fillStyle = `rgba(${180 + i * 8},${80 + i * 5},30,${alpha * 0.8})`;
+        ctx.beginPath(); ctx.arc(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d, 2 * alpha, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = `rgba(200,100,40,${alpha * 0.3})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 8 + prog * 6, 0, Math.PI * 2); ctx.fill();
+  },
+  slingshot_impact: (h, ctx, alpha) => {
+      // Small stone shatter
+      const prog = 1 - alpha;
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 + prog * 1.5;
+        const d = prog * 16 + 2;
+        const sz = (2 + Math.random()) * alpha;
+        ctx.fillStyle = `rgba(160,150,130,${alpha * 0.9})`;
+        ctx.save(); ctx.translate(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d);
+        ctx.rotate(a); ctx.fillRect(-sz/2, -sz/2, sz, sz); ctx.restore();
+      }
+      ctx.fillStyle = `rgba(120,110,90,${alpha * 0.3})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 6 * prog + 3, 0, Math.PI * 2); ctx.fill();
+  },
+  flamethrower_tick: (h, ctx, alpha) => {
+      // Orange flame wisps
+      const prog = 1 - alpha;
+      for (let i = 0; i < 5; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = prog * 14 + Math.random() * 6;
+        const r = (3 + Math.random() * 3) * alpha;
+        ctx.fillStyle = `rgba(255,${120 + i * 20},20,${alpha * 0.6})`;
+        ctx.beginPath(); ctx.arc(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d - prog * 8, r, 0, Math.PI * 2); ctx.fill();
+      }
+  },
+  nail_pin: (h, ctx, alpha) => {
+      // Metal nail embed effect
+      const prog = 1 - alpha;
+      ctx.strokeStyle = `rgba(180,180,190,${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(h.x, h.y - 8 * alpha); ctx.lineTo(h.x, h.y + 4); ctx.stroke();
+      ctx.fillStyle = `rgba(200,200,210,${alpha})`;
+      ctx.fillRect(h.x - 3, h.y - 8 * alpha - 2, 6, 3);
+      // Impact sparks
+      for (let i = 0; i < 4; i++) {
+        const a = -Math.PI/2 + (Math.random() - 0.5) * Math.PI;
+        const d = prog * 12;
+        ctx.fillStyle = `rgba(255,220,100,${alpha * 0.7})`;
+        ctx.beginPath(); ctx.arc(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d, 1.5 * alpha, 0, Math.PI * 2); ctx.fill();
+      }
+  },
+  glass_slash: (h, ctx, alpha) => {
+      // Translucent glass shard scatter
+      const prog = 1 - alpha;
+      for (let i = 0; i < 7; i++) {
+        const a = i * Math.PI * 2 / 7 + prog;
+        const d = prog * 22 + 4;
+        ctx.fillStyle = `rgba(200,230,255,${alpha * 0.5})`;
+        ctx.save(); ctx.translate(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d);
+        ctx.rotate(a + prog); ctx.fillRect(-1, -4, 2, 8); ctx.restore();
+      }
+      ctx.fillStyle = `rgba(220,240,255,${alpha * 0.15})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 10 + prog * 8, 0, Math.PI * 2); ctx.fill();
+  },
+  sledgehammer_shockwave: (h, ctx, alpha) => {
+      // Ground crack ripple
+      const prog = 1 - alpha;
+      const r = 8 + prog * 30;
+      ctx.strokeStyle = `rgba(180,160,120,${alpha * 0.7})`;
+      ctx.lineWidth = 3 * alpha;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = `rgba(140,120,80,${alpha * 0.4})`;
+      ctx.lineWidth = 2 * alpha;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+      // Crack lines
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3;
+        ctx.strokeStyle = `rgba(160,140,100,${alpha * 0.5})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(h.x, h.y);
+        ctx.lineTo(h.x + Math.cos(a) * r * 0.8, h.y + Math.sin(a) * r * 0.8); ctx.stroke();
+      }
+  },
+  cleaver_slash: (h, ctx, alpha) => {
+      // Red arc slash
+      const prog = 1 - alpha;
+      const startAng = -Math.PI * 0.6 + prog * 0.5;
+      ctx.strokeStyle = `rgba(220,40,30,${alpha * 0.8})`;
+      ctx.lineWidth = 4 * alpha;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 14 + prog * 10, startAng, startAng + Math.PI * 0.8); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,100,80,${alpha * 0.4})`;
+      ctx.lineWidth = 2 * alpha;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 18 + prog * 12, startAng + 0.1, startAng + Math.PI * 0.7); ctx.stroke();
+  },
+  chain_hit: (h, ctx, alpha) => {
+      // Chain link sparks
+      const prog = 1 - alpha;
+      ctx.strokeStyle = `rgba(180,180,200,${alpha * 0.7})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const ox = (i - 1) * 8 * alpha;
+        ctx.beginPath(); ctx.ellipse(h.x + ox, h.y, 4 * alpha, 6 * alpha, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      for (let s = 0; s < 5; s++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = prog * 15;
+        ctx.fillStyle = `rgba(255,200,80,${alpha * 0.7})`;
+        ctx.beginPath(); ctx.arc(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d, 1.5 * alpha, 0, Math.PI * 2); ctx.fill();
+      }
+  },
+  flare_burst: (h, ctx, alpha) => {
+      // Bright orange flare pop
+      const prog = 1 - alpha;
+      const r = 6 + prog * 24;
+      ctx.fillStyle = `rgba(255,160,40,${alpha * 0.5})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,220,100,${alpha * 0.7})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.4, 0, Math.PI * 2); ctx.fill();
+      // Rays
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 + prog;
+        ctx.strokeStyle = `rgba(255,180,60,${alpha * 0.5})`;
+        ctx.lineWidth = 2 * alpha;
+        ctx.beginPath(); ctx.moveTo(h.x + Math.cos(a) * r * 0.5, h.y + Math.sin(a) * r * 0.5);
+        ctx.lineTo(h.x + Math.cos(a) * r * 1.2, h.y + Math.sin(a) * r * 1.2); ctx.stroke();
+      }
+  },
+  grenade_explosion: (h, ctx, alpha) => {
+      // Gray smoke + orange flash
+      const prog = 1 - alpha;
+      // Flash
+      if (prog < 0.3) {
+        const fa = 1 - prog / 0.3;
+        ctx.fillStyle = `rgba(255,180,40,${fa * 0.6})`;
+        ctx.beginPath(); ctx.arc(h.x, h.y, 20 + prog * 30, 0, Math.PI * 2); ctx.fill();
+      }
+      // Smoke puffs
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 + prog * 0.8;
+        const d = prog * 28 + 4;
+        const sr = (6 + i) * alpha;
+        ctx.fillStyle = `rgba(100,100,100,${alpha * 0.4})`;
+        ctx.beginPath(); ctx.arc(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d - prog * 6, sr, 0, Math.PI * 2); ctx.fill();
+      }
+  },
+  pin_pop: (h, ctx, alpha) => {
+      // Colorful pin scatter (carnival)
+      const prog = 1 - alpha;
+      const colors = ['#ff4466','#44cc66','#4488ff','#ffaa22','#cc44ff','#44dddd'];
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 + prog * 2;
+        const d = prog * 20 + 3;
+        ctx.fillStyle = colors[i];
+        ctx.globalAlpha = alpha * 0.8;
+        ctx.beginPath(); ctx.arc(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d, 3 * alpha, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+  },
+  sandbag_drop: (h, ctx, alpha) => {
+      // Dust cloud impact
+      const prog = 1 - alpha;
+      const r = 8 + prog * 18;
+      ctx.fillStyle = `rgba(180,160,120,${alpha * 0.4})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(160,140,100,${alpha * 0.25})`;
+      ctx.beginPath(); ctx.arc(h.x - 4, h.y + 2, r * 0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(h.x + 5, h.y - 2, r * 0.6, 0, Math.PI * 2); ctx.fill();
+  },
+  sonic_wave: (h, ctx, alpha) => {
+      // Purple/blue sound wave rings
+      const prog = 1 - alpha;
+      for (let i = 0; i < 3; i++) {
+        const rOff = i * 0.15;
+        const rProg = Math.max(0, prog - rOff);
+        const r = 6 + rProg * 30;
+        ctx.strokeStyle = `rgba(${140 + i * 30},${80 + i * 20},${220 + i * 15},${alpha * 0.6})`;
+        ctx.lineWidth = 2.5 * alpha;
+        ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.stroke();
+      }
+  },
+  stiletto_stab: (h, ctx, alpha) => {
+      // Quick red flash (small, precise)
+      const prog = 1 - alpha;
+      ctx.fillStyle = `rgba(220,30,30,${alpha * 0.7})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 4 + prog * 3, 0, Math.PI * 2); ctx.fill();
+      // Thin stab line
+      ctx.strokeStyle = `rgba(255,60,60,${alpha})`;
+      ctx.lineWidth = 2 * alpha;
+      ctx.beginPath(); ctx.moveTo(h.x, h.y - 6); ctx.lineTo(h.x, h.y + 6); ctx.stroke();
+  },
+  chemical_beam: (h, ctx, alpha) => {
+      // Green toxic beam dissipation
+      const prog = 1 - alpha;
+      ctx.fillStyle = `rgba(80,220,40,${alpha * 0.4})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 10 + prog * 12, 0, Math.PI * 2); ctx.fill();
+      // Toxic particles rising
+      for (let i = 0; i < 5; i++) {
+        const ox = (Math.random() - 0.5) * 16;
+        const oy = -prog * 18 - Math.random() * 8;
+        ctx.fillStyle = `rgba(100,255,60,${alpha * 0.6})`;
+        ctx.beginPath(); ctx.arc(h.x + ox, h.y + oy, 2 * alpha, 0, Math.PI * 2); ctx.fill();
+      }
+  },
+  meltdown_pulse: (h, ctx, alpha) => {
+      // Green toxic expanding ring
+      const prog = 1 - alpha;
+      const r = 10 + prog * 40;
+      ctx.strokeStyle = `rgba(80,255,40,${alpha * 0.7})`;
+      ctx.lineWidth = 4 * alpha;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = `rgba(60,200,30,${alpha * 0.15})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.fill();
+      // Inner glow
+      ctx.fillStyle = `rgba(100,255,60,${alpha * 0.3})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.3, 0, Math.PI * 2); ctx.fill();
+  },
   _default: (h, ctx, alpha) => {
       ctx.fillStyle = `rgba(255,200,100,${alpha})`;
       ctx.beginPath(); ctx.arc(h.x, h.y, 6 * (1 - alpha) + 3, 0, Math.PI * 2); ctx.fill();

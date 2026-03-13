@@ -48,6 +48,7 @@ const Scene = {
     else if (level.isMafiaLobby) this._current = 'mafia_lobby';
     else if (level.isSkeld) this._current = 'skeld';
     else if (level.isVortalis) this._current = 'vortalis';
+    else if (level.isEarth205) this._current = 'earth205';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -69,6 +70,7 @@ const Scene = {
   get inMafiaLobby() { return this._current === 'mafia_lobby'; },
   get inSkeld() { return this._current === 'skeld'; },
   get inVortalis() { return this._current === 'vortalis'; },
+  get inEarth205() { return this._current === 'earth205'; },
 };
 
 // ---- PORTAL TYPE REGISTRY ----
@@ -87,10 +89,12 @@ const PORTAL_SCENES = {
   mafia_lobby_exit: 'mafia_lobby',
   vortalis_entrance: 'lobby',
   vortalis_exit: 'vortalis',
+  earth205_entrance: 'lobby',
+  earth205_exit: 'earth205',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
-const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis']);
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205']);
 
 // ---- /LEAVE SYSTEM ----
 // Registry for enclosed scenes that require /leave to exit (no walkable door).
@@ -145,6 +149,12 @@ const LEAVE_HANDLERS = {
     returnLevel: 'lobby_01',
     returnTX: 53, returnTY: 21,
     message: 'Leaving Vortalis...',
+  },
+  earth205: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 53, returnTY: 33,
+    message: 'Leaving Earth-205...',
   },
   gunsmith: {
     cleanup() {},
@@ -336,7 +346,7 @@ function checkPortals() {
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }
-    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine || Scene.inVortalis) && inZone) {
+    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine || Scene.inVortalis || Scene.inEarth205) && inZone) {
       nearQueue = true;
       queueDungeonId = e.dungeonId;
       queueSpawnTX = e.spawnTX;

@@ -705,11 +705,215 @@ const _vortalisConfig = {
   }),
 };
 
+// ===================== EARTH-205: MARBLE CITY =====================
+const _earth205Config = {
+  1: _buildFloor({
+    name: 'Scrapyard District',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'scrapyard',
+        waveComps: {
+          1: { primary: [{ type: 'scrap_metal_scrounger', weight: 3 }], support: [{ type: 'alleyway_lookout', weight: 1 }], primaryPct: 0.85, theme: 'Scrap Metal Scroungers' },
+          2: { primary: [{ type: 'alleyway_lookout', weight: 3 }, { type: 'scrap_metal_scrounger', weight: 2 }], support: [{ type: 'junkyard_hound', weight: 1 }], primaryPct: 0.7, theme: 'Alleyway Lookouts' },
+          3: { primary: [{ type: 'junkyard_hound', weight: 3 }, { type: 'alleyway_lookout', weight: 1 }], support: [{ type: 'scrap_metal_scrounger', weight: 2 }, { type: 'aerosol_pyro', weight: 1 }], primaryPct: 0.6, theme: 'Junkyard Hounds' },
+          4: { primary: [{ type: 'aerosol_pyro', weight: 3 }, { type: 'junkyard_hound', weight: 2 }], support: [{ type: 'scrap_metal_scrounger', weight: 1 }, { type: 'alleyway_lookout', weight: 1 }], primaryPct: 0.6, theme: 'Aerosol Pyros' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'willis_arena',
+        boss: 'willis',
+        bossComp: { theme: 'Willis', forceGolem: false, forceBoss: 'willis', support: [{ type: 'scrap_metal_scrounger', count: 2 }, { type: 'alleyway_lookout', count: 2 }, { type: 'aerosol_pyro', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'scrapyard_elite',
+        waveComps: {
+          6: { primary: [{ type: 'patchwork_thug', weight: 3 }], support: [{ type: 'scrap_metal_scrounger', weight: 1 }], primaryPct: 0.8, theme: 'Patchwork Thugs' },
+          7: { primary: [{ type: 'nail_gunner', weight: 3 }, { type: 'patchwork_thug', weight: 1 }], support: [{ type: 'alleyway_lookout', weight: 1 }], primaryPct: 0.7, theme: 'Nail Gunners' },
+          8: { primary: [{ type: 'adrenaline_fiend', weight: 3 }, { type: 'nail_gunner', weight: 1 }], support: [{ type: 'patchwork_thug', weight: 1 }], primaryPct: 0.65, theme: 'Adrenaline Fiends' },
+          9: { primary: [{ type: 'sledgehammer_brute', weight: 2 }, { type: 'adrenaline_fiend', weight: 2 }], support: [{ type: 'patchwork_thug', weight: 1 }, { type: 'nail_gunner', weight: 1 }], primaryPct: 0.6, theme: 'Sledgehammer Brutes' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'puppedrill_arena',
+        boss: 'puppedrill',
+        bossComp: { theme: 'Puppedrill', forceGolem: false, forceBoss: 'puppedrill', support: [{ type: 'patchwork_thug', count: 2 }, { type: 'nail_gunner', count: 2 }, { type: 'adrenaline_fiend', count: 1 }, { type: 'sledgehammer_brute', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1a12', floor2: '#181810', wall: '#0a0a06', wallAccent: '#88cc44', accent2: '#cc6622', gridLine: '#2a2a1a' },
+    hazards: [],
+  }),
+
+  2: _buildFloor({
+    name: 'Butcher Row',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'butcher_row',
+        waveComps: {
+          1: { primary: [{ type: 'butcher_block_maniac', weight: 3 }], support: [{ type: 'chain_gang_brawler', weight: 1 }], primaryPct: 0.85, theme: 'Butcher Block Maniacs' },
+          2: { primary: [{ type: 'chain_gang_brawler', weight: 3 }, { type: 'butcher_block_maniac', weight: 2 }], support: [{ type: 'arsonist', weight: 1 }], primaryPct: 0.7, theme: 'Chain Gang Brawlers' },
+          3: { primary: [{ type: 'arsonist', weight: 3 }, { type: 'chain_gang_brawler', weight: 1 }], support: [{ type: 'butcher_block_maniac', weight: 2 }, { type: 'executioner_bruiser', weight: 1 }], primaryPct: 0.6, theme: 'Arsonists' },
+          4: { primary: [{ type: 'executioner_bruiser', weight: 3 }, { type: 'arsonist', weight: 2 }], support: [{ type: 'butcher_block_maniac', weight: 1 }, { type: 'chain_gang_brawler', weight: 1 }], primaryPct: 0.6, theme: 'Executioner Bruisers' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'sackhead_arena',
+        boss: 'sackhead',
+        bossComp: { theme: 'Sackhead', forceGolem: false, forceBoss: 'sackhead', support: [{ type: 'butcher_block_maniac', count: 2 }, { type: 'chain_gang_brawler', count: 2 }, { type: 'arsonist', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'syndicate_ops',
+        waveComps: {
+          6: { primary: [{ type: 'syndicate_enforcer', weight: 3 }], support: [{ type: 'butcher_block_maniac', weight: 1 }], primaryPct: 0.8, theme: 'Syndicate Enforcers' },
+          7: { primary: [{ type: 'breacher_unit', weight: 3 }, { type: 'syndicate_enforcer', weight: 1 }], support: [{ type: 'chain_gang_brawler', weight: 1 }], primaryPct: 0.7, theme: 'Breacher Units' },
+          8: { primary: [{ type: 'tactical_spotter', weight: 3 }, { type: 'breacher_unit', weight: 1 }], support: [{ type: 'syndicate_enforcer', weight: 1 }], primaryPct: 0.65, theme: 'Tactical Spotters' },
+          9: { primary: [{ type: 'riot_juggernaut', weight: 2 }, { type: 'tactical_spotter', weight: 2 }], support: [{ type: 'syndicate_enforcer', weight: 1 }, { type: 'breacher_unit', weight: 1 }], primaryPct: 0.6, theme: 'Riot Juggernauts' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'mr_schwallie_arena',
+        boss: 'mr_schwallie',
+        bossComp: { theme: 'Mr. Schwallie', forceGolem: false, forceBoss: 'mr_schwallie', support: [{ type: 'syndicate_enforcer', count: 2 }, { type: 'breacher_unit', count: 2 }, { type: 'tactical_spotter', count: 1 }, { type: 'riot_juggernaut', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1216', floor2: '#181014', wall: '#0a060a', wallAccent: '#cc2244', accent2: '#667788', gridLine: '#2a2228' },
+    hazards: [],
+  }),
+
+  3: _buildFloor({
+    name: 'Carnival of Decay',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'carnival',
+        waveComps: {
+          1: { primary: [{ type: 'juggling_jester', weight: 3 }], support: [{ type: 'balloon_twister', weight: 1 }], primaryPct: 0.85, theme: 'Juggling Jesters' },
+          2: { primary: [{ type: 'balloon_twister', weight: 3 }, { type: 'juggling_jester', weight: 2 }], support: [{ type: 'human_statue', weight: 1 }], primaryPct: 0.7, theme: 'Balloon Twisters' },
+          3: { primary: [{ type: 'human_statue', weight: 3 }, { type: 'balloon_twister', weight: 1 }], support: [{ type: 'juggling_jester', weight: 2 }, { type: 'illusionist', weight: 1 }], primaryPct: 0.6, theme: 'Human Statues' },
+          4: { primary: [{ type: 'illusionist', weight: 3 }, { type: 'human_statue', weight: 2 }], support: [{ type: 'juggling_jester', weight: 1 }, { type: 'balloon_twister', weight: 1 }], primaryPct: 0.6, theme: 'Illusionists' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'killer_mime_arena',
+        boss: 'killer_mime',
+        bossComp: { theme: 'Killer Mime', forceGolem: false, forceBoss: 'killer_mime', support: [{ type: 'juggling_jester', count: 2 }, { type: 'balloon_twister', count: 2 }, { type: 'illusionist', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'backstage_horror',
+        waveComps: {
+          6: { primary: [{ type: 'stagehand_brute', weight: 3 }], support: [{ type: 'juggling_jester', weight: 1 }], primaryPct: 0.8, theme: 'Stagehand Brutes' },
+          7: { primary: [{ type: 'phantom_chorus', weight: 3 }, { type: 'stagehand_brute', weight: 1 }], support: [{ type: 'balloon_twister', weight: 1 }], primaryPct: 0.7, theme: 'Phantom Chorus' },
+          8: { primary: [{ type: 'prop_master', weight: 3 }, { type: 'phantom_chorus', weight: 1 }], support: [{ type: 'stagehand_brute', weight: 1 }], primaryPct: 0.65, theme: 'Prop Masters' },
+          9: { primary: [{ type: 'macabre_dancer', weight: 2 }, { type: 'prop_master', weight: 2 }], support: [{ type: 'stagehand_brute', weight: 1 }, { type: 'phantom_chorus', weight: 1 }], primaryPct: 0.6, theme: 'Macabre Dancers' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'major_phantom_arena',
+        boss: 'major_phantom',
+        bossComp: { theme: 'Major Phantom', forceGolem: false, forceBoss: 'major_phantom', support: [{ type: 'stagehand_brute', count: 2 }, { type: 'phantom_chorus', count: 2 }, { type: 'prop_master', count: 1 }, { type: 'macabre_dancer', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1e1228', floor2: '#1c1026', wall: '#0e0618', wallAccent: '#cc44aa', accent2: '#ddaa22', gridLine: '#2e2238' },
+    hazards: [],
+  }),
+
+  4: _buildFloor({
+    name: 'Casino Noir',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'casino_floor',
+        waveComps: {
+          1: { primary: [{ type: 'casino_pit_boss', weight: 3 }], support: [{ type: 'laser_grid_thief', weight: 1 }], primaryPct: 0.85, theme: 'Casino Pit Bosses' },
+          2: { primary: [{ type: 'laser_grid_thief', weight: 3 }, { type: 'casino_pit_boss', weight: 2 }], support: [{ type: 'vault_hacker', weight: 1 }], primaryPct: 0.7, theme: 'Laser Grid Thieves' },
+          3: { primary: [{ type: 'vault_hacker', weight: 3 }, { type: 'laser_grid_thief', weight: 1 }], support: [{ type: 'casino_pit_boss', weight: 2 }, { type: 'smokescreen_smuggler', weight: 1 }], primaryPct: 0.6, theme: 'Vault Hackers' },
+          4: { primary: [{ type: 'smokescreen_smuggler', weight: 3 }, { type: 'vault_hacker', weight: 2 }], support: [{ type: 'casino_pit_boss', weight: 1 }, { type: 'laser_grid_thief', weight: 1 }], primaryPct: 0.6, theme: 'Smokescreen Smugglers' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'lady_red_arena',
+        boss: 'lady_red',
+        bossComp: { theme: 'Lady Red', forceGolem: false, forceBoss: 'lady_red', support: [{ type: 'casino_pit_boss', count: 2 }, { type: 'laser_grid_thief', count: 2 }, { type: 'smokescreen_smuggler', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'mob_syndicate',
+        waveComps: {
+          6: { primary: [{ type: 'tracksuit_goon', weight: 3 }], support: [{ type: 'casino_pit_boss', weight: 1 }], primaryPct: 0.8, theme: 'Tracksuit Goons' },
+          7: { primary: [{ type: 'disco_brawler', weight: 3 }, { type: 'tracksuit_goon', weight: 1 }], support: [{ type: 'laser_grid_thief', weight: 1 }], primaryPct: 0.7, theme: 'Disco Brawlers' },
+          8: { primary: [{ type: 'tommy_gun_heavy', weight: 3 }, { type: 'disco_brawler', weight: 1 }], support: [{ type: 'tracksuit_goon', weight: 1 }], primaryPct: 0.65, theme: 'Tommy Gun Heavies' },
+          9: { primary: [{ type: 'the_cleaner', weight: 2 }, { type: 'tommy_gun_heavy', weight: 2 }], support: [{ type: 'tracksuit_goon', weight: 1 }, { type: 'disco_brawler', weight: 1 }], primaryPct: 0.6, theme: 'The Cleaners' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'the_boss_e205_arena',
+        boss: 'the_boss_e205',
+        bossComp: { theme: 'The Boss', forceGolem: false, forceBoss: 'the_boss_e205', support: [{ type: 'tracksuit_goon', count: 2 }, { type: 'disco_brawler', count: 2 }, { type: 'tommy_gun_heavy', count: 1 }, { type: 'the_cleaner', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1410', floor2: '#18120e', wall: '#0a0806', wallAccent: '#ddaa22', accent2: '#cc2222', gridLine: '#2a2420' },
+    hazards: [],
+  }),
+
+  5: _buildFloor({
+    name: 'Meltdown Labs',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'hazmat_zone',
+        waveComps: {
+          1: { primary: [{ type: 'hazmat_grunt', weight: 3 }], support: [{ type: 'sprayer_drone', weight: 1 }], primaryPct: 0.85, theme: 'Hazmat Grunts' },
+          2: { primary: [{ type: 'sprayer_drone', weight: 3 }, { type: 'hazmat_grunt', weight: 2 }], support: [{ type: 'mad_assistant', weight: 1 }], primaryPct: 0.7, theme: 'Sprayer Drones' },
+          3: { primary: [{ type: 'mad_assistant', weight: 3 }, { type: 'sprayer_drone', weight: 1 }], support: [{ type: 'hazmat_grunt', weight: 2 }, { type: 'chem_brute', weight: 1 }], primaryPct: 0.6, theme: 'Mad Assistants' },
+          4: { primary: [{ type: 'chem_brute', weight: 3 }, { type: 'mad_assistant', weight: 2 }], support: [{ type: 'hazmat_grunt', weight: 1 }, { type: 'sprayer_drone', weight: 1 }], primaryPct: 0.6, theme: 'Chem Brutes' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'lady_elixir_arena',
+        boss: 'lady_elixir',
+        bossComp: { theme: 'Lady Elixir', forceGolem: false, forceBoss: 'lady_elixir', support: [{ type: 'hazmat_grunt', count: 2 }, { type: 'sprayer_drone', count: 2 }, { type: 'chem_brute', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'meltdown_core',
+        waveComps: {
+          6: { primary: [{ type: 'sludge_crawler', weight: 3 }], support: [{ type: 'hazmat_grunt', weight: 1 }], primaryPct: 0.8, theme: 'Sludge Crawlers' },
+          7: { primary: [{ type: 'irradiated_walker', weight: 3 }, { type: 'sludge_crawler', weight: 1 }], support: [{ type: 'sprayer_drone', weight: 1 }], primaryPct: 0.7, theme: 'Irradiated Walkers' },
+          8: { primary: [{ type: 'lockdown_sentinel', weight: 3 }, { type: 'irradiated_walker', weight: 1 }], support: [{ type: 'sludge_crawler', weight: 1 }], primaryPct: 0.65, theme: 'Lockdown Sentinels' },
+          9: { primary: [{ type: 'failed_specimen', weight: 2 }, { type: 'lockdown_sentinel', weight: 2 }], support: [{ type: 'sludge_crawler', weight: 1 }, { type: 'irradiated_walker', weight: 1 }], primaryPct: 0.6, theme: 'Failed Specimens' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'nofaux_arena',
+        boss: 'nofaux',
+        bossComp: { theme: 'Nofaux', forceGolem: false, forceBoss: 'nofaux', support: [{ type: 'sludge_crawler', count: 2 }, { type: 'irradiated_walker', count: 2 }, { type: 'lockdown_sentinel', count: 1 }, { type: 'failed_specimen', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#141a12', floor2: '#121810', wall: '#060a04', wallAccent: '#66cc22', accent2: '#cccc22', gridLine: '#242a22' },
+    hazards: [],
+  }),
+};
+
 // ===================== ASSEMBLE FLOOR_CONFIG =====================
 const FLOOR_CONFIG = {
   cave: _caveConfig,
   azurine: _azurineConfig,
   vortalis: _vortalisConfig,
+  dungeon_4: _earth205Config,
 };
 
 // Helper: get the wave composition for a floor-configured wave

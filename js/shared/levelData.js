@@ -121,6 +121,9 @@ const LEVELS = {
       // === VORTALIS DUNGEON (east district, below gunsmith row) ===
       { type: 'building_vortalis', tx: 50, ty: 12, w: 7, h: 8, solid: true },
       { type: 'vortalis_entrance', tx: 52, ty: 19, w: 3, h: 2, solid: false, target: 'vortalis_01', spawnTX: 20, spawnTY: 19 },
+      // === EARTH-205 DUNGEON (east district, below vortalis row) ===
+      { type: 'building_earth205', tx: 50, ty: 24, w: 7, h: 8, solid: true },
+      { type: 'earth205_entrance', tx: 52, ty: 31, w: 3, h: 2, solid: false, target: 'earth205_01', spawnTX: 20, spawnTY: 19 },
       // === CRYSTAL FORMATIONS (replacing trees, 3 variants) ===
       { type: 'tree', tx: 10, ty: 38, solid: true, variant: 1 },
       { type: 'tree', tx: 22, ty: 44, solid: true, variant: 0 },
@@ -1666,6 +1669,67 @@ const LEVELS = {
       // Door lanterns
       { type: 'ocean_lantern', tx: 15, ty: 1, solid: false },
       { type: 'ocean_lantern', tx: 24, ty: 1, solid: false },
+    ]
+  },
+
+  // ===================== EARTH-205 DUNGEON ENTRANCE =====================
+  earth205_01: {
+    id: 'earth205_01',
+    widthTiles: 40,
+    heightTiles: 24,
+    isEarth205: true,
+    spawns: { p1: { tx: 20, ty: 19 } },
+    collisionAscii: [
+      "########################################",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "########################################"
+    ],
+    entities: [
+      { type: 'earth205_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 33 },
+      { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_4' },
+      // Gas lamps (left wall)
+      { type: 'gas_lamp', tx: 1, ty: 1, solid: false },
+      { type: 'gas_lamp', tx: 1, ty: 4, solid: false },
+      { type: 'gas_lamp', tx: 1, ty: 7, solid: false },
+      { type: 'gas_lamp', tx: 1, ty: 10, solid: false },
+      { type: 'gas_lamp', tx: 1, ty: 13, solid: false },
+      { type: 'gas_lamp', tx: 1, ty: 16, solid: false },
+      { type: 'gas_lamp', tx: 1, ty: 19, solid: false },
+      { type: 'gas_lamp', tx: 1, ty: 22, solid: false },
+      // Gas lamps (right wall)
+      { type: 'gas_lamp', tx: 38, ty: 1, solid: false },
+      { type: 'gas_lamp', tx: 38, ty: 4, solid: false },
+      { type: 'gas_lamp', tx: 38, ty: 7, solid: false },
+      { type: 'gas_lamp', tx: 38, ty: 10, solid: false },
+      { type: 'gas_lamp', tx: 38, ty: 13, solid: false },
+      { type: 'gas_lamp', tx: 38, ty: 16, solid: false },
+      { type: 'gas_lamp', tx: 38, ty: 19, solid: false },
+      { type: 'gas_lamp', tx: 38, ty: 22, solid: false },
+      // Door lamps
+      { type: 'gas_lamp', tx: 15, ty: 1, solid: false },
+      { type: 'gas_lamp', tx: 24, ty: 1, solid: false },
     ]
   },
 };

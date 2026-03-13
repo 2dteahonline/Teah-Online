@@ -44,9 +44,9 @@ const DUNGEON_REGISTRY = {
     music: '',
   },
   dungeon_4: {
-    name: 'Dungeon 4',
+    name: 'Earth-205: Marble City',
     maxFloors: 5,
-    returnLevel: '',
+    returnLevel: 'earth205_01',
     hasHazards: false,
     spawnTX: 20,
     spawnTY: 20,

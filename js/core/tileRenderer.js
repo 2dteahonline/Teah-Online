@@ -7,7 +7,7 @@
 
 // ---- BACKGROUND RENDERER (placeholder until bg.png) ----
 function drawLevelBackground(camX, camY) {
-  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inVortalis ? '#0a1828' : Scene.inHideSeek ? '#0a0a10' : Scene.inMafiaLobby ? '#0a0a14' : Scene.inSkeld ? '#050508' : Scene.inLobby ? '#080810' : '#1e1e26';
+  ctx.fillStyle = Scene.inTestArena ? '#181820' : Scene.inFarm ? '#5a4830' : Scene.inCooking ? '#c0b898' : Scene.inGunsmith ? '#1a1518' : Scene.inMine ? '#1a1510' : Scene.inCave ? '#1a1818' : Scene.inAzurine ? '#0e0e1a' : Scene.inVortalis ? '#0a1828' : Scene.inEarth205 ? '#0e0c08' : Scene.inHideSeek ? '#0a0a10' : Scene.inMafiaLobby ? '#0a0a14' : Scene.inSkeld ? '#050508' : Scene.inLobby ? '#080810' : '#1e1e26';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   const startTX = Math.max(0, Math.floor(camX / TILE));
@@ -224,6 +224,42 @@ function drawLevelBackground(camX, camY) {
           if ((tx + ty * 3) % 9 === 0) {
             ctx.fillStyle = 'rgba(34,170,204,0.05)';
             ctx.beginPath(); ctx.ellipse(x + 24, y + 24, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        continue;
+      }
+
+      // === EARTH-205 INTERIOR TILES (Gothic Noir) ===
+      if (Scene.inEarth205) {
+        const isOuterEdge = tx === 0 || ty === 0 || tx === level.widthTiles - 1 || ty === level.heightTiles - 1;
+        if (collisionGrid[ty][tx] === 1 && isOuterEdge) {
+          // Dark stone wall
+          ctx.fillStyle = '#0a0806';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = '#121010';
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Moss accents
+          if ((tx + ty * 3) % 4 === 0) {
+            ctx.fillStyle = 'rgba(136,204,68,0.06)';
+            ctx.beginPath(); ctx.arc(x + 14, y + 18, 4, 0, Math.PI * 2); ctx.fill();
+          }
+          if ((tx * 5 + ty) % 5 === 0) {
+            ctx.fillStyle = 'rgba(204,102,34,0.05)';
+            ctx.beginPath(); ctx.arc(x + 32, y + 30, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        } else {
+          // Dark cobblestone floor
+          const sv = ((tx * 3 + ty * 7) % 5);
+          ctx.fillStyle = `rgb(${14 + sv},${12 + sv},${10 + sv})`;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = 'rgba(136,204,68,0.02)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TILE, TILE);
+          // Cobblestone crack accents
+          if ((tx + ty * 3) % 9 === 0) {
+            ctx.strokeStyle = 'rgba(100,80,40,0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + 8, y + 12); ctx.lineTo(x + 36, y + 32); ctx.stroke();
           }
         }
         continue;

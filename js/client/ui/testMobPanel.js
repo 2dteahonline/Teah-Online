@@ -3,7 +3,7 @@
 // and test them live or frozen without typing commands.
 
 // Panel state
-let testMobDungeon = 'azurine';  // 'cave' | 'azurine' | 'vortalis'
+let testMobDungeon = 'azurine';  // 'cave' | 'azurine' | 'vortalis' | 'dungeon_4'
 let testMobFloor = 1;
 let testMobScroll = 0;
 let testMobAbilityPopup = null;  // { typeKey, mobName, abilities[], x, y }
@@ -225,6 +225,116 @@ const MOB_ABILITY_DESCRIPTIONS = {
   divine_deluge:        "Reflect + 8 water bullets outward.",
   oceanic_domain:       "6 hazard zones in hexagonal pattern.",
   wrath_of_sea:         "Ultimate: 3 expanding rings + pull + massive hazard.",
+
+  // --- Earth-205 Floor 1: Scrapyard District ---
+  pipe_swing:           "Wide pipe sweep. Damage + knockback.",
+  scrap_toss:           "Throws scrap metal projectile at player.",
+  lookout_whistle:      "Alerts nearby mobs, buffing their speed +20%.",
+  slingshot_volley:     "Fires 3 stones in a spread pattern.",
+  hound_pounce:         "Leaps to player. Damage + brief stun on land.",
+  feral_bite:           "Close-range bite. Applies bleed DoT.",
+  aerosol_flame:        "Cone flame spray. Damage + burn DoT.",
+  can_toss:             "Lobs flaming can. Creates burn zone on landing.",
+  pipe_barrage:         "3 heavy pipe swings in succession.",
+  scrap_shield:         "Self-shield from scrap. 40% damage reduction for 4s.",
+  nail_spray:           "Fires 6 nails in a fan pattern.",
+  nail_mine:            "Places nail trap. Roots + damage on contact.",
+  adrenaline_rush:      "Self-buff: +40% speed, +30% damage for 5s.",
+  reckless_slam:        "Heavy slam ignoring own HP. Damage + stun.",
+  sledgehammer_slam:    "Circle telegraph. Heavy damage + knockback + slow.",
+  ground_crack:         "Line telegraph. Shockwave + stun.",
+  drill_charge:         "Dash 300px with drill. Heavy damage along path.",
+  scrap_summon:         "Spawns 3 scrap minions. Max 5.",
+  drill_spin:           "Spinning drill AoE. Damage + pull inward.",
+  scrap_armor:          "Absorbs scrap for 50% damage reduction + reflect.",
+
+  // --- Earth-205 Floor 2: Butcher Row ---
+  cleaver_combo:        "2 fast cleaver slashes. Bleed on hit.",
+  meat_hook_toss:       "Line telegraph. Pulls player toward mob.",
+  chain_sweep:          "Wide chain sweep. Damage + slow.",
+  chain_bind:           "Throws chain. Roots player for 1s.",
+  molotov_toss:         "Lobs molotov. Creates burn zone.",
+  fire_trail:           "Leaves fire trail while moving for 3s.",
+  executioner_chop:     "Heavy overhead chop. Massive damage + stun.",
+  intimidate:           "AoE fear. Player flees for 1.5s.",
+  sack_smash:           "Heavy ground slam. Circle AoE + stun.",
+  butcher_frenzy:       "Self-buff: +50% attack speed for 6s. Spawns 2 minions.",
+  breacher_charge:      "Shield dash 250px. Stun + knockback on hit.",
+  flashbang:            "AoE blind 200px. 2s duration.",
+  spotter_laser:        "Marks player. +30% damage taken for 4s.",
+  rifle_burst:          "3-round burst toward player.",
+  riot_charge:          "Heavy charge with shield. Damage + massive knockback.",
+  riot_slam:            "Shield slam. Circle AoE + stun.",
+  syndicate_rally:      "Buffs all allies +25% damage. Self-heal 10%.",
+  suppression_fire:     "5-round spread fire. Forces player movement.",
+  schwallie_execute:    "If player below 30% HP: massive damage execute.",
+  schwallie_summon:     "Spawns 2 syndicate enforcers. Max 4.",
+
+  // --- Earth-205 Floor 3: Carnival of Decay ---
+  juggle_toss:          "Throws 3 pins in arc pattern. Damage + confuse.",
+  pin_scatter:          "Pins scatter on death. AoE damage.",
+  balloon_pop:          "Inflates balloon near player. Explodes for AoE damage + slow.",
+  balloon_shield:       "Balloon shield absorbs 1 hit. Pops with knockback.",
+  statue_freeze:        "Freezes in place. Immune to damage for 2s. Then AoE stun.",
+  stone_gaze:           "Cone telegraph. Slows player 50% for 3s.",
+  mirror_image:         "Creates 2 decoy clones. Confuse on contact.",
+  vanish_strike:        "Vanishes and reappears behind player. Heavy damage.",
+  invisible_wall:       "Creates invisible barrier. Blocks movement for 3s.",
+  mime_trap:            "Mime box trap. Roots player + silence for 2s.",
+  stage_slam:           "Heavy overhead slam with stage prop. AoE + stun.",
+  prop_throw:           "Throws stage prop at player. Damage + knockback.",
+  phantom_wail:         "Sonic AoE. Damage + disorient + fear.",
+  chorus_buff:          "Heals all nearby allies 10% HP.",
+  prop_turret:          "Deploys prop turret that fires at player. Max 2.",
+  trap_door:            "Creates trap zone. Player falls through + damage.",
+  phantom_dance:        "Teleport dance. 4 rapid strikes from different angles.",
+  curtain_call:         "AoE stun + massive damage. Spawns 3 minions.",
+  phantom_orchestra:    "5 sonic wave projectiles in pattern.",
+  death_scene:          "Self-destruct: massive AoE + all minions explode.",
+
+  // --- Earth-205 Floor 4: Casino Noir ---
+  card_throw:           "Throws razor cards. 4 projectiles in fan.",
+  house_rules:          "Debuffs player: randomizes controls for 2s.",
+  laser_dash:           "Dash through laser grid. Damage along path.",
+  laser_trap:           "Places laser tripwire. Damage + root on contact.",
+  hack_disable:         "Disables player abilities for 3s (silence).",
+  data_drain:           "Channel: drains player HP. Heals self.",
+  smoke_bomb:           "Creates large smoke zone. Blinds + slows inside.",
+  decoy_drop:           "Drops decoy. Explodes when player approaches.",
+  stiletto_lunge:       "Quick dash + precise stab. Damage + bleed.",
+  red_card:             "Marks player. All mob attacks do +40% for 4s.",
+  goon_rush:            "Dash 200px + melee combo. 3 hits.",
+  tracksuit_taunt:      "Taunts player. Forces approach for 2s.",
+  disco_spin:           "Spinning AoE attack. Damage + confuse.",
+  disco_lights:         "Flashing lights AoE. Disorient + slow.",
+  tommy_spray:          "10-round spray in wide cone.",
+  suppress_zone:        "Creates suppression zone. Damage + slow inside.",
+  clean_sweep:          "360-degree sweep. Damage + knockback all nearby.",
+  evidence_burn:        "Burns evidence zone. Damage + removes player buffs.",
+  boss_decree:          "Summons 2 tracksuit goons + buffs all allies.",
+  golden_gun:           "Single high-damage piercing shot. Massive damage.",
+
+  // --- Earth-205 Floor 5: Meltdown Labs ---
+  hazmat_spray:         "Cone spray of chemicals. Damage + poison.",
+  decontaminate:        "Self-cleanse: removes debuffs + small heal.",
+  acid_spray:           "Line spray of acid. Creates acid trail.",
+  drone_bomb:           "Flies toward player. Explodes for AoE damage + poison.",
+  beaker_toss:          "Lobs chemical beaker. Creates poison zone.",
+  experiment_inject:    "Close-range inject. Applies random debuff.",
+  chem_charge:          "Chemical-fueled charge. Damage + poison trail.",
+  toxic_slam:           "Ground slam. Circle AoE + poison zone.",
+  elixir_heal:          "Heals all allies 15% HP + cleanses debuffs.",
+  elixir_rage:          "Self-buff: +60% damage. Applies poison to own attacks.",
+  sludge_trail:         "Leaves sludge trail. Massive slow + damage.",
+  sludge_wave:          "Wave of sludge toward player. Damage + slow.",
+  radiation_pulse:      "Expanding radiation ring. Damage + burn DoT.",
+  irradiate:            "Marks player with radiation. DoT for 5s.",
+  lockdown_shield:      "Invulnerable shield for 3s. Then AoE stun.",
+  lockdown_slam:        "Heavy slam. Creates barrier wall.",
+  specimen_rage:        "Berserk: +80% damage, +40% speed, takes +50% damage.",
+  specimen_split:       "Splits into 2 smaller specimens.",
+  meltdown_beam:        "Charged beam attack. Line telegraph + massive damage.",
+  nofaux_transform:     "Phase 2: transforms, full heal, new ability set.",
 };
 
 // Dungeon → Floor → Mob mapping
@@ -257,6 +367,16 @@ const TESTMOB_DUNGEONS = {
       3: { name: 'Floor 3 — Moonlit Docks / Ghost Ship', mobs: ['feral_deckhand', 'howling_lookout', 'sea_dog_brute', 'rabid_wharf_hound', 'wolfbeard', 'phantom_swashbuckler', 'poltergeist_gunner', 'drowned_banshee', 'cursed_shackler', 'ghostbeard'] },
       4: { name: 'Floor 4 — Sunken Reef / Abyssal Trench', mobs: ['ink_spitter', 'coral_crusher', 'trench_tentacle', 'barnacle_bomber', 'kraken_jim', 'gilded_triton', 'coin_spitter_jelly', 'deep_sea_dredger', 'royal_cephalopod', 'king_requill'] },
       5: { name: 'Floor 5 — Coral Throne / Ocean Temple', mobs: ['alabaster_sentinel', 'reef_weaver', 'gilded_manta', 'royal_shell_knight', 'queen_siralyth', 'sea_serpent_spawn', 'living_whirlpool', 'bone_tooth_zealot', 'tidal_avatar', 'mami_wata'] },
+    }
+  },
+  dungeon_4: {
+    name: 'Earth-205',
+    floors: {
+      1: { name: 'Floor 1 — Scrapyard District', mobs: ['scrap_metal_scrounger', 'alleyway_lookout', 'junkyard_hound', 'aerosol_pyro', 'willis', 'patchwork_thug', 'nail_gunner', 'adrenaline_fiend', 'sledgehammer_brute', 'puppedrill'] },
+      2: { name: 'Floor 2 — Butcher Row', mobs: ['butcher_block_maniac', 'chain_gang_brawler', 'arsonist', 'executioner_bruiser', 'sackhead', 'syndicate_enforcer', 'breacher_unit', 'tactical_spotter', 'riot_juggernaut', 'mr_schwallie'] },
+      3: { name: 'Floor 3 — Carnival of Decay', mobs: ['juggling_jester', 'balloon_twister', 'human_statue', 'illusionist', 'killer_mime', 'stagehand_brute', 'phantom_chorus', 'prop_master', 'macabre_dancer', 'major_phantom'] },
+      4: { name: 'Floor 4 — Casino Noir', mobs: ['casino_pit_boss', 'laser_grid_thief', 'vault_hacker', 'smokescreen_smuggler', 'lady_red', 'tracksuit_goon', 'disco_brawler', 'tommy_gun_heavy', 'the_cleaner', 'the_boss_e205'] },
+      5: { name: 'Floor 5 — Meltdown Labs', mobs: ['hazmat_grunt', 'sprayer_drone', 'mad_assistant', 'chem_brute', 'lady_elixir', 'sludge_crawler', 'irradiated_walker', 'lockdown_sentinel', 'failed_specimen', 'nofaux'] },
     }
   }
 };

@@ -3441,6 +3441,94 @@ ENTITY_RENDERERS.ocean_lantern = (e, ctx, ex, ey) => {
     ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2 - 2, 3, 0, Math.PI * 2); ctx.fill();
 };
 
+// ===================== EARTH-205 DUNGEON ENTITY RENDERERS =====================
+ENTITY_RENDERERS.building_earth205 = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const t = Date.now() / 1000;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(ex+cw/2+6, ey+ch+7, cw*0.48, 9, 0, 0, Math.PI*2); ctx.fill();
+    // Main structure — dark stone
+    ctx.fillStyle = '#141210';
+    ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
+    // Stone brick lines
+    ctx.strokeStyle = '#1a1816'; ctx.lineWidth = 1;
+    for (let r = 0; r < 6; r++) {
+      const ly = ey+ch*0.28+r*ch*0.12;
+      ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
+      const off = r % 2 === 0 ? cw*0.3 : cw*0.6;
+      ctx.beginPath(); ctx.moveTo(ex+off, ly); ctx.lineTo(ex+off, ly+ch*0.12); ctx.stroke();
+    }
+    // Roof — gothic peaked
+    ctx.fillStyle = '#1a1410';
+    ctx.beginPath();
+    ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.5, ey-2);
+    ctx.lineTo(ex+cw+6, ey+ch*0.24);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#88cc44'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.5, ey-2);
+    ctx.lineTo(ex+cw+6, ey+ch*0.24);
+    ctx.stroke();
+    // Wrought iron windows
+    const winGlow = 0.5 + Math.sin(t * 1.2) * 0.2;
+    for (let pw = 0; pw < 3; pw++) {
+      const px = ex + cw*0.2 + pw * cw*0.25;
+      const py = ey + ch*0.48;
+      ctx.fillStyle = `rgba(136,204,68,${winGlow * 0.3})`;
+      ctx.fillRect(px-5, py-8, 10, 16);
+      ctx.strokeStyle = '#2a2820'; ctx.lineWidth = 2;
+      ctx.strokeRect(px-5, py-8, 10, 16);
+      ctx.beginPath(); ctx.moveTo(px-5, py); ctx.lineTo(px+5, py); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, py-8); ctx.lineTo(px, py+8); ctx.stroke();
+    }
+    // Gas lamp
+    ctx.fillStyle = `rgba(204,102,34,${winGlow * 0.6})`;
+    ctx.beginPath(); ctx.arc(ex+cw/2, ey+ch*0.72, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = `rgba(204,102,34,${winGlow * 0.15})`;
+    ctx.beginPath(); ctx.arc(ex+cw/2, ey+ch*0.72, 14, 0, Math.PI*2); ctx.fill();
+    // Sign
+    ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(136,204,68,${winGlow * 0.8})`;
+    ctx.fillText('EARTH-205', ex + cw/2, ey + ch*0.18);
+    ctx.textAlign = 'left';
+};
+ENTITY_RENDERERS.earth205_entrance = (e, ctx, ex, ey, w, h) => {
+    const ew = w * TILE, eh = h * TILE;
+    const t = Date.now() / 1000;
+    const glow = 0.4 + Math.sin(t * 2) * 0.15;
+    ctx.fillStyle = `rgba(136,204,68,${glow * 0.15})`;
+    ctx.fillRect(ex, ey, ew, eh);
+    ctx.strokeStyle = `rgba(136,204,68,${glow * 0.5})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = `rgba(136,204,68,${glow * 0.7})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u25B2 ENTER", ex + ew/2, ey + eh + 14);
+    ctx.textAlign = "left";
+};
+ENTITY_RENDERERS.earth205_exit = (e, ctx, ex, ey, w, h) => {
+    const t = Date.now() / 1000;
+    ctx.fillStyle = `rgba(136,204,68,${0.15 + Math.sin(t * 2) * 0.05})`;
+    ctx.fillRect(ex + 4, ey + 4, w * TILE - 8, h * TILE - 8);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = `rgba(136,204,68,${0.6 + Math.sin(t * 3) * 0.2})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u27F5 EXIT \u27F6", ex + w * TILE / 2, ey + h * TILE + 14);
+    ctx.textAlign = "left";
+};
+ENTITY_RENDERERS.gas_lamp = (e, ctx, ex, ey) => {
+    const t = Date.now() / 1000;
+    const flicker = 0.5 + Math.sin(t * 3 + e.tx * 2) * 0.15;
+    ctx.fillStyle = `rgba(204,102,34,${flicker * 0.1})`;
+    ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a1410';
+    ctx.fillRect(ex + TILE/2 - 3, ey + TILE/2 - 8, 6, 16);
+    ctx.fillStyle = `rgba(255,160,40,${flicker})`;
+    ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2 - 4, 3, 0, Math.PI * 2); ctx.fill();
+};
+
 function drawLevelEntities(camX, camY) {
   for (const e of levelEntities) {
     // In Skeld: hide gameplay entities (tasks, sabotage panels) outside FOV
