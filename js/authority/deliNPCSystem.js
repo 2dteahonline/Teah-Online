@@ -832,6 +832,7 @@ const DELI_NPC_AI = {
 
     // Done eating
     npc.hasFood = false;
+    npc._recipeIngredients = null;
     const lastChair = npc.claimedChair;
     npc.claimedChair = null;
 
@@ -972,6 +973,8 @@ function updateDeliNPCs() {
         npc.state !== 'ordering' && npc.state !== 'waiting_food' &&
         (npc._idleTime || 0) >= 3600) {
       npc._idleTime = 0;
+      npc.hasFood = false;
+      npc._recipeIngredients = null;
       if (npc.claimedChair !== null) npc.claimedChair = null;
       if (npc._queueIdx >= 0) {
         const leftIdx = npc._queueIdx;
@@ -986,6 +989,8 @@ function updateDeliNPCs() {
     // Stuck detection — if blocked for 1+ second, abandon route and head to exit
     if ((npc._stuckFrames || 0) >= 60 && npc.state !== '_despawn' && npc.state !== '_despawn_walk') {
       npc._stuckFrames = 0;
+      npc.hasFood = false;
+      npc._recipeIngredients = null;
       if (npc.claimedChair !== null) npc.claimedChair = null;
       if (npc._queueIdx >= 0) {
         const leftIdx = npc._queueIdx;
@@ -1011,6 +1016,8 @@ function updateDeliNPCs() {
         npc._queueIdx = -1;
         _advanceQueue(leftIdx);
       }
+      npc.hasFood = false;
+      npc._recipeIngredients = null;
       deliNPCs.splice(i, 1);
     }
   }
