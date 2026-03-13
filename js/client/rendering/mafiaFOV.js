@@ -200,11 +200,14 @@ function drawMafiaFOV() {
     bctx.clearRect(0, 0, BASE_W, BASE_H);
 
     // Fill with darkness
-    bctx.fillStyle = 'rgba(0,0,0,0.97)';
+    bctx.fillStyle = 'rgba(0,0,0,0.93)';
     bctx.fillRect(0, 0, BASE_W, BASE_H);
 
-    // Cast rays — polyPoints already in screen coordinates
-    const polyPoints = _castFOVPolygon(player.x, player.y, fovWorldR, camera.x, camera.y);
+    // Snap raycast origin to tile center — shadows only shift when crossing
+    // a tile boundary, eliminating per-pixel jitter for clean Among Us look
+    const rayX = (Math.floor(player.x / TILE) + 0.5) * TILE;
+    const rayY = (Math.floor(player.y / TILE) + 0.5) * TILE;
+    const polyPoints = _castFOVPolygon(rayX, rayY, fovWorldR, camera.x, camera.y);
 
     if (polyPoints && polyPoints.length > 2) {
       // Cut out the visible polygon from darkness
