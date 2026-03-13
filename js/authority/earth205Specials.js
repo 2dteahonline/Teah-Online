@@ -1962,8 +1962,8 @@ MOB_SPECIALS.phantom_step = (m, ctx) => {
     return { skip: true };
   }
   if (dist > 250) return {};
-  // Teleport behind player
-  const behindDir = Math.atan2(player.y - m.y, player.x - m.x);
+  // Teleport behind player (opposite side from mob)
+  const behindDir = Math.atan2(m.y - player.y, m.x - player.x);
   const tx = player.x + Math.cos(behindDir) * 60;
   const ty = player.y + Math.sin(behindDir) * 60;
   hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
@@ -2441,11 +2441,9 @@ MOB_SPECIALS.crop_dust = (m, ctx) => {
   if (dist > 350) { m._specialTimer = 30; return {}; }
   // Dash 250px through player position
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
-  const dashDist = 250;
-  const tx = m.x + Math.cos(dir) * dashDist;
-  const ty = m.y + Math.sin(dir) * dashDist;
+  const clamped = clampDashTarget(m.x, m.y, dir, 250);
   m._cropSX = m.x; m._cropSY = m.y;
-  m._cropTX = tx; m._cropTY = ty;
+  m._cropTX = clamped.x; m._cropTY = clamped.y;
   m._cropDashing = true;
   m._cropTimer = 20;
   hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "cast" });

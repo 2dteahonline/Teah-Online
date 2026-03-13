@@ -414,6 +414,11 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     _contactDamageAura: mt._contactDamageAura || null, // { range, damage } DoT aura
     _deathExplosion: mt._deathExplosion || null,       // { radius, damage } AoE on death
     _counterStance: mt._counterStance || false,        // reflects melee damage
+    _poisonImmune: mt._poisonImmune || false,
+    _lethalEfficiency: mt._lethalEfficiency || false,
+    _showMustGoOn: mt._showMustGoOn || false,
+    _backstabber: mt._backstabber || false,
+    _intimidatingPresence: mt._intimidatingPresence || false,
     isBoss: mt.isBoss || false,
   };
 
