@@ -211,11 +211,13 @@ Impostor-only traversal network with 5 vent networks:
 
 ### FOV Rendering (Wall-Aware Raycasting)
 
-- **DDA raycasting** through the collision grid — walls block vision, creating Among Us-style shadow occlusion.
-- 360 base rays (1° intervals) + extra corner rays aimed at wall tile corners for crisp shadow edges at doorways.
-- **Raycast origin snapped to tile center** — shadows only shift when player crosses a tile boundary, eliminating per-pixel jitter.
-- Dark overlay (`rgba(0,0,0,0.93)`) with polygon cutout for visible area + soft radial vignette at max range.
-- Performance: cached `Uint8Array` flat grid (rebuilt per level), pre-computed cos/sin tables, pre-allocated offscreen buffer.
+- **Cached wall-boundary vertex FOV** — visibility polygon computed from pre-extracted wall-boundary vertices, not a dense ray sweep.
+- `buildFOVOccluderCache()`: builds flat collision grid + extracts boundary vertices (grid corners where wall meets open space). Cached per level.
+- `getFOVCandidateAngles()`: filters boundary vertices within FOV range, generates 3 rays per vertex (center ± epsilon) + 72 fill rays (every 5°).
+- `computeVisibilityPolygon()`: sorts angles, DDA-casts each ray, returns screen-space polygon.
+- **Raycast origin lerped** toward player position (0.35 blend factor) for smooth shadow movement without per-pixel jitter.
+- Dark overlay (`rgba(0,0,0,0.93)`) with blurred polygon cutout (`blur(12px)`) for soft shadow edges.
+- Performance: cached `Uint8Array` flat grid + boundary vertex list (rebuilt per level), pre-allocated offscreen buffer. ~200-500 rays/frame vs prior ~1500-3000.
 - Vision radius = `FOV_BASE_RADIUS * visionMultiplier * lightsMult * TILE`.
 - Vision multiplier differs by role: crewmates use `crewVision` (default 1x), impostors use `impostorVision` (default 1.5x).
 - **Lights sabotage dimming**: crewmate FOV smoothly shrinks to 35% of normal radius over 3 seconds (`_lightsDimProgress` 0→1). Fades back up over 3 seconds when fixed. Impostors completely unaffected.
@@ -315,7 +317,7 @@ All settings are configurable from the pre-game lobby UI and stored in `MAFIA_SE
 - Emergency meetings are blocked during active sabotage (like Among Us).
 - The `_getKillRange()` method reads from `MafiaState._settings.killDistance`, not the constant `MAFIA_GAME.KILL_RANGE`.
 - All Skeld coordinates use virtual space with `XO=4` offset. Minimap labels use actual grid coordinates.
-- **FOV raycast origin is snapped to tile center** — this prevents jitter. Do NOT change this to use exact player position.
+- **FOV raycast origin is lerped** (0.35 blend) toward player position for smooth shadow movement. Do NOT use exact player position (causes jitter) or tile-center snapping (causes jumps).
 - **Solid entities do NOT block FOV** — this was tried and reverted because it looked bad. Only wall tiles (`collisionGrid`) block vision.
 - **Impostors are unaffected by ALL sabotage visual effects** (lights dimming, O2 fog). Check `MafiaState.playerRole` before applying.
 - `_fovGridLevelId` caches the FOV grid per level. It auto-rebuilds when `level.id` changes.

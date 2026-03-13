@@ -41,13 +41,15 @@ const _LIGHTS_DIM_AMOUNT = 0.35; // shrink to 35% of normal radius (65% reductio
 // Casts rays from the player through the collision grid (walls only).
 // Rays stop at wall tiles, creating Among Us-style shadow occlusion.
 
-// ---- FOV grid: collision grid as flat Uint8Array (cached per level) ----
+// ---- FOV grid & occluder cache (rebuilt once per level change) ----
 let _fovGrid = null;       // Uint8Array flat grid (1 = wall)
 let _fovGridW = 0;
 let _fovGridH = 0;
 let _fovGridLevelId = null; // cache key
+let _fovBoundaryVerts = null; // Float32Array [wx0,wy0, wx1,wy1, ...] — wall-boundary corners
 
-function _buildFOVGrid() {
+// Build flat collision grid + extract wall-boundary vertices (cached per level)
+function buildFOVOccluderCache() {
   if (!collisionGrid || !level) return;
   if (_fovGridLevelId === level.id) return; // already cached
   const w = level.widthTiles;
@@ -62,6 +64,27 @@ function _buildFOVGrid() {
       if (row[x] === 1) _fovGrid[y * w + x] = 1;
     }
   }
+
+  // Extract boundary vertices: grid points where at least one adjacent tile
+  // is solid AND at least one is empty (wall-to-open transitions).
+  // Each grid point (gx, gy) is shared by 4 tiles: (gx-1,gy-1), (gx,gy-1), (gx-1,gy), (gx,gy).
+  const verts = [];
+  const grid = _fovGrid;
+  for (let gy = 0; gy <= h; gy++) {
+    for (let gx = 0; gx <= w; gx++) {
+      // Count how many of the 4 adjacent tiles are solid
+      let solid = 0;
+      if (gy > 0 && gx > 0 && grid[(gy - 1) * w + (gx - 1)]) solid++;
+      if (gy > 0 && gx < w && grid[(gy - 1) * w + gx]) solid++;
+      if (gy < h && gx > 0 && grid[gy * w + (gx - 1)]) solid++;
+      if (gy < h && gx < w && grid[gy * w + gx]) solid++;
+      // Boundary = mixed (some solid, some empty/OOB)
+      if (solid > 0 && solid < 4) {
+        verts.push(gx * TILE, gy * TILE);
+      }
+    }
+  }
+  _fovBoundaryVerts = new Float32Array(verts);
   _fovGridLevelId = level.id;
 }
 
@@ -99,59 +122,44 @@ let _fovLerpX = 0, _fovLerpY = 0;
 let _fovLerpInit = false;
 const _FOV_LERP_SPEED = 0.35; // blend factor per frame (0=frozen, 1=instant)
 
-// Pre-computed cos/sin tables for base rays (allocated once)
-const _FOV_RAY_COUNT = 720;
-const _fovCos = new Float32Array(_FOV_RAY_COUNT);
-const _fovSin = new Float32Array(_FOV_RAY_COUNT);
-for (let i = 0; i < _FOV_RAY_COUNT; i++) {
-  const a = (i / _FOV_RAY_COUNT) * Math.PI * 2;
-  _fovCos[i] = Math.cos(a);
-  _fovSin[i] = Math.sin(a);
+// Fill ray count — sparse ring to cover open areas with no walls
+const _FOV_FILL_COUNT = 72; // every 5 degrees
+const _fovFillCos = new Float32Array(_FOV_FILL_COUNT);
+const _fovFillSin = new Float32Array(_FOV_FILL_COUNT);
+for (let i = 0; i < _FOV_FILL_COUNT; i++) {
+  const a = (i / _FOV_FILL_COUNT) * Math.PI * 2;
+  _fovFillCos[i] = Math.cos(a);
+  _fovFillSin[i] = Math.sin(a);
 }
 
-// Cast all rays and return polygon points (screen coordinates, ready to draw)
-function _castFOVPolygon(px, py, maxDist, camX, camY) {
-  _buildFOVGrid();
-  if (!_fovGrid) return null;
-
-  // Collect angles: base rays + corner rays for nearby solid tiles
+// Get candidate ray angles from cached boundary vertices within range
+function getFOVCandidateAngles(px, py, maxDist) {
   const angles = [];
-  // Base rays at 1° intervals
-  for (let i = 0; i < _FOV_RAY_COUNT; i++) {
-    angles.push((i / _FOV_RAY_COUNT) * Math.PI * 2);
-  }
-
-  // Extra rays toward solid tile corners (only tiles within range)
-  const tileCX = Math.floor(px / TILE);
-  const tileCY = Math.floor(py / TILE);
-  const tileRange = Math.ceil(maxDist / TILE) + 1;
-  const w = _fovGridW, h = _fovGridH, grid = _fovGrid;
-  const maxDistSq = maxDist * maxDist;
-  for (let dy = -tileRange; dy <= tileRange; dy++) {
-    const ty = tileCY + dy;
-    if (ty < 0 || ty >= h) continue;
-    for (let dx = -tileRange; dx <= tileRange; dx++) {
-      const tx = tileCX + dx;
-      if (tx < 0 || tx >= w) continue;
-      if (!grid[ty * w + tx]) continue;
-      // 4 corners
-      const x0 = tx * TILE, y0 = ty * TILE;
-      const x1 = x0 + TILE, y1 = y0 + TILE;
-      const corners = [x0, y0, x1, y0, x0, y1, x1, y1];
-      for (let c = 0; c < 8; c += 2) {
-        const cdx = corners[c] - px, cdy = corners[c + 1] - py;
-        if (cdx * cdx + cdy * cdy > maxDistSq * 1.5) continue; // skip far corners
-        const a = Math.atan2(cdy, cdx);
-        angles.push(a - 0.0005);
-        angles.push(a + 0.0005);
-      }
+  const maxDistSq = maxDist * maxDist * 1.5; // slight over-reach for corners
+  const bv = _fovBoundaryVerts;
+  if (bv) {
+    for (let i = 0; i < bv.length; i += 2) {
+      const dx = bv[i] - px, dy = bv[i + 1] - py;
+      if (dx * dx + dy * dy > maxDistSq) continue;
+      const a = Math.atan2(dy, dx);
+      angles.push(a - 0.0005, a, a + 0.0005);
     }
   }
+  // Fill rays — sparse ring to cover open directions
+  for (let i = 0; i < _FOV_FILL_COUNT; i++) {
+    angles.push((i / _FOV_FILL_COUNT) * Math.PI * 2);
+  }
+  return angles;
+}
 
-  // Sort by angle
+// Compute visibility polygon from candidate angles (screen coordinates)
+function computeVisibilityPolygon(px, py, maxDist, camX, camY) {
+  buildFOVOccluderCache();
+  if (!_fovGrid) return null;
+
+  const angles = getFOVCandidateAngles(px, py, maxDist);
   angles.sort((a, b) => a - b);
 
-  // Cast each ray → screen-space points
   const zoom = WORLD_ZOOM;
   const pts = new Array(angles.length);
   for (let i = 0; i < angles.length; i++) {
@@ -214,7 +222,7 @@ function drawMafiaFOV() {
     _fovLerpY += (player.y - _fovLerpY) * _FOV_LERP_SPEED;
     const rayX = _fovLerpX;
     const rayY = _fovLerpY;
-    const polyPoints = _castFOVPolygon(rayX, rayY, fovWorldR, camera.x, camera.y);
+    const polyPoints = computeVisibilityPolygon(rayX, rayY, fovWorldR, camera.x, camera.y);
 
     if (polyPoints && polyPoints.length > 2) {
       // Cut out the visible polygon from darkness with soft blur for smooth shadow edges
