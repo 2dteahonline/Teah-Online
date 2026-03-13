@@ -231,25 +231,6 @@ function drawMafiaFOV() {
       bctx.fill();
       bctx.restore();
 
-      // Second pass: sharp inner cutout so center is fully visible (blur only affects edges)
-      bctx.globalCompositeOperation = 'destination-out';
-      bctx.fillStyle = 'rgba(255,255,255,1)';
-      bctx.beginPath();
-      // Shrink polygon slightly toward center for the sharp inner region
-      const shrink = 14; // px inward
-      for (let i = 0; i < polyPoints.length; i++) {
-        const dx = polyPoints[i].x - screenPX;
-        const dy = polyPoints[i].y - screenPY;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        const s = len > shrink ? (len - shrink) / len : 0;
-        const sx = screenPX + dx * s;
-        const sy = screenPY + dy * s;
-        if (i === 0) bctx.moveTo(sx, sy);
-        else bctx.lineTo(sx, sy);
-      }
-      bctx.closePath();
-      bctx.fill();
-
       // Soft edge at max range — vignette near boundary
       bctx.globalCompositeOperation = 'source-over';
       const edgeR = fovWorldR * WORLD_ZOOM;
