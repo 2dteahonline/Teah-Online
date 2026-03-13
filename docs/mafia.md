@@ -31,7 +31,7 @@
 
 - **`MAFIA_GAME`** (const) -- Mode-level constants and per-map data:
   - `BOT_COUNT` (8), `IMPOSTOR_COUNT` (1), `BOT_SPEED` (6.25)
-  - `FOV_BASE_RADIUS` (4.5 tiles), `KILL_RANGE` (120px), `REPORT_RANGE` (150px)
+  - `FOV_BASE_RADIUS` (9 tiles), `KILL_RANGE` (120px), `REPORT_RANGE` (150px)
   - Timers: `KILL_COOLDOWN`, `DISCUSSION_TIME`, `VOTING_TIME`, `EJECTION_TIME`, `VOTE_RESULTS_TIME`
   - `SABOTAGE_TYPES`: reactor_meltdown, o2_depletion, lights_out (with fix panel configs)
   - `SABOTAGE_PANELS`: tile positions for fix panels
@@ -91,7 +91,7 @@
 
 | Function | Purpose |
 |----------|---------|
-| `drawMafiaFOV()` | Dark overlay with circular cutout; vision radius varies by role; O2 fog effect |
+| `drawMafiaFOV()` | Wall-aware raycasted FOV overlay; lights sabotage dimming; O2 fog effect |
 | `drawMafiaBodies()` | Draw dead bodies in world space (colored crewmate shapes with cracked visors) |
 | `drawMafiaHUD()` | KILL/REPORT/SABOTAGE buttons, meeting UI, vote results, ejection screen |
 | `drawSabFixPanel()` | Reactor hand scanner, O2 keypad, lights switch panel |
@@ -209,13 +209,19 @@ Impostor-only traversal network with 5 vent networks:
 - While inside: directional arrow buttons point toward connected vents; click or use arrow keys to move between.
 - Player is invisible while in vent.
 
-### FOV Rendering
+### FOV Rendering (Wall-Aware Raycasting)
 
-- Circular FOV cutout centered on player, radius = `FOV_BASE_RADIUS * visionMultiplier * TILE`.
-- Dark overlay (`rgba(0,0,0,0.97)`) with radial gradient fade at edge (inner 70% clear, outer 30% gradient).
+- **DDA raycasting** through the collision grid — walls block vision, creating Among Us-style shadow occlusion.
+- 360 base rays (1° intervals) + extra corner rays aimed at wall tile corners for crisp shadow edges at doorways.
+- **Raycast origin snapped to tile center** — shadows only shift when player crosses a tile boundary, eliminating per-pixel jitter.
+- Dark overlay (`rgba(0,0,0,0.93)`) with polygon cutout for visible area + soft radial vignette at max range.
+- Performance: cached `Uint8Array` flat grid (rebuilt per level), pre-computed cos/sin tables, pre-allocated offscreen buffer.
+- Vision radius = `FOV_BASE_RADIUS * visionMultiplier * lightsMult * TILE`.
 - Vision multiplier differs by role: crewmates use `crewVision` (default 1x), impostors use `impostorVision` (default 1.5x).
+- **Lights sabotage dimming**: crewmate FOV smoothly shrinks to 35% of normal radius over 3 seconds (`_lightsDimProgress` 0→1). Fades back up over 3 seconds when fixed. Impostors completely unaffected.
 - Ghost players see full map (no FOV overlay).
 - During O2 sabotage: additional progressive fog overlay for crewmates (shrinking clear radius as timer runs down).
+- **Only wall tiles block FOV** — solid entities (crates, tables, etc.) do NOT block vision (tried and reverted — didn't look good).
 
 ### Bot AI
 
@@ -271,6 +277,29 @@ All settings are configurable from the pre-game lobby UI and stored in `MAFIA_SE
 - **Save/Load** (`saveLoad.js`): Lobby settings and color choice are not persisted to localStorage (session-only).
 - **Game Config** (`gameConfig.js`): `PLAYER_BASE_SPEED` and `PLAYER_WALL_HW` used for bot movement.
 
+### Character Rendering (Among Us Crewmate Sprites)
+
+- In Mafia mode (Skeld + Mafia Lobby), ALL characters render as colored Among Us crewmates instead of normal character sprites.
+- Handled by `_drawCrewmateWorld()` in `characterSprite.js` — intercepts at the top of `drawChar()` when `Scene.inSkeld || Scene.inMafiaLobby`.
+- Direction-aware: visor faces movement direction, hidden when facing away (shows back of helmet).
+- Walk animation: legs alternate when moving.
+- Ghost mode: dead player renders at 35% opacity.
+- Player color: from `MafiaState.participants` (in-game) or `mafiaPlayerColorIdx` (lobby).
+- Bot colors: stored as `skin = color.body`, `hair = color.dark` in the entity.
+- **No clothing/armor/hair/skin** is shown — only the solid color crewmate body.
+
+### Lobby
+
+- Physical EXIT door at bottom-center of mafia lobby (5-tile gap in collision wall) — walk south to return to main lobby. No need to use `/leave`.
+- `/leave` also works as a fallback.
+- Combat (melee + shooting) is disabled in both the main lobby and mafia lobby.
+
+### Debug Commands
+
+- `/sabo <reactor|o2|lights>` — trigger a sabotage for testing.
+- `/fix` — instantly fix the active sabotage.
+- `/role impostor` / `/role crewmate` — switch roles.
+
 ## Gotchas & Rules
 
 - Player always starts as crewmate. Use `/role impostor` to test impostor features.
@@ -286,5 +315,9 @@ All settings are configurable from the pre-game lobby UI and stored in `MAFIA_SE
 - Emergency meetings are blocked during active sabotage (like Among Us).
 - The `_getKillRange()` method reads from `MafiaState._settings.killDistance`, not the constant `MAFIA_GAME.KILL_RANGE`.
 - All Skeld coordinates use virtual space with `XO=4` offset. Minimap labels use actual grid coordinates.
+- **FOV raycast origin is snapped to tile center** — this prevents jitter. Do NOT change this to use exact player position.
+- **Solid entities do NOT block FOV** — this was tried and reverted because it looked bad. Only wall tiles (`collisionGrid`) block vision.
+- **Impostors are unaffected by ALL sabotage visual effects** (lights dimming, O2 fog). Check `MafiaState.playerRole` before applying.
+- `_fovGridLevelId` caches the FOV grid per level. It auto-rebuilds when `level.id` changes.
 - Task entities in `levelData.js` have `taskId`, `taskStep`, `room`, and `label` fields that link to the `TASK_HANDLERS` registry.
 - Vent networks are hardcoded per map in `VENT_NETWORK` (not data-driven from `MAFIA_GAME.MAPS`).
