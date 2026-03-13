@@ -20,7 +20,7 @@ const DELI_NPC_NAMES = ['Customer', 'Patron', 'Guest', 'Visitor', 'Diner', 'Shop
 // Every spot is in open floor — no collision checking needed.
 
 const DELI_SPOTS = {
-  exit:        { tx: 13, ty: 27 },
+  exit:        { tx: 13, ty: 33 },
   counterArea: { tx: 13, ty: 22 },   // corridor in front of counter
   counter:     { tx: 11, ty: 22 },   // pickup/order spot
   tipJar:      { tx: 15, ty: 22 },
@@ -65,17 +65,17 @@ const DELI_CHAIRS = [
 
 // Aisle browse spots (stand next to shelves — all items are in the aisles now)
 // NPCs stand in the walkway between/below shelf rows, centered on a shelf.
-// Shelf row 1: ty:22-23. Shelf row 2: ty:26-27.
-// Browse spots at ty:25 (gap between rows) and ty:29 (below row 2).
+// Shelf row 1: ty:24-25. Shelf row 2: ty:30-31.
+// Browse spots at ty:27 (gap between rows) and ty:33 (below row 2).
 const DELI_AISLES = [
-  // Browsing row 1 shelves from below (ty:25)
-  { name: 'Frozen',    price: 4, tx: 29, ty: 25 },
-  { name: 'Snacks',    price: 3, tx: 36, ty: 25 },
-  { name: 'Drinks',    price: 3, tx: 43, ty: 25 },
-  // Browsing row 2 shelves from below (ty:29)
-  { name: 'Cookies',   price: 3, tx: 29, ty: 29 },
-  { name: 'Soups',     price: 4, tx: 36, ty: 29 },
-  { name: 'Dairy',     price: 4, tx: 43, ty: 29 },
+  // Browsing row 1 shelves from below (ty:27)
+  { name: 'Frozen',    price: 4, tx: 29, ty: 27 },
+  { name: 'Snacks',    price: 3, tx: 36, ty: 27 },
+  { name: 'Drinks',    price: 3, tx: 43, ty: 27 },
+  // Browsing row 2 shelves from below (ty:33)
+  { name: 'Cookies',   price: 3, tx: 29, ty: 33 },
+  { name: 'Soups',     price: 4, tx: 36, ty: 33 },
+  { name: 'Dairy',     price: 4, tx: 43, ty: 33 },
 ];
 
 // ===================== CONFIG =====================
@@ -152,10 +152,10 @@ function _pickFreeAisle() {
 // to prevent NPCs clipping through solid entities.
 //
 // LAYOUT — AISLE AREA (tx:27+, ty:22+):
-//   Shelf row 1: ty:22-23 → shelves at tx:27-31, tx:34-38, tx:41-45
-//   Browse row 1: ty:25   → NPCs stand here to browse row 1 shelves
-//   Shelf row 2: ty:26-27 → shelves at tx:27-31, tx:34-38, tx:41-45
-//   Browse row 2: ty:29   → NPCs stand here to browse row 2 shelves
+//   Shelf row 1: ty:24-25 → shelves at tx:27-31, tx:34-38, tx:41-45
+//   Browse row 1: ty:27   → NPCs stand here to browse row 1 shelves
+//   Shelf row 2: ty:30-31 → shelves at tx:27-31, tx:34-38, tx:41-45
+//   Browse row 2: ty:33   → NPCs stand here to browse row 2 shelves
 //
 // GAPS between shelves (safe vertical corridors through aisle area):
 //   tx:26  — west of all shelves (main corridor)
@@ -164,12 +164,12 @@ function _pickFreeAisle() {
 //   tx:46+ — east of all shelves
 //
 // SAFE CORRIDORS:
-//   tx:26  vertical  ty:1-29   (just east of kitchen wall — main N/S corridor)
+//   tx:26  vertical  ty:1-35   (just east of kitchen wall — main N/S corridor)
 //   ty:20  horizontal tx:25-46  (below dining tables, above counter wall)
-//   ty:25  horizontal tx:26-46  (between shelf rows — NPC browse row 1)
-//   ty:29  horizontal tx:26-46  (below shelf row 2 — NPC browse row 2)
-//   tx:32  vertical  ty:22-29  (gap between shelf columns 1 and 2)
-//   tx:39  vertical  ty:22-29  (gap between shelf columns 2 and 3)
+//   ty:27  horizontal tx:26-46  (between shelf rows — NPC browse row 1)
+//   ty:33  horizontal tx:26-46  (below shelf row 2 — NPC browse row 2)
+//   tx:32  vertical  ty:24-33  (gap between shelf columns 1 and 2)
+//   tx:39  vertical  ty:24-33  (gap between shelf columns 2 and 3)
 
 // Find the nearest safe vertical gap for a given tx position in the aisle area
 function _nearestAisleGap(tx) {
@@ -284,7 +284,7 @@ function _routeToExit(fromTX, fromTY) {
     route.push({ tx: 26, ty: 22 });               // south to counter corridor
   }
   route.push({ tx: 13, ty: 22 });  // west to exit area
-  route.push({ tx: 13, ty: 27 });  // south to exit
+  route.push({ tx: 13, ty: 33 });  // south to exit
   return route;
 }
 
@@ -419,7 +419,7 @@ function moveDeliNPC(npc) {
       npc.y = 22 * TILE + TILE / 2;
       npc._stuckFrames = 0;
       // Replace route with direct path to exit so they don't walk back in
-      npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
+      npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 33 }];
       return;
     }
     npc._stuckFrames = (npc._stuckFrames || 0) + 1;

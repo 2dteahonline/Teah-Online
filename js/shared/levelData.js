@@ -108,7 +108,7 @@ const LEVELS = {
       { type: 'azurine_entrance', tx: 71, ty: 7, w: 3, h: 2, solid: false, target: 'azurine_01', spawnTX: 20, spawnTY: 19 },
       // === WEST DISTRICT BUILDINGS (below north row) ===
       { type: 'building_deli', tx: 3, ty: 12, w: 7, h: 8, solid: true },
-      { type: 'deli_entrance', tx: 5, ty: 19, w: 3, h: 2, solid: false, target: 'deli_01', spawnTX: 14, spawnTY: 27 },
+      { type: 'deli_entrance', tx: 5, ty: 19, w: 3, h: 2, solid: false, target: 'deli_01', spawnTX: 14, spawnTY: 33 },
       // === HIDE & SEEK ARENA (west district, next to deli) ===
       { type: 'building_hideseek', tx: 14, ty: 12, w: 7, h: 8, solid: true },
       { type: 'hideseek_entrance', tx: 16, ty: 19, w: 3, h: 2, solid: false, target: 'hide_01', spawnTX: 5, spawnTY: 5 },
@@ -737,11 +737,17 @@ const LEVELS = {
   deli_01: {
     id: 'deli_01',
     widthTiles: 50,
-    heightTiles: 30,
+    heightTiles: 36,
     isCooking: true,
-    spawns: { p1: { tx: 14, ty: 27 } },
+    spawns: { p1: { tx: 14, ty: 33 } },
     collisionAscii: [
       "##################################################",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
       "#................................................#",
       "#................................................#",
       "#................................................#",
@@ -774,7 +780,7 @@ const LEVELS = {
     ],
     entities: [
       // Exit door (bottom)
-      { type: 'deli_exit', tx: 12, ty: 27, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 21 },
+      { type: 'deli_exit', tx: 12, ty: 33, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 21 },
 
       // === KITCHEN FLOOR (rendered behind everything — tile pattern) ===
       { type: 'deli_kitchen_floor', tx: 1, ty: 1, w: 23, h: 20, solid: false },
@@ -867,15 +873,15 @@ const LEVELS = {
 
       // === GROCERY AISLES (right side, below dining area) ===
       // All items (frozen, drinks, chips, soups, cookies, etc.) are in the aisles.
-      // -- Aisle 1 (row 22-23) — 3 shelves, 2-tile gaps --
-      { type: 'deli_shelf_frozen',    tx: 27, ty: 22, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_snacks',    tx: 34, ty: 22, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_drinks',    tx: 41, ty: 22, w: 5, h: 2, solid: true },
+      // -- Aisle 1 (row 24-25) — 3 shelves, 2-tile gaps --
+      { type: 'deli_shelf_frozen',    tx: 27, ty: 24, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_snacks',    tx: 34, ty: 24, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_drinks',    tx: 41, ty: 24, w: 5, h: 2, solid: true },
 
-      // -- Aisle 2 (row 26-27) — 3 shelves, 2-tile gaps --
-      { type: 'deli_shelf_cookies',   tx: 27, ty: 26, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_soups',     tx: 34, ty: 26, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_dairy',     tx: 41, ty: 26, w: 5, h: 2, solid: true },
+      // -- Aisle 2 (row 30-31) — 3 shelves, 2-tile gaps --
+      { type: 'deli_shelf_cookies',   tx: 27, ty: 30, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_soups',     tx: 34, ty: 30, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_dairy',     tx: 41, ty: 30, w: 5, h: 2, solid: true },
     ]
   },
   // ---- TEST ARENA (dev only) ----
