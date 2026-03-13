@@ -295,6 +295,23 @@ function drawMafiaFOV() {
       bctx.restore();
     }
 
+    // ---- Purple glow ring at FOV boundary (Among Us style) ----
+    if (polyPoints && polyPoints.length > 2) {
+      bctx.globalCompositeOperation = 'source-over';
+      bctx.save();
+      bctx.filter = `blur(${28}px)`;
+      bctx.strokeStyle = 'rgba(140,60,180,0.45)';
+      bctx.lineWidth = 18;
+      bctx.beginPath();
+      bctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+      for (let i = 1; i < polyPoints.length; i++) {
+        bctx.lineTo(polyPoints[i].x, polyPoints[i].y);
+      }
+      bctx.closePath();
+      bctx.stroke();
+      bctx.restore();
+    }
+
     bctx.globalCompositeOperation = 'source-over';
     ctx.drawImage(buf, 0, 0);
 
