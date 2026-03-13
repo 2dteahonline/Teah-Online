@@ -231,23 +231,6 @@ function drawMafiaFOV() {
       bctx.fill();
       bctx.restore();
 
-      // Soft edge at max range — vignette near boundary
-      bctx.globalCompositeOperation = 'source-over';
-      const edgeR = fovWorldR * WORLD_ZOOM;
-      const edgeGrad = bctx.createRadialGradient(screenPX, screenPY, edgeR * 0.75, screenPX, screenPY, edgeR);
-      edgeGrad.addColorStop(0, 'rgba(0,0,0,0)');
-      edgeGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
-      bctx.fillStyle = edgeGrad;
-      bctx.save();
-      bctx.beginPath();
-      bctx.moveTo(polyPoints[0].x, polyPoints[0].y);
-      for (let i = 1; i < polyPoints.length; i++) {
-        bctx.lineTo(polyPoints[i].x, polyPoints[i].y);
-      }
-      bctx.closePath();
-      bctx.clip();
-      bctx.fillRect(0, 0, BASE_W, BASE_H);
-      bctx.restore();
     }
 
     bctx.globalCompositeOperation = 'source-over';
