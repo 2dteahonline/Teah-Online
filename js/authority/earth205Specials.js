@@ -233,8 +233,8 @@ MOB_SPECIALS.earthquake_slam_e205 = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player._knockbackVx = Math.cos(kbDir) * 12;
-        player._knockbackVy = Math.sin(kbDir) * 12;
+        player.knockVx = Math.cos(kbDir) * 12;
+        player.knockVy = Math.sin(kbDir) * 12;
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "sledgehammer_shockwave" });
       m._specialTimer = m._specialCD || 300;
@@ -326,7 +326,7 @@ MOB_SPECIALS.flare_trap = (m, ctx) => {
     onExpire: function() {
       const bx = this.x || m.x, by = this.y || m.y;
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
-        HazardSystem.createZone({ x: bx, y: by, radius: 80, duration: 300, tickDamage: 6, type: 'fire' });
+        HazardSystem.createZone({ cx: bx, cy: by, radius: 80, duration: 300, tickDamage: 6, color: [255, 100, 40] });
       } else {
         // Fallback — AoE damage
         if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(bx, by, 80)) {
@@ -504,16 +504,19 @@ MOB_SPECIALS.bouncing_blast = (m, ctx) => {
     fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#aa6633', life: 180,
     _bounces: 2,
-    onWallHit: function() {
-      if (this._bounces > 0) {
-        this._bounces--;
-        // Reverse the velocity component that hit the wall
-        // Simplified: check which axis is blocked
-        if (!positionClear(this.x + this.vx * 3, this.y)) this.vx = -this.vx;
-        if (!positionClear(this.x, this.y + this.vy * 3)) this.vy = -this.vy;
-        return true; // Don't destroy bullet
+    onWallHit: function(b) {
+      if (b._bounces > 0) {
+        b._bounces--;
+        const prevX = b.x - b.vx, prevY = b.y - b.vy;
+        const prevCol = Math.floor(prevX / TILE), prevRow = Math.floor(prevY / TILE);
+        const curCol = Math.floor(b.x / TILE), curRow = Math.floor(b.y / TILE);
+        if (prevCol !== curCol) b.vx = -b.vx;
+        if (prevRow !== curRow) b.vy = -b.vy;
+        if (prevCol === curCol && prevRow === curRow) { b.vx = -b.vx; b.vy = -b.vy; }
+        b.x += b.vx * 1.5;
+        b.y += b.vy * 1.5;
+        b._handled = true;
       }
-      return false; // Destroy on final bounce
     },
     onExpire: function() {
       if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(this.x, this.y, 80)) {
@@ -565,7 +568,7 @@ MOB_SPECIALS.chemical_flask = (m, ctx) => {
     onExpire: function() {
       const bx = this.x || targetX, by = this.y || targetY;
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
-        HazardSystem.createZone({ x: bx, y: by, radius: 70, duration: 300, tickDamage: 8, type: 'poison' });
+        HazardSystem.createZone({ cx: bx, cy: by, radius: 70, duration: 300, tickDamage: 8, color: [100, 200, 100] });
       }
       hitEffects.push({ x: bx, y: by, life: 30, type: "smoke" });
       // Poison on direct hit area
@@ -694,7 +697,7 @@ MOB_SPECIALS.master_plan = (m, ctx) => {
     onExpire: function() {
       const bx = this.x, by = this.y;
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
-        HazardSystem.createZone({ x: bx, y: by, radius: 70, duration: 300, tickDamage: 8, type: 'poison' });
+        HazardSystem.createZone({ cx: bx, cy: by, radius: 70, duration: 300, tickDamage: 8, color: [100, 200, 100] });
       }
       hitEffects.push({ x: bx, y: by, life: 30, type: "smoke" });
     },
@@ -767,8 +770,8 @@ MOB_SPECIALS.shattering_swing = (m, ctx) => {
     hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
     // Knockback
     const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-    player._knockbackVx = Math.cos(kbDir) * 14;
-    player._knockbackVy = Math.sin(kbDir) * 14;
+    player.knockVx = Math.cos(kbDir) * 14;
+    player.knockVy = Math.sin(kbDir) * 14;
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 15, type: "cast" });
   m._abilityCDs.shattering_swing = 240;
@@ -846,8 +849,8 @@ MOB_SPECIALS.brutal_beatdown = (m, ctx) => {
         // Final hit knockback
         if (m._beatdownHits >= 5) {
           const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-          player._knockbackVx = Math.cos(kbDir) * 16;
-          player._knockbackVy = Math.sin(kbDir) * 16;
+          player.knockVx = Math.cos(kbDir) * 16;
+          player.knockVy = Math.sin(kbDir) * 16;
         }
       }
     }
@@ -926,8 +929,8 @@ MOB_SPECIALS.bull_charge = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player._knockbackVx = Math.cos(kbDir) * 16;
-        player._knockbackVy = Math.sin(kbDir) * 16;
+        player.knockVx = Math.cos(kbDir) * 16;
+        player.knockVy = Math.sin(kbDir) * 16;
       }
       m._chargeDashing = false;
       m._abilityCDs.bull_charge = 420;
@@ -987,8 +990,8 @@ MOB_SPECIALS.batter_up = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player._knockbackVx = Math.cos(kbDir) * 20;
-        player._knockbackVy = Math.sin(kbDir) * 20;
+        player.knockVx = Math.cos(kbDir) * 20;
+        player.knockVy = Math.sin(kbDir) * 20;
         StatusFX.applyToPlayer('stun', { duration: 90 });
         hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "stun" });
       }
@@ -1021,13 +1024,13 @@ MOB_SPECIALS.cigar_flick = (m, ctx) => {
     ownerId: m.id, bulletColor: '#ff8844',
     onHitPlayer: () => {
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
-        HazardSystem.createZone({ x: player.x, y: player.y, radius: 60, duration: 180, tickDamage: 6, type: 'fire' });
+        HazardSystem.createZone({ cx: player.x, cy: player.y, radius: 60, duration: 180, tickDamage: 6, color: [255, 100, 40] });
       }
       hitEffects.push({ x: player.x, y: player.y, life: 25, type: "burn_tick" });
     },
     onExpire: function() {
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
-        HazardSystem.createZone({ x: this.x, y: this.y, radius: 60, duration: 180, tickDamage: 6, type: 'fire' });
+        HazardSystem.createZone({ cx: this.x, cy: this.y, radius: 60, duration: 180, tickDamage: 6, color: [255, 100, 40] });
       }
       hitEffects.push({ x: this.x, y: this.y, life: 25, type: "burn_tick" });
     },
@@ -2394,19 +2397,15 @@ MOB_SPECIALS.acid_splash = (m, ctx) => {
     onHitPlayer: () => {
       hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "chemical_beam" });
       // Create poison puddle at impact
-      hitEffects.push({
-        x: player.x, y: player.y, life: 240, maxLife: 240,
-        type: "chemical_beam",
-        _isPuddle: true, _puddleRadius: 60, _puddleDmg: 5, _puddleTick: 0, _puddleInterval: 30,
-      });
+      if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+        HazardSystem.createZone({ cx: player.x, cy: player.y, radius: 60, duration: 240, tickRate: 30, tickDamage: 5, color: [100, 200, 100], slow: 0.2 });
+      }
     },
     onExpire: function() {
       // Create puddle at expire position
-      hitEffects.push({
-        x: this.x, y: this.y, life: 240, maxLife: 240,
-        type: "chemical_beam",
-        _isPuddle: true, _puddleRadius: 60, _puddleDmg: 5, _puddleTick: 0, _puddleInterval: 30,
-      });
+      if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+        HazardSystem.createZone({ cx: this.x, cy: this.y, radius: 60, duration: 240, tickRate: 30, tickDamage: 5, color: [100, 200, 100], slow: 0.2 });
+      }
     },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -2836,11 +2835,9 @@ MOB_SPECIALS.viscous_sludge = (m, ctx) => {
     onHitPlayer: () => {
       hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "chemical_beam" });
       // Create slow zone at impact
-      hitEffects.push({
-        x: player.x, y: player.y, life: 240, maxLife: 240,
-        type: "chemical_beam",
-        _isSlowZone: true, _slowRadius: 80, _slowFactor: 0.4,
-      });
+      if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+        HazardSystem.createZone({ cx: player.x, cy: player.y, radius: 80, duration: 240, tickRate: 999, tickDamage: 0, color: [100, 136, 68], slow: 0.4 });
+      }
     },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });

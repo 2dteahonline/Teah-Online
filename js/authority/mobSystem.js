@@ -775,6 +775,23 @@ function updateMobs() {
           }
         }
 
+        // Tick persistent caltrops (Willis caltrop_scatter)
+        if (m._caltrops && m._caltrops.length > 0 && m._activeAbility !== 'caltrop_scatter') {
+          for (let ci = m._caltrops.length - 1; ci >= 0; ci--) {
+            const c = m._caltrops[ci];
+            c.life--;
+            if (c.life <= 0) { m._caltrops.splice(ci, 1); continue; }
+            const cdx = player.x - c.x, cdy = player.y - c.y;
+            if (Math.sqrt(cdx * cdx + cdy * cdy) < 20 && !c._hit) {
+              const dmg = Math.round(10 * getMobDamageMultiplier());
+              dealDamageToPlayer(dmg, 'mob_special', m);
+              StatusFX.applyToPlayer('slow', { duration: 120, amount: 0.4 });
+              hitEffects.push({ x: c.x, y: c.y, life: 15, type: "smoke" });
+              c._hit = true;
+            }
+          }
+        }
+
         // Tick egg sacs (Centipede toxic_nursery) — must tick even when other abilities are active
         if (m._eggs && m._eggs.length > 0 && m._activeAbility !== 'toxic_nursery') {
           for (let ei = m._eggs.length - 1; ei >= 0; ei--) {
