@@ -78,7 +78,7 @@ When modifying The Skeld map in `js/shared/levelData.js`:
 
 **Layer system** (Graal-style, for mix-and-match cosmetics):
 - Body: 32×40 cells, 4 cols (dirs) × 32 rows (anims) = 128×1280
-- Head: 32×32 cells, 4 cols × 5 rows = 128×160
+- Head: 32×32 cells, 4 cols × 4 rows = 128×128
 - Hat: 32×32 cells, 5 cols × 5 rows = 160×160
 
 Templates in `assets/sprites/` — clean grids for artists + labeled references.
@@ -90,7 +90,9 @@ Templates in `assets/sprites/` — clean grids for artists + labeled references.
 
 **Current body rows (32)**: Idle, Walk 1-4, Swing 1-4, Shoot Idle/1/2, Dash, Grab, Push 1-2, Pull, Lift, Idle Hold, Walk Hold 1-2, Fish Cast/Idle/Reel, Mine 1-2, Farm 1-2, Cook 1-2, Hurt, Dead
 
-**Current head/hat rows (5)**: Walk & Idle, Attack, Shoot, Hurt & Dying, Skill (Fish/Mine/etc)
+**Current head rows (4)**: Walk & Idle, Push, Pull, Hurt & Dying
+
+**Current hat rows (5)**: Walk & Idle, Attack, Shoot, Hurt & Dying, Skill (Fish/Mine/etc)
 
 ## Conventions
 
