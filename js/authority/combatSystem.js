@@ -2535,79 +2535,76 @@ const MOB_SPECIALS = {
   },
 
   // --- E-Mortis: Hostile Takeover ---
-  // Summon 2 suit_enforcer adds (weaker version). Limit 2 active.
+  // Telegraph pull zone → yank player toward E-Mortis → root for 3s.
   hostile_takeover: (m, ctx) => {
-    const { mobs, hitEffects, wave } = ctx;
+    const { dist, player, hitEffects } = ctx;
 
-    // Internal cooldown
-    if (!m._takeoverCD) m._takeoverCD = 0;
-    if (m._takeoverCD > 0) { m._takeoverCD--; return {}; }
+    if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 540;
 
-    // Count active summons (max 2)
-    const activeCount = mobs.filter(s => s._summonOwnerId === m.id && s.hp > 0).length;
-    if (activeCount >= 2) return {};
-
-    const typeKey = 'suit_enforcer';
-    const mt = MOB_TYPES[typeKey];
-    if (!mt) return {};
-
-    const hpMult = getWaveHPMultiplier(wave) * 0.6; // weaker version
-    const spdMult = getWaveSpeedMultiplier(wave);
-    const toSpawn = 2;
-
-    for (let si = 0; si < toSpawn; si++) {
-      // Find clear spawn position near boss
-      let sx, sy, foundClear = false;
-      for (let attempt = 0; attempt < 20; attempt++) {
-        const angle = Math.random() * Math.PI * 2;
-        const spawnDist = 80 + Math.random() * 60;
-        sx = m.x + Math.cos(angle) * spawnDist;
-        sy = m.y + Math.sin(angle) * spawnDist;
-        if (!positionClear(sx, sy)) continue;
-        let tooClose = false;
-        const minSep = 40;
-        for (const other of mobs) {
-          if (other.hp <= 0) continue;
-          const odx = sx - other.x, ody = sy - other.y;
-          if (odx * odx + ody * ody < minSep * minSep) { tooClose = true; break; }
-        }
-        if (!tooClose) { foundClear = true; break; }
+    // --- Pull phase: drag player toward boss over 30 frames ---
+    if (m._takeoverPulling) {
+      m._takeoverPullTimer = (m._takeoverPullTimer || 0) - 1;
+      if (m._takeoverPullTimer <= 0) {
+        // Done pulling — root for 3s
+        StatusFX.applyToPlayer('root', { duration: 180 });
+        hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "stun_hit" });
+        m._takeoverPulling = false;
+        m._specialTimer = m._specialCD || 540;
+      } else {
+        // Pull player toward boss each frame
+        const dx = m.x - player.x, dy = m.y - player.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const pullSpeed = 8;
+        player.knockVx = (dx / d) * pullSpeed;
+        player.knockVy = (dy / d) * pullSpeed;
       }
-      if (!foundClear) {
-        const fallbackAngle = (si + 1) * Math.PI * 0.7;
-        sx = m.x + Math.cos(fallbackAngle) * 60;
-        sy = m.y + Math.sin(fallbackAngle) * 60;
-      }
-
-      const mobId = nextMobId++;
-      mobs.push({
-        x: sx, y: sy, type: typeKey, id: mobId,
-        hp: Math.round(mt.hp * hpMult), maxHp: Math.round(mt.hp * hpMult),
-        speed: capMobSpeed(typeKey, mt.speed * spdMult),
-        damage: Math.round(mt.damage * getMobDamageMultiplier()),
-        contactRange: mt.contactRange,
-        skin: mt.skin, hair: mt.hair, shirt: mt.shirt, pants: mt.pants,
-        name: mt.name, dir: 0, frame: 0, attackCooldown: 0,
-        shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
-        summonRate: 0, summonMax: 0, summonTimer: 0,
-        arrowRate: mt.arrowRate || 0, arrowSpeed: mt.arrowSpeed || 0,
-        arrowRange: mt.arrowRange || 0, arrowBounces: mt.arrowBounces || 0,
-        arrowLife: mt.arrowLife || 0, bowDrawAnim: 0,
-        arrowTimer: mt.arrowRate ? Math.max(1, Math.floor(Math.random() * mt.arrowRate)) : 0,
-        _specials: mt._specials || null,
-        _specialTimer: mt.specialCD || 0,
-        _specialCD: mt.specialCD || 0,
-        _abilityCDs: {},
-        _cloaked: false, _cloakTimer: 0,
-        _bombs: [], _mines: [],
-        _summonOwnerId: m.id,
-        scale: 0.85, spawnFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
-      });
-      hitEffects.push({ x: sx, y: sy - 20, life: 20, type: "summon" });
+      return { skip: true };
     }
 
-    m._takeoverCD = 900; // 15s internal cooldown
-    return {};
+    // --- Telegraph phase ---
+    if (m._takeoverTelegraph) {
+      m._takeoverTelegraph--;
+      if (m._takeoverTelegraph <= 0) {
+        // Resolve: check if player in range, start pull
+        const radius = 280;
+        if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, radius)) {
+          const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
+          const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+          hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+          m._takeoverPulling = true;
+          m._takeoverPullTimer = 30; // 0.5s pull duration
+        } else {
+          m._specialTimer = m._specialCD || 540;
+        }
+        hitEffects.push({ x: m.x, y: m.y, life: 20, type: "cast" });
+      }
+      return { skip: true };
+    }
+
+    if (m._specialTimer > 0) {
+      m._specialTimer--;
+      return {};
+    }
+
+    // Activate: must be within 400px
+    if (dist >= 400) {
+      m._specialTimer = 30;
+      return {};
+    }
+
+    // Start telegraph (48 frames = 0.8s warning)
+    m._takeoverTelegraph = 48;
+    if (typeof TelegraphSystem !== 'undefined') {
+      TelegraphSystem.create({
+        shape: 'circle',
+        params: { cx: m.x, cy: m.y, radius: 280 },
+        delayFrames: 48,
+        color: [192, 160, 64],
+        owner: m.id,
+      });
+    }
+    hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
+    return { skip: true };
   },
 
   // --- E-Mortis: NDA Field ---
