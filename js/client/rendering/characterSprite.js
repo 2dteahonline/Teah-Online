@@ -228,8 +228,114 @@ let useSpriteMode = false;
 const CHAR_SCALE = 1.1;
 const DEFAULT_HITBOX_RADIUS = GAME_CONFIG.DEFAULT_HITBOX_RADIUS;
 
+// ===================== AMONG US CREWMATE (game world) =====================
+// Draws a full-size crewmate sprite at world position (sx, sy).
+// Supports 4 directions, walk animation, and ghost transparency.
+function _drawCrewmateWorld(sx, sy, dir, frame, moving, bodyColor, darkColor, scale, isGhost) {
+  const s = (scale || 1) * 1.6; // scale up from mini crewmate proportions
+  ctx.save();
+  if (isGhost) ctx.globalAlpha = 0.35;
+
+  // Position: sy is feet, crewmate body center is ~16 units above feet at base scale
+  const cx = sx;
+  const cy = sy - 16 * s;
+  ctx.translate(cx, cy);
+  ctx.scale(s, s);
+
+  // Direction: 0=down, 1=up, 2=left, 3=right
+  // Default crewmate faces right (visor on right). Flip for left.
+  const facingLeft = dir === 2;
+  const facingBack = dir === 1;
+  if (facingLeft) ctx.scale(-1, 1);
+
+  // Walk animation — alternate leg offset
+  const walkAmt = moving ? Math.sin(frame * Math.PI / 2) * 3 : 0;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, 22, 14, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Backpack (behind body)
+  ctx.fillStyle = darkColor || '#555';
+  ctx.beginPath();
+  ctx.ellipse(-15, 2, 5, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body (dark color base)
+  ctx.fillStyle = darkColor || '#555';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 14, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Suit top
+  ctx.fillStyle = bodyColor || '#888';
+  ctx.beginPath();
+  ctx.ellipse(0, -2, 13, 15, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(-13, -2, 26, 10);
+
+  // Visor (only visible when facing down, left, or right — not when facing away)
+  if (!facingBack) {
+    ctx.fillStyle = '#a8d8ea';
+    ctx.beginPath();
+    ctx.ellipse(5, -4, 8, 7, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    // Visor shine
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(3, -7, 3, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Back of head — just a slight curve highlight
+    ctx.fillStyle = bodyColor || '#888';
+    ctx.beginPath();
+    ctx.ellipse(0, -6, 11, 10, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Legs with walk animation
+  ctx.fillStyle = darkColor || '#555';
+  ctx.fillRect(-10, 16 + walkAmt, 8, 6);
+  ctx.fillRect(2, 16 - walkAmt, 8, 6);
+  // Leg bottoms (shoe color = body color)
+  ctx.fillStyle = bodyColor || '#888';
+  ctx.fillRect(-11, 19 + walkAmt, 10, 4);
+  ctx.fillRect(1, 19 - walkAmt, 10, 4);
+
+  ctx.restore();
+}
+
 function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp, isPlayer, mobType, maxHp, boneSwing, mobScale, castTimer) {
   const effectiveScale = CHAR_SCALE * (mobScale || 1);
+
+  // ---- Mafia mode: draw Among Us crewmate sprites instead of normal characters ----
+  if (typeof Scene !== 'undefined' && (Scene.inSkeld || Scene.inMafiaLobby)) {
+    let bodyCol, darkCol;
+    if (isPlayer) {
+      // In-game: get from MafiaState participant; in lobby: use chosen color index
+      if (typeof MafiaState !== 'undefined' && MafiaState.participants) {
+        const localP = MafiaState.participants.find(p => p.isLocal);
+        bodyCol = localP && localP.color ? localP.color.body : '#c51111';
+        darkCol = localP && localP.color ? localP.color.dark : '#7a0838';
+      } else {
+        const cidx = typeof mafiaPlayerColorIdx !== 'undefined' ? mafiaPlayerColorIdx : 0;
+        const pc = MAFIA_GAME.COLORS[cidx] || MAFIA_GAME.COLORS[0];
+        bodyCol = pc.body;
+        darkCol = pc.dark;
+      }
+    } else {
+      // Bot entities: skin = color.body, hair = color.dark
+      bodyCol = skin || '#888';
+      darkCol = hair || '#555';
+    }
+    const isGhost = isPlayer && typeof MafiaState !== 'undefined' && MafiaState.playerIsGhost;
+    _drawCrewmateWorld(sx, sy, dir, frame, moving, bodyCol, darkCol, effectiveScale, isGhost);
+    // Name tag below character
+    drawNameTag(sx, sy, sy - 55 * effectiveScale, name, -1, isPlayer, -1);
+    return;
+  }
 
   // Try sprite mode first
   if (useSpriteMode) {
