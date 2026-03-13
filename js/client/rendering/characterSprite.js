@@ -354,12 +354,12 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   const showHitbox = isPlayer ? gameSettings.showOwnHitbox : gameSettings.showOtherHitbox;
   if (showHitbox && mobType !== 'deliNPC') {
     const hitboxR = (!isPlayer && mobType && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || DEFAULT_HITBOX_RADIUS;
-    ctx.strokeStyle = "#00cc44";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(0,220,68,0.7)";
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(sx, sy - 20, hitboxR, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = "rgba(0,200,60,0.08)";
+    ctx.fillStyle = "rgba(0,200,60,0.18)";
     ctx.beginPath();
     ctx.arc(sx, sy - 20, hitboxR, 0, Math.PI * 2);
     ctx.fill();
