@@ -740,6 +740,376 @@ const MOB_TYPES = {
     kiteRange: 260,
     deathColors: ["#2a4a5a","#1a2a4a","#4a6a7a","#0a1a3a"],
   },
+
+  // ===================== EARTH-205 FLOOR 1: BACK ALLEYS =====================
+  // Section A — Street Thugs (waves 1-4)
+  scrap_metal_scrounger: {
+    name: "Scrap Metal Scrounger", hp: 140, speed: 3.2, damage: 20, killHeal: 8, goldReward: 5,
+    skin: "#6a5a4a", hair: "#3a2a1a", shirt: "#5a4a30", pants: "#4a3a20", contactRange: 76,
+    ai: 'grunt', _specials: ['scrap_toss'], specialCD: 600,
+    deathColors: ["#6a5a4a","#5a4a30","#8a7a6a","#4a3a20"],
+  },
+  junkyard_hound: {
+    name: "Junkyard Hound", hp: 110, speed: 4.2, damage: 22, killHeal: 5, goldReward: 4,
+    skin: "#7a6a50", hair: "#4a3a20", shirt: "#5a5030", pants: "#4a4020", contactRange: 74,
+    ai: 'runner', _specials: ['savage_lunge'], specialCD: 420,
+    deathColors: ["#7a6a50","#5a5030","#9a8a70","#4a4020"],
+  },
+  alleyway_lookout: {
+    name: "Alleyway Lookout", hp: 120, speed: 2.6, damage: 20, killHeal: 10, goldReward: 5,
+    skin: "#7a6a5a", hair: "#2a1a0a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 76,
+    ai: 'archer', _specials: ['warning_shot'], specialCD: 540,
+    deathColors: ["#7a6a5a","#4a3a2a","#9a8a7a","#3a2a1a"],
+  },
+  patchwork_thug: {
+    name: "Patchwork Thug", hp: 160, speed: 3.4, damage: 24, killHeal: 8, goldReward: 5,
+    skin: "#6a5040", hair: "#2a1a0a", shirt: "#5a4030", pants: "#3a3020", contactRange: 76,
+    ai: 'grunt', _specials: ['pipe_swing'], specialCD: 540,
+    deathColors: ["#6a5040","#5a4030","#8a7060","#3a3020"],
+  },
+
+  // Earth-205 Floor 1 — Boss: Willis
+  willis: {
+    name: "Willis", hp: 2500, speed: 2.8, damage: 38, killHeal: 50, goldReward: 40,
+    skin: "#5a4a3a", hair: "#1a1a0a", shirt: "#4a3a20", pants: "#3a2a10", contactRange: 82,
+    ai: 'tank', _specials: ['street_slam', 'alley_rush', 'dumpster_hurl', 'back_alley_fury'],
+    isBoss: true, bossScale: 1.4, specialCD: 540,
+    deathColors: ["#5a4a3a","#4a3a20","#7a6a5a","#3a2a10"],
+  },
+
+  // Section B — Underground Pit (waves 6-9)
+  butcher_block_maniac: {
+    name: "Butcher Block Maniac", hp: 180, speed: 3.4, damage: 26, killHeal: 8, goldReward: 5,
+    skin: "#7a5a4a", hair: "#2a0a0a", shirt: "#5a2020", pants: "#3a1a1a", contactRange: 76,
+    ai: 'grunt', _specials: ['cleaver_frenzy'], specialCD: 480,
+    deathColors: ["#7a5a4a","#5a2020","#9a7a6a","#3a1a1a"],
+  },
+  adrenaline_fiend: {
+    name: "Adrenaline Fiend", hp: 140, speed: 4.4, damage: 28, killHeal: 5, goldReward: 4,
+    skin: "#8a6a5a", hair: "#1a1a0a", shirt: "#6a4a30", pants: "#4a3020", contactRange: 74,
+    ai: 'runner', _specials: ['hyper_rush'], specialCD: 360,
+    deathColors: ["#8a6a5a","#6a4a30","#aa8a7a","#4a3020"],
+  },
+  nail_gunner: {
+    name: "Nail Gunner", hp: 150, speed: 2.4, damage: 22, killHeal: 10, goldReward: 6,
+    skin: "#6a5a4a", hair: "#2a2a1a", shirt: "#4a4030", pants: "#3a3020", contactRange: 76,
+    ai: 'archer', _specials: ['nail_burst'], specialCD: 480,
+    deathColors: ["#6a5a4a","#4a4030","#8a7a6a","#3a3020"],
+  },
+  aerosol_pyro: {
+    name: "Aerosol Pyro", hp: 200, speed: 3.0, damage: 30, killHeal: 12, goldReward: 6,
+    skin: "#7a6050", hair: "#1a1a0a", shirt: "#5a4a2a", pants: "#4a3a1a", contactRange: 78,
+    ai: 'tank', _specials: ['flame_sweep'], specialCD: 600,
+    deathColors: ["#7a6050","#5a4a2a","#9a8070","#4a3a1a"],
+  },
+
+  // Earth-205 Floor 1 — Boss: Puppedrill
+  puppedrill: {
+    name: "Puppedrill", hp: 3000, speed: 2.6, damage: 42, killHeal: 50, goldReward: 45,
+    skin: "#5a4030", hair: "#1a0a0a", shirt: "#4a2a1a", pants: "#3a1a0a", contactRange: 82,
+    ai: 'tank', _specials: ['drill_charge', 'puppet_strings', 'bone_grinder', 'underground_ambush'],
+    isBoss: true, bossScale: 1.5, specialCD: 480,
+    _damageReduction: 0.2,
+    deathColors: ["#5a4030","#4a2a1a","#7a6050","#3a1a0a"],
+  },
+
+  // ===================== EARTH-205 FLOOR 2: SYNDICATE DISTRICT =====================
+  // Section A — Syndicate Enforcers (waves 1-4)
+  chain_gang_brawler: {
+    name: "Chain Gang Brawler", hp: 190, speed: 3.4, damage: 26, killHeal: 8, goldReward: 6,
+    skin: "#5a5a5a", hair: "#1a1a1a", shirt: "#3a3a3a", pants: "#2a2a2a", contactRange: 76,
+    ai: 'grunt', _specials: ['chain_lash'], specialCD: 540,
+    deathColors: ["#5a5a5a","#3a3a3a","#7a7a7a","#2a2a2a"],
+  },
+  syndicate_enforcer: {
+    name: "Syndicate Enforcer", hp: 170, speed: 2.6, damage: 28, killHeal: 10, goldReward: 6,
+    skin: "#5a5050", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#1a1a1a", contactRange: 76,
+    ai: 'archer', _specials: ['suppressive_fire'], specialCD: 540,
+    deathColors: ["#5a5050","#2a2a2a","#7a7070","#1a1a1a"],
+  },
+  riot_juggernaut: {
+    name: "Riot Juggernaut", hp: 280, speed: 2.8, damage: 34, killHeal: 15, goldReward: 7,
+    skin: "#4a4a4a", hair: "#1a1a1a", shirt: "#2a2a3a", pants: "#1a1a2a", contactRange: 78,
+    ai: 'tank', _specials: ['shield_bash'], specialCD: 660,
+    deathColors: ["#4a4a4a","#2a2a3a","#6a6a6a","#1a1a2a"],
+  },
+  macabre_dancer: {
+    name: "Macabre Dancer", hp: 150, speed: 4.0, damage: 24, killHeal: 5, goldReward: 5,
+    skin: "#6a5a5a", hair: "#0a0a0a", shirt: "#4a1a1a", pants: "#2a0a0a", contactRange: 74,
+    ai: 'runner', _specials: ['blade_waltz'], specialCD: 420,
+    deathColors: ["#6a5a5a","#4a1a1a","#8a7a7a","#2a0a0a"],
+  },
+
+  // Earth-205 Floor 2 — Boss: Sackhead
+  sackhead: {
+    name: "Sackhead", hp: 3500, speed: 3.0, damage: 46, killHeal: 50, goldReward: 50,
+    skin: "#4a3a2a", hair: "#2a1a0a", shirt: "#3a2a1a", pants: "#2a1a0a", contactRange: 82,
+    ai: 'tank', _specials: ['burlap_ambush', 'chain_sweep', 'terror_stalk', 'silent_execution'],
+    isBoss: true, bossScale: 1.5, specialCD: 480,
+    _damageReduction: 0.25,
+    deathColors: ["#4a3a2a","#3a2a1a","#6a5a4a","#2a1a0a"],
+  },
+
+  // Section B — Hitmen (waves 6-9)
+  executioner_bruiser: {
+    name: "Executioner Bruiser", hp: 220, speed: 3.6, damage: 30, killHeal: 8, goldReward: 6,
+    skin: "#4a4a4a", hair: "#0a0a0a", shirt: "#2a1a1a", pants: "#1a0a0a", contactRange: 76,
+    ai: 'grunt', _specials: ['axe_slam'], specialCD: 480,
+    deathColors: ["#4a4a4a","#2a1a1a","#6a6a6a","#1a0a0a"],
+  },
+  laser_grid_thief: {
+    name: "Laser Grid Thief", hp: 160, speed: 4.3, damage: 26, killHeal: 5, goldReward: 5,
+    skin: "#5a5a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#2a2a3a", contactRange: 74,
+    ai: 'runner', _specials: ['shadow_dash'], specialCD: 360,
+    deathColors: ["#5a5a6a","#3a3a4a","#7a7a8a","#2a2a3a"],
+  },
+  tactical_spotter: {
+    name: "Tactical Spotter", hp: 170, speed: 2.4, damage: 24, killHeal: 10, goldReward: 6,
+    skin: "#5a5050", hair: "#1a1a1a", shirt: "#3a2a2a", pants: "#2a1a1a", contactRange: 76,
+    ai: 'archer', _specials: ['marked_shot'], specialCD: 540,
+    deathColors: ["#5a5050","#3a2a2a","#7a7070","#2a1a1a"],
+  },
+  tommy_gun_heavy: {
+    name: "Tommy Gun Heavy", hp: 260, speed: 3.0, damage: 32, killHeal: 12, goldReward: 7,
+    skin: "#4a4040", hair: "#0a0a0a", shirt: "#2a2a2a", pants: "#1a1a1a", contactRange: 78,
+    ai: 'tank', _specials: ['spray_and_pray'], specialCD: 600,
+    deathColors: ["#4a4040","#2a2a2a","#6a6060","#1a1a1a"],
+  },
+
+  // Earth-205 Floor 2 — Boss: Mr. Schwallie
+  mr_schwallie: {
+    name: "Mr. Schwallie", hp: 4000, speed: 3.2, damage: 50, killHeal: 50, goldReward: 55,
+    skin: "#3a3a3a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 82,
+    ai: 'tank', _specials: ['contract_kill', 'garrote_wire', 'smoke_bomb', 'lethal_precision'],
+    isBoss: true, bossScale: 1.5, specialCD: 420,
+    _lethalEfficiency: true,
+    deathColors: ["#3a3a3a","#1a1a1a","#5a5a5a","#0a0a0a"],
+  },
+
+  // ===================== EARTH-205 FLOOR 3: CARNIVAL OF DREAD =====================
+  // Section A — Carnival Freaks (waves 1-4)
+  balloon_twister: {
+    name: "Balloon Twister", hp: 180, speed: 1.8, damage: 22, killHeal: 12, goldReward: 6,
+    skin: "#8a7a8a", hair: "#4a2a5a", shirt: "#7a4a8a", pants: "#5a2a6a", contactRange: 76,
+    ai: 'witch', _specials: ['pop_surprise'], specialCD: 600,
+    kiteRange: 280,
+    deathColors: ["#8a7a8a","#7a4a8a","#aa9aaa","#5a2a6a"],
+  },
+  sledgehammer_brute: {
+    name: "Sledgehammer Brute", hp: 250, speed: 3.2, damage: 32, killHeal: 8, goldReward: 6,
+    skin: "#6a5a5a", hair: "#2a1a2a", shirt: "#5a3a4a", pants: "#4a2a3a", contactRange: 78,
+    ai: 'grunt', _specials: ['ground_pound'], specialCD: 540,
+    deathColors: ["#6a5a5a","#5a3a4a","#8a7a7a","#4a2a3a"],
+  },
+  stagehand_brute: {
+    name: "Stagehand Brute", hp: 230, speed: 3.4, damage: 30, killHeal: 8, goldReward: 6,
+    skin: "#7a6a6a", hair: "#2a1a1a", shirt: "#6a4a3a", pants: "#5a3a2a", contactRange: 76,
+    ai: 'grunt', _specials: ['spotlight_slam'], specialCD: 480,
+    deathColors: ["#7a6a6a","#6a4a3a","#9a8a8a","#5a3a2a"],
+  },
+  human_statue: {
+    name: "Human Statue", hp: 300, speed: 0, damage: 28, killHeal: 15, goldReward: 7,
+    skin: "#9a9a9a", hair: "#7a7a7a", shirt: "#8a8a8a", pants: "#6a6a6a", contactRange: 76,
+    ai: 'stationary', _specials: ['stone_grasp'], specialCD: 480,
+    deathColors: ["#9a9a9a","#8a8a8a","#bababa","#6a6a6a"],
+  },
+
+  // Earth-205 Floor 3 — Boss: Killer Mime
+  killer_mime: {
+    name: "Killer Mime", hp: 4000, speed: 3.0, damage: 48, killHeal: 50, goldReward: 55,
+    skin: "#e0e0e0", hair: "#1a1a1a", shirt: "#2a2a3a", pants: "#1a1a2a", contactRange: 82,
+    ai: 'tank', _specials: ['invisible_wall', 'mime_mimic', 'silent_scream', 'glass_cage'],
+    isBoss: true, bossScale: 1.5, specialCD: 480,
+    deathColors: ["#e0e0e0","#2a2a3a","#ffffff","#1a1a2a"],
+  },
+
+  // Section B — Funhouse (waves 6-9)
+  illusionist: {
+    name: "Illusionist", hp: 200, speed: 2.0, damage: 26, killHeal: 12, goldReward: 6,
+    skin: "#7a6a8a", hair: "#3a2a4a", shirt: "#6a3a7a", pants: "#4a2a5a", contactRange: 76,
+    ai: 'witch', _specials: ['mirror_image'], specialCD: 600,
+    kiteRange: 300,
+    deathColors: ["#7a6a8a","#6a3a7a","#9a8aaa","#4a2a5a"],
+  },
+  prop_master: {
+    name: "Prop Master", hp: 210, speed: 2.8, damage: 28, killHeal: 10, goldReward: 6,
+    skin: "#8a7070", hair: "#2a1a1a", shirt: "#6a4a4a", pants: "#4a2a2a", contactRange: 76,
+    ai: 'archer', _specials: ['trick_shot'], specialCD: 540,
+    deathColors: ["#8a7070","#6a4a4a","#aa9090","#4a2a2a"],
+  },
+  disco_brawler: {
+    name: "Disco Brawler", hp: 190, speed: 4.0, damage: 30, killHeal: 5, goldReward: 5,
+    skin: "#7a6a7a", hair: "#3a2a3a", shirt: "#8a5a9a", pants: "#5a3a6a", contactRange: 74,
+    ai: 'runner', _specials: ['spin_kick'], specialCD: 420,
+    deathColors: ["#7a6a7a","#8a5a9a","#9a8a9a","#5a3a6a"],
+  },
+  phantom_chorus: {
+    name: "Phantom Chorus", hp: 220, speed: 1.6, damage: 24, killHeal: 12, goldReward: 7,
+    skin: "#6a6a7a", hair: "#3a3a4a", shirt: "#5a5a7a", pants: "#3a3a5a", contactRange: 76,
+    ai: 'witch', _specials: ['wailing_note'], specialCD: 540,
+    kiteRange: 300,
+    deathColors: ["#6a6a7a","#5a5a7a","#8a8a9a","#3a3a5a"],
+  },
+
+  // Earth-205 Floor 3 — Boss: Major Phantom
+  major_phantom: {
+    name: "Major Phantom", hp: 4500, speed: 2.8, damage: 52, killHeal: 50, goldReward: 60,
+    skin: "#5a5a6a", hair: "#2a2a3a", shirt: "#4a3a5a", pants: "#2a1a3a", contactRange: 82,
+    ai: 'tank', _specials: ['phantom_barrage', 'curtain_call', 'standing_ovation', 'finale_blast'],
+    isBoss: true, bossScale: 1.5, specialCD: 420,
+    _showMustGoOn: true,
+    deathColors: ["#5a5a6a","#4a3a5a","#7a7a8a","#2a1a3a"],
+  },
+
+  // ===================== EARTH-205 FLOOR 4: CASINO / MOB HQ =====================
+  // Section A — Casino Floor (waves 1-4)
+  tracksuit_goon: {
+    name: "Tracksuit Goon", hp: 240, speed: 3.4, damage: 30, killHeal: 8, goldReward: 7,
+    skin: "#6a5a4a", hair: "#1a1a0a", shirt: "#8a7040", pants: "#5a4a20", contactRange: 76,
+    ai: 'grunt', _specials: ['brass_knuckle'], specialCD: 480,
+    deathColors: ["#6a5a4a","#8a7040","#8a7a6a","#5a4a20"],
+  },
+  vault_hacker: {
+    name: "Vault Hacker", hp: 200, speed: 1.8, damage: 26, killHeal: 12, goldReward: 7,
+    skin: "#7a6a5a", hair: "#2a1a0a", shirt: "#3a3020", pants: "#2a2010", contactRange: 76,
+    ai: 'witch', _specials: ['lock_blast'], specialCD: 600,
+    kiteRange: 280,
+    deathColors: ["#7a6a5a","#3a3020","#9a8a7a","#2a2010"],
+  },
+  casino_pit_boss: {
+    name: "Casino Pit Boss", hp: 270, speed: 3.6, damage: 34, killHeal: 8, goldReward: 7,
+    skin: "#5a4a3a", hair: "#0a0a0a", shirt: "#2a1a0a", pants: "#1a0a0a", contactRange: 78,
+    ai: 'grunt', _specials: ['house_rules'], specialCD: 540,
+    deathColors: ["#5a4a3a","#2a1a0a","#7a6a5a","#1a0a0a"],
+  },
+  smokescreen_smuggler: {
+    name: "Smokescreen Smuggler", hp: 210, speed: 1.6, damage: 24, killHeal: 12, goldReward: 6,
+    skin: "#6a5a50", hair: "#1a1a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 76,
+    ai: 'witch', _specials: ['smoke_shroud'], specialCD: 540,
+    kiteRange: 300,
+    deathColors: ["#6a5a50","#4a3a2a","#8a7a70","#3a2a1a"],
+  },
+
+  // Earth-205 Floor 4 — Boss: Lady Red
+  lady_red: {
+    name: "Lady Red", hp: 4800, speed: 3.2, damage: 54, killHeal: 50, goldReward: 60,
+    skin: "#8a6a6a", hair: "#2a0a0a", shirt: "#6a1a1a", pants: "#4a0a0a", contactRange: 82,
+    ai: 'tank', _specials: ['crimson_kiss', 'card_storm', 'high_roller', 'jackpot_fury'],
+    isBoss: true, bossScale: 1.5, specialCD: 420,
+    _backstabber: true,
+    deathColors: ["#8a6a6a","#6a1a1a","#aa8a8a","#4a0a0a"],
+  },
+
+  // Section B — Mob Headquarters (waves 6-9)
+  the_cleaner: {
+    name: "The Cleaner", hp: 250, speed: 2.6, damage: 32, killHeal: 10, goldReward: 7,
+    skin: "#5a5050", hair: "#0a0a0a", shirt: "#2a2020", pants: "#1a1010", contactRange: 76,
+    ai: 'archer', _specials: ['acid_spray'], specialCD: 540,
+    deathColors: ["#5a5050","#2a2020","#7a7070","#1a1010"],
+  },
+  lockdown_sentinel: {
+    name: "Lockdown Sentinel", hp: 320, speed: 3.0, damage: 36, killHeal: 15, goldReward: 8,
+    skin: "#4a4a4a", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#1a1a1a", contactRange: 78,
+    ai: 'tank', _specials: ['lockdown_slam'], specialCD: 660,
+    deathColors: ["#4a4a4a","#2a2a2a","#6a6a6a","#1a1a1a"],
+  },
+  sprayer_drone: {
+    name: "Sprayer Drone", hp: 180, speed: 2.5, damage: 26, killHeal: 10, goldReward: 6,
+    skin: "#7a7a7a", hair: "#4a4a4a", shirt: "#5a5a5a", pants: "#3a3a3a", contactRange: 76,
+    ai: 'hover', _specials: ['toxic_mist'], specialCD: 480,
+    deathColors: ["#7a7a7a","#5a5a5a","#9a9a9a","#3a3a3a"],
+  },
+  mad_assistant: {
+    name: "Mad Assistant", hp: 220, speed: 2.4, damage: 28, killHeal: 10, goldReward: 7,
+    skin: "#6a6050", hair: "#2a1a0a", shirt: "#4a3a20", pants: "#3a2a10", contactRange: 76,
+    ai: 'archer', _specials: ['syringe_volley'], specialCD: 480,
+    deathColors: ["#6a6050","#4a3a20","#8a8070","#3a2a10"],
+  },
+
+  // Earth-205 Floor 4 — Boss: The Boss (E-205)
+  the_boss_e205: {
+    name: "The Boss", hp: 5200, speed: 3.0, damage: 58, killHeal: 50, goldReward: 65,
+    skin: "#3a3030", hair: "#0a0a0a", shirt: "#1a1010", pants: "#0a0a0a", contactRange: 82,
+    ai: 'tank', _specials: ['don_decree', 'iron_fist', 'mob_summon', 'final_offer'],
+    isBoss: true, bossScale: 1.6, specialCD: 420,
+    _intimidatingPresence: true,
+    deathColors: ["#3a3030","#1a1010","#5a5050","#0a0a0a"],
+  },
+
+  // ===================== EARTH-205 FLOOR 5: CHEMICAL PLANT =====================
+  // Section A — Hazmat Zone (waves 1-4)
+  hazmat_grunt: {
+    name: "Hazmat Grunt", hp: 290, speed: 3.4, damage: 34, killHeal: 8, goldReward: 7,
+    skin: "#8a8a40", hair: "#4a4a10", shirt: "#7a7a30", pants: "#5a5a10", contactRange: 76,
+    ai: 'grunt', _specials: ['chemical_smash'], specialCD: 480,
+    deathColors: ["#8a8a40","#7a7a30","#aaaa60","#5a5a10"],
+  },
+  sludge_crawler: {
+    name: "Sludge Crawler", hp: 220, speed: 4.0, damage: 30, killHeal: 5, goldReward: 6,
+    skin: "#5a7a3a", hair: "#2a4a1a", shirt: "#4a6a2a", pants: "#3a5a1a", contactRange: 74,
+    ai: 'runner', _specials: ['toxic_lunge'], specialCD: 360,
+    deathColors: ["#5a7a3a","#4a6a2a","#7a9a5a","#3a5a1a"],
+  },
+  irradiated_walker: {
+    name: "Irradiated Walker", hp: 250, speed: 1.5, damage: 28, killHeal: 12, goldReward: 7,
+    skin: "#6a8a4a", hair: "#3a5a2a", shirt: "#5a7a3a", pants: "#4a6a2a", contactRange: 76,
+    ai: 'witch', _specials: ['radiation_pulse'], specialCD: 540,
+    kiteRange: 280,
+    deathColors: ["#6a8a4a","#5a7a3a","#8aaa6a","#4a6a2a"],
+  },
+  chem_brute: {
+    name: "Chem Brute", hp: 310, speed: 3.2, damage: 36, killHeal: 10, goldReward: 7,
+    skin: "#7a7a30", hair: "#3a3a10", shirt: "#6a6a20", pants: "#4a4a10", contactRange: 78,
+    ai: 'grunt', _specials: ['acid_fist'], specialCD: 540,
+    deathColors: ["#7a7a30","#6a6a20","#9a9a50","#4a4a10"],
+  },
+
+  // Earth-205 Floor 5 — Boss: Lady Elixir
+  lady_elixir: {
+    name: "Lady Elixir", hp: 5500, speed: 2.6, damage: 56, killHeal: 50, goldReward: 65,
+    skin: "#5a8a5a", hair: "#2a5a2a", shirt: "#4a7a4a", pants: "#2a5a2a", contactRange: 82,
+    ai: 'tank', _specials: ['elixir_rain', 'toxic_nova', 'mutation_surge', 'chemical_storm'],
+    isBoss: true, bossScale: 1.5, specialCD: 420,
+    _poisonImmune: true,
+    deathColors: ["#5a8a5a","#4a7a4a","#7aaa7a","#2a5a2a"],
+  },
+
+  // Section B — Reactor Core (waves 6-9)
+  failed_specimen: {
+    name: "Failed Specimen", hp: 260, speed: 4.2, damage: 32, killHeal: 5, goldReward: 6,
+    skin: "#8a9a8a", hair: "#5a6a5a", shirt: "#d0d0d0", pants: "#b0b0b0", contactRange: 74,
+    ai: 'runner', _specials: ['frenzy_burst'], specialCD: 360,
+    deathColors: ["#8a9a8a","#d0d0d0","#aabaa0","#b0b0b0"],
+  },
+  reactor_technician: {
+    name: "Reactor Technician", hp: 240, speed: 2.8, damage: 30, killHeal: 10, goldReward: 7,
+    skin: "#d0d0c0", hair: "#8a8a70", shirt: "#b0b0a0", pants: "#9a9a80", contactRange: 76,
+    ai: 'archer', _specials: ['plasma_bolt'], specialCD: 480,
+    deathColors: ["#d0d0c0","#b0b0a0","#e0e0d0","#9a9a80"],
+  },
+  containment_breach_blob: {
+    name: "Containment Breach", hp: 280, speed: 1.8, damage: 26, killHeal: 12, goldReward: 7,
+    skin: "#4a8a4a", hair: "#2a6a2a", shirt: "#3a7a3a", pants: "#2a5a2a", contactRange: 76,
+    ai: 'witch', _specials: ['ooze_spread'], specialCD: 540,
+    kiteRange: 280,
+    deathColors: ["#4a8a4a","#3a7a3a","#6aaa6a","#2a5a2a"],
+  },
+  lockdown_sentinel_e205: {
+    name: "Lockdown Sentinel Mk2", hp: 350, speed: 3.2, damage: 38, killHeal: 15, goldReward: 8,
+    skin: "#e0e0d0", hair: "#a0a090", shirt: "#d0d0c0", pants: "#b0b0a0", contactRange: 78,
+    ai: 'tank', _specials: ['reactor_slam'], specialCD: 600,
+    deathColors: ["#e0e0d0","#d0d0c0","#f0f0e0","#b0b0a0"],
+  },
+
+  // Earth-205 Floor 5 — Final Boss: Nofaux
+  nofaux: {
+    name: "Nofaux", hp: 6000, speed: 3.5, damage: 60, killHeal: 50, goldReward: 75,
+    skin: "#4a6a4a", hair: "#1a3a1a", shirt: "#3a5a3a", pants: "#1a3a1a", contactRange: 84,
+    ai: 'tank', _specials: ['meltdown_pulse', 'reactor_overload', 'containment_breach', 'final_detonation'],
+    isBoss: true, bossScale: 1.6, specialCD: 360,
+    _contactDamageAura: 8, _deathExplosion: { radius: 120, damage: 60 },
+    deathColors: ["#4a6a4a","#3a5a3a","#6a8a6a","#1a3a1a"],
+  },
 };
 
 // Per-type caps per wave
@@ -785,6 +1155,26 @@ const MOB_CAPS = {
   alabaster_sentinel: 3, reef_weaver: 3, gilded_manta: 4, royal_shell_knight: 3,
   sea_serpent_spawn: 4, living_whirlpool: 3, bone_tooth_zealot: 4, tidal_avatar: 3,
   queen_siralyth: 1, mami_wata: 1,
+  // Earth-205 Floor 1
+  scrap_metal_scrounger: 4, junkyard_hound: 4, alleyway_lookout: 3, patchwork_thug: 4,
+  butcher_block_maniac: 4, adrenaline_fiend: 4, nail_gunner: 3, aerosol_pyro: 3,
+  willis: 1, puppedrill: 1,
+  // Earth-205 Floor 2
+  chain_gang_brawler: 4, syndicate_enforcer: 3, riot_juggernaut: 3, macabre_dancer: 4,
+  executioner_bruiser: 4, laser_grid_thief: 4, tactical_spotter: 3, tommy_gun_heavy: 3,
+  sackhead: 1, mr_schwallie: 1,
+  // Earth-205 Floor 3
+  balloon_twister: 3, sledgehammer_brute: 3, stagehand_brute: 4, human_statue: 3,
+  illusionist: 3, prop_master: 3, disco_brawler: 4, phantom_chorus: 3,
+  killer_mime: 1, major_phantom: 1,
+  // Earth-205 Floor 4
+  tracksuit_goon: 4, vault_hacker: 3, casino_pit_boss: 3, smokescreen_smuggler: 3,
+  the_cleaner: 3, lockdown_sentinel: 3, sprayer_drone: 3, mad_assistant: 3,
+  lady_red: 1, the_boss_e205: 1,
+  // Earth-205 Floor 5
+  hazmat_grunt: 4, sludge_crawler: 4, irradiated_walker: 3, chem_brute: 3,
+  failed_specimen: 4, reactor_technician: 3, containment_breach_blob: 3, lockdown_sentinel_e205: 3,
+  lady_elixir: 1, nofaux: 1,
 };
 
 const CROWD_EXEMPT_TYPES = new Set(["runner", "golem", "mini_golem", "archer", "healer", "drone_lookout", "renegade_sniper", "the_don",
@@ -796,7 +1186,12 @@ const CROWD_EXEMPT_TYPES = new Set(["runner", "golem", "mini_golem", "archer", "
   "voodoo_creeper", "canopy_sniper", "crystal_cultist", "sanguine_siren", "zongo", "bloodborne_marlon",
   "howling_lookout", "poltergeist_gunner", "drowned_banshee", "wolfbeard", "ghostbeard",
   "trench_tentacle", "coin_spitter_jelly", "royal_cephalopod", "kraken_jim", "king_requill",
-  "reef_weaver", "living_whirlpool", "queen_siralyth", "mami_wata"]);
+  "reef_weaver", "living_whirlpool", "queen_siralyth", "mami_wata",
+  "alleyway_lookout", "nail_gunner", "willis", "puppedrill",
+  "syndicate_enforcer", "tactical_spotter", "sackhead", "mr_schwallie",
+  "balloon_twister", "illusionist", "phantom_chorus", "human_statue", "killer_mime", "major_phantom",
+  "vault_hacker", "smokescreen_smuggler", "the_cleaner", "sprayer_drone", "mad_assistant", "lady_red", "the_boss_e205",
+  "irradiated_walker", "reactor_technician", "containment_breach_blob", "lady_elixir", "nofaux"]);
 
 // All entity sub-arrays a mob can carry. Used for cleanup on death + floor transitions.
 const MOB_ENTITY_ARRAYS = [
