@@ -1554,7 +1554,11 @@ const LEVELS = {
     for (let y = 0; y < H; y++) {
       let row = '';
       for (let x = 0; x < W; x++) {
-        if (y === 0 || y === H - 1 || x === 0 || x === W - 1) row += '#';
+        if (y === 0 || y === H - 1 || x === 0 || x === W - 1) {
+          // Open a 5-tile gap at bottom-center for exit door (x=23..27, y=29)
+          if (y === H - 1 && x >= 23 && x <= 27) row += '.';
+          else row += '#';
+        }
         // Back wall thicker (y=1-2 also wall for depth)
         else if (y <= 2) row += '#';
         else row += '.';
@@ -1589,6 +1593,8 @@ const LEVELS = {
         { type: 'mafia_lobby_crate_sm', tx: 48, ty: 26, w: 1, h: 1, solid: true },
         { type: 'mafia_lobby_crate_sm', tx: 3, ty: 14, w: 1, h: 1, solid: true },
         { type: 'mafia_lobby_crate_sm', tx: 46, ty: 14, w: 1, h: 1, solid: true },
+        // Exit door — bottom-center, leads back to main lobby
+        { type: 'mafia_lobby_exit', tx: 23, ty: 28, w: 5, h: 2, solid: false, target: 'lobby_01', spawnTX: 28, spawnTY: 21 },
       ]
     };
   })()

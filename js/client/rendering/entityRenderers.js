@@ -3319,6 +3319,31 @@ ENTITY_RENDERERS.mafia_lobby_crate_sm = (e, ctx, ex, ey, w, h) => {
   ctx.stroke();
 };
 
+// ===================== MAFIA LOBBY EXIT DOOR =====================
+ENTITY_RENDERERS.mafia_lobby_exit = (e, ctx, ex, ey, w, h) => {
+  const tw = w * TILE, th = h * TILE;
+  // Floor arrow indicators pointing down (toward exit)
+  const cx = ex + tw / 2;
+  const t = (typeof gameFrame !== 'undefined' ? gameFrame : 0) / 60;
+  const pulse = 0.5 + Math.sin(t * 3) * 0.3;
+  // "EXIT" text
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(200,60,60,${0.6 + pulse * 0.3})`;
+  ctx.fillText('EXIT', cx, ey + th / 2 - 4);
+  // Downward arrow
+  ctx.strokeStyle = `rgba(200,60,60,${0.4 + pulse * 0.3})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx, ey + th / 2 + 4);
+  ctx.lineTo(cx, ey + th - 6);
+  ctx.moveTo(cx - 8, ey + th - 14);
+  ctx.lineTo(cx, ey + th - 6);
+  ctx.lineTo(cx + 8, ey + th - 14);
+  ctx.stroke();
+  ctx.textAlign = 'left';
+};
+
 function drawLevelEntities(camX, camY) {
   for (const e of levelEntities) {
     const w = e.w ?? 1;

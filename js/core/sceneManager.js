@@ -82,6 +82,7 @@ const PORTAL_SCENES = {
   gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
   hideseek_entrance: 'lobby',
   skeld_entrance: 'lobby',
+  mafia_lobby_exit: 'mafia_lobby',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
@@ -207,6 +208,10 @@ let transitionSpawnTY = 0;
 
 function enterLevel(targetLevelId, spawnTX, spawnTY) {
   try {
+    // Run cleanup for current scene before transitioning (close panels, etc.)
+    const leavingHandler = LEAVE_HANDLERS[Scene.current];
+    if (leavingHandler && leavingHandler.cleanup) leavingHandler.cleanup();
+
     const targetLevel = LEVELS[targetLevelId];
     if (!targetLevel) return;
     setLevel(targetLevel);

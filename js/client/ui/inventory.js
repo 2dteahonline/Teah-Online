@@ -2436,8 +2436,8 @@ function update() {
       gun.reloading = true;
       gun.reloadTimer = getReloadTime();
     }
-    // Melee swing (disabled in Skeld)
-    if (!Scene.inSkeld && InputIntent.meleePressed) {
+    // Melee swing (disabled in Skeld, lobby, mafia lobby)
+    if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && InputIntent.meleePressed) {
       meleeSwing();
     }
     // Ninja dash activation
