@@ -37,8 +37,95 @@ let _lightsDimProgress = 0;
 const _LIGHTS_FADE_FRAMES = 180; // 3 seconds
 const _LIGHTS_DIM_AMOUNT = 0.35; // shrink to 35% of normal radius (65% reduction)
 
+// ===================== WALL-AWARE RAYCASTING FOV =====================
+// Casts rays from the player through the collision grid.
+// Rays stop at wall tiles, creating Among Us-style shadow occlusion.
+
+// DDA single ray: returns distance (in world pixels) to first wall or maxDist
+function _fovCastRay(px, py, angle, maxDist, grid, mapTW, mapTH) {
+  const dirX = Math.cos(angle);
+  const dirY = Math.sin(angle);
+  let tileX = Math.floor(px / TILE);
+  let tileY = Math.floor(py / TILE);
+  const stepX = dirX >= 0 ? 1 : -1;
+  const stepY = dirY >= 0 ? 1 : -1;
+  const tDeltaX = dirX !== 0 ? Math.abs(TILE / dirX) : 1e9;
+  const tDeltaY = dirY !== 0 ? Math.abs(TILE / dirY) : 1e9;
+  let tMaxX = dirX !== 0
+    ? (dirX >= 0 ? (tileX + 1) * TILE - px : tileX * TILE - px) / dirX
+    : 1e9;
+  let tMaxY = dirY !== 0
+    ? (dirY >= 0 ? (tileY + 1) * TILE - py : tileY * TILE - py) / dirY
+    : 1e9;
+  let dist = 0;
+  while (dist < maxDist) {
+    if (tMaxX < tMaxY) {
+      dist = tMaxX; tMaxX += tDeltaX; tileX += stepX;
+    } else {
+      dist = tMaxY; tMaxY += tDeltaY; tileY += stepY;
+    }
+    if (dist > maxDist) return maxDist;
+    if (tileX < 0 || tileX >= mapTW || tileY < 0 || tileY >= mapTH) return dist;
+    if (grid[tileY][tileX] === 1) return dist;
+  }
+  return maxDist;
+}
+
+// Cast all rays and return polygon points (world coordinates)
+function _castFOVPolygon(px, py, maxDist) {
+  const grid = collisionGrid;
+  if (!grid || !level) return null;
+  const mapTW = level.widthTiles;
+  const mapTH = level.heightTiles;
+
+  // Regular rays every 0.5°
+  const angles = [];
+  const RAY_COUNT = 720;
+  for (let i = 0; i < RAY_COUNT; i++) {
+    angles.push((i / RAY_COUNT) * Math.PI * 2);
+  }
+
+  // Extra rays toward wall tile corners for crisp shadow edges
+  const tileCX = Math.floor(px / TILE);
+  const tileCY = Math.floor(py / TILE);
+  const tileRange = Math.ceil(maxDist / TILE) + 1;
+  for (let dy = -tileRange; dy <= tileRange; dy++) {
+    for (let dx = -tileRange; dx <= tileRange; dx++) {
+      const tx = tileCX + dx;
+      const ty = tileCY + dy;
+      if (tx < 0 || tx >= mapTW || ty < 0 || ty >= mapTH) continue;
+      if (grid[ty][tx] !== 1) continue;
+      // 4 corners of this wall tile
+      const corners = [
+        tx * TILE, ty * TILE,
+        (tx + 1) * TILE, ty * TILE,
+        tx * TILE, (ty + 1) * TILE,
+        (tx + 1) * TILE, (ty + 1) * TILE,
+      ];
+      for (let c = 0; c < 8; c += 2) {
+        const a = Math.atan2(corners[c + 1] - py, corners[c] - px);
+        angles.push(a - 0.0005);
+        angles.push(a);
+        angles.push(a + 0.0005);
+      }
+    }
+  }
+
+  // Sort by angle
+  angles.sort((a, b) => a - b);
+
+  // Cast each ray
+  const points = new Array(angles.length);
+  for (let i = 0; i < angles.length; i++) {
+    const a = angles[i];
+    const d = _fovCastRay(px, py, a, maxDist, grid, mapTW, mapTH);
+    points[i] = { x: px + Math.cos(a) * d, y: py + Math.sin(a) * d };
+  }
+  return points;
+}
+
 function drawMafiaFOV() {
-  // ---- Base FOV overlay (dark circle cutout around player) ----
+  // ---- Base FOV overlay (wall-aware raycasted polygon) ----
   if (typeof MafiaState !== 'undefined' && typeof player !== 'undefined'
       && typeof camera !== 'undefined' && typeof ctx !== 'undefined'
       && Scene.inSkeld
@@ -50,21 +137,18 @@ function drawMafiaFOV() {
     const lightsActive = MafiaState.sabotage.active === 'lights_out';
     const isCrewmate = MafiaState.playerRole === 'crewmate';
     if (isCrewmate && lightsActive) {
-      // Fade toward fully dimmed
       _lightsDimProgress = Math.min(1, _lightsDimProgress + 1 / _LIGHTS_FADE_FRAMES);
     } else {
-      // Fade back to normal
       _lightsDimProgress = Math.max(0, _lightsDimProgress - 1 / _LIGHTS_FADE_FRAMES);
     }
 
     const visionMult = MafiaState.playerRole === 'impostor'
       ? MAFIA_SETTINGS.impostorVision
       : MAFIA_SETTINGS.crewVision;
-    // Apply lights dimming: lerp from 1.0 to _LIGHTS_DIM_AMOUNT based on progress
     const lightsMult = 1 - (_lightsDimProgress * (1 - _LIGHTS_DIM_AMOUNT));
-    const px = (player.x - camera.x) * WORLD_ZOOM;
-    const py = (player.y - camera.y) * WORLD_ZOOM;
-    const fovR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * lightsMult * TILE * WORLD_ZOOM;
+    const fovWorldR = MAFIA_GAME.FOV_BASE_RADIUS * visionMult * lightsMult * TILE;
+    const screenPX = (player.x - camera.x) * WORLD_ZOOM;
+    const screenPY = (player.y - camera.y) * WORLD_ZOOM;
 
     // Render FOV to offscreen canvas, then stamp onto main canvas
     if (!drawMafiaFOV._buf) {
@@ -75,18 +159,51 @@ function drawMafiaFOV() {
     const bctx = drawMafiaFOV._bctx;
     buf.width = BASE_W;
     buf.height = BASE_H;
-    // Fill offscreen with darkness
+
+    // Fill with darkness
     bctx.fillStyle = 'rgba(0,0,0,0.97)';
     bctx.fillRect(0, 0, BASE_W, BASE_H);
-    // Erase a soft hole — fillRect so gradient fades naturally, no arc clipping
-    bctx.globalCompositeOperation = 'destination-out';
-    const grad = bctx.createRadialGradient(px, py, 0, px, py, fovR);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    bctx.fillStyle = grad;
-    bctx.fillRect(0, 0, BASE_W, BASE_H);
+
+    // Cast rays to build wall-aware visibility polygon
+    const polyPoints = _castFOVPolygon(player.x, player.y, fovWorldR);
+
+    if (polyPoints && polyPoints.length > 2) {
+      // Cut out the visible polygon from darkness
+      bctx.globalCompositeOperation = 'destination-out';
+      bctx.fillStyle = 'rgba(255,255,255,1)';
+      bctx.beginPath();
+      for (let i = 0; i < polyPoints.length; i++) {
+        const sx = (polyPoints[i].x - camera.x) * WORLD_ZOOM;
+        const sy = (polyPoints[i].y - camera.y) * WORLD_ZOOM;
+        if (i === 0) bctx.moveTo(sx, sy);
+        else bctx.lineTo(sx, sy);
+      }
+      bctx.closePath();
+      bctx.fill();
+
+      // Soft edge at max range: add back slight darkness near the polygon boundary
+      bctx.globalCompositeOperation = 'source-over';
+      const edgeFovR = fovWorldR * WORLD_ZOOM;
+      const edgeGrad = bctx.createRadialGradient(screenPX, screenPY, edgeFovR * 0.75, screenPX, screenPY, edgeFovR);
+      edgeGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      edgeGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
+      bctx.fillStyle = edgeGrad;
+      // Only apply within the polygon (clip)
+      bctx.save();
+      bctx.beginPath();
+      for (let i = 0; i < polyPoints.length; i++) {
+        const sx = (polyPoints[i].x - camera.x) * WORLD_ZOOM;
+        const sy = (polyPoints[i].y - camera.y) * WORLD_ZOOM;
+        if (i === 0) bctx.moveTo(sx, sy);
+        else bctx.lineTo(sx, sy);
+      }
+      bctx.closePath();
+      bctx.clip();
+      bctx.fillRect(0, 0, BASE_W, BASE_H);
+      bctx.restore();
+    }
+
     bctx.globalCompositeOperation = 'source-over';
-    // Stamp onto main canvas
     ctx.drawImage(buf, 0, 0);
   }
 
