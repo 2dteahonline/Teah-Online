@@ -409,6 +409,7 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     _summonedMinions: [],             // for summon_elite
     _canSplit: mt._canSplit || false,  // for core_guardian split
     _splitDone: false,                // tracks if split already happened
+    _frontalShield: mt._frontalShield || false, // permanent frontal damage block
     isBoss: mt.isBoss || false,
   };
 

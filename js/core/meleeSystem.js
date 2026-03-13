@@ -983,7 +983,7 @@ function updateBullets() {
         const mobHitDist = BULLET_R + mobHitR;
         if (dx * dx + dy * dy < mobHitDist * mobHitDist) {
           // Projectile reflect — reverse bullet and make it a mob bullet
-          if (m._reflectActive) {
+          if (m._reflectActive || m._reflecting) {
             b.vx = -b.vx; b.vy = -b.vy;
             b.fromPlayer = false; b.mobBullet = true;
             b.damage = Math.round(gun.damage * 0.6);

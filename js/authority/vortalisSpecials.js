@@ -362,7 +362,7 @@ MOB_SPECIALS.scattershot = (m, ctx) => {
   return {};
 };
 
-// 12. Piercing Musket — single high-damage piercing shot
+// 12. Piercing Musket — single high-damage sniper shot
 MOB_SPECIALS.piercing_musket = (m, ctx) => {
   const { player, dist, hitEffects, bullets } = ctx;
   if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 540;
@@ -373,8 +373,8 @@ MOB_SPECIALS.piercing_musket = (m, ctx) => {
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
     vx: Math.cos(dir) * speed, vy: Math.sin(dir) * speed,
-    fromPlayer: false, mobBullet: true, damage: Math.round(m.damage * 2.0 * getMobDamageMultiplier()),
-    ownerId: m.id, bulletColor: '#ffcc00', piercing: true,
+    fromPlayer: false, mobBullet: true, damage: Math.round(m.damage * 2.5 * getMobDamageMultiplier()),
+    ownerId: m.id, bulletColor: '#ffcc00',
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 15, type: "cast" });
   m._specialTimer = m._specialCD || 540;

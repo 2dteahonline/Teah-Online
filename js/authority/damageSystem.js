@@ -31,6 +31,14 @@ function dealDamageToMob(mob, amount, source) {
   // Invulnerability check (mud_dive, nano_armor, etc.)
   if (mob._invulnerable) return false;
 
+  // Active shield check (tower_shield, spirit_shield, etc.) — blocks all damage
+  if (mob._shielded && source !== 'dot' && source !== 'burn_dot' && source !== 'thorns') {
+    if (typeof hitEffects !== 'undefined') {
+      hitEffects.push({ x: mob.x, y: mob.y - 20, life: 15, type: 'shield_block' });
+    }
+    return false;
+  }
+
   // Frontal shield check — negate damage from mob's facing direction
   if (mob._frontalShield && source !== 'dot' && source !== 'burn_dot' && source !== 'thorns') {
     const aDx = player.x - mob.x, aDy = player.y - mob.y;

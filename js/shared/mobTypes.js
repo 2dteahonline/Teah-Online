@@ -389,8 +389,6 @@ const MOB_TYPES = {
     name: "Deckhand Shooter", hp: 70, speed: 2.6, damage: 8, killHeal: 10, goldReward: 4,
     skin: "#8a7060", hair: "#1a1a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 74,
     ai: 'archer', _specials: ['scattershot'], specialCD: 540,
-    arrowRate: 100, arrowSpeed: 9, arrowRange: 350, arrowBounces: 0, arrowLife: 400,
-    projectileStyle: 'musket',
     deathColors: ["#8a7060","#4a3a2a","#aa9070","#3a2a1a"],
   },
   anchor_hauler: {
@@ -404,10 +402,8 @@ const MOB_TYPES = {
   captain_husa: {
     name: "Captain Husa", hp: 900, speed: 2.0, damage: 22, killHeal: 40, goldReward: 25,
     skin: "#8a7060", hair: "#2a1a0a", shirt: "#5a3020", pants: "#3a2010", contactRange: 80,
-    ai: 'archer', _specials: ['flintlock_volley', 'cutlass_cleave', 'call_to_arms', 'weathered_resolve', 'boarding_rush'],
+    ai: 'tank', _specials: ['flintlock_volley', 'cutlass_cleave', 'call_to_arms', 'weathered_resolve', 'boarding_rush'],
     isBoss: true, bossScale: 1.4, specialCD: 600,
-    arrowRate: 110, arrowSpeed: 9, arrowRange: 450, arrowBounces: 0, arrowLife: 450,
-    projectileStyle: 'musket',
     deathColors: ["#8a7060","#5a3020","#aa9070","#3a2010"],
   },
 
@@ -430,8 +426,6 @@ const MOB_TYPES = {
     name: "Galleon Sniper", hp: 70, speed: 2.6, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#7a8a8a", hair: "#1a1a1a", shirt: "#2a2a4a", pants: "#1a1a3a", contactRange: 74,
     ai: 'archer', _specials: ['piercing_musket'], specialCD: 480,
-    arrowRate: 90, arrowSpeed: 9, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
-    projectileStyle: 'musket',
     deathColors: ["#7a8a8a","#2a2a4a","#9aaaba","#1a1a3a"],
   },
   sunken_dreadnought: {
@@ -445,11 +439,8 @@ const MOB_TYPES = {
   admiral_von_kael: {
     name: "Admiral Von Kael", hp: 1200, speed: 1.8, damage: 24, killHeal: 40, goldReward: 30,
     skin: "#7a8a8a", hair: "#1a1a2a", shirt: "#1a2a4a", pants: "#0a1a3a", contactRange: 80,
-    ai: 'archer', _specials: ['naval_artillery', 'spectral_chain_binding', 'tattered_tide', 'command_authority', 'admirals_resolve'],
+    ai: 'tank', _specials: ['naval_artillery', 'spectral_chain_binding', 'tattered_tide', 'command_authority', 'admirals_resolve'],
     isBoss: true, bossScale: 1.5, specialCD: 540,
-    arrowRate: 100, arrowSpeed: 9, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
-    projectileStyle: 'cannonball',
-    bulletColor: { main: '#8a8a8a', core: '#cccccc', glow: 'rgba(138,138,138,0.3)' },
     deathColors: ["#7a8a8a","#1a2a4a","#9aaaba","#0a1a3a"],
   },
 
@@ -472,8 +463,6 @@ const MOB_TYPES = {
     name: "Canopy Sniper", hp: 65, speed: 2.7, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#5a4030", hair: "#1a1a0a", shirt: "#3a4a2a", pants: "#2a3a1a", contactRange: 74,
     ai: 'archer', _specials: ['paralysis_dart'], specialCD: 600,
-    arrowRate: 100, arrowSpeed: 9, arrowRange: 400, arrowBounces: 0, arrowLife: 400,
-    projectileStyle: 'dart',
     deathColors: ["#5a4030","#3a4a2a","#7a6050","#2a3a1a"],
   },
   temple_silverback: {
@@ -515,8 +504,7 @@ const MOB_TYPES = {
   sanguine_siren: {
     name: "Sanguine Siren", hp: 70, speed: 2.7, damage: 12, killHeal: 10, goldReward: 5,
     skin: "#9a7070", hair: "#2a0a0a", shirt: "#6a1a1a", pants: "#4a0a0a", contactRange: 74,
-    ai: 'archer', _specials: ['hamstring_bite'], specialCD: 480,
-    arrowRate: 90, arrowSpeed: 9, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
+    ai: 'runner', _specials: ['hamstring_bite'], specialCD: 480,
     deathColors: ["#9a7070","#6a1a1a","#ba9090","#4a0a0a"],
   },
 
@@ -540,8 +528,7 @@ const MOB_TYPES = {
   howling_lookout: {
     name: "Howling Lookout", hp: 75, speed: 2.7, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#6a5a4a", hair: "#2a1a0a", shirt: "#4a4a3a", pants: "#3a3a2a", contactRange: 74,
-    ai: 'archer', _specials: ['pack_howl'], specialCD: 600,
-    arrowRate: 100, arrowSpeed: 9, arrowRange: 380, arrowBounces: 0, arrowLife: 400,
+    ai: 'grunt', _specials: ['pack_howl'], specialCD: 600,
     deathColors: ["#6a5a4a","#4a4a3a","#8a7a6a","#3a3a2a"],
   },
   sea_dog_brute: {
@@ -577,8 +564,6 @@ const MOB_TYPES = {
     name: "Poltergeist Gunner", hp: 70, speed: 2.6, damage: 12, killHeal: 10, goldReward: 5,
     skin: "#8a8a9a", hair: "#4a4a5a", shirt: "#5a5a7a", pants: "#4a4a6a", contactRange: 74,
     ai: 'archer', _specials: ['soul_bullet'], specialCD: 420,
-    arrowRate: 80, arrowSpeed: 9, arrowRange: 450, arrowBounces: 0, arrowLife: 500,
-    projectileStyle: 'ghost_bolt',
     deathColors: ["#8a8a9a","#5a5a7a","#aaaaba","#4a4a6a"],
   },
   drowned_banshee: {
@@ -654,8 +639,6 @@ const MOB_TYPES = {
     name: "Coin Spitter Jelly", hp: 75, speed: 2.6, damage: 12, killHeal: 10, goldReward: 5,
     skin: "#3a5a7a", hair: "#1a3a5a", shirt: "#5a6a4a", pants: "#4a5a3a", contactRange: 74,
     ai: 'archer', _specials: ['wealth_volley'], specialCD: 480,
-    arrowRate: 80, arrowSpeed: 9, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
-    projectileStyle: 'gold_bolt',
     deathColors: ["#3a5a7a","#5a6a4a","#5a7a9a","#4a5a3a"],
   },
   deep_sea_dredger: {
