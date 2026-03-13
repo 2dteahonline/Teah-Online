@@ -92,6 +92,55 @@ const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'ske
 // Each entry: scene name → { cleanup(), returnLevel, message }
 // cleanup() is called before transition. returnLevel can be a string or function.
 const LEAVE_HANDLERS = {
+  test_arena: {
+    cleanup() {
+      mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
+      deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
+      if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+      if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+      if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
+      window._opMode = false;
+    },
+    returnLevel: 'lobby_01',
+    returnTX: 40, returnTY: 42,
+    message: 'Leaving test arena...',
+  },
+  mine: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 53, returnTY: 9,
+    message: 'Leaving mine...',
+  },
+  cooking: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 6, returnTY: 21,
+    message: 'Leaving deli...',
+  },
+  farm: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 15, returnTY: 9,
+    message: 'Leaving farm...',
+  },
+  cave: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 39, returnTY: 10,
+    message: 'Leaving cave...',
+  },
+  azurine: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 72, returnTY: 9,
+    message: 'Leaving Azurine City...',
+  },
+  gunsmith: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 72, returnTY: 21,
+    message: 'Leaving gunsmith...',
+  },
   dungeon: {
     cleanup() {
       mobs.length = 0; bullets.length = 0; hitEffects.length = 0;

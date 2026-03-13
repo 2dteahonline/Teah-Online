@@ -142,6 +142,8 @@ const LEVELS = {
       { type: 'flower', tx: 54, ty: 52, solid: false },
       { type: 'flower', tx: 8, ty: 28, solid: false },
       { type: 'flower', tx: 68, ty: 28, solid: false },
+      // === VERSION SIGN (near spawn) ===
+      { type: 'version_sign', tx: 43, ty: 40, w: 2, h: 3, solid: true },
       // === NEON LAMP POSTS (along paths) ===
       { type: 'lamp', tx: 35, ty: 12, solid: true },
       { type: 'lamp', tx: 43, ty: 12, solid: true },

@@ -2508,6 +2508,39 @@ const ENTITY_RENDERERS = {
         ctx.fill();
       }
   },
+
+  // ---- VERSION SIGN ----
+  version_sign: (e, ctx, ex, ey, w, h) => {
+    const t = typeof gameFrame !== 'undefined' ? gameFrame / 60 : 0;
+    const tw = w * TILE, th = h * TILE;
+
+    // Sign post
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(ex + tw / 2 - 3, ey + th * 0.4, 6, th * 0.6);
+
+    // Sign board
+    const bx = ex + 4, by = ey + 2, bw = tw - 8, bh = th * 0.45;
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = '#0cf';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx, by, bw, bh);
+
+    // Glow pulse
+    const glow = 0.5 + Math.sin(t * 2) * 0.2;
+    ctx.fillStyle = `rgba(0,204,255,${glow * 0.08})`;
+    ctx.fillRect(bx + 1, by + 1, bw - 2, bh - 2);
+
+    // Text
+    const ver = typeof GAME_CONFIG !== 'undefined' ? GAME_CONFIG.GAME_UPDATE : '?';
+    ctx.fillStyle = `rgba(0,204,255,${0.8 + Math.sin(t * 2) * 0.15})`;
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('UPDATE', ex + tw / 2, by + bh * 0.4 + 2);
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText('#' + ver, ex + tw / 2, by + bh * 0.8 + 2);
+    ctx.textAlign = 'left';
+  },
 };
 
 // ---- Grocery Shelf Renderer Data ----
