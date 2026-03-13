@@ -38,11 +38,11 @@ const _LIGHTS_FADE_FRAMES = 180; // 3 seconds
 const _LIGHTS_DIM_AMOUNT = 0.35; // shrink to 35% of normal radius (65% reduction)
 
 // ===================== WALL-AWARE RAYCASTING FOV =====================
-// Casts rays from the player through collision grid + solid entities.
-// Rays stop at walls/solid objects, creating Among Us-style shadow occlusion.
+// Casts rays from the player through the collision grid (walls only).
+// Rays stop at wall tiles, creating Among Us-style shadow occlusion.
 
-// ---- Merged FOV grid: collision grid + solid entities (cached per level) ----
-let _fovGrid = null;       // Uint8Array flat grid (1 = solid)
+// ---- FOV grid: collision grid as flat Uint8Array (cached per level) ----
+let _fovGrid = null;       // Uint8Array flat grid (1 = wall)
 let _fovGridW = 0;
 let _fovGridH = 0;
 let _fovGridLevelId = null; // cache key
@@ -55,24 +55,11 @@ function _buildFOVGrid() {
   _fovGridW = w;
   _fovGridH = h;
   _fovGrid = new Uint8Array(w * h);
-  // Copy collision grid
   for (let y = 0; y < h; y++) {
     const row = collisionGrid[y];
     if (!row) continue;
     for (let x = 0; x < w; x++) {
       if (row[x] === 1) _fovGrid[y * w + x] = 1;
-    }
-  }
-  // Stamp solid entities
-  if (levelEntities) {
-    for (const e of levelEntities) {
-      if (!e.solid) continue;
-      const ew = e.w ?? 1, eh = e.h ?? 1;
-      for (let ey = e.ty; ey < e.ty + eh && ey < h; ey++) {
-        for (let ex = e.tx; ex < e.tx + ew && ex < w; ex++) {
-          if (ex >= 0 && ey >= 0) _fovGrid[ey * w + ex] = 1;
-        }
-      }
     }
   }
   _fovGridLevelId = level.id;
