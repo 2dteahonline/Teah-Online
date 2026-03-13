@@ -38,13 +38,48 @@ const _LIGHTS_FADE_FRAMES = 180; // 3 seconds
 const _LIGHTS_DIM_AMOUNT = 0.35; // shrink to 35% of normal radius (65% reduction)
 
 // ===================== WALL-AWARE RAYCASTING FOV =====================
-// Casts rays from the player through the collision grid.
-// Rays stop at wall tiles, creating Among Us-style shadow occlusion.
+// Casts rays from the player through collision grid + solid entities.
+// Rays stop at walls/solid objects, creating Among Us-style shadow occlusion.
 
-// DDA single ray: returns distance (in world pixels) to first wall or maxDist
-function _fovCastRay(px, py, angle, maxDist, grid, mapTW, mapTH) {
-  const dirX = Math.cos(angle);
-  const dirY = Math.sin(angle);
+// ---- Merged FOV grid: collision grid + solid entities (cached per level) ----
+let _fovGrid = null;       // Uint8Array flat grid (1 = solid)
+let _fovGridW = 0;
+let _fovGridH = 0;
+let _fovGridLevelId = null; // cache key
+
+function _buildFOVGrid() {
+  if (!collisionGrid || !level) return;
+  if (_fovGridLevelId === level.id) return; // already cached
+  const w = level.widthTiles;
+  const h = level.heightTiles;
+  _fovGridW = w;
+  _fovGridH = h;
+  _fovGrid = new Uint8Array(w * h);
+  // Copy collision grid
+  for (let y = 0; y < h; y++) {
+    const row = collisionGrid[y];
+    if (!row) continue;
+    for (let x = 0; x < w; x++) {
+      if (row[x] === 1) _fovGrid[y * w + x] = 1;
+    }
+  }
+  // Stamp solid entities
+  if (levelEntities) {
+    for (const e of levelEntities) {
+      if (!e.solid) continue;
+      const ew = e.w ?? 1, eh = e.h ?? 1;
+      for (let ey = e.ty; ey < e.ty + eh && ey < h; ey++) {
+        for (let ex = e.tx; ex < e.tx + ew && ex < w; ex++) {
+          if (ex >= 0 && ey >= 0) _fovGrid[ey * w + ex] = 1;
+        }
+      }
+    }
+  }
+  _fovGridLevelId = level.id;
+}
+
+// DDA single ray: returns distance (world pixels) to first solid tile or maxDist
+function _fovCastRay(px, py, dirX, dirY, maxDist) {
   let tileX = Math.floor(px / TILE);
   let tileY = Math.floor(py / TILE);
   const stepX = dirX >= 0 ? 1 : -1;
@@ -57,6 +92,7 @@ function _fovCastRay(px, py, angle, maxDist, grid, mapTW, mapTH) {
   let tMaxY = dirY !== 0
     ? (dirY >= 0 ? (tileY + 1) * TILE - py : tileY * TILE - py) / dirY
     : 1e9;
+  const w = _fovGridW, h = _fovGridH, grid = _fovGrid;
   let dist = 0;
   while (dist < maxDist) {
     if (tMaxX < tMaxY) {
@@ -65,47 +101,56 @@ function _fovCastRay(px, py, angle, maxDist, grid, mapTW, mapTH) {
       dist = tMaxY; tMaxY += tDeltaY; tileY += stepY;
     }
     if (dist > maxDist) return maxDist;
-    if (tileX < 0 || tileX >= mapTW || tileY < 0 || tileY >= mapTH) return dist;
-    if (grid[tileY][tileX] === 1) return dist;
+    if (tileX < 0 || tileX >= w || tileY < 0 || tileY >= h) return dist;
+    if (grid[tileY * w + tileX]) return dist;
   }
   return maxDist;
 }
 
-// Cast all rays and return polygon points (world coordinates)
-function _castFOVPolygon(px, py, maxDist) {
-  const grid = collisionGrid;
-  if (!grid || !level) return null;
-  const mapTW = level.widthTiles;
-  const mapTH = level.heightTiles;
+// Pre-computed cos/sin tables for base rays (allocated once)
+const _FOV_RAY_COUNT = 360;
+const _fovCos = new Float32Array(_FOV_RAY_COUNT);
+const _fovSin = new Float32Array(_FOV_RAY_COUNT);
+for (let i = 0; i < _FOV_RAY_COUNT; i++) {
+  const a = (i / _FOV_RAY_COUNT) * Math.PI * 2;
+  _fovCos[i] = Math.cos(a);
+  _fovSin[i] = Math.sin(a);
+}
 
-  // Regular rays every 0.5°
+// Cast all rays and return polygon points (screen coordinates, ready to draw)
+function _castFOVPolygon(px, py, maxDist, camX, camY) {
+  _buildFOVGrid();
+  if (!_fovGrid) return null;
+
+  // Collect angles: base rays + corner rays for nearby solid tiles
   const angles = [];
-  const RAY_COUNT = 720;
-  for (let i = 0; i < RAY_COUNT; i++) {
-    angles.push((i / RAY_COUNT) * Math.PI * 2);
+  // Base rays at 1° intervals
+  for (let i = 0; i < _FOV_RAY_COUNT; i++) {
+    angles.push((i / _FOV_RAY_COUNT) * Math.PI * 2);
   }
 
-  // Extra rays toward wall tile corners for crisp shadow edges
+  // Extra rays toward solid tile corners (only tiles within range)
   const tileCX = Math.floor(px / TILE);
   const tileCY = Math.floor(py / TILE);
   const tileRange = Math.ceil(maxDist / TILE) + 1;
+  const w = _fovGridW, h = _fovGridH, grid = _fovGrid;
+  const maxDistSq = maxDist * maxDist;
   for (let dy = -tileRange; dy <= tileRange; dy++) {
+    const ty = tileCY + dy;
+    if (ty < 0 || ty >= h) continue;
     for (let dx = -tileRange; dx <= tileRange; dx++) {
       const tx = tileCX + dx;
-      const ty = tileCY + dy;
-      if (tx < 0 || tx >= mapTW || ty < 0 || ty >= mapTH) continue;
-      if (grid[ty][tx] !== 1) continue;
-      // 4 corners of this wall tile
-      const corners = [
-        tx * TILE, ty * TILE,
-        (tx + 1) * TILE, ty * TILE,
-        tx * TILE, (ty + 1) * TILE,
-        (tx + 1) * TILE, (ty + 1) * TILE,
-      ];
+      if (tx < 0 || tx >= w) continue;
+      if (!grid[ty * w + tx]) continue;
+      // 4 corners
+      const x0 = tx * TILE, y0 = ty * TILE;
+      const x1 = x0 + TILE, y1 = y0 + TILE;
+      const corners = [x0, y0, x1, y0, x0, y1, x1, y1];
       for (let c = 0; c < 8; c += 2) {
-        const a = Math.atan2(corners[c + 1] - py, corners[c] - px);
+        const cdx = corners[c] - px, cdy = corners[c + 1] - py;
+        if (cdx * cdx + cdy * cdy > maxDistSq * 1.5) continue; // skip far corners
+        const a = Math.atan2(cdy, cdx);
         angles.push(a - 0.0005);
-        angles.push(a);
         angles.push(a + 0.0005);
       }
     }
@@ -114,14 +159,19 @@ function _castFOVPolygon(px, py, maxDist) {
   // Sort by angle
   angles.sort((a, b) => a - b);
 
-  // Cast each ray
-  const points = new Array(angles.length);
+  // Cast each ray → screen-space points
+  const zoom = WORLD_ZOOM;
+  const pts = new Array(angles.length);
   for (let i = 0; i < angles.length; i++) {
     const a = angles[i];
-    const d = _fovCastRay(px, py, a, maxDist, grid, mapTW, mapTH);
-    points[i] = { x: px + Math.cos(a) * d, y: py + Math.sin(a) * d };
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const d = _fovCastRay(px, py, dx, dy, maxDist);
+    pts[i] = {
+      x: (px + dx * d - camX) * zoom,
+      y: (py + dy * d - camY) * zoom,
+    };
   }
-  return points;
+  return pts;
 }
 
 function drawMafiaFOV() {
@@ -154,48 +204,45 @@ function drawMafiaFOV() {
     if (!drawMafiaFOV._buf) {
       drawMafiaFOV._buf = document.createElement('canvas');
       drawMafiaFOV._bctx = drawMafiaFOV._buf.getContext('2d');
+      drawMafiaFOV._buf.width = BASE_W;
+      drawMafiaFOV._buf.height = BASE_H;
     }
     const buf = drawMafiaFOV._buf;
     const bctx = drawMafiaFOV._bctx;
-    buf.width = BASE_W;
-    buf.height = BASE_H;
+    // Clear without reallocating (fast)
+    bctx.clearRect(0, 0, BASE_W, BASE_H);
 
     // Fill with darkness
     bctx.fillStyle = 'rgba(0,0,0,0.97)';
     bctx.fillRect(0, 0, BASE_W, BASE_H);
 
-    // Cast rays to build wall-aware visibility polygon
-    const polyPoints = _castFOVPolygon(player.x, player.y, fovWorldR);
+    // Cast rays — polyPoints already in screen coordinates
+    const polyPoints = _castFOVPolygon(player.x, player.y, fovWorldR, camera.x, camera.y);
 
     if (polyPoints && polyPoints.length > 2) {
       // Cut out the visible polygon from darkness
       bctx.globalCompositeOperation = 'destination-out';
       bctx.fillStyle = 'rgba(255,255,255,1)';
       bctx.beginPath();
-      for (let i = 0; i < polyPoints.length; i++) {
-        const sx = (polyPoints[i].x - camera.x) * WORLD_ZOOM;
-        const sy = (polyPoints[i].y - camera.y) * WORLD_ZOOM;
-        if (i === 0) bctx.moveTo(sx, sy);
-        else bctx.lineTo(sx, sy);
+      bctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+      for (let i = 1; i < polyPoints.length; i++) {
+        bctx.lineTo(polyPoints[i].x, polyPoints[i].y);
       }
       bctx.closePath();
       bctx.fill();
 
-      // Soft edge at max range: add back slight darkness near the polygon boundary
+      // Soft edge at max range — slight vignette near boundary
       bctx.globalCompositeOperation = 'source-over';
-      const edgeFovR = fovWorldR * WORLD_ZOOM;
-      const edgeGrad = bctx.createRadialGradient(screenPX, screenPY, edgeFovR * 0.75, screenPX, screenPY, edgeFovR);
+      const edgeR = fovWorldR * WORLD_ZOOM;
+      const edgeGrad = bctx.createRadialGradient(screenPX, screenPY, edgeR * 0.8, screenPX, screenPY, edgeR);
       edgeGrad.addColorStop(0, 'rgba(0,0,0,0)');
-      edgeGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
+      edgeGrad.addColorStop(1, 'rgba(0,0,0,0.8)');
       bctx.fillStyle = edgeGrad;
-      // Only apply within the polygon (clip)
       bctx.save();
       bctx.beginPath();
-      for (let i = 0; i < polyPoints.length; i++) {
-        const sx = (polyPoints[i].x - camera.x) * WORLD_ZOOM;
-        const sy = (polyPoints[i].y - camera.y) * WORLD_ZOOM;
-        if (i === 0) bctx.moveTo(sx, sy);
-        else bctx.lineTo(sx, sy);
+      bctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+      for (let i = 1; i < polyPoints.length; i++) {
+        bctx.lineTo(polyPoints[i].x, polyPoints[i].y);
       }
       bctx.closePath();
       bctx.clip();
