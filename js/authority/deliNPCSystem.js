@@ -343,6 +343,7 @@ function _npcStartRoute(npc, route, nextState, nextTimer) {
   npc._nextTimer = nextTimer || 0;
   npc.state = 'walking';
   npc.moving = true;
+  npc._idleTime = 0;
 }
 
 function moveDeliNPC(npc) {
@@ -382,11 +383,11 @@ function moveDeliNPC(npc) {
     const sx = npc.x - other.x;
     const sy = npc.y - other.y;
     const sd = Math.sqrt(sx * sx + sy * sy);
-    if (sd > 0 && sd < 40) {
+    if (sd > 0 && sd < 50) {
       if (npc.id > other.id) {
         // Higher-ID yields: slow down and nudge away from the other NPC
         spd *= 0.3;
-        const pushStr = (40 - sd) * 0.2;
+        const pushStr = (50 - sd) * 0.2;
         const nx = sx / sd, ny = sy / sd;
         const testX = npc.x + nx * pushStr;
         const testY = npc.y + ny * pushStr;
@@ -506,9 +507,10 @@ function spawnDeliNPC() {
     _aisleVisits: 0,           // track aisle visit count
     _recipeIngredients: null,  // set when food is picked up (for food visual colors)
     // Per-NPC lane offset — prevents perfect overlap on shared routes
-    _laneOffX: (Math.random() - 0.5) * 16,  // ±8px
-    _laneOffY: (Math.random() - 0.5) * 16,  // ±8px
+    _laneOffX: (Math.random() - 0.5) * 32,  // ±16px
+    _laneOffY: (Math.random() - 0.5) * 32,  // ±16px
     _stuckFrames: 0,  // counts frames where movement was blocked
+    _idleTime: 0,     // frames spent idle in current state (for timeout detection)
     speed: DELI_NPC_CONFIG.baseSpeed + (Math.random() - 0.5) * DELI_NPC_CONFIG.speedVariance * 2,
     isDeliNPC: true,
   };
@@ -634,10 +636,12 @@ const DELI_NPC_AI = {
       moveDeliNPC(npc);
       // Face north (toward person ahead) even while walking into position
       if (npc.route.length <= 1) npc.dir = 1;
+      npc._idleTime = 0;
       return;
     }
     npc.moving = false;
     npc.dir = 1; // face north — toward the back of the customer ahead in line
+    npc._idleTime = (npc._idleTime || 0) + 1;
 
     // Snap to exact queue spot — prevents drifting sideways from separation push
     const spot = QUEUE_SPOTS[npc._queueIdx];
@@ -649,6 +653,18 @@ const DELI_NPC_AI = {
     // Front of line + shift active → become ordering
     if (npc._queueIdx === 0 && typeof cookingState !== 'undefined' && cookingState.active) {
       npc.state = 'ordering';
+      npc._idleTime = 0;
+      return;
+    }
+
+    // Patience timeout — leave if shift not active (5 sec) or waited too long (30 sec)
+    const shiftActive = typeof cookingState !== 'undefined' && cookingState.active;
+    const patienceLimit = shiftActive ? 1800 : 300;
+    if (npc._idleTime >= patienceLimit) {
+      const leftIdx = npc._queueIdx;
+      npc._queueIdx = -1;
+      _advanceQueue(leftIdx);
+      _npcStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
       return;
     }
 
@@ -711,6 +727,7 @@ const DELI_NPC_AI = {
   ordering: (npc) => {
     npc.moving = false;
     npc.dir = 1;
+    npc._idleTime = (npc._idleTime || 0) + 1;
     // Snap to queue spot 0 (counter)
     npc.x = QUEUE_SPOTS[0].tx * TILE + TILE / 2;
     npc.y = QUEUE_SPOTS[0].ty * TILE + TILE / 2;
@@ -720,12 +737,19 @@ const DELI_NPC_AI = {
       npc.hasOrdered = true;
       npc._queueIdx = -1;
       _advanceQueue(0);
-      // Go browse aisles instead
       const aisle = _pickFreeAisle();
       _npcStartRoute(npc, _routeCounterToAisle(aisle),
         'shopping_aisle', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
       );
       npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
+      return;
+    }
+    // Patience timeout — leave after 15 sec if order never gets linked
+    if (npc._idleTime >= 900) {
+      npc.hasOrdered = true;
+      npc._queueIdx = -1;
+      _advanceQueue(0);
+      _npcStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
     }
   },
 
@@ -733,11 +757,20 @@ const DELI_NPC_AI = {
   waiting_food: (npc) => {
     npc.moving = false;
     npc.dir = 1;
+    npc._idleTime = (npc._idleTime || 0) + 1;
     // Snap to queue spot 0 (counter)
     npc.x = QUEUE_SPOTS[0].tx * TILE + TILE / 2;
     npc.y = QUEUE_SPOTS[0].ty * TILE + TILE / 2;
     // applyOrderResult() in cookingSystem.js will set us to pickup_food
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
+      npc.linkedOrderId = null;
+      npc._queueIdx = -1;
+      _advanceQueue(0);
+      _npcStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      return;
+    }
+    // Patience timeout — leave angry after 30 sec if food never comes
+    if (npc._idleTime >= 1800) {
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
       _advanceQueue(0);
@@ -914,13 +947,37 @@ function updateDeliNPCs() {
   for (let i = deliNPCs.length - 1; i >= 0; i--) {
     const npc = deliNPCs[i];
 
+    // Track state changes — reset idle timer when state changes
+    const prevState = npc.state;
+
     // Run state handler
     const handler = DELI_NPC_AI[npc.state];
     if (handler) handler(npc);
 
+    // Reset idle timer on state change
+    if (npc.state !== prevState) npc._idleTime = 0;
+
     // Move along route (walking state — other states that move call moveDeliNPC internally)
     if (npc.state === 'walking') {
       moveDeliNPC(npc);
+    }
+
+    // Universal idle safety net — any NPC idle 60+ sec in non-eating/non-queue states → force exit
+    // (eating and in_queue have their own timeouts above)
+    if (npc.state !== '_despawn' && npc.state !== '_despawn_walk' &&
+        npc.state !== 'walking' && npc.state !== 'eating' && npc.state !== 'in_queue' &&
+        npc.state !== 'ordering' && npc.state !== 'waiting_food' &&
+        (npc._idleTime || 0) >= 3600) {
+      npc._idleTime = 0;
+      if (npc.claimedChair !== null) npc.claimedChair = null;
+      if (npc._queueIdx >= 0) {
+        const leftIdx = npc._queueIdx;
+        npc._queueIdx = -1;
+        _advanceQueue(leftIdx);
+      }
+      const curTX = Math.floor(npc.x / TILE);
+      const curTY = Math.floor(npc.y / TILE);
+      _npcStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
     }
 
     // Stuck detection — if blocked for 1+ second, abandon route and head to exit
