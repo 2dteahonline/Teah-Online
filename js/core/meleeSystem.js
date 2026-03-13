@@ -901,6 +901,19 @@ function updateBullets() {
     b.x += b.vx;
     b.y += b.vy;
 
+    // Mob bullet onUpdate callback
+    if (!b.fromPlayer && b.onUpdate) b.onUpdate(b);
+
+    // Mob bullet lifetime (life property counts down each frame)
+    if (!b.fromPlayer && b.life !== undefined) {
+      b.life--;
+      if (b.life <= 0) {
+        if (b.onExpire) b.onExpire(b);
+        bullets.splice(i, 1);
+        continue;
+      }
+    }
+
     // Arrow lifetime
     if (b.isArrow) {
       b.arrowLife--;
@@ -951,6 +964,11 @@ function updateBullets() {
           hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dmgDealt });
         }
       } else {
+        // Mob bullet onWallHit callback (e.g., bouncing projectiles)
+        if (!b.fromPlayer && b.onWallHit) {
+          b.onWallHit(b);
+          if (b._handled) continue;
+        }
         hitEffects.push({ x: b.x, y: b.y, life: 10, type: "wall" });
       }
       bullets.splice(i, 1);
@@ -1060,6 +1078,7 @@ function updateBullets() {
         const bDmg = b.damage || gun.damage;
         const dmgDealt = dealDamageToPlayer(bDmg, "projectile", null);
         hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: dmgDealt });
+        if (b.onHitPlayer) b.onHitPlayer(b);
         bullets.splice(i, 1);
         continue;
       }

@@ -15,7 +15,7 @@ MOB_SPECIALS.pipe_swipe = (m, ctx) => {
       if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 3, 80)) {
         const dmg = Math.round(25 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-        hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+        hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "pipe_hit", dmg: dealt });
       }
       m._specialTimer = m._specialCD || 180;
     }
@@ -76,8 +76,8 @@ MOB_SPECIALS.ankle_bite = (m, ctx) => {
         const dmg = Math.round(18 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-        StatusFX.applyToPlayer('bleed', { duration: 180 });
-        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "bleed" });
+        StatusFX.applyToPlayer('bleed', { duration: 180, dmg: 4 });
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "hit" });
       }
       m._biteDashing = false;
       m._specialTimer = m._specialCD || 210;
@@ -91,7 +91,7 @@ MOB_SPECIALS.ankle_bite = (m, ctx) => {
   m._biteSX = m.x; m._biteSY = m.y;
   m._biteTX = clamped.x; m._biteTY = clamped.y;
   m._biteDashing = true; m._biteTimer = 16;
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "smoke" });
   return { skip: true };
 };
 
@@ -216,7 +216,7 @@ MOB_SPECIALS.glass_flurry = (m, ctx) => {
   m._glassSX = m.x; m._glassSY = m.y;
   m._glassPhase = 3;
   m._glassTimer = 5;
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
   return { skip: true };
 };
 
@@ -325,8 +325,8 @@ MOB_SPECIALS.flare_trap = (m, ctx) => {
     ownerId: m.id, bulletColor: '#ff6633', life: 60,
     onExpire: function() {
       const bx = this.x || m.x, by = this.y || m.y;
-      if (typeof HazardSystem !== 'undefined' && HazardSystem.create) {
-        HazardSystem.create({ x: bx, y: by, radius: 80, duration: 300, tickDamage: 6, type: 'fire' });
+      if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+        HazardSystem.createZone({ x: bx, y: by, radius: 80, duration: 300, tickDamage: 6, type: 'fire' });
       } else {
         // Fallback — AoE damage
         if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(bx, by, 80)) {
@@ -456,7 +456,7 @@ MOB_SPECIALS.kick_and_clear = (m, ctx) => {
   m._breachTX = clamped.x; m._breachTY = clamped.y;
   m._breachPhase = 1;
   m._breachTimer = 12;
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "smoke" });
   return { skip: true };
 };
 
@@ -564,10 +564,10 @@ MOB_SPECIALS.chemical_flask = (m, ctx) => {
     ownerId: m.id, bulletColor: '#66ff44', life: 60,
     onExpire: function() {
       const bx = this.x || targetX, by = this.y || targetY;
-      if (typeof HazardSystem !== 'undefined' && HazardSystem.create) {
-        HazardSystem.create({ x: bx, y: by, radius: 70, duration: 300, tickDamage: 8, type: 'poison' });
+      if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+        HazardSystem.createZone({ x: bx, y: by, radius: 70, duration: 300, tickDamage: 8, type: 'poison' });
       }
-      hitEffects.push({ x: bx, y: by, life: 30, type: "poison_cloud" });
+      hitEffects.push({ x: bx, y: by, life: 30, type: "smoke" });
       // Poison on direct hit area
       if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(bx, by, 70)) {
         StatusFX.applyToPlayer('bleed', { duration: 300, dmg: 8 });
@@ -606,7 +606,7 @@ MOB_SPECIALS.caltrop_scatter = (m, ctx) => {
     const cx = m.x + Math.cos(angle) * r;
     const cy = m.y + Math.sin(angle) * r;
     m._caltrops.push({ x: cx, y: cy, life: 360, _hit: false });
-    hitEffects.push({ x: cx, y: cy, life: 20, type: "dust" });
+    hitEffects.push({ x: cx, y: cy, life: 20, type: "smoke" });
   }
   hitEffects.push({ x: m.x, y: m.y - 30, life: 30, maxLife: 30, type: "heal", dmg: "CALTROPS!" });
   m._abilityCDs.caltrop_scatter = 360;
@@ -655,7 +655,7 @@ MOB_SPECIALS.calculated_dodge = (m, ctx) => {
       m.x = clamped.x;
       m.y = clamped.y;
       m._invuln = 18;
-      hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+      hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
       hitEffects.push({ x: m.x, y: m.y - 30, life: 25, maxLife: 25, type: "heal", dmg: "DODGE!" });
       m._dodgeCD = 120;
     }
@@ -693,10 +693,10 @@ MOB_SPECIALS.master_plan = (m, ctx) => {
     ownerId: m.id, bulletColor: '#66ff44', life: 60,
     onExpire: function() {
       const bx = this.x, by = this.y;
-      if (typeof HazardSystem !== 'undefined' && HazardSystem.create) {
-        HazardSystem.create({ x: bx, y: by, radius: 70, duration: 300, tickDamage: 8, type: 'poison' });
+      if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+        HazardSystem.createZone({ x: bx, y: by, radius: 70, duration: 300, tickDamage: 8, type: 'poison' });
       }
-      hitEffects.push({ x: bx, y: by, life: 30, type: "poison_cloud" });
+      hitEffects.push({ x: bx, y: by, life: 30, type: "smoke" });
     },
   });
   // Scatter 5 caltrops
@@ -876,8 +876,8 @@ MOB_SPECIALS.barbed_swing = (m, ctx) => {
     const dmg = Math.round(35 * getMobDamageMultiplier());
     const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
     hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-    StatusFX.applyToPlayer('bleed', { duration: 180 });
-    hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "bleed" });
+    StatusFX.applyToPlayer('bleed', { duration: 180, dmg: 6 });
+    hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "hit" });
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 15, type: "cast" });
   m._abilityCDs.barbed_swing = 180;
@@ -1020,14 +1020,14 @@ MOB_SPECIALS.cigar_flick = (m, ctx) => {
     fromPlayer: false, mobBullet: true, damage: Math.round(15 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#ff8844',
     onHitPlayer: () => {
-      if (typeof HazardSystem !== 'undefined' && HazardSystem.create) {
-        HazardSystem.create({ x: player.x, y: player.y, radius: 60, duration: 180, tickDamage: 6, type: 'fire' });
+      if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+        HazardSystem.createZone({ x: player.x, y: player.y, radius: 60, duration: 180, tickDamage: 6, type: 'fire' });
       }
       hitEffects.push({ x: player.x, y: player.y, life: 25, type: "burn_tick" });
     },
     onExpire: function() {
-      if (typeof HazardSystem !== 'undefined' && HazardSystem.create) {
-        HazardSystem.create({ x: this.x, y: this.y, radius: 60, duration: 180, tickDamage: 6, type: 'fire' });
+      if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+        HazardSystem.createZone({ x: this.x, y: this.y, radius: 60, duration: 180, tickDamage: 6, type: 'fire' });
       }
       hitEffects.push({ x: this.x, y: this.y, life: 25, type: "burn_tick" });
     },
@@ -1116,7 +1116,7 @@ MOB_SPECIALS.tactical_slide = (m, ctx) => {
   m._slideTX = clamped.x; m._slideTY = clamped.y;
   m._slideDashing = true; m._slideTimer = 10;
   m._invuln = 12;
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "smoke" });
   return { skip: true };
 };
 
@@ -1154,7 +1154,7 @@ MOB_SPECIALS.one_man_army = (m, ctx) => {
         m._omaSlideSX = m.x; m._omaSlideSY = m.y;
         m._omaSlideTX = clamped.x; m._omaSlideTY = clamped.y;
         m._invuln = 12;
-        hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
+        hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "smoke" });
       }
       if (m._omaTimer >= 60) {
         const slideT = 1 - ((m._omaTimer - 60) / 30);
@@ -1306,7 +1306,7 @@ MOB_SPECIALS.stone_ambush = (m, ctx) => {
       m._ambushSX = m.x; m._ambushSY = m.y;
       m._ambushTX = clamped.x; m._ambushTY = clamped.y;
       m._ambushDash = true; m._ambushTimer = 16;
-      hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "afterimage" });
+      hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "smoke" });
     }
     return { skip: true };
   }
@@ -1339,7 +1339,7 @@ MOB_SPECIALS.smoke_and_mirrors = (m, ctx) => {
       }
     }
     hitEffects.push({ x: oldX, y: oldY - 10, life: 25, type: "smoke" });
-    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
     m._specialTimer = m._specialCD || 300;
   }
   m._lastHp = m.hp;
@@ -1461,7 +1461,7 @@ MOB_SPECIALS.pirouette_dash = (m, ctx) => {
   m._pirSX = m.x; m._pirSY = m.y;
   m._pirTX = clamped.x; m._pirTY = clamped.y;
   m._pirDashing = true; m._pirTimer = 14; m._pirHit = false;
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 14, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 14, type: "smoke" });
   if (typeof TelegraphSystem !== 'undefined') {
     TelegraphSystem.create({ shape: 'line', params: { x1: m.x, y1: m.y, x2: clamped.x, y2: clamped.y, width: 30 }, delayFrames: 6, color: [180, 50, 180], owner: m.id });
   }
@@ -1867,7 +1867,7 @@ MOB_SPECIALS.overture_slash = (m, ctx) => {
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
       }
-      hitEffects.push({ x: m.x + Math.cos(Math.atan2(player.y - m.y, player.x - m.x)) * 40, y: m.y + Math.sin(Math.atan2(player.y - m.y, player.x - m.x)) * 40 - 10, life: 12, type: "slash" });
+      hitEffects.push({ x: m.x + Math.cos(Math.atan2(player.y - m.y, player.x - m.x)) * 40, y: m.y + Math.sin(Math.atan2(player.y - m.y, player.x - m.x)) * 40 - 10, life: 12, type: "cleaver_slash" });
       m._overtureHits++;
       if (m._overtureHits < 3) {
         m._overtureTimer = 20; // 20f between slashes
@@ -1966,10 +1966,10 @@ MOB_SPECIALS.phantom_step = (m, ctx) => {
   const behindDir = Math.atan2(player.y - m.y, player.x - m.x);
   const tx = player.x + Math.cos(behindDir) * 60;
   const ty = player.y + Math.sin(behindDir) * 60;
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
   if (positionClear(tx, ty)) { m.x = tx; m.y = ty; }
   else { m.x = player.x; m.y = player.y; }
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
   m._phantomDelay = 8;
   return { skip: true };
 };
@@ -2004,7 +2004,7 @@ MOB_SPECIALS.grand_finale = (m, ctx) => {
   }
   if (m.hp > m.maxHp * 0.6) return {}; // Only use below 60% hp
   // Teleport to center of arena area
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
   m._finaleChannel = true;
   m._finaleTimer = 120;
   if (typeof TelegraphSystem !== 'undefined') {
@@ -2135,7 +2135,7 @@ MOB_SPECIALS.red_herring = (m, ctx) => {
     _summonOwnerId: m.id, scale: 1, spawnFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
     _decoyLifespan: 240,
   });
-  hitEffects.push({ x: oldX, y: oldY - 10, life: 20, type: "afterimage" });
+  hitEffects.push({ x: oldX, y: oldY - 10, life: 20, type: "smoke" });
   return { skip: true };
 };
 
@@ -2155,7 +2155,7 @@ MOB_SPECIALS.checkmate = (m, ctx) => {
       m._checkHits++;
       m._checkTimer = 10;
       if (m._checkHits >= 5) {
-        StatusFX.applyToPlayer('bleed', { duration: 240 });
+        StatusFX.applyToPlayer('bleed', { duration: 240, dmg: 5 });
         hitEffects.push({ x: player.x, y: player.y - 30, life: 25, maxLife: 25, type: "heal", dmg: "CHECKMATE!" });
         m._checkPhase = null;
         m._abilityCDs.checkmate = 1200;
@@ -2168,9 +2168,9 @@ MOB_SPECIALS.checkmate = (m, ctx) => {
     const behindDir = Math.atan2(player.y - m.y, player.x - m.x);
     const tx = player.x + Math.cos(behindDir) * 50;
     const ty = player.y + Math.sin(behindDir) * 50;
-    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
     if (positionClear(tx, ty)) { m.x = tx; m.y = ty; }
-    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
     m._checkPhase = 'flurry';
     m._checkHits = 0;
     m._checkTimer = 5;
@@ -2220,7 +2220,7 @@ MOB_SPECIALS.saturday_night_shuffle = (m, ctx) => {
           m._shuffHit = true;
         }
       }
-      hitEffects.push({ x: m.x, y: m.y - 10, life: 10, type: "afterimage" });
+      hitEffects.push({ x: m.x, y: m.y - 10, life: 10, type: "smoke" });
       m._shufflePhase++;
       if (m._shufflePhase < 3) {
         // Next segment: zig-zag toward player
@@ -2248,7 +2248,7 @@ MOB_SPECIALS.saturday_night_shuffle = (m, ctx) => {
   m._shuffSegSX = m.x; m._shuffSegSY = m.y;
   m._shuffSegTX = clamped.x; m._shuffSegTY = clamped.y;
   m._shufflePhase = 0; m._shuffleTimer = 6; m._shuffHit = false;
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 10, type: "afterimage" });
+  hitEffects.push({ x: m.x, y: m.y - 10, life: 10, type: "smoke" });
   return { skip: true };
 };
 
@@ -2310,7 +2310,7 @@ MOB_SPECIALS.dirty_money = (m, ctx) => {
     const tx = player.x + Math.cos(angle) * r;
     const ty = player.y + Math.sin(angle) * r;
     m._dirtyTraps.push({ x: tx, y: ty, life: 360 });
-    hitEffects.push({ x: tx, y: ty - 10, life: 30, type: "gold_sparkle" });
+    hitEffects.push({ x: tx, y: ty - 10, life: 30, type: "buff" });
   }
   hitEffects.push({ x: m.x, y: m.y - 30, life: 25, maxLife: 25, type: "heal", dmg: "DIRTY MONEY" });
   m._abilityCDs.dirty_money = 480;
@@ -2340,9 +2340,9 @@ MOB_SPECIALS.the_hit = (m, ctx) => {
     const behindDir = Math.atan2(player.y - m.y, player.x - m.x);
     const tx = player.x + Math.cos(behindDir) * 50;
     const ty = player.y + Math.sin(behindDir) * 50;
-    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
     if (positionClear(tx, ty)) { m.x = tx; m.y = ty; }
-    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "afterimage" });
+    hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "smoke" });
     m._hitPhase = 3;
     m._hitTimer = 8; // Brief delay before strike
     return { skip: true };
@@ -2499,7 +2499,7 @@ MOB_SPECIALS.fume_slam = (m, ctx) => {
   // Telegraph
   m._fumeTelegraph = 30;
   if (typeof TelegraphSystem !== 'undefined') {
-    TelegraphSystem.create({ shape: 'circle', params: { x: m.x, y: m.y, radius: 90 }, delayFrames: 30, color: [100, 200, 50], owner: m.id });
+    TelegraphSystem.create({ shape: 'circle', params: { cx: m.x, cy: m.y, radius: 90 }, delayFrames: 30, color: [100, 200, 50], owner: m.id });
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
   return { skip: true };
@@ -2641,7 +2641,8 @@ MOB_SPECIALS.feral_leap = (m, ctx) => {
   if (dist < 60 || dist > 200) { m._specialTimer = 30; return {}; }
   // Save target and start leap
   m._leapSX = m.x; m._leapSY = m.y;
-  m._leapTX = player.x; m._leapTY = player.y;
+  const clamped = clampDashTarget(m.x, m.y, Math.atan2(player.y - m.y, player.x - m.x), Math.min(dist, 200));
+  m._leapTX = clamped.x; m._leapTY = clamped.y;
   m._leapDashing = true;
   m._leapTimer = 16;
   hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "cast" });
@@ -2654,8 +2655,6 @@ MOB_SPECIALS.feral_leap = (m, ctx) => {
 MOB_SPECIALS.toxic_stream = (m, ctx) => {
   const { player, dist, hitEffects, bullets } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.toxic_stream === undefined) m._abilityCDs.toxic_stream = 0;
-  if (m._abilityCDs.toxic_stream > 0) { m._abilityCDs.toxic_stream--; return {}; }
   if (dist > 300) return {};
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   let trailCounter = { count: 0 };
@@ -2690,8 +2689,6 @@ MOB_SPECIALS.toxic_stream = (m, ctx) => {
 MOB_SPECIALS.corrosive_puddle = (m, ctx) => {
   const { player, hitEffects } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.corrosive_puddle === undefined) m._abilityCDs.corrosive_puddle = 0;
-  if (m._abilityCDs.corrosive_puddle > 0) { m._abilityCDs.corrosive_puddle--; return {}; }
   // Drop puddle at player location
   hitEffects.push({
     x: player.x, y: player.y, life: 300, maxLife: 300,
@@ -2702,7 +2699,7 @@ MOB_SPECIALS.corrosive_puddle = (m, ctx) => {
     },
   });
   if (typeof TelegraphSystem !== 'undefined') {
-    TelegraphSystem.create({ shape: 'circle', params: { x: player.x, y: player.y, radius: 90 }, delayFrames: 20, color: [100, 200, 50], owner: m.id });
+    TelegraphSystem.create({ shape: 'circle', params: { cx: player.x, cy: player.y, radius: 90 }, delayFrames: 20, color: [100, 200, 50], owner: m.id });
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
   m._abilityCDs.corrosive_puddle = 360;
@@ -2713,8 +2710,6 @@ MOB_SPECIALS.corrosive_puddle = (m, ctx) => {
 MOB_SPECIALS.volatile_flask_boss = (m, ctx) => {
   const { player, dist, hitEffects, bullets } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.volatile_flask_boss === undefined) m._abilityCDs.volatile_flask_boss = 0;
-  if (m._abilityCDs.volatile_flask_boss > 0) { m._abilityCDs.volatile_flask_boss--; return {}; }
   if (dist > 350) return {};
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
@@ -2732,7 +2727,7 @@ MOB_SPECIALS.volatile_flask_boss = (m, ctx) => {
       if (roll < 0.33) {
         StatusFX.applyToPlayer('bleed', { duration: 180, dmg: 4 });
       } else if (roll < 0.66) {
-        StatusFX.applyToPlayer('slow', { duration: 150, factor: 0.4 });
+        StatusFX.applyToPlayer('slow', { duration: 150, amount: 0.4 });
       } else {
         StatusFX.applyToPlayer('confuse', { duration: 90 });
       }
@@ -2747,8 +2742,6 @@ MOB_SPECIALS.volatile_flask_boss = (m, ctx) => {
 MOB_SPECIALS.stim_valve = (m, ctx) => {
   const { hitEffects } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.stim_valve === undefined) m._abilityCDs.stim_valve = 0;
-  if (m._abilityCDs.stim_valve > 0) { m._abilityCDs.stim_valve--; }
   // Handle active stim buff
   if (m._stimSpeed) {
     m._stimTimer--;
@@ -2757,7 +2750,6 @@ MOB_SPECIALS.stim_valve = (m, ctx) => {
       m._stimSpeed = false;
     }
   }
-  if (m._abilityCDs.stim_valve > 0) return {};
   // Self-heal 10% maxHp
   m.hp = Math.min(m.hp + Math.round(m.maxHp * 0.1), m.maxHp);
   hitEffects.push({ x: m.x, y: m.y - 20, life: 25, type: "heal" });
@@ -2777,7 +2769,6 @@ MOB_SPECIALS.stim_valve = (m, ctx) => {
 MOB_SPECIALS.maximum_overpressure = (m, ctx) => {
   const { player, hitEffects } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.maximum_overpressure === undefined) m._abilityCDs.maximum_overpressure = 0;
   if (m._overpressureChannel) {
     m._overpressureTimer--;
     // Telegraph: expanding circle during channel
@@ -2786,7 +2777,7 @@ MOB_SPECIALS.maximum_overpressure = (m, ctx) => {
       const radius = 50 + progress * 150;
       hitEffects.push({ x: m.x, y: m.y, life: 15, type: "meltdown_pulse" });
       if (typeof TelegraphSystem !== 'undefined') {
-        TelegraphSystem.create({ shape: 'circle', params: { x: m.x, y: m.y, radius: radius }, delayFrames: 15, color: [100, 255, 50], owner: m.id });
+        TelegraphSystem.create({ shape: 'circle', params: { cx: m.x, cy: m.y, radius: radius }, delayFrames: 15, color: [100, 255, 50], owner: m.id });
       }
     }
     if (m._overpressureTimer <= 0) {
@@ -2803,7 +2794,6 @@ MOB_SPECIALS.maximum_overpressure = (m, ctx) => {
     }
     return { skip: true };
   }
-  if (m._abilityCDs.maximum_overpressure > 0) { m._abilityCDs.maximum_overpressure--; return {}; }
   // Start channel
   m._overpressureChannel = true;
   m._overpressureTimer = 120;
@@ -2818,8 +2808,6 @@ MOB_SPECIALS.maximum_overpressure = (m, ctx) => {
 MOB_SPECIALS.caustic_cleave = (m, ctx) => {
   const { player, dist, hitEffects } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.caustic_cleave === undefined) m._abilityCDs.caustic_cleave = 0;
-  if (m._abilityCDs.caustic_cleave > 0) { m._abilityCDs.caustic_cleave--; return {}; }
   if (dist > 110) return {};
   // 120 degree arc, range 100
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
@@ -2839,8 +2827,6 @@ MOB_SPECIALS.caustic_cleave = (m, ctx) => {
 MOB_SPECIALS.viscous_sludge = (m, ctx) => {
   const { player, dist, hitEffects, bullets } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.viscous_sludge === undefined) m._abilityCDs.viscous_sludge = 0;
-  if (m._abilityCDs.viscous_sludge > 0) { m._abilityCDs.viscous_sludge--; return {}; }
   if (dist > 350) return {};
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
@@ -2868,7 +2854,6 @@ MOB_SPECIALS.viscous_sludge = (m, ctx) => {
 MOB_SPECIALS.reactive_gel_shield = (m, ctx) => {
   const { player, hitEffects } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.reactive_gel_shield === undefined) m._abilityCDs.reactive_gel_shield = 0;
   // Handle active shield
   if (m._gelTimer && m._gelTimer > 0) {
     m._gelTimer--;
@@ -2885,7 +2870,6 @@ MOB_SPECIALS.reactive_gel_shield = (m, ctx) => {
     }
     return {};
   }
-  if (m._abilityCDs.reactive_gel_shield > 0) { m._abilityCDs.reactive_gel_shield--; return {}; }
   // Activate shield
   m._damageReduction = 0.8;
   m._gelTimer = 600;
@@ -2898,8 +2882,6 @@ MOB_SPECIALS.reactive_gel_shield = (m, ctx) => {
 MOB_SPECIALS.hazard_spill = (m, ctx) => {
   const { player, hitEffects } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.hazard_spill === undefined) m._abilityCDs.hazard_spill = 0;
-  if (m._abilityCDs.hazard_spill > 0) { m._abilityCDs.hazard_spill--; return {}; }
   // Create 3 puddles in triangle (120 degrees apart, 80px from player)
   for (let i = 0; i < 3; i++) {
     const angle = (i * 2 * Math.PI / 3) + Math.random() * 0.3;
@@ -2913,7 +2895,7 @@ MOB_SPECIALS.hazard_spill = (m, ctx) => {
     hitEffects.push({ x: px, y: py, life: 15, type: "chemical_beam" });
   }
   if (typeof TelegraphSystem !== 'undefined') {
-    TelegraphSystem.create({ shape: 'circle', params: { x: player.x, y: player.y, radius: 120 }, delayFrames: 15, color: [100, 200, 50], owner: m.id });
+    TelegraphSystem.create({ shape: 'circle', params: { cx: player.x, cy: player.y, radius: 120 }, delayFrames: 15, color: [100, 200, 50], owner: m.id });
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
   m._abilityCDs.hazard_spill = 420;
@@ -2924,8 +2906,6 @@ MOB_SPECIALS.hazard_spill = (m, ctx) => {
 MOB_SPECIALS.bio_grapple = (m, ctx) => {
   const { player, dist, hitEffects } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.bio_grapple === undefined) m._abilityCDs.bio_grapple = 0;
-  if (m._abilityCDs.bio_grapple > 0) { m._abilityCDs.bio_grapple--; return {}; }
   if (dist > 200) return {};
   // Pull player 100px toward mob
   const dir = Math.atan2(m.y - player.y, m.x - player.x);
@@ -2952,7 +2932,6 @@ MOB_SPECIALS.bio_grapple = (m, ctx) => {
 MOB_SPECIALS.critical_meltdown = (m, ctx) => {
   const { player, hitEffects } = ctx;
   if (!m._abilityCDs) m._abilityCDs = {};
-  if (m._abilityCDs.critical_meltdown === undefined) m._abilityCDs.critical_meltdown = 0;
   if (m._meltdownChannel) {
     m._meltdownTimer--;
     // Telegraph: expanding toxic green circle
@@ -2961,7 +2940,7 @@ MOB_SPECIALS.critical_meltdown = (m, ctx) => {
       const radius = 60 + progress * 190;
       hitEffects.push({ x: m.x, y: m.y, life: 20, type: "meltdown_pulse" });
       if (typeof TelegraphSystem !== 'undefined') {
-        TelegraphSystem.create({ shape: 'circle', params: { x: m.x, y: m.y, radius: radius }, delayFrames: 20, color: [50, 255, 50], owner: m.id });
+        TelegraphSystem.create({ shape: 'circle', params: { cx: m.x, cy: m.y, radius: radius }, delayFrames: 20, color: [50, 255, 50], owner: m.id });
       }
     }
     if (m._meltdownTimer <= 0) {
@@ -2981,7 +2960,6 @@ MOB_SPECIALS.critical_meltdown = (m, ctx) => {
     }
     return { skip: true };
   }
-  if (m._abilityCDs.critical_meltdown > 0) { m._abilityCDs.critical_meltdown--; return {}; }
   // Only usable below 25% hp
   if (m.hp > m.maxHp * 0.25) return {};
   // Start channel
