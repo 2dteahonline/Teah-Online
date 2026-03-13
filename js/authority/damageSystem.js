@@ -28,6 +28,10 @@
 //   if (dealDamageToMob(m, 50, "gun")) { /* on-kill effects like frost nova */ }
 //
 function dealDamageToMob(mob, amount, source) {
+  // Poison Immune: blocks poison/bleed damage (currently no player-to-mob poison exists,
+  // but this guards against future DoT sources)
+  if (mob._poisonImmune && (source === 'poison' || source === 'bleed')) return false;
+
   // Invulnerability check (mud_dive, nano_armor, etc.)
   if (mob._invulnerable) return false;
 
@@ -151,6 +155,25 @@ function dealDamageToMob(mob, amount, source) {
 function dealDamageToPlayer(rawDamage, source, attacker) {
   if (playerDead) return 0;
   if (window._godMode) return 0; // /god — player invincibility
+
+  // Lethal Efficiency: 15% bonus damage when player is below 40% HP
+  if (attacker && attacker._lethalEfficiency) {
+    if (player.hp < player.maxHp * 0.4) {
+      rawDamage = Math.round(rawDamage * 1.15);
+    }
+  }
+
+  // Backstabber: 30% bonus damage if mob is behind the player
+  if (attacker && attacker._backstabber) {
+    const toMobAngle = Math.atan2(attacker.y - player.y, attacker.x - player.x);
+    const facingAngles = [Math.PI / 2, Math.PI, -Math.PI / 2, 0]; // down=0, left=1, up=2, right=3
+    const playerFacing = facingAngles[player.dir || 0];
+    let angleDiff = Math.abs(toMobAngle - playerFacing);
+    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+    if (angleDiff > Math.PI / 2) {
+      rawDamage = Math.round(rawDamage * 1.3);
+    }
+  }
 
   // 1. Apply armor reduction
   let reduced = rawDamage;

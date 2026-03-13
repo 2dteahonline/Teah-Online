@@ -1125,7 +1125,7 @@ const MOB_TYPES = {
     skin: "#4a6a4a", hair: "#1a3a1a", shirt: "#3a5a3a", pants: "#1a3a1a", contactRange: 84,
     ai: 'tank', _specials: ['caustic_cleave', 'viscous_sludge', 'reactive_gel_shield', 'hazard_spill', 'bio_grapple', 'critical_meltdown'],
     isBoss: true, bossScale: 1.6, specialCD: 360,
-    _contactDamageAura: 8, _deathExplosion: { radius: 120, damage: 60 },
+    _contactDamageAura: { range: 60, damage: 8 }, _deathExplosion: { radius: 120, damage: 60 },
     deathColors: ["#4a6a4a","#3a5a3a","#6a8a6a","#1a3a1a"],
   },
 };

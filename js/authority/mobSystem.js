@@ -384,6 +384,33 @@ function updateMobs() {
       }
     }
 
+    // Show Must Go On: 30% speed boost when below 30% HP (one-time activation)
+    if (m._showMustGoOn && m.hp < m.maxHp * 0.3) {
+      if (!m._showMustGoOnActive) {
+        m._showMustGoOnActive = true;
+        m._origSpeed = m._origSpeed || m.speed;
+        m.speed = Math.round(m.speed * 1.3);
+      }
+    }
+
+    // Intimidating Presence: every 60 frames, boost nearby ally mob damage by 15%
+    if (m._intimidatingPresence) {
+      if (!m._intTick) m._intTick = 0;
+      m._intTick++;
+      if (m._intTick >= 60) {
+        m._intTick = 0;
+        for (const ally of mobs) {
+          if (ally.id !== m.id && !ally._intBoosted) {
+            const adx = ally.x - m.x, ady = ally.y - m.y;
+            if (Math.sqrt(adx * adx + ady * ady) < 200) {
+              ally._intBoosted = true;
+              ally.damage = Math.round(ally.damage * 1.15);
+            }
+          }
+        }
+      }
+    }
+
     // Contact damage aura — DoT to player if within range (ticks every 30 frames)
     if (m._contactDamageAura && !playerDead) {
       if (!m._auraTick) m._auraTick = 0;
