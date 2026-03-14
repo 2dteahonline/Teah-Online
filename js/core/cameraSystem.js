@@ -43,25 +43,40 @@ const CameraSystem = {
     ctx.fillStyle = 'rgba(0,0,0,0.92)';
     ctx.fillRect(0, 0, BASE_W, BASE_H);
 
-    // Panel layout — 2×2 grid with gaps
-    const margin = 24;
-    const gap = 8;
+    // Panel layout — 2×2 grid, smaller panels with more breathing room
+    const margin = 80;
+    const gap = 12;
     const totalW = BASE_W - margin * 2;
-    const totalH = BASE_H - margin * 2 - 30;
+    const totalH = BASE_H - margin * 2 - 36;
     const panelW = (totalW - gap) / 2;
     const panelH = (totalH - gap) / 2;
-    const topY = margin + 26;
+    const topY = margin + 32;
+
+    // Close button (X) top-left
+    const bx = margin - 36, by = margin - 10, bs = 28;
+    ctx.fillStyle = 'rgba(60,60,70,0.8)';
+    ctx.beginPath();
+    ctx.arc(bx + bs / 2, by + bs / 2, bs / 2 + 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(bx + bs / 2, by + bs / 2, bs / 2 + 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(bx + 7, by + 7);
+    ctx.lineTo(bx + bs - 7, by + bs - 7);
+    ctx.moveTo(bx + bs - 7, by + 7);
+    ctx.lineTo(bx + 7, by + bs - 7);
+    ctx.stroke();
 
     // Title bar
-    ctx.font = 'bold 14px monospace';
+    ctx.font = 'bold 16px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(120,180,200,0.7)';
     ctx.fillText('SECURITY CAMERAS', BASE_W / 2, margin + 14);
-
-    // Close hint
-    ctx.font = '10px monospace';
-    ctx.fillStyle = 'rgba(150,150,170,0.5)';
-    ctx.fillText('Press X or ESC to close', BASE_W / 2, margin + 24);
     ctx.textAlign = 'left';
 
     // Draw each camera feed
@@ -74,21 +89,6 @@ const CameraSystem = {
 
       this._drawCameraFeed(cam, px, py, panelW, panelH, t, i);
     }
-
-    // Close button (X) top-right
-    const bx = BASE_W - margin - 20, by = margin + 2, bs = 18;
-    ctx.fillStyle = 'rgba(80,80,90,0.6)';
-    ctx.beginPath();
-    ctx.arc(bx + bs / 2, by + bs / 2, bs / 2 + 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#aaa';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(bx + 4, by + 4);
-    ctx.lineTo(bx + bs - 4, by + bs - 4);
-    ctx.moveTo(bx + bs - 4, by + 4);
-    ctx.lineTo(bx + 4, by + bs - 4);
-    ctx.stroke();
   },
 
   _drawCameraFeed(cam, px, py, pw, ph, t, idx) {
@@ -258,38 +258,65 @@ const CameraSystem = {
     ctx.restore(); // clip
   },
 
-  // Draw a simple Among Us-style crewmate silhouette for camera feeds (1:1 scale)
+  // Draw a crewmate silhouette for camera feeds — sized to match actual characters (~32×40)
   _drawCamCrewmate(x, y, color, name) {
-    // Body (pill shape)
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 12, 14, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Body (pill shape — roughly 24×34)
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.ellipse(x, y - 4, 10, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y - 4, 14, 20, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Visor
-    ctx.fillStyle = 'rgba(150,210,255,0.7)';
+    // Darker body outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.ellipse(x + 4, y - 8, 6, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y - 4, 14, 20, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Visor (large, offset right)
+    ctx.fillStyle = 'rgba(150,220,255,0.85)';
+    ctx.beginPath();
+    ctx.ellipse(x + 6, y - 12, 9, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Backpack
+    // Visor shine
+    ctx.fillStyle = 'rgba(200,240,255,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(x + 4, y - 14, 4, 2.5, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // Backpack (left side)
     ctx.fillStyle = color;
-    ctx.fillRect(x - 13, y - 8, 5, 12);
+    ctx.beginPath();
+    ctx.roundRect(x - 19, y - 12, 8, 18, 3);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(x - 19, y - 12, 8, 18, 3);
+    ctx.stroke();
+    // Legs (two small bumps at bottom)
+    ctx.fillStyle = color;
+    ctx.fillRect(x - 8, y + 12, 7, 6);
+    ctx.fillRect(x + 1, y + 12, 7, 6);
     // Name tag
     if (name) {
-      ctx.font = '9px monospace';
+      ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText(name, x, y - 22);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillText(name, x, y - 28);
       ctx.textAlign = 'left';
     }
   },
 
-  // Handle click on close button
+  // Handle click on close button (top-left)
   handleClick(mx, my) {
     if (!CameraState.active) return false;
-    const margin = 24;
-    const bx = BASE_W - margin - 20, by = margin + 2, bs = 18;
+    const margin = 80;
+    const bx = margin - 36, by = margin - 10, bs = 28;
     const dx = mx - (bx + bs / 2), dy = my - (by + bs / 2);
-    if (dx * dx + dy * dy < (bs / 2 + 4) * (bs / 2 + 4)) {
+    if (dx * dx + dy * dy < (bs / 2 + 6) * (bs / 2 + 6)) {
       this.exit();
       return true;
     }
