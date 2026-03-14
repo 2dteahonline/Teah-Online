@@ -510,13 +510,14 @@ function _drawBlackjack(px, py, pw, ph) {
   }
 
   // Dealer hand
+  const dealerBaseX = cx - (bj.dealerHand.length * 56) / 2;
   ctx.font = 'bold 13px monospace';
   ctx.fillStyle = '#bdb';
-  ctx.textAlign = 'left';
-  ctx.fillText('DEALER', px + 24, py + 68);
-  const dealerDone = _bjDrawHand(bj.dealerHand, px + 50, py + 78, showDealer ? -1 : 1);
+  ctx.textAlign = 'center';
+  ctx.fillText('DEALER', cx, py + 68);
+  const dealerDone = _bjDrawHand(bj.dealerHand, dealerBaseX, py + 78, showDealer ? -1 : 1);
   if (showDealer && bj.dealerHand.length > 0 && dealerDone) {
-    const totalX = px + 50 + bj.dealerHand.length * 56 + 12;
+    const totalX = dealerBaseX + bj.dealerHand.length * 56 + 12;
     ctx.font = 'bold 18px monospace';
     ctx.fillStyle = _bjIsBust(bj.dealerHand) ? '#ff5555' : '#fff';
     ctx.textAlign = 'left';
@@ -524,14 +525,15 @@ function _drawBlackjack(px, py, pw, ph) {
   }
 
   // Player hand
+  const playerBaseX = cx - (bj.playerHand.length * 56) / 2;
   ctx.font = 'bold 13px monospace';
   ctx.fillStyle = '#bdb';
-  ctx.textAlign = 'left';
+  ctx.textAlign = 'center';
   const pLabel = bj.splitHand ? (bj.playingSplit ? 'HAND 1' : 'HAND 1 \u25B8') : 'PLAYER';
-  ctx.fillText(pLabel, px + 24, py + 210);
-  const playerDone = _bjDrawHand(bj.playerHand, px + 50, py + 220, -1);
+  ctx.fillText(pLabel, cx, py + 210);
+  const playerDone = _bjDrawHand(bj.playerHand, playerBaseX, py + 220, -1);
   if (bj.playerHand.length > 0 && playerDone) {
-    const totalX = px + 50 + bj.playerHand.length * 56 + 12;
+    const totalX = playerBaseX + bj.playerHand.length * 56 + 12;
     ctx.font = 'bold 18px monospace';
     ctx.fillStyle = _bjIsBust(bj.playerHand) ? '#ff5555' : '#5fca80';
     ctx.textAlign = 'left';
@@ -540,14 +542,17 @@ function _drawBlackjack(px, py, pw, ph) {
 
   // Split hand
   if (bj.splitHand) {
+    const splitBaseX = cx - (bj.splitHand.length * 56) / 2;
     ctx.font = 'bold 13px monospace';
     ctx.fillStyle = '#bdb';
-    ctx.fillText(bj.playingSplit ? 'HAND 2 \u25B8' : 'HAND 2', px + 24, py + 320);
-    const splitDone = _bjDrawHand(bj.splitHand, px + 50, py + 330, -1);
+    ctx.textAlign = 'center';
+    ctx.fillText(bj.playingSplit ? 'HAND 2 \u25B8' : 'HAND 2', cx, py + 320);
+    const splitDone = _bjDrawHand(bj.splitHand, splitBaseX, py + 330, -1);
     if (splitDone) {
-      const stx = px + 50 + bj.splitHand.length * 56 + 12;
+      const stx = splitBaseX + bj.splitHand.length * 56 + 12;
       ctx.font = 'bold 18px monospace';
       ctx.fillStyle = _bjIsBust(bj.splitHand) ? '#ff5555' : '#5fca80';
+      ctx.textAlign = 'left';
       ctx.fillText(_bjHandValue(bj.splitHand).toString(), stx, py + 370);
     }
   }
@@ -752,8 +757,9 @@ function _drawRoulette(px, py, pw, ph) {
   }
 
   // BETTING PHASE — compact layout: grid left, bets list right
-  const gridX = px + 16, gridY = py + 58;
   const cellW = 34, cellH = 26;
+  const _rlTotalW = cellW * 13 + 16 + 224;
+  const gridX = cx - _rlTotalW / 2, gridY = py + 58;
 
   // Zero
   ctx.fillStyle = '#006600';
@@ -851,7 +857,7 @@ function _drawRoulette(px, py, pw, ph) {
   }
 
   // Right panel: bets list + actions
-  const listX = px + pw - 230, listY = py + 58;
+  const listX = gridX + cellW * 13 + 16, listY = py + 58;
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath(); ctx.roundRect(listX - 8, listY - 8, 224, ph - 130, 8); ctx.fill();
   ctx.font = 'bold 14px monospace';
@@ -882,10 +888,12 @@ function _drawRoulette(px, py, pw, ph) {
 function _clickRoulette(mx, my, px, py, pw, ph) {
   const rl = casinoState.rl;
   if (rl.phase !== 'betting') return true;
-  const gridX = px + 16, gridY = py + 58;
+  const cx = px + pw / 2;
   const cellW = 34, cellH = 26;
+  const _rlTotalW = cellW * 13 + 16 + 224;
+  const gridX = cx - _rlTotalW / 2, gridY = py + 58;
   const obW = (cellW * 13) / 3 - 4, obH = 26;
-  const listX = px + pw - 230, listY = py + 58;
+  const listX = gridX + cellW * 13 + 16, listY = py + 58;
 
   if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
 
@@ -1251,7 +1259,8 @@ function _drawMines(px, py, pw, ph) {
   const gridSize = MINES_CONFIG.GRID_SIZE;
   const cellSize = 62;
   const gridW = gridSize * cellSize;
-  const gridX = cx - gridW / 2 - 50;
+  const totalContentW = gridW + 20 + 190;
+  const gridX = cx - totalContentW / 2;
   const gridY = py + 65;
   const isResult = mn.phase === 'result';
 
@@ -1372,7 +1381,8 @@ function _clickMines(mx, my, px, py, pw, ph) {
     const gridSize = MINES_CONFIG.GRID_SIZE;
     const cellSize = 62;
     const gridW = gridSize * cellSize;
-    const gridX = cx - gridW / 2 - 50;
+    const totalContentW = gridW + 20 + 190;
+    const gridX = cx - totalContentW / 2;
     const gridY = py + 65;
     const statsX = gridX + gridW + 20;
     if (mn.safeRevealed > 0 && _casinoHitBtn(mx, my, statsX, gridY + 185, 160, 42)) {
