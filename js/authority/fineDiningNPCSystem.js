@@ -439,6 +439,8 @@ function moveFDNPC(npc) {
     if (other.state === 'eating' || other.state === 'seated' ||
         other.state === 'waiting_cook' || other.state === 'watching_cook' ||
         other.state === 'at_host' || other.state === '_despawn') continue;
+    // Same-party members don't block each other — they walk as a group
+    if (other.partyId === npc.partyId) continue;
     const sx = npc.x - other.x;
     const sy = npc.y - other.y;
     const sd = Math.sqrt(sx * sx + sy * sy);
