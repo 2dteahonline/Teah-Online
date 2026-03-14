@@ -332,7 +332,11 @@ const ROLL_CHANCES = { 1: 0.20, 2: 0.10, 3: 0.05 }; // 65% = nothing
       addToInventory(createItem('melee', starterRod));
     }
   }
-  // Farming hoes are now pure tools (not inventory items) — managed by farmingState.equippedHoe
+  // Starter farming hoe — add to inventory as a tool item
+  if (!isInInventory('bronze_hoe')) {
+    const hoeData = HOE_TIERS[0];
+    addToInventory(createItem('melee', { ...hoeData, damage: 0, range: 70, critChance: 0, currentDurability: 999 }));
+  }
   addToInventory(createConsumable('potion', 'Health Potion', 3));
   playerEquip.gun = DEFAULT_GUN;
   playerEquip.melee = DEFAULT_MELEE;
