@@ -575,9 +575,15 @@ window.MafiaSystem = {
     }
   },
 
-  // After ejection animation finishes → return to playing
+  // After ejection animation finishes → return to playing (or end match if sabotage/win)
   _endEjection() {
     const mk = MafiaState;
+
+    // If this was a sabotage win or game-over message, end the match instead of returning to playing
+    if (mk.ejection.message && (mk.ejection.message.startsWith('Defeat') || mk.ejection.message.startsWith('Victory') || mk.ejection.message.startsWith('Impostors Win') || mk.ejection.message.startsWith('Crewmates Win'))) {
+      this.endMatch();
+      return;
+    }
 
     // Clear all bodies
     mk.bodies = [];
@@ -590,6 +596,9 @@ window.MafiaSystem = {
     mk.meeting = { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 };
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.lastMeetingEndFrame = typeof gameFrame !== 'undefined' ? gameFrame : 0;
+
+    // Check win conditions after ejection
+    this._checkWinConditions();
   },
 
 
@@ -830,6 +839,23 @@ window.MafiaSystem = {
 
     // Tick sabotage (cooldown, timer, fix checks, bot AI, win condition)
     this._tickSabotage();
+
+    // Tick bot AI — move crewmate bots around the map
+    for (const p of mk.participants) {
+      if (p.isBot && p.alive && p.role === 'crewmate') {
+        this._tickBotCrewmate(p);
+      }
+    }
+
+    // Update task progress (every 30 frames for perf)
+    if (typeof SkeldTasks !== 'undefined' && typeof SkeldTasks.getProgress === 'function') {
+      if ((typeof gameFrame !== 'undefined' ? gameFrame : 0) % 30 === 0) {
+        mk.taskProgress = SkeldTasks.getProgress();
+      }
+    }
+
+    // Check win conditions
+    this._checkWinConditions();
   },
 
   // ---- Meeting (discussion) phase tick ----
@@ -1089,6 +1115,52 @@ window.MafiaSystem = {
     // Freeze while sabotage fix panel is open
     if (typeof _sabPanel !== 'undefined' && _sabPanel.active) return true;
     return false;
+  },
+
+
+  // ===================== WIN CONDITION CHECKS =====================
+  _checkWinConditions() {
+    const mk = MafiaState;
+    if (mk.phase !== 'playing') return;
+
+    const aliveImpostors = this.getAliveImpostors();
+    const aliveCrewmates = this.getAliveCrewmates();
+
+    // Crewmate win: all impostors eliminated
+    if (aliveImpostors.length === 0) {
+      mk.ejection = {
+        name: null,
+        wasImpostor: false,
+        timer: MAFIA_GAME.EJECTION_TIME,
+        message: 'Crewmates Win — All impostors eliminated!',
+      };
+      mk.phase = 'ejecting';
+      return;
+    }
+
+    // Impostor win: impostors >= crewmates
+    if (aliveImpostors.length >= aliveCrewmates.length) {
+      mk.ejection = {
+        name: null,
+        wasImpostor: false,
+        timer: MAFIA_GAME.EJECTION_TIME,
+        message: 'Impostors Win — Crewmates outnumbered!',
+      };
+      mk.phase = 'ejecting';
+      return;
+    }
+
+    // Crewmate task win: all tasks completed
+    if (mk.taskProgress.total > 0 && mk.taskProgress.done >= mk.taskProgress.total) {
+      mk.ejection = {
+        name: null,
+        wasImpostor: false,
+        timer: MAFIA_GAME.EJECTION_TIME,
+        message: 'Crewmates Win — All tasks completed!',
+      };
+      mk.phase = 'ejecting';
+      return;
+    }
   },
 
 
