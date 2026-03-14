@@ -14,7 +14,7 @@ const farmingState = {
   active: false,
   tiles: [],           // { tx, ty, state, cropId, growthTimer }
   landLevel: 0,        // index into LAND_EXPANSIONS (persisted)
-  equippedHoe: null,   // hoe ID string, e.g. 'iron_hoe' (persisted)
+  equippedHoe: 'bronze_hoe',   // hoe ID string, e.g. 'iron_hoe' (persisted)
   selectedSeed: null,  // crop id currently selected for planting
   actionCooldown: 0,   // frames until next action allowed
   stats: {
