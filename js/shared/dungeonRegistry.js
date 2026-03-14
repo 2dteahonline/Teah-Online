@@ -57,9 +57,9 @@ const DUNGEON_REGISTRY = {
     music: '',
   },
   dungeon_5: {
-    name: 'Dungeon 5',
+    name: 'Wagashi: Heavenly Realm',
     maxFloors: 5,
-    returnLevel: '',
+    returnLevel: 'wagashi_01',
     hasHazards: false,
     spawnTX: 20,
     spawnTY: 20,

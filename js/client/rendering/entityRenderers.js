@@ -1508,6 +1508,11 @@ const ENTITY_RENDERERS = {
       ctx.fillRect(ex + 8, by + 4, cw - 16, rowH * 0.3);
   },
 
+  diner_booth_table: (e, ctx, ex, ey, w, h) => {
+      // Solid table portion — rendered as part of booth visual, so just invisible here
+      // (the diner_booth renderer already draws the full booth with table)
+  },
+
   diner_booth_seat: (e, ctx, ex, ey, w, h) => {
       const cw = (w || 1) * TILE, ch = (h || 1) * TILE;
       // Subtle red cushion marker
@@ -3949,6 +3954,122 @@ ENTITY_RENDERERS.earth205_exit = (e, ctx, ex, ey, w, h) => {
     ctx.fillText("\u27F5 EXIT \u27F6", ex + w * TILE / 2, ey + h * TILE + 14);
     ctx.textAlign = "left";
 };
+// ===================== WAGASHI DUNGEON ENTITY RENDERERS =====================
+ENTITY_RENDERERS.building_wagashi = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const t = Date.now() / 1000;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(ex+cw/2+6, ey+ch+7, cw*0.48, 9, 0, 0, Math.PI*2); ctx.fill();
+    // Main structure — dark wood
+    ctx.fillStyle = '#1a0e08';
+    ctx.fillRect(ex+6, ey+ch*0.35, cw-12, ch*0.65);
+    // Wooden panel lines
+    ctx.strokeStyle = '#2a1810'; ctx.lineWidth = 1;
+    for (let r = 0; r < 5; r++) {
+      const ly = ey+ch*0.40+r*ch*0.12;
+      ctx.beginPath(); ctx.moveTo(ex+8, ly); ctx.lineTo(ex+cw-8, ly); ctx.stroke();
+    }
+    // Second tier (smaller)
+    ctx.fillStyle = '#1a0e08';
+    ctx.fillRect(ex+cw*0.12, ey+ch*0.18, cw*0.76, ch*0.20);
+    // Pagoda roof — bottom tier
+    ctx.fillStyle = '#8b1a1a';
+    ctx.beginPath();
+    ctx.moveTo(ex-8, ey+ch*0.37); ctx.lineTo(ex+cw*0.5, ey+ch*0.28);
+    ctx.lineTo(ex+cw+8, ey+ch*0.37);
+    ctx.closePath(); ctx.fill();
+    // Roof edge trim
+    ctx.strokeStyle = '#cc9933'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ex-8, ey+ch*0.37); ctx.lineTo(ex+cw*0.5, ey+ch*0.28);
+    ctx.lineTo(ex+cw+8, ey+ch*0.37);
+    ctx.stroke();
+    // Pagoda roof — top tier
+    ctx.fillStyle = '#8b1a1a';
+    ctx.beginPath();
+    ctx.moveTo(ex+cw*0.08, ey+ch*0.20); ctx.lineTo(ex+cw*0.5, ey+ch*0.06);
+    ctx.lineTo(ex+cw*0.92, ey+ch*0.20);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#cc9933'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ex+cw*0.08, ey+ch*0.20); ctx.lineTo(ex+cw*0.5, ey+ch*0.06);
+    ctx.lineTo(ex+cw*0.92, ey+ch*0.20);
+    ctx.stroke();
+    // Roof finial (spire)
+    ctx.fillStyle = '#cc9933';
+    ctx.fillRect(ex+cw/2-1, ey-4, 2, ch*0.08);
+    ctx.beginPath(); ctx.arc(ex+cw/2, ey-4, 3, 0, Math.PI*2); ctx.fill();
+    // Shoji screen windows
+    const winGlow = 0.5 + Math.sin(t * 1.2) * 0.2;
+    for (let pw = 0; pw < 3; pw++) {
+      const px = ex + cw*0.2 + pw * cw*0.25;
+      const py = ey + ch*0.55;
+      ctx.fillStyle = `rgba(255,220,160,${winGlow * 0.25})`;
+      ctx.fillRect(px-6, py-10, 12, 20);
+      ctx.strokeStyle = '#2a1810'; ctx.lineWidth = 1;
+      ctx.strokeRect(px-6, py-10, 12, 20);
+      // Shoji grid
+      ctx.beginPath(); ctx.moveTo(px, py-10); ctx.lineTo(px, py+10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px-6, py); ctx.lineTo(px+6, py); ctx.stroke();
+    }
+    // Entrance lantern glow
+    ctx.fillStyle = `rgba(255,80,40,${winGlow * 0.5})`;
+    ctx.beginPath(); ctx.arc(ex+cw/2, ey+ch*0.78, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = `rgba(255,80,40,${winGlow * 0.12})`;
+    ctx.beginPath(); ctx.arc(ex+cw/2, ey+ch*0.78, 14, 0, Math.PI*2); ctx.fill();
+    // Sign
+    ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(204,153,51,${winGlow * 0.9})`;
+    ctx.fillText('WAGASHI', ex + cw/2, ey + ch*0.15);
+    ctx.textAlign = 'left';
+};
+ENTITY_RENDERERS.wagashi_entrance = (e, ctx, ex, ey, w, h) => {
+    const ew = w * TILE, eh = h * TILE;
+    const t = Date.now() / 1000;
+    const glow = 0.4 + Math.sin(t * 2) * 0.15;
+    ctx.fillStyle = `rgba(204,153,51,${glow * 0.15})`;
+    ctx.fillRect(ex, ey, ew, eh);
+    ctx.strokeStyle = `rgba(204,153,51,${glow * 0.5})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = `rgba(204,153,51,${glow * 0.7})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u25B2 ENTER", ex + ew/2, ey + eh + 14);
+    ctx.textAlign = "left";
+};
+ENTITY_RENDERERS.wagashi_exit = (e, ctx, ex, ey, w, h) => {
+    const t = Date.now() / 1000;
+    ctx.fillStyle = `rgba(204,153,51,${0.15 + Math.sin(t * 2) * 0.05})`;
+    ctx.fillRect(ex + 4, ey + 4, w * TILE - 8, h * TILE - 8);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = `rgba(204,153,51,${0.6 + Math.sin(t * 3) * 0.2})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u27F5 EXIT \u27F6", ex + w * TILE / 2, ey + h * TILE + 14);
+    ctx.textAlign = "left";
+};
+ENTITY_RENDERERS.paper_lantern = (e, ctx, ex, ey) => {
+    const t = Date.now() / 1000;
+    const flicker = 0.5 + Math.sin(t * 2.5 + e.tx * 3 + e.ty * 1.7) * 0.15;
+    // Warm glow
+    ctx.fillStyle = `rgba(255,80,40,${flicker * 0.08})`;
+    ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2, 22, 0, Math.PI * 2); ctx.fill();
+    // String
+    ctx.strokeStyle = '#3a2a20'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ex + TILE/2, ey + TILE/2 - 14); ctx.lineTo(ex + TILE/2, ey + TILE/2 - 8); ctx.stroke();
+    // Lantern body (oval)
+    ctx.fillStyle = `rgba(200,40,30,${0.7 + flicker * 0.2})`;
+    ctx.beginPath(); ctx.ellipse(ex + TILE/2, ey + TILE/2, 5, 7, 0, 0, Math.PI * 2); ctx.fill();
+    // Gold trim bands
+    ctx.strokeStyle = `rgba(204,153,51,${0.6 + flicker * 0.2})`; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ex + TILE/2 - 5, ey + TILE/2 - 2); ctx.lineTo(ex + TILE/2 + 5, ey + TILE/2 - 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ex + TILE/2 - 5, ey + TILE/2 + 2); ctx.lineTo(ex + TILE/2 + 5, ey + TILE/2 + 2); ctx.stroke();
+    // Inner flame
+    ctx.fillStyle = `rgba(255,200,80,${flicker})`;
+    ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2, 2, 0, Math.PI * 2); ctx.fill();
+};
+
 ENTITY_RENDERERS.gas_lamp = (e, ctx, ex, ey) => {
     const t = Date.now() / 1000;
     const flicker = 0.5 + Math.sin(t * 3 + e.tx * 2) * 0.15;

@@ -1128,6 +1128,379 @@ const MOB_TYPES = {
     _contactDamageAura: { range: 60, damage: 8 }, _deathExplosion: { radius: 120, damage: 60 },
     deathColors: ["#4a6a4a","#3a5a3a","#6a8a6a","#1a3a1a"],
   },
+
+  // ===================== WAGASHI FLOOR 1: SILK NEST → BOAR TERRITORY =====================
+  // Section A — Silk Nest (waves 1-4)
+  silk_skitterer: {
+    name: "Silk Skitterer", hp: 200, speed: 4.5, damage: 28, killHeal: 8, goldReward: 5,
+    skin: "#c0b8c8", hair: "#9a90a8", shirt: "#b0a8b8", pants: "#8a8098", contactRange: 74,
+    ai: 'runner', _specials: ['snap_web'], specialCD: 360, // 6s — fast spider scout
+    deathColors: ["#c0b8c8","#b0a8b8","#d8d0e0","#8a8098"],
+  },
+  needleback_weaver: {
+    name: "Needleback Weaver", hp: 230, speed: 3.0, damage: 30, killHeal: 10, goldReward: 6,
+    skin: "#b8b0c0", hair: "#8a8098", shirt: "#a8a0b0", pants: "#7a7088", contactRange: 74,
+    ai: 'archer', _specials: ['silk_needle_fan'], specialCD: 540, // 9s — fires silk spike spread
+    arrowRate: 90, arrowSpeed: 9, arrowRange: 380, arrowBounces: 0, arrowLife: 450,
+    projectileStyle: 'silk_needle',
+    deathColors: ["#b8b0c0","#a8a0b0","#d0c8d8","#7a7088"],
+  },
+  brood_lantern_mite: {
+    name: "Brood Lantern Mite", hp: 250, speed: 3.0, damage: 28, killHeal: 12, goldReward: 7,
+    skin: "#d0c8b0", hair: "#b0a890", shirt: "#c8c0a8", pants: "#a0988a", contactRange: 76,
+    ai: 'witch', _specials: ['brood_glow'], specialCD: 720, // 12s — slow support that buffs allies speed
+    kiteRange: 300,
+    deathColors: ["#d0c8b0","#c8c0a8","#e8e0c8","#a0988a"],
+  },
+  silk_coffin_widow: {
+    name: "Silk Coffin Widow", hp: 280, speed: 3.2, damage: 35, killHeal: 15, goldReward: 8,
+    skin: "#a098b0", hair: "#7a7088", shirt: "#9088a0", pants: "#6a6078", contactRange: 76,
+    ai: 'grunt', _specials: ['wrap_tomb'], specialCD: 660, // 11s — delayed floor trap
+    deathColors: ["#a098b0","#9088a0","#b8b0c8","#6a6078"],
+  },
+
+  // Wagashi Floor 1 — Mini-Boss: Sichou (L5)
+  sichou: {
+    name: "Sichou", hp: 3500, speed: 3.8, damage: 45, killHeal: 40, goldReward: 30,
+    skin: "#d8d0e0", hair: "#a098b8", shirt: "#c8c0d8", pants: "#9088a8", contactRange: 80,
+    ai: 'runner', _specials: ['silk_snare', 'thread_shot', 'brood_call'],
+    isBoss: true, bossScale: 1.4, specialCD: 600, // 10s
+    deathColors: ["#d8d0e0","#c8c0d8","#f0e8f8","#9088a8"],
+  },
+
+  // Section B — Boar Territory (waves 6-9)
+  copperhide_hoglet: {
+    name: "Copperhide Hoglet", hp: 240, speed: 3.5, damage: 32, killHeal: 10, goldReward: 6,
+    skin: "#8a6a4a", hair: "#5a4020", shirt: "#7a5a3a", pants: "#5a4020", contactRange: 76,
+    ai: 'grunt', _specials: ['metal_skull_bash'], specialCD: 420, // 7s — short charge
+    deathColors: ["#8a6a4a","#7a5a3a","#aa8a6a","#5a4020"],
+  },
+  tusk_raider: {
+    name: "Tusk Raider", hp: 210, speed: 4.2, damage: 30, killHeal: 8, goldReward: 5,
+    skin: "#7a5a3a", hair: "#4a3010", shirt: "#6a4a2a", pants: "#4a3010", contactRange: 74,
+    ai: 'runner', _specials: ['dust_rush'], specialCD: 360, // 6s — dash + dust cloud
+    deathColors: ["#7a5a3a","#6a4a2a","#9a7a5a","#4a3010"],
+  },
+  bronzeback_crusher: {
+    name: "Bronzeback Crusher", hp: 280, speed: 3.0, damage: 34, killHeal: 15, goldReward: 8,
+    skin: "#9a7a50", hair: "#6a5030", shirt: "#8a6a40", pants: "#6a5030", contactRange: 78,
+    ai: 'tank', _specials: ['armor_brace'], specialCD: 660, // 11s — damage reduction
+    deathColors: ["#9a7a50","#8a6a40","#ba9a70","#6a5030"],
+  },
+  warboar_drummer: {
+    name: "Warboar Drummer", hp: 220, speed: 3.0, damage: 28, killHeal: 12, goldReward: 7,
+    skin: "#6a5030", hair: "#4a3010", shirt: "#5a4020", pants: "#3a2010", contactRange: 76,
+    ai: 'witch', _specials: ['battle_beat'], specialCD: 720, // 12s — buffs allies
+    kiteRange: 280,
+    deathColors: ["#6a5030","#5a4020","#8a7050","#3a2010"],
+  },
+
+  // Wagashi Floor 1 — Boss: Tongya (L10)
+  tongya: {
+    name: "Tongya", hp: 4000, speed: 3.0, damage: 50, killHeal: 50, goldReward: 40,
+    skin: "#aa8a60", hair: "#7a6030", shirt: "#9a7a50", pants: "#7a5a30", contactRange: 82,
+    ai: 'tank', _specials: ['titan_charge', 'war_stomp', 'boar_fury'],
+    isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
+    deathColors: ["#aa8a60","#9a7a50","#ccaa80","#7a5a30"],
+  },
+
+  // ===================== WAGASHI FLOOR 2: JADE TEMPLE → RUINED SANCTUM =====================
+  // Section A — Jade Temple (waves 1-4)
+  temple_fang_acolyte: {
+    name: "Temple Fang Acolyte", hp: 280, speed: 4.0, damage: 32, killHeal: 10, goldReward: 6,
+    skin: "#5a8a5a", hair: "#2a5a2a", shirt: "#4a7a4a", pants: "#2a5a2a", contactRange: 74,
+    ai: 'runner', _specials: ['venom_arc'], specialCD: 480, // 8s — poison arc
+    deathColors: ["#5a8a5a","#4a7a4a","#7aaa7a","#2a5a2a"],
+  },
+  jade_idol_watcher: {
+    name: "Jade Idol Watcher", hp: 340, speed: 3.2, damage: 36, killHeal: 14, goldReward: 8,
+    skin: "#4a7a5a", hair: "#2a5a3a", shirt: "#3a6a4a", pants: "#1a4a2a", contactRange: 76,
+    ai: 'grunt', _specials: ['jade_flash'], specialCD: 600, // 10s — slow/stun cone
+    deathColors: ["#4a7a5a","#3a6a4a","#6a9a7a","#1a4a2a"],
+  },
+  coil_priestess: {
+    name: "Coil Priestess", hp: 300, speed: 3.0, damage: 34, killHeal: 16, goldReward: 9,
+    skin: "#3a6a4a", hair: "#1a4a2a", shirt: "#2a5a3a", pants: "#1a3a1a", contactRange: 76,
+    ai: 'witch', _specials: ['snake_call'], specialCD: 780, // 13s — summons snakes
+    kiteRange: 320,
+    deathColors: ["#3a6a4a","#2a5a3a","#5a8a6a","#1a3a1a"],
+  },
+  jade_vein_stalker: {
+    name: "Jade Vein Stalker", hp: 310, speed: 4.0, damage: 38, killHeal: 12, goldReward: 7,
+    skin: "#5a9a6a", hair: "#3a7a4a", shirt: "#4a8a5a", pants: "#2a6a3a", contactRange: 74,
+    ai: 'runner', _specials: ['petrify_glint'], specialCD: 540, // 9s — delayed stun
+    deathColors: ["#5a9a6a","#4a8a5a","#7aba8a","#2a6a3a"],
+  },
+
+  // Wagashi Floor 2 — Mini-Boss: Jade Serpent (L15)
+  jade_serpent: {
+    name: "Jade Serpent", hp: 4500, speed: 3.8, damage: 50, killHeal: 40, goldReward: 35,
+    skin: "#3a8a5a", hair: "#1a6a3a", shirt: "#2a7a4a", pants: "#1a5a2a", contactRange: 80,
+    ai: 'runner', _specials: ['jade_glare', 'serpent_swarm', 'jade_spires'],
+    isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
+    deathColors: ["#3a8a5a","#2a7a4a","#5aaa7a","#1a5a2a"],
+  },
+
+  // Section B — Ruined Sanctum (waves 6-9)
+  rubblebound_sentinel: {
+    name: "Rubblebound Sentinel", hp: 380, speed: 3.0, damage: 38, killHeal: 15, goldReward: 8,
+    skin: "#7a7060", hair: "#5a5040", shirt: "#6a6050", pants: "#4a4030", contactRange: 78,
+    ai: 'tank', _specials: ['rubble_toss'], specialCD: 600, // 10s — throws debris
+    deathColors: ["#7a7060","#6a6050","#9a9080","#4a4030"],
+  },
+  pillarbreaker_brute: {
+    name: "Pillarbreaker Brute", hp: 340, speed: 3.4, damage: 40, killHeal: 12, goldReward: 7,
+    skin: "#6a6050", hair: "#4a4030", shirt: "#5a5040", pants: "#3a3020", contactRange: 76,
+    ai: 'grunt', _specials: ['ground_split'], specialCD: 540, // 9s — line attack
+    deathColors: ["#6a6050","#5a5040","#8a8070","#3a3020"],
+  },
+  dustcore_totem: {
+    name: "Dustcore Totem", hp: 350, speed: 0, damage: 32, killHeal: 18, goldReward: 9,
+    skin: "#8a8070", hair: "#6a6050", shirt: "#7a7060", pants: "#5a5040", contactRange: 76,
+    ai: 'stationary', _specials: ['stone_ward'], specialCD: 720, // 12s — buffs ally defense
+    deathColors: ["#8a8070","#7a7060","#aaa090","#5a5040"],
+  },
+  mausoleum_warden: {
+    name: "Mausoleum Warden", hp: 360, speed: 3.2, damage: 36, killHeal: 14, goldReward: 8,
+    skin: "#5a5a48", hair: "#3a3a28", shirt: "#4a4a38", pants: "#2a2a18", contactRange: 76,
+    ai: 'grunt', _specials: ['aftershock_ring'], specialCD: 660, // 11s — delayed AoE
+    deathColors: ["#5a5a48","#4a4a38","#7a7a68","#2a2a18"],
+  },
+
+  // Wagashi Floor 2 — Boss: Stone Golem Guardian (L20)
+  stone_golem_guardian: {
+    name: "Stone Golem Guardian", hp: 5000, speed: 2.6, damage: 55, killHeal: 50, goldReward: 45,
+    skin: "#6a6a5a", hair: "#4a4a3a", shirt: "#5a5a4a", pants: "#3a3a2a", contactRange: 82,
+    ai: 'tank', _specials: ['earthbreaker_slam', 'boulder_hurl', 'stonehide'],
+    isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
+    deathColors: ["#6a6a5a","#5a5a4a","#8a8a7a","#3a3a2a"],
+  },
+
+  // ===================== WAGASHI FLOOR 3: STORM PALACE → INFERNO BASTION =====================
+  // Section A — Storm Palace (waves 1-4)
+  tempest_spearman: {
+    name: "Tempest Spearman", hp: 380, speed: 3.6, damage: 42, killHeal: 14, goldReward: 8,
+    skin: "#5a7a8a", hair: "#2a4a5a", shirt: "#4a6a7a", pants: "#2a4a5a", contactRange: 76,
+    ai: 'grunt', _specials: ['static_lunge'], specialCD: 420, // 7s — lightning charge
+    deathColors: ["#5a7a8a","#4a6a7a","#7a9aaa","#2a4a5a"],
+  },
+  cloudscale_archer: {
+    name: "Cloudscale Archer", hp: 400, speed: 3.0, damage: 40, killHeal: 16, goldReward: 9,
+    skin: "#6a8a9a", hair: "#3a5a6a", shirt: "#5a7a8a", pants: "#3a5a6a", contactRange: 74,
+    ai: 'archer', _specials: ['charged_burst_arrow'], specialCD: 540, // 9s — AoE arrow
+    arrowRate: 85, arrowSpeed: 9, arrowRange: 420, arrowBounces: 0, arrowLife: 480,
+    projectileStyle: 'lightning_arrow',
+    deathColors: ["#6a8a9a","#5a7a8a","#8aaaba","#3a5a6a"],
+  },
+  tideblade_disciple: {
+    name: "Tideblade Disciple", hp: 420, speed: 3.4, damage: 44, killHeal: 14, goldReward: 8,
+    skin: "#4a6a7a", hair: "#2a4a5a", shirt: "#3a5a6a", pants: "#1a3a4a", contactRange: 76,
+    ai: 'grunt', _specials: ['wave_cut'], specialCD: 480, // 8s — water slash projectile
+    deathColors: ["#4a6a7a","#3a5a6a","#6a8a9a","#1a3a4a"],
+  },
+  thunder_crest_knight: {
+    name: "Thunder Crest Knight", hp: 460, speed: 3.2, damage: 46, killHeal: 16, goldReward: 9,
+    skin: "#7a8a9a", hair: "#4a5a6a", shirt: "#6a7a8a", pants: "#4a5a6a", contactRange: 76,
+    ai: 'grunt', _specials: ['lightning_seal'], specialCD: 600, // 10s — delayed lightning strike
+    deathColors: ["#7a8a9a","#6a7a8a","#9aaaba","#4a5a6a"],
+  },
+
+  // Wagashi Floor 3 — Mini-Boss: Azure Dragon (L25)
+  azure_dragon: {
+    name: "Azure Dragon", hp: 5500, speed: 4.0, damage: 55, killHeal: 50, goldReward: 40,
+    skin: "#3a6a8a", hair: "#1a4a6a", shirt: "#2a5a7a", pants: "#1a3a5a", contactRange: 80,
+    ai: 'runner', _specials: ['lightning_mark', 'tidal_wave', 'cyclone_guard'],
+    isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
+    deathColors: ["#3a6a8a","#2a5a7a","#5a8aaa","#1a3a5a"],
+  },
+
+  // Section B — Inferno Bastion (waves 6-9)
+  ember_guard: {
+    name: "Ember Guard", hp: 440, speed: 3.6, damage: 44, killHeal: 14, goldReward: 8,
+    skin: "#8a4a2a", hair: "#5a2a0a", shirt: "#7a3a1a", pants: "#5a2a0a", contactRange: 76,
+    ai: 'grunt', _specials: ['cinder_step'], specialCD: 420, // 7s — dash + fire patch
+    deathColors: ["#8a4a2a","#7a3a1a","#aa6a4a","#5a2a0a"],
+  },
+  furnace_hound: {
+    name: "Furnace Hound", hp: 400, speed: 4.5, damage: 42, killHeal: 12, goldReward: 7,
+    skin: "#6a2a0a", hair: "#3a1a0a", shirt: "#5a1a0a", pants: "#3a1a0a", contactRange: 74,
+    ai: 'runner', _specials: ['coal_breath'], specialCD: 480, // 8s — fire cone
+    deathColors: ["#6a2a0a","#5a1a0a","#8a4a2a","#3a1a0a"],
+  },
+  ashen_banner_monk: {
+    name: "Ashen Banner Monk", hp: 420, speed: 3.0, damage: 38, killHeal: 18, goldReward: 10,
+    skin: "#4a2a1a", hair: "#2a1a0a", shirt: "#3a1a0a", pants: "#1a0a0a", contactRange: 76,
+    ai: 'witch', _specials: ['war_ember_chant'], specialCD: 720, // 12s — buffs ally damage
+    kiteRange: 300,
+    deathColors: ["#4a2a1a","#3a1a0a","#6a4a3a","#1a0a0a"],
+  },
+  crimson_furnace_captain: {
+    name: "Crimson Furnace Captain", hp: 480, speed: 3.4, damage: 48, killHeal: 20, goldReward: 10,
+    skin: "#9a3a1a", hair: "#6a2a0a", shirt: "#8a2a0a", pants: "#5a1a0a", contactRange: 78,
+    ai: 'grunt', _specials: ['magma_breaker'], specialCD: 540, // 9s — fire line eruption
+    deathColors: ["#9a3a1a","#8a2a0a","#ba5a3a","#5a1a0a"],
+  },
+
+  // Wagashi Floor 3 — Boss: Jaja (L30)
+  jaja: {
+    name: "Jaja", hp: 6000, speed: 3.0, damage: 60, killHeal: 60, goldReward: 50,
+    skin: "#aa4a1a", hair: "#7a2a0a", shirt: "#9a3a0a", pants: "#6a1a0a", contactRange: 82,
+    ai: 'tank', _specials: ['inferno_crash', 'blazing_advance', 'ember_mantle'],
+    isBoss: true, bossScale: 1.6, specialCD: 480, // 8s
+    deathColors: ["#aa4a1a","#9a3a0a","#cc6a3a","#6a1a0a"],
+  },
+
+  // ===================== WAGASHI FLOOR 4: EXECUTION GROUNDS → VOID SANCTUM =====================
+  // Section A — Execution Grounds (waves 1-4)
+  ashen_blade_retainer: {
+    name: "Ashen Blade Retainer", hp: 470, speed: 3.8, damage: 46, killHeal: 16, goldReward: 9,
+    skin: "#4a4a4a", hair: "#2a2a2a", shirt: "#3a3a3a", pants: "#1a1a1a", contactRange: 76,
+    ai: 'grunt', _specials: ['draw_cut'], specialCD: 360, // 6s — fast line slash
+    deathColors: ["#4a4a4a","#3a3a3a","#6a6a6a","#1a1a1a"],
+  },
+  lantern_veil_assassin: {
+    name: "Lantern Veil Assassin", hp: 450, speed: 5.0, damage: 42, killHeal: 15, goldReward: 8,
+    skin: "#3a3a3a", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#0a0a0a", contactRange: 74,
+    ai: 'runner', _specials: ['afterimage_dash'], specialCD: 360, // 6s — dash through player
+    deathColors: ["#3a3a3a","#2a2a2a","#5a5a5a","#0a0a0a"],
+  },
+  blood_script_archer: {
+    name: "Blood Script Archer", hp: 480, speed: 3.5, damage: 44, killHeal: 18, goldReward: 10,
+    skin: "#5a3a3a", hair: "#3a1a1a", shirt: "#4a2a2a", pants: "#2a0a0a", contactRange: 74,
+    ai: 'archer', _specials: ['blood_seal_shot'], specialCD: 540, // 9s — delayed ranged burst
+    arrowRate: 80, arrowSpeed: 9, arrowRange: 440, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'blood_arrow',
+    deathColors: ["#5a3a3a","#4a2a2a","#7a5a5a","#2a0a0a"],
+  },
+  crimson_gate_executioner: {
+    name: "Crimson Gate Executioner", hp: 550, speed: 3.5, damage: 52, killHeal: 22, goldReward: 11,
+    skin: "#4a2a2a", hair: "#2a0a0a", shirt: "#3a1a1a", pants: "#1a0a0a", contactRange: 78,
+    ai: 'tank', _specials: ['judgment_drop'], specialCD: 600, // 10s — line shockwave
+    deathColors: ["#4a2a2a","#3a1a1a","#6a4a4a","#1a0a0a"],
+  },
+
+  // Wagashi Floor 4 — Mini-Boss: Gensai (L35)
+  gensai: {
+    name: "Gensai", hp: 6500, speed: 4.5, damage: 60, killHeal: 50, goldReward: 45,
+    skin: "#3a2a2a", hair: "#1a0a0a", shirt: "#2a1a1a", pants: "#0a0a0a", contactRange: 80,
+    ai: 'runner', _specials: ['shadow_step', 'blood_crescent', 'demon_cleaver'],
+    isBoss: true, bossScale: 1.4, specialCD: 480, // 8s
+    deathColors: ["#3a2a2a","#2a1a1a","#5a4a4a","#0a0a0a"],
+  },
+
+  // Section B — Void Sanctum (waves 6-9)
+  lunar_dust_hare: {
+    name: "Lunar Dust Hare", hp: 460, speed: 5.0, damage: 44, killHeal: 15, goldReward: 8,
+    skin: "#b0a8c0", hair: "#8a80a0", shirt: "#a098b0", pants: "#7a7090", contactRange: 74,
+    ai: 'runner', _specials: ['dust_pop'], specialCD: 360, // 6s — teleport + burst
+    deathColors: ["#b0a8c0","#a098b0","#d0c8e0","#7a7090"],
+  },
+  crescent_mirror_wisp: {
+    name: "Crescent Mirror Wisp", hp: 480, speed: 3.5, damage: 42, killHeal: 18, goldReward: 9,
+    skin: "#c0b8d0", hair: "#9a90b0", shirt: "#b0a8c0", pants: "#8a80a0", contactRange: 76,
+    ai: 'witch', _specials: ['mirror_split'], specialCD: 660, // 11s — decoy + shot
+    kiteRange: 300,
+    deathColors: ["#c0b8d0","#b0a8c0","#e0d8f0","#8a80a0"],
+  },
+  gravity_ear_monk: {
+    name: "Gravity Ear Monk", hp: 500, speed: 3.5, damage: 46, killHeal: 20, goldReward: 10,
+    skin: "#9a90b0", hair: "#6a6080", shirt: "#8a80a0", pants: "#5a5070", contactRange: 76,
+    ai: 'witch', _specials: ['gravity_press'], specialCD: 600, // 10s — slow zone
+    kiteRange: 280,
+    deathColors: ["#9a90b0","#8a80a0","#bab0d0","#5a5070"],
+  },
+  eclipse_burrower: {
+    name: "Eclipse Burrower", hp: 520, speed: 4.5, damage: 50, killHeal: 18, goldReward: 9,
+    skin: "#7a70a0", hair: "#4a4060", shirt: "#6a6090", pants: "#3a3050", contactRange: 74,
+    ai: 'runner', _specials: ['rift_leap'], specialCD: 420, // 7s — blink pounce
+    deathColors: ["#7a70a0","#6a6090","#9a90c0","#3a3050"],
+  },
+
+  // Wagashi Floor 4 — Boss: Moon Rabbit (L40)
+  moon_rabbit: {
+    name: "Moon Rabbit", hp: 7000, speed: 3.8, damage: 65, killHeal: 60, goldReward: 55,
+    skin: "#d0c8e0", hair: "#a098c0", shirt: "#c0b8d0", pants: "#9088b0", contactRange: 82,
+    ai: 'archer', _specials: ['gravity_well', 'moon_rift_orb', 'phase_skip'],
+    isBoss: true, bossScale: 1.5, specialCD: 480, // 8s
+    arrowRate: 90, arrowSpeed: 9, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'moon_bolt',
+    bulletColor: { main: '#c0a0e0', core: '#e8d8ff', glow: 'rgba(192,160,224,0.3)' },
+    deathColors: ["#d0c8e0","#c0b8d0","#f0e8ff","#9088b0"],
+  },
+
+  // ===================== WAGASHI FLOOR 5: DEVOURING MAW → UNSEALED HEAVEN =====================
+  // Section A — Devouring Maw (waves 1-4)
+  miregulp_tadpole: {
+    name: "Miregulp Tadpole", hp: 520, speed: 4.5, damage: 48, killHeal: 18, goldReward: 9,
+    skin: "#5a6a4a", hair: "#3a4a2a", shirt: "#4a5a3a", pants: "#2a3a1a", contactRange: 74,
+    ai: 'runner', _specials: ['mire_spit'], specialCD: 420, // 7s — spit projectile
+    deathColors: ["#5a6a4a","#4a5a3a","#7a8a6a","#2a3a1a"],
+  },
+  gulchspine_bloater: {
+    name: "Gulchspine Bloater", hp: 600, speed: 3.5, damage: 52, killHeal: 20, goldReward: 10,
+    skin: "#4a5a3a", hair: "#2a3a1a", shirt: "#3a4a2a", pants: "#1a2a0a", contactRange: 76,
+    ai: 'grunt', _specials: ['dread_belch'], specialCD: 540, // 9s — cone AoE
+    deathColors: ["#4a5a3a","#3a4a2a","#6a7a5a","#1a2a0a"],
+  },
+  hymn_eater_toadlet: {
+    name: "Hymn Eater Toadlet", hp: 560, speed: 3.5, damage: 48, killHeal: 22, goldReward: 11,
+    skin: "#5a4a5a", hair: "#3a2a3a", shirt: "#4a3a4a", pants: "#2a1a2a", contactRange: 76,
+    ai: 'witch', _specials: ['maw_hymn'], specialCD: 660, // 11s — debuff aura
+    kiteRange: 300,
+    deathColors: ["#5a4a5a","#4a3a4a","#7a6a7a","#2a1a2a"],
+  },
+  abyssal_swallower: {
+    name: "Abyssal Swallower", hp: 650, speed: 3.5, damage: 56, killHeal: 25, goldReward: 12,
+    skin: "#3a3a4a", hair: "#1a1a2a", shirt: "#2a2a3a", pants: "#0a0a1a", contactRange: 78,
+    ai: 'tank', _specials: ['dark_gulp'], specialCD: 600, // 10s — pull + damage
+    deathColors: ["#3a3a4a","#2a2a3a","#5a5a6a","#0a0a1a"],
+  },
+
+  // Wagashi Floor 5 — Mini-Boss: Celestial Toad (L45)
+  celestial_toad: {
+    name: "Celestial Toad", hp: 7500, speed: 3.5, damage: 65, killHeal: 60, goldReward: 50,
+    skin: "#4a5a4a", hair: "#2a3a2a", shirt: "#3a4a3a", pants: "#1a2a1a", contactRange: 82,
+    ai: 'tank', _specials: ['devouring_pull', 'void_spit', 'corruption_mire'],
+    isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
+    deathColors: ["#4a5a4a","#3a4a3a","#6a7a6a","#1a2a1a"],
+  },
+
+  // Section B — Unsealed Heaven (waves 6-9)
+  shrine_shard_monkey: {
+    name: "Shrine Shard Monkey", hp: 540, speed: 5.0, damage: 50, killHeal: 18, goldReward: 9,
+    skin: "#2a2a2a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 74,
+    ai: 'runner', _specials: ['shard_toss'], specialCD: 360, // 6s — ranged chip
+    deathColors: ["#2a2a2a","#1a1a1a","#4a4a4a","#0a0a0a"],
+  },
+  seal_fragment_sprite: {
+    name: "Seal Fragment Sprite", hp: 580, speed: 3.5, damage: 48, killHeal: 22, goldReward: 11,
+    skin: "#9a8a40", hair: "#7a6a20", shirt: "#8a7a30", pants: "#6a5a10", contactRange: 76,
+    ai: 'witch', _specials: ['minor_orb_pulse'], specialCD: 600, // 10s — orb burst
+    kiteRange: 300,
+    deathColors: ["#9a8a40","#8a7a30","#baaa60","#6a5a10"],
+  },
+  thundertail_ape: {
+    name: "Thundertail Ape", hp: 620, speed: 3.8, damage: 54, killHeal: 20, goldReward: 10,
+    skin: "#3a3a3a", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#0a0a0a", contactRange: 76,
+    ai: 'grunt', _specials: ['thunder_tail_crash'], specialCD: 480, // 8s — ground slam
+    deathColors: ["#3a3a3a","#2a2a2a","#5a5a5a","#0a0a0a"],
+  },
+  heavens_gate_breaker: {
+    name: "Heaven's Gate Breaker", hp: 650, speed: 3.5, damage: 58, killHeal: 25, goldReward: 12,
+    skin: "#8a7a30", hair: "#6a5a10", shirt: "#7a6a20", pants: "#5a4a0a", contactRange: 78,
+    ai: 'tank', _specials: ['seal_rupture'], specialCD: 540, // 9s — AoE shockwave
+    deathColors: ["#8a7a30","#7a6a20","#aa9a50","#5a4a0a"],
+  },
+
+  // Wagashi Floor 5 — Final Boss: Lord Sarugami (L50)
+  lord_sarugami: {
+    name: "Lord Sarugami", hp: 8500, speed: 4.0, damage: 75, killHeal: 70, goldReward: 65,
+    skin: "#1a1a2a", hair: "#0a0a1a", shirt: "#2a1a3a", pants: "#0a0a1a", contactRange: 84,
+    ai: 'runner', _specials: ['black_orb_sentinels', 'orb_bomb_command', 'divine_form_shift'],
+    isBoss: true, bossScale: 1.6, specialCD: 420, // 7s
+    bulletColor: { main: '#1a1a3a', core: '#4a3a6a', glow: 'rgba(30,20,60,0.4)' },
+    deathColors: ["#1a1a2a","#2a1a3a","#3a3a5a","#0a0a1a"],
+  },
 };
 
 // Per-type caps per wave
@@ -1193,6 +1566,26 @@ const MOB_CAPS = {
   hazmat_grunt: 4, sludge_crawler: 4, irradiated_walker: 3, chem_brute: 3,
   failed_specimen: 4, reactor_technician: 3, containment_breach_blob: 3, lockdown_sentinel_e205: 3,
   lady_elixir: 1, nofaux: 1,
+  // Wagashi Floor 1
+  silk_skitterer: 8, needleback_weaver: 8, brood_lantern_mite: 8, silk_coffin_widow: 8,
+  copperhide_hoglet: 8, tusk_raider: 8, bronzeback_crusher: 8, warboar_drummer: 8,
+  sichou: 1, tongya: 1,
+  // Wagashi Floor 2
+  temple_fang_acolyte: 8, jade_idol_watcher: 8, coil_priestess: 8, jade_vein_stalker: 8,
+  rubblebound_sentinel: 8, pillarbreaker_brute: 8, dustcore_totem: 8, mausoleum_warden: 8,
+  jade_serpent: 1, stone_golem_guardian: 1,
+  // Wagashi Floor 3
+  tempest_spearman: 8, cloudscale_archer: 8, tideblade_disciple: 8, thunder_crest_knight: 8,
+  ember_guard: 8, furnace_hound: 8, ashen_banner_monk: 8, crimson_furnace_captain: 8,
+  azure_dragon: 1, jaja: 1,
+  // Wagashi Floor 4
+  ashen_blade_retainer: 8, lantern_veil_assassin: 8, blood_script_archer: 8, crimson_gate_executioner: 8,
+  lunar_dust_hare: 8, crescent_mirror_wisp: 8, gravity_ear_monk: 8, eclipse_burrower: 8,
+  gensai: 1, moon_rabbit: 1,
+  // Wagashi Floor 5
+  miregulp_tadpole: 8, gulchspine_bloater: 8, hymn_eater_toadlet: 8, abyssal_swallower: 8,
+  shrine_shard_monkey: 8, seal_fragment_sprite: 8, thundertail_ape: 8, heavens_gate_breaker: 8,
+  celestial_toad: 1, lord_sarugami: 1,
 };
 
 const CROWD_EXEMPT_TYPES = new Set(["runner", "golem", "mini_golem", "archer", "healer", "drone_lookout", "renegade_sniper", "the_don",

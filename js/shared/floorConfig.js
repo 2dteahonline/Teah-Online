@@ -908,12 +908,216 @@ const _earth205Config = {
   }),
 };
 
+// ===================== WAGASHI (DUNGEON 5) =====================
+const _wagashiConfig = {
+  1: _buildFloor({
+    name: 'Silk Nest & Boar Territory',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'silk_nest',
+        waveComps: {
+          1: { primary: [{ type: 'silk_skitterer', weight: 3 }], support: [{ type: 'needleback_weaver', weight: 1 }], primaryPct: 0.85, theme: 'Silk Skitterers' },
+          2: { primary: [{ type: 'needleback_weaver', weight: 3 }, { type: 'silk_skitterer', weight: 2 }], support: [{ type: 'brood_lantern_mite', weight: 1 }], primaryPct: 0.7, theme: 'Needleback Weavers' },
+          3: { primary: [{ type: 'brood_lantern_mite', weight: 3 }, { type: 'needleback_weaver', weight: 1 }], support: [{ type: 'silk_skitterer', weight: 2 }, { type: 'silk_coffin_widow', weight: 1 }], primaryPct: 0.6, theme: 'Brood Lantern Mites' },
+          4: { primary: [{ type: 'silk_coffin_widow', weight: 3 }, { type: 'brood_lantern_mite', weight: 2 }], support: [{ type: 'silk_skitterer', weight: 1 }, { type: 'needleback_weaver', weight: 1 }], primaryPct: 0.6, theme: 'Silk Coffin Widows' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'sichou_arena',
+        boss: 'sichou',
+        bossComp: { theme: 'Sichou', forceGolem: false, forceBoss: 'sichou', support: [{ type: 'silk_skitterer', count: 2 }, { type: 'needleback_weaver', count: 2 }, { type: 'silk_coffin_widow', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'boar_territory',
+        waveComps: {
+          6: { primary: [{ type: 'copperhide_hoglet', weight: 3 }], support: [{ type: 'silk_skitterer', weight: 1 }], primaryPct: 0.8, theme: 'Copperhide Hoglets' },
+          7: { primary: [{ type: 'tusk_raider', weight: 3 }, { type: 'copperhide_hoglet', weight: 1 }], support: [{ type: 'needleback_weaver', weight: 1 }], primaryPct: 0.7, theme: 'Tusk Raiders' },
+          8: { primary: [{ type: 'bronzeback_crusher', weight: 3 }, { type: 'tusk_raider', weight: 1 }], support: [{ type: 'copperhide_hoglet', weight: 1 }], primaryPct: 0.65, theme: 'Bronzeback Crushers' },
+          9: { primary: [{ type: 'warboar_drummer', weight: 2 }, { type: 'bronzeback_crusher', weight: 2 }], support: [{ type: 'copperhide_hoglet', weight: 1 }, { type: 'tusk_raider', weight: 1 }], primaryPct: 0.6, theme: 'Warboar Drummers' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'tongya_arena',
+        boss: 'tongya',
+        bossComp: { theme: 'Tongya', forceGolem: false, forceBoss: 'tongya', support: [{ type: 'copperhide_hoglet', count: 2 }, { type: 'tusk_raider', count: 2 }, { type: 'bronzeback_crusher', count: 1 }, { type: 'warboar_drummer', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#2a2228', floor2: '#282026', wall: '#1a1218', wallAccent: '#aa88cc', accent2: '#cc8844', gridLine: '#3a3238' },
+    hazards: [],
+  }),
+
+  2: _buildFloor({
+    name: 'Jade Temple & Ruined Sanctum',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'jade_temple',
+        waveComps: {
+          1: { primary: [{ type: 'temple_fang_acolyte', weight: 3 }], support: [{ type: 'jade_idol_watcher', weight: 1 }], primaryPct: 0.85, theme: 'Temple Fang Acolytes' },
+          2: { primary: [{ type: 'jade_idol_watcher', weight: 3 }, { type: 'temple_fang_acolyte', weight: 2 }], support: [{ type: 'coil_priestess', weight: 1 }], primaryPct: 0.7, theme: 'Jade Idol Watchers' },
+          3: { primary: [{ type: 'coil_priestess', weight: 3 }, { type: 'jade_idol_watcher', weight: 1 }], support: [{ type: 'temple_fang_acolyte', weight: 2 }, { type: 'jade_vein_stalker', weight: 1 }], primaryPct: 0.6, theme: 'Coil Priestesses' },
+          4: { primary: [{ type: 'jade_vein_stalker', weight: 3 }, { type: 'coil_priestess', weight: 2 }], support: [{ type: 'temple_fang_acolyte', weight: 1 }, { type: 'jade_idol_watcher', weight: 1 }], primaryPct: 0.6, theme: 'Jade Vein Stalkers' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'jade_serpent_arena',
+        boss: 'jade_serpent',
+        bossComp: { theme: 'Jade Serpent', forceGolem: false, forceBoss: 'jade_serpent', support: [{ type: 'temple_fang_acolyte', count: 2 }, { type: 'jade_idol_watcher', count: 2 }, { type: 'jade_vein_stalker', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'ruined_sanctum',
+        waveComps: {
+          6: { primary: [{ type: 'rubblebound_sentinel', weight: 3 }], support: [{ type: 'temple_fang_acolyte', weight: 1 }], primaryPct: 0.8, theme: 'Rubblebound Sentinels' },
+          7: { primary: [{ type: 'pillarbreaker_brute', weight: 3 }, { type: 'rubblebound_sentinel', weight: 1 }], support: [{ type: 'jade_idol_watcher', weight: 1 }], primaryPct: 0.7, theme: 'Pillarbreaker Brutes' },
+          8: { primary: [{ type: 'dustcore_totem', weight: 3 }, { type: 'pillarbreaker_brute', weight: 1 }], support: [{ type: 'rubblebound_sentinel', weight: 1 }], primaryPct: 0.65, theme: 'Dustcore Totems' },
+          9: { primary: [{ type: 'mausoleum_warden', weight: 2 }, { type: 'dustcore_totem', weight: 2 }], support: [{ type: 'rubblebound_sentinel', weight: 1 }, { type: 'pillarbreaker_brute', weight: 1 }], primaryPct: 0.6, theme: 'Mausoleum Wardens' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'stone_golem_arena',
+        boss: 'stone_golem_guardian',
+        bossComp: { theme: 'Stone Golem Guardian', forceGolem: false, forceBoss: 'stone_golem_guardian', support: [{ type: 'rubblebound_sentinel', count: 2 }, { type: 'pillarbreaker_brute', count: 2 }, { type: 'dustcore_totem', count: 1 }, { type: 'mausoleum_warden', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a2a1a', floor2: '#182818', wall: '#0a1a0a', wallAccent: '#44cc88', accent2: '#88aa44', gridLine: '#2a3a2a' },
+    hazards: [],
+  }),
+
+  3: _buildFloor({
+    name: 'Storm Palace & Inferno Bastion',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'storm_palace',
+        waveComps: {
+          1: { primary: [{ type: 'tempest_spearman', weight: 3 }], support: [{ type: 'cloudscale_archer', weight: 1 }], primaryPct: 0.85, theme: 'Tempest Spearmen' },
+          2: { primary: [{ type: 'cloudscale_archer', weight: 3 }, { type: 'tempest_spearman', weight: 2 }], support: [{ type: 'tideblade_disciple', weight: 1 }], primaryPct: 0.7, theme: 'Cloudscale Archers' },
+          3: { primary: [{ type: 'tideblade_disciple', weight: 3 }, { type: 'cloudscale_archer', weight: 1 }], support: [{ type: 'tempest_spearman', weight: 2 }, { type: 'thunder_crest_knight', weight: 1 }], primaryPct: 0.6, theme: 'Tideblade Disciples' },
+          4: { primary: [{ type: 'thunder_crest_knight', weight: 3 }, { type: 'tideblade_disciple', weight: 2 }], support: [{ type: 'tempest_spearman', weight: 1 }, { type: 'cloudscale_archer', weight: 1 }], primaryPct: 0.6, theme: 'Thunder Crest Knights' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'azure_dragon_arena',
+        boss: 'azure_dragon',
+        bossComp: { theme: 'Azure Dragon', forceGolem: false, forceBoss: 'azure_dragon', support: [{ type: 'tempest_spearman', count: 2 }, { type: 'cloudscale_archer', count: 2 }, { type: 'thunder_crest_knight', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'inferno_bastion',
+        waveComps: {
+          6: { primary: [{ type: 'ember_guard', weight: 3 }], support: [{ type: 'tempest_spearman', weight: 1 }], primaryPct: 0.8, theme: 'Ember Guards' },
+          7: { primary: [{ type: 'furnace_hound', weight: 3 }, { type: 'ember_guard', weight: 1 }], support: [{ type: 'cloudscale_archer', weight: 1 }], primaryPct: 0.7, theme: 'Furnace Hounds' },
+          8: { primary: [{ type: 'ashen_banner_monk', weight: 3 }, { type: 'furnace_hound', weight: 1 }], support: [{ type: 'ember_guard', weight: 1 }], primaryPct: 0.65, theme: 'Ashen Banner Monks' },
+          9: { primary: [{ type: 'crimson_furnace_captain', weight: 2 }, { type: 'ashen_banner_monk', weight: 2 }], support: [{ type: 'ember_guard', weight: 1 }, { type: 'furnace_hound', weight: 1 }], primaryPct: 0.6, theme: 'Crimson Furnace Captains' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'jaja_arena',
+        boss: 'jaja',
+        bossComp: { theme: 'Jaja', forceGolem: false, forceBoss: 'jaja', support: [{ type: 'ember_guard', count: 2 }, { type: 'furnace_hound', count: 2 }, { type: 'ashen_banner_monk', count: 1 }, { type: 'crimson_furnace_captain', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a2028', floor2: '#181e26', wall: '#0a1018', wallAccent: '#4488cc', accent2: '#cc4422', gridLine: '#2a3038' },
+    hazards: [],
+  }),
+
+  4: _buildFloor({
+    name: 'Execution Grounds & Void Sanctum',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'execution_grounds',
+        waveComps: {
+          1: { primary: [{ type: 'ashen_blade_retainer', weight: 3 }], support: [{ type: 'lantern_veil_assassin', weight: 1 }], primaryPct: 0.85, theme: 'Ashen Blade Retainers' },
+          2: { primary: [{ type: 'lantern_veil_assassin', weight: 3 }, { type: 'ashen_blade_retainer', weight: 2 }], support: [{ type: 'blood_script_archer', weight: 1 }], primaryPct: 0.7, theme: 'Lantern Veil Assassins' },
+          3: { primary: [{ type: 'blood_script_archer', weight: 3 }, { type: 'lantern_veil_assassin', weight: 1 }], support: [{ type: 'ashen_blade_retainer', weight: 2 }, { type: 'crimson_gate_executioner', weight: 1 }], primaryPct: 0.6, theme: 'Blood Script Archers' },
+          4: { primary: [{ type: 'crimson_gate_executioner', weight: 3 }, { type: 'blood_script_archer', weight: 2 }], support: [{ type: 'ashen_blade_retainer', weight: 1 }, { type: 'lantern_veil_assassin', weight: 1 }], primaryPct: 0.6, theme: 'Crimson Gate Executioners' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'gensai_arena',
+        boss: 'gensai',
+        bossComp: { theme: 'Gensai', forceGolem: false, forceBoss: 'gensai', support: [{ type: 'ashen_blade_retainer', count: 2 }, { type: 'lantern_veil_assassin', count: 2 }, { type: 'crimson_gate_executioner', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'void_sanctum',
+        waveComps: {
+          6: { primary: [{ type: 'lunar_dust_hare', weight: 3 }], support: [{ type: 'ashen_blade_retainer', weight: 1 }], primaryPct: 0.8, theme: 'Lunar Dust Hares' },
+          7: { primary: [{ type: 'crescent_mirror_wisp', weight: 3 }, { type: 'lunar_dust_hare', weight: 1 }], support: [{ type: 'lantern_veil_assassin', weight: 1 }], primaryPct: 0.7, theme: 'Crescent Mirror Wisps' },
+          8: { primary: [{ type: 'gravity_ear_monk', weight: 3 }, { type: 'crescent_mirror_wisp', weight: 1 }], support: [{ type: 'lunar_dust_hare', weight: 1 }], primaryPct: 0.65, theme: 'Gravity Ear Monks' },
+          9: { primary: [{ type: 'eclipse_burrower', weight: 2 }, { type: 'gravity_ear_monk', weight: 2 }], support: [{ type: 'lunar_dust_hare', weight: 1 }, { type: 'crescent_mirror_wisp', weight: 1 }], primaryPct: 0.6, theme: 'Eclipse Burrowers' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'moon_rabbit_arena',
+        boss: 'moon_rabbit',
+        bossComp: { theme: 'Moon Rabbit', forceGolem: false, forceBoss: 'moon_rabbit', support: [{ type: 'lunar_dust_hare', count: 2 }, { type: 'crescent_mirror_wisp', count: 2 }, { type: 'gravity_ear_monk', count: 1 }, { type: 'eclipse_burrower', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1218', floor2: '#181016', wall: '#0a060e', wallAccent: '#cc2244', accent2: '#8844cc', gridLine: '#2a2228' },
+    hazards: [],
+  }),
+
+  5: _buildFloor({
+    name: 'Devouring Maw & Unsealed Heaven',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'devouring_maw',
+        waveComps: {
+          1: { primary: [{ type: 'miregulp_tadpole', weight: 3 }], support: [{ type: 'gulchspine_bloater', weight: 1 }], primaryPct: 0.85, theme: 'Miregulp Tadpoles' },
+          2: { primary: [{ type: 'gulchspine_bloater', weight: 3 }, { type: 'miregulp_tadpole', weight: 2 }], support: [{ type: 'hymn_eater_toadlet', weight: 1 }], primaryPct: 0.7, theme: 'Gulchspine Bloaters' },
+          3: { primary: [{ type: 'hymn_eater_toadlet', weight: 3 }, { type: 'gulchspine_bloater', weight: 1 }], support: [{ type: 'miregulp_tadpole', weight: 2 }, { type: 'abyssal_swallower', weight: 1 }], primaryPct: 0.6, theme: 'Hymn-Eater Toadlets' },
+          4: { primary: [{ type: 'abyssal_swallower', weight: 3 }, { type: 'hymn_eater_toadlet', weight: 2 }], support: [{ type: 'miregulp_tadpole', weight: 1 }, { type: 'gulchspine_bloater', weight: 1 }], primaryPct: 0.6, theme: 'Abyssal Swallowers' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'celestial_toad_arena',
+        boss: 'celestial_toad',
+        bossComp: { theme: 'Celestial Toad', forceGolem: false, forceBoss: 'celestial_toad', support: [{ type: 'miregulp_tadpole', count: 2 }, { type: 'gulchspine_bloater', count: 2 }, { type: 'abyssal_swallower', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'unsealed_heaven',
+        waveComps: {
+          6: { primary: [{ type: 'shrine_shard_monkey', weight: 3 }], support: [{ type: 'miregulp_tadpole', weight: 1 }], primaryPct: 0.8, theme: 'Shrine Shard Monkeys' },
+          7: { primary: [{ type: 'seal_fragment_sprite', weight: 3 }, { type: 'shrine_shard_monkey', weight: 1 }], support: [{ type: 'gulchspine_bloater', weight: 1 }], primaryPct: 0.7, theme: 'Seal Fragment Sprites' },
+          8: { primary: [{ type: 'thundertail_ape', weight: 3 }, { type: 'seal_fragment_sprite', weight: 1 }], support: [{ type: 'shrine_shard_monkey', weight: 1 }], primaryPct: 0.65, theme: 'Thundertail Apes' },
+          9: { primary: [{ type: 'heavens_gate_breaker', weight: 2 }, { type: 'thundertail_ape', weight: 2 }], support: [{ type: 'shrine_shard_monkey', weight: 1 }, { type: 'seal_fragment_sprite', weight: 1 }], primaryPct: 0.6, theme: 'Heaven\'s Gate Breakers' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'sarugami_arena',
+        boss: 'lord_sarugami',
+        bossComp: { theme: 'Lord Sarugami', forceGolem: false, forceBoss: 'lord_sarugami', support: [{ type: 'shrine_shard_monkey', count: 2 }, { type: 'seal_fragment_sprite', count: 2 }, { type: 'thundertail_ape', count: 1 }, { type: 'heavens_gate_breaker', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#181a12', floor2: '#161810', wall: '#0a0c06', wallAccent: '#88cc22', accent2: '#ccaa22', gridLine: '#282a22' },
+    hazards: [],
+  }),
+};
+
 // ===================== ASSEMBLE FLOOR_CONFIG =====================
 const FLOOR_CONFIG = {
   cave: _caveConfig,
   azurine: _azurineConfig,
   vortalis: _vortalisConfig,
   dungeon_4: _earth205Config,
+  dungeon_5: _wagashiConfig,
 };
 
 // Helper: get the wave composition for a floor-configured wave

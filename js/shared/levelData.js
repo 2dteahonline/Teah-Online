@@ -124,6 +124,9 @@ const LEVELS = {
       // === EARTH-205 DUNGEON (east district, below vortalis row) ===
       { type: 'building_earth205', tx: 50, ty: 24, w: 7, h: 8, solid: true },
       { type: 'earth205_entrance', tx: 52, ty: 31, w: 3, h: 2, solid: false, target: 'earth205_01', spawnTX: 20, spawnTY: 19 },
+      // === WAGASHI DUNGEON (east district, below earth-205) ===
+      { type: 'building_wagashi', tx: 50, ty: 36, w: 7, h: 8, solid: true },
+      { type: 'wagashi_entrance', tx: 52, ty: 43, w: 3, h: 2, solid: false, target: 'wagashi_01', spawnTX: 20, spawnTY: 19 },
       // === DINER (west district, below deli) ===
       { type: 'building_diner', tx: 3, ty: 24, w: 7, h: 8, solid: true },
       { type: 'diner_entrance', tx: 5, ty: 31, w: 3, h: 2, solid: false, target: 'diner_01', spawnTX: 27, spawnTY: 33 },
@@ -946,10 +949,10 @@ const LEVELS = {
       { type: 'diner_pickup_counter', tx: 9, ty: 15, w: 6, h: 1, solid: true },
       { type: 'diner_tip_jar', tx: 15, ty: 15, w: 2, h: 1, solid: true },
       { type: 'diner_service_counter', tx: 17, ty: 15, w: 6, h: 1, solid: true },
-      // Vertical wall on right side of kitchen
-      { type: 'diner_service_counter', tx: 23, ty: 1, w: 1, h: 14, solid: true },
-      // Kitchen door
-      { type: 'kitchen_door_diner', tx: 23, ty: 14, w: 1, h: 1, solid: false },
+      // Vertical wall on right side of kitchen (gap at ty:13-14 for door)
+      { type: 'diner_service_counter', tx: 23, ty: 1, w: 1, h: 12, solid: true },
+      // Kitchen door (2 tiles tall so player can walk through)
+      { type: 'kitchen_door_diner', tx: 23, ty: 13, w: 1, h: 2, solid: false },
 
       // === INGREDIENT STATIONS (2x2 each) ===
       // Breakfast row 1 (ty: 1)
@@ -983,42 +986,50 @@ const LEVELS = {
       { type: 'diner_floor', tx: 25, ty: 1, w: 28, h: 24, solid: false },
 
       // === BOOTHS (6 total, 2 columns of 3) ===
-      // Booth 0
-      { type: 'diner_booth', tx: 27, ty: 2, w: 5, h: 3, solid: true },
-      { type: 'diner_booth_seat', tx: 27, ty: 1, solid: false },
-      { type: 'diner_booth_seat', tx: 31, ty: 1, solid: false },
-      { type: 'diner_booth_seat', tx: 27, ty: 5, solid: false },
-      { type: 'diner_booth_seat', tx: 31, ty: 5, solid: false },
-      // Booth 1
-      { type: 'diner_booth', tx: 27, ty: 6, w: 5, h: 3, solid: true },
-      { type: 'diner_booth_seat', tx: 27, ty: 9, solid: false },
-      { type: 'diner_booth_seat', tx: 31, ty: 9, solid: false },
-      { type: 'diner_booth_seat', tx: 27, ty: 5, solid: false },
-      { type: 'diner_booth_seat', tx: 31, ty: 5, solid: false },
-      // Booth 2
-      { type: 'diner_booth', tx: 27, ty: 10, w: 5, h: 3, solid: true },
-      { type: 'diner_booth_seat', tx: 27, ty: 9, solid: false },
-      { type: 'diner_booth_seat', tx: 31, ty: 9, solid: false },
-      { type: 'diner_booth_seat', tx: 27, ty: 13, solid: false },
-      { type: 'diner_booth_seat', tx: 31, ty: 13, solid: false },
-      // Booth 3
-      { type: 'diner_booth', tx: 38, ty: 2, w: 5, h: 3, solid: true },
-      { type: 'diner_booth_seat', tx: 38, ty: 1, solid: false },
-      { type: 'diner_booth_seat', tx: 42, ty: 1, solid: false },
-      { type: 'diner_booth_seat', tx: 38, ty: 5, solid: false },
-      { type: 'diner_booth_seat', tx: 42, ty: 5, solid: false },
-      // Booth 4
-      { type: 'diner_booth', tx: 38, ty: 6, w: 5, h: 3, solid: true },
-      { type: 'diner_booth_seat', tx: 38, ty: 9, solid: false },
-      { type: 'diner_booth_seat', tx: 42, ty: 9, solid: false },
-      { type: 'diner_booth_seat', tx: 38, ty: 5, solid: false },
-      { type: 'diner_booth_seat', tx: 42, ty: 5, solid: false },
-      // Booth 5
-      { type: 'diner_booth', tx: 38, ty: 10, w: 5, h: 3, solid: true },
-      { type: 'diner_booth_seat', tx: 38, ty: 9, solid: false },
-      { type: 'diner_booth_seat', tx: 42, ty: 9, solid: false },
-      { type: 'diner_booth_seat', tx: 38, ty: 13, solid: false },
-      { type: 'diner_booth_seat', tx: 42, ty: 13, solid: false },
+      // Table is center row only (solid). Seats are on top/bottom rows (walkable).
+      // NPC system seats: top row sitDir:0 (face down), bottom row sitDir:1 (face up)
+      // Booth 0 — table at ty:3, seats at ty:2 and ty:4
+      { type: 'diner_booth', tx: 27, ty: 2, w: 5, h: 3, solid: false },
+      { type: 'diner_booth_table', tx: 28, ty: 3, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 28, ty: 2, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 2, solid: false },
+      { type: 'diner_booth_seat', tx: 28, ty: 4, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 4, solid: false },
+      // Booth 1 — table at ty:7, seats at ty:6 and ty:8
+      { type: 'diner_booth', tx: 27, ty: 6, w: 5, h: 3, solid: false },
+      { type: 'diner_booth_table', tx: 28, ty: 7, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 28, ty: 6, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 6, solid: false },
+      { type: 'diner_booth_seat', tx: 28, ty: 8, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 8, solid: false },
+      // Booth 2 — table at ty:11, seats at ty:10 and ty:12
+      { type: 'diner_booth', tx: 27, ty: 10, w: 5, h: 3, solid: false },
+      { type: 'diner_booth_table', tx: 28, ty: 11, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 28, ty: 10, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 10, solid: false },
+      { type: 'diner_booth_seat', tx: 28, ty: 12, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 12, solid: false },
+      // Booth 3 — table at ty:3, seats at ty:2 and ty:4
+      { type: 'diner_booth', tx: 38, ty: 2, w: 5, h: 3, solid: false },
+      { type: 'diner_booth_table', tx: 39, ty: 3, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 39, ty: 2, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 2, solid: false },
+      { type: 'diner_booth_seat', tx: 39, ty: 4, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 4, solid: false },
+      // Booth 4 — table at ty:7, seats at ty:6 and ty:8
+      { type: 'diner_booth', tx: 38, ty: 6, w: 5, h: 3, solid: false },
+      { type: 'diner_booth_table', tx: 39, ty: 7, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 39, ty: 6, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 6, solid: false },
+      { type: 'diner_booth_seat', tx: 39, ty: 8, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 8, solid: false },
+      // Booth 5 — table at ty:11, seats at ty:10 and ty:12
+      { type: 'diner_booth', tx: 38, ty: 10, w: 5, h: 3, solid: false },
+      { type: 'diner_booth_table', tx: 39, ty: 11, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 39, ty: 10, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 10, solid: false },
+      { type: 'diner_booth_seat', tx: 39, ty: 12, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 12, solid: false },
 
       // === ARCADE CORNER ===
       { type: 'arcade_cabinet', tx: 45, ty: 3, w: 1, h: 2, solid: true },
@@ -1872,6 +1883,61 @@ const LEVELS = {
       { type: 'gas_lamp', tx: 15, ty: 1, solid: false },
       { type: 'gas_lamp', tx: 24, ty: 1, solid: false },
     ]
+  },
+
+  // ===================== WAGASHI DUNGEON ENTRANCE =====================
+  wagashi_01: {
+    id: 'wagashi_01',
+    widthTiles: 40,
+    heightTiles: 24,
+    isWagashi: true,
+    collisionAscii: [
+      "########################################",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "########################################"
+    ],
+    entities: [
+      { type: 'wagashi_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 45 },
+      { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'wagashi_dungeon_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_5' },
+      // Paper lanterns (left wall)
+      { type: 'paper_lantern', tx: 1, ty: 1, solid: false },
+      { type: 'paper_lantern', tx: 1, ty: 4, solid: false },
+      { type: 'paper_lantern', tx: 1, ty: 7, solid: false },
+      { type: 'paper_lantern', tx: 1, ty: 10, solid: false },
+      { type: 'paper_lantern', tx: 1, ty: 13, solid: false },
+      { type: 'paper_lantern', tx: 1, ty: 16, solid: false },
+      { type: 'paper_lantern', tx: 1, ty: 19, solid: false },
+      // Paper lanterns (right wall)
+      { type: 'paper_lantern', tx: 38, ty: 1, solid: false },
+      { type: 'paper_lantern', tx: 38, ty: 4, solid: false },
+      { type: 'paper_lantern', tx: 38, ty: 7, solid: false },
+      { type: 'paper_lantern', tx: 38, ty: 10, solid: false },
+      { type: 'paper_lantern', tx: 38, ty: 13, solid: false },
+      { type: 'paper_lantern', tx: 38, ty: 16, solid: false },
+      { type: 'paper_lantern', tx: 38, ty: 19, solid: false },
+    ],
   },
 };
 
