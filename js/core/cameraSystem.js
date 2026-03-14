@@ -99,11 +99,14 @@ const CameraSystem = {
     ctx.lineWidth = 2;
     ctx.strokeRect(px, py, pw, ph);
 
-    // 1:1 pixel ratio — panel size IS the viewport size (no scaling)
-    const viewWidthPx = pw;
-    const viewHeightPx = ph;
+    // Keep original 75% viewport coverage, scale to fit current panel size
+    const origPanelW = (BASE_W * 0.75 - 12) / 2;
+    const origPanelH = (BASE_H * 0.75 - 12) / 2;
+    const viewWidthPx = origPanelW;
+    const viewHeightPx = origPanelH;
     const worldX = cam.cx * TILE - viewWidthPx / 2;
     const worldY = cam.cy * TILE - viewHeightPx / 2;
+    const camScale = pw / origPanelW;
 
     // Clip to panel
     ctx.save();
@@ -111,9 +114,10 @@ const CameraSystem = {
     ctx.rect(px + 1, py + 1, pw - 2, ph - 2);
     ctx.clip();
 
-    // Translate so world coords map to panel position (1:1 scale, no ctx.scale)
+    // Scale world to fit smaller panel
     ctx.save();
     ctx.translate(px, py);
+    ctx.scale(camScale, camScale);
 
     // Background
     ctx.fillStyle = '#050508';
