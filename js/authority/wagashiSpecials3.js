@@ -46,7 +46,7 @@ MOB_SPECIALS.dread_belch = (m, ctx) => {
     m._dreadBelchTele--;
     if (m._dreadBelchTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 3, 140)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 6, 140)) {
         const dmg = Math.round(52 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -101,7 +101,7 @@ MOB_SPECIALS.dark_gulp = (m, ctx) => {
     m._darkGulpTele--;
     if (m._darkGulpTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 4.5, 200)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 9, 200)) {
         const dmg = Math.round(50 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -269,7 +269,7 @@ MOB_SPECIALS.devouring_pull = (m, ctx) => {
     m._devourPullTimer--;
     const dir = Math.atan2(player.y - m.y, player.x - m.x);
     // Pull player 3px toward mob if within cone
-    if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 3.6, 250)) {
+    if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 7.2, 250)) {
       const pullDir = Math.atan2(m.y - player.y, m.x - player.x);
       const nx = player.x + Math.cos(pullDir) * 3;
       const ny = player.y + Math.sin(pullDir) * 3;
@@ -561,7 +561,7 @@ MOB_SPECIALS.divine_form_shift = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 25, type: "hit", dmg: dealt });
       }
       // Transition to Primal Form
-      m._bossScale = 1.5;
+      m.scale = 1.5;
       m.speed = (m._origSpeed || 3.5) * 1.5;
       m.damage = Math.round((m._origDamage || 70) * 1.2);
       m._specialCD = Math.round((m._specialCD || 360) * 0.6);
@@ -573,7 +573,7 @@ MOB_SPECIALS.divine_form_shift = (m, ctx) => {
   // Check Titan Form transition (HP drops below 66%)
   if (hpPct <= 0.66 && !m._titanDone) {
     m._titanDone = true;
-    m._bossScale = 1.8;
+    m.scale = 1.8;
     m._origDamage = m._origDamage || m.damage;
     m.damage = Math.round(m._origDamage * 1.3);
     m._origSpeed = m._origSpeed || m.speed;

@@ -149,6 +149,7 @@ MOB_SPECIALS.wrap_tomb = (m, ctx) => {
 MOB_SPECIALS.metal_skull_bash = (m, ctx) => {
   const { player, dist, hitEffects } = ctx;
   if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 200;
+  // Dash phase
   if (m._skullDashing) {
     m._skullTimer--;
     const t = 1 - (m._skullTimer / 14);
@@ -169,20 +170,28 @@ MOB_SPECIALS.metal_skull_bash = (m, ctx) => {
     }
     return { skip: true };
   }
+  // Telegraph phase — wait before dashing
+  if (m._skullTele) {
+    m._skullTele--;
+    if (m._skullTele <= 0) {
+      const dir = Math.atan2(player.y - m.y, player.x - m.x);
+      const clamped = clampDashTarget(m.x, m.y, dir, Math.min(dist + 20, 180));
+      m._skullSX = m.x; m._skullSY = m.y;
+      m._skullTX = clamped.x; m._skullTY = clamped.y;
+      m._skullDashing = true; m._skullTimer = 14;
+      hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "smoke" });
+    }
+    return { skip: true };
+  }
   if (m._specialTimer > 0) { m._specialTimer--; return {}; }
   if (dist < 80 || dist > 200) { m._specialTimer = 30; return {}; }
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
-  const clamped = clampDashTarget(m.x, m.y, dir, Math.min(dist + 20, 180));
-  m._skullSX = m.x; m._skullSY = m.y;
-  m._skullTX = clamped.x; m._skullTY = clamped.y;
-  m._skullDashing = true; m._skullTimer = 14;
   m._skullTele = 35;
   if (typeof TelegraphSystem !== 'undefined') {
     const endX = m.x + Math.cos(dir) * Math.min(dist + 20, 180);
     const endY = m.y + Math.sin(dir) * Math.min(dist + 20, 180);
     TelegraphSystem.create({ shape: 'line', params: { x1: m.x, y1: m.y, x2: endX, y2: endY, width: 24 }, delayFrames: 35, color: [180, 140, 100], owner: m.id });
   }
-  hitEffects.push({ x: m.x, y: m.y - 10, life: 12, type: "smoke" });
   return { skip: true };
 };
 
@@ -543,7 +552,7 @@ MOB_SPECIALS.venom_arc = (m, ctx) => {
     m._venomArcTele--;
     if (m._venomArcTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 3, 120)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 6, 120)) {
         const dmg = Math.round(30 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -571,7 +580,7 @@ MOB_SPECIALS.jade_flash = (m, ctx) => {
     m._jadeFlashTele--;
     if (m._jadeFlashTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 2, 140)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 4, 140)) {
         const dmg = Math.round(20 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "stun", dmg: dealt });

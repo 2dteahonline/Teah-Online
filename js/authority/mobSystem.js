@@ -822,6 +822,100 @@ function updateMobs() {
           }
         }
 
+        // Tick persistent Wagashi boss effects
+        // Silk snares (Sichou boss — persist while boss does other abilities)
+        if (m._silkSnares && m._silkSnares.length > 0 && m._activeAbility !== 'silk_snare') {
+          m._silkSnares = m._silkSnares.filter(s => s.life > 0);
+          for (const snare of m._silkSnares) {
+            snare.life--;
+            if (!snare._hit) {
+              const sdx = player.x - snare.x, sdy = player.y - snare.y;
+              if (Math.sqrt(sdx * sdx + sdy * sdy) < 50) {
+                const dmg = Math.round(30 * getMobDamageMultiplier());
+                const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+                StatusFX.applyToPlayer('root', { duration: 45 });
+                hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "stun", dmg: dealt });
+                snare._hit = true;
+              }
+            }
+          }
+        }
+        // Blaze trail fire zones (Jaja boss)
+        if (m._blazeTrail && m._blazeTrail.length > 0 && m._activeAbility !== 'blazing_advance') {
+          for (let bi = m._blazeTrail.length - 1; bi >= 0; bi--) {
+            const zone = m._blazeTrail[bi];
+            zone.timer--;
+            if (zone.timer > 0 && zone.timer % 30 === 0) {
+              const zdx = player.x - zone.x, zdy = player.y - zone.y;
+              if (Math.sqrt(zdx * zdx + zdy * zdy) < 50) {
+                const dmg = Math.round(10 * getMobDamageMultiplier());
+                const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+              }
+            }
+            if (zone.timer <= 0) m._blazeTrail.splice(bi, 1);
+          }
+          if (m._blazeTrail.length === 0) m._blazeTrail = null;
+        }
+        // Corruption pools (Celestial Toad boss)
+        if (m._corrPools && m._corrPools.length > 0 && m._activeAbility !== 'corruption_mire') {
+          for (let ci = m._corrPools.length - 1; ci >= 0; ci--) {
+            const pool = m._corrPools[ci];
+            pool.life--;
+            if (pool.life <= 0) { m._corrPools.splice(ci, 1); continue; }
+            pool._tick = (pool._tick || 0) + 1;
+            if (pool._tick >= 30) {
+              pool._tick = 0;
+              const pdx = player.x - pool.x, pdy = player.y - pool.y;
+              if (Math.sqrt(pdx * pdx + pdy * pdy) < 50) {
+                const dmg = Math.round(10 * getMobDamageMultiplier());
+                const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+              }
+            }
+          }
+        }
+        // Gravity well (Moon Rabbit boss)
+        if (m._gravWell && m._gravWell.timer > 0 && m._activeAbility !== 'gravity_well') {
+          m._gravWell.timer--;
+          const gdx = player.x - m._gravWell.x, gdy = player.y - m._gravWell.y;
+          const gDist = Math.sqrt(gdx * gdx + gdy * gdy);
+          if (gDist < 100 && gDist > 5) {
+            const pullDir = Math.atan2(m._gravWell.y - player.y, m._gravWell.x - player.x);
+            const nx = player.x + Math.cos(pullDir) * 2;
+            const ny = player.y + Math.sin(pullDir) * 2;
+            if (positionClear(nx, ny)) { player.x = nx; player.y = ny; }
+          }
+          if (m._gravWell.timer % 30 === 0 && gDist < 100) {
+            const dmg = Math.round(5 * getMobDamageMultiplier());
+            dealDamageToPlayer(dmg, 'mob_special', m);
+            hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "cast", dmg });
+          }
+          if (m._gravWell.timer <= 0) m._gravWell = null;
+        }
+        // Cinder zone (Ember Guard — single ability, but tick for safety)
+        if (m._cinderZone && m._cinderZone.timer > 0 && m._activeAbility !== 'cinder_step') {
+          m._cinderZone.timer--;
+          if (m._cinderZone.timer > 0 && m._cinderZone.timer % 30 === 0) {
+            const cdx = player.x - m._cinderZone.x, cdy = player.y - m._cinderZone.y;
+            if (Math.sqrt(cdx * cdx + cdy * cdy) < 50) {
+              const dmg = Math.round(8 * getMobDamageMultiplier());
+              const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+              hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+            }
+          }
+          if (m._cinderZone.timer <= 0) m._cinderZone = null;
+        }
+        // Gravity zone (Gravity Ear Monk — single ability, but tick for safety)
+        if (m._gravityZone && m._gravityZone.timer > 0 && m._activeAbility !== 'gravity_press') {
+          m._gravityZone.timer--;
+          const gdx = player.x - m._gravityZone.x, gdy = player.y - m._gravityZone.y;
+          if (Math.sqrt(gdx * gdx + gdy * gdy) < 70) {
+            StatusFX.applyToPlayer('slow', { duration: 60, amount: 0.5 });
+          }
+          if (m._gravityZone.timer <= 0) m._gravityZone = null;
+        }
+
         // 2) If an ability is actively executing (multi-frame), continue it
         if (m._activeAbility) {
           const handler = MOB_SPECIALS[m._activeAbility];
@@ -866,7 +960,21 @@ function updateMobs() {
               m._decapTele > 0 || m._abyssRoarTele > 0 || m._reignTele > 0 ||
               m._gsvFiring || m._mawTele > 0 || m._gildedBeamTele > 0 || m._surgeTele > 0 ||
               m._levFangDashing || m._serpStrikeTele > 0 || m._trampleDashing ||
-              m._mwUndertowTele > 0 || m._delugeTele > 0 || m._wrathPhase;
+              m._mwUndertowTele > 0 || m._delugeTele > 0 || m._wrathPhase ||
+              // Wagashi dungeon
+              m._silkSnareTele > 0 || m._threadShotTele > 0 || m._broodCallTele > 0 ||
+              m._titanChargeTele > 0 || m._titanDashing || m._warStompTele > 0 ||
+              m._boarFuryTele > 0 || m._boarFuryTimer > 0 ||
+              m._jadeGlareTele > 0 || m._serpentSwarmTele > 0 || m._jadeSpiresTele > 0 ||
+              m._earthbreakerTele > 0 || m._boulderHurlTele > 0 || m._stonehideTele > 0 ||
+              m._lmarkTele > 0 || m._tidalTele > 0 || m._cycloneTele > 0 || m._cycloneTimer > 0 ||
+              m._infernoTele > 0 || m._blazeTele > 0 || m._blazeDashing ||
+              m._mantleTele > 0 || m._emberMantleTimer > 0 ||
+              m._shadowTele > 0 || m._shadowSlash > 0 || m._crescentTele > 0 || m._cleaverTele > 0 ||
+              m._gravWellTele > 0 || m._phaseTimer > 0 || m._phaseReappear > 0 ||
+              m._devourPullTele > 0 || m._devourPullTimer > 0 || m._voidSpitTele > 0 || m._corrMireTele > 0 ||
+              m._orbSentinelTele > 0 || (m._orbSentinels && m._orbSentinels.length > 0) ||
+              m._orbBombTele > 0 || (m._orbBombs && m._orbBombs.length > 0) || m._statuePhase > 0;
             if (!stillActive) {
               m._activeAbility = null;
             }
@@ -936,7 +1044,21 @@ function updateMobs() {
               m._decapTele > 0 || m._abyssRoarTele > 0 || m._reignTele > 0 ||
               m._gsvFiring || m._mawTele > 0 || m._gildedBeamTele > 0 || m._surgeTele > 0 ||
               m._levFangDashing || m._serpStrikeTele > 0 || m._trampleDashing ||
-              m._mwUndertowTele > 0 || m._delugeTele > 0 || m._wrathPhase;
+              m._mwUndertowTele > 0 || m._delugeTele > 0 || m._wrathPhase ||
+              // Wagashi dungeon
+              m._silkSnareTele > 0 || m._threadShotTele > 0 || m._broodCallTele > 0 ||
+              m._titanChargeTele > 0 || m._titanDashing || m._warStompTele > 0 ||
+              m._boarFuryTele > 0 || m._boarFuryTimer > 0 ||
+              m._jadeGlareTele > 0 || m._serpentSwarmTele > 0 || m._jadeSpiresTele > 0 ||
+              m._earthbreakerTele > 0 || m._boulderHurlTele > 0 || m._stonehideTele > 0 ||
+              m._lmarkTele > 0 || m._tidalTele > 0 || m._cycloneTele > 0 || m._cycloneTimer > 0 ||
+              m._infernoTele > 0 || m._blazeTele > 0 || m._blazeDashing ||
+              m._mantleTele > 0 || m._emberMantleTimer > 0 ||
+              m._shadowTele > 0 || m._shadowSlash > 0 || m._crescentTele > 0 || m._cleaverTele > 0 ||
+              m._gravWellTele > 0 || m._phaseTimer > 0 || m._phaseReappear > 0 ||
+              m._devourPullTele > 0 || m._devourPullTimer > 0 || m._voidSpitTele > 0 || m._corrMireTele > 0 ||
+              m._orbSentinelTele > 0 || (m._orbSentinels && m._orbSentinels.length > 0) ||
+              m._orbBombTele > 0 || (m._orbBombs && m._orbBombs.length > 0) || m._statuePhase > 0;
             if (isMultiFrame) m._activeAbility = abilKey;
             if (specResult && specResult.skip) skipMovement = true;
             break;

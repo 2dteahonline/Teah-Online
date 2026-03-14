@@ -225,7 +225,7 @@ MOB_SPECIALS.coal_breath = (m, ctx) => {
     m._coalTele--;
     if (m._coalTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, (50 * Math.PI) / 180, 120)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, (25 * Math.PI) / 180, 120)) {
         const dmg = Math.round(38 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1000,7 +1000,7 @@ MOB_SPECIALS.demon_cleaver = (m, ctx) => {
     m._cleaverTele--;
     if (m._cleaverTele <= 0) {
       const dir = m._cleaverDir;
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 2, 150)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 4, 150)) {
         const dmg = Math.round(65 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });

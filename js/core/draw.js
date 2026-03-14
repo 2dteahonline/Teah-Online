@@ -815,7 +815,7 @@ function draw() {
       }
       // Cloaked mobs (cloak_backstab) — fully invisible, only smoke puffs hint location
       // Determine if mob should be fully invisible
-      const mobInvisible = m._cloaked || m._hidden || m._submerged || m._burrowSubmerged;
+      const mobInvisible = m._cloaked || m._hidden || m._submerged || m._burrowSubmerged || m._riftLeaping || m._phaseTimer > 0;
       if (m._cloaked) {
         ctx.globalAlpha = 0.0;
         if (renderTime % 8 === 0) {
@@ -836,11 +836,15 @@ function draw() {
       if (m._submerged || m._burrowSubmerged) {
         ctx.globalAlpha = 0.0;
       }
+      // Rift leap / phase skip — mob is invisible during leap/phase
+      if (m._riftLeaping || m._phaseTimer > 0) {
+        ctx.globalAlpha = 0.0;
+      }
       drawChar(m.x, m.y, m.dir, Math.floor(m.frame), true,
         m.skin, m.hair, m.shirt, m.pants, m.name, m.hp, false, m.type, m.maxHp, m.boneSwing || 0, m.scale || 1, m.castTimer || m.throwAnim || m.bowDrawAnim || m.healAnim || 0);
       if (m._cloaked) ctx.globalAlpha = 1.0;
       // Restore alpha for hidden/submerged
-      if (m._hidden || m._submerged || m._burrowSubmerged) ctx.globalAlpha = 1.0;
+      if (m._hidden || m._submerged || m._burrowSubmerged || m._riftLeaping || m._phaseTimer > 0) ctx.globalAlpha = 1.0;
       // Shield HP overlay — blue/gold hexagonal shield (skip if invisible)
       if (m._shieldHp > 0 && !mobInvisible) {
         const shPulse = 0.4 + 0.2 * Math.sin(renderTime * 0.008);
@@ -1282,6 +1286,171 @@ function draw() {
           ctx.moveTo(p1.x, p1.y - 20);
           ctx.lineTo(p2.x, p2.y - 20);
           ctx.stroke();
+        }
+      }
+    }
+    // ===== WAGASHI DUNGEON PERSISTENT EFFECTS =====
+    // Silk snares (Sichou boss) — web patches on ground
+    if (m._silkSnares && m._silkSnares.length > 0) {
+      for (const snare of m._silkSnares) {
+        if (snare.life <= 0) continue;
+        const sa = Math.min(1, snare.life / 60);
+        ctx.fillStyle = `rgba(200,200,220,${sa * 0.2})`;
+        ctx.beginPath(); ctx.arc(snare.x, snare.y, 50, 0, Math.PI * 2); ctx.fill();
+        // Web lines
+        ctx.strokeStyle = `rgba(220,220,240,${sa * 0.5})`;
+        ctx.lineWidth = 1;
+        for (let wi = 0; wi < 6; wi++) {
+          const wa = (Math.PI * 2 / 6) * wi;
+          ctx.beginPath(); ctx.moveTo(snare.x, snare.y);
+          ctx.lineTo(snare.x + Math.cos(wa) * 45, snare.y + Math.sin(wa) * 45); ctx.stroke();
+        }
+      }
+    }
+    // Blaze trail (Jaja boss) — fire patches on ground
+    if (m._blazeTrail && m._blazeTrail.length > 0) {
+      for (const zone of m._blazeTrail) {
+        if (zone.timer <= 0) continue;
+        const fa = Math.min(1, zone.timer / 30);
+        const fPulse = 0.6 + 0.4 * Math.sin(renderTime * 0.08 + zone.x * 0.1);
+        ctx.fillStyle = `rgba(255,${80 + Math.floor(fPulse * 60)},20,${fa * 0.3})`;
+        ctx.beginPath(); ctx.arc(zone.x, zone.y, 45, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(255,200,40,${fa * fPulse * 0.4})`;
+        ctx.beginPath(); ctx.arc(zone.x, zone.y, 25, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Corruption pools (Celestial Toad) — dark purple pools
+    if (m._corrPools && m._corrPools.length > 0) {
+      for (const pool of m._corrPools) {
+        if (pool.life <= 0) continue;
+        const pa = Math.min(1, pool.life / 60);
+        const pPulse = 0.5 + 0.3 * Math.sin(renderTime * 0.06 + pool.x * 0.05);
+        ctx.fillStyle = `rgba(100,50,120,${pa * 0.25 + pPulse * 0.1})`;
+        ctx.beginPath(); ctx.arc(pool.x, pool.y, 50, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(140,60,160,${pa * pPulse * 0.3})`;
+        ctx.beginPath(); ctx.arc(pool.x, pool.y, 30, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Gravity well (Moon Rabbit) — swirling purple vortex
+    if (m._gravWell && m._gravWell.timer > 0) {
+      const gw = m._gravWell;
+      const ga = Math.min(1, gw.timer / 30);
+      const gRot = renderTime * 0.03;
+      ctx.strokeStyle = `rgba(120,60,200,${ga * 0.4})`;
+      ctx.lineWidth = 2;
+      for (let ri = 0; ri < 3; ri++) {
+        const ra = gRot + (Math.PI * 2 / 3) * ri;
+        ctx.beginPath();
+        ctx.arc(gw.x, gw.y, 60 + ri * 15, ra, ra + Math.PI * 0.8);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(100,50,180,${ga * 0.15})`;
+      ctx.beginPath(); ctx.arc(gw.x, gw.y, 100, 0, Math.PI * 2); ctx.fill();
+    }
+    // Cinder zone (Ember Guard) — fire patch
+    if (m._cinderZone && m._cinderZone.timer > 0) {
+      const cz = m._cinderZone;
+      const ca = Math.min(1, cz.timer / 30);
+      const cPulse = 0.5 + 0.5 * Math.sin(renderTime * 0.1 + cz.x * 0.1);
+      ctx.fillStyle = `rgba(255,${100 + Math.floor(cPulse * 50)},30,${ca * 0.25})`;
+      ctx.beginPath(); ctx.arc(cz.x, cz.y, 50, 0, Math.PI * 2); ctx.fill();
+    }
+    // Gravity zone (Gravity Ear Monk) — purple slow field
+    if (m._gravityZone && m._gravityZone.timer > 0) {
+      const gz = m._gravityZone;
+      const gza = Math.min(1, gz.timer / 30);
+      ctx.fillStyle = `rgba(120,80,200,${gza * 0.15})`;
+      ctx.beginPath(); ctx.arc(gz.x, gz.y, 70, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(140,100,220,${gza * 0.3})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(gz.x, gz.y, 70, 0, Math.PI * 2); ctx.stroke();
+    }
+    // Cyclone guard (Azure Dragon) — spinning storm around self
+    if (m._cycloneTimer && m._cycloneTimer > 0) {
+      const cRot = renderTime * 0.06;
+      const cAlpha = Math.min(1, m._cycloneTimer / 30);
+      ctx.strokeStyle = `rgba(80,200,220,${cAlpha * 0.4})`;
+      ctx.lineWidth = 3;
+      for (let ci = 0; ci < 4; ci++) {
+        const ca = cRot + (Math.PI / 2) * ci;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y - 10, 80 + ci * 10, ca, ca + Math.PI * 0.6);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(60,180,200,${cAlpha * 0.1})`;
+      ctx.beginPath(); ctx.arc(m.x, m.y - 10, 120, 0, Math.PI * 2); ctx.fill();
+    }
+    // Ember mantle (Jaja boss) — heat aura
+    if (m._emberMantleTimer && m._emberMantleTimer > 0) {
+      const emAlpha = Math.min(1, m._emberMantleTimer / 30);
+      const emPulse = 0.5 + 0.5 * Math.sin(renderTime * 0.08);
+      ctx.fillStyle = `rgba(255,${120 + Math.floor(emPulse * 40)},40,${emAlpha * 0.12 + emPulse * 0.05})`;
+      ctx.beginPath(); ctx.arc(m.x, m.y - 10, 100, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(255,160,60,${emAlpha * 0.3})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(m.x, m.y - 10, 100, 0, Math.PI * 2); ctx.stroke();
+    }
+    // Boar fury (Tongya boss) — rage aura
+    if (m._boarFuryActive) {
+      const bfPulse = 0.5 + 0.5 * Math.sin(renderTime * 0.1);
+      ctx.fillStyle = `rgba(200,60,30,${0.08 + bfPulse * 0.05})`;
+      ctx.beginPath(); ctx.arc(m.x, m.y - 10, 50, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(255,80,40,${0.3 + bfPulse * 0.2})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(m.x, m.y - 10, 50, 0, Math.PI * 2); ctx.stroke();
+    }
+    // Devouring pull (Celestial Toad) — suction vortex
+    if (m._devourPullTimer && m._devourPullTimer > 0) {
+      const dpRot = renderTime * 0.05;
+      const dpAlpha = Math.min(1, m._devourPullTimer / 30);
+      ctx.strokeStyle = `rgba(80,40,100,${dpAlpha * 0.4})`;
+      ctx.lineWidth = 2;
+      for (let di = 0; di < 5; di++) {
+        const da = dpRot + (Math.PI * 2 / 5) * di;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y - 10, 150 + di * 20, da, da + Math.PI * 0.4);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(60,30,80,${dpAlpha * 0.1})`;
+      ctx.beginPath(); ctx.arc(m.x, m.y - 10, 250, 0, Math.PI * 2); ctx.fill();
+    }
+    // Statue phase (Lord Sarugami) — invulnerable stone form
+    if (m._statuePhase && m._statuePhase > 0) {
+      const stPulse = 0.5 + 0.5 * Math.sin(renderTime * 0.05);
+      ctx.fillStyle = `rgba(180,170,140,${0.2 + stPulse * 0.1})`;
+      ctx.beginPath(); ctx.arc(m.x, m.y - 15, 40, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(200,190,160,${0.4 + stPulse * 0.2})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(m.x, m.y - 15, 40, 0, Math.PI * 2); ctx.stroke();
+    }
+    // Orb sentinels (Lord Sarugami) — dark orbiting spheres
+    if (m._orbSentinels && m._orbSentinels.length > 0) {
+      for (const orb of m._orbSentinels) {
+        const oPulse = 0.7 + 0.3 * Math.sin(renderTime * 0.08 + orb.x * 0.05);
+        ctx.fillStyle = `rgba(40,20,60,${oPulse})`;
+        ctx.beginPath(); ctx.arc(orb.x, orb.y, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(100,50,140,${oPulse * 0.6})`;
+        ctx.beginPath(); ctx.arc(orb.x, orb.y, 7, 0, Math.PI * 2); ctx.fill();
+        // Glow ring
+        ctx.strokeStyle = `rgba(120,60,180,${oPulse * 0.4})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(orb.x, orb.y, 16, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    // Orb bombs (Lord Sarugami) — dark orbs traveling to targets
+    if (m._orbBombs && m._orbBombs.length > 0) {
+      for (const bomb of m._orbBombs) {
+        const bPulse = 0.5 + 0.5 * Math.sin(renderTime * 0.1 + bomb.x * 0.05);
+        ctx.fillStyle = `rgba(60,20,80,${0.8 + bPulse * 0.2})`;
+        ctx.beginPath(); ctx.arc(bomb.x, bomb.y, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(140,60,200,${bPulse * 0.5})`;
+        ctx.beginPath(); ctx.arc(bomb.x, bomb.y, 6, 0, Math.PI * 2); ctx.fill();
+        // Danger ring at target
+        if (bomb.timer > 0 && bomb.timer <= 30) {
+          const dangerA = (30 - bomb.timer) / 30;
+          ctx.strokeStyle = `rgba(200,40,40,${dangerA * 0.6})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(bomb.targetX, bomb.targetY, 70, 0, Math.PI * 2); ctx.stroke();
         }
       }
     }
