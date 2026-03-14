@@ -81,7 +81,7 @@ const DELI_AISLES = [
 // ===================== CONFIG =====================
 const DELI_NPC_CONFIG = {
   minNPCs: 0,
-  maxNPCs: 6,
+  maxNPCs: 8,
   spawnInterval: [180, 540],   // 3-9 sec randomized range (frames at 60fps)
   baseSpeed: 1.1,              // slow relaxed stroll
   speedVariance: 0.2,

@@ -1227,9 +1227,9 @@ function updateDinerNPCs() {
     _dinerSpawnTimer = 0;
     _dinerNextSpawnInterval = _dinerRandRange(DINER_NPC_CONFIG.spawnInterval[0], DINER_NPC_CONFIG.spawnInterval[1]);
 
-    // Count active parties (not fully despawned)
+    // Count active parties and total NPCs (not fully despawned)
     const activeParties = dinerParties.filter(p => p.state !== 'done').length;
-    if (activeParties < DINER_NPC_CONFIG.maxParties) {
+    if (activeParties < DINER_NPC_CONFIG.maxParties && dinerNPCs.length < 8) {
       spawnDinerParty();
     }
   }
