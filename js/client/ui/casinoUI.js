@@ -756,9 +756,12 @@ function _drawRoulette(px, py, pw, ph) {
     return;
   }
 
-  // BETTING PHASE — compact layout: grid left, bets list right
+  // BETTING PHASE — centered layout: grid + bets list
   const cellW = 34, cellH = 26;
-  const _rlTotalW = cellW * 13 + 16 + 224;
+  const gridW = cellW * 13; // 442px total grid width
+  const listW = 200;        // right panel width
+  const gapW = 12;          // gap between grid and list
+  const _rlTotalW = gridW + gapW + listW;
   const gridX = cx - _rlTotalW / 2, gridY = py + 58;
 
   // Zero
@@ -857,9 +860,9 @@ function _drawRoulette(px, py, pw, ph) {
   }
 
   // Right panel: bets list + actions
-  const listX = gridX + cellW * 13 + 16, listY = py + 58;
+  const listX = gridX + gridW + gapW, listY = py + 58;
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.roundRect(listX - 8, listY - 8, 224, ph - 130, 8); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(listX - 8, listY - 8, listW + 8, ph - 130, 8); ctx.fill();
   ctx.font = 'bold 14px monospace';
   ctx.fillStyle = '#ffd700';
   ctx.textAlign = 'left';
@@ -890,10 +893,12 @@ function _clickRoulette(mx, my, px, py, pw, ph) {
   if (rl.phase !== 'betting') return true;
   const cx = px + pw / 2;
   const cellW = 34, cellH = 26;
-  const _rlTotalW = cellW * 13 + 16 + 224;
+  const gridW = cellW * 13;
+  const listW = 200, gapW = 12;
+  const _rlTotalW = gridW + gapW + listW;
   const gridX = cx - _rlTotalW / 2, gridY = py + 58;
-  const obW = (cellW * 13) / 3 - 4, obH = 26;
-  const listX = gridX + cellW * 13 + 16, listY = py + 58;
+  const obW = gridW / 3 - 4, obH = 26;
+  const listX = gridX + gridW + gapW, listY = py + 58;
 
   if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
 
