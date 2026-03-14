@@ -76,6 +76,9 @@ UI.register('fishVendor', {
 UI.register('gunsmith', {
   onOpen() { _gunsmithSelected = 0; },
 });
+UI.register('casino', {
+  onClose() { if (typeof casinoReset === 'function') casinoReset(); },
+});
 
 let playerStatus = ""; // player's status message
 let statusEditActive = false;

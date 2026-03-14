@@ -51,6 +51,7 @@ const Scene = {
     else if (level.isEarth205) this._current = 'earth205';
     else if (level.isWagashi) this._current = 'wagashi';
     else if (level.isEarth216) this._current = 'earth216';
+    else if (level.isCasino) this._current = 'casino';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -75,6 +76,7 @@ const Scene = {
   get inEarth205() { return this._current === 'earth205'; },
   get inWagashi() { return this._current === 'wagashi'; },
   get inEarth216() { return this._current === 'earth216'; },
+  get inCasino() { return this._current === 'casino'; },
 };
 
 // ---- PORTAL TYPE REGISTRY ----
@@ -101,10 +103,12 @@ const PORTAL_SCENES = {
   wagashi_exit: 'wagashi',
   earth216_entrance: 'lobby',
   earth216_exit: 'earth216',
+  casino_entrance: 'lobby',
+  casino_exit: 'casino',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
-const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi', 'earth216']);
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi', 'earth216', 'casino']);
 
 // ---- /LEAVE SYSTEM ----
 // Registry for enclosed scenes that require /leave to exit (no walkable door).
@@ -196,6 +200,13 @@ const LEAVE_HANDLERS = {
     returnLevel: 'lobby_01',
     returnTX: 72, returnTY: 21,
     message: 'Leaving gunsmith...',
+  },
+  casino: {
+    cleanup() { if (typeof casinoReset === 'function') casinoReset(); UI.close(); },
+    returnLevel: 'lobby_01',
+    returnTX: 72,
+    returnTY: 33,
+    message: 'Leaving casino...',
   },
   dungeon: {
     cleanup() {

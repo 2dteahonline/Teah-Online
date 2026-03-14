@@ -108,6 +108,34 @@ registerInteractable({
   onInteract() { UI.open('miningShop'); },
 });
 
+// Register casino game station interactables
+const _CASINO_STATIONS = [
+  { id: 'casino_blackjack', tx: 6,  ty: 5,  game: 'blackjack',    label: 'Blackjack' },
+  { id: 'casino_roulette',  tx: 31, ty: 5,  game: 'roulette',     label: 'Roulette' },
+  { id: 'casino_dice',      tx: 6,  ty: 14, game: 'dice',         label: 'Dice' },
+  { id: 'casino_mines',     tx: 31, ty: 14, game: 'mines',        label: 'Mines' },
+  { id: 'casino_coinflip',  tx: 6,  ty: 22, game: 'headsOrTails', label: 'Heads or Tails' },
+  { id: 'casino_cases',     tx: 31, ty: 22, game: 'cases',        label: 'Cases' },
+];
+for (const s of _CASINO_STATIONS) {
+  registerInteractable({
+    id: s.id,
+    get x() { return (s.tx + 1.5) * TILE; },
+    get y() { return (s.ty + 1) * TILE; },
+    range: 120,
+    get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] ' + s.label; },
+    type: 'casino',
+    canInteract() { return typeof Scene !== 'undefined' && Scene.inCasino; },
+    onInteract() {
+      if (typeof casinoState !== 'undefined') {
+        casinoState.activeGame = s.game;
+        casinoState.phase = 'betting';
+      }
+      UI.open('casino');
+    },
+  });
+}
+
 let fireRateBonus = 0;
 const GUN_DEFAULTS = { damage: 20 };
 const MELEE_DEFAULTS = { damage: 15, critChance: 0.10 };

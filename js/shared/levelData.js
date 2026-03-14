@@ -118,6 +118,9 @@ const LEVELS = {
       // === EAST DISTRICT BUILDINGS ===
       { type: 'building_gunsmith', tx: 69, ty: 12, w: 7, h: 8, solid: true },
       { type: 'gunsmith_entrance', tx: 71, ty: 19, w: 3, h: 2, solid: false, target: 'gunsmith_01', spawnTX: 22, spawnTY: 26 },
+      // === CASINO ===
+      { type: 'building_casino', tx: 69, ty: 24, w: 7, h: 8, solid: true },
+      { type: 'casino_entrance', tx: 71, ty: 31, w: 3, h: 2, solid: false, target: 'casino_01', spawnTX: 20, spawnTY: 30 },
       // === VORTALIS DUNGEON (east district, below gunsmith row) ===
       { type: 'building_vortalis', tx: 50, ty: 12, w: 7, h: 8, solid: true },
       { type: 'vortalis_entrance', tx: 52, ty: 19, w: 3, h: 2, solid: false, target: 'vortalis_01', spawnTX: 20, spawnTY: 19 },
@@ -2052,6 +2055,83 @@ const LEVELS = {
       { type: 'neon_sign_e216', tx: 38, ty: 10, solid: false },
       { type: 'neon_sign_e216', tx: 38, ty: 14, solid: false },
       { type: 'neon_sign_e216', tx: 38, ty: 18, solid: false },
+    ],
+  },
+  casino_01: {
+    id: 'casino_01',
+    widthTiles: 40,
+    heightTiles: 32,
+    isCasino: true,
+    spawns: { p1: { tx: 20, ty: 30 } },
+    collisionAscii: [
+      '########################################',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '##################....##################',
+    ],
+    entities: [
+      // Exit portal (gap in south wall)
+      { type: 'casino_exit', tx: 18, ty: 31, w: 4, h: 1, solid: false, target: 'lobby_01', spawnTX: 72, spawnTY: 33 },
+
+      // Carpet (non-solid, visual floor)
+      { type: 'casino_carpet', tx: 3, ty: 3, w: 34, h: 26, solid: false },
+
+      // Bar counter (top center)
+      { type: 'casino_bar', tx: 16, ty: 2, w: 8, h: 2, solid: true },
+
+      // Game stations (3x2, solid) — Top row
+      { type: 'casino_blackjack', tx: 6,  ty: 5,  w: 3, h: 2, solid: true },
+      { type: 'casino_roulette',  tx: 31, ty: 5,  w: 3, h: 2, solid: true },
+
+      // Game stations — Middle row
+      { type: 'casino_dice',      tx: 6,  ty: 14, w: 3, h: 2, solid: true },
+      { type: 'casino_mines',     tx: 31, ty: 14, w: 3, h: 2, solid: true },
+
+      // Game stations — Bottom row
+      { type: 'casino_coinflip',  tx: 6,  ty: 22, w: 3, h: 2, solid: true },
+      { type: 'casino_cases',     tx: 31, ty: 22, w: 3, h: 2, solid: true },
+
+      // Pillars
+      { type: 'casino_pillar', tx: 4,  ty: 10, w: 1, h: 1, solid: true },
+      { type: 'casino_pillar', tx: 35, ty: 10, w: 1, h: 1, solid: true },
+      { type: 'casino_pillar', tx: 4,  ty: 20, w: 1, h: 1, solid: true },
+      { type: 'casino_pillar', tx: 35, ty: 20, w: 1, h: 1, solid: true },
+
+      // Torches
+      { type: 'torch', tx: 1,  ty: 1,  solid: false },
+      { type: 'torch', tx: 38, ty: 1,  solid: false },
+      { type: 'torch', tx: 1,  ty: 15, solid: false },
+      { type: 'torch', tx: 38, ty: 15, solid: false },
+      { type: 'torch', tx: 1,  ty: 30, solid: false },
+      { type: 'torch', tx: 38, ty: 30, solid: false },
     ],
   },
 };

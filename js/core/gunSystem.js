@@ -574,7 +574,7 @@ function updateGun() {
 
   // Continuous shooting — authority reads InputIntent.shootHeld (set by mouse/arrow keys)
   if (InputIntent.shootHeld && !InputIntent.chatActive && !nameEditActive && !statusEditActive
-      && !Scene.inSkeld && !Scene.inMafiaLobby) {
+      && !Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino) {
     if (activeSlot === 0) shoot();
     else if (activeSlot === 1) {
       meleeSwing();

@@ -1091,6 +1091,10 @@ canvas.addEventListener("mousedown", e => {
   if (UI.isOpen('gunsmith') && typeof handleGunsmithClick === 'function') {
     if (handleGunsmithClick(mx, my)) return;
   }
+  // Casino panel clicks
+  if (UI.isOpen('casino') && typeof handleCasinoClick === 'function') {
+    if (handleCasinoClick(mx, my)) return;
+  }
   // Mining shop panel clicks
   if (UI.isOpen('miningShop') && typeof handleMiningShopClick === 'function') {
     if (handleMiningShopClick(mx, my)) return;

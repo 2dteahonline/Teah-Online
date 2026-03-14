@@ -2043,9 +2043,9 @@ function draw() {
   if (typeof drawHideSeekHUD === 'function') drawHideSeekHUD();
   if (typeof drawMafiaHUD === 'function') drawMafiaHUD();
   if (typeof drawMafiaLobbyHUD === 'function') drawMafiaLobbyHUD();
-  if (!Scene.inSkeld && !Scene.inMafiaLobby && showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
-  if (!Scene.inSkeld && !Scene.inMafiaLobby && showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
-  if (!Scene.inSkeld && !Scene.inMafiaLobby) drawHotbar();
+  if (!Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino && showWeaponStats && activeSlot === 0) { try { drawGunHUD(); } catch(e) { console.error("gunHUD err:", e); } }
+  if (!Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino && showWeaponStats && activeSlot === 1) { try { drawMeleeHUD(); } catch(e) { console.error("meleeHUD err:", e); } }
+  if (!Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino) drawHotbar();
   if (typeof drawCookingHUD === 'function') drawCookingHUD();
   if (typeof drawFishingHUD === 'function') drawFishingHUD();
   if (typeof drawFishVendorPanel === 'function') drawFishVendorPanel();
@@ -2053,6 +2053,7 @@ function draw() {
   if (typeof drawFarmVendorPanel === 'function') drawFarmVendorPanel();
   if (typeof drawGunsmithPanel === 'function') drawGunsmithPanel();
   if (typeof drawMiningShopPanel === 'function') drawMiningShopPanel();
+  if (typeof drawCasinoPanel === 'function') drawCasinoPanel();
   if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) CameraSystem.drawOverlay();
   if (typeof drawSkeldTaskPanel === 'function') drawSkeldTaskPanel();
   if (typeof drawSkeldTaskList === 'function') drawSkeldTaskList();

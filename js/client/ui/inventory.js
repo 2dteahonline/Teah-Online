@@ -2441,7 +2441,7 @@ function update() {
       handleFarmAction();
     }
     // Melee swing (disabled in Skeld, lobby, mafia lobby)
-    else if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && InputIntent.meleePressed) {
+    else if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && !Scene.inCasino && InputIntent.meleePressed) {
       meleeSwing();
     }
     // Ninja dash activation (blocked by mobility_lock)
@@ -2470,7 +2470,7 @@ function update() {
         const nearby = getNearestInteractable();
         if (nearby) { nearby.onInteract(); }
         else if (nearQueue) { joinQueue(); }
-        else if (!Scene.inSkeld && !Scene.inMafiaLobby) { UI.open('inventory'); }
+        else if (!Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino) { UI.open('inventory'); }
       }
     }
     // Ultimate ability (F key — Shrine or Godspeed)
