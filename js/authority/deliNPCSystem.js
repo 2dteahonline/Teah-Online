@@ -354,8 +354,12 @@ function moveDeliNPC(npc) {
 
   const wp = npc.route[0];
   // Per-NPC lane offset prevents perfect overlap on shared routes
-  const targetX = wp.tx * TILE + TILE / 2 + (npc._laneOffX || 0);
-  const targetY = wp.ty * TILE + TILE / 2 + (npc._laneOffY || 0);
+  // Disable offsets for queue-bound NPCs — they must arrive at exact queue positions
+  const inQueueState = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
+  const offX = inQueueState ? 0 : (npc._laneOffX || 0);
+  const offY = inQueueState ? 0 : (npc._laneOffY || 0);
+  const targetX = wp.tx * TILE + TILE / 2 + offX;
+  const targetY = wp.ty * TILE + TILE / 2 + offY;
   let dx = targetX - npc.x;
   let dy = targetY - npc.y;
   let dist = Math.sqrt(dx * dx + dy * dy);
@@ -375,19 +379,24 @@ function moveDeliNPC(npc) {
   let spd = npc.speed;
 
   // NPC-NPC avoidance — lower-ID NPCs have priority, higher-ID yields
+  const npcInQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
   for (const other of deliNPCs) {
     if (other === npc) continue;
-    // Don't interact with seated/despawning/queued NPCs — queue snaps to fixed spots
+    // Skip seated/despawning NPCs — they're snapped to fixed positions
     if (other.state === 'eating' || other.state === 'at_condiments' ||
-        other.state === 'spawn_wait' || other.state === '_despawn' ||
-        other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food') continue;
-    // Also skip avoidance if WE are in the queue — let us walk to our spot unimpeded
-    if (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food') continue;
+        other.state === 'spawn_wait' || other.state === '_despawn') continue;
+    const otherInQueue = (other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food');
+    // If BOTH are in queue, skip avoidance — they snap to fixed queue spots
+    if (npcInQueue && otherInQueue) continue;
     const sx = npc.x - other.x;
     const sy = npc.y - other.y;
     const sd = Math.sqrt(sx * sx + sy * sy);
     if (sd > 0 && sd < 50) {
-      if (npc.id > other.id) {
+      // If the other NPC is in queue (stationary), just slow down — don't nudge
+      // (nudging near the counter wall pushes NPCs into solid tiles)
+      if (otherInQueue) {
+        spd *= 0.15;
+      } else if (npc.id > other.id) {
         // Higher-ID yields: slow down and nudge away from the other NPC
         spd *= 0.3;
         const pushStr = (50 - sd) * 0.2;
@@ -454,11 +463,12 @@ function moveDeliNPC(npc) {
 
 function _nextQueueSpot() {
   // Always join at the BACK of the queue (one past last occupied)
+  // Check ALL NPCs with a claimed queue index — not just those in queue states.
+  // NPCs walking to their queue spot already have _queueIdx set; ignoring them
+  // caused duplicate indices and NPCs stacking on top of each other.
   let maxOccupied = -1;
   for (const n of deliNPCs) {
-    if (n.state === 'in_queue' || n.state === 'ordering' || n.state === 'waiting_food') {
-      if (n._queueIdx > maxOccupied) maxOccupied = n._queueIdx;
-    }
+    if (n._queueIdx > maxOccupied) maxOccupied = n._queueIdx;
   }
   const nextIdx = maxOccupied + 1;
   return nextIdx < QUEUE_SPOTS.length ? nextIdx : -1;
@@ -636,6 +646,20 @@ const DELI_NPC_AI = {
   in_queue: (npc) => {
     // If we're still walking to our queue spot, keep going
     if (npc.route && npc.route.length > 0) {
+      // Don't advance if the NPC directly ahead in the queue is still in our way
+      // (prevents queue NPCs walking through each other when advancing)
+      if (npc._queueIdx > 0) {
+        for (const other of deliNPCs) {
+          if (other === npc || other._queueIdx !== npc._queueIdx - 1) continue;
+          const dy = npc.y - other.y;
+          // If the NPC ahead is within 30px (less than 1 tile gap), wait
+          if (dy > 0 && dy < 30) {
+            npc.moving = false;
+            npc._idleTime = 0;
+            return;
+          }
+        }
+      }
       moveDeliNPC(npc);
       // Face north (toward person ahead) even while walking into position
       if (npc.route.length <= 1) npc.dir = 1;
@@ -954,6 +978,41 @@ function updateDeliNPCs() {
     _nextSpawnInterval = _randRange(DELI_NPC_CONFIG.spawnInterval[0], DELI_NPC_CONFIG.spawnInterval[1]);
     if (deliNPCs.length < DELI_NPC_CONFIG.maxNPCs) {
       spawnDeliNPC(); // enters in 'entering' state — walks in one by one
+    }
+  }
+
+  // Safety: deduplicate queue indices — if two NPCs share the same _queueIdx,
+  // bump the later-spawned one to the next available slot (or eject from queue)
+  const _queueSlots = new Map(); // idx → npc
+  for (const npc of deliNPCs) {
+    if (npc._queueIdx < 0) continue;
+    if (_queueSlots.has(npc._queueIdx)) {
+      // Conflict — the NPC with higher id (spawned later) yields
+      const existing = _queueSlots.get(npc._queueIdx);
+      const yielder = npc.id > existing.id ? npc : existing;
+      if (yielder === existing) _queueSlots.set(npc._queueIdx, npc);
+      // Find next free slot for the yielder
+      let nextFree = -1;
+      for (let s = 0; s < QUEUE_SPOTS.length; s++) {
+        let taken = false;
+        for (const n2 of deliNPCs) {
+          if (n2 !== yielder && n2._queueIdx === s) { taken = true; break; }
+        }
+        if (!taken && s > npc._queueIdx) { nextFree = s; break; }
+      }
+      if (nextFree >= 0) {
+        yielder._queueIdx = nextFree;
+        const spot = QUEUE_SPOTS[nextFree];
+        if (spot) yielder.route = [{ tx: spot.tx, ty: spot.ty }];
+      } else {
+        // No free slot — eject from queue
+        yielder._queueIdx = -1;
+        const curTX = Math.floor(yielder.x / TILE);
+        const curTY = Math.floor(yielder.y / TILE);
+        _npcStartRoute(yielder, _routeToExit(curTX, curTY), '_despawn', 0);
+      }
+    } else {
+      _queueSlots.set(npc._queueIdx, npc);
     }
   }
 
