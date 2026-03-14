@@ -108,7 +108,7 @@ const LEVELS = {
       { type: 'azurine_entrance', tx: 71, ty: 7, w: 3, h: 2, solid: false, target: 'azurine_01', spawnTX: 20, spawnTY: 19 },
       // === WEST DISTRICT BUILDINGS (below north row) ===
       { type: 'building_deli', tx: 3, ty: 12, w: 7, h: 8, solid: true },
-      { type: 'deli_entrance', tx: 5, ty: 19, w: 3, h: 2, solid: false, target: 'deli_01', spawnTX: 14, spawnTY: 33 },
+      { type: 'deli_entrance', tx: 5, ty: 19, w: 3, h: 2, solid: false, target: 'deli_01', spawnTX: 14, spawnTY: 30 },
       // === HIDE & SEEK ARENA (west district, next to deli) ===
       { type: 'building_hideseek', tx: 14, ty: 12, w: 7, h: 8, solid: true },
       { type: 'hideseek_entrance', tx: 16, ty: 19, w: 3, h: 2, solid: false, target: 'hide_01', spawnTX: 5, spawnTY: 5 },
@@ -751,51 +751,47 @@ const LEVELS = {
   // ===================== DELI (COOKING) =====================
   deli_01: {
     id: 'deli_01',
-    widthTiles: 50,
-    heightTiles: 36,
+    widthTiles: 40,
+    heightTiles: 32,
     isCooking: true,
-    spawns: { p1: { tx: 14, ty: 33 } },
+    spawns: { p1: { tx: 14, ty: 30 } },
     collisionAscii: [
-      "##################################################",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "#................................................#",
-      "##################################################"
+      "########################################",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "########################################"
     ],
     entities: [
       // Exit door (bottom)
-      { type: 'deli_exit', tx: 12, ty: 33, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 21 },
+      { type: 'deli_exit', tx: 12, ty: 29, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 21 },
 
       // === KITCHEN FLOOR (rendered behind everything — tile pattern) ===
       { type: 'deli_kitchen_floor', tx: 1, ty: 1, w: 23, h: 20, solid: false },
@@ -838,7 +834,7 @@ const LEVELS = {
       // Deli Counter (center — clear plate)
       { type: 'deli_counter', tx: 9, ty: 8, w: 6, h: 2, solid: true },
 
-      // === DINING AREA (right side — 4 tables, 2 cushions per side = 8 per table) ===
+      // === DINING AREA (right side — 2 tables, 2 cushions per side = 8 per table) ===
       // Table 1 (28,4) — 3w × 2h
       { type: 'deli_table', tx: 28, ty: 4, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 27, ty: 4, solid: false },   // left 1
@@ -850,18 +846,7 @@ const LEVELS = {
       { type: 'deli_chair', tx: 28, ty: 6, solid: false },   // bottom 1
       { type: 'deli_chair', tx: 30, ty: 6, solid: false },   // bottom 2
 
-      // Table 2 (40,4) — 3w × 2h
-      { type: 'deli_table', tx: 40, ty: 4, w: 3, h: 2, solid: true },
-      { type: 'deli_chair', tx: 39, ty: 4, solid: false },
-      { type: 'deli_chair', tx: 39, ty: 5, solid: false },
-      { type: 'deli_chair', tx: 43, ty: 4, solid: false },
-      { type: 'deli_chair', tx: 43, ty: 5, solid: false },
-      { type: 'deli_chair', tx: 40, ty: 3, solid: false },
-      { type: 'deli_chair', tx: 42, ty: 3, solid: false },
-      { type: 'deli_chair', tx: 40, ty: 6, solid: false },
-      { type: 'deli_chair', tx: 42, ty: 6, solid: false },
-
-      // Table 3 (28,17) — 3w × 2h
+      // Table 2 (28,17) — 3w × 2h
       { type: 'deli_table', tx: 28, ty: 17, w: 3, h: 2, solid: true },
       { type: 'deli_chair', tx: 27, ty: 17, solid: false },
       { type: 'deli_chair', tx: 27, ty: 18, solid: false },
@@ -872,31 +857,13 @@ const LEVELS = {
       { type: 'deli_chair', tx: 28, ty: 19, solid: false },
       { type: 'deli_chair', tx: 30, ty: 19, solid: false },
 
-      // Table 4 (40,17) — 3w × 2h
-      { type: 'deli_table', tx: 40, ty: 17, w: 3, h: 2, solid: true },
-      { type: 'deli_chair', tx: 39, ty: 17, solid: false },
-      { type: 'deli_chair', tx: 39, ty: 18, solid: false },
-      { type: 'deli_chair', tx: 43, ty: 17, solid: false },
-      { type: 'deli_chair', tx: 43, ty: 18, solid: false },
-      { type: 'deli_chair', tx: 40, ty: 16, solid: false },
-      { type: 'deli_chair', tx: 42, ty: 16, solid: false },
-      { type: 'deli_chair', tx: 40, ty: 19, solid: false },
-      { type: 'deli_chair', tx: 42, ty: 19, solid: false },
-
       // === CONDIMENT TABLE (center of dining area) ===
       { type: 'deli_condiment_table', tx: 34, ty: 11, w: 3, h: 2, solid: true },
 
-      // === GROCERY AISLES (right side, below dining area) ===
-      // All items (frozen, drinks, chips, soups, cookies, etc.) are in the aisles.
-      // -- Aisle 1 (row 24-25) — 3 shelves, 2-tile gaps --
+      // === GROCERY AISLE (right side, below dining area) ===
+      // 1 row of 2 shelves
       { type: 'deli_shelf_frozen',    tx: 27, ty: 24, w: 5, h: 2, solid: true },
       { type: 'deli_shelf_snacks',    tx: 34, ty: 24, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_drinks',    tx: 41, ty: 24, w: 5, h: 2, solid: true },
-
-      // -- Aisle 2 (row 30-31) — 3 shelves, 2-tile gaps --
-      { type: 'deli_shelf_cookies',   tx: 27, ty: 30, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_soups',     tx: 34, ty: 30, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_dairy',     tx: 41, ty: 30, w: 5, h: 2, solid: true },
     ]
   },
   diner_01: {

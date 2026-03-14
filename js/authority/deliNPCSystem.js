@@ -20,7 +20,7 @@ const DELI_NPC_NAMES = ['Customer', 'Patron', 'Guest', 'Visitor', 'Diner', 'Shop
 // Every spot is in open floor — no collision checking needed.
 
 const DELI_SPOTS = {
-  exit:        { tx: 13, ty: 33 },
+  exit:        { tx: 13, ty: 30 },
   counterArea: { tx: 13, ty: 22 },   // corridor in front of counter
   counter:     { tx: 11, ty: 22 },   // pickup/order spot
   tipJar:      { tx: 15, ty: 22 },
@@ -34,54 +34,35 @@ const QUEUE_SPOTS = [
   { tx: 11, ty: 22 },  // spot 0 = at counter (front of line)
   { tx: 11, ty: 23 },
   { tx: 11, ty: 24 },
-  { tx: 11, ty: 25 },
-  { tx: 11, ty: 26 },
-  { tx: 11, ty: 27 },  // spot 5 = back of line (6 max)
+  { tx: 11, ty: 25 },  // spot 3 = back of line (4 max)
 ];
 
-// Chairs (NPCs sit here to eat) — 2 per side × 4 sides × 4 tables = 32 seats
+// Chairs (NPCs sit here to eat) — 2 per side × 4 sides × 2 tables = 16 seats
 const DELI_CHAIRS = [
   // Table 1 (28,4)
   { tx: 27, ty: 4,  sitDir: 3 },  { tx: 27, ty: 5,  sitDir: 3 },   // left ×2
   { tx: 31, ty: 4,  sitDir: 2 },  { tx: 31, ty: 5,  sitDir: 2 },   // right ×2
   { tx: 28, ty: 3,  sitDir: 0 },  { tx: 30, ty: 3,  sitDir: 0 },   // top ×2
   { tx: 28, ty: 6,  sitDir: 1 },  { tx: 30, ty: 6,  sitDir: 1 },   // bottom ×2
-  // Table 2 (40,4)
-  { tx: 39, ty: 4,  sitDir: 3 },  { tx: 39, ty: 5,  sitDir: 3 },
-  { tx: 43, ty: 4,  sitDir: 2 },  { tx: 43, ty: 5,  sitDir: 2 },
-  { tx: 40, ty: 3,  sitDir: 0 },  { tx: 42, ty: 3,  sitDir: 0 },
-  { tx: 40, ty: 6,  sitDir: 1 },  { tx: 42, ty: 6,  sitDir: 1 },
-  // Table 3 (28,17)
+  // Table 2 (28,17)
   { tx: 27, ty: 17, sitDir: 3 },  { tx: 27, ty: 18, sitDir: 3 },
   { tx: 31, ty: 17, sitDir: 2 },  { tx: 31, ty: 18, sitDir: 2 },
   { tx: 28, ty: 16, sitDir: 0 },  { tx: 30, ty: 16, sitDir: 0 },
   { tx: 28, ty: 19, sitDir: 1 },  { tx: 30, ty: 19, sitDir: 1 },
-  // Table 4 (40,17)
-  { tx: 39, ty: 17, sitDir: 3 },  { tx: 39, ty: 18, sitDir: 3 },
-  { tx: 43, ty: 17, sitDir: 2 },  { tx: 43, ty: 18, sitDir: 2 },
-  { tx: 40, ty: 16, sitDir: 0 },  { tx: 42, ty: 16, sitDir: 0 },
-  { tx: 40, ty: 19, sitDir: 1 },  { tx: 42, ty: 19, sitDir: 1 },
 ];
 
 // Aisle browse spots (stand next to shelves — all items are in the aisles now)
-// NPCs stand in the walkway between/below shelf rows, centered on a shelf.
-// Shelf row 1: ty:24-25. Shelf row 2: ty:30-31.
-// Browse spots at ty:27 (gap between rows) and ty:33 (below row 2).
+// NPCs stand in the walkway below shelf row, centered on a shelf.
+// Shelf row: ty:24-25. Browse spots at ty:27 (below shelves).
 const DELI_AISLES = [
-  // Browsing row 1 shelves from below (ty:27)
   { name: 'Frozen',    price: 4, tx: 29, ty: 27 },
   { name: 'Snacks',    price: 3, tx: 36, ty: 27 },
-  { name: 'Drinks',    price: 3, tx: 43, ty: 27 },
-  // Browsing row 2 shelves from below (ty:33)
-  { name: 'Cookies',   price: 3, tx: 29, ty: 33 },
-  { name: 'Soups',     price: 4, tx: 36, ty: 33 },
-  { name: 'Dairy',     price: 4, tx: 43, ty: 33 },
 ];
 
 // ===================== CONFIG =====================
 const DELI_NPC_CONFIG = {
   minNPCs: 0,
-  maxNPCs: 8,
+  maxNPCs: 4,
   spawnInterval: [180, 540],   // 3-9 sec randomized range (frames at 60fps)
   baseSpeed: 1.1,              // slow relaxed stroll
   speedVariance: 0.2,
@@ -96,7 +77,7 @@ const DELI_NPC_CONFIG = {
   preQueueBrowseChance: 0.3,      // 30% chance to browse aisles before joining line
   // Mid-queue line leaving
   midQueueLeaveChance: 0.0003,    // per-frame chance (~1.8% per second) to leave line
-  midQueueMinIdx: 3,              // only leave if queueIdx >= this (not near front)
+  midQueueMinIdx: 2,              // only leave if queueIdx >= this (not near front)
 };
 
 // ===================== STATE =====================
@@ -152,29 +133,23 @@ function _pickFreeAisle() {
 // to prevent NPCs clipping through solid entities.
 //
 // LAYOUT — AISLE AREA (tx:27+, ty:22+):
-//   Shelf row 1: ty:24-25 → shelves at tx:27-31, tx:34-38, tx:41-45
-//   Browse row 1: ty:27   → NPCs stand here to browse row 1 shelves
-//   Shelf row 2: ty:30-31 → shelves at tx:27-31, tx:34-38, tx:41-45
-//   Browse row 2: ty:33   → NPCs stand here to browse row 2 shelves
+//   Shelf row: ty:24-25 → shelves at tx:27-31, tx:34-38
+//   Browse row: ty:27   → NPCs stand here to browse shelves
 //
 // GAPS between shelves (safe vertical corridors through aisle area):
 //   tx:26  — west of all shelves (main corridor)
 //   tx:32-33 — between shelf 1 (tx:27-31) and shelf 2 (tx:34-38)
-//   tx:39-40 — between shelf 2 (tx:34-38) and shelf 3 (tx:41-45)
-//   tx:46+ — east of all shelves
 //
 // SAFE CORRIDORS:
-//   tx:26  vertical  ty:1-35   (just east of kitchen wall — main N/S corridor)
-//   ty:20  horizontal tx:25-46  (below dining tables, above counter wall)
-//   ty:27  horizontal tx:26-46  (between shelf rows — NPC browse row 1)
-//   ty:33  horizontal tx:26-46  (below shelf row 2 — NPC browse row 2)
-//   tx:32  vertical  ty:24-33  (gap between shelf columns 1 and 2)
-//   tx:39  vertical  ty:24-33  (gap between shelf columns 2 and 3)
+//   tx:26  vertical  ty:1-30   (just east of kitchen wall — main N/S corridor)
+//   ty:20  horizontal tx:25-39  (below dining tables, above counter wall)
+//   ty:27  horizontal tx:26-39  (below shelf row — NPC browse)
+//   tx:32  vertical  ty:24-27  (gap between shelf columns 1 and 2)
 
 // Find the nearest safe vertical gap for a given tx position in the aisle area
 function _nearestAisleGap(tx) {
-  // Gaps: tx:26, tx:32, tx:39, tx:46
-  const gaps = [26, 32, 39, 46];
+  // Gaps: tx:26, tx:32 (only 2 shelf columns now)
+  const gaps = [26, 32];
   let best = gaps[0];
   let bestDist = Math.abs(tx - gaps[0]);
   for (let i = 1; i < gaps.length; i++) {
@@ -288,7 +263,7 @@ function _routeToExit(fromTX, fromTY) {
     route.push({ tx: 26, ty: 23 });               // south past counter wall (safe clearance)
   }
   route.push({ tx: 13, ty: 23 });  // west to exit area (1 tile south of counter)
-  route.push({ tx: 13, ty: 33 });  // south to exit
+  route.push({ tx: 13, ty: 30 });  // south to exit
   return route;
 }
 
@@ -316,7 +291,7 @@ function _routeToTipJar(fromTX, fromTY) {
 
 // Route from exit to an aisle (for pre-queue browsing)
 function _routeExitToAisle(aisle) {
-  // NPC enters from exit (tx:13, ty:33). _routeCounterToAisle starts at tx:13, ty:23,
+  // NPC enters from exit (tx:13, ty:30). _routeCounterToAisle starts at tx:13, ty:23,
   // so the NPC walks north from exit to ty:23, then follows the aisle route.
   return _routeCounterToAisle(aisle);
 }
@@ -449,7 +424,7 @@ function moveDeliNPC(npc) {
       npc.y = 22 * TILE + TILE / 2;
       npc._stuckFrames = 0;
       // Replace route with direct path to exit so they don't walk back in
-      npc.route = [{ tx: 13, ty: 23 }, { tx: 13, ty: 33 }];
+      npc.route = [{ tx: 13, ty: 23 }, { tx: 13, ty: 30 }];
       return;
     }
     npc._stuckFrames = (npc._stuckFrames || 0) + 1;
