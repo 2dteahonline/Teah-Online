@@ -537,13 +537,21 @@ function drawSettingsPanel() {
   ctx.restore();
 
   // Scrollbar if needed
-  const totalH = items.length * rowH;
+  const isKeybinds = SETTINGS_TABS[settingsActiveTab] === "Keybinds";
+  const totalH = isKeybinds ? KEYBIND_ITEMS.length * 38 : items.length * rowH;
   if (totalH > contentH) {
-    const scrollPct = settingsScroll / (totalH - contentH);
+    const maxScroll = totalH - contentH;
+    const scrollPct = settingsScroll / maxScroll;
     const barH = Math.max(30, contentH * (contentH / totalH));
     const barY = contentY + scrollPct * (contentH - barH);
-    ctx.fillStyle = "rgba(80,200,120,0.2)";
-    ctx.beginPath(); ctx.roundRect(contentX + contentW - 6, barY, 4, barH, 2); ctx.fill();
+    const barX = contentX + contentW - 8;
+    const barW = 6;
+    // Track background
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.beginPath(); ctx.roundRect(barX, contentY, barW, contentH, 3); ctx.fill();
+    // Thumb
+    ctx.fillStyle = settingsScrollbarDrag ? "rgba(80,200,120,0.5)" : "rgba(80,200,120,0.25)";
+    ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 3); ctx.fill();
   }
 
   // Footer

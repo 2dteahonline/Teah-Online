@@ -36,6 +36,20 @@ canvas.addEventListener("mousemove", e => {
   // Inventory hover
   handleInventoryHover(mouse.x, mouse.y);
 
+  // Settings scrollbar drag
+  if (settingsScrollbarDrag && UI.isOpen('settings')) {
+    const my = mouse.y;
+    const pw = 520, ph = 480;
+    const py = BASE_H/2 - ph/2;
+    const _cY = py + 78, _cH = ph - 94;
+    const _isKb = SETTINGS_TABS[settingsActiveTab] === "Keybinds";
+    const _sTotal = _isKb ? KEYBIND_ITEMS.length * 38 : (SETTINGS_DATA[SETTINGS_TABS[settingsActiveTab]] || []).length * 36;
+    const _maxS = Math.max(1, _sTotal - _cH);
+    const _bH = Math.max(30, _cH * (_cH / _sTotal));
+    const pct = (my - settingsScrollbarGrabY - _cY) / (_cH - _bH);
+    settingsScroll = Math.max(0, Math.min(_maxS, pct * _maxS));
+  }
+
   // Dragging SV picker or hue bar
   if (UI.isOpen('customize') && (draggingSV || draggingHue)) {
     const mx = mouse.x, my = mouse.y;
@@ -618,6 +632,33 @@ canvas.addEventListener("mousedown", e => {
   if (UI.isOpen('settings')) {
     const pw = 520, ph = 480;
     const px = BASE_W/2 - pw/2, py = BASE_H/2 - ph/2;
+    const _contentX = px + 16, _contentY = py + 78;
+    const _contentW = pw - 32, _contentH = ph - 94;
+
+    // Scrollbar drag detection
+    const _isKeybinds = SETTINGS_TABS[settingsActiveTab] === "Keybinds";
+    const _sTotalH = _isKeybinds ? KEYBIND_ITEMS.length * 38 : (SETTINGS_DATA[SETTINGS_TABS[settingsActiveTab]] || []).length * 36;
+    if (_sTotalH > _contentH) {
+      const _barX = _contentX + _contentW - 8, _barW = 6;
+      const _maxScroll = _sTotalH - _contentH;
+      const _barH = Math.max(30, _contentH * (_contentH / _sTotalH));
+      const _barY = _contentY + (settingsScroll / _maxScroll) * (_contentH - _barH);
+      // Hit test on scrollbar thumb (wider hit area for ease of clicking)
+      if (mx >= _barX - 6 && mx <= _barX + _barW + 6 && my >= _barY && my <= _barY + _barH) {
+        settingsScrollbarDrag = true;
+        settingsScrollbarGrabY = my - _barY;
+        return;
+      }
+      // Click on scrollbar track (jump to position)
+      if (mx >= _barX - 6 && mx <= _barX + _barW + 6 && my >= _contentY && my <= _contentY + _contentH) {
+        const clickPct = (my - _contentY - _barH / 2) / (_contentH - _barH);
+        settingsScroll = Math.max(0, Math.min(_maxScroll, clickPct * _maxScroll));
+        settingsScrollbarDrag = true;
+        settingsScrollbarGrabY = _barH / 2;
+        return;
+      }
+    }
+
     // Close button
     if (mx >= px + pw - 36 && mx <= px + pw - 8 && my >= py + 6 && my <= py + 34) {
       UI.close(); return;
@@ -1179,7 +1220,7 @@ canvas.addEventListener("mousedown", e => {
 canvas.addEventListener("mouseup", e => {
   if (e.button === 0) {
     mouse.down = false;
-    draggingSV = false; draggingHue = false; isDraggingTile = false; handleModifyGunUp();
+    draggingSV = false; draggingHue = false; isDraggingTile = false; settingsScrollbarDrag = false; handleModifyGunUp();
     hotbarHoldSlot = -1; hotbarHoldTime = 0; showWeaponStats = false;
     // Release reactor hand hold
     if (typeof _sabPanel !== 'undefined' && _sabPanel.active && _sabPanel.type === 'reactor') {

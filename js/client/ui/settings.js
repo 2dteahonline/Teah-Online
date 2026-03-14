@@ -6,6 +6,8 @@
 const SETTINGS_TABS = ["General", "Keybinds", "Sounds", "Indicators", "Profile", "Message", "Privacy"];
 let settingsActiveTab = 0;
 let settingsScroll = 0;
+let settingsScrollbarDrag = false;
+let settingsScrollbarGrabY = 0; // mouse Y offset within the scrollbar thumb when grabbed
 
 // === KEYBIND SYSTEM ===
 const DEFAULT_KEYBINDS = {
