@@ -2184,7 +2184,7 @@ function _drawKeno(px, py, pw, ph) {
       const more = _knDrawNext();
       if (!more) {
         // All drawn, resolve after a brief pause
-        setTimeout(function() { casinoKN_resolve(); }, 600);
+        setTimeout(function() { casinoKN_resolve(); }, 300);
       }
     }
     ctx.fillStyle = '#fff';
