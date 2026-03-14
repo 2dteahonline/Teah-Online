@@ -340,6 +340,96 @@ const MOB_ABILITY_DESCRIPTIONS = {
   hazard_spill:            "3 poison puddles around player (70px each, 5s).",
   bio_grapple:             "Pull → root 1.5s + poison. Dmg 25.",
   critical_meltdown:       "Below 25% hp: 3s channel → 250px AoE. Dmg 80 + poison.",
+
+  // --- Wagashi Floor 1: Silk Nest / Boar Territory ---
+  snap_web:                "Web projectile. Applies slow on hit.",
+  silk_needle_fan:         "3 silk spike projectiles in spread pattern.",
+  brood_glow:              "Pulse buffs nearby mob speed +30% for 3s.",
+  wrap_tomb:               "Delayed circle under player. Root if still inside.",
+  metal_skull_bash:        "Short charge forward. Knockback on hit.",
+  dust_rush:               "Dash to player. Leaves dust cloud at start.",
+  armor_brace:             "Self-heal 30% max HP.",
+  battle_beat:             "Drum pulse buffs nearby mob damage +30% for 3s.",
+  // Sichou (Spider mini-boss)
+  silk_snare:              "Places 3 web patches near player. Root on contact.",
+  thread_shot:             "Silk projectile. Slow 2s on hit.",
+  brood_call:              "Summons 2-3 spiderling minions.",
+  // Tongya (Boar boss)
+  titan_charge:            "Long charge across room. Knockback on hit.",
+  war_stomp:               "Circular shockwave around self. Radius 150.",
+  boar_fury:               "Self-buff: +50% speed, faster ability rotation.",
+
+  // --- Wagashi Floor 2: Jade Temple / Ruined Sanctum ---
+  venom_arc:               "Poison cone attack. Applies poison DoT.",
+  jade_flash:              "Green eye flare cone. Slows players hit.",
+  snake_call:              "Summons a serpent minion.",
+  petrify_glint:           "Marks player. Stuns after delay if in LOS.",
+  rubble_toss:             "Throws debris at player position.",
+  ground_split:            "Shock line forward. Multi-point damage.",
+  stone_ward:              "Heals nearby allies 10% max HP.",
+  aftershock_ring:         "Ground strike → delayed expanding shockwave.",
+  // Jade Serpent (mini-boss)
+  jade_glare:              "Narrow beam. Stuns on hit.",
+  serpent_swarm:            "Summons 3 snake minions.",
+  jade_spires:             "Line of jade spikes erupt from ground.",
+  // Stone Golem Guardian (boss)
+  earthbreaker_slam:       "Circular AoE slam. Radius 160.",
+  boulder_hurl:            "Large stone projectile at range.",
+  stonehide:               "Self-heal 25% max HP.",
+
+  // --- Wagashi Floor 3: Storm Palace / Inferno Bastion ---
+  static_lunge:            "Lightning spear dash. Stun on hit.",
+  charged_burst_arrow:     "Electrified arrow with AoE splash on impact.",
+  wave_cut:                "Water slash projectile. Speed 9.",
+  lightning_seal:          "Marks tile. Lightning strikes after delay. Stun.",
+  cinder_step:             "Short dash + lingering fire zone at end.",
+  coal_breath:             "Short flame cone. 50° arc.",
+  war_ember_chant:         "Buffs nearby mob damage +30% for 3s.",
+  magma_breaker:           "Fire eruption line forward. 5 hit points.",
+  // Azure Dragon (mini-boss)
+  lightning_mark:          "2-3 lightning strike zones near player. Stun.",
+  tidal_wave:              "Water projectile. Pushes player back 60px.",
+  cyclone_guard:           "Storm aura around self. Periodic damage in 120px.",
+  // Jaja (Oni boss)
+  inferno_crash:           "Circular fire burst. Radius 160.",
+  blazing_advance:         "Rush forward leaving fire trail zones.",
+  ember_mantle:            "Heat aura. Periodic damage to nearby players.",
+
+  // --- Wagashi Floor 4: Execution Grounds / Void Sanctum ---
+  draw_cut:                "Fast burst line slash. 25-frame telegraph.",
+  afterimage_dash:         "Dash through player leaving afterimage.",
+  blood_seal_shot:         "Talisman arrow. Delayed burst at landing.",
+  judgment_drop:           "Overhead slam with forward shockwave line.",
+  dust_pop:                "Teleport + void burst at departure point.",
+  mirror_split:            "Creates decoy. Fires from random position.",
+  gravity_press:           "Slow zone at player position. Lasts 3s.",
+  rift_leap:               "Invisible blink pounce to player.",
+  // Gensai (Executioner mini-boss)
+  shadow_step:             "Blink behind player + slash.",
+  blood_crescent:          "Fast blade-wave projectile.",
+  demon_cleaver:           "Charged 90° cone slash. Heavy damage.",
+  // Moon Rabbit (boss)
+  gravity_well:            "Pull field. Drags player inward + damage.",
+  moon_rift_orb:           "Slow orb. Explodes in 80px radius.",
+  phase_skip:              "Disappear + reappear. Burst at both points.",
+
+  // --- Wagashi Floor 5: Devouring Maw / Unsealed Heaven ---
+  mire_spit:               "Spit projectile. Applies slow on hit.",
+  dread_belch:             "Cone breath attack. 60° arc.",
+  maw_hymn:                "Debuff aura. Slows nearby players.",
+  dark_gulp:               "Cone pull toward self + damage.",
+  shard_toss:              "Fast ranged projectile. Speed 11.",
+  minor_orb_pulse:         "Orb burst around self. Radius 120.",
+  thunder_tail_crash:      "Ground slam line. 4 hit points.",
+  seal_rupture:            "AoE shockwave. Radius 150 + stun.",
+  // Celestial Toad (mini-boss)
+  devouring_pull:          "Channeled suction field. Pulls player in.",
+  void_spit:               "5 dark projectiles in spread pattern.",
+  corruption_mire:         "3 corrupted ground pools. Damage over time.",
+  // Lord Sarugami (FINAL BOSS)
+  black_orb_sentinels:     "5 orbiting spheres. Guard and damage nearby players.",
+  orb_bomb_command:        "3 orbs travel to positions and explode.",
+  divine_form_shift:       "HP-triggered phase shift: Titan → Statue → Primal.",
 };
 
 // Dungeon → Floor → Mob mapping
@@ -382,6 +472,16 @@ const TESTMOB_DUNGEONS = {
       3: { name: 'Floor 3 — Carnival of Decay', mobs: ['juggling_jester', 'balloon_twister', 'human_statue', 'illusionist', 'killer_mime', 'stagehand_brute', 'phantom_chorus', 'prop_master', 'macabre_dancer', 'major_phantom'] },
       4: { name: 'Floor 4 — Casino Noir', mobs: ['casino_pit_boss', 'laser_grid_thief', 'vault_hacker', 'smokescreen_smuggler', 'lady_red', 'tracksuit_goon', 'disco_brawler', 'tommy_gun_heavy', 'the_cleaner', 'the_boss_e205'] },
       5: { name: 'Floor 5 — Meltdown Labs', mobs: ['hazmat_grunt', 'sprayer_drone', 'mad_assistant', 'chem_brute', 'lady_elixir', 'sludge_crawler', 'irradiated_walker', 'lockdown_sentinel', 'failed_specimen', 'nofaux'] },
+    }
+  },
+  dungeon_5: {
+    name: 'Wagashi',
+    floors: {
+      1: { name: 'Floor 1 — Silk Nest / Boar Territory', mobs: ['silk_skitterer', 'needleback_weaver', 'brood_lantern_mite', 'silk_coffin_widow', 'sichou', 'copperhide_hoglet', 'tusk_raider', 'bronzeback_crusher', 'warboar_drummer', 'tongya'] },
+      2: { name: 'Floor 2 — Jade Temple / Ruined Sanctum', mobs: ['temple_fang_acolyte', 'jade_idol_watcher', 'coil_priestess', 'jade_vein_stalker', 'jade_serpent', 'rubblebound_sentinel', 'pillarbreaker_brute', 'dustcore_totem', 'mausoleum_warden', 'stone_golem_guardian'] },
+      3: { name: 'Floor 3 — Storm Palace / Inferno Bastion', mobs: ['tempest_spearman', 'cloudscale_archer', 'tideblade_disciple', 'thunder_crest_knight', 'azure_dragon', 'ember_guard', 'furnace_hound', 'ashen_banner_monk', 'crimson_furnace_captain', 'jaja'] },
+      4: { name: 'Floor 4 — Execution Grounds / Void Sanctum', mobs: ['ashen_blade_retainer', 'lantern_veil_assassin', 'blood_script_archer', 'crimson_gate_executioner', 'gensai', 'lunar_dust_hare', 'crescent_mirror_wisp', 'gravity_ear_monk', 'eclipse_burrower', 'moon_rabbit'] },
+      5: { name: 'Floor 5 — Devouring Maw / Unsealed Heaven', mobs: ['miregulp_tadpole', 'gulchspine_bloater', 'hymn_eater_toadlet', 'abyssal_swallower', 'celestial_toad', 'shrine_shard_monkey', 'seal_fragment_sprite', 'thundertail_ape', 'heavens_gate_breaker', 'lord_sarugami'] },
     }
   }
 };
