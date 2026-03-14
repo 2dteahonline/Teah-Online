@@ -1125,9 +1125,10 @@ window.MafiaSystem = {
 
     const aliveImpostors = this.getAliveImpostors();
     const aliveCrewmates = this.getAliveCrewmates();
+    const totalImpostors = mk.participants.filter(p => p.role === 'impostor').length;
 
-    // Crewmate win: all impostors eliminated
-    if (aliveImpostors.length === 0) {
+    // Crewmate win: all impostors eliminated (only if impostors were assigned)
+    if (totalImpostors > 0 && aliveImpostors.length === 0) {
       mk.ejection = {
         name: null,
         wasImpostor: false,
