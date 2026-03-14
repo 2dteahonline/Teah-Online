@@ -140,6 +140,15 @@ const DICE_PAYOUTS = {};
   }
 })();
 
+const RPS_CHOICES = ['rock', 'paper', 'scissors'];
+const RPS_BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+const RPS_PAYOUT = Math.floor((2 * (1 - CASINO_CONFIG.HOUSE_EDGE)) * 100) / 100; // ~1.90x (5% edge on 1:1)
+const RPS_FORMATS = [
+  { id: 'bo1', label: 'Best of 1', winsNeeded: 1 },
+  { id: 'bo3', label: 'Best of 3', winsNeeded: 2 },
+  { id: 'bo5', label: 'Best of 5', winsNeeded: 3 },
+];
+
 const CASINO_GAMES = [
   { id: 'blackjack',    label: 'Blackjack',     stationEntity: 'casino_blackjack' },
   { id: 'roulette',     label: 'Roulette',      stationEntity: 'casino_roulette' },
@@ -147,4 +156,5 @@ const CASINO_GAMES = [
   { id: 'cases',        label: 'Cases',          stationEntity: 'casino_cases' },
   { id: 'mines',        label: 'Mines',          stationEntity: 'casino_mines' },
   { id: 'dice',         label: 'Dice',           stationEntity: 'casino_dice' },
+  { id: 'rps',          label: 'Rock Paper Scissors', stationEntity: 'casino_rps' },
 ];

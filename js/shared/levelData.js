@@ -2119,6 +2119,9 @@ const LEVELS = {
       { type: 'casino_coinflip',  tx: 6,  ty: 22, w: 3, h: 2, solid: true },
       { type: 'casino_cases',     tx: 31, ty: 22, w: 3, h: 2, solid: true },
 
+      // Game station — Center
+      { type: 'casino_rps',       tx: 18, ty: 14, w: 3, h: 2, solid: true },
+
       // Pillars
       { type: 'casino_pillar', tx: 4,  ty: 10, w: 1, h: 1, solid: true },
       { type: 'casino_pillar', tx: 35, ty: 10, w: 1, h: 1, solid: true },

@@ -69,6 +69,18 @@ const casinoState = {
     rollTimer: 0,         // animation timestamp
     phase: 'betting',     // 'betting'|'rolling1'|'rolled1'|'rolling2'|'result'
   },
+
+  // Rock Paper Scissors
+  rps: {
+    format: 'bo1',        // 'bo1'|'bo3'|'bo5'
+    playerWins: 0,
+    houseWins: 0,
+    rounds: [],           // [{ player, house, result }] history
+    playerChoice: null,
+    houseChoice: null,
+    revealTimer: 0,       // animation timestamp
+    phase: 'betting',     // 'betting'|'format'|'choosing'|'revealing'|'roundResult'|'result'
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -114,6 +126,7 @@ function casinoReset() {
   casinoState.bj.insurance = 0;
   casinoState.bj.dealTimer = 0;
   casinoState.bj._animateCallback = null;
+  casinoState.bj._dealerTurn = false;
   casinoState.bj.phase = 'betting';
   casinoState.rl.bets = [];
   casinoState.rl.resultNumber = null;
@@ -141,6 +154,14 @@ function casinoReset() {
   casinoState.dc.choice = null;
   casinoState.dc.rollTimer = 0;
   casinoState.dc.phase = 'betting';
+  casinoState.rps.format = 'bo1';
+  casinoState.rps.playerWins = 0;
+  casinoState.rps.houseWins = 0;
+  casinoState.rps.rounds = [];
+  casinoState.rps.playerChoice = null;
+  casinoState.rps.houseChoice = null;
+  casinoState.rps.revealTimer = 0;
+  casinoState.rps.phase = 'betting';
 }
 
 // Reset just the current game for "play again"
@@ -158,6 +179,7 @@ function casinoResetGame() {
     casinoState.bj.insurance = 0;
     casinoState.bj.dealTimer = 0;
     casinoState.bj._animateCallback = null;
+    casinoState.bj._dealerTurn = false;
     casinoState.bj.phase = 'betting';
   } else if (g === 'roulette') {
     casinoState.rl.bets = [];
@@ -189,6 +211,15 @@ function casinoResetGame() {
     casinoState.dc.choice = null;
     casinoState.dc.rollTimer = 0;
     casinoState.dc.phase = 'betting';
+  } else if (g === 'rps') {
+    casinoState.rps.format = casinoState.rps.format; // keep format selection
+    casinoState.rps.playerWins = 0;
+    casinoState.rps.houseWins = 0;
+    casinoState.rps.rounds = [];
+    casinoState.rps.playerChoice = null;
+    casinoState.rps.houseChoice = null;
+    casinoState.rps.revealTimer = 0;
+    casinoState.rps.phase = 'betting';
   }
   casinoState.phase = 'betting';
 }
@@ -428,26 +459,24 @@ function casinoBJ_split() {
 
 function casinoBJ_dealerPlay() {
   const bj = casinoState.bj;
-  // Dealer hits until 17+ (stands on soft 17) — stagger card timestamps
-  let delay = 0;
+  bj._dealerTurn = true; // flag so UI shows all dealer cards face-up
   const now = Date.now();
+  // Give hidden card (index 1) a reveal timestamp — UI will flip-animate it
+  bj.dealerHand[1]._revealAt = now;
+  // Dealer hits until 17+ — stagger after reveal animation (600ms for flip)
+  let delay = 600;
   while (_bjHandValue(bj.dealerHand) < BLACKJACK_CONFIG.DEALER_STAND) {
     const card = _bjDraw();
     card._addedAt = now + delay;
     bj.dealerHand.push(card);
     delay += 500; // 500ms between each dealer card
   }
-  if (delay > 0) {
-    // Wait for animations to finish, then resolve
-    bj.phase = 'animating';
-    bj._animateCallback = function() {
-      bj.phase = 'result';
-      _bjResolve();
-    };
-  } else {
+  // Wait for all animations, then resolve
+  bj.phase = 'animating';
+  bj._animateCallback = function() {
     bj.phase = 'result';
     _bjResolve();
-  }
+  };
 }
 
 function _bjResolve() {
@@ -779,4 +808,71 @@ function casinoDC_resolve() {
   } else {
     casinoLose('Rolled ' + d2 + ' — not ' + dc.choice + '!');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ROCK PAPER SCISSORS
+// ═══════════════════════════════════════════════════════════════
+
+function casinoRPS_start(betAmount) {
+  if (!casinoPlaceBet(betAmount)) return false;
+  const rps = casinoState.rps;
+  rps.playerWins = 0;
+  rps.houseWins = 0;
+  rps.rounds = [];
+  rps.playerChoice = null;
+  rps.houseChoice = null;
+  rps.revealTimer = 0;
+  rps.phase = 'choosing';
+  casinoState.phase = 'playing';
+  return true;
+}
+
+function casinoRPS_choose(choice) {
+  const rps = casinoState.rps;
+  if (rps.phase !== 'choosing') return;
+  if (!RPS_CHOICES.includes(choice)) return;
+  rps.playerChoice = choice;
+  rps.houseChoice = RPS_CHOICES[Math.floor(Math.random() * 3)];
+  rps.revealTimer = Date.now();
+  rps.phase = 'revealing'; // UI animates then calls resolve
+}
+
+function casinoRPS_resolveRound() {
+  const rps = casinoState.rps;
+  const p = rps.playerChoice, h = rps.houseChoice;
+  let result;
+  if (p === h) {
+    result = 'tie';
+  } else if (RPS_BEATS[p] === h) {
+    result = 'win';
+    rps.playerWins++;
+  } else {
+    result = 'loss';
+    rps.houseWins++;
+  }
+  rps.rounds.push({ player: p, house: h, result });
+  rps.phase = 'roundResult';
+
+  // Check if match is over
+  const fmt = RPS_FORMATS.find(f => f.id === rps.format);
+  const needed = fmt ? fmt.winsNeeded : 1;
+  if (rps.playerWins >= needed) {
+    rps.phase = 'result';
+    const payout = Math.floor(casinoState.bet * RPS_PAYOUT);
+    casinoWin(payout);
+  } else if (rps.houseWins >= needed) {
+    rps.phase = 'result';
+    casinoLose('House wins the match!');
+  }
+  // else: roundResult phase — UI shows "Next Round" button
+}
+
+function casinoRPS_nextRound() {
+  const rps = casinoState.rps;
+  if (rps.phase !== 'roundResult') return;
+  rps.playerChoice = null;
+  rps.houseChoice = null;
+  rps.revealTimer = 0;
+  rps.phase = 'choosing';
 }

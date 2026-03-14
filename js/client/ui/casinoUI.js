@@ -387,6 +387,7 @@ function drawCasinoPanel() {
   else if (g === 'cases') _drawCases(px, py, pw, ph);
   else if (g === 'mines') _drawMines(px, py, pw, ph);
   else if (g === 'dice') _drawDice(px, py, pw, ph);
+  else if (g === 'rps') _drawRPS(px, py, pw, ph);
   ctx.textAlign = 'left';
   ctx.lineWidth = 1;
 }
@@ -409,6 +410,7 @@ function handleCasinoClick(mx, my) {
   if (g === 'cases') return _clickCases(mx, my, px, py, pw, ph);
   if (g === 'mines') return _clickMines(mx, my, px, py, pw, ph);
   if (g === 'dice') return _clickDice(mx, my, px, py, pw, ph);
+  if (g === 'rps') return _clickRPS(mx, my, px, py, pw, ph);
   return true;
 }
 
@@ -462,7 +464,7 @@ function _drawBlackjack(px, py, pw, ph) {
     }
   }
 
-  const showDealer = bj.phase === 'dealer' || bj.phase === 'result';
+  const showDealer = bj.phase === 'dealer' || bj.phase === 'result' || bj._dealerTurn;
 
   // Helper: draw a hand of cards with per-card slide animation
   function _bjDrawHand(hand, baseX, baseY, faceDownIdx) {
@@ -476,8 +478,32 @@ function _drawBlackjack(px, py, pw, ph) {
       const eased = _easeOutCubic(slideT);
       const targetX = baseX + i * 56;
       const cardX = cx + (targetX - cx) * eased;
-      ctx.globalAlpha = Math.min(1, slideT * 1.5); // fade in slightly faster than slide
-      _casinoDrawCard(cardX, baseY, card, i === faceDownIdx);
+
+      // Check if this card is being revealed (flip animation)
+      let isFaceDown = (i === faceDownIdx);
+      if (card._revealAt) {
+        const revealElapsed = now - card._revealAt;
+        const flipDur = 500;
+        if (revealElapsed < flipDur) {
+          allDone = false;
+          // 3D flip: scale X from 1 → 0 → 1, switch face at midpoint
+          const flipT = revealElapsed / flipDur;
+          const scaleX = Math.abs(Math.cos(flipT * Math.PI));
+          isFaceDown = flipT < 0.5;
+          ctx.save();
+          ctx.translate(targetX + 24, baseY + 34);
+          ctx.scale(scaleX || 0.01, 1);
+          ctx.translate(-(targetX + 24), -(baseY + 34));
+          ctx.globalAlpha = 1;
+          _casinoDrawCard(targetX, baseY, card, isFaceDown);
+          ctx.restore();
+          continue;
+        }
+        isFaceDown = false; // fully revealed
+      }
+
+      ctx.globalAlpha = Math.min(1, slideT * 1.5);
+      _casinoDrawCard(cardX, baseY, card, isFaceDown);
       ctx.globalAlpha = 1;
     }
     return allDone;
@@ -1484,6 +1510,235 @@ function _clickDice(mx, my, px, py, pw, ph) {
     for (let i = 0; i < legal.length; i++) {
       const bx = startBtnX + i * (btnW + btnGap);
       if (_casinoHitBtn(mx, my, bx, btnY, btnW, 44)) { casinoDC_choose(legal[i]); return true; }
+    }
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ROCK PAPER SCISSORS
+// ═══════════════════════════════════════════════════════════════
+
+const _RPS_ICONS = {
+  rock: { symbol: '\u270A', color: '#8a6a4a', bg: '#3a2a1a' },      // fist
+  paper: { symbol: '\u270B', color: '#5a8aaa', bg: '#1a2a3a' },     // hand
+  scissors: { symbol: '\u270C', color: '#aa5a6a', bg: '#3a1a2a' },  // victory
+};
+
+function _drawRPSHand(x, y, size, choice, faceDown, shake) {
+  ctx.save();
+  if (shake) {
+    const shakeX = Math.sin(Date.now() / 40) * 4;
+    ctx.translate(shakeX, 0);
+  }
+  // Circle background
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.arc(x + 3, y + 3, size, 0, Math.PI * 2); ctx.fill();
+  if (faceDown) {
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.stroke();
+    ctx.font = 'bold ' + (size * 0.7) + 'px monospace';
+    ctx.fillStyle = '#333'; ctx.textAlign = 'center';
+    ctx.fillText('?', x, y + size * 0.25);
+  } else {
+    const info = _RPS_ICONS[choice];
+    const grad = ctx.createRadialGradient(x - size * 0.2, y - size * 0.2, 2, x, y, size);
+    grad.addColorStop(0, info.bg);
+    grad.addColorStop(1, '#0a0a12');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = info.color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.stroke();
+    ctx.font = (size * 1.0) + 'px serif';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(info.symbol, x, y + size * 0.35);
+  }
+  ctx.restore();
+}
+
+function _drawRPS(px, py, pw, ph) {
+  const rps = casinoState.rps;
+  const cx = px + pw / 2;
+
+  if (rps.phase === 'betting') {
+    _casinoDrawBetControls(px, py, pw);
+    // Format selector
+    ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText('Choose Format:', cx, py + 90);
+    const fmtBtnW = 140, fmtGap = 16;
+    const fmtStartX = cx - (RPS_FORMATS.length * fmtBtnW + (RPS_FORMATS.length - 1) * fmtGap) / 2;
+    for (let i = 0; i < RPS_FORMATS.length; i++) {
+      const fmt = RPS_FORMATS[i];
+      const bx = fmtStartX + i * (fmtBtnW + fmtGap);
+      const active = rps.format === fmt.id;
+      ctx.fillStyle = active ? '#2a4a1a' : '#111';
+      ctx.beginPath(); ctx.roundRect(bx, py + 105, fmtBtnW, 36, 6); ctx.fill();
+      ctx.strokeStyle = active ? '#5a8a4a' : '#2a2a3a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(bx, py + 105, fmtBtnW, 36, 6); ctx.stroke();
+      ctx.font = 'bold 13px monospace';
+      ctx.fillStyle = active ? '#8f8' : '#aaa'; ctx.textAlign = 'center';
+      ctx.fillText(fmt.label, bx + fmtBtnW / 2, py + 128);
+    }
+    // Payout info
+    ctx.font = '14px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center';
+    ctx.fillText('Win payout: ' + RPS_PAYOUT.toFixed(2) + 'x  |  Ties replay', cx, py + 165);
+    // RPS icons decorative
+    _drawRPSHand(cx - 120, py + 250, 40, 'rock', false, false);
+    _drawRPSHand(cx, py + 250, 40, 'paper', false, false);
+    _drawRPSHand(cx + 120, py + 250, 40, 'scissors', false, false);
+    // Play button
+    _casinoDrawButton(cx - 70, py + ph / 2 + 50, 140, 48, 'PLAY', gold >= _casinoBetInput, true);
+    return;
+  }
+
+  // Score display
+  const fmt = RPS_FORMATS.find(f => f.id === rps.format);
+  ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'right';
+  ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 24, py + 68);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#fff';
+  ctx.fillText('You ' + rps.playerWins + ' - ' + rps.houseWins + ' House', cx, py + 72);
+  ctx.font = '13px monospace'; ctx.fillStyle = '#888';
+  ctx.fillText(fmt ? fmt.label : '', cx, py + 90);
+
+  // Reveal animation
+  const revealDur = 1200;
+  const revealing = rps.phase === 'revealing';
+  if (revealing && rps.revealTimer && Date.now() - rps.revealTimer > revealDur) {
+    casinoRPS_resolveRound();
+  }
+
+  // Player and House hands
+  const handY = py + 200;
+  const handSize = 55;
+  const playerX = cx - 140, houseX = cx + 140;
+
+  // Labels
+  ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#5fca80'; ctx.fillText('YOU', playerX, handY - handSize - 16);
+  ctx.fillStyle = '#ff6666'; ctx.fillText('HOUSE', houseX, handY - handSize - 16);
+  // VS
+  ctx.font = 'bold 28px monospace'; ctx.fillStyle = '#ffd700';
+  ctx.fillText('VS', cx, handY + 10);
+
+  if (revealing) {
+    const elapsed = Date.now() - rps.revealTimer;
+    // Shake phase (first 600ms), then reveal
+    const shaking = elapsed < 600;
+    const revealed = elapsed >= 600;
+    _drawRPSHand(playerX, handY, handSize, rps.playerChoice, shaking, shaking);
+    _drawRPSHand(houseX, handY, handSize, rps.houseChoice, shaking, shaking);
+    if (shaking) {
+      ctx.font = 'bold 20px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'center';
+      const count = 3 - Math.floor(elapsed / 200);
+      if (count > 0) ctx.fillText(count.toString(), cx, handY + handSize + 40);
+    }
+  } else if (rps.phase === 'roundResult' || rps.phase === 'result') {
+    _drawRPSHand(playerX, handY, handSize, rps.playerChoice, false, false);
+    _drawRPSHand(houseX, handY, handSize, rps.houseChoice, false, false);
+    // Round result text
+    const lastRound = rps.rounds[rps.rounds.length - 1];
+    if (lastRound) {
+      ctx.font = 'bold 20px monospace'; ctx.textAlign = 'center';
+      if (lastRound.result === 'win') { ctx.fillStyle = '#5fca80'; ctx.fillText('You win this round!', cx, handY + handSize + 40); }
+      else if (lastRound.result === 'loss') { ctx.fillStyle = '#ff6666'; ctx.fillText('House wins this round!', cx, handY + handSize + 40); }
+      else { ctx.fillStyle = '#ffd700'; ctx.fillText('Tie! Play again.', cx, handY + handSize + 40); }
+    }
+  } else if (rps.phase === 'choosing') {
+    // Show hidden hands
+    _drawRPSHand(playerX, handY, handSize, null, true, false);
+    _drawRPSHand(houseX, handY, handSize, null, true, false);
+  }
+
+  // Round history
+  if (rps.rounds.length > 0) {
+    const histY = handY + handSize + 65;
+    ctx.font = '11px monospace'; ctx.fillStyle = '#666'; ctx.textAlign = 'center';
+    ctx.fillText('Round History', cx, histY);
+    for (let i = 0; i < rps.rounds.length; i++) {
+      const r = rps.rounds[i];
+      const rx = cx - 120 + i * 50;
+      const ry = histY + 10;
+      const pIcon = _RPS_ICONS[r.player];
+      const hIcon = _RPS_ICONS[r.house];
+      ctx.font = '16px serif';
+      ctx.fillText(pIcon.symbol, rx, ry + 18);
+      ctx.fillText(hIcon.symbol, rx + 20, ry + 18);
+      ctx.font = '9px monospace';
+      ctx.fillStyle = r.result === 'win' ? '#5fca80' : r.result === 'loss' ? '#ff6666' : '#ffd700';
+      ctx.fillText(r.result === 'win' ? 'W' : r.result === 'loss' ? 'L' : 'T', rx + 10, ry + 32);
+      ctx.fillStyle = '#666';
+    }
+  }
+
+  // Choice buttons
+  if (rps.phase === 'choosing') {
+    const btnY = py + ph - 80;
+    const choiceBtnW = 130, choiceGap = 20;
+    const startBtnX = cx - (3 * choiceBtnW + 2 * choiceGap) / 2;
+    for (let i = 0; i < 3; i++) {
+      const choice = RPS_CHOICES[i];
+      const info = _RPS_ICONS[choice];
+      const bx = startBtnX + i * (choiceBtnW + choiceGap);
+      ctx.fillStyle = info.bg;
+      ctx.beginPath(); ctx.roundRect(bx, btnY, choiceBtnW, 52, 8); ctx.fill();
+      ctx.strokeStyle = info.color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(bx, btnY, choiceBtnW, 52, 8); ctx.stroke();
+      ctx.font = '24px serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      ctx.fillText(info.symbol, bx + choiceBtnW / 2, btnY + 28);
+      ctx.font = 'bold 11px monospace'; ctx.fillStyle = info.color;
+      ctx.fillText(choice.toUpperCase(), bx + choiceBtnW / 2, btnY + 46);
+    }
+  }
+
+  // Next round button
+  if (rps.phase === 'roundResult') {
+    const nrLabel = rps.rounds[rps.rounds.length - 1]?.result === 'tie' ? 'REPLAY' : 'NEXT ROUND';
+    _casinoDrawButton(cx - 70, py + ph - 70, 140, 42, nrLabel, true, true);
+  }
+
+  _casinoDrawResult(px, py, pw, ph);
+}
+
+function _clickRPS(mx, my, px, py, pw, ph) {
+  const rps = casinoState.rps;
+  const cx = px + pw / 2;
+
+  if (rps.phase === 'betting') {
+    if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
+    // Format buttons
+    const fmtBtnW = 140, fmtGap = 16;
+    const fmtStartX = cx - (RPS_FORMATS.length * fmtBtnW + (RPS_FORMATS.length - 1) * fmtGap) / 2;
+    for (let i = 0; i < RPS_FORMATS.length; i++) {
+      const bx = fmtStartX + i * (fmtBtnW + fmtGap);
+      if (_casinoHitBtn(mx, my, bx, py + 105, fmtBtnW, 36)) {
+        rps.format = RPS_FORMATS[i].id; return true;
+      }
+    }
+    // Play button
+    if (_casinoHitBtn(mx, my, cx - 70, py + ph / 2 + 50, 140, 48) && gold >= _casinoBetInput) {
+      casinoRPS_start(_casinoBetInput); return true;
+    }
+    return true;
+  }
+
+  if (rps.phase === 'choosing') {
+    const btnY = py + ph - 80;
+    const choiceBtnW = 130, choiceGap = 20;
+    const startBtnX = cx - (3 * choiceBtnW + 2 * choiceGap) / 2;
+    for (let i = 0; i < 3; i++) {
+      const bx = startBtnX + i * (choiceBtnW + choiceGap);
+      if (_casinoHitBtn(mx, my, bx, btnY, choiceBtnW, 52)) {
+        casinoRPS_choose(RPS_CHOICES[i]); return true;
+      }
+    }
+  }
+
+  if (rps.phase === 'roundResult') {
+    if (_casinoHitBtn(mx, my, cx - 70, py + ph - 70, 140, 42)) {
+      casinoRPS_nextRound(); return true;
     }
   }
   return true;

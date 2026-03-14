@@ -5114,3 +5114,26 @@ ENTITY_RENDERERS['casino_dice'] = (e, ctx, ex, ey, w, h) => {
   ctx.fillText('DICE', ex + cw / 2, ey + 8);
   ctx.textAlign = 'left';
 };
+
+// Rock Paper Scissors pedestal
+ENTITY_RENDERERS['casino_rps'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Table
+  ctx.fillStyle = '#2a1a3a';
+  ctx.beginPath(); ctx.roundRect(ex + 8, ey + 10, cw - 16, ch - 14, 8); ctx.fill();
+  ctx.strokeStyle = '#6a3a8a';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(ex + 8, ey + 10, cw - 16, ch - 14, 8); ctx.stroke();
+  ctx.lineWidth = 1;
+  // RPS icons
+  ctx.font = '20px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('\u270A', ex + cw / 2 - 28, ey + ch / 2 + 8);
+  ctx.fillText('\u270B', ex + cw / 2, ey + ch / 2 + 8);
+  ctx.fillText('\u270C', ex + cw / 2 + 28, ey + ch / 2 + 8);
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '9px monospace';
+  ctx.fillText('RPS', ex + cw / 2, ey + 8);
+  ctx.textAlign = 'left';
+};
