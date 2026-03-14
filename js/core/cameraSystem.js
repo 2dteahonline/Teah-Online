@@ -43,17 +43,17 @@ const CameraSystem = {
     ctx.fillStyle = 'rgba(0,0,0,0.92)';
     ctx.fillRect(0, 0, BASE_W, BASE_H);
 
-    // Panel layout — 2×2 grid, smaller panels with more breathing room
-    const margin = 80;
+    // Panel layout — 2×2 grid, 75% size centered
     const gap = 12;
-    const totalW = BASE_W - margin * 2;
-    const totalH = BASE_H - margin * 2 - 36;
-    const panelW = (totalW - gap) / 2;
-    const panelH = (totalH - gap) / 2;
-    const topY = margin + 32;
+    const fullW = BASE_W * 0.75;
+    const fullH = BASE_H * 0.75;
+    const panelW = (fullW - gap) / 2;
+    const panelH = (fullH - gap) / 2;
+    const marginX = (BASE_W - fullW) / 2;
+    const topY = (BASE_H - fullH) / 2 + 32;
 
     // Close button (X) top-left
-    const bx = margin - 36, by = margin - 10, bs = 28;
+    const bx = marginX - 36, by = topY - 38, bs = 28;
     ctx.fillStyle = 'rgba(60,60,70,0.8)';
     ctx.beginPath();
     ctx.arc(bx + bs / 2, by + bs / 2, bs / 2 + 2, 0, Math.PI * 2);
@@ -76,14 +76,14 @@ const CameraSystem = {
     ctx.font = 'bold 16px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(120,180,200,0.7)';
-    ctx.fillText('SECURITY CAMERAS', BASE_W / 2, margin + 14);
+    ctx.fillText('SECURITY CAMERAS', BASE_W / 2, topY - 16);
     ctx.textAlign = 'left';
 
     // Draw each camera feed
     for (let i = 0; i < 4; i++) {
       const col = i % 2;
       const row = Math.floor(i / 2);
-      const px = margin + col * (panelW + gap);
+      const px = marginX + col * (panelW + gap);
       const py = topY + row * (panelH + gap);
       const cam = SKELD_CAMERAS[i];
 
@@ -267,8 +267,10 @@ const CameraSystem = {
   // Handle click on close button (top-left)
   handleClick(mx, my) {
     if (!CameraState.active) return false;
-    const margin = 80;
-    const bx = margin - 36, by = margin - 10, bs = 28;
+    const fullH = BASE_H * 0.75;
+    const marginX = (BASE_W - BASE_W * 0.75) / 2;
+    const topY = (BASE_H - fullH) / 2 + 32;
+    const bx = marginX - 36, by = topY - 38, bs = 28;
     const dx = mx - (bx + bs / 2), dy = my - (by + bs / 2);
     if (dx * dx + dy * dy < (bs / 2 + 6) * (bs / 2 + 6)) {
       this.exit();
