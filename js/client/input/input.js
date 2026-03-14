@@ -68,6 +68,11 @@ canvas.addEventListener("mousedown", e => {
   InputIntent.mouseWorldX = mx / WORLD_ZOOM + camera.x;
   InputIntent.mouseWorldY = my / WORLD_ZOOM + camera.y;
 
+  // Security cameras close button click
+  if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) {
+    if (CameraSystem.handleClick(mx, my)) return;
+  }
+
   // Hide & Seek role select click detection
   if (typeof HideSeekState !== 'undefined' && HideSeekState.phase === 'role_select' && window._hsRoleButtons) {
     const btns = window._hsRoleButtons;

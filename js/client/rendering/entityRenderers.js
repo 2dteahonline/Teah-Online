@@ -2827,6 +2827,59 @@ const ENTITY_RENDERERS = {
       ctx.shadowBlur = 0;
   },
 
+  // ===================== SKELD CAMERA MOUNT (wall-mounted security camera) =====================
+  skeld_camera_mount: (e, ctx, ex, ey, w, h) => {
+    const t = Date.now() / 1000;
+    const watching = typeof CameraState !== 'undefined' && CameraState.blinking;
+    const blink = watching && Math.sin(t * 3) > 0;
+
+    // Camera bracket (dark metal mount on wall)
+    ctx.fillStyle = '#1a1a22';
+    ctx.fillRect(ex + TILE / 2 - 8, ey + 4, 16, 10);
+
+    // Camera arm (angled down)
+    ctx.fillStyle = '#222230';
+    ctx.fillRect(ex + TILE / 2 - 3, ey + 12, 6, 12);
+
+    // Camera body (rectangular lens housing)
+    ctx.fillStyle = '#151520';
+    ctx.fillRect(ex + TILE / 2 - 10, ey + 22, 20, 12);
+    ctx.strokeStyle = '#2a2a3a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ex + TILE / 2 - 10, ey + 22, 20, 12);
+
+    // Lens (dark circle)
+    ctx.fillStyle = '#0a0a10';
+    ctx.beginPath();
+    ctx.arc(ex + TILE / 2, ey + 28, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Lens reflection
+    ctx.fillStyle = 'rgba(100,150,200,0.3)';
+    ctx.beginPath();
+    ctx.arc(ex + TILE / 2 - 1, ey + 27, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Red LED indicator (blinks when someone is watching cams)
+    if (blink) {
+      // Red glow
+      ctx.shadowColor = 'rgba(255,30,20,0.6)';
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = 'rgba(255,40,30,0.9)';
+      ctx.beginPath();
+      ctx.arc(ex + TILE / 2 + 7, ey + 24, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+    } else {
+      // Dim LED
+      ctx.fillStyle = 'rgba(60,20,15,0.5)';
+      ctx.beginPath();
+      ctx.arc(ex + TILE / 2 + 7, ey + 24, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  },
+
   // ===================== SKELD SECURITY CAMERAS (Among Us camera desk) =====================
   skeld_cameras: (e, ctx, ex, ey, w, h) => {
     const cw = w * TILE, ch = h * TILE;

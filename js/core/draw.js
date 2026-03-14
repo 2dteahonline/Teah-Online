@@ -1960,6 +1960,7 @@ function draw() {
   if (typeof drawFarmVendorPanel === 'function') drawFarmVendorPanel();
   if (typeof drawGunsmithPanel === 'function') drawGunsmithPanel();
   if (typeof drawMiningShopPanel === 'function') drawMiningShopPanel();
+  if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) CameraSystem.drawOverlay();
   if (typeof drawSkeldTaskPanel === 'function') drawSkeldTaskPanel();
   if (typeof drawSkeldTaskList === 'function') drawSkeldTaskList();
   if (typeof drawVentHUD === 'function') drawVentHUD();

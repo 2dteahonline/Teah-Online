@@ -372,6 +372,11 @@ window.MafiaSystem = {
       _skipConfirmActive = false;
     }
 
+    // Close any open panels/camera
+    if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) CameraSystem.exit();
+    if (typeof _taskPanel !== 'undefined' && _taskPanel.active) { _taskPanel.active = false; }
+    if (typeof _sabPanel !== 'undefined' && _sabPanel.active) { if (typeof closeSabFixPanel === 'function') closeSabFixPanel(); }
+
     mk.phase = 'meeting';
     mk.meeting = {
       caller: callerName,
@@ -1114,6 +1119,10 @@ window.MafiaSystem = {
     if (window._mafiaEmergencyPopup) return true;
     // Freeze while sabotage fix panel is open
     if (typeof _sabPanel !== 'undefined' && _sabPanel.active) return true;
+    // Freeze while viewing security cameras
+    if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) return true;
+    // Freeze while task panel is open
+    if (typeof _taskPanel !== 'undefined' && _taskPanel.active) return true;
     return false;
   },
 

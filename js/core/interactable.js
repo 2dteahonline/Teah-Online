@@ -634,6 +634,29 @@ window._resetShopPrices = () => {
     });
     console.log('[Skeld] Registered emergency table interactable');
   }
+
+  // --- Security cameras console interactable ---
+  const camerasConsole = skeldLevel.entities.find(e => e.type === 'skeld_cameras');
+  if (camerasConsole) {
+    registerInteractable({
+      id: 'skeld_cameras_console',
+      get x() { return camerasConsole.tx * TILE + (camerasConsole.w || 5) * TILE / 2; },
+      get y() { return camerasConsole.ty * TILE + (camerasConsole.h || 3) * TILE / 2; },
+      range: 120,
+      get label() {
+        if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) return '';
+        return '[' + getKeyDisplayName(keybinds.interact) + '] Security Cameras';
+      },
+      type: 'skeld_cameras',
+      canInteract() {
+        return Scene.inSkeld && typeof CameraSystem !== 'undefined' && !CameraSystem.isActive();
+      },
+      onInteract() {
+        if (typeof CameraSystem !== 'undefined') CameraSystem.enter();
+      },
+    });
+    console.log('[Skeld] Registered security cameras interactable');
+  }
 })();
 
 // ===================== MAFIA LOBBY INTERACTABLES =====================

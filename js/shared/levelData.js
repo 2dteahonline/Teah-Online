@@ -1679,6 +1679,12 @@ const LEVELS = {
         // ===== SECURITY CAMERAS CONSOLE =====
         { type: 'skeld_cameras', tx: 28 + XO, ty: 24, w: 5, h: 3, solid: true, label: 'Security Cameras', room: 'security' },
 
+        // ===== CAMERA MOUNTS (wall-mounted cameras at corridors) =====
+        { type: 'skeld_camera_mount', tx: 40 + XO, ty: 8,  w: 1, h: 1, solid: false, label: 'Camera', room: 'hallway', camId: 'hallway' },
+        { type: 'skeld_camera_mount', tx: 18 + XO, ty: 32, w: 1, h: 1, solid: false, label: 'Camera', room: 'security', camId: 'xroads' },
+        { type: 'skeld_camera_mount', tx: 74 + XO, ty: 42, w: 1, h: 1, solid: false, label: 'Camera', room: 'admin', camId: 'admin' },
+        { type: 'skeld_camera_mount', tx: 70 + XO, ty: 66, w: 1, h: 1, solid: false, label: 'Camera', room: 'storage', camId: 'lower' },
+
         // ===== SABOTAGE PLACEHOLDERS =====
         { type: 'skeld_sabotage', tx: 2 + XO, ty: 25, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 1 },
         { type: 'skeld_sabotage', tx: 2 + XO, ty: 44, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 2 },

@@ -443,6 +443,11 @@ window.addEventListener("keydown", e => {
       closeMafiaColorPicker();
       return;
     }
+    // Close security cameras
+    if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) {
+      CameraSystem.exit();
+      return;
+    }
     // Close sabotage fix panel
     if (typeof _sabPanel !== 'undefined' && _sabPanel.active) {
       closeSabFixPanel();
@@ -977,6 +982,13 @@ window.addEventListener("keydown", e => {
   }
   if (key === "shift" && !chatInputActive && !nameEditActive && !statusEditActive) {
     InputIntent.dashPressed = true;
+  }
+  // X key closes security cameras
+  if (key === "x" && !chatInputActive && !nameEditActive && !statusEditActive) {
+    if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) {
+      CameraSystem.exit();
+      return;
+    }
   }
   if (key === keybinds.interact && !chatInputActive && !nameEditActive && !statusEditActive) {
     InputIntent.interactPressed = true;
