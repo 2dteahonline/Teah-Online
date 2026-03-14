@@ -2436,12 +2436,12 @@ function update() {
       gun.reloading = true;
       gun.reloadTimer = getReloadTime();
     }
-    // Farm action dispatch — intercept melee in farm scene
+    // Farm action dispatch — intercept melee in farm scene when hoe equipped
     if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && InputIntent.meleePressed && typeof handleFarmAction === 'function') {
       handleFarmAction();
     }
-    // Melee swing (disabled in Skeld, lobby, mafia lobby, farm)
-    else if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && !Scene.inFarm && InputIntent.meleePressed) {
+    // Melee swing (disabled in Skeld, lobby, mafia lobby)
+    else if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && InputIntent.meleePressed) {
       meleeSwing();
     }
     // Ninja dash activation (blocked by mobility_lock)
