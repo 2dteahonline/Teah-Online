@@ -756,13 +756,10 @@ function _drawRoulette(px, py, pw, ph) {
     return;
   }
 
-  // BETTING PHASE — centered layout: grid + bets list
+  // BETTING PHASE — grid centered, bets strip below
   const cellW = 34, cellH = 26;
-  const gridW = cellW * 13; // 442px total grid width
-  const listW = 200;        // right panel width
-  const gapW = 12;          // gap between grid and list
-  const _rlTotalW = gridW + gapW + listW;
-  const gridX = cx - _rlTotalW / 2, gridY = py + 58;
+  const gridW = cellW * 13; // 442px
+  const gridX = cx - gridW / 2, gridY = py + 55;
 
   // Zero
   ctx.fillStyle = '#006600';
@@ -790,10 +787,10 @@ function _drawRoulette(px, py, pw, ph) {
     }
   }
 
-  // Outside bets (below grid, 2 rows of 3)
-  const obY = gridY + cellH * 3 + 8;
-  const obW = (cellW * 13) / 3 - 4;
-  const obH = 26;
+  // Outside bets (below grid, 2 rows of 3) — centered with grid
+  const obY = gridY + cellH * 3 + 6;
+  const obW = gridW / 3 - 4;
+  const obH = 24;
   const outsideBets1 = [
     { type: 'red', label: 'RED', color: '#881111' },
     { type: 'black', label: 'BLACK', color: '#151515' },
@@ -815,7 +812,7 @@ function _drawRoulette(px, py, pw, ph) {
     ctx.textAlign = 'center';
     ctx.fillText(ob.label, bx + obW / 2, obY + obH / 2 + 4);
   }
-  const ob2Y = obY + obH + 4;
+  const ob2Y = obY + obH + 3;
   for (let i = 0; i < 3; i++) {
     const bx = gridX + i * (obW + 4);
     const ob = outsideBets2[i];
@@ -828,9 +825,9 @@ function _drawRoulette(px, py, pw, ph) {
     ctx.fillText(ob.label, bx + obW / 2, ob2Y + obH / 2 + 4);
   }
 
-  // Dozens + Columns (below outside bets)
-  const dcY = ob2Y + obH + 8;
-  const dcW = (cellW * 13) / 3 - 4;
+  // Dozens + Columns (below outside bets) — centered with grid
+  const dcY = ob2Y + obH + 6;
+  const dcW = gridW / 3 - 4;
   const dcBets1 = [
     { type: 'dozen1', label: '1st 12' }, { type: 'dozen2', label: '2nd 12' }, { type: 'dozen3', label: '3rd 12' },
   ];
@@ -847,7 +844,7 @@ function _drawRoulette(px, py, pw, ph) {
     ctx.textAlign = 'center';
     ctx.fillText(dcBets1[i].label, bx + dcW / 2, dcY + obH / 2 + 4);
   }
-  const dc2Y = dcY + obH + 4;
+  const dc2Y = dcY + obH + 3;
   for (let i = 0; i < 3; i++) {
     const bx = gridX + i * (dcW + 4);
     ctx.fillStyle = '#0e0e1e';
@@ -859,30 +856,33 @@ function _drawRoulette(px, py, pw, ph) {
     ctx.fillText(dcBets2[i].label, bx + dcW / 2, dc2Y + obH / 2 + 4);
   }
 
-  // Right panel: bets list + actions
-  const listX = gridX + gridW + gapW, listY = py + 58;
+  // Bets summary strip — centered below grid area
+  const stripY = dc2Y + obH + 10;
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.roundRect(listX - 8, listY - 8, listW + 8, ph - 130, 8); ctx.fill();
-  ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = '#ffd700';
-  ctx.textAlign = 'left';
-  ctx.fillText('Your Bets', listX, listY + 8);
-  ctx.font = '12px monospace';
-  ctx.fillStyle = '#ccc';
-  for (let i = 0; i < Math.min(rl.bets.length, 10); i++) {
-    const b = rl.bets[i];
-    const label = ROULETTE_BET_TYPES[b.type] ? ROULETTE_BET_TYPES[b.type].label : '#' + b.value;
-    ctx.fillText(label + '  ' + b.amount + 'g', listX, listY + 30 + i * 18);
+  ctx.beginPath(); ctx.roundRect(gridX, stripY, gridW, 46, 6); ctx.fill();
+  // Bets list (scrolling text, left side of strip)
+  ctx.font = '11px monospace'; ctx.fillStyle = '#ccc'; ctx.textAlign = 'left';
+  if (rl.bets.length === 0) {
+    ctx.fillStyle = '#666';
+    ctx.fillText('Click numbers to place bets', gridX + 10, stripY + 18);
+  } else {
+    // Show last 3 bets + total
+    const showBets = rl.bets.slice(-3);
+    for (let i = 0; i < showBets.length; i++) {
+      const b = showBets[i];
+      const label = ROULETTE_BET_TYPES[b.type] ? ROULETTE_BET_TYPES[b.type].label : '#' + b.value;
+      ctx.fillText(label + ' ' + b.amount + 'g', gridX + 10, stripY + 14 + i * 14);
+    }
+    if (rl.bets.length > 3) {
+      ctx.fillStyle = '#888';
+      ctx.fillText('+' + (rl.bets.length - 3) + ' more', gridX + 180, stripY + 14);
+    }
   }
-  if (rl.bets.length > 10) ctx.fillText('... +' + (rl.bets.length - 10) + ' more', listX, listY + 30 + 10 * 18);
-  ctx.fillStyle = '#ffd700';
-  ctx.font = 'bold 13px monospace';
-  ctx.fillText('Total: ' + rl.totalBet + 'g', listX, listY + 240);
-
-  // Spin + Clear buttons (in right panel)
-  const sbY = listY + 260;
-  _casinoDrawButton(listX, sbY, 100, 36, 'SPIN', rl.bets.length > 0, true);
-  _casinoDrawButton(listX + 108, sbY, 100, 36, 'CLEAR', rl.bets.length > 0, false);
+  // Total + Spin/Clear buttons (right side of strip)
+  ctx.font = 'bold 13px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'right';
+  ctx.fillText('Total: ' + rl.totalBet + 'g', gridX + gridW - 220, stripY + 28);
+  _casinoDrawButton(gridX + gridW - 210, stripY + 6, 96, 34, 'SPIN', rl.bets.length > 0, true);
+  _casinoDrawButton(gridX + gridW - 106, stripY + 6, 96, 34, 'CLEAR', rl.bets.length > 0, false);
 
   // Bet controls
   _casinoDrawBetControls(px, py, pw);
@@ -894,18 +894,19 @@ function _clickRoulette(mx, my, px, py, pw, ph) {
   const cx = px + pw / 2;
   const cellW = 34, cellH = 26;
   const gridW = cellW * 13;
-  const listW = 200, gapW = 12;
-  const _rlTotalW = gridW + gapW + listW;
-  const gridX = cx - _rlTotalW / 2, gridY = py + 58;
-  const obW = gridW / 3 - 4, obH = 26;
-  const listX = gridX + gridW + gapW, listY = py + 58;
+  const gridX = cx - gridW / 2, gridY = py + 55;
+  const obW = gridW / 3 - 4, obH = 24;
 
   if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
 
-  // Spin/Clear
-  const sbY = listY + 260;
-  if (_casinoHitBtn(mx, my, listX, sbY, 100, 36) && rl.bets.length > 0) { casinoRL_spin(); return true; }
-  if (_casinoHitBtn(mx, my, listX + 108, sbY, 100, 36) && rl.bets.length > 0) { casinoRL_clearBets(); return true; }
+  // Spin/Clear in strip
+  const obY = gridY + cellH * 3 + 6;
+  const ob2Y = obY + obH + 3;
+  const dcY = ob2Y + obH + 6;
+  const dc2Y = dcY + obH + 3;
+  const stripY = dc2Y + obH + 10;
+  if (_casinoHitBtn(mx, my, gridX + gridW - 210, stripY + 6, 96, 34) && rl.bets.length > 0) { casinoRL_spin(); return true; }
+  if (_casinoHitBtn(mx, my, gridX + gridW - 106, stripY + 6, 96, 34) && rl.bets.length > 0) { casinoRL_clearBets(); return true; }
 
   // Zero
   if (mx >= gridX && mx <= gridX + cellW && my >= gridY && my <= gridY + cellH * 3) {
@@ -921,21 +922,18 @@ function _clickRoulette(mx, my, px, py, pw, ph) {
     }
   }
   // Outside bets row 1
-  const obY = gridY + cellH * 3 + 8;
   const outsideTypes1 = ['red', 'black', 'odd'];
   for (let i = 0; i < 3; i++) {
     const bx = gridX + i * (obW + 4);
     if (_casinoHitBtn(mx, my, bx, obY, obW, obH)) { casinoRL_placeBet(outsideTypes1[i], null, _casinoBetInput); return true; }
   }
   // Outside bets row 2
-  const ob2Y = obY + obH + 4;
   const outsideTypes2 = ['even', 'low', 'high'];
   for (let i = 0; i < 3; i++) {
     const bx = gridX + i * (obW + 4);
     if (_casinoHitBtn(mx, my, bx, ob2Y, obW, obH)) { casinoRL_placeBet(outsideTypes2[i], null, _casinoBetInput); return true; }
   }
   // Dozens
-  const dcY = ob2Y + obH + 8;
   const dcTypes1 = ['dozen1', 'dozen2', 'dozen3'];
   const dcW = obW;
   for (let i = 0; i < 3; i++) {
@@ -943,7 +941,6 @@ function _clickRoulette(mx, my, px, py, pw, ph) {
     if (_casinoHitBtn(mx, my, bx, dcY, dcW, obH)) { casinoRL_placeBet(dcTypes1[i], null, _casinoBetInput); return true; }
   }
   // Columns
-  const dc2Y = dcY + obH + 4;
   const dcTypes2 = ['col1', 'col2', 'col3'];
   for (let i = 0; i < 3; i++) {
     const bx = gridX + i * (dcW + 4);
