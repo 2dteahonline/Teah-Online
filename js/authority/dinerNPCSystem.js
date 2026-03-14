@@ -277,14 +277,15 @@ function _routeDinerSeatToArcade(boothId, seatIdx, arcadeIdx) {
   );
 }
 
-function _routeDinerSeatToExit(boothId, seatIdx) {
+function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
+  const cx = corridorTX || 27;
   return _concatDinerRoutes(
     _routeDinerSeatToBoothEntry(boothId, seatIdx),
     booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : [_dinerWP(26, 14)],
-    [_dinerWP(27, 14, true)],
-    [_dinerWP(27, 33)]
+    [_dinerWP(cx, 14, true)],
+    [_dinerWP(cx, 33)]
   );
 }
 
@@ -298,19 +299,20 @@ function _routeDinerSeatToTipJar(boothId, seatIdx) {
   );
 }
 
-function _buildDinerRouteFromIntent(intent) {
+function _buildDinerRouteFromIntent(intent, corridorTX) {
   if (!intent) return null;
+  const cx = corridorTX;
   switch (intent.kind) {
-    case 'exit_to_booth': return _routeDinerExitToBooth(intent.boothId);
+    case 'exit_to_booth': return _routeDinerExitToBooth(intent.boothId, cx);
     case 'booth_to_seat': return _routeDinerBoothToSeat(intent.boothId, intent.seatIdx);
     case 'seat_to_counter': return _routeDinerSeatToCounter(intent.boothId, intent.seatIdx);
     case 'counter_to_seat': return _routeDinerCounterToSeat(intent.boothId, intent.seatIdx);
     case 'seat_to_arcade': return _routeDinerSeatToArcade(intent.boothId, intent.seatIdx, intent.arcadeIdx);
-    case 'seat_to_exit': return _routeDinerSeatToExit(intent.boothId, intent.seatIdx);
+    case 'seat_to_exit': return _routeDinerSeatToExit(intent.boothId, intent.seatIdx, cx);
     case 'seat_to_tipjar': return _routeDinerSeatToTipJar(intent.boothId, intent.seatIdx);
-    case 'counter_to_exit': return _routeDinerToExit(DINER_SPOTS.counter.tx, DINER_SPOTS.counter.ty);
-    case 'tipjar_to_exit': return _routeDinerToExit(DINER_SPOTS.tipJar.tx, DINER_SPOTS.tipJar.ty);
-    case 'tile_to_exit': return _routeDinerToExit(intent.tx, intent.ty);
+    case 'counter_to_exit': return _routeDinerToExit(DINER_SPOTS.counter.tx, DINER_SPOTS.counter.ty, cx);
+    case 'tipjar_to_exit': return _routeDinerToExit(DINER_SPOTS.tipJar.tx, DINER_SPOTS.tipJar.ty, cx);
+    case 'tile_to_exit': return _routeDinerToExit(intent.tx, intent.ty, cx);
     default: return null;
   }
 }
@@ -351,12 +353,14 @@ function _recoverDinerNPC(npc) {
   npc._laneOffY = 0;
 
   const intent = npc._routeIntent;
-  let route = _buildDinerRouteFromIntent(intent);
+  const party = _getDinerParty(npc.partyId);
+  const cx = party ? party.corridorTX : undefined;
+  let route = _buildDinerRouteFromIntent(intent, cx);
   let anchor = _getDinerIntentAnchor(intent, npc);
 
   if ((!route || route.length === 0) && _isDinerKitchenZone(npc.x, npc.y)) {
     anchor = { tx: 26, ty: 16 };
-    route = _routeDinerToExit(anchor.tx, anchor.ty);
+    route = _routeDinerToExit(anchor.tx, anchor.ty, cx);
     npc._routeIntent = { kind: 'tile_to_exit', tx: anchor.tx, ty: anchor.ty };
   }
 
@@ -382,16 +386,16 @@ function _recoverDinerNPC(npc) {
 //   tx: 35-37 — gap between left and right booth columns
 //   ty: 14  — main horizontal corridor
 
-function _routeDinerExitToBooth(boothId) {
+function _routeDinerExitToBooth(boothId, corridorTX) {
   const booth = DINER_BOOTHS[boothId];
-  // Exit (27,33) → north to corridor (27,14) → west/east to booth column → north to booth
+  const cx = corridorTX || 27;
+  // Exit → north to corridor → west/east to booth column → north to booth
   const route = [];
-  route.push({ tx: 27, ty: 14 });           // north to main corridor
+  route.push({ tx: cx, ty: 14 });           // north to main corridor
   if (booth.tx >= 38) {
     // Right column booth — go east through gap
     route.push({ tx: 36, ty: 14 });          // east to gap
     route.push({ tx: 36, ty: booth.ty + 1 }); // north to booth row
-    route.push({ tx: booth.seats[0].tx, ty: booth.seats[0].tx === booth.seats[0].tx ? booth.ty + 1 : booth.ty + 1 });
   } else {
     // Left column booth — go to tx:26 corridor then north
     route.push({ tx: 26, ty: 14 });          // west to corridor
@@ -400,7 +404,8 @@ function _routeDinerExitToBooth(boothId) {
   return route;
 }
 
-function _routeDinerToExit(fromTX, fromTY) {
+function _routeDinerToExit(fromTX, fromTY, corridorTX) {
+  const cx = corridorTX || _dinerRandRange(26, 29);
   const route = [];
   // Get to main corridor first
   if (fromTY < 14) {
@@ -420,8 +425,8 @@ function _routeDinerToExit(fromTX, fromTY) {
     route.push({ tx: 26, ty: 16 });
     route.push({ tx: 26, ty: 14 });
   }
-  route.push({ tx: 27, ty: 14 });    // east to exit column
-  route.push({ tx: 27, ty: 33 });    // south to exit
+  route.push({ tx: cx, ty: 14 });    // to exit column
+  route.push({ tx: cx, ty: 33 });    // south to exit
   return route;
 }
 
@@ -546,13 +551,13 @@ function moveDinerNPC(npc) {
 }
 
 // ===================== SPAWN =====================
-function _spawnDinerNPC(partyId, isLeader) {
+function _spawnDinerNPC(partyId, isLeader, corridorTX) {
   const app = _dinerRandFromArray(DINER_NPC_APPEARANCES);
-  const sp = DINER_SPOTS.exit;
+  const spawnTX = corridorTX || DINER_SPOTS.exit.tx;
   const npc = {
     id: ++_dinerNPCId,
-    x: sp.tx * TILE + TILE / 2,
-    y: sp.ty * TILE + TILE / 2,
+    x: spawnTX * TILE + TILE / 2,
+    y: DINER_SPOTS.exit.ty * TILE + TILE / 2,
     dir: 1, frame: 0, moving: false,
     skin: app.skin, hair: app.hair, shirt: app.shirt, pants: app.pants,
     name: _dinerRandFromArray(DINER_NPC_NAMES),
@@ -599,17 +604,21 @@ function spawnDinerParty() {
   const booth = DINER_BOOTHS[boothIdx];
   booth.claimedBy = partyId;
 
+  // Each party gets a random corridor column (26-29) so they don't all walk single-file
+  const corridorTX = _dinerRandRange(26, 29);
+
   const party = {
     id: partyId,
     members: [],
     leaderId: -1,
     boothId: boothIdx,
+    corridorTX: corridorTX,
     state: 'entering',
   };
 
   // Create NPCs — first is leader
   for (let i = 0; i < partySize; i++) {
-    const npc = _spawnDinerNPC(partyId, i === 0);
+    const npc = _spawnDinerNPC(partyId, i === 0, corridorTX);
     party.members.push(npc.id);
     if (i === 0) party.leaderId = npc.id;
 
@@ -659,8 +668,7 @@ const DINER_NPC_AI = {
     const party = _getDinerParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
 
-    const booth = DINER_BOOTHS[party.boothId];
-    const route = _routeDinerExitToBooth(party.boothId);
+    const route = _routeDinerExitToBooth(party.boothId, party.corridorTX);
 
     _dinerNPCStartRoute(npc, route, 'seating', 0, { kind: 'exit_to_booth', boothId: party.boothId });
   },
@@ -1083,20 +1091,21 @@ const DINER_NPC_AI = {
 
 function _buildDinerExitPlan(npc) {
   const party = _getDinerParty(npc.partyId);
+  const cx = party ? party.corridorTX : undefined;
   if (party && npc.claimedSeatIdx >= 0 &&
       (npc.state === 'menu_reading' || npc.state === 'waiting_at_booth' ||
        npc.state === 'eating' || npc.state === 'post_meal' ||
        npc.state === 'post_meal_wait' || npc.state === 'return_to_booth' ||
        npc.state === 'waiting_for_counter')) {
     return {
-      route: _routeDinerSeatToExit(party.boothId, npc.claimedSeatIdx),
+      route: _routeDinerSeatToExit(party.boothId, npc.claimedSeatIdx, cx),
       intent: { kind: 'seat_to_exit', boothId: party.boothId, seatIdx: npc.claimedSeatIdx },
     };
   }
 
   if (npc.state === 'ordering' || npc.state === 'waiting_food' || npc.state === 'pickup_food') {
     return {
-      route: _routeDinerToExit(DINER_SPOTS.counter.tx, DINER_SPOTS.counter.ty),
+      route: _routeDinerToExit(DINER_SPOTS.counter.tx, DINER_SPOTS.counter.ty, cx),
       intent: { kind: 'counter_to_exit' },
     };
   }
@@ -1104,7 +1113,7 @@ function _buildDinerExitPlan(npc) {
   const curTX = Math.floor(npc.x / TILE);
   const curTY = Math.floor(npc.y / TILE);
   return {
-    route: _routeDinerToExit(curTX, curTY),
+    route: _routeDinerToExit(curTX, curTY, cx),
     intent: { kind: 'tile_to_exit', tx: curTX, ty: curTY },
   };
 }
