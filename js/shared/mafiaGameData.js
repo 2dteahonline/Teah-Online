@@ -120,7 +120,7 @@ const MAFIA_GAME = {
         cafeteria:    { tx: 74, ty: 17 },
         upper_engine: { tx: 16, ty: 9 },
         reactor:      { tx: 6,  ty: 35 },
-        security:     { tx: 34, ty: 35 },
+        security:     { tx: 34, ty: 33 },
         medbay:       { tx: 49, ty: 25 },
         electrical:   { tx: 50, ty: 52 },
         admin:        { tx: 91, ty: 46 },

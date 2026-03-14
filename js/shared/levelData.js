@@ -1406,8 +1406,8 @@ const LEVELS = {
     // === REACTOR (far left — 12×24) ===
     room(-3, 23, 8, 46);
 
-    // === SECURITY (right of cross — 13×14) ===
-    room(24, 28, 36, 41);
+    // === SECURITY (right of cross — 13×18) ===
+    room(24, 24, 36, 41);
 
     // === MEDBAY (center-right — 16×15) ===
     room(38, 18, 53, 32);
@@ -1488,9 +1488,11 @@ const LEVELS = {
     wall(7,45); wall(8,45);
     wall(6,46); wall(7,46); wall(8,46);
 
-    // --- Security — small: 2-step cut on TR only (BR cleared for vent) ---
-    wall(35,28); wall(36,28);
-    wall(36,29);
+    // --- Security — 2-step cuts on TL + TR (BR cleared for vent) ---
+    wall(24,24); wall(25,24);
+    wall(24,25);
+    wall(35,24); wall(36,24);
+    wall(36,25);
 
     // --- MedBay — 3-step diagonal on BR, 2-step on TL ---
     wall(38,18); wall(39,18);
@@ -1673,6 +1675,9 @@ const LEVELS = {
         // Empty Trash (2-step)
         { type: 'skeld_task', tx: 83 + XO, ty: 73, w: 2, h: 1, solid: true, label: 'Empty Trash', taskId: 'empty_trash', room: 'comms', taskStep: 1 },
         { type: 'skeld_task', tx: 71 + XO, ty: 73, w: 2, h: 1, solid: true, label: 'Empty Trash', taskId: 'empty_trash', room: 'storage', taskStep: 2 },
+
+        // ===== SECURITY CAMERAS CONSOLE =====
+        { type: 'skeld_cameras', tx: 28 + XO, ty: 25, w: 5, h: 3, solid: true, label: 'Security Cameras', room: 'security' },
 
         // ===== SABOTAGE PLACEHOLDERS =====
         { type: 'skeld_sabotage', tx: 2 + XO, ty: 25, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 1 },

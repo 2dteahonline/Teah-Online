@@ -13,7 +13,7 @@ const MINIMAP_LABELS = {
     { name: 'Upper Engine', x: 5,  y: 1,  w: 23, h: 17 },
     { name: 'Reactor',      x: 1,  y: 23, w: 12, h: 24 },
     { name: 'MedBay',       x: 42, y: 18, w: 16, h: 15 },
-    { name: 'Security',     x: 28, y: 28, w: 13, h: 14 },
+    { name: 'Security',     x: 28, y: 24, w: 13, h: 18 },
     { name: 'Lower Engine', x: 5,  y: 52, w: 23, h: 17 },
     { name: 'Electrical',   x: 41, y: 42, w: 19, h: 21 },
     { name: 'Admin',         x: 82, y: 37, w: 19, h: 18 },

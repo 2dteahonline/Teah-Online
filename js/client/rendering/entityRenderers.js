@@ -2827,6 +2827,115 @@ const ENTITY_RENDERERS = {
       ctx.shadowBlur = 0;
   },
 
+  // ===================== SKELD SECURITY CAMERAS (Among Us camera desk) =====================
+  skeld_cameras: (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const t = Date.now() / 1000;
+
+    // === Desk body — dark metal console ===
+    ctx.fillStyle = '#1a1a22';
+    ctx.fillRect(ex, ey + ch * 0.35, cw, ch * 0.65);
+    ctx.fillStyle = '#222230';
+    ctx.fillRect(ex + 3, ey + ch * 0.35 + 3, cw - 6, ch * 0.65 - 6);
+
+    // Desk edge highlight
+    ctx.strokeStyle = '#333345';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(ex + 1, ey + ch * 0.35, cw - 2, ch * 0.65);
+
+    // === Monitor bank (4 screens in 2×2 grid) ===
+    const monW = (cw - 20) / 2;
+    const monH = (ch * 0.55 - 12) / 2;
+    const monStartX = ex + 8;
+    const monStartY = ey + 4;
+
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 2; col++) {
+        const mx = monStartX + col * (monW + 4);
+        const my = monStartY + row * (monH + 3);
+
+        // Monitor frame — dark metal
+        ctx.fillStyle = '#0e0e14';
+        ctx.fillRect(mx, my, monW, monH);
+
+        // Screen — dark blue-green with slight static
+        const flicker = 0.03 * Math.sin(t * 4 + col * 2 + row * 3);
+        ctx.fillStyle = `rgba(15,30,35,${0.9 + flicker})`;
+        ctx.fillRect(mx + 2, my + 2, monW - 4, monH - 4);
+
+        // Screen scan line (slow moving horizontal line)
+        const scanY = my + 2 + ((t * 12 + row * 30 + col * 17) % (monH - 4));
+        ctx.fillStyle = 'rgba(40,80,90,0.25)';
+        ctx.fillRect(mx + 2, scanY, monW - 4, 1.5);
+
+        // Faint camera feed placeholder — grid lines suggesting a room view
+        ctx.strokeStyle = 'rgba(30,60,70,0.3)';
+        ctx.lineWidth = 0.5;
+        // horizontal lines
+        for (let i = 1; i < 3; i++) {
+          const ly = my + 2 + i * ((monH - 4) / 3);
+          ctx.beginPath();
+          ctx.moveTo(mx + 4, ly);
+          ctx.lineTo(mx + monW - 4, ly);
+          ctx.stroke();
+        }
+        // vertical lines
+        for (let i = 1; i < 4; i++) {
+          const lx = mx + 2 + i * ((monW - 4) / 4);
+          ctx.beginPath();
+          ctx.moveTo(lx, my + 4);
+          ctx.lineTo(lx, my + monH - 4);
+          ctx.stroke();
+        }
+
+        // Small REC indicator (top-left of each screen)
+        const recPulse = Math.sin(t * 2 + col + row * 2) > 0;
+        if (recPulse) {
+          ctx.fillStyle = 'rgba(255,40,30,0.7)';
+          ctx.beginPath();
+          ctx.arc(mx + 6, my + 6, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Screen border glow
+        ctx.strokeStyle = 'rgba(40,90,100,0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(mx + 1, my + 1, monW - 2, monH - 2);
+      }
+    }
+
+    // === Desk surface details ===
+    // Small keyboard area (center bottom)
+    const kbW = cw * 0.4, kbH = 8;
+    const kbX = ex + (cw - kbW) / 2, kbY = ey + ch - 16;
+    ctx.fillStyle = '#151520';
+    ctx.fillRect(kbX, kbY, kbW, kbH);
+    ctx.strokeStyle = '#2a2a3a';
+    ctx.lineWidth = 0.5;
+    // Key rows
+    for (let i = 0; i < 3; i++) {
+      const ky = kbY + 1 + i * 2.5;
+      for (let j = 0; j < 6; j++) {
+        const kx = kbX + 2 + j * (kbW - 4) / 6;
+        ctx.strokeRect(kx, ky, (kbW - 4) / 6 - 1, 2);
+      }
+    }
+
+    // Status LED (bottom-right of desk)
+    const ledPulse = 0.5 + Math.sin(t * 1.5) * 0.5;
+    ctx.fillStyle = `rgba(40,180,120,${0.4 + ledPulse * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(ex + cw - 10, ey + ch - 8, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // "CAMS" label on desk
+    ctx.font = 'bold 6px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(100,160,180,0.4)';
+    ctx.fillText('CAMS', ex + cw / 2, ey + ch - 4);
+    ctx.textAlign = 'left';
+  },
+
   // ===================== SKELD ELECTRICAL BOX (large block in Electrical room) =====================
   skeld_electrical_box: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;
