@@ -12,10 +12,10 @@ const CameraState = {
 // Camera definitions — center tile (ACTUAL grid coords) for each feed
 // Viewport size is calculated from panel size at 1:1 pixel ratio
 const SKELD_CAMERAS = [
-  { id: 'hallway',  name: 'Hallway',       cx: 40, cy: 10 },
-  { id: 'xroads',   name: 'Corridor',      cx: 20, cy: 34 },
-  { id: 'admin',    name: 'Admin',          cx: 76, cy: 44 },
-  { id: 'lower',    name: 'Storage/Comms',  cx: 87, cy: 62 },
+  { id: 'hallway',  name: 'Medbay Hallway',    cx: 40, cy: 10 },
+  { id: 'xroads',   name: 'Security Hallway', cx: 20, cy: 34 },
+  { id: 'admin',    name: 'Admin Hallway',     cx: 76, cy: 44 },
+  { id: 'lower',    name: 'Comms Hallway',     cx: 87, cy: 62 },
 ];
 
 const CameraSystem = {
