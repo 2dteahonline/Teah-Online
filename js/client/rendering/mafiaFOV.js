@@ -404,7 +404,11 @@ function drawMafiaBodies() {
 
 
 function drawMafiaHUD() {
-  if (typeof MafiaState === 'undefined' || MafiaState.phase === 'idle') return;
+  if (typeof MafiaState === 'undefined' || MafiaState.phase === 'idle') {
+    // Reset lights dim when not in a match so it doesn't persist between matches
+    _lightsDimProgress = 0;
+    return;
+  }
   if (typeof Scene === 'undefined' || !Scene.inSkeld) return;
 
   const mk = MafiaState;

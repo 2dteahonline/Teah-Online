@@ -2830,8 +2830,8 @@ const ENTITY_RENDERERS = {
   // ===================== SKELD CAMERA MOUNT (wall-mounted security camera) =====================
   skeld_camera_mount: (e, ctx, ex, ey, w, h) => {
     const t = Date.now() / 1000;
-    const watching = typeof CameraState !== 'undefined' && CameraState.blinking;
-    const blink = watching && Math.sin(t * 3) > 0;
+    const watching = typeof CameraState !== 'undefined' && CameraState.active;
+    const blink = watching ? Math.sin(t * 8) > 0 : Math.sin(t * 1.5) > 0.7;
 
     // Camera bracket (dark metal mount on wall)
     ctx.fillStyle = '#1a1a22';
@@ -4708,3 +4708,409 @@ if (typeof FINE_DINING_INGREDIENTS !== 'undefined' && typeof FINE_DINING_ENTITY_
     ENTITY_RENDERERS[data.entity] = _fdIngredientRenderer;
   }
 }
+
+// ═══════════════════════════════════════════════════════
+//  CASINO BUILDING + INTERIOR ENTITIES
+// ═══════════════════════════════════════════════════════
+
+// Casino exterior (lobby building)
+ENTITY_RENDERERS['building_casino'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Building body — dark purple/maroon
+  ctx.fillStyle = '#1a0a2e';
+  ctx.fillRect(ex, ey + TILE, cw, ch - TILE);
+  // Roof
+  ctx.fillStyle = '#2a1040';
+  ctx.beginPath();
+  ctx.moveTo(ex - 8, ey + TILE);
+  ctx.lineTo(ex + cw / 2, ey - 4);
+  ctx.lineTo(ex + cw + 8, ey + TILE);
+  ctx.closePath();
+  ctx.fill();
+  // Gold roof trim
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ex - 8, ey + TILE);
+  ctx.lineTo(ex + cw / 2, ey - 4);
+  ctx.lineTo(ex + cw + 8, ey + TILE);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  // Gold border around building
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 2, ey + TILE + 2, cw - 4, ch - TILE - 4);
+  ctx.lineWidth = 1;
+  // Windows (3 across, warm glow)
+  for (let i = 0; i < 3; i++) {
+    const wx = ex + TILE + i * (TILE * 1.8);
+    const wy = ey + TILE + 20;
+    ctx.fillStyle = '#ffd700';
+    ctx.globalAlpha = 0.3 + 0.1 * Math.sin(Date.now() / 600 + i);
+    ctx.fillRect(wx, wy, 32, 24);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#ffd700';
+    ctx.strokeRect(wx, wy, 32, 24);
+    // Window cross
+    ctx.beginPath();
+    ctx.moveTo(wx + 16, wy); ctx.lineTo(wx + 16, wy + 24);
+    ctx.moveTo(wx, wy + 12); ctx.lineTo(wx + 32, wy + 12);
+    ctx.stroke();
+  }
+  // Door (bottom center)
+  const dx = ex + cw / 2 - 20;
+  const dy = ey + ch - TILE - 8;
+  ctx.fillStyle = '#3a1a0a';
+  ctx.fillRect(dx, dy, 40, TILE + 8);
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(dx, dy, 40, TILE + 8);
+  ctx.lineWidth = 1;
+  // Door handle
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.arc(dx + 32, dy + 28, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // "CASINO" neon sign
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#ffd700';
+  ctx.shadowBlur = 8;
+  ctx.fillText('CASINO', ex + cw / 2, ey + TILE + 14);
+  ctx.shadowBlur = 0;
+  // Second row windows (lower)
+  for (let i = 0; i < 3; i++) {
+    const wx = ex + TILE + i * (TILE * 1.8);
+    const wy = ey + TILE * 3 + 10;
+    ctx.fillStyle = '#ffd700';
+    ctx.globalAlpha = 0.25 + 0.08 * Math.sin(Date.now() / 800 + i + 2);
+    ctx.fillRect(wx, wy, 32, 20);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#b8860b';
+    ctx.strokeRect(wx, wy, 32, 20);
+  }
+  // Label
+  ctx.fillStyle = '#ccc';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Casino', ex + cw / 2, ey + ch + 14);
+  ctx.textAlign = 'left';
+};
+
+// Casino carpet (interior floor)
+ENTITY_RENDERERS['casino_carpet'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Rich dark red carpet
+  ctx.fillStyle = '#2a0a0a';
+  ctx.fillRect(ex, ey, cw, ch);
+  // Gold diamond pattern
+  ctx.strokeStyle = '#4a3a00';
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.3;
+  const spacing = TILE * 2;
+  for (let y = 0; y < ch; y += spacing) {
+    for (let x = 0; x < cw; x += spacing) {
+      ctx.beginPath();
+      ctx.moveTo(ex + x + spacing / 2, ey + y);
+      ctx.lineTo(ex + x + spacing, ey + y + spacing / 2);
+      ctx.lineTo(ex + x + spacing / 2, ey + y + spacing);
+      ctx.lineTo(ex + x, ey + y + spacing / 2);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  // Gold border around carpet
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 2, ey + 2, cw - 4, ch - 4);
+  ctx.lineWidth = 1;
+};
+
+// Casino bar counter
+ENTITY_RENDERERS['casino_bar'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Counter top (dark wood)
+  ctx.fillStyle = '#3a2010';
+  ctx.fillRect(ex, ey, cw, ch);
+  // Counter edge
+  ctx.fillStyle = '#5a3820';
+  ctx.fillRect(ex, ey + ch - 8, cw, 8);
+  // Gold trim
+  ctx.strokeStyle = '#b8860b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex, ey, cw, ch);
+  ctx.lineWidth = 1;
+  // Bottles
+  const bottleColors = ['#4a7a4a', '#7a2020', '#2a4a7a', '#7a6a20', '#5a2a5a'];
+  for (let i = 0; i < 6; i++) {
+    const bx = ex + 20 + i * (cw - 40) / 5;
+    ctx.fillStyle = bottleColors[i % bottleColors.length];
+    ctx.fillRect(bx, ey + 6, 8, 20);
+    ctx.fillRect(bx + 2, ey + 2, 4, 6);
+    // Glass next to some bottles
+    if (i % 2 === 0) {
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.3;
+      ctx.fillRect(bx + 14, ey + 14, 6, 12);
+      ctx.globalAlpha = 1;
+    }
+  }
+};
+
+// Casino pillar
+ENTITY_RENDERERS['casino_pillar'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Column body
+  ctx.fillStyle = '#2a1a0a';
+  ctx.fillRect(ex + 8, ey, cw - 16, ch);
+  // Gold bands
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(ex + 6, ey, cw - 12, 4);
+  ctx.fillRect(ex + 6, ey + ch - 4, cw - 12, 4);
+  ctx.fillRect(ex + 6, ey + ch / 2 - 2, cw - 12, 4);
+  // Highlight
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = 0.1;
+  ctx.fillRect(ex + 10, ey + 4, 6, ch - 8);
+  ctx.globalAlpha = 1;
+};
+
+// Blackjack table
+ENTITY_RENDERERS['casino_blackjack'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Table (half-oval, green felt)
+  ctx.fillStyle = '#1a5a1a';
+  ctx.beginPath();
+  ctx.ellipse(ex + cw / 2, ey + ch, cw / 2 - 4, ch - 8, 0, Math.PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  // Table border (wood)
+  ctx.strokeStyle = '#5a3820';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.ellipse(ex + cw / 2, ey + ch, cw / 2 - 4, ch - 8, 0, Math.PI, 0);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  // Card spots
+  for (let i = 0; i < 3; i++) {
+    const cx = ex + cw / 4 + i * (cw / 4) - 8;
+    const cy = ey + ch / 2 + 4;
+    ctx.strokeStyle = '#ffffff';
+    ctx.globalAlpha = 0.3;
+    ctx.strokeRect(cx, cy, 16, 22);
+    ctx.globalAlpha = 1;
+  }
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('BLACKJACK', ex + cw / 2, ey + ch - 8);
+  ctx.textAlign = 'left';
+};
+
+// Roulette table
+ENTITY_RENDERERS['casino_roulette'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Green felt table
+  ctx.fillStyle = '#0a4a0a';
+  ctx.fillRect(ex + 4, ey + 4, cw - 8, ch - 8);
+  ctx.strokeStyle = '#5a3820';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(ex + 4, ey + 4, cw - 8, ch - 8);
+  ctx.lineWidth = 1;
+  // Wheel (circle on left side)
+  const wheelX = ex + 30;
+  const wheelY = ey + ch / 2;
+  const wheelR = 20;
+  ctx.beginPath();
+  ctx.arc(wheelX, wheelY, wheelR, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fill();
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  // Wheel segments
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2 + Date.now() / 3000;
+    ctx.fillStyle = i % 2 === 0 ? '#cc0000' : '#111';
+    ctx.beginPath();
+    ctx.moveTo(wheelX, wheelY);
+    ctx.arc(wheelX, wheelY, wheelR - 3, angle, angle + Math.PI / 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Betting grid (right side)
+  ctx.strokeStyle = '#ffffff';
+  ctx.globalAlpha = 0.3;
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 4; c++) {
+      ctx.strokeRect(ex + 60 + c * 18, ey + 10 + r * 22, 18, 22);
+    }
+  }
+  ctx.globalAlpha = 1;
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('ROULETTE', ex + cw / 2, ey + ch - 4);
+  ctx.textAlign = 'left';
+};
+
+// Coin flip station
+ENTITY_RENDERERS['casino_coinflip'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Pedestal
+  ctx.fillStyle = '#2a1a3a';
+  ctx.fillRect(ex + cw / 2 - 16, ey + ch / 2, 32, ch / 2 - 4);
+  ctx.fillStyle = '#3a2a4a';
+  ctx.fillRect(ex + cw / 2 - 24, ey + ch - 10, 48, 10);
+  // Large coin on pedestal
+  const coinX = ex + cw / 2;
+  const coinY = ey + ch / 2 - 4;
+  ctx.beginPath();
+  ctx.arc(coinX, coinY, 22, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffd700';
+  ctx.fill();
+  ctx.strokeStyle = '#b8860b';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  // Coin face detail
+  ctx.fillStyle = '#b8860b';
+  ctx.font = 'bold 18px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('$', coinX, coinY + 7);
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '9px monospace';
+  ctx.fillText('COIN FLIP', ex + cw / 2, ey + 10);
+  ctx.textAlign = 'left';
+};
+
+// Cases machine
+ENTITY_RENDERERS['casino_cases'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Machine body
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(ex + 8, ey + 4, cw - 16, ch - 8);
+  ctx.strokeStyle = '#4a4a6e';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 8, ey + 4, cw - 16, ch - 8);
+  ctx.lineWidth = 1;
+  // Display screen
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(ex + 16, ey + 12, cw - 32, ch / 2 - 8);
+  // 3 case outlines on screen
+  const caseColors = ['#888', '#4a9eff', '#ff9a40'];
+  for (let i = 0; i < 3; i++) {
+    const cx = ex + 24 + i * ((cw - 48) / 3);
+    ctx.strokeStyle = caseColors[i];
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx, ey + 18, 24, 18);
+    // Case handle
+    ctx.strokeRect(cx + 8, ey + 15, 8, 4);
+    ctx.lineWidth = 1;
+  }
+  // Glowing edge
+  ctx.strokeStyle = '#ffd700';
+  ctx.globalAlpha = 0.3 + 0.15 * Math.sin(Date.now() / 500);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 8, ey + 4, cw - 16, ch - 8);
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 1;
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('CASES', ex + cw / 2, ey + ch - 8);
+  ctx.textAlign = 'left';
+};
+
+// Mines terminal
+ENTITY_RENDERERS['casino_mines'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Terminal body
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(ex + 12, ey + 4, cw - 24, ch - 12);
+  ctx.strokeStyle = '#3a3a3a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 12, ey + 4, cw - 24, ch - 12);
+  ctx.lineWidth = 1;
+  // Screen
+  ctx.fillStyle = '#0a1a0a';
+  ctx.fillRect(ex + 18, ey + 10, cw - 36, ch / 2);
+  // Mini grid on screen
+  ctx.strokeStyle = '#2a6a2a';
+  const gs = 8;
+  const gx = ex + cw / 2 - gs * 2.5;
+  const gy = ey + 14;
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      ctx.strokeRect(gx + c * gs, gy + r * gs, gs, gs);
+    }
+  }
+  // A couple revealed cells
+  ctx.fillStyle = '#2a8a2a';
+  ctx.fillRect(gx + gs + 1, gy + gs + 1, gs - 2, gs - 2);
+  ctx.fillRect(gx + gs * 3 + 1, gy + gs * 2 + 1, gs - 2, gs - 2);
+  // Mine icon
+  ctx.fillStyle = '#cc2222';
+  ctx.fillRect(gx + gs * 4 + 1, gy + gs * 4 + 1, gs - 2, gs - 2);
+  // Stand
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(ex + cw / 2 - 10, ey + ch - 12, 20, 12);
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('MINES', ex + cw / 2, ey + ch - 2);
+  ctx.textAlign = 'left';
+};
+
+// Dice table
+ENTITY_RENDERERS['casino_dice'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Round table
+  ctx.beginPath();
+  ctx.ellipse(ex + cw / 2, ey + ch / 2 + 4, cw / 2 - 8, ch / 2 - 6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a3a1a';
+  ctx.fill();
+  ctx.strokeStyle = '#5a3820';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  // Two dice on table
+  const drawDie = (dx, dy, val) => {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(dx, dy, 16, 16);
+    ctx.strokeStyle = '#333';
+    ctx.strokeRect(dx, dy, 16, 16);
+    ctx.fillStyle = '#111';
+    const dots = [
+      [],
+      [[8,8]],
+      [[4,4],[12,12]],
+      [[4,4],[8,8],[12,12]],
+      [[4,4],[12,4],[4,12],[12,12]],
+      [[4,4],[12,4],[8,8],[4,12],[12,12]],
+      [[4,4],[12,4],[4,8],[12,8],[4,12],[12,12]],
+    ];
+    for (const [px, py] of (dots[val] || dots[1])) {
+      ctx.beginPath();
+      ctx.arc(dx + px, dy + py, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  drawDie(ex + cw / 2 - 22, ey + ch / 2 - 4, 5);
+  drawDie(ex + cw / 2 + 6, ey + ch / 2 - 4, 3);
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('DICE', ex + cw / 2, ey + 8);
+  ctx.textAlign = 'left';
+};

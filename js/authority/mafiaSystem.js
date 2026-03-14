@@ -358,7 +358,7 @@ window.MafiaSystem = {
     if (mk.phase !== 'playing') return false;
     if (mk._roleState.trackTimer > 0 || mk._roleState.trackCooldown > 0) return false;
 
-    const target = this.getNearestKillTarget(true); // reuse proximity logic, any alive non-local
+    const target = this.getNearestTrackTarget(); // use dedicated track proximity (any alive non-local)
     if (!target) return false;
 
     const dur = (mk._roleSettings ? mk._roleSettings.trackDuration : 15) * 60;
@@ -417,6 +417,8 @@ window.MafiaSystem = {
     if (rs.shiftedAs) {
       rs.shiftedAs = null;
       rs.shiftTimer = 0;
+      const cd = (mk._roleSettings ? mk._roleSettings.shiftCooldown : 30) * 60;
+      rs.shiftCooldown = cd;
       return true;
     }
     if (rs.shiftCooldown > 0) return false;
@@ -481,7 +483,7 @@ window.MafiaSystem = {
   canCallEmergency() {
     const mk = MafiaState;
     if (mk.phase !== 'playing' || mk.playerIsGhost) return false;
-    if (mk.sabotage.active !== null) return false; // blocked during sabotage
+    // Emergency meetings CAN interrupt sabotage (matches Among Us) — _startMeeting() clears sabotage
 
     const localP = this.getLocalPlayer();
     if (!localP || !localP.alive) return false;
@@ -1451,6 +1453,17 @@ window.MafiaSystem = {
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.taskProgress = { done: 0, total: 0 };
     mk.lastMeetingEndFrame = 0;
+    mk.playerSubrole = null;
+    mk._reportedBody = null;
+    mk._settings = null;
+    mk._roleSettings = {};
+    mk._roleState = {
+      trackedTarget: null, trackTimer: 0, trackCooldown: 0,
+      vitalsOpen: false, vitalsTimer: 0, vitalsCooldown: 0,
+      shiftedAs: null, shiftTimer: 0, shiftCooldown: 0,
+      invisible: false, invisTimer: 0, invisCooldown: 0,
+      deathAlert: null,
+    };
 
     if (typeof enterLevel === 'function') {
       enterLevel(MAFIA_GAME.RETURN_LEVEL, MAFIA_GAME.RETURN_TX, MAFIA_GAME.RETURN_TY);
