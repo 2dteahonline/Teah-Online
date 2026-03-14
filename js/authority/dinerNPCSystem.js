@@ -46,8 +46,8 @@ const DINER_ARCADE_SPOTS = [
 
 // ===================== CONFIG =====================
 const DINER_NPC_CONFIG = {
-  maxParties: 4,
-  spawnInterval: [400, 1200],
+  maxParties: 5,
+  spawnInterval: [300, 720],
   baseSpeed: 1.1,
   speedVariance: 0.2,
   eatDuration: [900, 1200],
@@ -180,14 +180,28 @@ function _dinerDequeueCounter(partyId) {
 }
 
 function _dinerPromoteCounter() {
-  if (_dinerCounterActiveParty !== null) return;
+  // Clear stale active party — if party is gone or leader is despawned/missing
+  if (_dinerCounterActiveParty !== null) {
+    const activeParty = _getDinerParty(_dinerCounterActiveParty);
+    if (!activeParty || activeParty.state === 'leaving' || activeParty.state === 'done') {
+      _dinerCounterActiveParty = null;
+    } else {
+      const leader = _getPartyLeader(activeParty);
+      if (!leader || leader.state === '_despawn' || leader.state === '_despawn_walk') {
+        _dinerCounterActiveParty = null;
+      } else {
+        return; // valid active party, nothing to promote
+      }
+    }
+  }
   while (_dinerCounterQueue.length > 0) {
     const nextId = _dinerCounterQueue.shift();
     const party = _getDinerParty(nextId);
     if (!party || party.state === 'leaving' || party.state === 'done') continue;
-    _dinerCounterActiveParty = nextId;
     const leader = _getPartyLeader(party);
-    if (leader && leader.state === 'waiting_for_counter') {
+    if (!leader || leader.state === '_despawn' || leader.state === '_despawn_walk') continue;
+    _dinerCounterActiveParty = nextId;
+    if (leader.state === 'waiting_for_counter') {
       leader.state = 'go_order';
       leader._idleTime = 0;
     }
@@ -763,15 +777,17 @@ const DINER_NPC_AI = {
     npc.x = DINER_SPOTS.counter.tx * TILE + TILE / 2;
     npc.y = DINER_SPOTS.counter.ty * TILE + TILE / 2;
 
-    // cookingSystem spawnOrder() will find this NPC and link the order
-    // If shift ends while waiting, leave
+    // cookingSystem will find this NPC and link the order
+    // If shift ends while waiting, leave (guard: only dequeue if still active counter party)
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
       npc.hasOrdered = true;
-      _dinerDequeueCounter(npc.partyId);
+      if (_dinerCounterActiveParty === npc.partyId) {
+        _dinerDequeueCounter(npc.partyId);
+      }
       const party = _getDinerParty(npc.partyId);
-      if (party) {
+      if (party && party.state !== 'leaving') {
         _triggerPartyLeave(party);
-      } else {
+      } else if (!party) {
         _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       }
       return;
@@ -780,11 +796,13 @@ const DINER_NPC_AI = {
     // Patience timeout — leave after 15 sec if order never linked
     if (npc._idleTime >= 900) {
       npc.hasOrdered = true;
-      _dinerDequeueCounter(npc.partyId);
+      if (_dinerCounterActiveParty === npc.partyId) {
+        _dinerDequeueCounter(npc.partyId);
+      }
       const party = _getDinerParty(npc.partyId);
-      if (party) {
+      if (party && party.state !== 'leaving') {
         _triggerPartyLeave(party);
-      } else {
+      } else if (!party) {
         _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       }
     }
@@ -802,20 +820,24 @@ const DINER_NPC_AI = {
     // applyOrderResult() in cookingSystem will set us to pickup_food
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
       npc.linkedOrderId = null;
-      _dinerDequeueCounter(npc.partyId);
+      if (_dinerCounterActiveParty === npc.partyId) {
+        _dinerDequeueCounter(npc.partyId);
+      }
       const party = _getDinerParty(npc.partyId);
-      if (party) _triggerPartyLeave(party);
-      else _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
+      if (party && party.state !== 'leaving') _triggerPartyLeave(party);
+      else if (!party) _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       return;
     }
 
     // Patience timeout — leave angry after 30 sec
     if (npc._idleTime >= 1800) {
       npc.linkedOrderId = null;
-      _dinerDequeueCounter(npc.partyId);
+      if (_dinerCounterActiveParty === npc.partyId) {
+        _dinerDequeueCounter(npc.partyId);
+      }
       const party = _getDinerParty(npc.partyId);
-      if (party) _triggerPartyLeave(party);
-      else _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
+      if (party && party.state !== 'leaving') _triggerPartyLeave(party);
+      else if (!party) _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
     }
   },
 

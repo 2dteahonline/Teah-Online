@@ -83,13 +83,15 @@ const COOKING_GRADES = {
 // ===================== COOKING CONFIG =====================
 const COOKING_CONFIG = {
   shiftDuration: 18000,    // 5 minutes at 60fps
-  orderSpawnDelay: 180,    // 3 seconds between orders (more breathing room)
+  orderSpawnDelay: 30,     // 0.5 seconds between orders (constant cooking)
   comboThreshold: 3,       // perfect orders needed for combo bonus (easier)
   comboTipBonus: 0.2,      // +20% tip per combo level
   comboMaxBonus: 1.0,      // max +100% tip from combos
   rushStartAfter: 15,      // orders before rush hour kicks in (later)
   rushMoodSpeedMult: 1.15, // mood decays 15% faster during rush (gentler)
   rushOrderDelayMult: 0.75, // orders come 25% faster during rush (gentler)
+  ticketQueueMax: 3,       // max pre-queued orders waiting
+  ticketSpawnInterval: 60, // generate a ticket every 1 second (60 frames)
 };
 
 // ===================== SPATULA WEAPON =====================

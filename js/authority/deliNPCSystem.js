@@ -82,7 +82,7 @@ const DELI_AISLES = [
 const DELI_NPC_CONFIG = {
   minNPCs: 0,
   maxNPCs: 6,
-  spawnInterval: [300, 900],   // 5-15 sec randomized range (frames at 60fps)
+  spawnInterval: [180, 540],   // 3-9 sec randomized range (frames at 60fps)
   baseSpeed: 1.1,              // slow relaxed stroll
   speedVariance: 0.2,
   eatDuration:    [900, 900],  // 15 sec at 60fps
@@ -95,7 +95,7 @@ const DELI_NPC_CONFIG = {
   // Pre-queue aisle browsing
   preQueueBrowseChance: 0.3,      // 30% chance to browse aisles before joining line
   // Mid-queue line leaving
-  midQueueLeaveChance: 0.001,     // per-frame chance (~6% per second) to leave line
+  midQueueLeaveChance: 0.0003,    // per-frame chance (~1.8% per second) to leave line
   midQueueMinIdx: 3,              // only leave if queueIdx >= this (not near front)
 };
 
@@ -888,9 +888,19 @@ const DELI_NPC_AI = {
       return;
     }
 
-    // Done browsing — tip or leave
+    // Done browsing — if hasn't ordered yet, try to rejoin queue before leaving
     const aTX = Math.floor(npc.x / TILE);
     const aTY = Math.floor(npc.y / TILE);
+    if (!npc.hasOrdered) {
+      const qIdx = _nextQueueSpot();
+      if (qIdx >= 0) {
+        npc._queueIdx = qIdx;
+        const spot = QUEUE_SPOTS[qIdx];
+        _npcStartRoute(npc, _routeAisleToQueue(aTX, aTY, spot), 'in_queue', 0);
+        return;
+      }
+    }
+    // Already ordered or queue full — tip or leave
     if (!npc.hasTipped && Math.random() < DELI_NPC_CONFIG.tipChance) {
       _npcStartRoute(npc, _routeToTipJar(aTX, aTY), 'tipping', 0);
     } else {

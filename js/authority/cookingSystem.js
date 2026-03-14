@@ -28,6 +28,9 @@ const cookingState = {
   shiftEnded: false,     // true = show summary overlay
   shiftComplete: false,  // true = shift finished, don't auto-restart
   tipJar: 0,             // uncollected tips — player hits tip jar to collect
+  // Ticket queue — orders auto-generate on timer, independent of NPCs
+  ticketQueue: [],       // pre-generated order tickets waiting to activate
+  ticketSpawnTimer: 0,   // frames until next ticket generation
   stats: {
     ordersCompleted: 0,
     perfectDishes: 0,
@@ -93,7 +96,7 @@ function startCookingShift(restaurantId) {
   cookingState.active = true;
   cookingState.shiftTimer = 0;
   cookingState.shiftDuration = COOKING_CONFIG.shiftDuration;
-  cookingState.orderSpawnDelay = 60; // 1 second delay before first order
+  cookingState.orderSpawnDelay = 30; // 0.5 second delay before first order
   cookingState.assembly = [];
   cookingState.currentOrder = null;
   cookingState.comboCount = 0;
@@ -102,6 +105,8 @@ function startCookingShift(restaurantId) {
   cookingState.shiftEnded = false;
   cookingState.shiftComplete = false;
   cookingState.tipJar = 0;
+  cookingState.ticketQueue = [];
+  cookingState.ticketSpawnTimer = 0;
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
   cookingState.stats = {
@@ -167,6 +172,8 @@ function resetCookingState() {
   cookingState.comboCount = 0;
   cookingState.comboMultiplier = 1.0;
   cookingState.tipJar = 0;
+  cookingState.ticketQueue = [];
+  cookingState.ticketSpawnTimer = 0;
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
   cookingState._swingHandled = false;
@@ -176,49 +183,62 @@ function resetCookingState() {
   };
 }
 
-// ===================== ORDER SPAWNING =====================
+// ===================== ORDER SPAWNING (TICKET QUEUE) =====================
 
-function spawnOrder() {
+// Generate a ticket into the queue — independent of NPCs
+function _generateTicket() {
   const recipe = _pickActiveRecipe();
   if (!recipe) return;
   const customerType = pickCustomerType();
-  const activeNPCs = _getActiveNPCs();
-
-  // Calculate mood thresholds based on customer patience
   const moodThresholds = MOOD_STAGES.map(s => Math.round(s.baseFrames * customerType.patience));
 
   // Build ticket (multi-item for diner, single for deli)
   let ticketItems = [{ recipe: recipe, qty: 1 }];
   if (cookingState.activeRestaurantId === 'diner') {
-    // Diner: 1-3 items based on party size of linked NPC
-    const waitingNPC = activeNPCs.find(n => n.state === 'ordering' && !n.linkedOrderId);
-    let partySize = 1;
-    if (waitingNPC && waitingNPC.partyId && typeof dinerParties !== 'undefined') {
-      const party = dinerParties.find(p => p.id === waitingNPC.partyId);
-      if (party) partySize = party.members.length;
-    }
-    const itemCount = Math.min(partySize, 3);
+    const itemCount = _ticketRandRange(1, 3);
     ticketItems = [];
     for (let i = 0; i < itemCount; i++) {
       ticketItems.push({ recipe: _pickActiveRecipe(), qty: 1 });
     }
   }
 
-  cookingState.ticket = { items: ticketItems, completedCount: 0 };
+  cookingState.ticketQueue.push({
+    ticketItems: ticketItems,
+    customer: customerType,
+    moodThresholds: moodThresholds,
+  });
+}
+
+function _ticketRandRange(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+
+// Pop from ticket queue and create active order
+function _activateNextTicket() {
+  if (cookingState.ticketQueue.length === 0) return false;
+  const ticket = cookingState.ticketQueue.shift();
+
+  cookingState.ticket = { items: ticket.ticketItems, completedCount: 0 };
   cookingState.currentOrder = {
     id: ++_cookingOrderId,
-    recipe: ticketItems[0].recipe,
-    customer: customerType,
+    recipe: ticket.ticketItems[0].recipe,
+    customer: ticket.customer,
     moodTimer: 0,
     mood: MOOD_STAGES[0].id,
     moodStageIdx: 0,
-    moodThresholds: moodThresholds,
+    moodThresholds: ticket.moodThresholds,
     startFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
     npcId: null,
   };
   cookingState.assembly = [];
 
-  // Link order to a waiting NPC at the counter
+  // Try to link an NPC at the counter
+  _tryLinkNPCToOrder();
+  return true;
+}
+
+// Try to link an unlinked NPC at the counter to the current order
+function _tryLinkNPCToOrder() {
+  if (!cookingState.currentOrder || cookingState.currentOrder.npcId) return;
+  const activeNPCs = _getActiveNPCs();
   const waitingNPC = activeNPCs.find(n => n.state === 'ordering' && !n.linkedOrderId);
   if (waitingNPC) {
     waitingNPC.linkedOrderId = cookingState.currentOrder.id;
@@ -264,18 +284,27 @@ function updateCooking() {
     return;
   }
 
-  // Spawn order if none active — only when a customer NPC is at the counter
+  // Generate tickets on timer (independent of NPCs)
+  cookingState.ticketSpawnTimer++;
+  if (cookingState.ticketSpawnTimer >= COOKING_CONFIG.ticketSpawnInterval &&
+      cookingState.ticketQueue.length < COOKING_CONFIG.ticketQueueMax) {
+    cookingState.ticketSpawnTimer = 0;
+    _generateTicket();
+  }
+
+  // Activate next ticket if no active order
   if (!cookingState.currentOrder) {
-    // Wait for a customer to reach the counter (ordering state) before showing order
-    const activeNPCs = _getActiveNPCs();
-    const hasCustomerAtCounter = activeNPCs.some(n => n.state === 'ordering' && !n.linkedOrderId);
-    if (!hasCustomerAtCounter) return;
     if (cookingState.orderSpawnDelay > 0) {
       cookingState.orderSpawnDelay--;
-    } else {
-      spawnOrder();
+    } else if (cookingState.ticketQueue.length > 0) {
+      _activateNextTicket();
     }
-    return;
+    if (!cookingState.currentOrder) return;
+  }
+
+  // Periodically try to link unlinked orders to NPCs at counter
+  if (cookingState.currentOrder && !cookingState.currentOrder.npcId) {
+    _tryLinkNPCToOrder();
   }
 
   // Update mood timer
@@ -774,9 +803,15 @@ function drawCookingHUD() {
     ctx.font = "bold 9px monospace"; ctx.fillStyle = '#b0b0b0'; ctx.textAlign = "right";
     ctx.fillText(cookingState.assembly.length + "/" + ingredients.length + " items", panelX + panelW - 8, panelY + panelH - 6);
   } else {
-    // Waiting for customer
-    ctx.font = "bold 11px monospace"; ctx.fillStyle = '#a0a0a0'; ctx.textAlign = "left";
-    ctx.fillText("Waiting for customer...", 18, 52);
+    // No active order — show queue status
+    ctx.font = "bold 11px monospace"; ctx.textAlign = "left";
+    if (cookingState.ticketQueue.length > 0) {
+      ctx.fillStyle = '#60c060';
+      ctx.fillText("Next order ready!", 18, 52);
+    } else {
+      ctx.fillStyle = '#a0a0a0';
+      ctx.fillText("Preparing...", 18, 52);
+    }
   }
 
   // === Last order result popup ===
