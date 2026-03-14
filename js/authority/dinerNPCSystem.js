@@ -18,7 +18,7 @@ const DINER_NPC_NAMES = ['Customer', 'Patron', 'Guest', 'Diner', 'Regular', 'Foo
 
 // ===================== DEFINED SPOTS =====================
 const DINER_SPOTS = {
-  exit:        { tx: 27, ty: 33 },
+  exit:        { tx: 27, ty: 21 },
   counterArea: { tx: 27, ty: 16 },
   counter:     { tx: 13, ty: 16 },
   tipJar:      { tx: 17, ty: 16 },
@@ -40,8 +40,8 @@ const DINER_BOOTHS = [
 
 // ===================== ARCADE SPOTS =====================
 const DINER_ARCADE_SPOTS = [
-  { tx: 45, ty: 4, claimedBy: null },
-  { tx: 48, ty: 4, claimedBy: null },
+  { tx: 44, ty: 4, claimedBy: null },
+  { tx: 46, ty: 4, claimedBy: null },
 ];
 
 // ===================== CONFIG =====================
@@ -285,7 +285,7 @@ function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
     _routeDinerSeatToBoothEntry(boothId, seatIdx),
     booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : [_dinerWP(26, 14)],
     [_dinerWP(cx, 14, true)],
-    [_dinerWP(cx, 33)]
+    [_dinerWP(cx, DINER_SPOTS.exit.ty)]
   );
 }
 
@@ -426,7 +426,7 @@ function _routeDinerToExit(fromTX, fromTY, corridorTX) {
     route.push({ tx: 26, ty: 14 });
   }
   route.push({ tx: cx, ty: 14 });    // to exit column
-  route.push({ tx: cx, ty: 33 });    // south to exit
+  route.push({ tx: cx, ty: DINER_SPOTS.exit.ty });    // south to exit
   return route;
 }
 
@@ -523,7 +523,7 @@ function moveDinerNPC(npc) {
       npc.x = 26 * TILE + TILE / 2;
       npc.y = 16 * TILE + TILE / 2;
       npc._stuckFrames = 0;
-      npc.route = [{ tx: 27, ty: 16 }, { tx: 27, ty: 33 }];
+      npc.route = [{ tx: 27, ty: 16 }, { tx: 27, ty: DINER_SPOTS.exit.ty }];
       return;
     }
     npc._stuckFrames = (npc._stuckFrames || 0) + 1;

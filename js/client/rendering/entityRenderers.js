@@ -1606,12 +1606,15 @@ const ENTITY_RENDERERS = {
       for (let py = 0; py < th; py++) {
         for (let px = 0; px < tw; px++) {
           const rx = ex + px * TILE, ry = ey + py * TILE;
-          // Retro diner checkered floor — warm cream and muted red
-          const isAccent = (px + py) % 2 === 0;
-          ctx.fillStyle = isAccent ? '#c43830' : '#e8dcc8';
+          // Warm wood-tone floor
+          ctx.fillStyle = '#b8a080';
           ctx.fillRect(rx, ry, TILE, TILE);
-          // Subtle tile edge grout
-          ctx.strokeStyle = 'rgba(80,60,40,0.12)';
+          // Subtle plank grain variation
+          const shade = ((px * 7 + py * 13) % 3 === 0) ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)';
+          ctx.fillStyle = shade;
+          ctx.fillRect(rx + 2, ry + 2, TILE - 4, TILE - 4);
+          // Grout lines
+          ctx.strokeStyle = 'rgba(80,60,40,0.1)';
           ctx.lineWidth = 1;
           ctx.strokeRect(rx, ry, TILE, TILE);
         }
@@ -1729,11 +1732,10 @@ const ENTITY_RENDERERS = {
       for (let py = 0; py < th; py++) {
         for (let px = 0; px < tw; px++) {
           const rx = ex + px * TILE, ry = ey + py * TILE;
-          // Checkerboard tile pattern — white/light grey
-          const isLight = (px + py) % 2 === 0;
-          ctx.fillStyle = isLight ? '#d0ccc4' : '#b8b4ac';
+          // Clean kitchen tile — uniform light grey
+          ctx.fillStyle = '#c8c4bc';
           ctx.fillRect(rx, ry, TILE, TILE);
-          // Tile grout lines
+          // Grout lines
           ctx.fillStyle = '#9a968e';
           ctx.fillRect(rx, ry, TILE, 1);
           ctx.fillRect(rx, ry, 1, TILE);
@@ -1747,7 +1749,7 @@ const ENTITY_RENDERERS = {
   },
 
   kitchen_door_diner: (e, ctx, ex, ey, w, h) => {
-      const cw = (w || 2) * TILE, ch = (h || 1) * TILE;
+      const cw = (w || 1) * TILE, ch = (h || 2) * TILE;
       // Floor under doorway
       ctx.fillStyle = '#d8d0b8';
       ctx.fillRect(ex, ey, cw, ch);
