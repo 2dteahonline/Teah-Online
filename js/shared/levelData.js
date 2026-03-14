@@ -1679,10 +1679,10 @@ const LEVELS = {
         // ===== SECURITY CAMERAS CONSOLE =====
         { type: 'skeld_cameras', tx: 28 + XO, ty: 24, w: 5, h: 3, solid: true, label: 'Security Cameras', room: 'security' },
 
-        // ===== CAMERA MOUNTS (wall-mounted cameras on walls above corridors) =====
+        // ===== CAMERA MOUNTS (wall-mounted cameras on wall tiles above corridors) =====
         { type: 'skeld_camera_mount', tx: 40 + XO, ty: 7,  w: 1, h: 1, solid: false, label: 'Camera', room: 'hallway', camId: 'hallway' },
-        { type: 'skeld_camera_mount', tx: 18 + XO, ty: 31, w: 1, h: 1, solid: false, label: 'Camera', room: 'security', camId: 'xroads' },
-        { type: 'skeld_camera_mount', tx: 72 + XO, ty: 41, w: 1, h: 1, solid: false, label: 'Camera', room: 'admin', camId: 'admin' },
+        { type: 'skeld_camera_mount', tx: 21 + XO, ty: 31, w: 1, h: 1, solid: false, label: 'Camera', room: 'security', camId: 'xroads' },
+        { type: 'skeld_camera_mount', tx: 75 + XO, ty: 41, w: 1, h: 1, solid: false, label: 'Camera', room: 'admin', camId: 'admin' },
         { type: 'skeld_camera_mount', tx: 44 + XO, ty: 66, w: 1, h: 1, solid: false, label: 'Camera', room: 'storage', camId: 'lower' },
 
         // ===== SABOTAGE PLACEHOLDERS =====

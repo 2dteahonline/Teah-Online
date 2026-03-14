@@ -164,43 +164,49 @@ const CameraSystem = {
       }
     }
 
-    // Draw bots/participants in this camera's viewport
-    if (typeof MafiaState !== 'undefined' && MafiaState.participants) {
+    // Draw bots/participants using actual drawChar (same size as in-game)
+    if (typeof MafiaState !== 'undefined' && MafiaState.participants && typeof drawChar === 'function') {
       for (const p of MafiaState.participants) {
         if (!p.alive || !p.entity) continue;
         if (p.isLocal) continue;
         const bx = p.entity.x - worldX;
         const by = p.entity.y - worldY;
-        if (bx < -TILE || bx > viewWidthPx + TILE) continue;
-        if (by < -TILE || by > viewHeightPx + TILE) continue;
-        this._drawCamCrewmate(bx, by, p.entity.skin || p.color || '#888', p.entity.name);
+        if (bx < -TILE * 2 || bx > viewWidthPx + TILE * 2) continue;
+        if (by < -TILE * 2 || by > viewHeightPx + TILE * 2) continue;
+        drawChar(bx, by, p.entity.dir || 0, p.entity.frame || 0, p.entity.moving || false,
+          p.entity.skin, p.entity.hair, p.entity.shirt, p.entity.pants,
+          p.entity.name, 0, false);
       }
     }
 
-    // Draw local player if in viewport
-    if (typeof player !== 'undefined') {
+    // Draw local player using actual drawChar if in viewport
+    if (typeof player !== 'undefined' && typeof drawChar === 'function') {
       const plx = player.x - worldX;
       const ply = player.y - worldY;
-      if (plx >= -TILE && plx <= viewWidthPx + TILE &&
-          ply >= -TILE && ply <= viewHeightPx + TILE) {
-        this._drawCamCrewmate(plx, ply, player.skin || '#4a9eff', player.name);
+      if (plx >= -TILE * 2 && plx <= viewWidthPx + TILE * 2 &&
+          ply >= -TILE * 2 && ply <= viewHeightPx + TILE * 2) {
+        drawChar(plx, ply, player.dir, player.frame, player.moving,
+          player.skin, player.hair, player.shirt, player.pants,
+          player.name, 0, true);
       }
     }
 
     // Draw dead bodies in viewport
-    if (typeof MafiaState !== 'undefined' && MafiaState.bodies) {
+    if (typeof MafiaState !== 'undefined' && MafiaState.bodies && typeof drawMafiaBodies === 'function') {
       for (const body of MafiaState.bodies) {
         const bx = body.x - worldX;
         const by = body.y - worldY;
         if (bx < -TILE || bx > viewWidthPx + TILE) continue;
         if (by < -TILE || by > viewHeightPx + TILE) continue;
-        ctx.fillStyle = body.color || '#888';
+        // Draw body half (Among Us style)
+        const col = body.color ? body.color.body || body.color : '#888';
+        ctx.fillStyle = col;
         ctx.beginPath();
-        ctx.ellipse(bx, by + 4, 12, 8, 0, 0, Math.PI);
+        ctx.ellipse(bx, by + 4, 16, 10, 0, 0, Math.PI);
         ctx.fill();
         ctx.fillStyle = '#ddd';
         ctx.beginPath();
-        ctx.arc(bx + 6, by - 2, 3, 0, Math.PI * 2);
+        ctx.arc(bx + 8, by - 2, 4, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -256,58 +262,6 @@ const CameraSystem = {
     ctx.textAlign = 'left';
 
     ctx.restore(); // clip
-  },
-
-  // Draw a crewmate silhouette for camera feeds — sized to match actual characters (~32×40)
-  _drawCamCrewmate(x, y, color, name) {
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.beginPath();
-    ctx.ellipse(x, y + 12, 14, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Body (pill shape — roughly 24×34)
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.ellipse(x, y - 4, 14, 20, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Darker body outline
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.ellipse(x, y - 4, 14, 20, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    // Visor (large, offset right)
-    ctx.fillStyle = 'rgba(150,220,255,0.85)';
-    ctx.beginPath();
-    ctx.ellipse(x + 6, y - 12, 9, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Visor shine
-    ctx.fillStyle = 'rgba(200,240,255,0.4)';
-    ctx.beginPath();
-    ctx.ellipse(x + 4, y - 14, 4, 2.5, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-    // Backpack (left side)
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.roundRect(x - 19, y - 12, 8, 18, 3);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(x - 19, y - 12, 8, 18, 3);
-    ctx.stroke();
-    // Legs (two small bumps at bottom)
-    ctx.fillStyle = color;
-    ctx.fillRect(x - 8, y + 12, 7, 6);
-    ctx.fillRect(x + 1, y + 12, 7, 6);
-    // Name tag
-    if (name) {
-      ctx.font = 'bold 11px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.fillText(name, x, y - 28);
-      ctx.textAlign = 'left';
-    }
   },
 
   // Handle click on close button (top-left)
