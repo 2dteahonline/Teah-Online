@@ -133,6 +133,9 @@ const LEVELS = {
       // === DINER (west district, below deli) ===
       { type: 'building_diner', tx: 3, ty: 24, w: 7, h: 8, solid: true },
       { type: 'diner_entrance', tx: 5, ty: 31, w: 3, h: 2, solid: false, target: 'diner_01', spawnTX: 27, spawnTY: 33 },
+      // === FINE DINING (below diner) ===
+      { type: 'building_fine_dining', tx: 3, ty: 36, w: 7, h: 8, solid: true },
+      { type: 'fine_dining_entrance', tx: 5, ty: 43, w: 3, h: 2, solid: false, target: 'fine_dining_01', spawnTX: 45, spawnTY: 35 },
       // === CRYSTAL FORMATIONS (replacing trees, 3 variants) ===
       { type: 'tree', tx: 10, ty: 38, solid: true, variant: 1 },
       { type: 'tree', tx: 22, ty: 44, solid: true, variant: 0 },
@@ -1030,6 +1033,108 @@ const LEVELS = {
 
       // === JUKEBOX ===
       { type: 'diner_jukebox', tx: 44, ty: 10, w: 2, h: 2, solid: true },
+    ]
+  },
+  // ---- FINE DINING (teppanyaki) ----
+  fine_dining_01: {
+    id: 'fine_dining_01',
+    widthTiles: 50,
+    heightTiles: 38,
+    isCooking: true,
+    spawns: { p1: { tx: 45, ty: 35 } },
+    collisionAscii: [
+      "##################################################",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "##################################################"
+    ],
+    entities: [
+      // Exit door (bottom right)
+      { type: 'fine_dining_exit', tx: 43, ty: 35, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 45 },
+
+      // === FLOOR TILES ===
+      { type: 'fd_floor_kitchen', tx: 1, ty: 1, w: 17, h: 20, solid: false },
+      { type: 'fd_floor_dining', tx: 20, ty: 1, w: 28, h: 30, solid: false },
+
+      // === SERVICE WALL (tx 18-19, solid with door gap at ty 16-17) ===
+      { type: 'fd_service_wall', tx: 18, ty: 1, w: 2, h: 15, solid: true },
+      // Door gap at ty 16-17 (no entity, just open space)
+      { type: 'fd_service_wall', tx: 18, ty: 18, w: 2, h: 3, solid: true },
+
+      // === KITCHEN WORK STATIONS ===
+      { type: 'fd_counter', tx: 7, ty: 10, w: 4, h: 2, solid: true },           // clear plate
+      { type: 'fd_pickup_counter', tx: 12, ty: 10, w: 4, h: 2, solid: true },    // submit order
+      { type: 'fd_tip_jar', tx: 15, ty: 18, w: 2, h: 1, solid: true },           // tip jar
+
+      // === INGREDIENT STATIONS (2x2 each, 2 rows of 6) ===
+      // Row 1 (ty: 1)
+      { type: 'fding_steak',        tx: 1,  ty: 1, w: 2, h: 2, solid: true },
+      { type: 'fding_shrimp',       tx: 4,  ty: 1, w: 2, h: 2, solid: true },
+      { type: 'fding_chicken',      tx: 7,  ty: 1, w: 2, h: 2, solid: true },
+      { type: 'fding_rice',         tx: 10, ty: 1, w: 2, h: 2, solid: true },
+      { type: 'fding_onion',        tx: 13, ty: 1, w: 2, h: 2, solid: true },
+      { type: 'fding_egg',          tx: 16, ty: 1, w: 2, h: 2, solid: true },
+      // Row 2 (ty: 5)
+      { type: 'fding_mushroom',     tx: 1,  ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_zucchini',     tx: 4,  ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_garlic_butter',tx: 7,  ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_soy_sauce',    tx: 10, ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_sesame_oil',   tx: 13, ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_miso',         tx: 16, ty: 5, w: 2, h: 2, solid: true },
+
+      // === TEPPANYAKI TABLES (4 tables, each with grill center + surrounding seats) ===
+      // Table 0 (tx 21-28, ty 2-8) — grill at center tx:24, ty:5
+      { type: 'fd_teppanyaki_table', tx: 21, ty: 2, w: 8, h: 7, solid: false },
+      { type: 'fd_teppanyaki_grill_0', tx: 23, ty: 4, w: 3, h: 3, solid: true },
+      // Table 1 (tx 32-39, ty 2-8) — grill at center tx:35, ty:5
+      { type: 'fd_teppanyaki_table', tx: 32, ty: 2, w: 8, h: 7, solid: false },
+      { type: 'fd_teppanyaki_grill_1', tx: 34, ty: 4, w: 3, h: 3, solid: true },
+      // Table 2 (tx 21-28, ty 11-17) — grill at center tx:24, ty:14
+      { type: 'fd_teppanyaki_table', tx: 21, ty: 11, w: 8, h: 7, solid: false },
+      { type: 'fd_teppanyaki_grill_2', tx: 23, ty: 13, w: 3, h: 3, solid: true },
+      // Table 3 (tx 32-39, ty 11-17) — grill at center tx:35, ty:14
+      { type: 'fd_teppanyaki_table', tx: 32, ty: 11, w: 8, h: 7, solid: false },
+      { type: 'fd_teppanyaki_grill_3', tx: 34, ty: 13, w: 3, h: 3, solid: true },
+
+      // === HOST STAND ===
+      { type: 'fd_host_stand', tx: 41, ty: 21, w: 2, h: 2, solid: true },
+
+      // === DECORATIVE ===
+      { type: 'fd_service_counter', tx: 1, ty: 18, w: 14, h: 1, solid: true },
     ]
   },
   // ---- TEST ARENA (dev only) ----

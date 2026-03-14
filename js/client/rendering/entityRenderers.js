@@ -4347,3 +4347,357 @@ function drawLevelEntities(camX, camY) {
     if (renderer) renderer(e, ctx, ex, ey, w, h);
   }
 }
+
+// ===================== FINE DINING ENTITY RENDERERS =====================
+
+// --- Building exterior (lobby) ---
+ENTITY_RENDERERS.building_fine_dining = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  const t = Date.now() / 1000;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath(); ctx.ellipse(ex + cw/2 + 5, ey + ch + 6, cw*0.42, 8, 0, 0, Math.PI*2); ctx.fill();
+  // Main body — dark wood
+  ctx.fillStyle = '#1a100a';
+  ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
+  // Wood panel grain lines
+  ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1;
+  for (let r = 0; r < 5; r++) {
+    const ly = ey+ch*0.3+r*ch*0.14;
+    ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
+  }
+  // Gold neon accent strip
+  ctx.fillStyle = `rgba(255,215,0,${0.4 + Math.sin(t*1.5)*0.15})`;
+  ctx.fillRect(ex+4, ey+ch*0.52, cw-8, ch*0.04);
+  // Roof — flat dark with gold trim
+  ctx.fillStyle = '#181010';
+  ctx.fillRect(ex-4, ey+ch*0.16, cw+8, ch*0.1);
+  ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(ex-4, ey+ch*0.16); ctx.lineTo(ex+cw+4, ey+ch*0.16); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ex-4, ey+ch*0.26); ctx.lineTo(ex+cw+4, ey+ch*0.26); ctx.stroke();
+  // Gold dots along awning
+  for (let d = 0; d < 5; d++) {
+    const phase = (d * 0.4 + t*2) % (Math.PI*2);
+    const dg = 0.4 + Math.sin(phase)*0.3;
+    ctx.fillStyle = `rgba(255,215,0,${dg})`;
+    ctx.beginPath(); ctx.arc(ex+cw*0.12+d*cw*0.19, ey+ch*0.21, 3, 0, Math.PI*2); ctx.fill();
+  }
+  // Windows — warm amber glow
+  const glow = 0.5 + Math.sin(t * 1.5) * 0.15;
+  for (let wc = 0; wc < 2; wc++) {
+    const wx = ex + cw*0.06 + wc*cw*0.5;
+    const wy = ey + ch*0.34;
+    ctx.fillStyle = '#0a0808';
+    ctx.fillRect(wx, wy, cw*0.36, ch*0.22);
+    ctx.fillStyle = `rgba(255,180,60,${glow * 0.2})`;
+    ctx.fillRect(wx+2, wy+2, cw*0.36-4, ch*0.22-4);
+    ctx.strokeStyle = `rgba(255,215,0,${glow * 0.6})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(wx, wy, cw*0.36, ch*0.22);
+  }
+  // Door
+  ctx.fillStyle = '#0a0808';
+  ctx.fillRect(ex+cw*0.36, ey+ch*0.64, cw*0.28, ch*0.36);
+  ctx.strokeStyle = `rgba(255,215,0,${0.6 + Math.sin(t*2)*0.2})`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex+cw*0.36, ey+ch*0.64, cw*0.28, ch*0.36);
+  ctx.fillStyle = `rgba(255,180,60,${glow*0.15})`;
+  ctx.fillRect(ex+cw*0.4, ey+ch*0.68, cw*0.2, ch*0.12);
+  // Gold side strips
+  ctx.fillStyle = `rgba(255,215,0,${0.15 + Math.sin(t*1.2)*0.08})`;
+  ctx.fillRect(ex+4, ey+ch*0.25, 3, ch*0.7);
+  ctx.fillRect(ex+cw-7, ey+ch*0.25, 3, ch*0.7);
+  // "FINE DINING" sign
+  ctx.font = "bold 9px monospace";
+  ctx.fillStyle = `rgba(255,215,0,${0.7 + Math.sin(t*2.5)*0.2})`;
+  ctx.textAlign = "center";
+  ctx.fillText("FINE DINING", ex+cw/2, ey+ch*0.12);
+  // Label below
+  ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ffd700'; ctx.textAlign = "center";
+  ctx.fillText("Fine Dining", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
+};
+
+// --- Entrance portal (lobby) ---
+ENTITY_RENDERERS.fine_dining_entrance = (e, ctx, ex, ey, w, h) => {
+  const ew = w * TILE, eh = h * TILE;
+  const t = Date.now() / 1000;
+  const glow = 0.4 + Math.sin(t * 2) * 0.15;
+  ctx.fillStyle = `rgba(255,215,0,${glow * 0.12})`;
+  ctx.fillRect(ex, ey, ew, eh);
+  ctx.strokeStyle = `rgba(255,215,0,${glow * 0.5})`;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
+  ctx.font = "bold 10px monospace";
+  ctx.fillStyle = `rgba(255,215,0,${glow * 0.8})`;
+  ctx.textAlign = "center";
+  ctx.fillText("\u25B2 ENTER FINE DINING", ex + ew/2, ey + eh/2 + 4);
+  ctx.textAlign = "left";
+};
+
+// --- Exit portal (interior) ---
+ENTITY_RENDERERS.fine_dining_exit = (e, ctx, ex, ey, w, h) => {
+  const ew = w * TILE, eh = h * TILE;
+  const t = Date.now() / 1000;
+  const glow = 0.3 + Math.sin(t * 1.5) * 0.12;
+  ctx.fillStyle = `rgba(255,215,0,${glow * 0.08})`;
+  ctx.fillRect(ex, ey, ew, eh);
+  ctx.strokeStyle = `rgba(255,215,0,${glow * 0.4})`;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
+  ctx.font = "bold 10px monospace";
+  ctx.fillStyle = `rgba(255,215,0,${glow * 0.7})`;
+  ctx.textAlign = "center";
+  ctx.fillText("\u25BC EXIT", ex + ew/2, ey + eh/2 + 4);
+  ctx.textAlign = "left";
+};
+
+// --- Kitchen floor ---
+ENTITY_RENDERERS.fd_floor_kitchen = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Stainless steel floor
+  ctx.fillStyle = '#2a2a30';
+  ctx.fillRect(ex, ey, cw, ch);
+  // Grid lines
+  ctx.strokeStyle = 'rgba(200,200,210,0.06)'; ctx.lineWidth = 1;
+  for (let r = 0; r <= h; r++) {
+    ctx.beginPath(); ctx.moveTo(ex, ey + r * TILE); ctx.lineTo(ex + cw, ey + r * TILE); ctx.stroke();
+  }
+  for (let c = 0; c <= w; c++) {
+    ctx.beginPath(); ctx.moveTo(ex + c * TILE, ey); ctx.lineTo(ex + c * TILE, ey + ch); ctx.stroke();
+  }
+};
+
+// --- Dining floor ---
+ENTITY_RENDERERS.fd_floor_dining = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Dark marble
+  ctx.fillStyle = '#1a1418';
+  ctx.fillRect(ex, ey, cw, ch);
+  // Subtle marble veining
+  ctx.strokeStyle = 'rgba(180,160,140,0.04)'; ctx.lineWidth = 1;
+  for (let r = 0; r <= h; r++) {
+    for (let c = 0; c <= w; c++) {
+      if ((r + c) % 3 === 0) {
+        ctx.beginPath();
+        ctx.moveTo(ex + c * TILE, ey + r * TILE);
+        ctx.lineTo(ex + c * TILE + TILE, ey + r * TILE + TILE);
+        ctx.stroke();
+      }
+    }
+  }
+  // Gold accent lines every 4 tiles
+  ctx.strokeStyle = 'rgba(255,215,0,0.06)'; ctx.lineWidth = 1;
+  for (let r = 0; r <= h; r += 4) {
+    ctx.beginPath(); ctx.moveTo(ex, ey + r * TILE); ctx.lineTo(ex + cw, ey + r * TILE); ctx.stroke();
+  }
+};
+
+// --- Service wall ---
+ENTITY_RENDERERS.fd_service_wall = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  ctx.fillStyle = '#1a1010';
+  ctx.fillRect(ex, ey, cw, ch);
+  ctx.fillStyle = '#2a1a14';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+  // Gold trim top/bottom
+  ctx.fillStyle = 'rgba(255,215,0,0.15)';
+  ctx.fillRect(ex, ey, cw, 2);
+  ctx.fillRect(ex, ey + ch - 2, cw, 2);
+};
+
+// --- Counter (clear plate) ---
+ENTITY_RENDERERS.fd_counter = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  ctx.fillStyle = '#2a1a14';
+  ctx.fillRect(ex, ey, cw, ch);
+  ctx.fillStyle = '#3a2a20';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+  // Marble top
+  ctx.fillStyle = '#4a3a30';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, 4);
+  // Label
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(ex, ey + ch - 16, cw, 16);
+  ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Clear Plate", ex + cw/2, ey + ch - 4);
+  ctx.textAlign = "left";
+};
+
+// --- Pickup counter (submit order) ---
+ENTITY_RENDERERS.fd_pickup_counter = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  ctx.fillStyle = '#2a1a14';
+  ctx.fillRect(ex, ey, cw, ch);
+  ctx.fillStyle = '#3a2a20';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+  ctx.fillStyle = '#4a3a30';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, 4);
+  // Bell icon
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath(); ctx.arc(ex + cw/2, ey + ch/2 - 4, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c0a000';
+  ctx.beginPath(); ctx.arc(ex + cw/2, ey + ch/2 - 4, 6, 0, Math.PI * 2); ctx.fill();
+  // Label
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(ex, ey + ch - 16, cw, 16);
+  ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Submit Order", ex + cw/2, ey + ch - 4);
+  ctx.textAlign = "left";
+};
+
+// --- Tip jar ---
+ENTITY_RENDERERS.fd_tip_jar = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  ctx.fillStyle = '#2a1a14';
+  ctx.fillRect(ex, ey, cw, ch);
+  ctx.fillStyle = '#3a2a20';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+  // Jar
+  const jx = ex + cw/2, jy = ey + ch/2 - 4;
+  ctx.fillStyle = 'rgba(200,180,140,0.4)';
+  ctx.beginPath(); ctx.roundRect(jx - 12, jy - 8, 24, 20, 4); ctx.fill();
+  ctx.strokeStyle = '#c0a060'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(jx - 12, jy - 8, 24, 20, 4); ctx.stroke();
+  // Gold coins inside
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath(); ctx.ellipse(jx - 3, jy + 2, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(jx + 4, jy + 4, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // Label
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(ex, ey + ch - 14, cw, 14);
+  ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Tip Jar", ex + cw/2, ey + ch - 3);
+  ctx.textAlign = "left";
+};
+
+// --- Service counter (decorative) ---
+ENTITY_RENDERERS.fd_service_counter = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  ctx.fillStyle = '#2a1a14';
+  ctx.fillRect(ex, ey, cw, ch);
+  ctx.fillStyle = '#3a2a20';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+  ctx.fillStyle = 'rgba(255,215,0,0.08)';
+  ctx.fillRect(ex, ey, cw, 2);
+};
+
+// --- Teppanyaki table (background visual) ---
+ENTITY_RENDERERS.fd_teppanyaki_table = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Dark wood surround
+  ctx.fillStyle = '#2a1a10';
+  ctx.beginPath(); ctx.roundRect(ex + 4, ey + 4, cw - 8, ch - 8, 6); ctx.fill();
+  ctx.fillStyle = '#3a2a18';
+  ctx.beginPath(); ctx.roundRect(ex + 8, ey + 8, cw - 16, ch - 16, 4); ctx.fill();
+  // Warm ambient glow
+  ctx.fillStyle = 'rgba(255,180,60,0.04)';
+  ctx.fillRect(ex, ey, cw, ch);
+};
+
+// --- Teppanyaki grill entities (0-3) ---
+const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  const t = Date.now() / 1000;
+  const tableId = parseInt(e.type.split('_').pop());
+  // Iron grill surface
+  ctx.fillStyle = '#3a3a40';
+  ctx.beginPath(); ctx.roundRect(ex + 2, ey + 2, cw - 4, ch - 4, 4); ctx.fill();
+  ctx.fillStyle = '#4a4a50';
+  ctx.beginPath(); ctx.roundRect(ex + 6, ey + 6, cw - 12, ch - 12, 3); ctx.fill();
+  // Grill lines
+  ctx.strokeStyle = 'rgba(60,60,70,0.8)'; ctx.lineWidth = 2;
+  for (let gl = 0; gl < 6; gl++) {
+    const gy = ey + 10 + gl * (ch - 20) / 5;
+    ctx.beginPath(); ctx.moveTo(ex + 10, gy); ctx.lineTo(ex + cw - 10, gy); ctx.stroke();
+  }
+  // Heat shimmer when cooking
+  const isActive = typeof grillState !== 'undefined' && grillState.active && grillState.tableId === tableId;
+  if (isActive) {
+    // Fire/heat glow
+    const heatGlow = 0.3 + Math.sin(t * 4) * 0.15;
+    ctx.fillStyle = `rgba(255,120,30,${heatGlow})`;
+    ctx.beginPath(); ctx.roundRect(ex + 6, ey + 6, cw - 12, ch - 12, 3); ctx.fill();
+    // Steam particles
+    for (let si = 0; si < 4; si++) {
+      const sx = ex + cw * 0.2 + si * cw * 0.2;
+      const sy = ey - 4 + Math.sin(t * 3 + si * 1.5) * 6;
+      const sa = 0.3 + Math.sin(t * 2 + si) * 0.2;
+      ctx.fillStyle = `rgba(200,200,200,${sa})`;
+      ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Waiting indicator — pulsing "!" when table needs cooking
+  const tableData = typeof FD_TABLES !== 'undefined' ? FD_TABLES[tableId] : null;
+  if (tableData && tableData.state === 'waiting_cook' && !isActive) {
+    const pulse = 0.5 + Math.sin(t * 3) * 0.5;
+    ctx.font = "bold 18px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = `rgba(255,215,0,${pulse})`;
+    ctx.fillText("!", ex + cw/2, ey - 8);
+    ctx.textAlign = "left";
+  }
+};
+ENTITY_RENDERERS.fd_teppanyaki_grill_0 = _fdGrillRenderer;
+ENTITY_RENDERERS.fd_teppanyaki_grill_1 = _fdGrillRenderer;
+ENTITY_RENDERERS.fd_teppanyaki_grill_2 = _fdGrillRenderer;
+ENTITY_RENDERERS.fd_teppanyaki_grill_3 = _fdGrillRenderer;
+
+// --- Host stand ---
+ENTITY_RENDERERS.fd_host_stand = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Wooden podium
+  ctx.fillStyle = '#3a2a18';
+  ctx.beginPath(); ctx.roundRect(ex + 4, ey + 4, cw - 8, ch - 8, 4); ctx.fill();
+  ctx.fillStyle = '#4a3a28';
+  ctx.beginPath(); ctx.roundRect(ex + 8, ey + 8, cw - 16, ch - 16, 3); ctx.fill();
+  // Menu book
+  ctx.fillStyle = '#1a0a0a';
+  ctx.fillRect(ex + cw/2 - 14, ey + ch/2 - 8, 28, 16);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(ex + cw/2 - 12, ey + ch/2 - 6, 24, 12);
+  ctx.fillStyle = '#1a0a0a';
+  ctx.fillRect(ex + cw/2 - 1, ey + ch/2 - 6, 2, 12);
+  // Label
+  ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Host", ex + cw/2, ey + ch + 10);
+  ctx.textAlign = "left";
+};
+
+// --- Fine dining ingredient renderer ---
+if (typeof FINE_DINING_INGREDIENTS !== 'undefined' && typeof FINE_DINING_ENTITY_TO_INGREDIENT !== 'undefined') {
+  const _fdIngredientRenderer = (e, ctx, ex, ey, w, h) => {
+    const cw = (w || 2) * TILE, ch = (h || 2) * TILE;
+    const ingId = FINE_DINING_ENTITY_TO_INGREDIENT[e.type];
+    const ing = ingId ? FINE_DINING_INGREDIENTS[ingId] : null;
+    const color = ing ? ing.color : '#888';
+    const name = ing ? ing.name : e.type;
+
+    // Dark marble counter surface (upscale)
+    ctx.fillStyle = '#2a1a14';
+    ctx.fillRect(ex, ey, cw, ch);
+    ctx.fillStyle = '#3a2a20';
+    ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+    ctx.fillStyle = '#4a3a2a';
+    ctx.fillRect(ex + 2, ey + 2, cw - 4, 3);
+
+    // Ingredient item (centered blob)
+    const itemW = cw * 0.6, itemH = ch * 0.45;
+    const ix = ex + (cw - itemW) / 2, iy = ey + ch * 0.1;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.roundRect(ix, iy, itemW, itemH, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(ix, iy, itemW, itemH, 6); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(ix + 4, iy + 3, itemW - 8, itemH * 0.3);
+
+    // Name label
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(ex, ey + ch - 18, cw, 18);
+    ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = '#000'; ctx.fillText(name, ex + cw / 2 + 1, ey + ch - 5 + 1);
+    ctx.fillStyle = '#ffd700'; ctx.fillText(name, ex + cw / 2, ey + ch - 5);
+    ctx.textAlign = "left";
+  };
+  for (const [id, data] of Object.entries(FINE_DINING_INGREDIENTS)) {
+    ENTITY_RENDERERS[data.entity] = _fdIngredientRenderer;
+  }
+}

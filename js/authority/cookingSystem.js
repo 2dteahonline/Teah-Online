@@ -50,18 +50,22 @@ let _cookingOrderId = 0;
 
 // Multi-restaurant helpers
 function _getActiveIngredients() {
+  if (cookingState.activeRestaurantId === 'fine_dining') return typeof FINE_DINING_INGREDIENTS !== 'undefined' ? FINE_DINING_INGREDIENTS : {};
   if (cookingState.activeRestaurantId === 'diner') return typeof DINER_INGREDIENTS !== 'undefined' ? DINER_INGREDIENTS : {};
   return typeof DELI_INGREDIENTS !== 'undefined' ? DELI_INGREDIENTS : {};
 }
 function _getActiveEntityToIngredient() {
+  if (cookingState.activeRestaurantId === 'fine_dining') return typeof FINE_DINING_ENTITY_TO_INGREDIENT !== 'undefined' ? FINE_DINING_ENTITY_TO_INGREDIENT : {};
   if (cookingState.activeRestaurantId === 'diner') return typeof DINER_ENTITY_TO_INGREDIENT !== 'undefined' ? DINER_ENTITY_TO_INGREDIENT : {};
   return typeof ENTITY_TO_INGREDIENT !== 'undefined' ? ENTITY_TO_INGREDIENT : {};
 }
 function _pickActiveRecipe() {
+  if (cookingState.activeRestaurantId === 'fine_dining') return typeof pickFineDiningRecipe === 'function' ? pickFineDiningRecipe() : null;
   if (cookingState.activeRestaurantId === 'diner') return typeof pickDinerRecipe === 'function' ? pickDinerRecipe() : null;
   return typeof pickDeliRecipe === 'function' ? pickDeliRecipe() : null;
 }
 function _getActiveNPCs() {
+  if (cookingState.activeRestaurantId === 'fine_dining') return typeof fineDiningNPCs !== 'undefined' ? fineDiningNPCs : [];
   if (cookingState.activeRestaurantId === 'diner') return typeof dinerNPCs !== 'undefined' ? dinerNPCs : [];
   return typeof deliNPCs !== 'undefined' ? deliNPCs : [];
 }
@@ -125,6 +129,13 @@ function endCookingShift() {
   cookingState.shiftComplete = true;
   cookingState.currentOrder = null;
   cookingState.assembly = [];
+  cookingState.ticketQueue = [];
+  cookingState.ticketSpawnTimer = 0;
+  // Reset grill state if active
+  if (typeof grillState !== 'undefined' && grillState.active) {
+    grillState.active = false;
+    grillState.phase = 'idle';
+  }
 }
 
 function resetCookingState() {
@@ -192,7 +203,7 @@ function _generateTicket() {
   const customerType = pickCustomerType();
   const moodThresholds = MOOD_STAGES.map(s => Math.round(s.baseFrames * customerType.patience));
 
-  // Build ticket (multi-item for diner, single for deli)
+  // Build ticket (multi-item for diner, single for deli/fine_dining)
   let ticketItems = [{ recipe: recipe, qty: 1 }];
   if (cookingState.activeRestaurantId === 'diner') {
     const itemCount = _ticketRandRange(1, 3);
@@ -201,6 +212,7 @@ function _generateTicket() {
       ticketItems.push({ recipe: _pickActiveRecipe(), qty: 1 });
     }
   }
+  // Fine dining: single item per ticket (like deli), trick data comes from recipe
 
   cookingState.ticketQueue.push({
     ticketItems: ticketItems,
@@ -323,6 +335,11 @@ function updateCooking() {
   // === Spatula melee hit detection — swing near a station/ingredient to interact ===
   if (melee.swinging && melee.special === 'spatula' && !cookingState._swingHandled) {
     cookingState._swingHandled = true;
+    // Grill mode intercept — if grill is active, swing = trick hit attempt
+    if (typeof grillState !== 'undefined' && grillState.active && grillState.phase === 'active') {
+      if (typeof _checkTrickHit === 'function') _checkTrickHit();
+      return;
+    }
     const px = player.x, py = player.y - 20;
     let hitEntity = null;
     let hitDist = 999;
@@ -331,7 +348,9 @@ function updateCooking() {
       const activeEntityMap = _getActiveEntityToIngredient();
       const isIngredient = activeEntityMap[e.type];
       const isWorkStation = e.type === 'deli_counter' || e.type === 'pickup_counter' || e.type === 'tip_jar' ||
-                            e.type === 'diner_counter' || e.type === 'diner_pickup_counter' || e.type === 'diner_tip_jar';
+                            e.type === 'diner_counter' || e.type === 'diner_pickup_counter' || e.type === 'diner_tip_jar' ||
+                            e.type === 'fd_counter' || e.type === 'fd_pickup_counter' || e.type === 'fd_tip_jar' ||
+                            e.type.startsWith('fd_teppanyaki_grill_');
       if (!isIngredient && !isWorkStation) continue;
       const ew = (e.w || 1), eh = (e.h || 1);
       // Distance to nearest edge of entity (not center)
@@ -434,7 +453,24 @@ function handleStationInteract(entityType) {
     return;
   }
 
-  if (entityType === 'deli_counter' || entityType === 'diner_counter') {
+  // Teppanyaki grill — start grill sequence when assembly is complete
+  if (entityType.startsWith('fd_teppanyaki_grill_') && cookingState.currentOrder &&
+      cookingState.assembly.length >= cookingState.currentOrder.recipe.ingredients.length &&
+      (typeof grillState === 'undefined' || !grillState.active)) {
+    const tableId = parseInt(entityType.split('_').pop());
+    if (typeof startGrillSequence === 'function') startGrillSequence(tableId, cookingState.currentOrder.recipe);
+    return;
+  }
+  // Teppanyaki grill — not ready yet, show message
+  if (entityType.startsWith('fd_teppanyaki_grill_') && cookingState.currentOrder &&
+      cookingState.assembly.length < cookingState.currentOrder.recipe.ingredients.length) {
+    if (typeof hitEffects !== 'undefined') {
+      hitEffects.push({ x: player.x, y: player.y - 40, life: 20, maxLife: 20, type: "heal", dmg: "Collect all ingredients first!" });
+    }
+    return;
+  }
+
+  if (entityType === 'deli_counter' || entityType === 'diner_counter' || entityType === 'fd_counter') {
     // Clear plate — reset assembly
     cookingState.assembly = [];
     if (typeof hitEffects !== 'undefined') {
@@ -445,7 +481,7 @@ function handleStationInteract(entityType) {
     }
   }
 
-  if (entityType === 'pickup_counter' || entityType === 'diner_pickup_counter') {
+  if (entityType === 'pickup_counter' || entityType === 'diner_pickup_counter' || entityType === 'fd_pickup_counter') {
     // Submit order for grading
     if (cookingState.assembly.length === 0) {
       if (typeof hitEffects !== 'undefined') {
@@ -460,7 +496,7 @@ function handleStationInteract(entityType) {
     applyOrderResult(result);
   }
 
-  if (entityType === 'tip_jar' || entityType === 'diner_tip_jar') {
+  if (entityType === 'tip_jar' || entityType === 'diner_tip_jar' || entityType === 'fd_tip_jar') {
     // Collect accumulated tips
     if (cookingState.tipJar > 0) {
       const collected = cookingState.tipJar;
@@ -512,12 +548,22 @@ function gradeOrder() {
   for (const th of order.moodThresholds) totalMoodTime += th;
   const timeScore = Math.max(0, 1.0 - (order.moodTimer / totalMoodTime));
 
+  // Fine dining: modified scoring with trick score
+  let effectiveQuality = qualityScore;
+  let effectiveTime = timeScore;
+  if (cookingState.activeRestaurantId === 'fine_dining' && typeof grillState !== 'undefined' && grillState.trickScore > 0) {
+    // Blend: 40% quality, 40% trick, 20% time
+    const blended = qualityScore * 0.4 + grillState.trickScore * 0.4 + timeScore * 0.2;
+    effectiveQuality = blended;
+    effectiveTime = blended; // use blended for both thresholds
+  }
+
   // Determine grade
   let grade = COOKING_GRADES.F;
-  if (qualityScore >= COOKING_GRADES.S.minQuality && timeScore >= COOKING_GRADES.S.minTime) grade = COOKING_GRADES.S;
-  else if (qualityScore >= COOKING_GRADES.A.minQuality && timeScore >= COOKING_GRADES.A.minTime) grade = COOKING_GRADES.A;
-  else if (qualityScore >= COOKING_GRADES.B.minQuality && timeScore >= COOKING_GRADES.B.minTime) grade = COOKING_GRADES.B;
-  else if (qualityScore >= COOKING_GRADES.C.minQuality) grade = COOKING_GRADES.C;
+  if (effectiveQuality >= COOKING_GRADES.S.minQuality && effectiveTime >= COOKING_GRADES.S.minTime) grade = COOKING_GRADES.S;
+  else if (effectiveQuality >= COOKING_GRADES.A.minQuality && effectiveTime >= COOKING_GRADES.A.minTime) grade = COOKING_GRADES.A;
+  else if (effectiveQuality >= COOKING_GRADES.B.minQuality && effectiveTime >= COOKING_GRADES.B.minTime) grade = COOKING_GRADES.B;
+  else if (effectiveQuality >= COOKING_GRADES.C.minQuality) grade = COOKING_GRADES.C;
 
   // Calculate pay
   const basePay = recipe.basePay;
@@ -727,6 +773,12 @@ function drawCookingHUD() {
     ctx.font = "bold 10px monospace"; ctx.fillStyle = '#ff6040'; ctx.textAlign = "right";
     ctx.fillText("RUSH HOUR!", barX - 10, barY + barH - 2);
   }
+
+  // === Grill HUD override ===
+  if (typeof grillState !== 'undefined' && grillState.active && typeof drawGrillHUD === 'function') {
+    drawGrillHUD();
+    // Still show stats line below
+  } else
 
   // === Order display (top-center, below shift timer) ===
   if (order) {

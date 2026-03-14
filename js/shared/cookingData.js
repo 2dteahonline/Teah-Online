@@ -6,7 +6,7 @@
 const COOKING_SHOPS = {
   street_deli:       { id: 'street_deli',       name: 'Street Deli',        tier: 1, levelReq: 1,  ordersReq: 0,     costReq: 0,      maxOrderBase: 20,  levelId: 'deli_01' },
   diner:             { id: 'diner',             name: 'Diner',              tier: 2, levelReq: 10, ordersReq: 500,   costReq: 5000,   maxOrderBase: 35,  levelId: 'diner_01' },
-  fine_dining:       { id: 'fine_dining',       name: 'Fine Dining',        tier: 3, levelReq: 20, ordersReq: 2000,  costReq: 25000,  maxOrderBase: 75,  levelId: null },
+  fine_dining:       { id: 'fine_dining',       name: 'Fine Dining',        tier: 3, levelReq: 20, ordersReq: 2000,  costReq: 25000,  maxOrderBase: 75,  levelId: 'fine_dining_01' },
   luxury:            { id: 'luxury',            name: 'Luxury Restaurant',  tier: 4, levelReq: 35, ordersReq: 5000,  costReq: 100000, maxOrderBase: 100, levelId: null },
   five_star:         { id: 'five_star',         name: '5 Star Elite',       tier: 5, levelReq: 50, ordersReq: 10000, costReq: 500000, maxOrderBase: 150, levelId: null },
 };
@@ -189,4 +189,67 @@ function pickDinerCustomerType() {
 
 function pickDinerRecipe() {
   return DINER_RECIPES[Math.floor(Math.random() * DINER_RECIPES.length)];
+}
+
+// ===================== FINE DINING INGREDIENTS =====================
+const FINE_DINING_INGREDIENTS = {
+  fd_steak:        { id: 'fd_steak',        name: 'Steak',        color: '#8a3020', entity: 'fding_steak' },
+  fd_shrimp:       { id: 'fd_shrimp',       name: 'Shrimp',       color: '#ff9060', entity: 'fding_shrimp' },
+  fd_chicken:      { id: 'fd_chicken',      name: 'Chicken',      color: '#e0b870', entity: 'fding_chicken' },
+  fd_rice:         { id: 'fd_rice',         name: 'Rice',         color: '#f0e8d0', entity: 'fding_rice' },
+  fd_onion:        { id: 'fd_onion',        name: 'Onion',        color: '#d0b0d0', entity: 'fding_onion' },
+  fd_egg:          { id: 'fd_egg',          name: 'Egg',          color: '#f0e060', entity: 'fding_egg' },
+  fd_mushroom:     { id: 'fd_mushroom',     name: 'Mushroom',     color: '#c0a080', entity: 'fding_mushroom' },
+  fd_zucchini:     { id: 'fd_zucchini',     name: 'Zucchini',     color: '#40a040', entity: 'fding_zucchini' },
+  fd_garlic_butter:{ id: 'fd_garlic_butter',name: 'Garlic Butter',color: '#f0e0a0', entity: 'fding_garlic_butter' },
+  fd_soy_sauce:    { id: 'fd_soy_sauce',    name: 'Soy Sauce',    color: '#4a2a10', entity: 'fding_soy_sauce' },
+  fd_sesame_oil:   { id: 'fd_sesame_oil',   name: 'Sesame Oil',   color: '#c0a040', entity: 'fding_sesame_oil' },
+  fd_miso:         { id: 'fd_miso',         name: 'Miso',         color: '#b08040', entity: 'fding_miso' },
+};
+
+// Reverse lookup: fine dining entity type -> ingredient id
+const FINE_DINING_ENTITY_TO_INGREDIENT = {};
+for (const [id, data] of Object.entries(FINE_DINING_INGREDIENTS)) {
+  FINE_DINING_ENTITY_TO_INGREDIENT[data.entity] = id;
+}
+
+// ===================== FINE DINING RECIPES =====================
+// trickCount: number of trick prompts on the grill bar (3-6)
+// trickDifficulty: 1-3, affects zone width and bar speed
+const FINE_DINING_RECIPES = [
+  { id: 'hibachi_steak',      name: 'Hibachi Steak',       ingredients: ['fd_steak', 'fd_onion', 'fd_garlic_butter', 'fd_soy_sauce'],                   basePay: 45, baseXP: 55, difficulty: 2, trickCount: 4, trickDifficulty: 2 },
+  { id: 'shrimp_teppanyaki',  name: 'Shrimp Teppanyaki',   ingredients: ['fd_shrimp', 'fd_garlic_butter', 'fd_soy_sauce'],                              basePay: 40, baseXP: 50, difficulty: 1, trickCount: 3, trickDifficulty: 1 },
+  { id: 'chicken_teriyaki',   name: 'Chicken Teriyaki',    ingredients: ['fd_chicken', 'fd_soy_sauce', 'fd_sesame_oil'],                                 basePay: 35, baseXP: 45, difficulty: 1, trickCount: 3, trickDifficulty: 1 },
+  { id: 'volcano_fried_rice', name: 'Volcano Fried Rice',  ingredients: ['fd_rice', 'fd_egg', 'fd_onion', 'fd_soy_sauce', 'fd_sesame_oil'],              basePay: 50, baseXP: 65, difficulty: 2, trickCount: 5, trickDifficulty: 2 },
+  { id: 'miso_salmon',        name: 'Miso Glazed Salmon',  ingredients: ['fd_shrimp', 'fd_miso', 'fd_garlic_butter', 'fd_sesame_oil'],                   basePay: 55, baseXP: 70, difficulty: 3, trickCount: 4, trickDifficulty: 3 },
+  { id: 'garlic_mushrooms',   name: 'Garlic Butter Mushrooms', ingredients: ['fd_mushroom', 'fd_garlic_butter', 'fd_soy_sauce'],                        basePay: 30, baseXP: 40, difficulty: 1, trickCount: 3, trickDifficulty: 1 },
+  { id: 'teppanyaki_combo',   name: 'Teppanyaki Combo Platter', ingredients: ['fd_steak', 'fd_shrimp', 'fd_chicken', 'fd_rice', 'fd_onion', 'fd_garlic_butter'], basePay: 60, baseXP: 80, difficulty: 3, trickCount: 6, trickDifficulty: 3 },
+  { id: 'onion_volcano',      name: 'Onion Volcano Special', ingredients: ['fd_onion', 'fd_egg', 'fd_rice', 'fd_sesame_oil'],                           basePay: 40, baseXP: 50, difficulty: 2, trickCount: 4, trickDifficulty: 2 },
+  { id: 'zucchini_steak',     name: 'Steak & Zucchini',    ingredients: ['fd_steak', 'fd_zucchini', 'fd_garlic_butter', 'fd_soy_sauce'],                 basePay: 48, baseXP: 60, difficulty: 2, trickCount: 4, trickDifficulty: 2 },
+  { id: 'mushroom_rice',      name: 'Mushroom Fried Rice',  ingredients: ['fd_rice', 'fd_mushroom', 'fd_egg', 'fd_soy_sauce', 'fd_sesame_oil'],          basePay: 42, baseXP: 55, difficulty: 2, trickCount: 5, trickDifficulty: 2 },
+];
+
+// ===================== FINE DINING CUSTOMER TYPES =====================
+const FINE_DINING_CUSTOMER_TYPES = {
+  regular:   { type: 'regular',   partySize: [1, 3], tipMult: 1.0, moodSpeed: 0.6, patience: 1.3, coverFee: 10, weight: 0.35 },
+  generous:  { type: 'generous',  partySize: [2, 4], tipMult: 1.5, moodSpeed: 0.4, patience: 1.5, coverFee: 15, weight: 0.20 },
+  impatient: { type: 'impatient', partySize: [1, 2], tipMult: 0.8, moodSpeed: 0.9, patience: 1.0, coverFee: 10, weight: 0.10 },
+  vip:       { type: 'vip',       partySize: [1, 3], tipMult: 1.8, moodSpeed: 0.5, patience: 1.3, coverFee: 25, weight: 0.20 },
+  celebrity: { type: 'celebrity', partySize: [1, 2], tipMult: 2.5, moodSpeed: 0.8, patience: 0.8, coverFee: 50, weight: 0.15 },
+};
+
+function pickFineDiningCustomerType() {
+  const types = Object.values(FINE_DINING_CUSTOMER_TYPES);
+  let totalWeight = 0;
+  for (const t of types) totalWeight += t.weight;
+  let r = Math.random() * totalWeight;
+  for (const t of types) {
+    r -= t.weight;
+    if (r <= 0) return t;
+  }
+  return types[0];
+}
+
+function pickFineDiningRecipe() {
+  return FINE_DINING_RECIPES[Math.floor(Math.random() * FINE_DINING_RECIPES.length)];
 }

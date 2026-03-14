@@ -86,6 +86,7 @@ const PORTAL_SCENES = {
   mine_entrance: 'lobby',   mine_exit: 'mine',    mine_door: 'mine',
   deli_entrance: 'lobby',   deli_exit: 'cooking',
   diner_entrance: 'lobby',  diner_exit: 'cooking',
+  fine_dining_entrance: 'lobby', fine_dining_exit: 'cooking',
   house_entrance: 'lobby',  house_exit: 'farm',
   azurine_entrance: 'lobby', azurine_exit: 'azurine',
   gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
@@ -133,14 +134,17 @@ const LEAVE_HANDLERS = {
     cleanup() {},
     get returnLevel() { return 'lobby_01'; },
     get returnTX() {
+      if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'fine_dining') return 6;
       if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') return 6;
       return 6;
     },
     get returnTY() {
+      if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'fine_dining') return 45;
       if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') return 33;
       return 21;
     },
     get message() {
+      if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'fine_dining') return 'Leaving restaurant...';
       if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') return 'Leaving diner...';
       return 'Leaving deli...';
     },
@@ -293,6 +297,9 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
       if (targetLevel.id === 'diner_01') {
         if (typeof cookingState !== 'undefined') cookingState.activeRestaurantId = 'diner';
         if (typeof initDinerNPCs === 'function') initDinerNPCs();
+      } else if (targetLevel.id === 'fine_dining_01') {
+        if (typeof cookingState !== 'undefined') cookingState.activeRestaurantId = 'fine_dining';
+        if (typeof initFineDiningNPCs === 'function') initFineDiningNPCs();
       } else {
         if (typeof cookingState !== 'undefined') cookingState.activeRestaurantId = 'street_deli';
         if (typeof initDeliNPCs === 'function') initDeliNPCs();
