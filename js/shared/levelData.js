@@ -124,6 +124,9 @@ const LEVELS = {
       // === EARTH-205 DUNGEON (east district, below vortalis row) ===
       { type: 'building_earth205', tx: 50, ty: 24, w: 7, h: 8, solid: true },
       { type: 'earth205_entrance', tx: 52, ty: 31, w: 3, h: 2, solid: false, target: 'earth205_01', spawnTX: 20, spawnTY: 19 },
+      // === DINER (west district, next to Skeld) ===
+      { type: 'building_diner', tx: 36, ty: 24, w: 7, h: 8, solid: true },
+      { type: 'diner_entrance', tx: 38, ty: 31, w: 3, h: 2, solid: false, target: 'diner_01', spawnTX: 27, spawnTY: 33 },
       // === CRYSTAL FORMATIONS (replacing trees, 3 variants) ===
       { type: 'tree', tx: 10, ty: 38, solid: true, variant: 1 },
       { type: 'tree', tx: 22, ty: 44, solid: true, variant: 0 },
@@ -885,6 +888,144 @@ const LEVELS = {
       { type: 'deli_shelf_cookies',   tx: 27, ty: 30, w: 5, h: 2, solid: true },
       { type: 'deli_shelf_soups',     tx: 34, ty: 30, w: 5, h: 2, solid: true },
       { type: 'deli_shelf_dairy',     tx: 41, ty: 30, w: 5, h: 2, solid: true },
+    ]
+  },
+  diner_01: {
+    id: 'diner_01',
+    widthTiles: 55,
+    heightTiles: 36,
+    isCooking: true,
+    spawns: { p1: { tx: 27, ty: 33 } },
+    collisionAscii: [
+      "#######################################################",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#.....................................................#",
+      "#######################################################"
+    ],
+    entities: [
+      // Exit door (bottom center)
+      { type: 'diner_exit', tx: 25, ty: 33, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
+
+      // === KITCHEN FLOOR (rendered behind everything) ===
+      { type: 'diner_kitchen_floor', tx: 1, ty: 1, w: 22, h: 14, solid: false },
+
+      // === SERVICE COUNTER WALL (ty: 15, horizontal divider) ===
+      { type: 'diner_service_counter', tx: 1, ty: 15, w: 8, h: 1, solid: true },
+      { type: 'diner_pickup_counter', tx: 9, ty: 15, w: 6, h: 1, solid: true },
+      { type: 'diner_tip_jar', tx: 15, ty: 15, w: 2, h: 1, solid: true },
+      { type: 'diner_service_counter', tx: 17, ty: 15, w: 6, h: 1, solid: true },
+      // Vertical wall on right side of kitchen
+      { type: 'diner_service_counter', tx: 23, ty: 1, w: 1, h: 14, solid: true },
+      // Kitchen door
+      { type: 'kitchen_door_diner', tx: 23, ty: 14, w: 1, h: 1, solid: false },
+
+      // === INGREDIENT STATIONS (2x2 each) ===
+      // Breakfast row 1 (ty: 1)
+      { type: 'ding_eggs', tx: 1, ty: 1, w: 2, h: 2, solid: true },
+      { type: 'ding_bacon', tx: 5, ty: 1, w: 2, h: 2, solid: true },
+      { type: 'ding_pancake_batter', tx: 9, ty: 1, w: 2, h: 2, solid: true },
+      { type: 'ding_waffle_batter', tx: 13, ty: 1, w: 2, h: 2, solid: true },
+      // Breakfast row 2 (ty: 4)
+      { type: 'ding_hash_browns', tx: 1, ty: 4, w: 2, h: 2, solid: true },
+      { type: 'ding_toast', tx: 5, ty: 4, w: 2, h: 2, solid: true },
+      { type: 'ding_butter', tx: 9, ty: 4, w: 2, h: 2, solid: true },
+      { type: 'ding_syrup', tx: 13, ty: 4, w: 2, h: 2, solid: true },
+      // Lunch row 1 (ty: 7)
+      { type: 'ding_burger_patty', tx: 1, ty: 7, w: 2, h: 2, solid: true },
+      { type: 'ding_bun', tx: 5, ty: 7, w: 2, h: 2, solid: true },
+      { type: 'ding_fries', tx: 9, ty: 7, w: 2, h: 2, solid: true },
+      { type: 'ding_hot_dog', tx: 13, ty: 7, w: 2, h: 2, solid: true },
+      // Lunch row 2 (ty: 10)
+      { type: 'ding_cheese', tx: 1, ty: 10, w: 2, h: 2, solid: true },
+      { type: 'ding_lettuce', tx: 5, ty: 10, w: 2, h: 2, solid: true },
+      { type: 'ding_tomato', tx: 9, ty: 10, w: 2, h: 2, solid: true },
+      { type: 'ding_onion', tx: 13, ty: 10, w: 2, h: 2, solid: true },
+      // Drinks row (ty: 13)
+      { type: 'ding_milkshake_base', tx: 1, ty: 13, w: 2, h: 2, solid: true },
+      { type: 'ding_coffee', tx: 5, ty: 13, w: 2, h: 2, solid: true },
+
+      // === WORK COUNTER (clear plate) ===
+      { type: 'diner_counter', tx: 17, ty: 7, w: 4, h: 2, solid: true },
+
+      // === DINING AREA FLOOR ===
+      { type: 'diner_floor', tx: 25, ty: 1, w: 28, h: 24, solid: false },
+
+      // === BOOTHS (6 total, 2 columns of 3) ===
+      // Booth 0
+      { type: 'diner_booth', tx: 27, ty: 2, w: 5, h: 3, solid: true },
+      { type: 'diner_booth_seat', tx: 27, ty: 1, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 1, solid: false },
+      { type: 'diner_booth_seat', tx: 27, ty: 5, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 5, solid: false },
+      // Booth 1
+      { type: 'diner_booth', tx: 27, ty: 6, w: 5, h: 3, solid: true },
+      { type: 'diner_booth_seat', tx: 27, ty: 9, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 9, solid: false },
+      { type: 'diner_booth_seat', tx: 27, ty: 5, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 5, solid: false },
+      // Booth 2
+      { type: 'diner_booth', tx: 27, ty: 10, w: 5, h: 3, solid: true },
+      { type: 'diner_booth_seat', tx: 27, ty: 9, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 9, solid: false },
+      { type: 'diner_booth_seat', tx: 27, ty: 13, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 13, solid: false },
+      // Booth 3
+      { type: 'diner_booth', tx: 38, ty: 2, w: 5, h: 3, solid: true },
+      { type: 'diner_booth_seat', tx: 38, ty: 1, solid: false },
+      { type: 'diner_booth_seat', tx: 42, ty: 1, solid: false },
+      { type: 'diner_booth_seat', tx: 38, ty: 5, solid: false },
+      { type: 'diner_booth_seat', tx: 42, ty: 5, solid: false },
+      // Booth 4
+      { type: 'diner_booth', tx: 38, ty: 6, w: 5, h: 3, solid: true },
+      { type: 'diner_booth_seat', tx: 38, ty: 9, solid: false },
+      { type: 'diner_booth_seat', tx: 42, ty: 9, solid: false },
+      { type: 'diner_booth_seat', tx: 38, ty: 5, solid: false },
+      { type: 'diner_booth_seat', tx: 42, ty: 5, solid: false },
+      // Booth 5
+      { type: 'diner_booth', tx: 38, ty: 10, w: 5, h: 3, solid: true },
+      { type: 'diner_booth_seat', tx: 38, ty: 9, solid: false },
+      { type: 'diner_booth_seat', tx: 42, ty: 9, solid: false },
+      { type: 'diner_booth_seat', tx: 38, ty: 13, solid: false },
+      { type: 'diner_booth_seat', tx: 42, ty: 13, solid: false },
+
+      // === ARCADE CORNER ===
+      { type: 'arcade_cabinet', tx: 45, ty: 3, w: 1, h: 2, solid: true },
+      { type: 'arcade_cabinet', tx: 48, ty: 3, w: 1, h: 2, solid: true },
+
+      // === JUKEBOX ===
+      { type: 'diner_jukebox', tx: 50, ty: 10, w: 2, h: 2, solid: true },
     ]
   },
   // ---- TEST ARENA (dev only) ----

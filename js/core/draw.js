@@ -256,8 +256,12 @@ function draw() {
     }
   }
   // Deli customer NPCs
-  if (typeof deliNPCs !== 'undefined' && Scene.inCooking) {
+  if (typeof deliNPCs !== 'undefined' && Scene.inCooking && typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'street_deli') {
     for (const npc of deliNPCs) sortedChars.push({ y: npc.y, type: "deliNPC", npc: npc });
+  }
+  // Diner customer NPCs
+  if (typeof dinerNPCs !== 'undefined' && Scene.inCooking && typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') {
+    for (const npc of dinerNPCs) sortedChars.push({ y: npc.y, type: "dinerNPC", npc: npc });
   }
   sortedChars.sort((a, b) => a.y - b.y);
 
@@ -744,6 +748,46 @@ function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.08)';
             ctx.fillRect(fx - lw / 2 + 1, ly + lh / 2 - 1, lw - 2, 1);
           }
+        }
+      }
+
+    } else if (e.type === "dinerNPC") {
+      // Diner customer NPC rendering — same as deli but with plate food visual
+      const npc = e.npc;
+      drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
+        npc.skin, npc.hair, npc.shirt, npc.pants,
+        npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
+      // Food indicator — plate with round items (diner style)
+      if (npc.hasFood) {
+        let fOffX = 0, fOffY = -36;
+        if (npc.dir === 2) fOffX = -18;
+        else if (npc.dir === 3) fOffX = 18;
+        else if (npc.dir === 0) fOffY = -32;
+        else if (npc.dir === 1) fOffY = -42;
+        const bobF = npc.moving ? Math.sin(npc.frame * Math.PI / 2) * 1.5 : 0;
+        const fx = npc.x + fOffX, fy = npc.y + fOffY + bobF;
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.beginPath(); ctx.ellipse(fx, fy + 12, 28, 9, 0, 0, Math.PI * 2); ctx.fill();
+        // Plate
+        ctx.fillStyle = '#d4c8a8';
+        ctx.beginPath(); ctx.ellipse(fx, fy + 6, 26, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#a09070'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(fx, fy + 6, 26, 10, 0, 0, Math.PI * 2); ctx.stroke();
+        // Food items — round blobs (eggs, pancakes, burgers)
+        const foodColors = npc._recipeIngredients && typeof DINER_INGREDIENTS !== 'undefined'
+          ? npc._recipeIngredients.map(id => { const ing = DINER_INGREDIENTS[id]; return ing ? ing.color : '#c0a060'; })
+          : ['#f0e060', '#c04030', '#d0a850'];
+        const maxItems = Math.min(foodColors.length, 4);
+        for (let fi = 0; fi < maxItems; fi++) {
+          const angle = (fi / maxItems) * Math.PI * 2 - Math.PI / 2;
+          const fr = maxItems === 1 ? 0 : 10;
+          const fix = fx + Math.cos(angle) * fr;
+          const fiy = fy + 3 + Math.sin(angle) * fr * 0.5;
+          ctx.fillStyle = foodColors[fi];
+          ctx.beginPath(); ctx.ellipse(fix, fiy, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.2)';
+          ctx.beginPath(); ctx.ellipse(fix - 2, fiy - 2, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
         }
       }
 

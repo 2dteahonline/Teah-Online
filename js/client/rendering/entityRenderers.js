@@ -1372,6 +1372,398 @@ const ENTITY_RENDERERS = {
       ctx.textAlign = "left";
   },
 
+  // === DINER ENTITIES ===
+  building_diner: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath(); ctx.ellipse(ex + cw/2 + 5, ey + ch + 6, cw*0.42, 8, 0, 0, Math.PI*2); ctx.fill();
+      // Main structure — retro 50s chrome/red diner
+      ctx.fillStyle = '#c0c0c8';
+      ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
+      // Chrome panel lines
+      ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 1;
+      for (let r = 0; r < 5; r++) {
+        const ly = ey+ch*0.3+r*ch*0.14;
+        ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
+      }
+      // Red accent strip along middle
+      ctx.fillStyle = '#cc2020';
+      ctx.fillRect(ex+4, ey+ch*0.52, cw-8, ch*0.06);
+      // Roof — flat with red/chrome trim
+      ctx.fillStyle = '#aa1818';
+      ctx.fillRect(ex-4, ey+ch*0.16, cw+8, ch*0.1);
+      // Chrome trim on roof edges
+      ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ex-4, ey+ch*0.16); ctx.lineTo(ex+cw+4, ey+ch*0.16); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex-4, ey+ch*0.26); ctx.lineTo(ex+cw+4, ey+ch*0.26); ctx.stroke();
+      // Checkered trim along roofline
+      for (let d = 0; d < 10; d++) {
+        ctx.fillStyle = d % 2 === 0 ? '#1a1a1a' : '#e0e0e0';
+        ctx.fillRect(ex + cw*0.05 + d*cw*0.09, ey+ch*0.14, cw*0.09, ch*0.02);
+      }
+      // Round porthole windows
+      const glow = 0.5 + Math.sin(t * 1.5) * 0.15;
+      for (let wc = 0; wc < 3; wc++) {
+        const wx = ex + cw*0.15 + wc*cw*0.28;
+        const wy = ey + ch*0.4;
+        const wr = Math.min(cw*0.08, ch*0.08);
+        ctx.fillStyle = '#0a0a18';
+        ctx.beginPath(); ctx.arc(wx, wy, wr + 2, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = `rgba(255,220,180,${glow * 0.3})`;
+        ctx.beginPath(); ctx.arc(wx, wy, wr, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(wx, wy, wr + 2, 0, Math.PI*2); ctx.stroke();
+      }
+      // Door
+      ctx.fillStyle = '#08081a';
+      ctx.fillRect(ex+cw*0.36, ey+ch*0.64, cw*0.28, ch*0.36);
+      ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 2;
+      ctx.strokeRect(ex+cw*0.36, ey+ch*0.64, cw*0.28, ch*0.36);
+      // Door window pane
+      ctx.fillStyle = `rgba(255,220,180,${glow*0.15})`;
+      ctx.fillRect(ex+cw*0.4, ey+ch*0.68, cw*0.2, ch*0.12);
+      // Chrome side strips
+      ctx.fillStyle = `rgba(224,224,232,${0.3 + Math.sin(t*1.2)*0.08})`;
+      ctx.fillRect(ex+4, ey+ch*0.25, 3, ch*0.7);
+      ctx.fillRect(ex+cw-7, ey+ch*0.25, 3, ch*0.7);
+      // Neon "DINER" sign (animated glow)
+      const neonGlow = 0.7 + Math.sin(t*2.5)*0.2;
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = `rgba(255,60,60,${neonGlow})`;
+      ctx.textAlign = "center";
+      ctx.fillText("DINER", ex+cw/2, ey+ch*0.12);
+      // Neon glow halo behind text
+      ctx.fillStyle = `rgba(255,60,60,${neonGlow * 0.15})`;
+      ctx.fillRect(ex+cw*0.25, ey+ch*0.02, cw*0.5, ch*0.14);
+      // Label below
+      ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ff4444'; ctx.textAlign = "center";
+      ctx.fillText("Diner", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
+  },
+
+  diner_entrance: (e, ctx, ex, ey, w, h) => {
+      const ew = w * TILE, eh = h * TILE;
+      const t = Date.now() / 1000;
+      const glow = 0.4 + Math.sin(t * 2) * 0.15;
+      ctx.fillStyle = `rgba(255,60,60,${glow * 0.12})`;
+      ctx.fillRect(ex, ey, ew, eh);
+      ctx.strokeStyle = `rgba(224,224,232,${glow * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
+      ctx.font = "bold 10px monospace";
+      ctx.fillStyle = `rgba(255,60,60,${glow * 0.8})`;
+      ctx.textAlign = "center";
+      ctx.fillText("\u25B2 ENTER DINER", ex + ew/2, ey + eh + 12);
+      ctx.textAlign = "left";
+  },
+
+  diner_exit: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      // Dark doorway
+      ctx.fillStyle = '#1a1008';
+      ctx.fillRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
+      ctx.fillStyle = '#2a1810';
+      ctx.fillRect(ex + cw * 0.15, ey + 2, cw * 0.7, ch * 0.85);
+      // Daylight glow
+      ctx.fillStyle = `rgba(200,220,255,${0.15 + 0.05 * Math.sin(t)})`;
+      ctx.fillRect(ex + cw * 0.2, ey + 4, cw * 0.6, ch * 0.6);
+      // Frame (chrome)
+      ctx.strokeStyle = '#c0c0c8'; ctx.lineWidth = 3;
+      ctx.strokeRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
+      // Exit label
+      ctx.font = "bold 10px monospace"; ctx.fillStyle = '#e0e0e8'; ctx.textAlign = "center";
+      ctx.fillText("EXIT DINER", ex + cw / 2, ey + ch + 10);
+      ctx.textAlign = "left";
+  },
+
+  diner_booth: (e, ctx, ex, ey, w, h) => {
+      const cw = (w || 5) * TILE, ch = (h || 3) * TILE;
+      const rowH = ch / 3;
+      // Top bench (red vinyl)
+      ctx.fillStyle = '#cc2020';
+      ctx.fillRect(ex + 4, ey + 4, cw - 8, rowH - 4);
+      ctx.fillStyle = '#aa1818';
+      ctx.fillRect(ex + 4, ey + 4, cw - 8, 4); // seat back shadow
+      // Cushion highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(ex + 8, ey + 8, cw - 16, rowH * 0.3);
+      // Formica table (center row)
+      const ty = ey + rowH;
+      ctx.fillStyle = '#e8e0d0';
+      ctx.fillRect(ex + 12, ty + 2, cw - 24, rowH - 4);
+      ctx.fillStyle = '#f0e8d8';
+      ctx.fillRect(ex + 14, ty + 4, cw - 28, rowH - 8);
+      // Chrome edge on table
+      ctx.strokeStyle = '#c0c0c8'; ctx.lineWidth = 2;
+      ctx.strokeRect(ex + 12, ty + 2, cw - 24, rowH - 4);
+      // Bottom bench (red vinyl)
+      const by = ey + rowH * 2;
+      ctx.fillStyle = '#cc2020';
+      ctx.fillRect(ex + 4, by, cw - 8, rowH - 4);
+      ctx.fillStyle = '#aa1818';
+      ctx.fillRect(ex + 4, by + rowH - 8, cw - 8, 4); // seat front shadow
+      // Cushion highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(ex + 8, by + 4, cw - 16, rowH * 0.3);
+  },
+
+  diner_booth_seat: (e, ctx, ex, ey, w, h) => {
+      const cw = (w || 1) * TILE, ch = (h || 1) * TILE;
+      // Subtle red cushion marker
+      ctx.fillStyle = 'rgba(204,32,32,0.25)';
+      ctx.beginPath(); ctx.roundRect(ex + 6, ey + 6, cw - 12, ch - 12, 4); ctx.fill();
+  },
+
+  arcade_cabinet: (e, ctx, ex, ey, w, h) => {
+      const cw = (w || 1) * TILE, ch = (h || 2) * TILE;
+      const t = Date.now() / 1000;
+      // Cabinet body
+      ctx.fillStyle = '#1a1a2a';
+      ctx.fillRect(ex + 4, ey + 4, cw - 8, ch - 4);
+      // Side panel accent
+      ctx.fillStyle = '#2a2a4a';
+      ctx.fillRect(ex + 4, ey + 4, 3, ch - 4);
+      ctx.fillRect(ex + cw - 7, ey + 4, 3, ch - 4);
+      // Screen area
+      const sx = ex + 8, sy = ey + 8, sw = cw - 16, sh = ch * 0.4;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(sx, sy, sw, sh);
+      // Animated screen glow (cycles cyan/green/purple)
+      const phase = Math.floor(t * 0.5) % 3;
+      const colors = ['rgba(0,255,255,', 'rgba(0,255,100,', 'rgba(180,0,255,'];
+      const screenGlow = 0.4 + Math.sin(t * 3) * 0.2;
+      ctx.fillStyle = colors[phase] + screenGlow + ')';
+      ctx.fillRect(sx + 2, sy + 2, sw - 4, sh - 4);
+      // Scan lines
+      for (let sl = 0; sl < 5; sl++) {
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.fillRect(sx + 2, sy + 4 + sl * (sh / 5), sw - 4, 1);
+      }
+      // Joystick bump
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(ex + cw * 0.4, ey + ch * 0.72, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#cc2020';
+      ctx.beginPath(); ctx.arc(ex + cw * 0.4, ey + ch * 0.72, 2.5, 0, Math.PI * 2); ctx.fill();
+      // Buttons
+      ctx.fillStyle = '#ff4040';
+      ctx.beginPath(); ctx.arc(ex + cw * 0.65, ey + ch * 0.7, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4040ff';
+      ctx.beginPath(); ctx.arc(ex + cw * 0.65, ey + ch * 0.76, 3, 0, Math.PI * 2); ctx.fill();
+      // Coin slot
+      ctx.fillStyle = '#555';
+      ctx.fillRect(ex + cw * 0.35, ey + ch * 0.88, cw * 0.3, 3);
+      ctx.fillStyle = '#888';
+      ctx.fillRect(ex + cw * 0.42, ey + ch * 0.88, cw * 0.16, 2);
+  },
+
+  diner_jukebox: (e, ctx, ex, ey, w, h) => {
+      const cw = (w || 2) * TILE, ch = (h || 2) * TILE;
+      const t = Date.now() / 1000;
+      // Chrome body
+      ctx.fillStyle = '#b0b0b8';
+      ctx.beginPath(); ctx.roundRect(ex + 4, ey + ch * 0.15, cw - 8, ch * 0.85, 6); ctx.fill();
+      ctx.fillStyle = '#c8c8d0';
+      ctx.beginPath(); ctx.roundRect(ex + 6, ey + ch * 0.17, cw - 12, ch * 0.81, 5); ctx.fill();
+      // Classic dome top
+      ctx.fillStyle = '#d0d0d8';
+      ctx.beginPath(); ctx.ellipse(ex + cw/2, ey + ch * 0.18, cw * 0.38, ch * 0.12, 0, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(ex + cw/2, ey + ch * 0.18, cw * 0.38, ch * 0.12, 0, Math.PI, 0); ctx.stroke();
+      // Colored panels with animated dots
+      const panelColors = ['#ff4040', '#ffaa00', '#40ff40', '#4040ff', '#ff40ff'];
+      for (let d = 0; d < 5; d++) {
+        const phase = (d * 0.7 + t * 2) % (Math.PI * 2);
+        const dg = 0.4 + Math.sin(phase) * 0.3;
+        const dx = ex + cw * 0.15 + d * cw * 0.14;
+        ctx.fillStyle = panelColors[d];
+        ctx.globalAlpha = dg;
+        ctx.beginPath(); ctx.arc(dx, ey + ch * 0.45, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      // Record selection window
+      ctx.fillStyle = '#1a1a2a';
+      ctx.fillRect(ex + cw * 0.15, ey + ch * 0.55, cw * 0.7, ch * 0.25);
+      ctx.fillStyle = 'rgba(255,200,100,0.15)';
+      ctx.fillRect(ex + cw * 0.17, ey + ch * 0.57, cw * 0.66, ch * 0.21);
+      // Record lines
+      for (let rl = 0; rl < 4; rl++) {
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(ex + cw * 0.2, ey + ch * 0.59 + rl * ch * 0.05, cw * 0.6, 1);
+      }
+      // Chrome base
+      ctx.fillStyle = '#a0a0a8';
+      ctx.fillRect(ex + 6, ey + ch * 0.88, cw - 12, ch * 0.1);
+  },
+
+  diner_floor: (e, ctx, ex, ey, w, h) => {
+      const tw = w || 1, th = h || 1;
+      for (let py = 0; py < th; py++) {
+        for (let px = 0; px < tw; px++) {
+          const rx = ex + px * TILE, ry = ey + py * TILE;
+          const half = TILE / 2;
+          // 2x2 checkered pattern within each tile
+          for (let sy = 0; sy < 2; sy++) {
+            for (let sx = 0; sx < 2; sx++) {
+              const isBlack = (px * 2 + sx + py * 2 + sy) % 2 === 0;
+              ctx.fillStyle = isBlack ? '#1a1a1a' : '#e0e0e0';
+              ctx.fillRect(rx + sx * half, ry + sy * half, half, half);
+            }
+          }
+          // Subtle grout
+          ctx.fillStyle = 'rgba(128,128,128,0.15)';
+          ctx.fillRect(rx, ry, TILE, 1);
+          ctx.fillRect(rx, ry, 1, TILE);
+          ctx.fillRect(rx + half, ry, 1, TILE);
+          ctx.fillRect(rx, ry + half, TILE, 1);
+        }
+      }
+  },
+
+  diner_counter: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      // Counter top (chrome surface)
+      ctx.fillStyle = '#c0c0c8';
+      ctx.fillRect(ex, ey, cw, ch);
+      ctx.fillStyle = '#d0d0d8';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+      // Chrome edge (shiny strip at front)
+      ctx.fillStyle = '#e0e0e8';
+      ctx.fillRect(ex, ey + ch - 6, cw, 6);
+      // Red accent strip
+      ctx.fillStyle = '#cc2020';
+      ctx.fillRect(ex, ey + ch - 8, cw, 2);
+      // Cutting board
+      ctx.fillStyle = '#8a6838';
+      ctx.fillRect(ex + cw * 0.35, ey + ch * 0.2, cw * 0.3, ch * 0.6);
+      ctx.strokeStyle = '#6a4828'; ctx.lineWidth = 1;
+      ctx.strokeRect(ex + cw * 0.35, ey + ch * 0.2, cw * 0.3, ch * 0.6);
+      // Title banner below
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(ex + cw / 2 - 50, ey + ch + 2, 100, 16);
+      ctx.font = "bold 12px monospace"; ctx.fillStyle = '#e0e0e8'; ctx.textAlign = "center";
+      ctx.fillText("CLEAR PLATE", ex + cw / 2, ey + ch + 14);
+      ctx.textAlign = "left";
+  },
+
+  diner_pickup_counter: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      // Counter surface (chrome with red tint)
+      ctx.fillStyle = '#b0b0b8';
+      ctx.fillRect(ex, ey, cw, ch);
+      ctx.fillStyle = '#c0c0c8';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+      // Red accent strip
+      ctx.fillStyle = '#cc2020';
+      ctx.fillRect(ex, ey + ch - 3, cw, 3);
+      // Service bell
+      const bellR = Math.min(8, ch * 0.3);
+      ctx.fillStyle = '#e0e0e8';
+      ctx.beginPath(); ctx.arc(ex + cw * 0.5, ey + ch * 0.35, bellR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#c0c0c8';
+      ctx.beginPath(); ctx.arc(ex + cw * 0.5, ey + ch * 0.35, bellR * 0.6, Math.PI, 0); ctx.fill();
+      // Pulsing ready indicator
+      const pulse = 0.5 + 0.3 * Math.sin(t * 3);
+      ctx.fillStyle = `rgba(100,200,80,${pulse})`;
+      ctx.beginPath(); ctx.arc(ex + cw * 0.5, ey + ch * 0.7, 3, 0, Math.PI * 2); ctx.fill();
+      // SERVE label
+      ctx.font = "bold 10px monospace"; ctx.fillStyle = '#80ff80'; ctx.textAlign = "center";
+      ctx.fillText("SERVE", ex + cw / 2, ey + ch - 4);
+      ctx.textAlign = "left";
+  },
+
+  diner_tip_jar: (e, ctx, ex, ey, w, h) => {
+      const cw = (w || 2) * TILE, ch = (h || 1) * TILE;
+      const t = Date.now() / 1000;
+      // Chrome counter surface
+      ctx.fillStyle = '#b0b0b8';
+      ctx.fillRect(ex, ey, cw, ch);
+      ctx.fillStyle = '#c0c0c8';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+      // Jar body (chrome-tinted glass)
+      const jw = cw * 0.4, jh = ch * 0.65;
+      const jx = ex + (cw - jw) / 2, jy = ey + ch * 0.05;
+      ctx.fillStyle = 'rgba(200,220,240,0.35)';
+      ctx.beginPath(); ctx.roundRect(jx, jy, jw, jh, 4); ctx.fill();
+      ctx.strokeStyle = 'rgba(224,224,232,0.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(jx, jy, jw, jh, 4); ctx.stroke();
+      // Coins inside
+      const hasTips = typeof dinerCookingState !== 'undefined' && dinerCookingState.tipJar > 0;
+      if (hasTips) {
+        const fillPct = Math.min(1, dinerCookingState.tipJar / 20);
+        const coinH = jh * 0.2 + jh * 0.5 * fillPct;
+        ctx.fillStyle = '#d4a030';
+        ctx.fillRect(jx + 3, jy + jh - coinH, jw - 6, coinH);
+        ctx.fillStyle = '#e8c040';
+        ctx.fillRect(jx + 5, jy + jh - coinH + 1, jw - 10, coinH * 0.4);
+        const sparkle = 0.4 + 0.3 * Math.sin(t * 4);
+        ctx.fillStyle = `rgba(255,215,0,${sparkle})`;
+        ctx.beginPath(); ctx.arc(jx + jw * 0.35, jy + jh * 0.45, 2, 0, Math.PI * 2); ctx.fill();
+      }
+      // Chrome lid
+      ctx.fillStyle = '#c0c0c8';
+      ctx.fillRect(jx - 1, jy - 2, jw + 2, 4);
+      // TIPS label
+      ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
+      ctx.fillStyle = '#ffd700';
+      ctx.fillText(hasTips ? "TIPS $" + dinerCookingState.tipJar : "TIPS", ex + cw / 2, ey + ch - 4);
+      ctx.textAlign = "left";
+  },
+
+  diner_service_counter: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      // Chrome counter divider wall
+      ctx.fillStyle = '#b0b0b8';
+      ctx.fillRect(ex, ey, cw, ch);
+      ctx.fillStyle = '#c8c8d0';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+      // Shiny highlight on top
+      ctx.fillStyle = '#e0e0e8';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, 3);
+      // Red accent strip
+      ctx.fillStyle = '#cc2020';
+      ctx.fillRect(ex, ey + ch * 0.45, cw, ch * 0.1);
+  },
+
+  diner_kitchen_floor: (e, ctx, ex, ey, w, h) => {
+      const tw = w || 1, th = h || 1;
+      for (let py = 0; py < th; py++) {
+        for (let px = 0; px < tw; px++) {
+          const rx = ex + px * TILE, ry = ey + py * TILE;
+          // Checkerboard tile pattern — white/light grey
+          const isLight = (px + py) % 2 === 0;
+          ctx.fillStyle = isLight ? '#d0ccc4' : '#b8b4ac';
+          ctx.fillRect(rx, ry, TILE, TILE);
+          // Tile grout lines
+          ctx.fillStyle = '#9a968e';
+          ctx.fillRect(rx, ry, TILE, 1);
+          ctx.fillRect(rx, ry, 1, TILE);
+          // Subtle wear marks
+          if ((px * 7 + py * 13) % 5 === 0) {
+            ctx.fillStyle = 'rgba(0,0,0,0.04)';
+            ctx.fillRect(rx + 8 + (px * 3) % 20, ry + 6 + (py * 7) % 20, 10, 8);
+          }
+        }
+      }
+  },
+
+  kitchen_door_diner: (e, ctx, ex, ey, w, h) => {
+      const cw = (w || 2) * TILE, ch = (h || 1) * TILE;
+      // Floor under doorway
+      ctx.fillStyle = '#d8d0b8';
+      ctx.fillRect(ex, ey, cw, ch);
+      // Door frame sides (chrome)
+      ctx.fillStyle = '#c0c0c8';
+      ctx.fillRect(ex, ey, 4, ch);
+      ctx.fillRect(ex + cw - 4, ey, 4, ch);
+      // "KITCHEN" label
+      ctx.font = "bold 9px monospace"; ctx.fillStyle = '#8a7a60'; ctx.textAlign = "center";
+      ctx.fillText("KITCHEN", ex + cw / 2, ey + ch / 2 + 3);
+      ctx.textAlign = "left";
+  },
+
   // === HOUSE / FARM ENTITIES ===
   house_entrance: (e, ctx, ex, ey, w, h) => {
       const ew = w * TILE, eh = h * TILE;
@@ -2759,6 +3151,46 @@ const _ingredientRenderer = (e, ctx, ex, ey, w, h) => {
 if (typeof DELI_INGREDIENTS !== 'undefined') {
   for (const [id, data] of Object.entries(DELI_INGREDIENTS)) {
     ENTITY_RENDERERS[data.entity] = _ingredientRenderer;
+  }
+}
+
+// Register diner ingredient entity renderers
+if (typeof DINER_INGREDIENTS !== 'undefined' && typeof DINER_ENTITY_TO_INGREDIENT !== 'undefined') {
+  const _dinerIngredientRenderer = (e, ctx, ex, ey, w, h) => {
+    const cw = (w || 2) * TILE, ch = (h || 2) * TILE;
+    const ingId = DINER_ENTITY_TO_INGREDIENT[e.type];
+    const ing = ingId ? DINER_INGREDIENTS[ingId] : null;
+    const color = ing ? ing.color : '#888';
+    const name = ing ? ing.name : e.type;
+
+    // Chrome counter surface (diner style)
+    ctx.fillStyle = '#c0c0c8';
+    ctx.fillRect(ex, ey, cw, ch);
+    ctx.fillStyle = '#d0d0d8';
+    ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+    ctx.fillStyle = '#e0e0e8';
+    ctx.fillRect(ex + 2, ey + 2, cw - 4, 3);
+
+    // Ingredient item (centered blob)
+    const itemW = cw * 0.6, itemH = ch * 0.45;
+    const ix = ex + (cw - itemW) / 2, iy = ey + ch * 0.1;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.roundRect(ix, iy, itemW, itemH, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(ix, iy, itemW, itemH, 6); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(ix + 4, iy + 3, itemW - 8, itemH * 0.3);
+
+    // Name label
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(ex, ey + ch - 18, cw, 18);
+    ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = '#000'; ctx.fillText(name, ex + cw / 2 + 1, ey + ch - 5 + 1);
+    ctx.fillStyle = '#fff'; ctx.fillText(name, ex + cw / 2, ey + ch - 5);
+    ctx.textAlign = "left";
+  };
+  for (const [id, data] of Object.entries(DINER_INGREDIENTS)) {
+    ENTITY_RENDERERS[data.entity] = _dinerIngredientRenderer;
   }
 }
 

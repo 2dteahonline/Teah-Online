@@ -81,6 +81,7 @@ const PORTAL_SCENES = {
   cave_entrance: 'lobby',   cave_exit: 'cave',
   mine_entrance: 'lobby',   mine_exit: 'mine',    mine_door: 'mine',
   deli_entrance: 'lobby',   deli_exit: 'cooking',
+  diner_entrance: 'lobby',  diner_exit: 'cooking',
   house_entrance: 'lobby',  house_exit: 'farm',
   azurine_entrance: 'lobby', azurine_exit: 'azurine',
   gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
@@ -122,9 +123,19 @@ const LEAVE_HANDLERS = {
   },
   cooking: {
     cleanup() {},
-    returnLevel: 'lobby_01',
-    returnTX: 6, returnTY: 21,
-    message: 'Leaving deli...',
+    get returnLevel() { return 'lobby_01'; },
+    get returnTX() {
+      if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') return 39;
+      return 6;
+    },
+    get returnTY() {
+      if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') return 33;
+      return 21;
+    },
+    get message() {
+      if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') return 'Leaving diner...';
+      return 'Leaving deli...';
+    },
   },
   farm: {
     cleanup() {},
@@ -258,7 +269,14 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
       resetCombatState('mine');
     } else if (Scene.is('cooking')) {
       resetCombatState('cooking');
-      if (typeof initDeliNPCs === 'function') initDeliNPCs();
+      // Determine which restaurant from level id
+      if (targetLevel.id === 'diner_01') {
+        if (typeof cookingState !== 'undefined') cookingState.activeRestaurantId = 'diner';
+        if (typeof initDinerNPCs === 'function') initDinerNPCs();
+      } else {
+        if (typeof cookingState !== 'undefined') cookingState.activeRestaurantId = 'street_deli';
+        if (typeof initDeliNPCs === 'function') initDeliNPCs();
+      }
     } else if (Scene.is('farm')) {
       resetCombatState('farm');
       if (typeof initFarmState === 'function') initFarmState();
@@ -343,6 +361,35 @@ function checkPortals() {
     // Portal registry lookup — replaces 13 individual if-statements
     const requiredScene = PORTAL_SCENES[e.type];
     if (requiredScene && Scene.is(requiredScene) && inZone) {
+      // Diner entrance gating
+      if (e.type === 'diner_entrance') {
+        const cp = typeof cookingProgress !== 'undefined' ? cookingProgress : null;
+        const cookLvl = typeof skillData !== 'undefined' && skillData.Cooking ? skillData.Cooking.level : 0;
+        const totalOrders = cp ? cp.lifetimeOrdersTotal : 0;
+        if (cookLvl < 10 || totalOrders < 500) {
+          if (typeof hitEffects !== 'undefined') {
+            hitEffects.push({ x: player.x, y: player.y - 40, life: 60, maxLife: 60, type: 'heal',
+              dmg: 'Requires: Cooking Lv10 + 500 orders (You: Lv' + cookLvl + ', ' + totalOrders + ' orders)' });
+          }
+          return;
+        }
+        if (cp && !cp.purchasedShops.includes('diner')) {
+          if (typeof gold !== 'undefined' && gold < 5000) {
+            if (typeof hitEffects !== 'undefined') {
+              hitEffects.push({ x: player.x, y: player.y - 40, life: 60, maxLife: 60, type: 'heal',
+                dmg: 'Diner costs 5000 gold to unlock! (You have: ' + gold + ')' });
+            }
+            return;
+          }
+          gold -= 5000;
+          cp.purchasedShops.push('diner');
+          if (typeof SaveLoad !== 'undefined') SaveLoad.save();
+          if (typeof hitEffects !== 'undefined') {
+            hitEffects.push({ x: player.x, y: player.y - 40, life: 60, maxLife: 60, type: 'heal',
+              dmg: 'Diner unlocked! -5000 gold' });
+          }
+        }
+      }
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }

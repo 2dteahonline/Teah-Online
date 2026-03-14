@@ -2706,6 +2706,7 @@ function update() {
   if (typeof updateCooking === 'function') updateCooking();
   if (typeof updateFarming === 'function') updateFarming();
   if (typeof updateDeliNPCs === 'function') updateDeliNPCs();
+  if (typeof updateDinerNPCs === 'function') updateDinerNPCs();
   updateDeathEffects();
   updateMobAmbientEffects();
   updateCamera();

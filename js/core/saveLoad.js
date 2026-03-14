@@ -6,7 +6,14 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 8;
+
+// Cooking progression — persists across sessions
+const cookingProgress = {
+  lifetimeOrdersTotal: 0,
+  lifetimeOrdersByShop: {},
+  purchasedShops: ['street_deli'],
+};
 
 const SaveLoad = {
   // Cosmetic keys to persist from player object
@@ -53,6 +60,12 @@ const SaveLoad = {
           stats: { ...farmingState.stats },
         };
       }
+      // Cooking progression (v8+)
+      data.cookingProgress = {
+        lifetimeOrdersTotal: cookingProgress.lifetimeOrdersTotal,
+        lifetimeOrdersByShop: { ...cookingProgress.lifetimeOrdersByShop },
+        purchasedShops: [...cookingProgress.purchasedShops],
+      };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('Save failed:', e);
@@ -200,6 +213,14 @@ const SaveLoad = {
             addToInventory(createItem('melee', rodData));
           }
         }
+      }
+
+      // Cooking progression (v8+)
+      if (data.cookingProgress) {
+        const cp = data.cookingProgress;
+        if (cp.lifetimeOrdersTotal !== undefined) cookingProgress.lifetimeOrdersTotal = cp.lifetimeOrdersTotal;
+        if (cp.lifetimeOrdersByShop) cookingProgress.lifetimeOrdersByShop = { ...cp.lifetimeOrdersByShop };
+        if (cp.purchasedShops) cookingProgress.purchasedShops = [...cp.purchasedShops];
       }
 
       // Farming state (v5+)

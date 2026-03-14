@@ -5,7 +5,7 @@
 // ===================== SHOP DEFINITIONS =====================
 const COOKING_SHOPS = {
   street_deli:       { id: 'street_deli',       name: 'Street Deli',        tier: 1, levelReq: 1,  ordersReq: 0,     costReq: 0,      maxOrderBase: 20,  levelId: 'deli_01' },
-  family_restaurant: { id: 'family_restaurant', name: 'Family Restaurant',  tier: 2, levelReq: 10, ordersReq: 500,   costReq: 5000,   maxOrderBase: 35,  levelId: null },
+  diner:             { id: 'diner',             name: 'Diner',              tier: 2, levelReq: 10, ordersReq: 500,   costReq: 5000,   maxOrderBase: 35,  levelId: 'diner_01' },
   fine_dining:       { id: 'fine_dining',       name: 'Fine Dining',        tier: 3, levelReq: 20, ordersReq: 2000,  costReq: 25000,  maxOrderBase: 75,  levelId: null },
   luxury:            { id: 'luxury',            name: 'Luxury Restaurant',  tier: 4, levelReq: 35, ordersReq: 5000,  costReq: 100000, maxOrderBase: 100, levelId: null },
   five_star:         { id: 'five_star',         name: '5 Star Elite',       tier: 5, levelReq: 50, ordersReq: 10000, costReq: 500000, maxOrderBase: 150, levelId: null },
@@ -113,4 +113,78 @@ function pickCustomerType() {
 // Pick a random recipe from the deli
 function pickDeliRecipe() {
   return DELI_RECIPES[Math.floor(Math.random() * DELI_RECIPES.length)];
+}
+
+// ===================== DINER INGREDIENTS =====================
+const DINER_INGREDIENTS = {
+  // Breakfast
+  eggs:           { id: 'eggs',           name: 'Eggs',           color: '#f0e060', entity: 'ding_eggs' },
+  bacon:          { id: 'bacon',          name: 'Bacon',          color: '#c04030', entity: 'ding_bacon' },
+  pancake_batter: { id: 'pancake_batter', name: 'Pancake Batter', color: '#d8c080', entity: 'ding_pancake_batter' },
+  waffle_batter:  { id: 'waffle_batter',  name: 'Waffle Batter',  color: '#c8b060', entity: 'ding_waffle_batter' },
+  hash_browns:    { id: 'hash_browns',    name: 'Hash Browns',    color: '#c0a040', entity: 'ding_hash_browns' },
+  toast:          { id: 'toast',          name: 'Toast',          color: '#d0a850', entity: 'ding_toast' },
+  butter:         { id: 'butter',         name: 'Butter',         color: '#f0e0a0', entity: 'ding_butter' },
+  syrup:          { id: 'syrup',          name: 'Syrup',          color: '#a06020', entity: 'ding_syrup' },
+  // Lunch
+  burger_patty:   { id: 'burger_patty',   name: 'Burger Patty',   color: '#804020', entity: 'ding_burger_patty' },
+  bun:            { id: 'bun',            name: 'Bun',            color: '#d0a850', entity: 'ding_bun' },
+  fries:          { id: 'fries',          name: 'Fries',          color: '#e0c040', entity: 'ding_fries' },
+  hot_dog:        { id: 'hot_dog',        name: 'Hot Dog',        color: '#d06040', entity: 'ding_hot_dog' },
+  d_cheese:       { id: 'd_cheese',       name: 'Cheese',         color: '#f0d040', entity: 'ding_cheese' },
+  d_lettuce:      { id: 'd_lettuce',      name: 'Lettuce',        color: '#60c040', entity: 'ding_lettuce' },
+  d_tomato:       { id: 'd_tomato',       name: 'Tomato',         color: '#e04040', entity: 'ding_tomato' },
+  d_onion:        { id: 'd_onion',        name: 'Onion',          color: '#d0b0d0', entity: 'ding_onion' },
+  // Drinks
+  milkshake_base: { id: 'milkshake_base', name: 'Milkshake Base', color: '#f0c0d0', entity: 'ding_milkshake_base' },
+  coffee:         { id: 'coffee',         name: 'Coffee',         color: '#6a4020', entity: 'ding_coffee' },
+};
+
+// Reverse lookup: diner entity type -> ingredient id
+const DINER_ENTITY_TO_INGREDIENT = {};
+for (const [id, data] of Object.entries(DINER_INGREDIENTS)) {
+  DINER_ENTITY_TO_INGREDIENT[data.entity] = id;
+}
+
+// ===================== DINER RECIPES =====================
+const DINER_RECIPES = [
+  // Breakfast
+  { id: 'pancakes',       name: 'Pancakes',        ingredients: ['pancake_batter', 'butter', 'syrup'],                                basePay: 18, baseXP: 22, difficulty: 1 },
+  { id: 'waffles',        name: 'Waffles',         ingredients: ['waffle_batter', 'butter', 'syrup'],                                 basePay: 18, baseXP: 22, difficulty: 1 },
+  { id: 'eggs_bacon',     name: 'Eggs & Bacon',    ingredients: ['eggs', 'bacon', 'toast'],                                           basePay: 16, baseXP: 20, difficulty: 1 },
+  { id: 'hash_plate',     name: 'Hash Brown Plate', ingredients: ['hash_browns', 'eggs', 'd_cheese'],                                 basePay: 16, baseXP: 20, difficulty: 1 },
+  { id: 'full_breakfast',  name: 'Full Breakfast',   ingredients: ['eggs', 'bacon', 'hash_browns', 'toast', 'butter'],                 basePay: 28, baseXP: 38, difficulty: 3 },
+  { id: 'toast_eggs',     name: 'Toast & Eggs',    ingredients: ['toast', 'eggs', 'butter'],                                          basePay: 14, baseXP: 18, difficulty: 1 },
+  // Lunch
+  { id: 'classic_burger', name: 'Classic Burger',   ingredients: ['burger_patty', 'bun', 'd_lettuce', 'd_tomato'],                    basePay: 20, baseXP: 25, difficulty: 1 },
+  { id: 'cheeseburger',   name: 'Cheeseburger',     ingredients: ['burger_patty', 'bun', 'd_cheese', 'd_lettuce', 'd_tomato'],        basePay: 24, baseXP: 30, difficulty: 2 },
+  { id: 'hot_dog_meal',   name: 'Hot Dog',          ingredients: ['hot_dog', 'bun', 'd_onion'],                                       basePay: 16, baseXP: 20, difficulty: 1 },
+  { id: 'fries_plate',    name: 'Fries',            ingredients: ['fries'],                                                            basePay: 10, baseXP: 12, difficulty: 1 },
+  { id: 'milkshake',      name: 'Milkshake',        ingredients: ['milkshake_base'],                                                   basePay: 12, baseXP: 15, difficulty: 1 },
+  { id: 'coffee_cup',     name: 'Coffee',           ingredients: ['coffee'],                                                           basePay: 10, baseXP: 12, difficulty: 1 },
+];
+
+// ===================== DINER CUSTOMER TYPES =====================
+const DINER_CUSTOMER_TYPES = {
+  regular:  { type: 'regular',  partySize: [1, 2], tipMult: 1.0, moodSpeed: 0.7, patience: 1.2, weight: 0.35 },
+  family:   { type: 'family',   partySize: [2, 3], tipMult: 1.2, moodSpeed: 0.5, patience: 1.5, weight: 0.25 },
+  couple:   { type: 'couple',   partySize: [2, 2], tipMult: 1.3, moodSpeed: 0.6, patience: 1.3, weight: 0.15 },
+  business: { type: 'business', partySize: [1, 1], tipMult: 1.5, moodSpeed: 0.9, patience: 1.0, weight: 0.15 },
+  kids:     { type: 'kids',     partySize: [2, 3], tipMult: 0.8, moodSpeed: 1.0, patience: 0.9, weight: 0.10 },
+};
+
+function pickDinerCustomerType() {
+  const types = Object.values(DINER_CUSTOMER_TYPES);
+  let totalWeight = 0;
+  for (const t of types) totalWeight += t.weight;
+  let r = Math.random() * totalWeight;
+  for (const t of types) {
+    r -= t.weight;
+    if (r <= 0) return t;
+  }
+  return types[0];
+}
+
+function pickDinerRecipe() {
+  return DINER_RECIPES[Math.floor(Math.random() * DINER_RECIPES.length)];
 }

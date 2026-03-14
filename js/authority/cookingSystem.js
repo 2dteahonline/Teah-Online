@@ -15,6 +15,8 @@
 const cookingState = {
   active: false,
   shopId: 'street_deli',
+  activeRestaurantId: 'street_deli',
+  ticket: null,  // multi-item ticket: { items: [{recipe, qty}], completedCount: 0 }
   shiftTimer: 0,
   shiftDuration: COOKING_CONFIG.shiftDuration,
   orderSpawnDelay: 0,
@@ -43,14 +45,33 @@ const cookingState = {
 // Unique ID counter for customers
 let _cookingOrderId = 0;
 
+// Multi-restaurant helpers
+function _getActiveIngredients() {
+  if (cookingState.activeRestaurantId === 'diner') return typeof DINER_INGREDIENTS !== 'undefined' ? DINER_INGREDIENTS : {};
+  return typeof DELI_INGREDIENTS !== 'undefined' ? DELI_INGREDIENTS : {};
+}
+function _getActiveEntityToIngredient() {
+  if (cookingState.activeRestaurantId === 'diner') return typeof DINER_ENTITY_TO_INGREDIENT !== 'undefined' ? DINER_ENTITY_TO_INGREDIENT : {};
+  return typeof ENTITY_TO_INGREDIENT !== 'undefined' ? ENTITY_TO_INGREDIENT : {};
+}
+function _pickActiveRecipe() {
+  if (cookingState.activeRestaurantId === 'diner') return typeof pickDinerRecipe === 'function' ? pickDinerRecipe() : null;
+  return typeof pickDeliRecipe === 'function' ? pickDeliRecipe() : null;
+}
+function _getActiveNPCs() {
+  if (cookingState.activeRestaurantId === 'diner') return typeof dinerNPCs !== 'undefined' ? dinerNPCs : [];
+  return typeof deliNPCs !== 'undefined' ? deliNPCs : [];
+}
+
 // Saved weapon state (restore when leaving deli)
 let _savedMeleeEquip = null;
 let _savedActiveSlot = null;
 
 // ===================== SHIFT START / END =====================
 
-function startCookingShift() {
+function startCookingShift(restaurantId) {
   if (cookingState.active) return;
+  if (restaurantId) cookingState.activeRestaurantId = restaurantId;
 
   // Save current weapon state
   _savedMeleeEquip = playerEquip.melee ? Object.assign({}, playerEquip.melee) : null;
@@ -141,6 +162,7 @@ function resetCookingState() {
   cookingState.shiftEnded = false;
   cookingState.shiftComplete = false;
   cookingState.currentOrder = null;
+  cookingState.ticket = null;
   cookingState.assembly = [];
   cookingState.comboCount = 0;
   cookingState.comboMultiplier = 1.0;
@@ -157,15 +179,35 @@ function resetCookingState() {
 // ===================== ORDER SPAWNING =====================
 
 function spawnOrder() {
-  const recipe = pickDeliRecipe();
+  const recipe = _pickActiveRecipe();
+  if (!recipe) return;
   const customerType = pickCustomerType();
+  const activeNPCs = _getActiveNPCs();
 
   // Calculate mood thresholds based on customer patience
   const moodThresholds = MOOD_STAGES.map(s => Math.round(s.baseFrames * customerType.patience));
 
+  // Build ticket (multi-item for diner, single for deli)
+  let ticketItems = [{ recipe: recipe, qty: 1 }];
+  if (cookingState.activeRestaurantId === 'diner') {
+    // Diner: 1-3 items based on party size of linked NPC
+    const waitingNPC = activeNPCs.find(n => n.state === 'ordering' && !n.linkedOrderId);
+    let partySize = 1;
+    if (waitingNPC && waitingNPC.partyId && typeof dinerParties !== 'undefined') {
+      const party = dinerParties.find(p => p.id === waitingNPC.partyId);
+      if (party) partySize = party.members.length;
+    }
+    const itemCount = Math.min(partySize, 3);
+    ticketItems = [];
+    for (let i = 0; i < itemCount; i++) {
+      ticketItems.push({ recipe: _pickActiveRecipe(), qty: 1 });
+    }
+  }
+
+  cookingState.ticket = { items: ticketItems, completedCount: 0 };
   cookingState.currentOrder = {
     id: ++_cookingOrderId,
-    recipe: recipe,
+    recipe: ticketItems[0].recipe,
     customer: customerType,
     moodTimer: 0,
     mood: MOOD_STAGES[0].id,
@@ -177,14 +219,12 @@ function spawnOrder() {
   cookingState.assembly = [];
 
   // Link order to a waiting NPC at the counter
-  if (typeof deliNPCs !== 'undefined') {
-    const waitingNPC = deliNPCs.find(n => n.state === 'ordering' && !n.linkedOrderId);
-    if (waitingNPC) {
-      waitingNPC.linkedOrderId = cookingState.currentOrder.id;
-      waitingNPC.state = 'waiting_food';
-      waitingNPC.stateTimer = 0;
-      cookingState.currentOrder.npcId = waitingNPC.id;
-    }
+  const waitingNPC = activeNPCs.find(n => n.state === 'ordering' && !n.linkedOrderId);
+  if (waitingNPC) {
+    waitingNPC.linkedOrderId = cookingState.currentOrder.id;
+    waitingNPC.state = 'waiting_food';
+    waitingNPC.stateTimer = 0;
+    cookingState.currentOrder.npcId = waitingNPC.id;
   }
 }
 
@@ -227,8 +267,8 @@ function updateCooking() {
   // Spawn order if none active — only when a customer NPC is at the counter
   if (!cookingState.currentOrder) {
     // Wait for a customer to reach the counter (ordering state) before showing order
-    const hasCustomerAtCounter = typeof deliNPCs !== 'undefined' &&
-      deliNPCs.some(n => n.state === 'ordering' && !n.linkedOrderId);
+    const activeNPCs = _getActiveNPCs();
+    const hasCustomerAtCounter = activeNPCs.some(n => n.state === 'ordering' && !n.linkedOrderId);
     if (!hasCustomerAtCounter) return;
     if (cookingState.orderSpawnDelay > 0) {
       cookingState.orderSpawnDelay--;
@@ -258,9 +298,11 @@ function updateCooking() {
     let hitEntity = null;
     let hitDist = 999;
     for (const e of levelEntities) {
-      // Detect individual ingredient entities (ing_*) + work stations
-      const isIngredient = typeof ENTITY_TO_INGREDIENT !== 'undefined' && ENTITY_TO_INGREDIENT[e.type];
-      const isWorkStation = e.type === 'deli_counter' || e.type === 'pickup_counter' || e.type === 'tip_jar';
+      // Detect individual ingredient entities (ing_*/ding_*) + work stations
+      const activeEntityMap = _getActiveEntityToIngredient();
+      const isIngredient = activeEntityMap[e.type];
+      const isWorkStation = e.type === 'deli_counter' || e.type === 'pickup_counter' || e.type === 'tip_jar' ||
+                            e.type === 'diner_counter' || e.type === 'diner_pickup_counter' || e.type === 'diner_tip_jar';
       if (!isIngredient && !isWorkStation) continue;
       const ew = (e.w || 1), eh = (e.h || 1);
       // Distance to nearest edge of entity (not center)
@@ -284,8 +326,9 @@ function updateCooking() {
   for (const th of order.moodThresholds) totalAllThresholds += th;
   if (order.moodTimer >= totalAllThresholds) {
     // Notify linked NPC to leave angry
-    if (typeof deliNPCs !== 'undefined' && order.npcId) {
-      const npc = deliNPCs.find(n => n.id === order.npcId);
+    const angryNPCs = _getActiveNPCs();
+    if (order.npcId) {
+      const npc = angryNPCs.find(n => n.id === order.npcId);
       if (npc) {
         npc.linkedOrderId = null;
         npc.hasOrdered = true;
@@ -322,10 +365,12 @@ function updateCooking() {
 function handleStationInteract(entityType) {
   if (!cookingState.active || !cookingState.currentOrder) return;
 
-  // Individual ingredient entity handler (ing_bread, ing_turkey, etc.)
-  const ingredientId = typeof ENTITY_TO_INGREDIENT !== 'undefined' ? ENTITY_TO_INGREDIENT[entityType] : null;
+  // Individual ingredient entity handler (ing_bread, ing_turkey, ding_eggs, etc.)
+  const entityToIng = _getActiveEntityToIngredient();
+  const activeIngs = _getActiveIngredients();
+  const ingredientId = entityToIng[entityType] || null;
   if (ingredientId) {
-    const ing = DELI_INGREDIENTS[ingredientId];
+    const ing = activeIngs[ingredientId];
     if (!ing) return;
     const recipe = cookingState.currentOrder.recipe;
     const neededCount = recipe.ingredients.filter(i => i === ingredientId).length;
@@ -349,7 +394,7 @@ function handleStationInteract(entityType) {
     return;
   }
 
-  if (entityType === 'deli_counter') {
+  if (entityType === 'deli_counter' || entityType === 'diner_counter') {
     // Clear plate — reset assembly
     cookingState.assembly = [];
     if (typeof hitEffects !== 'undefined') {
@@ -360,7 +405,7 @@ function handleStationInteract(entityType) {
     }
   }
 
-  if (entityType === 'pickup_counter') {
+  if (entityType === 'pickup_counter' || entityType === 'diner_pickup_counter') {
     // Submit order for grading
     if (cookingState.assembly.length === 0) {
       if (typeof hitEffects !== 'undefined') {
@@ -375,7 +420,7 @@ function handleStationInteract(entityType) {
     applyOrderResult(result);
   }
 
-  if (entityType === 'tip_jar') {
+  if (entityType === 'tip_jar' || entityType === 'diner_tip_jar') {
     // Collect accumulated tips
     if (cookingState.tipJar > 0) {
       const collected = cookingState.tipJar;
@@ -532,9 +577,28 @@ function applyOrderResult(result) {
   cookingState.lastResult = result;
   cookingState.lastResultTimer = 120; // 2 seconds
 
-  // Notify linked NPC that food is ready
-  if (typeof deliNPCs !== 'undefined' && cookingState.currentOrder && cookingState.currentOrder.npcId) {
-    const npc = deliNPCs.find(n => n.id === cookingState.currentOrder.npcId);
+  // Track cooking progress
+  if (typeof cookingProgress !== 'undefined') {
+    cookingProgress.lifetimeOrdersTotal++;
+    const shopId = cookingState.activeRestaurantId || 'street_deli';
+    cookingProgress.lifetimeOrdersByShop[shopId] = (cookingProgress.lifetimeOrdersByShop[shopId] || 0) + 1;
+  }
+
+  // Multi-item ticket: advance to next item or finish
+  if (cookingState.ticket && cookingState.ticket.completedCount < cookingState.ticket.items.length - 1) {
+    cookingState.ticket.completedCount++;
+    const nextItem = cookingState.ticket.items[cookingState.ticket.completedCount];
+    cookingState.currentOrder.recipe = nextItem.recipe;
+    cookingState.assembly = [];
+    cookingState.lastResult = result;
+    cookingState.lastResultTimer = 120;
+    return; // don't clear order — more items to serve
+  }
+
+  // All ticket items done — notify NPC
+  const activeNPCs = _getActiveNPCs();
+  if (cookingState.currentOrder && cookingState.currentOrder.npcId) {
+    const npc = activeNPCs.find(n => n.id === cookingState.currentOrder.npcId);
     if (npc && (npc.state === 'waiting_food' || npc.state === 'ordering')) {
       npc.state = 'pickup_food';
       npc.stateTimer = 30;
@@ -549,6 +613,7 @@ function applyOrderResult(result) {
 
   // Clear current order and schedule next
   cookingState.currentOrder = null;
+  cookingState.ticket = null;
   cookingState.assembly = [];
   const baseDelay = COOKING_CONFIG.orderSpawnDelay;
   cookingState.orderSpawnDelay = Math.round(
@@ -652,9 +717,13 @@ function drawCookingHUD() {
     ctx.fillStyle = moodStage.color;
     ctx.fillRect(panelX + 8, panelY + 20, moodBarW * moodPct, moodBarH);
 
-    // Order name
+    // Order name + ticket progress
     ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ffd700';
-    ctx.fillText("Order: " + order.recipe.name, panelX + 8, panelY + 40);
+    let orderLabel = "Order: " + order.recipe.name;
+    if (cookingState.ticket && cookingState.ticket.items.length > 1) {
+      orderLabel = "Item " + (cookingState.ticket.completedCount + 1) + "/" + cookingState.ticket.items.length + ": " + order.recipe.name;
+    }
+    ctx.fillText(orderLabel, panelX + 8, panelY + 40);
 
     // Recipe ingredients — check off based on how many collected vs how many needed
     ctx.font = "9px monospace"; ctx.fillStyle = '#c0c0c0';
@@ -668,7 +737,7 @@ function drawCookingHUD() {
     const checkedOff = {};
     for (let i = 0; i < ingredients.length; i++) {
       const ingId = ingredients[i];
-      const ing = DELI_INGREDIENTS[ingId];
+      const ing = _getActiveIngredients()[ingId];
       if (!ing) continue;
       checkedOff[ingId] = (checkedOff[ingId] || 0) + 1;
       const added = (assemblyCount[ingId] || 0) >= checkedOff[ingId];
