@@ -589,7 +589,16 @@ window._resetShopPrices = () => {
       range: 80,
       get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Vent'; },
       type: 'skeld_vent',
-      canInteract() { return Scene.inSkeld && typeof VentSystem !== 'undefined' && !VentSystem.active && !VentSystem.animTimer; },
+      canInteract() {
+        if (!Scene.inSkeld || typeof VentSystem === 'undefined' || VentSystem.active || VentSystem.animTimer) return false;
+        // Only impostors and engineers can use vents
+        if (typeof MafiaState !== 'undefined') {
+          const isImpostor = MafiaState.playerRole === 'impostor';
+          const isEngineer = MafiaState.playerSubrole === 'engineer';
+          if (!isImpostor && !isEngineer) return false;
+        }
+        return true;
+      },
       onInteract() {
         if (typeof VentSystem !== 'undefined') VentSystem.enter(e.ventId);
       },

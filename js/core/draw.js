@@ -155,6 +155,23 @@ function drawMinimap() {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
+  // Tracked player dot (Tracker role ability)
+  if (typeof MafiaState !== 'undefined' && MafiaState._roleState && MafiaState._roleState.trackedTarget) {
+    const tracked = MafiaState.participants.find(p => p.id === MafiaState._roleState.trackedTarget && p.alive);
+    if (tracked && tracked.entity) {
+      const tx = ox + (tracked.entity.x / TILE) * S;
+      const ty = oy + (tracked.entity.y / TILE) * S;
+      const tPulse = 0.6 + 0.4 * Math.sin(renderTime * 0.01);
+      ctx.fillStyle = `rgba(255,60,60,${tPulse})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, Math.max(4, S * 0.6), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
   // Hint
   ctx.font = '13px monospace';
   ctx.fillStyle = '#666';
@@ -317,6 +334,21 @@ function draw() {
         if (flashAlpha) ctx.globalAlpha = 0.5;
         // Phase visual — semi-transparent + cyan glow
         if (phaseTimer > 0) ctx.globalAlpha = 0.4 + Math.sin(renderTime * 0.015) * 0.1;
+        // Phantom invisibility — player sees themselves at 30% opacity
+        const _phantomInvis = typeof MafiaState !== 'undefined' && MafiaState._roleState && MafiaState._roleState.invisible;
+        if (_phantomInvis) ctx.globalAlpha = 0.3;
+        // Shapeshifter appearance swap — use target's cosmetics when shifted
+        let _pSkin = player.skin, _pHair = player.hair, _pShirt = player.shirt, _pPants = player.pants, _pName = player.name;
+        if (typeof MafiaState !== 'undefined' && MafiaState._roleState && MafiaState._roleState.shiftedAs) {
+          const _shiftTarget = MafiaState.participants.find(p => p.id === MafiaState._roleState.shiftedAs);
+          if (_shiftTarget && _shiftTarget.entity) {
+            _pSkin = _shiftTarget.entity.skin != null ? _shiftTarget.entity.skin : _pSkin;
+            _pHair = _shiftTarget.entity.hair != null ? _shiftTarget.entity.hair : _pHair;
+            _pShirt = _shiftTarget.entity.shirt != null ? _shiftTarget.entity.shirt : _pShirt;
+            _pPants = _shiftTarget.entity.pants != null ? _shiftTarget.entity.pants : _pPants;
+            _pName = _shiftTarget.name || _pName;
+          }
+        }
         if (queueActive) {
           // Battle stance: face up, slight bob, weapon ready
           const stanceBob = Math.sin(renderTime * 0.004) * 1.5;
@@ -324,13 +356,13 @@ function draw() {
           ctx.save();
           ctx.translate(0, stanceBob);
           drawChar(player.x, player.y, 1, stanceFrame, false,
-            player.skin, player.hair, player.shirt, player.pants, player.name, player.hp, true, null, player.maxHp);
+            _pSkin, _pHair, _pShirt, _pPants, _pName, player.hp, true, null, player.maxHp);
           ctx.restore();
         } else {
           drawChar(player.x, player.y, player.dir, player.frame, player.moving,
-            player.skin, player.hair, player.shirt, player.pants, player.name, player.hp, true, null, player.maxHp);
+            _pSkin, _pHair, _pShirt, _pPants, _pName, player.hp, true, null, player.maxHp);
         }
-        if (flashAlpha || phaseTimer > 0) ctx.globalAlpha = 1.0;
+        if (flashAlpha || phaseTimer > 0 || _phantomInvis) ctx.globalAlpha = 1.0;
 
         // Player held food visual (cooking scene — plate+sandwich at hand level)
         if (Scene.inCooking && typeof cookingState !== 'undefined' && cookingState.active &&

@@ -278,6 +278,47 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Shapeshifter target selection panel clicks (must be before ability buttons)
+  if (window._mafiaShiftPanelOpen && window._mafiaShiftTargetBtns) {
+    for (const btn of window._mafiaShiftTargetBtns) {
+      if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+        MafiaSystem.tryShapeshift(btn.id);
+        window._mafiaShiftPanelOpen = false;
+        return;
+      }
+    }
+    // Click outside panel → close it
+    window._mafiaShiftPanelOpen = false;
+    return;
+  }
+
+  // Mafia TRACK button click (Tracker role)
+  if (window._mafiaTrackBtn) {
+    const tb = window._mafiaTrackBtn;
+    if (mx >= tb.x && mx <= tb.x + tb.w && my >= tb.y && my <= tb.y + tb.h) {
+      MafiaSystem.tryTrack();
+      return;
+    }
+  }
+
+  // Mafia SHIFT button click (Shapeshifter role)
+  if (window._mafiaShiftBtn) {
+    const sb = window._mafiaShiftBtn;
+    if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
+      window._mafiaShiftPanelOpen = true;
+      return;
+    }
+  }
+
+  // Mafia VANISH button click (Phantom role)
+  if (window._mafiaVanishBtn) {
+    const vb = window._mafiaVanishBtn;
+    if (mx >= vb.x && mx <= vb.x + vb.w && my >= vb.y && my <= vb.y + vb.h) {
+      MafiaSystem.toggleInvisibility();
+      return;
+    }
+  }
+
   // Meeting chat toggle button
   if (typeof _meetingShowChat !== 'undefined' && window._meetingChatToggleBtn) {
     const ct = window._meetingChatToggleBtn;

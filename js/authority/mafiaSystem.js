@@ -5,11 +5,12 @@
 
 // ---- Global State ----
 window.MafiaState = {
-  phase: 'idle',              // 'idle' | 'playing' | 'meeting' | 'voting' | 'vote_results' | 'ejecting' | 'post_match'
+  phase: 'idle',              // 'idle' | 'role_reveal' | 'playing' | 'report_splash' | 'meeting' | 'voting' | 'vote_results' | 'ejecting' | 'post_match'
   phaseTimer: 0,
   playerRole: null,           // 'crewmate' | 'impostor'
+  playerSubrole: null,        // role id ('engineer','tracker',...) or null
   participants: [],           // array of participant objects (see startMatch)
-  bodies: [],                 // [{ x, y, color, name, id }]
+  bodies: [],                 // [{ x, y, color, name, id, dissolveTimer?, dissolveMax? }]
   killCooldown: 0,
   sabotage: { active: null, timer: 0, cooldown: 0, fixers: {}, fixedPanels: {} },
   meeting: { caller: null, type: null, votes: {}, discussionTimer: 0, votingTimer: 0 },
@@ -19,6 +20,27 @@ window.MafiaState = {
   playerIsGhost: false,       // true after local player dies
   // Emergency cooldown tracking
   lastMeetingEndFrame: 0,     // gameFrame when last meeting ended
+  // Role ability state
+  _roleState: {
+    // Tracker
+    trackedTarget: null,      // participant id being tracked
+    trackTimer: 0,            // frames remaining for active track
+    trackCooldown: 0,         // frames until can track again
+    // Scientist
+    vitalsOpen: false,        // vitals panel visible
+    vitalsTimer: 0,           // frames remaining for vitals
+    vitalsCooldown: 0,        // frames until can use vitals again
+    // Shapeshifter
+    shiftedAs: null,          // participant id being disguised as (or null)
+    shiftTimer: 0,            // frames remaining for shift
+    shiftCooldown: 0,         // frames until can shift again
+    // Phantom
+    invisible: false,         // currently invisible
+    invisTimer: 0,            // frames remaining for invisibility
+    invisCooldown: 0,         // frames until can vanish again
+    // Noisemaker
+    deathAlert: null,         // { x, y, timer, color } — active noisemaker death ping
+  },
 };
 
 
@@ -160,8 +182,20 @@ window.MafiaSystem = {
     }
 
     mk.participants = participants;
-    mk.phase = 'playing';
-    mk.phaseTimer = 0;
+
+    // Assign roles (impostor + subroles) using percentage-based system
+    const impostorCount = settings.impostors || 1;
+    if (typeof assignRoles === 'function') {
+      assignRoles(participants, impostorCount);
+    }
+    // Set player's role from their participant entry
+    const localP = participants.find(p => p.isLocal);
+    mk.playerRole = localP ? localP.role : 'crewmate';
+    mk.playerSubrole = localP ? localP.subrole : null;
+
+    // Start with role reveal phase (3 seconds)
+    mk.phase = 'role_reveal';
+    mk.phaseTimer = 180; // 3 seconds at 60fps
     mk.bodies = [];
     mk.killCooldown = (settings.killCooldown || 30) * 60; // seconds → frames
     mk.playerIsGhost = false;
@@ -170,8 +204,19 @@ window.MafiaSystem = {
     mk.ejection = { name: null, wasImpostor: false, timer: 0 };
     mk.taskProgress = { done: 0, total: 0 };
     mk.lastMeetingEndFrame = 0;
+    mk._reportedBody = null;
+    // Reset role ability state
+    mk._roleState = {
+      trackedTarget: null, trackTimer: 0, trackCooldown: 0,
+      vitalsOpen: false, vitalsTimer: 0, vitalsCooldown: 0,
+      shiftedAs: null, shiftTimer: 0, shiftCooldown: 0,
+      invisible: false, invisTimer: 0, invisCooldown: 0,
+      deathAlert: null,
+    };
     // Store settings snapshot for use during match
     mk._settings = Object.assign({}, settings);
+    // Store role settings snapshot
+    mk._roleSettings = typeof MAFIA_ROLE_SETTINGS !== 'undefined' ? Object.assign({}, MAFIA_ROLE_SETTINGS) : {};
 
     if (typeof SkeldTasks !== 'undefined' && typeof SkeldTasks.reset === 'function') {
       SkeldTasks.reset(settings);
@@ -229,6 +274,8 @@ window.MafiaSystem = {
     const mk = MafiaState;
     if (mk.playerRole !== 'impostor' || mk.playerIsGhost) return false;
     if (mk.killCooldown > 0) return false;
+    // Phantom cannot kill while invisible
+    if (mk.playerSubrole === 'phantom' && mk._roleState.invisible) return false;
 
     const target = mk.participants.find(p => p.id === targetId);
     if (!target || !target.alive || target.role === 'impostor') return false;
@@ -243,13 +290,33 @@ window.MafiaSystem = {
     target.alive = false;
 
     // Spawn body at target's location
-    mk.bodies.push({
+    const bodyData = {
       x: target.entity.x,
       y: target.entity.y,
       color: target.color,
       name: target.name,
       id: target.id,
-    });
+    };
+    // Viper: bodies dissolve over time
+    if (mk.playerSubrole === 'viper') {
+      const dissolveSeconds = mk._roleSettings ? mk._roleSettings.dissolveTime : 30;
+      bodyData.dissolveTimer = dissolveSeconds * 60;
+      bodyData.dissolveMax = dissolveSeconds * 60;
+    }
+    mk.bodies.push(bodyData);
+
+    // Noisemaker: trigger death alert for all players
+    if (target.subrole === 'noisemaker') {
+      const alertSeconds = mk._roleSettings ? mk._roleSettings.alertDuration : 10;
+      mk._roleState.deathAlert = {
+        x: target.entity.x,
+        y: target.entity.y,
+        timer: alertSeconds * 60,
+        maxTimer: alertSeconds * 60,
+        color: target.color,
+        name: target.name,
+      };
+    }
 
     // Teleport player to the kill location (Among Us snap)
     player.x = target.entity.x;
@@ -257,6 +324,14 @@ window.MafiaSystem = {
 
     // Reset cooldown
     mk.killCooldown = (mk._settings ? mk._settings.killCooldown : 30) * 60;
+
+    // End invisibility on kill (Phantom edge case — shouldn't reach here but safety)
+    if (mk._roleState.invisible) mk._roleState.invisible = false;
+    // End shapeshift on kill
+    if (mk._roleState.shiftedAs) {
+      mk._roleState.shiftedAs = null;
+      mk._roleState.shiftTimer = 0;
+    }
 
     // Visual feedback
     if (typeof hitEffects !== 'undefined') {
@@ -273,6 +348,112 @@ window.MafiaSystem = {
     return this.kill(target.id);
   },
 
+
+  // ===================== ROLE ABILITIES =====================
+
+  // Tracker: track nearest crewmate/impostor
+  tryTrack() {
+    const mk = MafiaState;
+    if (mk.playerSubrole !== 'tracker' || mk.playerIsGhost) return false;
+    if (mk.phase !== 'playing') return false;
+    if (mk._roleState.trackTimer > 0 || mk._roleState.trackCooldown > 0) return false;
+
+    const target = this.getNearestKillTarget(true); // reuse proximity logic, any alive non-local
+    if (!target) return false;
+
+    const dur = (mk._roleSettings ? mk._roleSettings.trackDuration : 15) * 60;
+    const cd = (mk._roleSettings ? mk._roleSettings.trackCooldown : 30) * 60;
+    mk._roleState.trackedTarget = target.id;
+    mk._roleState.trackTimer = dur;
+    mk._roleState.trackCooldown = dur + cd; // cooldown starts after tracking ends
+    return true;
+  },
+
+  // Get nearest alive non-local participant (for tracker)
+  getNearestTrackTarget() {
+    const mk = MafiaState;
+    if (mk.phase !== 'playing') return null;
+    let nearest = null, nearestDist = 150; // track range
+    for (const p of mk.participants) {
+      if (p.isLocal || !p.alive) continue;
+      const dx = p.entity.x - player.x;
+      const dy = p.entity.y - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < nearestDist) { nearestDist = dist; nearest = p; }
+    }
+    return nearest;
+  },
+
+  // Scientist: toggle vitals panel
+  toggleVitals() {
+    const mk = MafiaState;
+    if (mk.playerSubrole !== 'scientist' || mk.playerIsGhost) return false;
+    if (mk.phase !== 'playing') return false;
+
+    const rs = mk._roleState;
+    if (rs.vitalsOpen) {
+      rs.vitalsOpen = false;
+      rs.vitalsTimer = 0;
+      return true;
+    }
+    if (rs.vitalsCooldown > 0) return false;
+
+    const dur = (mk._roleSettings ? mk._roleSettings.vitalsDuration : 15) * 60;
+    const cd = (mk._roleSettings ? mk._roleSettings.vitalsCooldown : 30) * 60;
+    rs.vitalsOpen = true;
+    rs.vitalsTimer = dur;
+    rs.vitalsCooldown = dur + cd;
+    return true;
+  },
+
+  // Shapeshifter: open shift menu or shift into target
+  tryShapeshift(targetId) {
+    const mk = MafiaState;
+    if (mk.playerSubrole !== 'shapeshifter' || mk.playerIsGhost) return false;
+    if (mk.phase !== 'playing') return false;
+
+    const rs = mk._roleState;
+    // If already shifted, unshift
+    if (rs.shiftedAs) {
+      rs.shiftedAs = null;
+      rs.shiftTimer = 0;
+      return true;
+    }
+    if (rs.shiftCooldown > 0) return false;
+    if (!targetId) return false;
+
+    const target = mk.participants.find(p => p.id === targetId && p.alive && !p.isLocal);
+    if (!target) return false;
+
+    const dur = (mk._roleSettings ? mk._roleSettings.shiftDuration : 20) * 60;
+    const cd = (mk._roleSettings ? mk._roleSettings.shiftCooldown : 30) * 60;
+    rs.shiftedAs = targetId;
+    rs.shiftTimer = dur;
+    rs.shiftCooldown = dur + cd;
+    return true;
+  },
+
+  // Phantom: toggle invisibility
+  toggleInvisibility() {
+    const mk = MafiaState;
+    if (mk.playerSubrole !== 'phantom' || mk.playerIsGhost) return false;
+    if (mk.phase !== 'playing') return false;
+
+    const rs = mk._roleState;
+    if (rs.invisible) {
+      rs.invisible = false;
+      rs.invisTimer = 0;
+      return true;
+    }
+    if (rs.invisCooldown > 0) return false;
+
+    const dur = (mk._roleSettings ? mk._roleSettings.invisDuration : 10) * 60;
+    const cd = (mk._roleSettings ? mk._roleSettings.invisCooldown : 25) * 60;
+    rs.invisible = true;
+    rs.invisTimer = dur;
+    rs.invisCooldown = dur + cd;
+    return true;
+  },
 
   // ===================== REPORT + MEETING =====================
 
@@ -824,7 +1005,9 @@ window.MafiaSystem = {
       return;
     }
 
-    if (mk.phase === 'playing') {
+    if (mk.phase === 'role_reveal') {
+      this._tickRoleReveal();
+    } else if (mk.phase === 'playing') {
       this._tickPlaying();
     } else if (mk.phase === 'report_splash') {
       this._tickReportSplash();
@@ -864,8 +1047,72 @@ window.MafiaSystem = {
       }
     }
 
+    // Tick role abilities (timers, dissolving bodies, etc.)
+    this._tickRoleAbilities();
+
     // Check win conditions
     this._checkWinConditions();
+  },
+
+  // ---- Role reveal phase tick ----
+  _tickRoleReveal() {
+    const mk = MafiaState;
+    mk.phaseTimer--;
+    if (mk.phaseTimer <= 0) {
+      mk.phase = 'playing';
+    }
+  },
+
+  // ---- Tick role abilities (called from _tickPlaying) ----
+  _tickRoleAbilities() {
+    const mk = MafiaState;
+    const rs = mk._roleState;
+
+    // Tracker: count down active track and cooldown
+    if (rs.trackTimer > 0) {
+      rs.trackTimer--;
+      if (rs.trackTimer <= 0) rs.trackedTarget = null;
+    }
+    if (rs.trackCooldown > 0) rs.trackCooldown--;
+
+    // Scientist: count down vitals duration and cooldown
+    if (rs.vitalsTimer > 0) {
+      rs.vitalsTimer--;
+      if (rs.vitalsTimer <= 0) rs.vitalsOpen = false;
+    }
+    if (rs.vitalsCooldown > 0) rs.vitalsCooldown--;
+
+    // Shapeshifter: count down shift duration and cooldown
+    if (rs.shiftTimer > 0) {
+      rs.shiftTimer--;
+      if (rs.shiftTimer <= 0) {
+        rs.shiftedAs = null;
+        // Restore player appearance
+      }
+    }
+    if (rs.shiftCooldown > 0) rs.shiftCooldown--;
+
+    // Phantom: count down invisibility duration and cooldown
+    if (rs.invisTimer > 0) {
+      rs.invisTimer--;
+      if (rs.invisTimer <= 0) rs.invisible = false;
+    }
+    if (rs.invisCooldown > 0) rs.invisCooldown--;
+
+    // Noisemaker: count down death alert
+    if (rs.deathAlert && rs.deathAlert.timer > 0) {
+      rs.deathAlert.timer--;
+      if (rs.deathAlert.timer <= 0) rs.deathAlert = null;
+    }
+
+    // Viper: tick body dissolve timers
+    for (const body of mk.bodies) {
+      if (body.dissolveTimer != null && body.dissolveTimer > 0) {
+        body.dissolveTimer--;
+      }
+    }
+    // Remove fully dissolved bodies
+    mk.bodies = mk.bodies.filter(b => b.dissolveTimer == null || b.dissolveTimer > 0);
   },
 
   // ---- Report splash screen tick (2 seconds before meeting) ----
@@ -1128,7 +1375,7 @@ window.MafiaSystem = {
   // ===================== FREEZE CHECK =====================
   isPlayerFrozen() {
     const mk = MafiaState;
-    if (mk.phase === 'report_splash' || mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'vote_results' || mk.phase === 'ejecting') return true;
+    if (mk.phase === 'role_reveal' || mk.phase === 'report_splash' || mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'vote_results' || mk.phase === 'ejecting') return true;
     // Freeze while emergency popup is open
     if (window._mafiaEmergencyPopup) return true;
     // Freeze while sabotage fix panel is open

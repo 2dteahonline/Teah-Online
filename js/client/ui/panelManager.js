@@ -990,6 +990,30 @@ window.addEventListener("keydown", e => {
       return;
     }
   }
+  // Mafia role ability keybinds (T = Track, F = Shift/Vanish, V = Vitals)
+  if (!chatInputActive && !nameEditActive && !statusEditActive && typeof MafiaState !== 'undefined' && Scene.inSkeld && MafiaState.phase === 'playing' && !MafiaState.playerIsGhost) {
+    if (key === 't' && MafiaState.playerSubrole === 'tracker') {
+      MafiaSystem.tryTrack();
+      return;
+    }
+    if (key === 'f' && MafiaState.playerSubrole === 'shapeshifter') {
+      window._mafiaShiftPanelOpen = !window._mafiaShiftPanelOpen;
+      return;
+    }
+    if (key === 'f' && MafiaState.playerSubrole === 'phantom') {
+      MafiaSystem.toggleInvisibility();
+      return;
+    }
+    if (key === 'v' && MafiaState.playerSubrole === 'scientist') {
+      MafiaSystem.toggleVitals();
+      return;
+    }
+  }
+  // Close shapeshifter panel on Escape
+  if (key === 'escape' && window._mafiaShiftPanelOpen) {
+    window._mafiaShiftPanelOpen = false;
+    return;
+  }
   if (key === keybinds.interact && !chatInputActive && !nameEditActive && !statusEditActive) {
     InputIntent.interactPressed = true;
   }

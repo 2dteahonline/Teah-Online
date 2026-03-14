@@ -14,6 +14,11 @@ window._mafiaSabotageMenu = false;       // true when sabotage picker is open
 window._mafiaSabReactorBtn = null;       // Reactor option click region
 window._mafiaSabO2Btn = null;            // O2 option click region
 window._mafiaSabLightsBtn = null;        // Lights option click region
+window._mafiaTrackBtn = null;            // Tracker TRACK button click region
+window._mafiaShiftBtn = null;            // Shapeshifter SHIFT button click region
+window._mafiaVanishBtn = null;           // Phantom VANISH button click region
+window._mafiaShiftPanelOpen = false;     // Shapeshifter target selection panel
+window._mafiaShiftTargetBtns = null;     // [{ id, x, y, w, h }]
 
 // ---- Sabotage fix panel state ----
 const _sabPanel = {
@@ -541,6 +546,30 @@ function drawMafiaHUD() {
     window._mafiaSabO2Btn = null;
   }
 
+  // ---- Role ability buttons ----
+  if (!mk.playerIsGhost && mk.phase === 'playing') {
+    _drawRoleAbilityButtons(isImpostor);
+  } else {
+    window._mafiaTrackBtn = null;
+    window._mafiaShiftBtn = null;
+    window._mafiaVanishBtn = null;
+  }
+
+  // ---- Shapeshifter target panel ----
+  if (window._mafiaShiftPanelOpen) {
+    _drawShiftTargetPanel();
+  }
+
+  // ---- Scientist vitals overlay ----
+  if (mk._roleState.vitalsOpen && mk.playerSubrole === 'scientist') {
+    _drawVitalsOverlay();
+  }
+
+  // ---- Noisemaker death alert ping ----
+  if (mk._roleState.deathAlert) {
+    _drawDeathAlertPing();
+  }
+
   // ---- Sabotage timer + alert overlay (visible to all during active sabotage, not lights) ----
   if (mk.sabotage.active && mk.phase === 'playing' && mk.sabotage.active !== 'lights_out') {
     _drawSabotageOverlay();
@@ -551,8 +580,10 @@ function drawMafiaHUD() {
     drawSabFixPanel();
   }
 
-  // ---- Report splash / Meeting / Voting / Vote Results / Ejection overlays ----
-  if (mk.phase === 'report_splash') {
+  // ---- Role Reveal / Report splash / Meeting / Voting / Vote Results / Ejection overlays ----
+  if (mk.phase === 'role_reveal') {
+    _drawRoleRevealScreen();
+  } else if (mk.phase === 'report_splash') {
     _drawReportSplash();
   } else if (mk.phase === 'meeting' || mk.phase === 'voting') {
     _drawMeetingUI();
@@ -1420,6 +1451,410 @@ function _drawMiniCrewmate(cx, cy, color, darkColor, scale, isDead) {
     ctx.stroke();
   }
 
+  ctx.restore();
+}
+
+// ===================== ROLE ABILITY BUTTONS =====================
+function _drawRoleAbilityButtons(isImpostor) {
+  const mk = MafiaState;
+  const rs = mk._roleState;
+  const btnW = 100;
+  const btnH = 50;
+  // Position to the left of the kill/report area
+  const killBtnX = ctx.canvas.width - btnW - 30;
+  const btnX = killBtnX - 120;
+  let btnIdx = 0;
+
+  // ---- Tracker "TRACK" button (crewmate with tracker subrole) ----
+  if (!isImpostor && mk.playerSubrole === 'tracker') {
+    const btnY = ctx.canvas.height - btnH - 100 - btnIdx * 60;
+    const canTrack = rs.trackCooldown <= 0 && rs.trackTimer <= 0 && MafiaSystem.getNearestTrackTarget() !== null;
+    const cooldownSec = Math.ceil(Math.max(rs.trackCooldown, rs.trackTimer) / 60);
+
+    ctx.save();
+    ctx.fillStyle = canTrack ? 'rgba(34,136,255,0.85)' : 'rgba(20,60,120,0.6)';
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 10); ctx.fill();
+    ctx.strokeStyle = canTrack ? '#2288ff' : '#334466';
+    ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = canTrack ? '#ffffff' : '#667799';
+
+    if (rs.trackTimer > 0) {
+      ctx.fillText('TRACK', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(Math.ceil(rs.trackTimer / 60) + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
+    } else if (rs.trackCooldown > 0) {
+      ctx.fillText('TRACK', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(cooldownSec + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
+    } else {
+      ctx.fillText('TRACK', btnX + btnW / 2, btnY + btnH / 2);
+    }
+
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+
+    // Key hint
+    ctx.save(); ctx.font = '12px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillText('[T]', btnX + btnW / 2, btnY - 8);
+    ctx.textAlign = 'left'; ctx.restore();
+
+    window._mafiaTrackBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+    btnIdx++;
+  } else {
+    window._mafiaTrackBtn = null;
+  }
+
+  // ---- Shapeshifter "SHIFT" button (impostor with shapeshifter subrole) ----
+  if (isImpostor && mk.playerSubrole === 'shapeshifter') {
+    const btnY = ctx.canvas.height - btnH - 100 - btnIdx * 60;
+    const canShift = rs.shiftCooldown <= 0 && !rs.shiftedAs;
+    const cooldownSec = Math.ceil(rs.shiftCooldown / 60);
+    const isShifted = !!rs.shiftedAs;
+
+    ctx.save();
+    ctx.fillStyle = isShifted ? 'rgba(189,16,224,0.85)' : (canShift ? 'rgba(140,10,180,0.85)' : 'rgba(60,10,80,0.6)');
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 10); ctx.fill();
+    ctx.strokeStyle = isShifted ? '#e040ff' : (canShift ? '#bd10e0' : '#442266');
+    ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = (canShift || isShifted) ? '#ffffff' : '#775599';
+
+    if (isShifted) {
+      ctx.fillText('SHIFT', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(Math.ceil(rs.shiftTimer / 60) + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
+    } else if (rs.shiftCooldown > 0) {
+      ctx.fillText('SHIFT', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(cooldownSec + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
+    } else {
+      ctx.fillText('SHIFT', btnX + btnW / 2, btnY + btnH / 2);
+    }
+
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+
+    ctx.save(); ctx.font = '12px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillText('[F]', btnX + btnW / 2, btnY - 8);
+    ctx.textAlign = 'left'; ctx.restore();
+
+    window._mafiaShiftBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+    btnIdx++;
+  } else {
+    window._mafiaShiftBtn = null;
+  }
+
+  // ---- Phantom "VANISH" button (impostor with phantom subrole) ----
+  if (isImpostor && mk.playerSubrole === 'phantom') {
+    const btnY = ctx.canvas.height - btnH - 100 - btnIdx * 60;
+    const canVanish = rs.invisCooldown <= 0 && !rs.invisible;
+    const cooldownSec = Math.ceil(rs.invisCooldown / 60);
+    const isInvis = rs.invisible;
+
+    ctx.save();
+    ctx.fillStyle = isInvis ? 'rgba(106,13,173,0.85)' : (canVanish ? 'rgba(80,10,140,0.85)' : 'rgba(40,5,70,0.6)');
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 10); ctx.fill();
+    ctx.strokeStyle = isInvis ? '#a020f0' : (canVanish ? '#6a0dad' : '#331155');
+    ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = (canVanish || isInvis) ? '#ffffff' : '#664488';
+
+    if (isInvis) {
+      ctx.fillText('VANISH', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('VISIBLE', btnX + btnW / 2, btnY + btnH / 2 + 12);
+    } else if (rs.invisCooldown > 0) {
+      ctx.fillText('VANISH', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(cooldownSec + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
+    } else {
+      ctx.fillText('VANISH', btnX + btnW / 2, btnY + btnH / 2);
+    }
+
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+
+    ctx.save(); ctx.font = '12px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillText('[F]', btnX + btnW / 2, btnY - 8);
+    ctx.textAlign = 'left'; ctx.restore();
+
+    window._mafiaVanishBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+    btnIdx++;
+  } else {
+    window._mafiaVanishBtn = null;
+  }
+}
+
+// ===================== SCIENTIST VITALS OVERLAY =====================
+function _drawVitalsOverlay() {
+  const mk = MafiaState;
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const panelW = 400;
+  const panelH = 500;
+  const px = (cw - panelW) / 2;
+  const py = (ch - panelH) / 2;
+
+  ctx.save();
+
+  // Dark background overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Panel background
+  ctx.fillStyle = 'rgba(20,25,40,0.95)';
+  ctx.beginPath(); ctx.roundRect(px, py, panelW, panelH, 12); ctx.fill();
+  ctx.strokeStyle = '#7ed321';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px, py, panelW, panelH, 12); ctx.stroke();
+
+  // Title
+  ctx.font = 'bold 24px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#7ed321';
+  ctx.fillText('VITALS', cw / 2, py + 36);
+
+  // List participants
+  let rowY = py + 60;
+  const rowH = 36;
+  for (const p of mk.participants) {
+    if (rowY + rowH > py + panelH - 40) break;
+    const color = (typeof MAFIA_GAME !== 'undefined' && MAFIA_GAME.COLORS[p.colorIndex])
+      ? MAFIA_GAME.COLORS[p.colorIndex] : { body: '#888' };
+
+    // Color dot
+    ctx.fillStyle = color.body;
+    ctx.beginPath(); ctx.arc(px + 30, rowY + rowH / 2, 8, 0, Math.PI * 2); ctx.fill();
+
+    // Name
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ddd';
+    ctx.fillText(p.name || p.id, px + 50, rowY + rowH / 2 + 5);
+
+    // Status
+    ctx.textAlign = 'right';
+    if (p.alive) {
+      ctx.fillStyle = '#4caf50';
+      ctx.fillText('ALIVE', px + panelW - 20, rowY + rowH / 2 + 5);
+    } else {
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText('DEAD', px + panelW - 20, rowY + rowH / 2 + 5);
+    }
+
+    rowY += rowH;
+  }
+
+  // Remaining time
+  const remaining = Math.ceil(mk._roleState.vitalsTimer / 60);
+  ctx.font = '14px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#888';
+  ctx.fillText('Time remaining: ' + remaining + 's', cw / 2, py + panelH - 16);
+
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+// ===================== NOISEMAKER DEATH ALERT PING =====================
+function _drawDeathAlertPing() {
+  const mk = MafiaState;
+  const alert = mk._roleState.deathAlert;
+  if (!alert) return;
+
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const centerX = cw / 2;
+  const centerY = ch / 2;
+
+  // Direction from player to death location
+  const dx = alert.x - player.x;
+  const dy = alert.y - player.y;
+  const angle = Math.atan2(dy, dx);
+
+  // Draw indicator on the screen edge
+  const edgeR = Math.min(cw, ch) * 0.42;
+  const indicatorX = centerX + Math.cos(angle) * edgeR;
+  const indicatorY = centerY + Math.sin(angle) * edgeR;
+
+  const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.008);
+  const alertColor = alert.color || '#e8d44d';
+
+  ctx.save();
+
+  // Pulsing arrow
+  ctx.translate(indicatorX, indicatorY);
+  ctx.rotate(angle);
+
+  ctx.fillStyle = alertColor;
+  ctx.globalAlpha = 0.6 + pulse * 0.4;
+  ctx.beginPath();
+  ctx.moveTo(16, 0);
+  ctx.lineTo(-8, -10);
+  ctx.lineTo(-8, 10);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+
+  // Pulsing "!" icon near the arrow
+  ctx.save();
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = alertColor;
+  ctx.globalAlpha = 0.5 + pulse * 0.5;
+  const bangX = indicatorX - Math.cos(angle) * 30;
+  const bangY = indicatorY - Math.sin(angle) * 30;
+  ctx.fillText('!', bangX, bangY);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
+// ===================== SHAPESHIFTER TARGET PANEL =====================
+function _drawShiftTargetPanel() {
+  const mk = MafiaState;
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const panelW = 300;
+  const alive = mk.participants.filter(p => !p.isLocal && p.alive);
+  const panelH = Math.min(ch * 0.7, 60 + alive.length * 44 + 20);
+  const px = (cw - panelW) / 2;
+  const py = (ch - panelH) / 2;
+
+  ctx.save();
+
+  // Dark overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Panel
+  ctx.fillStyle = 'rgba(25,15,40,0.95)';
+  ctx.beginPath(); ctx.roundRect(px, py, panelW, panelH, 12); ctx.fill();
+  ctx.strokeStyle = '#bd10e0';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px, py, panelW, panelH, 12); ctx.stroke();
+
+  // Title
+  ctx.font = 'bold 20px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#bd10e0';
+  ctx.fillText('SHIFT INTO', cw / 2, py + 32);
+
+  // List targets
+  const btns = [];
+  let rowY = py + 50;
+  const rowH = 40;
+  for (const p of alive) {
+    const color = (typeof MAFIA_GAME !== 'undefined' && MAFIA_GAME.COLORS[p.colorIndex])
+      ? MAFIA_GAME.COLORS[p.colorIndex] : { body: '#888' };
+
+    const rowX = px + 10;
+    const rowW = panelW - 20;
+
+    // Row background
+    ctx.fillStyle = 'rgba(60,20,80,0.5)';
+    ctx.beginPath(); ctx.roundRect(rowX, rowY, rowW, rowH - 4, 6); ctx.fill();
+
+    // Color dot
+    ctx.fillStyle = color.body;
+    ctx.beginPath(); ctx.arc(rowX + 20, rowY + (rowH - 4) / 2, 8, 0, Math.PI * 2); ctx.fill();
+
+    // Name
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ddd';
+    ctx.fillText(p.name || p.id, rowX + 38, rowY + (rowH - 4) / 2 + 5);
+
+    btns.push({ id: p.id, x: rowX, y: rowY, w: rowW, h: rowH - 4 });
+    rowY += rowH;
+  }
+  window._mafiaShiftTargetBtns = btns;
+
+  // Close hint
+  ctx.font = '12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#666';
+  ctx.fillText('Click to shift, press ESC to close', cw / 2, py + panelH - 10);
+
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+// ===================== ROLE REVEAL SCREEN =====================
+function _drawRoleRevealScreen() {
+  const mk = MafiaState;
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+
+  ctx.save();
+
+  // Full screen dark overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.92)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // "SHHHHH!" text at top
+  ctx.font = 'bold 60px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('SHHHHH!', cw / 2, ch * 0.2);
+
+  // Main role
+  const isImpostor = mk.playerRole === 'impostor';
+  const roleText = isImpostor ? 'IMPOSTOR' : 'CREWMATE';
+  const roleColor = isImpostor ? '#ff2222' : '#4ac9ff';
+
+  ctx.font = 'bold 72px monospace';
+  ctx.fillStyle = roleColor;
+  ctx.fillText(roleText, cw / 2, ch * 0.42);
+
+  // Subrole display
+  let nextY = ch * 0.55;
+  if (mk.playerSubrole && typeof MAFIA_ROLES !== 'undefined' && MAFIA_ROLES[mk.playerSubrole]) {
+    const sub = MAFIA_ROLES[mk.playerSubrole];
+    ctx.font = 'bold 36px monospace';
+    ctx.fillStyle = sub.color;
+    ctx.fillText(sub.name.toUpperCase(), cw / 2, nextY);
+
+    // Subrole description
+    ctx.font = '18px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText(sub.description, cw / 2, nextY + 40);
+    nextY += 70;
+  }
+
+  // For impostors, show teammates
+  if (isImpostor) {
+    const otherImpostors = mk.participants.filter(p => !p.isLocal && p.role === 'impostor' && p.alive);
+    if (otherImpostors.length > 0) {
+      nextY = Math.max(nextY, ch * 0.65);
+      ctx.font = 'bold 16px monospace';
+      ctx.fillStyle = 'rgba(255,100,100,0.6)';
+      ctx.fillText('Fellow Impostor' + (otherImpostors.length > 1 ? 's' : '') + ':', cw / 2, nextY);
+      nextY += 28;
+      ctx.font = 'bold 20px monospace';
+      ctx.fillStyle = '#ff4444';
+      for (const p of otherImpostors) {
+        ctx.fillText(p.name || p.id, cw / 2, nextY);
+        nextY += 28;
+      }
+    }
+  }
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
   ctx.restore();
 }
 
@@ -2754,18 +3189,124 @@ function _drawLobbySettingsPanel(cw, ch) {
   const contentY = tabY + tabH + 14;
 
   if (_mafiaLobbySettingsTab === 'roles') {
-    // Placeholder for Role Settings
-    ctx.font = 'bold 20px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#666';
-    ctx.fillText('ROLE SETTINGS', px + pw / 2, contentY + 80);
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#555';
-    ctx.fillText('Coming soon...', px + pw / 2, contentY + 110);
-    ctx.fillText('Per-role spawn chances, cooldowns,', px + pw / 2, contentY + 135);
-    ctx.fillText('and durations will be configured here.', px + pw / 2, contentY + 155);
-    window._mafiaLobbySettingBtns = [];
+    // ---- Role Settings (per-role chance + specific settings) ----
     window._mafiaLobbyMapBtns = null;
+    const settingBtns = [];
+    const listH = ph - (contentY - py) - 20;
+    const listY = contentY;
+
+    // Clip to content area
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(px, listY, pw, listH);
+    ctx.clip();
+
+    let drawY = listY - _mafiaLobbySettingsScroll;
+    const roleIds = Object.keys(MAFIA_ROLES);
+
+    for (const roleId of roleIds) {
+      const role = MAFIA_ROLES[roleId];
+      const teamLabel = role.team === 'impostor' ? 'Impostor' : 'Crewmate';
+
+      // Role header
+      ctx.font = 'bold 16px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = role.color;
+      ctx.fillText(role.name, px + 20, drawY + 18);
+      ctx.font = '12px monospace';
+      ctx.fillStyle = '#888';
+      ctx.fillText('(' + teamLabel + ')', px + 20 + ctx.measureText(role.name + '  ').width + 10, drawY + 18);
+
+      // Chance setting
+      drawY += 30;
+      const chanceKey = roleId + 'Chance';
+      const chanceVal = MAFIA_ROLE_SETTINGS[chanceKey] != null ? MAFIA_ROLE_SETTINGS[chanceKey] : 0;
+
+      ctx.font = '14px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#bbb';
+      ctx.fillText('Chance: ' + chanceVal + '%', px + 30, drawY + 14);
+
+      // - button
+      const minusBtnX = px + pw - 90;
+      ctx.fillStyle = 'rgba(80,40,40,0.8)';
+      ctx.beginPath(); ctx.roundRect(minusBtnX, drawY, 28, 22, 4); ctx.fill();
+      ctx.fillStyle = '#ff6666'; ctx.font = 'bold 16px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('-', minusBtnX + 14, drawY + 16);
+      settingBtns.push({ x: minusBtnX, y: drawY, w: 28, h: 22, action: function() {
+        MAFIA_ROLE_SETTINGS[chanceKey] = Math.max(0, (MAFIA_ROLE_SETTINGS[chanceKey] || 0) - 10);
+      }});
+
+      // + button
+      const plusBtnX = px + pw - 50;
+      ctx.fillStyle = 'rgba(40,80,40,0.8)';
+      ctx.beginPath(); ctx.roundRect(plusBtnX, drawY, 28, 22, 4); ctx.fill();
+      ctx.fillStyle = '#66ff66'; ctx.font = 'bold 16px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('+', plusBtnX + 14, drawY + 16);
+      settingBtns.push({ x: plusBtnX, y: drawY, w: 28, h: 22, action: function() {
+        MAFIA_ROLE_SETTINGS[chanceKey] = Math.min(100, (MAFIA_ROLE_SETTINGS[chanceKey] || 0) + 10);
+      }});
+
+      drawY += 28;
+
+      // Per-role specific settings
+      for (const settingKey in role.settings) {
+        const settDef = role.settings[settingKey];
+        const curVal = MAFIA_ROLE_SETTINGS[settingKey] != null ? MAFIA_ROLE_SETTINGS[settingKey] : settDef.default;
+
+        ctx.font = '13px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#999';
+        ctx.fillText(settDef.label + ': ' + curVal + (settDef.unit || ''), px + 40, drawY + 14);
+
+        // - button
+        const sMinusX = px + pw - 90;
+        ctx.fillStyle = 'rgba(80,40,40,0.8)';
+        ctx.beginPath(); ctx.roundRect(sMinusX, drawY, 28, 22, 4); ctx.fill();
+        ctx.fillStyle = '#ff6666'; ctx.font = 'bold 16px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('-', sMinusX + 14, drawY + 16);
+        (function(key, def) {
+          settingBtns.push({ x: sMinusX, y: drawY, w: 28, h: 22, action: function() {
+            MAFIA_ROLE_SETTINGS[key] = Math.max(def.min, (MAFIA_ROLE_SETTINGS[key] || def.default) - def.step);
+          }});
+        })(settingKey, settDef);
+
+        // + button
+        const sPlusX = px + pw - 50;
+        ctx.fillStyle = 'rgba(40,80,40,0.8)';
+        ctx.beginPath(); ctx.roundRect(sPlusX, drawY, 28, 22, 4); ctx.fill();
+        ctx.fillStyle = '#66ff66'; ctx.font = 'bold 16px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('+', sPlusX + 14, drawY + 16);
+        (function(key, def) {
+          settingBtns.push({ x: sPlusX, y: drawY, w: 28, h: 22, action: function() {
+            MAFIA_ROLE_SETTINGS[key] = Math.min(def.max, (MAFIA_ROLE_SETTINGS[key] || def.default) + def.step);
+          }});
+        })(settingKey, settDef);
+
+        drawY += 26;
+      }
+
+      // Separator line
+      drawY += 8;
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px + 20, drawY); ctx.lineTo(px + pw - 20, drawY); ctx.stroke();
+      drawY += 12;
+    }
+
+    // Compute total content height for scrolling
+    const totalH = drawY - listY + _mafiaLobbySettingsScroll;
+    ctx.restore();
+
+    // Scrollbar
+    if (totalH > listH) {
+      const barH = Math.max(30, listH * (listH / totalH));
+      const barY = listY + (_mafiaLobbySettingsScroll / (totalH - listH)) * (listH - barH);
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.beginPath(); ctx.roundRect(px + pw - 8, barY, 6, barH, 3); ctx.fill();
+    }
+
+    window._mafiaLobbySettingBtns = settingBtns;
     return;
   }
 
