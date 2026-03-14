@@ -5,6 +5,8 @@
 
 const _CASINO_PW = 740, _CASINO_PH = 540;
 let _casinoBetInput = 100;
+let _casinoBetEditing = false;   // true when typing custom bet
+let _casinoBetString = '';       // raw string while editing
 let _casinoRL_selectedBet = null;
 
 // ═══════════════════════════════════════════════════════════════
@@ -146,50 +148,156 @@ function _casinoDrawBetControls(px, py, pw) {
   const by = py + _CASINO_PH - 60;
   // Background strip
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.fillRect(px + 8, by - 18, pw - 16, 56);
+  ctx.fillRect(px + 8, by - 22, pw - 16, 62);
   // Gold display
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffd700';
-  ctx.fillText('\u2B25 ' + gold + 'g', px + 20, by);
-  // Current bet
-  ctx.fillStyle = '#ccc';
-  ctx.fillText('Bet: ' + _casinoBetInput + 'g', px + 180, by);
-  // Preset buttons
+  ctx.fillText('\u2B25 ' + gold + 'g', px + 20, by - 6);
+
+  // Bet input field (clickable to type)
+  const inputX = px + 150, inputY = by - 14, inputW = 120, inputH = 28;
+  ctx.fillStyle = _casinoBetEditing ? '#1a1a30' : '#0e0e1a';
+  ctx.beginPath(); ctx.roundRect(inputX, inputY, inputW, inputH, 4); ctx.fill();
+  ctx.strokeStyle = _casinoBetEditing ? '#ffd700' : '#3a3a5a';
+  ctx.lineWidth = _casinoBetEditing ? 2 : 1;
+  ctx.beginPath(); ctx.roundRect(inputX, inputY, inputW, inputH, 4); ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.font = 'bold 14px monospace';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  const displayText = _casinoBetEditing ? (_casinoBetString + (_casinoBetCursorBlink() ? '|' : '')) : _casinoBetInput + 'g';
+  ctx.fillText(displayText, inputX + inputW / 2, inputY + 19);
+  // Label
+  ctx.font = '11px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'left';
+  ctx.fillText('Bet:', px + 150 - 30, inputY + 19);
+
+  // - and + buttons next to input
+  const decX = inputX + inputW + 6, incX = decX + 32;
+  _casinoDrawButton(decX, inputY, 28, inputH, '-', _casinoBetInput > CASINO_CONFIG.BET_MIN, false);
+  _casinoDrawButton(incX, inputY, 28, inputH, '+', _casinoBetInput < CASINO_CONFIG.BET_MAX && _casinoBetInput < gold, false);
+
+  // Half / 2x / Max buttons
+  const halfX = incX + 36;
+  const qBtnW = 38, qBtnGap = 4;
+  const qBtns = [
+    { label: '½', val: Math.max(CASINO_CONFIG.BET_MIN, Math.floor(_casinoBetInput / 2)) },
+    { label: '2x', val: Math.min(CASINO_CONFIG.BET_MAX, Math.min(gold, _casinoBetInput * 2)) },
+    { label: 'MAX', val: Math.min(CASINO_CONFIG.BET_MAX, gold) },
+  ];
+  for (let i = 0; i < qBtns.length; i++) {
+    const bx = halfX + i * (qBtnW + qBtnGap);
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.roundRect(bx, inputY, qBtnW, inputH, 4); ctx.fill();
+    ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(bx, inputY, qBtnW, inputH, 4); ctx.stroke();
+    ctx.font = 'bold 10px monospace'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
+    ctx.fillText(qBtns[i].label, bx + qBtnW / 2, inputY + 18);
+  }
+
+  // Preset buttons (row below)
   const presets = CASINO_CONFIG.BET_PRESETS;
-  const btnW = 62, btnH = 26, gap = 4;
+  const btnW = 62, btnH = 24, gap = 4;
   const startX = px + 20;
+  const presetY = by + 14;
   for (let i = 0; i < presets.length; i++) {
     const bx = startX + i * (btnW + gap);
     if (bx + btnW > px + pw - 16) break;
     const active = _casinoBetInput === presets[i];
     const afford = gold >= presets[i];
     ctx.fillStyle = active ? '#2a4a1a' : '#111';
-    ctx.beginPath(); ctx.roundRect(bx, by + 8, btnW, btnH, 4); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(bx, presetY, btnW, btnH, 4); ctx.fill();
     ctx.strokeStyle = active ? '#5a8a4a' : '#2a2a3a';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(bx, by + 8, btnW, btnH, 4); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(bx, presetY, btnW, btnH, 4); ctx.stroke();
     ctx.font = '11px monospace';
     ctx.fillStyle = afford ? (active ? '#8f8' : '#ccc') : '#444';
     ctx.textAlign = 'center';
-    ctx.fillText(presets[i] >= 1000 ? (presets[i] / 1000) + 'k' : presets[i] + '', bx + btnW / 2, by + 25);
+    ctx.fillText(presets[i] >= 1000 ? (presets[i] / 1000) + 'k' : presets[i] + '', bx + btnW / 2, presetY + 16);
   }
   ctx.textAlign = 'left';
 }
 
+function _casinoBetCursorBlink() {
+  return Math.floor(Date.now() / 500) % 2 === 0;
+}
+
+function _casinoCommitBetString() {
+  const val = parseInt(_casinoBetString);
+  if (!isNaN(val) && val >= CASINO_CONFIG.BET_MIN && val <= CASINO_CONFIG.BET_MAX) {
+    _casinoBetInput = val;
+  }
+  _casinoBetEditing = false;
+  _casinoBetString = '';
+}
+
 function _casinoHandleBetClick(mx, my, px, py, pw) {
   const by = py + _CASINO_PH - 60;
+
+  // Input field click — start editing
+  const inputX = px + 150, inputY = by - 14, inputW = 120, inputH = 28;
+  if (_casinoHitBtn(mx, my, inputX, inputY, inputW, inputH)) {
+    _casinoBetEditing = true;
+    _casinoBetString = _casinoBetInput.toString();
+    return true;
+  }
+
+  // If editing and clicked outside input, commit
+  if (_casinoBetEditing) {
+    _casinoCommitBetString();
+  }
+
+  // - button
+  const decX = inputX + inputW + 6;
+  if (_casinoHitBtn(mx, my, decX, inputY, 28, inputH)) {
+    _casinoBetInput = Math.max(CASINO_CONFIG.BET_MIN, _casinoBetInput - _casinoBetStep());
+    return true;
+  }
+  // + button
+  const incX = decX + 32;
+  if (_casinoHitBtn(mx, my, incX, inputY, 28, inputH)) {
+    _casinoBetInput = Math.min(CASINO_CONFIG.BET_MAX, Math.min(gold, _casinoBetInput + _casinoBetStep()));
+    return true;
+  }
+
+  // Half / 2x / Max
+  const halfX = incX + 36;
+  const qBtnW = 38, qBtnGap = 4;
+  if (_casinoHitBtn(mx, my, halfX, inputY, qBtnW, inputH)) {
+    _casinoBetInput = Math.max(CASINO_CONFIG.BET_MIN, Math.floor(_casinoBetInput / 2));
+    return true;
+  }
+  if (_casinoHitBtn(mx, my, halfX + qBtnW + qBtnGap, inputY, qBtnW, inputH)) {
+    _casinoBetInput = Math.min(CASINO_CONFIG.BET_MAX, Math.min(gold, _casinoBetInput * 2));
+    return true;
+  }
+  if (_casinoHitBtn(mx, my, halfX + (qBtnW + qBtnGap) * 2, inputY, qBtnW, inputH)) {
+    _casinoBetInput = Math.min(CASINO_CONFIG.BET_MAX, gold);
+    return true;
+  }
+
+  // Preset buttons
   const presets = CASINO_CONFIG.BET_PRESETS;
-  const btnW = 62, btnH = 26, gap = 4;
+  const btnW = 62, btnH = 24, gap = 4;
+  const presetY = by + 14;
   for (let i = 0; i < presets.length; i++) {
     const bx = px + 20 + i * (btnW + gap);
     if (bx + btnW > px + pw - 16) break;
-    if (_casinoHitBtn(mx, my, bx, by + 8, btnW, btnH)) {
+    if (_casinoHitBtn(mx, my, bx, presetY, btnW, btnH)) {
       _casinoBetInput = presets[i];
       return true;
     }
   }
   return false;
+}
+
+// Smart step: +/-10 under 100, +/-50 under 500, +/-100 under 1000, etc.
+function _casinoBetStep() {
+  if (_casinoBetInput < 100) return 10;
+  if (_casinoBetInput < 500) return 50;
+  if (_casinoBetInput < 1000) return 100;
+  if (_casinoBetInput < 5000) return 500;
+  return 1000;
 }
 
 // ═══════════════════════════════════════════════════════════════

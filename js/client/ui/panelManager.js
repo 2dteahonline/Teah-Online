@@ -77,7 +77,10 @@ UI.register('gunsmith', {
   onOpen() { _gunsmithSelected = 0; },
 });
 UI.register('casino', {
-  onClose() { if (typeof casinoReset === 'function') casinoReset(); },
+  onClose() {
+    if (typeof _casinoBetEditing !== 'undefined') _casinoBetEditing = false;
+    if (typeof casinoReset === 'function') casinoReset();
+  },
 });
 
 let playerStatus = ""; // player's status message
@@ -474,6 +477,19 @@ window.addEventListener("keydown", e => {
     }
     // Close any open panel (onClose callbacks handle cleanup)
     if (UI.anyOpen()) { UI.close(); return; }
+  }
+
+  // Casino bet input — captures digits when editing bet amount
+  if (typeof _casinoBetEditing !== 'undefined' && _casinoBetEditing) {
+    e.preventDefault();
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      _casinoCommitBetString();
+    } else if (e.key === 'Backspace') {
+      _casinoBetString = _casinoBetString.slice(0, -1);
+    } else if (e.key >= '0' && e.key <= '9' && _casinoBetString.length < 6) {
+      _casinoBetString += e.key;
+    }
+    return;
   }
 
   // Chat input handling — captures all keys when typing
