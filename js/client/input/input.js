@@ -140,7 +140,8 @@ canvas.addEventListener("mousedown", e => {
     if (window._mafiaLobbySettingBtns) {
       for (const b of window._mafiaLobbySettingBtns) {
         if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
-          if (typeof handleMafiaSettingChange === 'function') handleMafiaSettingChange(b.key, b.dir);
+          if (b.action) { b.action(); }
+          else if (typeof handleMafiaSettingChange === 'function') handleMafiaSettingChange(b.key, b.dir);
           return;
         }
       }

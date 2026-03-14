@@ -3189,11 +3189,13 @@ function _drawLobbySettingsPanel(cw, ch) {
   const contentY = tabY + tabH + 14;
 
   if (_mafiaLobbySettingsTab === 'roles') {
-    // ---- Role Settings (per-role chance + specific settings) ----
+    // ---- Role Settings — separated by Crewmate / Impostor ----
     window._mafiaLobbyMapBtns = null;
     const settingBtns = [];
     const listH = ph - (contentY - py) - 20;
     const listY = contentY;
+    const CREW_COLOR = '#4ac9ff';
+    const IMP_COLOR = '#ff4444';
 
     // Clip to content area
     ctx.save();
@@ -3202,30 +3204,32 @@ function _drawLobbySettingsPanel(cw, ch) {
     ctx.clip();
 
     let drawY = listY - _mafiaLobbySettingsScroll;
-    const roleIds = Object.keys(MAFIA_ROLES);
 
-    for (const roleId of roleIds) {
+    // Helper: draw one role's settings block
+    function _drawRoleBlock(roleId, teamColor) {
       const role = MAFIA_ROLES[roleId];
-      const teamLabel = role.team === 'impostor' ? 'Impostor' : 'Crewmate';
 
-      // Role header
-      ctx.font = 'bold 16px monospace';
+      // Role name
+      ctx.font = 'bold 15px monospace';
       ctx.textAlign = 'left';
-      ctx.fillStyle = role.color;
-      ctx.fillText(role.name, px + 20, drawY + 18);
-      ctx.font = '12px monospace';
-      ctx.fillStyle = '#888';
-      ctx.fillText('(' + teamLabel + ')', px + 20 + ctx.measureText(role.name + '  ').width + 10, drawY + 18);
+      ctx.fillStyle = teamColor;
+      ctx.fillText(role.name, px + 30, drawY + 16);
+
+      // Description (dimmed)
+      ctx.font = '11px monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillText(role.description, px + 30, drawY + 32);
+
+      drawY += 42;
 
       // Chance setting
-      drawY += 30;
       const chanceKey = roleId + 'Chance';
       const chanceVal = MAFIA_ROLE_SETTINGS[chanceKey] != null ? MAFIA_ROLE_SETTINGS[chanceKey] : 0;
 
       ctx.font = '14px monospace';
       ctx.textAlign = 'left';
       ctx.fillStyle = '#bbb';
-      ctx.fillText('Chance: ' + chanceVal + '%', px + 30, drawY + 14);
+      ctx.fillText('Chance: ' + chanceVal + '%', px + 40, drawY + 14);
 
       // - button
       const minusBtnX = px + pw - 90;
@@ -3286,12 +3290,48 @@ function _drawLobbySettingsPanel(cw, ch) {
         drawY += 26;
       }
 
-      // Separator line
-      drawY += 8;
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(px + 20, drawY); ctx.lineTo(px + pw - 20, drawY); ctx.stroke();
-      drawY += 12;
+      drawY += 6;
+    }
+
+    // ---- CREWMATE ROLES section ----
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = CREW_COLOR;
+    ctx.fillText('CREWMATE ROLES', px + 20, drawY + 18);
+    drawY += 10;
+    // Underline
+    ctx.strokeStyle = 'rgba(74,201,255,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(px + 20, drawY + 16); ctx.lineTo(px + pw - 20, drawY + 16); ctx.stroke();
+    drawY += 24;
+
+    for (const roleId of Object.keys(MAFIA_ROLES)) {
+      if (MAFIA_ROLES[roleId].team !== 'crewmate') continue;
+      _drawRoleBlock(roleId, CREW_COLOR);
+    }
+
+    // ---- Separator between sections ----
+    drawY += 6;
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px + 20, drawY); ctx.lineTo(px + pw - 20, drawY); ctx.stroke();
+    drawY += 16;
+
+    // ---- IMPOSTOR ROLES section ----
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = IMP_COLOR;
+    ctx.fillText('IMPOSTOR ROLES', px + 20, drawY + 18);
+    drawY += 10;
+    // Underline
+    ctx.strokeStyle = 'rgba(255,68,68,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(px + 20, drawY + 16); ctx.lineTo(px + pw - 20, drawY + 16); ctx.stroke();
+    drawY += 24;
+
+    for (const roleId of Object.keys(MAFIA_ROLES)) {
+      if (MAFIA_ROLES[roleId].team !== 'impostor') continue;
+      _drawRoleBlock(roleId, IMP_COLOR);
     }
 
     // Compute total content height for scrolling
