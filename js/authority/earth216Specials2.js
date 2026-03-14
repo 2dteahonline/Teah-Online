@@ -325,7 +325,7 @@ MOB_SPECIALS.cemetery_call = (m, ctx) => {
           const sy = m.y + Math.sin(angle) * 70;
           if (typeof positionClear !== 'undefined' && !positionClear(sx, sy)) continue;
           mobs.push({
-            x: sx, y: sy, type: 'skeleton', id: nextMobId++,
+            x: sx, y: sy, type: 'skeleton', ai: 'grunt', id: nextMobId++,
             hp: Math.round(m.maxHp * 0.06), maxHp: Math.round(m.maxHp * 0.06),
             speed: 2.2, damage: Math.round(m.damage * 0.25),
             contactRange: 30, skin: '#ccccbb', hair: '#aaaaaa', shirt: '#888877', pants: '#777766',

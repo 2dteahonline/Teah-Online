@@ -384,7 +384,7 @@ MOB_SPECIALS.call_collection = (m, ctx) => {
           if (typeof positionClear !== 'undefined' && !positionClear(sx, sy)) continue;
           const minionId = nextMobId++;
           mobs.push({
-            x: sx, y: sy, type: 'grunt', id: minionId,
+            x: sx, y: sy, type: 'grunt', ai: 'grunt', id: minionId,
             hp: Math.round(m.maxHp * 0.1), maxHp: Math.round(m.maxHp * 0.1),
             speed: 2.2, damage: Math.round(m.damage * 0.35),
             contactRange: 30, skin: '#887766', hair: '#554433', shirt: '#443322', pants: '#332211',
@@ -406,16 +406,7 @@ MOB_SPECIALS.call_collection = (m, ctx) => {
     }
     return { skip: true };
   }
-  // Tick despawn timers on summoned minions
-  if (m._summonedMinions) {
-    for (const id of m._summonedMinions) {
-      const minion = mobs.find(s => s.id === id);
-      if (minion && minion._despawnTimer !== undefined) {
-        minion._despawnTimer--;
-        if (minion._despawnTimer <= 0) minion.hp = 0;
-      }
-    }
-  }
+  // Despawn timers ticked globally in mobSystem.js updateMobs()
   if (m._specialTimer > 0) { m._specialTimer--; return {}; }
   m._collectionTele = 50;
   if (typeof TelegraphSystem !== 'undefined') {
