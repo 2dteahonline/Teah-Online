@@ -328,12 +328,12 @@ function _drawBlackjack(px, py, pw, ph) {
     return;
   }
 
-  // Dealing animation — cards slide in one by one
+  // Dealing animation — cards slide in one by one (slow, cinematic)
   const dealElapsed = Date.now() - bj.dealTimer;
   const dealing = bj.phase === 'dealing';
-  // Card order: player[0] 0ms, dealer[0] 250ms, player[1] 500ms, dealer[1] 750ms
-  const cardDelay = 200;
-  const slideDuration = 250;
+  // Card order: player[0] 0ms, dealer[0] 400ms, player[1] 800ms, dealer[1] 1200ms
+  const cardDelay = 400;
+  const slideDuration = 450;
 
   // How many cards are visible during dealing
   const visibleCards = dealing ? Math.floor(dealElapsed / cardDelay) + 1 : 99;
@@ -423,6 +423,21 @@ function _drawBlackjack(px, py, pw, ph) {
   ctx.textAlign = 'right';
   ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 24, py + 68);
 
+  // Insurance prompt
+  if (bj.phase === 'insurance') {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.roundRect(cx - 180, py + ph / 2 - 60, 360, 100, 10); ctx.fill();
+    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(cx - 180, py + ph / 2 - 60, 360, 100, 10); ctx.stroke();
+    ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'center';
+    ctx.fillText('Dealer shows Ace — Insurance?', cx, py + ph / 2 - 30);
+    const insCost = Math.floor(casinoState.bet / 2);
+    ctx.font = '13px monospace'; ctx.fillStyle = '#ccc';
+    ctx.fillText('Costs ' + insCost + 'g (half your bet). Pays 2:1 if dealer has BJ.', cx, py + ph / 2 - 8);
+    _casinoDrawButton(cx - 130, py + ph / 2 + 10, 120, 36, 'INSURE', gold >= insCost, true);
+    _casinoDrawButton(cx + 10, py + ph / 2 + 10, 120, 36, 'NO THANKS', true, false);
+  }
+
   // Action buttons
   if (bj.phase === 'player') {
     const btnY = py + ph - 62;
@@ -449,6 +464,12 @@ function _clickBlackjack(mx, my, px, py, pw, ph) {
       if (casinoPlaceBet(_casinoBetInput)) casinoBJ_deal();
       return true;
     }
+    return true;
+  }
+  if (bj.phase === 'insurance') {
+    const insCost = Math.floor(casinoState.bet / 2);
+    if (_casinoHitBtn(mx, my, cx - 130, py + ph / 2 + 10, 120, 36) && gold >= insCost) { casinoBJ_takeInsurance(); return true; }
+    if (_casinoHitBtn(mx, my, cx + 10, py + ph / 2 + 10, 120, 36)) { casinoBJ_declineInsurance(); return true; }
     return true;
   }
   if (bj.phase === 'player') {
@@ -539,29 +560,33 @@ function _drawRoulette(px, py, pw, ph) {
 
   if (rl.phase === 'spinning') {
     const elapsed = Date.now() - rl.spinTimer;
-    const spinDuration = 3500;
+    const spinDuration = 4000;
     if (elapsed > spinDuration) {
       casinoRL_resolve();
       return;
     }
-    // Wheel animation: fast spin that decelerates
-    const progress = elapsed / spinDuration;
-    const decel = 1 - Math.pow(progress, 2); // slows down
-    const totalRotation = 15 + Math.random() * 0.01; // many full rotations
-    const angle = totalRotation * Math.PI * 2 * (progress - progress * progress / 2) * 0.15;
-    // Position the result number at top when stopped
+    // Smooth deceleration: wheel spins fast then eases to result
     const order = ROULETTE_WHEEL_ORDER;
     const idx = order.indexOf(rl.resultNumber);
     const segAngle = (Math.PI * 2) / order.length;
+    // Final angle: result number at top (marker is at -PI/2)
     const finalAngle = -Math.PI / 2 - idx * segAngle - segAngle / 2;
-    // Blend towards final position
-    const currentAngle = progress < 0.8 ? angle : angle + (finalAngle - angle) * ((progress - 0.8) / 0.2);
+    // Total spin: 5 full rotations + final position
+    const totalSpin = Math.PI * 2 * 5 + finalAngle;
+    // Ease-out cubic for smooth deceleration
+    const t = elapsed / spinDuration;
+    const eased = 1 - Math.pow(1 - t, 3);
+    const currentAngle = totalSpin * eased;
     _drawRouletteWheel(cx, py + ph / 2 - 20, 140, currentAngle, null);
-    // Spinning text
-    ctx.font = 'bold 16px monospace';
+    // Spinning text with dots animation
+    const dots = '.'.repeat((Math.floor(elapsed / 400) % 3) + 1);
+    ctx.font = 'bold 18px monospace';
     ctx.fillStyle = '#ffd700';
     ctx.textAlign = 'center';
-    ctx.fillText('Spinning...', cx, py + ph - 50);
+    ctx.fillText('Spinning' + dots, cx, py + ph - 45);
+    // Show total bet
+    ctx.font = '14px monospace'; ctx.fillStyle = '#ccc';
+    ctx.fillText('Total bet: ' + rl.totalBet + 'g', cx, py + ph - 22);
     return;
   }
 
@@ -791,8 +816,8 @@ function _drawHeadsOrTails(px, py, pw, ph) {
     _casinoDrawBetControls(px, py, pw);
     _casinoDrawButton(cx - 70, py + ph / 2 - 25, 140, 48, 'START', gold >= _casinoBetInput, true);
     ctx.font = '14px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center';
-    ctx.fillText('Win streaks multiply your bet by 1.5x each flip', cx, py + 100);
-    ctx.fillText('Cash out anytime or lose it all on tails!', cx, py + 122);
+    ctx.fillText('Choose heads or tails each flip — 1.5x multiplier per win!', cx, py + 100);
+    ctx.fillText('Cash out anytime or lose it all on a wrong guess!', cx, py + 122);
     return;
   }
 
@@ -802,18 +827,24 @@ function _drawHeadsOrTails(px, py, pw, ph) {
   ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 24, py + 68);
   ctx.fillText('\u2B25 ' + gold + 'g', px + pw - 24, py + 88);
 
+  // Check if flip animation is done and auto-resolve
+  const _hotFlipDuration = 1000;
+  if (hot.phase === 'flipping' && hot.flipTimer && Date.now() - hot.flipTimer > _hotFlipDuration) {
+    casinoHOT_resolveFlip();
+  }
+
   // Coin — centered vertically in panel
   const coinCX = cx;
-  const coinCY = py + 190;
-  const coinR = 60;
+  const coinCY = py + 180;
+  const coinR = 55;
 
   // Flip animation (3D-like Y rotation)
   let flipScale = 1;
   let showFace = true;
-  if (hot.flipTimer) {
+  if (hot.phase === 'flipping' && hot.flipTimer) {
     const elapsed = Date.now() - hot.flipTimer;
-    if (elapsed < 800) {
-      const phase = (elapsed / 800) * Math.PI * 4; // 2 full rotations
+    if (elapsed < _hotFlipDuration) {
+      const phase = (elapsed / _hotFlipDuration) * Math.PI * 6; // 3 full rotations
       flipScale = Math.abs(Math.cos(phase));
       showFace = Math.cos(phase) > 0;
     }
@@ -827,7 +858,7 @@ function _drawHeadsOrTails(px, py, pw, ph) {
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath(); ctx.arc(3, 3, coinR, 0, Math.PI * 2); ctx.fill();
 
-  // Coin body
+  // Coin body — show result side during flip animation
   const isHeads = showFace ? (hot.lastFlip !== 'tails') : (hot.lastFlip === 'tails');
   const coinGrad = ctx.createRadialGradient(-10, -10, 5, 0, 0, coinR);
   if (isHeads) {
@@ -847,55 +878,66 @@ function _drawHeadsOrTails(px, py, pw, ph) {
 
   // Face text
   if (flipScale > 0.2) {
-    ctx.font = 'bold 36px monospace';
+    ctx.font = 'bold 30px monospace';
     ctx.fillStyle = isHeads ? '#6a4a00' : '#222';
     ctx.textAlign = 'center';
     const faceChar = hot.lastFlip ? (isHeads ? 'H' : 'T') : '?';
-    ctx.fillText(faceChar, 0, 13);
+    ctx.fillText(faceChar, 0, 11);
   }
   ctx.restore();
 
+  // Player's choice indicator (above coin)
+  if (hot.playerChoice && hot.phase === 'flipping') {
+    ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'center';
+    ctx.fillText('You picked: ' + hot.playerChoice.toUpperCase(), cx, coinCY - coinR - 18);
+  }
+
+  // Last result feedback (below coin, before stats)
+  if (hot.lastFlip && hot.phase === 'choosing' && hot.streak > 0) {
+    ctx.font = 'bold 15px monospace'; ctx.fillStyle = '#5fca80'; ctx.textAlign = 'center';
+    ctx.fillText('Correct! It was ' + hot.lastFlip + '!', cx, coinCY + coinR + 22);
+  }
+
   // Stats area — below coin with clear spacing
-  const infoY = coinCY + coinR + 30;
-  const lineH = 30;
+  const infoY = coinCY + coinR + 42;
+  const lineH = 26;
 
   ctx.textAlign = 'center';
-  ctx.font = 'bold 16px monospace';
+  ctx.font = 'bold 15px monospace';
   ctx.fillStyle = '#fff';
   ctx.fillText('Streak: ' + hot.streak, cx, infoY);
 
-  ctx.font = 'bold 18px monospace';
+  ctx.font = 'bold 16px monospace';
   ctx.fillStyle = '#ffd700';
   ctx.fillText('Multiplier: ' + hot.currentMultiplier.toFixed(2) + 'x', cx, infoY + lineH);
 
   const potential = Math.floor(casinoState.bet * hot.currentMultiplier);
-  ctx.font = 'bold 18px monospace';
+  ctx.font = 'bold 16px monospace';
   ctx.fillStyle = '#5fca80';
   ctx.fillText('Payout: ' + potential + 'g', cx, infoY + lineH * 2);
 
-  // Flip history (small coins)
-  if (hot.streak > 0) {
-    ctx.font = '10px monospace';
-    ctx.fillStyle = '#666';
-    ctx.fillText('History:', cx, infoY + lineH * 2 + 28);
-    const histY = infoY + lineH * 2 + 38;
-    const maxShow = Math.min(hot.streak, 12);
-    const histStartX = cx - maxShow * 10;
-    for (let i = 0; i < maxShow; i++) {
-      ctx.fillStyle = '#ffd700';
-      ctx.beginPath(); ctx.arc(histStartX + i * 20, histY + 8, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#8a6a00';
-      ctx.font = 'bold 8px monospace';
-      ctx.fillText('H', histStartX + i * 20, histY + 11);
-    }
-  }
+  // Buttons — choose HEADS or TAILS
+  if (hot.phase === 'choosing') {
+    const btnY = py + ph - 68;
+    // Heads button (gold colored)
+    ctx.fillStyle = '#3a2a0a';
+    ctx.beginPath(); ctx.roundRect(cx - 195, btnY, 120, 46, 6); ctx.fill();
+    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(cx - 195, btnY, 120, 46, 6); ctx.stroke();
+    ctx.font = 'bold 15px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'center';
+    ctx.fillText('HEADS', cx - 135, btnY + 29);
 
-  // Buttons — at bottom, well separated
-  if (hot.phase === 'streaking') {
-    const btnY = py + ph - 62;
-    _casinoDrawButton(cx - 145, btnY, 130, 42, 'FLIP', true, false);
+    // Tails button (silver colored)
+    ctx.fillStyle = '#1a1a2a';
+    ctx.beginPath(); ctx.roundRect(cx - 60, btnY, 120, 46, 6); ctx.fill();
+    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(cx - 60, btnY, 120, 46, 6); ctx.stroke();
+    ctx.font = 'bold 15px monospace'; ctx.fillStyle = '#ccc'; ctx.textAlign = 'center';
+    ctx.fillText('TAILS', cx, btnY + 29);
+
+    // Cash out (only if streak > 0)
     if (hot.streak > 0) {
-      _casinoDrawButton(cx + 15, btnY, 130, 42, 'CASH OUT', true, true);
+      _casinoDrawButton(cx + 75, btnY, 120, 46, 'CASH OUT', true, true);
     }
   }
 
@@ -912,10 +954,11 @@ function _clickHeadsOrTails(mx, my, px, py, pw, ph) {
     }
     return true;
   }
-  if (hot.phase === 'streaking') {
-    const btnY = py + ph - 62;
-    if (_casinoHitBtn(mx, my, cx - 145, btnY, 130, 42)) { casinoHOT_flip(); return true; }
-    if (hot.streak > 0 && _casinoHitBtn(mx, my, cx + 15, btnY, 130, 42)) { casinoHOT_cashOut(); return true; }
+  if (hot.phase === 'choosing') {
+    const btnY = py + ph - 68;
+    if (_casinoHitBtn(mx, my, cx - 195, btnY, 120, 46)) { casinoHOT_choose('heads'); return true; }
+    if (_casinoHitBtn(mx, my, cx - 60, btnY, 120, 46)) { casinoHOT_choose('tails'); return true; }
+    if (hot.streak > 0 && _casinoHitBtn(mx, my, cx + 75, btnY, 120, 46)) { casinoHOT_cashOut(); return true; }
   }
   return true;
 }

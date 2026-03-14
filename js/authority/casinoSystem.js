@@ -19,8 +19,9 @@ const casinoState = {
     splitHand: null,      // null or array of cards (when split)
     playingSplit: false,   // true when acting on split hand
     doubled: false,
+    insurance: 0,         // insurance bet amount (0 = none)
     dealTimer: 0,         // timestamp for deal animation
-    phase: 'betting',     // 'betting'|'dealing'|'player'|'dealer'|'result'|'split'
+    phase: 'betting',     // 'betting'|'dealing'|'insurance'|'player'|'dealer'|'result'|'split'
   },
 
   // Roulette
@@ -37,8 +38,9 @@ const casinoState = {
     streak: 0,
     currentMultiplier: 1,
     lastFlip: null,       // 'heads'|'tails'|null
+    playerChoice: null,   // 'heads'|'tails' — what the player picked
     flipTimer: 0,         // animation timestamp
-    phase: 'betting',     // 'betting'|'flipping'|'streaking'|'result'
+    phase: 'betting',     // 'betting'|'choosing'|'flipping'|'streaking'|'result'
   },
 
   // Cases
@@ -109,6 +111,7 @@ function casinoReset() {
   casinoState.bj.splitHand = null;
   casinoState.bj.playingSplit = false;
   casinoState.bj.doubled = false;
+  casinoState.bj.insurance = 0;
   casinoState.bj.dealTimer = 0;
   casinoState.bj.phase = 'betting';
   casinoState.rl.bets = [];
@@ -119,6 +122,7 @@ function casinoReset() {
   casinoState.hot.streak = 0;
   casinoState.hot.currentMultiplier = 1;
   casinoState.hot.lastFlip = null;
+  casinoState.hot.playerChoice = null;
   casinoState.hot.flipTimer = 0;
   casinoState.hot.phase = 'betting';
   casinoState.cs.selectedTier = null;
@@ -150,6 +154,7 @@ function casinoResetGame() {
     casinoState.bj.splitHand = null;
     casinoState.bj.playingSplit = false;
     casinoState.bj.doubled = false;
+    casinoState.bj.insurance = 0;
     casinoState.bj.dealTimer = 0;
     casinoState.bj.phase = 'betting';
   } else if (g === 'roulette') {
@@ -162,6 +167,7 @@ function casinoResetGame() {
     casinoState.hot.streak = 0;
     casinoState.hot.currentMultiplier = 1;
     casinoState.hot.lastFlip = null;
+    casinoState.hot.playerChoice = null;
     casinoState.hot.flipTimer = 0;
     casinoState.hot.phase = 'betting';
   } else if (g === 'cases') {
@@ -257,30 +263,68 @@ function casinoBJ_deal() {
   casinoState.phase = 'playing';
 }
 
-// Called from UI after dealing animation completes (~1s)
+// Called from UI after dealing animation completes
 function casinoBJ_finishDeal() {
+  const bj = casinoState.bj;
+  const playerBJ = _bjIsBlackjack(bj.playerHand);
+  // If dealer shows Ace, offer insurance before anything else
+  if (bj.dealerHand[0].rank === 'A' && !playerBJ) {
+    bj.phase = 'insurance';
+    return;
+  }
+  _bjPostInsuranceCheck();
+}
+
+// Called after insurance decision (or skipped if dealer doesn't show Ace)
+function _bjPostInsuranceCheck() {
   const bj = casinoState.bj;
   const playerBJ = _bjIsBlackjack(bj.playerHand);
   const dealerBJ = _bjIsBlackjack(bj.dealerHand);
   if (playerBJ && dealerBJ) {
     bj.phase = 'result';
-    casinoWin(casinoState.bet);
-    casinoState.result.message = 'Push! Both Blackjack';
+    let totalReturn = casinoState.bet; // push on main bet
+    if (bj.insurance > 0) totalReturn += bj.insurance * 3; // insurance pays 2:1 + return
+    casinoWin(totalReturn);
+    casinoState.result.message = 'Push! Both Blackjack' + (bj.insurance > 0 ? ' (Insurance wins!)' : '');
     return;
   }
   if (playerBJ) {
     bj.phase = 'result';
     const payout = Math.floor(casinoState.bet * (1 + BLACKJACK_CONFIG.BJ_PAYOUT));
-    casinoWin(payout);
+    casinoWin(payout); // insurance lost if taken, but BJ pays big
     casinoState.result.message = 'Blackjack! +' + payout + 'g';
     return;
   }
   if (dealerBJ) {
     bj.phase = 'result';
-    casinoLose('Dealer Blackjack!');
+    if (bj.insurance > 0) {
+      // Insurance saves you: pays 2:1, so you get insurance * 3 back
+      const insurancePayout = bj.insurance * 3;
+      casinoWin(insurancePayout);
+      casinoState.result.message = 'Dealer BJ — Insurance saves you! +' + insurancePayout + 'g';
+    } else {
+      casinoLose('Dealer Blackjack!');
+    }
     return;
   }
   bj.phase = 'player';
+}
+
+function casinoBJ_takeInsurance() {
+  const bj = casinoState.bj;
+  if (bj.phase !== 'insurance') return;
+  const insuranceCost = Math.floor(casinoState.bet / 2);
+  if (gold < insuranceCost) return;
+  gold -= insuranceCost;
+  bj.insurance = insuranceCost;
+  _bjPostInsuranceCheck();
+}
+
+function casinoBJ_declineInsurance() {
+  const bj = casinoState.bj;
+  if (bj.phase !== 'insurance') return;
+  bj.insurance = 0;
+  _bjPostInsuranceCheck();
 }
 
 function casinoBJ_hit() {
@@ -484,23 +528,32 @@ function casinoHOT_startRound(betAmount) {
   casinoState.hot.streak = 0;
   casinoState.hot.currentMultiplier = 1;
   casinoState.hot.lastFlip = null;
-  casinoState.hot.phase = 'streaking';
+  casinoState.hot.playerChoice = null;
+  casinoState.hot.phase = 'choosing';
   casinoState.phase = 'playing';
   return true;
 }
 
-function casinoHOT_flip() {
+function casinoHOT_choose(choice) {
   const hot = casinoState.hot;
+  if (choice !== 'heads' && choice !== 'tails') return;
+  hot.playerChoice = choice;
   hot.flipTimer = Date.now();
   const result = Math.random() < 0.5 ? 'heads' : 'tails';
   hot.lastFlip = result;
-  if (result === 'heads') {
+  hot.phase = 'flipping'; // UI will transition to choosing/result after animation
+}
+
+// Called from UI after flip animation ends
+function casinoHOT_resolveFlip() {
+  const hot = casinoState.hot;
+  if (hot.lastFlip === hot.playerChoice) {
     hot.streak++;
     hot.currentMultiplier = Math.pow(STREAK_MULTIPLIER, hot.streak);
-    hot.phase = 'streaking';
+    hot.phase = 'choosing'; // pick again for next flip
   } else {
     hot.phase = 'result';
-    casinoLose('Tails! Lost ' + casinoState.bet + 'g');
+    casinoLose('Wrong! It was ' + hot.lastFlip + '! Lost ' + casinoState.bet + 'g');
   }
 }
 
