@@ -1519,8 +1519,9 @@ function draw() {
   // Katana swing effect (in world space)
   drawKatanaSwing(cx, cy);
 
-  // Farm tiles (world space — tilled soil, crops, water tint)
+  // Farm tiles (world space — tilled soil, crops, countdown bubble)
   if (typeof drawFarmTiles === 'function') drawFarmTiles();
+  if (typeof drawFarmCountdownBubble === 'function') drawFarmCountdownBubble();
 
   // Fishing world effects (line, bobber, fish) — in world space
   if (typeof drawFishingWorldEffects === 'function') drawFishingWorldEffects();

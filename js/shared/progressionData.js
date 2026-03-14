@@ -244,81 +244,6 @@ const PROG_ITEMS = {
     ],
   },
 
-  // ========== FARMING HOES (Phase 6) ==========
-  // T0 base matches HOE_TIERS exactly. Stats: durability, damage, range, cooldown, critChance, waterRange, waterDuration.
-
-  bronze_hoe: {
-    id: 'bronze_hoe', name: 'Bronze Hoe', category: 'farming_hoe', type: 'melee',
-    desc: 'Basic farming hoe', buyPrice: 20, color: '#8a6a3a',
-    flags: { special: 'farming' },
-    tiers: [
-      { base: { durability: 30, damage: 6, range: 70, cooldown: 36, critChance: 0, waterRange: 1, waterDuration: 1800 },
-        max:  { durability: 55, damage: 12, range: 76, cooldown: 30, critChance: 0.04, waterRange: 1, waterDuration: 2400 } },
-      { base: { durability: 58, damage: 13, range: 77, cooldown: 29, critChance: 0.05, waterRange: 1, waterDuration: 2500 },
-        max:  { durability: 90, damage: 22, range: 84, cooldown: 24, critChance: 0.08, waterRange: 2, waterDuration: 3200 } },
-      { base: { durability: 93, damage: 23, range: 85, cooldown: 23, critChance: 0.09, waterRange: 2, waterDuration: 3300 },
-        max:  { durability: 130, damage: 36, range: 92, cooldown: 20, critChance: 0.12, waterRange: 2, waterDuration: 4200 } },
-      { base: { durability: 134, damage: 37, range: 93, cooldown: 19, critChance: 0.13, waterRange: 2, waterDuration: 4300 },
-        max:  { durability: 180, damage: 52, range: 100, cooldown: 16, critChance: 0.16, waterRange: 3, waterDuration: 5400 } },
-      { base: { durability: 185, damage: 54, range: 102, cooldown: 15, critChance: 0.17, waterRange: 3, waterDuration: 5500 },
-        max:  { durability: 250, damage: 75, range: 112, cooldown: 12, critChance: 0.22, waterRange: 4, waterDuration: 7200 } },
-    ],
-  },
-
-  iron_hoe: {
-    id: 'iron_hoe', name: 'Iron Hoe', category: 'farming_hoe', type: 'melee',
-    desc: 'Durable iron hoe', buyPrice: 80, color: '#8a8a8a',
-    flags: { special: 'farming' },
-    tiers: [
-      { base: { durability: 50, damage: 10, range: 75, cooldown: 32, critChance: 0.05, waterRange: 1, waterDuration: 2700 },
-        max:  { durability: 85, damage: 20, range: 82, cooldown: 26, critChance: 0.08, waterRange: 2, waterDuration: 3400 } },
-      { base: { durability: 88, damage: 21, range: 83, cooldown: 25, critChance: 0.09, waterRange: 2, waterDuration: 3500 },
-        max:  { durability: 130, damage: 34, range: 90, cooldown: 20, critChance: 0.12, waterRange: 2, waterDuration: 4400 } },
-      { base: { durability: 134, damage: 35, range: 91, cooldown: 19, critChance: 0.13, waterRange: 2, waterDuration: 4500 },
-        max:  { durability: 180, damage: 52, range: 100, cooldown: 16, critChance: 0.16, waterRange: 3, waterDuration: 5600 } },
-      { base: { durability: 185, damage: 54, range: 101, cooldown: 15, critChance: 0.17, waterRange: 3, waterDuration: 5700 },
-        max:  { durability: 245, damage: 74, range: 112, cooldown: 12, critChance: 0.20, waterRange: 3, waterDuration: 7000 } },
-      { base: { durability: 252, damage: 76, range: 114, cooldown: 11, critChance: 0.21, waterRange: 3, waterDuration: 7200 },
-        max:  { durability: 340, damage: 105, range: 125, cooldown: 8, critChance: 0.26, waterRange: 4, waterDuration: 9000 } },
-    ],
-  },
-
-  gold_hoe: {
-    id: 'gold_hoe', name: 'Gold Hoe', category: 'farming_hoe', type: 'melee',
-    desc: 'Gleaming gold hoe', buyPrice: 200, color: '#ffd700',
-    flags: { special: 'farming' },
-    tiers: [
-      { base: { durability: 70, damage: 14, range: 80, cooldown: 28, critChance: 0.08, waterRange: 2, waterDuration: 3600 },
-        max:  { durability: 110, damage: 28, range: 88, cooldown: 22, critChance: 0.12, waterRange: 2, waterDuration: 4600 } },
-      { base: { durability: 114, damage: 29, range: 89, cooldown: 21, critChance: 0.13, waterRange: 2, waterDuration: 4700 },
-        max:  { durability: 165, damage: 46, range: 98, cooldown: 17, critChance: 0.16, waterRange: 3, waterDuration: 5800 } },
-      { base: { durability: 170, damage: 48, range: 99, cooldown: 16, critChance: 0.17, waterRange: 3, waterDuration: 5900 },
-        max:  { durability: 230, damage: 68, range: 110, cooldown: 13, critChance: 0.20, waterRange: 3, waterDuration: 7200 } },
-      { base: { durability: 236, damage: 70, range: 111, cooldown: 12, critChance: 0.21, waterRange: 3, waterDuration: 7400 },
-        max:  { durability: 310, damage: 96, range: 122, cooldown: 10, critChance: 0.25, waterRange: 4, waterDuration: 9000 } },
-      { base: { durability: 318, damage: 100, range: 124, cooldown: 9, critChance: 0.26, waterRange: 4, waterDuration: 9200 },
-        max:  { durability: 420, damage: 140, range: 138, cooldown: 6, critChance: 0.32, waterRange: 5, waterDuration: 12000 } },
-    ],
-  },
-
-  mythic_hoe: {
-    id: 'mythic_hoe', name: 'Mythic Hoe', category: 'farming_hoe', type: 'melee',
-    desc: 'Legendary mythic hoe', buyPrice: 500, color: '#d4a030',
-    flags: { special: 'farming' },
-    tiers: [
-      { base: { durability: 120, damage: 20, range: 85, cooldown: 24, critChance: 0.12, waterRange: 3, waterDuration: 5400 },
-        max:  { durability: 180, damage: 40, range: 94, cooldown: 18, critChance: 0.16, waterRange: 3, waterDuration: 6800 } },
-      { base: { durability: 185, damage: 42, range: 95, cooldown: 17, critChance: 0.17, waterRange: 3, waterDuration: 7000 },
-        max:  { durability: 260, damage: 64, range: 106, cooldown: 14, critChance: 0.20, waterRange: 4, waterDuration: 8600 } },
-      { base: { durability: 268, damage: 66, range: 107, cooldown: 13, critChance: 0.21, waterRange: 4, waterDuration: 8800 },
-        max:  { durability: 360, damage: 92, range: 118, cooldown: 10, critChance: 0.25, waterRange: 4, waterDuration: 10800 } },
-      { base: { durability: 370, damage: 95, range: 120, cooldown: 9, critChance: 0.26, waterRange: 4, waterDuration: 11000 },
-        max:  { durability: 470, damage: 130, range: 132, cooldown: 7, critChance: 0.30, waterRange: 5, waterDuration: 13500 } },
-      { base: { durability: 480, damage: 134, range: 134, cooldown: 6, critChance: 0.31, waterRange: 5, waterDuration: 13800 },
-        max:  { durability: 600, damage: 185, range: 150, cooldown: 4, critChance: 0.38, waterRange: 6, waterDuration: 18000 } },
-    ],
-  },
-
   // ========== PICKAXES (Phase 7) ==========
   // 8 pickaxes (1 per ore chain). T0 base matches PICKAXE_TIERS exactly.
   // Stats: damage, range, cooldown, critChance, miningSpeed.
@@ -624,7 +549,6 @@ const _PROG_TIER_COST_MULT = [1, 2.5, 5, 10, 20];
 const _PROG_PART_KEYS = {
   main_gun:    ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
   fishing_rod: ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
-  farming_hoe: ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
   pickaxe:     ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
 };
 

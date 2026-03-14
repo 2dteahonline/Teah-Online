@@ -78,7 +78,7 @@ registerInteractable({
   get x() { return 30 * TILE + TILE; },   // center of 2x2 entity at tx:30
   get y() { return 21 * TILE + TILE; },   // center of 2x2 entity at ty:21
   range: 120,
-  get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Farm Shop'; },
+  get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Garden Shop'; },
   type: 'farmVendor',
   canInteract() { return Scene.inFarm; },
   onInteract() { UI.open('farmVendor'); },
@@ -332,17 +332,7 @@ const ROLL_CHANCES = { 1: 0.20, 2: 0.10, 3: 0.05 }; // 65% = nothing
       addToInventory(createItem('melee', starterRod));
     }
   }
-  // Starter farming hoe — skip if already restored
-  if (!isInInventory('bronze_hoe')) {
-    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['bronze_hoe']) {
-      const _hi = createProgressedItem('bronze_hoe', 0, 1);
-      if (_hi) { _hi.data.special = 'farming'; _hi.data.currentDurability = _hi.data.durability || HOE_TIERS[0].durability; addToInventory(_hi); }
-      else { const sh = { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability }; addToInventory(createItem('melee', sh)); }
-    } else {
-      const starterHoe = { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability };
-      addToInventory(createItem('melee', starterHoe));
-    }
-  }
+  // Farming hoes are now pure tools (not inventory items) — managed by farmingState.equippedHoe
   addToInventory(createConsumable('potion', 'Health Potion', 3));
   playerEquip.gun = DEFAULT_GUN;
   playerEquip.melee = DEFAULT_MELEE;

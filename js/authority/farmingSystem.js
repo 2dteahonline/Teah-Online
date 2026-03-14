@@ -1,6 +1,7 @@
 // ===================== FARMING SYSTEM =====================
 // Authority: farm state, tile management, growth, HUD, vendor.
-// Pattern follows fishingSystem.js — state + update + HUD + vendor.
+// Simplified v1: till → plant → water once → wait → harvest.
+// Hoes are pure tools (not melee weapons). No re-watering needed.
 //
 // Depends on: CROP_TYPES, HOE_TIERS, FARMING_CONFIG, LAND_EXPANSIONS (farmingData.js)
 //             Scene, level, levelEntities (sceneManager.js)
@@ -11,8 +12,9 @@
 // ===================== FARMING STATE =====================
 const farmingState = {
   active: false,
-  tiles: [],           // { tx, ty, state, cropId, growthTimer, watered, waterTimer }
+  tiles: [],           // { tx, ty, state, cropId, growthTimer }
   landLevel: 0,        // index into LAND_EXPANSIONS (persisted)
+  equippedHoe: null,   // hoe ID string, e.g. 'iron_hoe' (persisted)
   selectedSeed: null,  // crop id currently selected for planting
   actionCooldown: 0,   // frames until next action allowed
   stats: {
@@ -49,8 +51,8 @@ function initFarmState() {
   const gridH = exp.gridH;
 
   // Center the grid within the farm zone
-  const zoneW = zone.w || 38;
-  const zoneH = zone.h || 18;
+  const zoneW = zone.w || 12;
+  const zoneH = zone.h || 12;
   const startTX = zone.tx + Math.floor((zoneW - gridW) / 2);
   const startTY = zone.ty + Math.floor((zoneH - gridH) / 2);
 
@@ -62,10 +64,13 @@ function initFarmState() {
         state: FARM_TILE_STATES.EMPTY,
         cropId: null,
         growthTimer: 0,
-        watered: false,
-        waterTimer: 0,
       });
     }
+  }
+
+  // Auto-equip bronze hoe if player has no hoe
+  if (!farmingState.equippedHoe) {
+    farmingState.equippedHoe = 'bronze_hoe';
   }
 
   // Auto-select first unlocked seed
@@ -91,21 +96,10 @@ function updateFarming() {
   // Tick action cooldown
   if (farmingState.actionCooldown > 0) farmingState.actionCooldown--;
 
-  // Tick growth + water timers
+  // Tick growth — watered crops grow continuously, no re-watering needed
   for (const tile of farmingState.tiles) {
-    // Water timer decay
-    if (tile.watered && tile.waterTimer > 0) {
-      tile.waterTimer--;
-      if (tile.waterTimer <= 0) {
-        tile.watered = false;
-      }
-    }
-
-    // Growth only happens while watered
-    if (tile.watered && (tile.state === FARM_TILE_STATES.PLANTED || tile.state === FARM_TILE_STATES.GROWING)) {
+    if (tile.state === FARM_TILE_STATES.GROWING) {
       tile.growthTimer++;
-      tile.state = FARM_TILE_STATES.GROWING;
-
       const crop = CROP_TYPES[tile.cropId];
       if (crop && tile.growthTimer >= crop.growthFrames) {
         tile.state = FARM_TILE_STATES.HARVESTABLE;
@@ -114,11 +108,17 @@ function updateFarming() {
   }
 }
 
-// ===================== HOE SWING HANDLER =====================
-function handleFarmSwing() {
+// ===================== FARM ACTION HANDLER =====================
+function handleFarmAction() {
   if (farmingState.actionCooldown > 0) return;
 
-  const tile = getFarmTileAtSwing();
+  const hoe = getEquippedHoe();
+  if (!hoe) {
+    hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'No hoe equipped!', color: '#ff6060' });
+    return;
+  }
+
+  const tile = getFarmTileAtAction();
   if (!tile) return;
 
   const cfg = FARMING_CONFIG;
@@ -145,6 +145,12 @@ function handleFarmSwing() {
         hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Level ' + crop.levelReq + ' required!', color: '#ff6060' });
         return;
       }
+      // Check garden level requirement
+      if (crop.gardenReq > farmingState.landLevel) {
+        const reqExp = LAND_EXPANSIONS[crop.gardenReq];
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Requires ' + (reqExp ? reqExp.name : 'Garden Lv.' + crop.gardenReq) + '!', color: '#ff6060' });
+        return;
+      }
       // Check gold for seed
       if (gold < crop.seedCost) {
         hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Need ' + crop.seedCost + 'g!', color: '#ff6060' });
@@ -159,18 +165,21 @@ function handleFarmSwing() {
       break;
 
     case FARM_TILE_STATES.PLANTED:
-    case FARM_TILE_STATES.GROWING:
-      // Water the crop
-      if (tile.watered) {
-        hitEffects.push({ x: tile.tx * TILE + TILE / 2, y: tile.ty * TILE + TILE / 2 - 10, life: 20, type: 'text_popup', text: 'Already watered!', color: '#6090c0' });
-        return;
-      }
-      tile.watered = true;
-      // Water duration from equipped hoe
-      const hoe = getEquippedHoe();
-      tile.waterTimer = hoe ? hoe.waterDuration : 1800;
-      farmingState.actionCooldown = cfg.waterCooldown;
+      // Water once → starts growing
+      tile.state = FARM_TILE_STATES.GROWING;
+      tile.growthTimer = 0;
+      farmingState.actionCooldown = cfg.plantCooldown;
       hitEffects.push({ x: tile.tx * TILE + TILE / 2, y: tile.ty * TILE + TILE / 2 - 10, life: 20, type: 'text_popup', text: 'Watered!', color: '#40a0ff' });
+      break;
+
+    case FARM_TILE_STATES.GROWING:
+      // Show growing message
+      const growCrop = CROP_TYPES[tile.cropId];
+      if (growCrop) {
+        const remaining = Math.max(0, growCrop.growthFrames - tile.growthTimer);
+        const secs = Math.ceil(remaining / 60);
+        hitEffects.push({ x: tile.tx * TILE + TILE / 2, y: tile.ty * TILE + TILE / 2 - 10, life: 20, type: 'text_popup', text: 'Growing... ' + secs + 's', color: '#80c060' });
+      }
       break;
 
     case FARM_TILE_STATES.HARVESTABLE:
@@ -191,29 +200,24 @@ function handleFarmSwing() {
       tile.state = FARM_TILE_STATES.TILLED;
       tile.cropId = null;
       tile.growthTimer = 0;
-      tile.watered = false;
-      tile.waterTimer = 0;
       farmingState.actionCooldown = cfg.harvestCooldown;
       break;
   }
 }
 
-// Get equipped hoe from player equipment
+// Get equipped hoe from farmingState (pure tool, not melee weapon)
 function getEquippedHoe() {
-  const eq = playerEquip.melee;
-  if (eq && eq.special === 'farming') return eq;
-  return null;
+  return HOE_TIERS.find(h => h.id === farmingState.equippedHoe) || null;
 }
 
-// Find the farm tile the player is swinging at
-function getFarmTileAtSwing() {
-  // Player facing direction → tile offset
+// Find the farm tile the player is facing
+function getFarmTileAtAction() {
+  const hoe = getEquippedHoe();
+  const reach = hoe ? hoe.reach : 1;
+
   const dir = player.dir; // 0=down, 1=up, 2=left, 3=right
   const standTX = Math.floor(player.x / TILE);
   const standTY = Math.floor(player.y / TILE);
-
-  // Check up to 2 tiles in facing direction (so center of 3x3 is reachable)
-  const range = 2;
 
   // Direction offsets
   let dx = 0, dy = 0;
@@ -222,8 +226,8 @@ function getFarmTileAtSwing() {
   else if (dir === 2) dx = -1;
   else if (dir === 3) dx = 1;
 
-  // Check tiles along facing direction (1 to range), then standing tile
-  for (let r = 1; r <= range; r++) {
+  // Check tiles along facing direction (1 to reach), then standing tile
+  for (let r = 1; r <= reach; r++) {
     const checkTX = standTX + dx * r;
     const checkTY = standTY + dy * r;
     for (const tile of farmingState.tiles) {
@@ -237,6 +241,51 @@ function getFarmTileAtSwing() {
   }
 
   return null;
+}
+
+// ===================== EXPAND FARM GRID =====================
+// Called when buying a land expansion — preserves existing tiles, adds new ones.
+function expandFarmGrid(newLandLevel) {
+  const zone = levelEntities.find(e => e.type === 'farm_zone');
+  if (!zone) return;
+
+  const exp = getLandExpansion(newLandLevel);
+  const gridW = exp.gridW;
+  const gridH = exp.gridH;
+
+  const zoneW = zone.w || 12;
+  const zoneH = zone.h || 12;
+  const startTX = zone.tx + Math.floor((zoneW - gridW) / 2);
+  const startTY = zone.ty + Math.floor((zoneH - gridH) / 2);
+
+  // Build set of existing tile positions
+  const existing = new Set();
+  for (const tile of farmingState.tiles) {
+    existing.add(tile.tx + ',' + tile.ty);
+  }
+
+  // Add new tiles for expanded area
+  for (let dy = 0; dy < gridH; dy++) {
+    for (let dx = 0; dx < gridW; dx++) {
+      const tx = startTX + dx;
+      const ty = startTY + dy;
+      if (!existing.has(tx + ',' + ty)) {
+        farmingState.tiles.push({
+          tx: tx,
+          ty: ty,
+          state: FARM_TILE_STATES.EMPTY,
+          cropId: null,
+          growthTimer: 0,
+        });
+      }
+    }
+  }
+
+  // Remove tiles that are now outside the new grid bounds
+  farmingState.tiles = farmingState.tiles.filter(t =>
+    t.tx >= startTX && t.tx < startTX + gridW &&
+    t.ty >= startTY && t.ty < startTY + gridH
+  );
 }
 
 // ===================== DRAW: WORLD-SPACE FARM TILES =====================
@@ -269,7 +318,7 @@ function drawFarmTiles() {
 
     // Planted / Growing / Harvestable — show soil + crop
     // Soil base
-    ctx.fillStyle = tile.watered ? '#4a3520' : '#5a4020';
+    ctx.fillStyle = '#5a4020';
     ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
     // Furrows
     ctx.strokeStyle = 'rgba(40,25,10,0.3)';
@@ -278,19 +327,13 @@ function drawFarmTiles() {
       ctx.beginPath(); ctx.moveTo(x + 4, y + fy); ctx.lineTo(x + TILE - 4, y + fy); ctx.stroke();
     }
 
-    // Water tint
-    if (tile.watered) {
-      ctx.fillStyle = 'rgba(40,100,180,0.12)';
-      ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
-    }
-
-    // Draw crop at growth stage
+    // Draw crop at growth stage — 4 stages: seed(0), sprout(1), medium(2), mature(3)
     const crop = CROP_TYPES[tile.cropId];
     if (!crop) continue;
 
     const progress = tile.state === FARM_TILE_STATES.HARVESTABLE ? 1.0
       : Math.min(1.0, tile.growthTimer / crop.growthFrames);
-    const stage = Math.floor(progress * (crop.stages - 1));
+    const stage = Math.floor(progress * 3); // 0-3 (4 stages)
     const cx = x + TILE / 2;
     const cy = y + TILE / 2;
 
@@ -313,24 +356,14 @@ function drawFarmTiles() {
       ctx.beginPath(); ctx.arc(cx - 5, cy - 2, 4, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(cx + 5, cy - 2, 4, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(cx, cy - 6, 4, 0, Math.PI * 2); ctx.fill();
-    } else if (stage === 3) {
-      // Large plant with crop color showing
+    } else {
+      // Mature / harvestable — large plant with crop color
       ctx.strokeStyle = '#2a6010'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(cx, cy + 12); ctx.lineTo(cx, cy - 8); ctx.stroke();
       ctx.fillStyle = '#3a8020';
       ctx.beginPath(); ctx.arc(cx - 6, cy - 4, 5, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(cx + 6, cy - 4, 5, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(cx, cy - 10, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = crop.color;
-      ctx.beginPath(); ctx.arc(cx, cy - 10, 3, 0, Math.PI * 2); ctx.fill();
-    } else {
-      // Fully grown / harvestable
-      ctx.strokeStyle = '#2a6010'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(cx, cy + 12); ctx.lineTo(cx, cy - 10); ctx.stroke();
-      ctx.fillStyle = '#3a8020';
-      ctx.beginPath(); ctx.arc(cx - 7, cy - 6, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + 7, cy - 6, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx, cy - 12, 6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = crop.color;
       ctx.beginPath(); ctx.arc(cx - 4, cy - 8, 4, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(cx + 4, cy - 8, 4, 0, Math.PI * 2); ctx.fill();
@@ -346,6 +379,42 @@ function drawFarmTiles() {
       ctx.beginPath(); ctx.arc(cx + Math.cos(t * 2.5 + tile.ty) * 6, cy - 12, 1.5, 0, Math.PI * 2); ctx.fill();
     }
   }
+}
+
+// ===================== DRAW: COUNTDOWN BUBBLE =====================
+// Shows remaining time above the faced growing tile.
+function drawFarmCountdownBubble() {
+  if (!farmingState.active || !Scene.inFarm) return;
+
+  const tile = getFarmTileAtAction();
+  if (!tile || tile.state !== FARM_TILE_STATES.GROWING) return;
+
+  const crop = CROP_TYPES[tile.cropId];
+  if (!crop) return;
+
+  const remaining = Math.max(0, crop.growthFrames - tile.growthTimer);
+  const secs = Math.ceil(remaining / 60);
+  const text = secs + 's';
+
+  const x = tile.tx * TILE + TILE / 2;
+  const y = tile.ty * TILE - 8;
+
+  // Bubble background
+  ctx.font = 'bold 11px monospace';
+  const tw = ctx.measureText(text).width;
+  const bw = tw + 12;
+  const bh = 18;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.beginPath(); ctx.roundRect(x - bw / 2, y - bh, bw, bh, 4); ctx.fill();
+  ctx.strokeStyle = 'rgba(80,160,60,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(x - bw / 2, y - bh, bw, bh, 4); ctx.stroke();
+
+  // Text
+  ctx.fillStyle = '#80c060';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, x, y - 4);
+  ctx.textAlign = 'left';
 }
 
 // ===================== DRAW: SCREEN-SPACE FARMING HUD =====================
@@ -456,6 +525,7 @@ function getFarmVendorSeedItems() {
   for (const id in CROP_TYPES) {
     const crop = CROP_TYPES[id];
     const locked = farmLevel < crop.levelReq;
+    const gardenLocked = crop.gardenReq > farmingState.landLevel;
     items.push({
       type: 'seed',
       id: crop.id,
@@ -463,8 +533,8 @@ function getFarmVendorSeedItems() {
       desc: 'Grows in ' + (crop.growthFrames / 60).toFixed(0) + 's · Sells for ' + crop.sellPrice + 'g',
       cost: crop.seedCost,
       color: crop.color,
-      isLocked: locked,
-      lockReason: locked ? 'Lv.' + crop.levelReq : '',
+      isLocked: locked || gardenLocked,
+      lockReason: locked ? 'Lv.' + crop.levelReq : gardenLocked ? LAND_EXPANSIONS[crop.gardenReq].name : '',
     });
   }
   return items;
@@ -475,7 +545,7 @@ function getFarmVendorEquipItems() {
   const items = [];
   // Hoe tiers
   for (const hoe of HOE_TIERS) {
-    const owned = playerEquip.melee && playerEquip.melee.id === hoe.id;
+    const owned = farmingState.equippedHoe === hoe.id;
     const locked = farmLevel < hoe.levelReq;
     items.push({
       type: 'hoe',
@@ -499,7 +569,7 @@ function getFarmVendorEquipItems() {
       type: 'land',
       id: 'land_' + i,
       name: exp.name + ' (' + exp.gridW + 'x' + exp.gridH + ')',
-      desc: 'Expand your farm plot',
+      desc: 'Expand your garden plot',
       cost: exp.cost,
       color: '#8a7040',
       isLocked: locked,
@@ -532,7 +602,7 @@ function drawFarmVendorPanel() {
   ctx.textAlign = 'center';
   ctx.font = 'bold 18px monospace';
   ctx.fillStyle = '#8ac060';
-  ctx.fillText('🌾 Farm Shop', px + pw / 2, py + 28);
+  ctx.fillText('Garden Shop', px + pw / 2, py + 28);
 
   // Gold display
   ctx.font = '13px monospace';
@@ -564,7 +634,7 @@ function drawFarmVendorPanel() {
     ctx.fillText(tabNames[i], tx + (tabW - 6) / 2, tabY + 19);
   }
 
-  // Hoe + land level info line
+  // Hoe + garden level info line
   ctx.textAlign = 'left';
   ctx.font = '11px monospace';
   const _hoe = getEquippedHoe();
@@ -572,7 +642,7 @@ function drawFarmVendorPanel() {
   ctx.fillText('Hoe: ' + (_hoe ? _hoe.name : 'None'), px + 20, tabY + 48);
   ctx.fillStyle = '#a0a060';
   const _land = getLandExpansion(farmingState.landLevel);
-  ctx.fillText('Land: ' + _land.name + ' (' + _land.gridW + 'x' + _land.gridH + ')', px + 200, tabY + 48);
+  ctx.fillText('Garden: ' + _land.name + ' (' + _land.gridW + 'x' + _land.gridH + ')', px + 200, tabY + 48);
 
   const contentY = tabY + 58;
   const maxY = py + ph - 14;
@@ -609,7 +679,7 @@ function drawFarmVendorPanel() {
       ctx.font = 'bold 12px monospace';
       if (item.isLocked) {
         ctx.fillStyle = '#804040';
-        ctx.fillText('🔒 ' + item.lockReason, px + pw - 22, iy + 22);
+        ctx.fillText(item.lockReason, px + pw - 22, iy + 22);
       } else {
         ctx.fillStyle = gold >= item.cost ? '#ffd700' : '#804040';
         ctx.fillText(item.cost + 'g', px + pw - 22, iy + 22);
@@ -643,10 +713,10 @@ function drawFarmVendorPanel() {
       ctx.font = 'bold 12px monospace';
       if (item.isLocked) {
         ctx.fillStyle = '#804040';
-        ctx.fillText('🔒 ' + item.lockReason, px + pw - 22, iy + 22);
+        ctx.fillText(item.lockReason, px + pw - 22, iy + 22);
       } else if (item.isOwned) {
         ctx.fillStyle = '#60a060';
-        ctx.fillText('✓ OWNED', px + pw - 22, iy + 22);
+        ctx.fillText('OWNED', px + pw - 22, iy + 22);
       } else {
         ctx.fillStyle = gold >= item.cost ? '#ffd700' : '#804040';
         ctx.fillText(item.cost + 'g', px + pw - 22, iy + 22);
@@ -717,38 +787,25 @@ function handleFarmVendorClick(mx, my) {
         if (gold < item.cost) return true;
 
         if (item.type === 'hoe') {
-          // Buy hoe — use PROG_ITEMS if available, fallback to legacy
+          // Buy hoe — pure tool purchase, no inventory/melee involvement
           gold -= item.cost;
-          const hasProg = typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS[item.id];
-          let newHoe;
-          if (hasProg) {
-            const progItem = createProgressedItem(item.id, 0, 1);
-            if (progItem) {
-              progItem.data.currentDurability = progItem.data.durability || item.hoeData.durability;
-              progItem.data.special = 'farming';
-              addToInventory(progItem);
-              newHoe = progItem.data;
-            }
-          }
-          if (!newHoe) {
-            newHoe = { ...item.hoeData, currentDurability: item.hoeData.durability };
-            addToInventory(createItem('melee', newHoe));
-          }
-          // Auto-equip
-          playerEquip.melee = newHoe;
-          melee.damage = newHoe.damage;
-          melee.range = newHoe.range;
-          melee.cooldownMax = newHoe.cooldown;
-          melee.critChance = newHoe.critChance;
-          melee.special = newHoe.special;
+          farmingState.equippedHoe = item.id;
           hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Bought ' + item.name + '!', color: '#ffd700' });
         } else if (item.type === 'land') {
+          // Check if any tile has active crops
+          const hasActiveCrops = farmingState.tiles.some(t =>
+            t.state !== FARM_TILE_STATES.EMPTY && t.state !== FARM_TILE_STATES.TILLED
+          );
+          if (hasActiveCrops) {
+            hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Harvest your garden first!', color: '#ff6060' });
+            return true;
+          }
           // Buy land expansion
           gold -= item.cost;
           farmingState.landLevel = item.landLevel;
           hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Expanded to ' + item.name + '!', color: '#ffd700' });
-          // Reinitialize farm tiles with new land level
-          initFarmState();
+          // Expand farm grid preserving existing tiles
+          expandFarmGrid(item.landLevel);
         }
         return true;
       }

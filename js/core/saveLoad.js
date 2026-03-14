@@ -53,10 +53,11 @@ const SaveLoad = {
         baitCount: fishingState.baitCount,
         stats: { ...fishingState.stats },
       };
-      // Farming state (v5: persist stats + landLevel only; tiles are session-only)
+      // Farming state (v5+: persist stats + landLevel + equippedHoe; tiles are session-only)
       if (typeof farmingState !== 'undefined') {
         data.farming = {
           landLevel: farmingState.landLevel,
+          equippedHoe: farmingState.equippedHoe,
           stats: { ...farmingState.stats },
         };
       }
@@ -227,11 +228,35 @@ const SaveLoad = {
       if (data.farming && typeof farmingState !== 'undefined') {
         const fm = data.farming;
         if (fm.landLevel !== undefined) farmingState.landLevel = fm.landLevel;
+        if (fm.equippedHoe) farmingState.equippedHoe = fm.equippedHoe;
         if (fm.stats) {
           farmingState.stats.totalHarvested = fm.stats.totalHarvested || 0;
           farmingState.stats.totalEarned = fm.stats.totalEarned || 0;
           farmingState.stats.bestCrop = fm.stats.bestCrop || null;
           farmingState.stats.bestCropValue = fm.stats.bestCropValue || 0;
+        }
+        // Migration: old saves had hoe as melee weapon — migrate to new system
+        if (!fm.equippedHoe && typeof playerEquip !== 'undefined' && playerEquip.melee && playerEquip.melee.special === 'farming') {
+          farmingState.equippedHoe = playerEquip.melee.id;
+          // Restore default melee weapon
+          if (typeof DEFAULT_MELEE !== 'undefined') {
+            playerEquip.melee = DEFAULT_MELEE;
+            if (typeof melee !== 'undefined') {
+              melee.damage = DEFAULT_MELEE.damage;
+              melee.range = DEFAULT_MELEE.range;
+              melee.cooldownMax = DEFAULT_MELEE.cooldown;
+              melee.critChance = DEFAULT_MELEE.critChance;
+              melee.special = DEFAULT_MELEE.special;
+            }
+          }
+          // Remove hoe from inventory
+          if (typeof inventory !== 'undefined') {
+            for (let i = inventory.length - 1; i >= 0; i--) {
+              if (inventory[i] && inventory[i].data && inventory[i].data.special === 'farming') {
+                inventory.splice(i, 1);
+              }
+            }
+          }
         }
       }
 

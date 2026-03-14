@@ -63,12 +63,7 @@ function meleeSwing() {
     return; // Skip melee damage — swing animation already started above
   }
 
-  // Farming hoe intercept: if inside farm and hoe equipped, do farm action instead of combat
-  if (melee.special === 'farming' && typeof Scene !== 'undefined' && Scene.inFarm
-      && typeof handleFarmSwing === 'function') {
-    handleFarmSwing();
-    return; // Skip melee damage — swing animation already started above
-  }
+  // Farming: handled by direct dispatch in inventory.js (handleFarmAction), not via melee
 
   // Ninja dash-attack: swing triggers a dash in the attack direction
   if (melee.special === 'ninja' && melee.dashActive && melee.dashesLeft > 0 && !melee.dashing) {

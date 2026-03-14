@@ -65,14 +65,7 @@ function resetCombatState(mode) {
     } else if (typeof ROD_TIERS !== 'undefined') {
       addToInventory(createItem('melee', { ...ROD_TIERS[0], currentDurability: ROD_TIERS[0].durability }));
     }
-    // Starter farming hoe
-    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['bronze_hoe']) {
-      const _hi = createProgressedItem('bronze_hoe', 0, 1);
-      if (_hi) { _hi.data.special = 'farming'; _hi.data.currentDurability = _hi.data.durability || 30; addToInventory(_hi); }
-      else if (typeof HOE_TIERS !== 'undefined') { addToInventory(createItem('melee', { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability })); }
-    } else if (typeof HOE_TIERS !== 'undefined') {
-      addToInventory(createItem('melee', { ...HOE_TIERS[0], currentDurability: HOE_TIERS[0].durability }));
-    }
+    // Farming hoes are now pure tools (not inventory items) — managed by farmingState.equippedHoe
     addToInventory(createConsumable('potion', 'Health Potion', 3));
     // Re-add owned main guns from gunsmith (persistent progression)
     if (typeof window._gunLevels !== 'undefined' && typeof createMainGun === 'function') {

@@ -4,33 +4,31 @@
 // Pattern matches oreData.js / cookingData.js / fishingData.js.
 
 // --- HOE TIERS ---
-// Unlocked by Farming skill level.
-// waterRange = tile radius for watering. waterDuration = frames water lasts.
+// Pure tools — no combat stats. Unlocked by Farming skill level.
+// reach = tile range in facing direction (1 = adjacent tile, 2 = 2 tiles out).
 const HOE_TIERS = [
-  { id: 'bronze_hoe', name: 'Bronze Hoe', tier: 0, levelReq: 1,  cost: 20,  durability: 30,  damage: 6,  range: 70,  cooldown: 36, critChance: 0,
-    special: 'farming', color: '#8a6a3a', desc: '6 dmg · farming hoe · equip to farm', waveReq: 0, waterRange: 1, waterDuration: 1800 },
-  { id: 'iron_hoe',   name: 'Iron Hoe',   tier: 1, levelReq: 5,  cost: 80,  durability: 50,  damage: 10, range: 75,  cooldown: 32, critChance: 0.05,
-    special: 'farming', color: '#8a8a8a', desc: '10 dmg · iron farming hoe', waveReq: 0, waterRange: 1, waterDuration: 2700 },
-  { id: 'gold_hoe',   name: 'Gold Hoe',   tier: 2, levelReq: 12, cost: 200, durability: 70,  damage: 14, range: 80,  cooldown: 28, critChance: 0.08,
-    special: 'farming', color: '#ffd700', desc: '14 dmg · gold farming hoe', waveReq: 0, waterRange: 2, waterDuration: 3600 },
-  { id: 'mythic_hoe', name: 'Mythic Hoe', tier: 3, levelReq: 25, cost: 500, durability: 120, damage: 20, range: 85,  cooldown: 24, critChance: 0.12,
-    special: 'farming', color: '#d4a030', desc: '20 dmg · mythic farming hoe', waveReq: 0, waterRange: 3, waterDuration: 5400 },
+  { id: 'bronze_hoe', name: 'Bronze Hoe', tier: 0, levelReq: 1,  cost: 20,   reach: 1, cooldown: 36, special: 'farming', color: '#8a6a3a', desc: 'Basic farming hoe' },
+  { id: 'iron_hoe',   name: 'Iron Hoe',   tier: 1, levelReq: 5,  cost: 80,   reach: 1, cooldown: 30, special: 'farming', color: '#8a8a8a', desc: 'Sturdy iron hoe' },
+  { id: 'gold_hoe',   name: 'Gold Hoe',   tier: 2, levelReq: 12, cost: 200,  reach: 2, cooldown: 24, special: 'farming', color: '#ffd700', desc: 'Extended reach hoe' },
+  { id: 'mythic_hoe', name: 'Mythic Hoe', tier: 3, levelReq: 25, cost: 500,  reach: 2, cooldown: 20, special: 'farming', color: '#d4a030', desc: 'Master farming hoe' },
 ];
 
 // --- CROP TYPES ---
-// growthFrames = total frames to mature (at 60fps, watered only).
-// stages = number of visual growth stages.
-// levelReq = Farming skill level to unlock seed.
+// All crops have exactly 4 visual stages: seed → sprout → medium → mature.
+// gardenReq = minimum garden level to plant this crop.
+// Tier 0 (Starter): carrot, potato, tomato — gardenReq 0
+// Tier 1 (Reliable): corn, pumpkin, watermelon — gardenReq 1
+// Tier 2 (Premium): sunflower, starfruit, dragonfruit — gardenReq 2
 const CROP_TYPES = {
-  carrot:      { id: 'carrot',      name: 'Carrot',       growthFrames: 900,   stages: 4, seedCost: 5,   sellPrice: 12,  xp: 8,   levelReq: 1,  color: '#e07830' },
-  potato:      { id: 'potato',      name: 'Potato',       growthFrames: 1200,  stages: 4, seedCost: 8,   sellPrice: 18,  xp: 12,  levelReq: 3,  color: '#c0a060' },
-  tomato:      { id: 'tomato',      name: 'Tomato',       growthFrames: 1500,  stages: 5, seedCost: 12,  sellPrice: 25,  xp: 18,  levelReq: 6,  color: '#dd3030' },
-  corn:        { id: 'corn',        name: 'Corn',         growthFrames: 1800,  stages: 5, seedCost: 15,  sellPrice: 35,  xp: 25,  levelReq: 10, color: '#e0d040' },
-  pumpkin:     { id: 'pumpkin',     name: 'Pumpkin',      growthFrames: 2400,  stages: 5, seedCost: 20,  sellPrice: 50,  xp: 35,  levelReq: 15, color: '#d08020' },
-  watermelon:  { id: 'watermelon',  name: 'Watermelon',   growthFrames: 3000,  stages: 5, seedCost: 30,  sellPrice: 70,  xp: 45,  levelReq: 20, color: '#40a040' },
-  sunflower:   { id: 'sunflower',   name: 'Sunflower',    growthFrames: 3600,  stages: 5, seedCost: 40,  sellPrice: 95,  xp: 60,  levelReq: 28, color: '#f0c020' },
-  starfruit:   { id: 'starfruit',   name: 'Starfruit',    growthFrames: 4800,  stages: 6, seedCost: 60,  sellPrice: 140, xp: 80,  levelReq: 35, color: '#e0d060' },
-  dragonfruit: { id: 'dragonfruit', name: 'Dragonfruit',  growthFrames: 6000,  stages: 6, seedCost: 100, sellPrice: 220, xp: 120, levelReq: 45, color: '#e040a0' },
+  carrot:      { id: 'carrot',      name: 'Carrot',       growthFrames: 900,   seedCost: 5,   sellPrice: 12,  xp: 8,   levelReq: 1,  gardenReq: 0, color: '#e07830' },
+  potato:      { id: 'potato',      name: 'Potato',       growthFrames: 1200,  seedCost: 8,   sellPrice: 18,  xp: 12,  levelReq: 3,  gardenReq: 0, color: '#c0a060' },
+  tomato:      { id: 'tomato',      name: 'Tomato',       growthFrames: 1500,  seedCost: 12,  sellPrice: 25,  xp: 18,  levelReq: 6,  gardenReq: 0, color: '#dd3030' },
+  corn:        { id: 'corn',        name: 'Corn',         growthFrames: 1800,  seedCost: 15,  sellPrice: 35,  xp: 25,  levelReq: 10, gardenReq: 1, color: '#e0d040' },
+  pumpkin:     { id: 'pumpkin',     name: 'Pumpkin',      growthFrames: 2400,  seedCost: 20,  sellPrice: 50,  xp: 35,  levelReq: 15, gardenReq: 1, color: '#d08020' },
+  watermelon:  { id: 'watermelon',  name: 'Watermelon',   growthFrames: 3000,  seedCost: 30,  sellPrice: 70,  xp: 45,  levelReq: 20, gardenReq: 1, color: '#40a040' },
+  sunflower:   { id: 'sunflower',   name: 'Sunflower',    growthFrames: 3600,  seedCost: 40,  sellPrice: 95,  xp: 60,  levelReq: 28, gardenReq: 2, color: '#f0c020' },
+  starfruit:   { id: 'starfruit',   name: 'Starfruit',    growthFrames: 4800,  seedCost: 60,  sellPrice: 140, xp: 80,  levelReq: 35, gardenReq: 2, color: '#e0d060' },
+  dragonfruit: { id: 'dragonfruit', name: 'Dragonfruit',  growthFrames: 6000,  seedCost: 100, sellPrice: 220, xp: 120, levelReq: 45, gardenReq: 2, color: '#e040a0' },
 };
 
 // --- FARMING CONFIG ---
@@ -38,7 +36,6 @@ const FARMING_CONFIG = {
   // Cooldowns (frames at 60fps)
   tillCooldown: 15,        // 0.25s — cooldown after tilling
   plantCooldown: 10,       // 0.17s — cooldown after planting
-  waterCooldown: 20,       // 0.33s — cooldown after watering
   harvestCooldown: 15,     // 0.25s — cooldown after harvesting
   // Growth
   growthCheckInterval: 1,  // check every frame (simple frame counter)
@@ -47,14 +44,12 @@ const FARMING_CONFIG = {
 };
 
 // --- LAND EXPANSIONS ---
-// landLevel determines how many tiles the player's farm has.
-// Each level adds a larger grid.
+// 4 tiers (down from 5). Bigger grids, fewer steps.
 const LAND_EXPANSIONS = [
-  { level: 0, name: 'Starter Plot',  gridW: 3, gridH: 3, cost: 0,    levelReq: 1  },
-  { level: 1, name: 'Small Garden',  gridW: 4, gridH: 4, cost: 100,  levelReq: 5  },
-  { level: 2, name: 'Garden',        gridW: 5, gridH: 5, cost: 300,  levelReq: 12 },
-  { level: 3, name: 'Large Garden',  gridW: 6, gridH: 6, cost: 700,  levelReq: 20 },
-  { level: 4, name: 'Grand Farm',    gridW: 7, gridH: 7, cost: 1500, levelReq: 35 },
+  { level: 0, name: 'Starter Garden', gridW: 4,  gridH: 4,  cost: 0,    levelReq: 1  },
+  { level: 1, name: 'Small Garden',   gridW: 6,  gridH: 6,  cost: 250,  levelReq: 10 },
+  { level: 2, name: 'Medium Garden',  gridW: 8,  gridH: 8,  cost: 1000, levelReq: 25 },
+  { level: 3, name: 'Large Garden',   gridW: 10, gridH: 10, cost: 3000, levelReq: 50 },
 ];
 
 // --- HELPERS ---
