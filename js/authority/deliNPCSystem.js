@@ -187,7 +187,8 @@ function _nearestAisleGap(tx) {
 function _routeCounterToChair(chairIdx) {
   const ch = DELI_CHAIRS[chairIdx];
   return [
-    { tx: 26, ty: 22 },         // east along counter corridor
+    { tx: 13, ty: 23 },         // south-east away from counter + queue
+    { tx: 26, ty: 23 },         // east past counter wall (1 tile south of solid wall)
     { tx: 26, ty: 20 },         // north to safe horizontal corridor
     { tx: ch.tx, ty: 20 },      // east to chair's column (safe at ty:20)
     { tx: ch.tx, ty: ch.ty },   // north to chair
@@ -196,7 +197,8 @@ function _routeCounterToChair(chairIdx) {
 
 function _routeCounterToCondiments() {
   return [
-    { tx: 26, ty: 22 },        // east along counter corridor
+    { tx: 13, ty: 23 },        // south-east away from counter + queue
+    { tx: 26, ty: 23 },        // east past counter wall (1 tile south of solid wall)
     { tx: 26, ty: 20 },        // north to dining entry
     { tx: 26, ty: 13 },        // north to condiment row
     { tx: 35, ty: 13 },        // east to condiments
@@ -227,9 +229,10 @@ function _routeChairToAisle(chairIdx, aisle) {
 function _routeCounterToAisle(aisle) {
   const gap = _nearestAisleGap(aisle.tx);
   if (gap <= 26) {
-    // Gap is tx:26 — go straight south
+    // Gap is tx:26 — go south-east then straight south
     return [
-      { tx: 26, ty: 22 },              // east to corridor junction
+      { tx: 13, ty: 23 },              // south-east away from counter + queue
+      { tx: 26, ty: 23 },              // east past counter wall
       { tx: 26, ty: aisle.ty },        // south to aisle row
       { tx: aisle.tx, ty: aisle.ty },  // east to aisle spot
     ];
@@ -237,7 +240,8 @@ function _routeCounterToAisle(aisle) {
   // Gap is tx:32 or tx:39 — must go north to ty:20 first (above shelves),
   // then east to gap, then south through gap
   return [
-    { tx: 26, ty: 22 },              // east to corridor junction
+    { tx: 13, ty: 23 },              // south-east away from counter + queue
+    { tx: 26, ty: 23 },              // east past counter wall
     { tx: 26, ty: 20 },              // north above shelves
     { tx: gap, ty: 20 },             // east to gap column
     { tx: gap, ty: aisle.ty },       // south through gap to aisle row
@@ -281,9 +285,9 @@ function _routeToExit(fromTX, fromTY) {
         route.push({ tx: 26, ty: 20 });           // north on main corridor
       }
     }
-    route.push({ tx: 26, ty: 22 });               // south to counter corridor
+    route.push({ tx: 26, ty: 23 });               // south past counter wall (safe clearance)
   }
-  route.push({ tx: 13, ty: 22 });  // west to exit area
+  route.push({ tx: 13, ty: 23 });  // west to exit area (1 tile south of counter)
   route.push({ tx: 13, ty: 33 });  // south to exit
   return route;
 }
@@ -303,15 +307,18 @@ function _routeToTipJar(fromTX, fromTY) {
         route.push({ tx: 26, ty: 20 });
       }
     }
-    route.push({ tx: 26, ty: 22 });
+    route.push({ tx: 26, ty: 23 });              // south past counter wall
   }
-  route.push({ tx: 15, ty: 22 });    // west to tip jar
+  route.push({ tx: 15, ty: 23 });                // west to tip jar column (safe row)
+  route.push({ tx: 15, ty: 22 });                // north to tip jar (approach from south)
   return route;
 }
 
 // Route from exit to an aisle (for pre-queue browsing)
 function _routeExitToAisle(aisle) {
-  return [{ tx: 13, ty: 22 }].concat(_routeCounterToAisle(aisle));
+  // NPC enters from exit (tx:13, ty:33). _routeCounterToAisle starts at tx:13, ty:23,
+  // so the NPC walks north from exit to ty:23, then follows the aisle route.
+  return _routeCounterToAisle(aisle);
 }
 
 // Route from aisle area back to a queue spot
@@ -325,9 +332,9 @@ function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
   } else {
     route.push({ tx: 26, ty: 20 });
   }
-  // Go south to ty:22 BEFORE heading west — ty:20 west of tx:25 is kitchen zone!
-  route.push({ tx: 26, ty: 22 });                      // south to safe counter corridor
-  route.push({ tx: 13, ty: 22 });                      // west along counter corridor
+  // Go south to ty:23 (safe clearance from counter wall at ty:21)
+  route.push({ tx: 26, ty: 23 });                      // south past counter wall
+  route.push({ tx: 13, ty: 23 });                      // west along safe corridor
   route.push({ tx: 13, ty: queueSpot.ty });             // south to queue Y level (vertical)
   route.push({ tx: queueSpot.tx, ty: queueSpot.ty });   // west into line (horizontal)
   return route;
@@ -353,13 +360,22 @@ function moveDeliNPC(npc) {
   }
 
   const wp = npc.route[0];
-  // Per-NPC lane offset prevents perfect overlap on shared routes
-  // Disable offsets for queue-bound NPCs — they must arrive at exact queue positions
+  // Per-NPC lane offset prevents perfect overlap on shared routes.
+  // Disable offsets when: in queue (must hit exact spots), OR the offset
+  // target would land inside a solid tile (counter wall at ty:21 is only
+  // 10px north of ty:22 center — a -16px Y offset clips right into it).
   const inQueueState = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
-  const offX = inQueueState ? 0 : (npc._laneOffX || 0);
-  const offY = inQueueState ? 0 : (npc._laneOffY || 0);
-  const targetX = wp.tx * TILE + TILE / 2 + offX;
-  const targetY = wp.ty * TILE + TILE / 2 + offY;
+  let offX = inQueueState ? 0 : (npc._laneOffX || 0);
+  let offY = inQueueState ? 0 : (npc._laneOffY || 0);
+  const rawX = wp.tx * TILE + TILE / 2;
+  const rawY = wp.ty * TILE + TILE / 2;
+  let targetX = rawX + offX;
+  let targetY = rawY + offY;
+  // If the offset target is inside a wall, drop the offset
+  if (typeof positionClear === 'function' && !positionClear(targetX, targetY, 14)) {
+    targetX = rawX;
+    targetY = rawY;
+  }
   let dx = targetX - npc.x;
   let dy = targetY - npc.y;
   let dist = Math.sqrt(dx * dx + dy * dy);
@@ -380,21 +396,23 @@ function moveDeliNPC(npc) {
 
   // NPC-NPC avoidance — lower-ID NPCs have priority, higher-ID yields
   const npcInQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
+  const npcStationary = npcInQueue || npc.state === 'tipping';
   for (const other of deliNPCs) {
     if (other === npc) continue;
     // Skip seated/despawning NPCs — they're snapped to fixed positions
     if (other.state === 'eating' || other.state === 'at_condiments' ||
         other.state === 'spawn_wait' || other.state === '_despawn') continue;
     const otherInQueue = (other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food');
-    // If BOTH are in queue, skip avoidance — they snap to fixed queue spots
-    if (npcInQueue && otherInQueue) continue;
+    const otherStationary = otherInQueue || other.state === 'tipping';
+    // If BOTH are stationary (queue or tipping), skip avoidance entirely
+    if (npcStationary && otherStationary) continue;
     const sx = npc.x - other.x;
     const sy = npc.y - other.y;
     const sd = Math.sqrt(sx * sx + sy * sy);
     if (sd > 0 && sd < 50) {
-      // If the other NPC is in queue (stationary), just slow down — don't nudge
-      // (nudging near the counter wall pushes NPCs into solid tiles)
-      if (otherInQueue) {
+      // If the other NPC is stationary (queue/tipping), just slow down — don't nudge
+      // (nudging near the counter wall at ty:21 pushes NPCs into solid tiles)
+      if (otherStationary) {
         spd *= 0.15;
       } else if (npc.id > other.id) {
         // Higher-ID yields: slow down and nudge away from the other NPC
@@ -431,7 +449,7 @@ function moveDeliNPC(npc) {
       npc.y = 22 * TILE + TILE / 2;
       npc._stuckFrames = 0;
       // Replace route with direct path to exit so they don't walk back in
-      npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 33 }];
+      npc.route = [{ tx: 13, ty: 23 }, { tx: 13, ty: 33 }];
       return;
     }
     npc._stuckFrames = (npc._stuckFrames || 0) + 1;
@@ -568,7 +586,7 @@ const DELI_NPC_AI = {
     if (qIdx < 0) {
       // Queue full — browse aisles instead
       const aisle = _pickFreeAisle();
-      const route = [{ tx: 13, ty: 22 }].concat(_routeCounterToAisle(aisle));
+      const route = _routeCounterToAisle(aisle);
       _npcStartRoute(npc, route,
         'shopping_aisle', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
       );
