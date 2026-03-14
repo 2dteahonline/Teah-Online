@@ -15,7 +15,7 @@ const SKELD_CAMERAS = [
   { id: 'hallway',  name: 'Hallway',       cx: 40, cy: 10 },
   { id: 'xroads',   name: 'Corridor',      cx: 20, cy: 34 },
   { id: 'admin',    name: 'Admin',          cx: 76, cy: 44 },
-  { id: 'lower',    name: 'Storage/Comms',  cx: 72, cy: 68 },
+  { id: 'lower',    name: 'Storage/Comms',  cx: 87, cy: 62 },
 ];
 
 const CameraSystem = {

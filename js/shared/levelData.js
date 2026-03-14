@@ -1683,7 +1683,7 @@ const LEVELS = {
         { type: 'skeld_camera_mount', tx: 40 + XO, ty: 7,  w: 1, h: 1, solid: false, label: 'Camera', room: 'hallway', camId: 'hallway' },
         { type: 'skeld_camera_mount', tx: 21 + XO, ty: 31, w: 1, h: 1, solid: false, label: 'Camera', room: 'security', camId: 'xroads' },
         { type: 'skeld_camera_mount', tx: 75 + XO, ty: 41, w: 1, h: 1, solid: false, label: 'Camera', room: 'admin', camId: 'admin' },
-        { type: 'skeld_camera_mount', tx: 44 + XO, ty: 66, w: 1, h: 1, solid: false, label: 'Camera', room: 'storage', camId: 'lower' },
+        { type: 'skeld_camera_mount', tx: 87 + XO, ty: 57, w: 1, h: 1, solid: false, label: 'Camera', room: 'storage', camId: 'lower' },
 
         // ===== SABOTAGE PLACEHOLDERS =====
         { type: 'skeld_sabotage', tx: 2 + XO, ty: 25, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 1 },
