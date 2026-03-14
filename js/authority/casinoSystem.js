@@ -278,7 +278,7 @@ function casinoResetGame() {
     casinoState.sl.spinTimer = 0;
     casinoState.sl.phase = 'betting';
   } else if (g === 'keno') {
-    casinoState.kn.picks = [];
+    // Keep picks — player shouldn't have to reselect numbers
     casinoState.kn.drawn = [];
     casinoState.kn.drawIndex = 0;
     casinoState.kn.drawTimer = 0;

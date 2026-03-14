@@ -335,12 +335,10 @@ function _casinoDrawResult(px, py, pw, ph) {
 
 function _casinoHandleResultClick(mx, my, px, py, pw, ph) {
   if (!casinoState.result) return false;
-  if (Date.now() - casinoState.resultTimer < 400) return true; // wait for button to appear
-  if (_casinoHitBtn(mx, my, px + pw / 2 - 80, py + ph / 2 + 45, 160, 42)) {
-    casinoResetGame();
-    return true;
-  }
-  return false;
+  if (Date.now() - casinoState.resultTimer < 400) return true; // brief delay before accepting clicks
+  // Click anywhere on the panel to play again
+  casinoResetGame();
+  return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
