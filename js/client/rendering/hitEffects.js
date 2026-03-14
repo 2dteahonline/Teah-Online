@@ -1498,6 +1498,70 @@ const HIT_EFFECT_RENDERERS = {
       ctx.fillStyle = `rgba(100,255,60,${alpha * 0.3})`;
       ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.3, 0, Math.PI * 2); ctx.fill();
   },
+  cast: (h, ctx, alpha) => {
+      // Blue-white expanding ring + inner glow
+      const prog = 1 - alpha;
+      const r = 8 + prog * 35;
+      ctx.strokeStyle = `rgba(120,180,255,${alpha * 0.8})`;
+      ctx.lineWidth = 3 * alpha;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = `rgba(200,230,255,${alpha * 0.25})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${alpha * 0.4})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.2, 0, Math.PI * 2); ctx.fill();
+  },
+  smoke: (h, ctx, alpha) => {
+      // Gray expanding cloud puff
+      const prog = 1 - alpha;
+      const baseR = 6 + prog * 20;
+      ctx.fillStyle = `rgba(140,140,140,${alpha * 0.5})`;
+      ctx.beginPath(); ctx.arc(h.x, h.y, baseR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(120,120,120,${alpha * 0.35})`;
+      ctx.beginPath(); ctx.arc(h.x - 8 * prog, h.y - 5 * prog, baseR * 0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(h.x + 6 * prog, h.y + 4 * prog, baseR * 0.6, 0, Math.PI * 2); ctx.fill();
+  },
+  stun: (h, ctx, alpha) => {
+      // Yellow stars circling above impact point
+      const prog = 1 - alpha;
+      const t = prog * Math.PI * 4;
+      ctx.fillStyle = `rgba(255,220,50,${alpha * 0.9})`;
+      for (let i = 0; i < 3; i++) {
+          const a = t + (i * Math.PI * 2 / 3);
+          const sr = 12 + prog * 5;
+          const sx = h.x + Math.cos(a) * sr;
+          const sy = h.y - 15 + Math.sin(a) * (sr * 0.4);
+          const size = 3 * alpha;
+          ctx.beginPath();
+          for (let p = 0; p < 5; p++) {
+              const pa = -Math.PI / 2 + p * Math.PI * 2 / 5;
+              const pr = p % 2 === 0 ? size : size * 0.4;
+              const px = sx + Math.cos(pa) * pr;
+              const py = sy + Math.sin(pa) * pr;
+              p === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+          }
+          ctx.closePath(); ctx.fill();
+      }
+  },
+  buff: (h, ctx, alpha) => {
+      // Green upward arrows rising
+      const prog = 1 - alpha;
+      ctx.fillStyle = `rgba(80,220,80,${alpha * 0.8})`;
+      for (let i = 0; i < 3; i++) {
+          const ox = (i - 1) * 10;
+          const oy = -prog * 25 - i * 5;
+          const ax = h.x + ox, ay = h.y + oy;
+          const s = 3 * alpha;
+          ctx.beginPath();
+          ctx.moveTo(ax, ay - s * 2);
+          ctx.lineTo(ax - s, ay);
+          ctx.lineTo(ax - s * 0.3, ay);
+          ctx.lineTo(ax - s * 0.3, ay + s);
+          ctx.lineTo(ax + s * 0.3, ay + s);
+          ctx.lineTo(ax + s * 0.3, ay);
+          ctx.lineTo(ax + s, ay);
+          ctx.closePath(); ctx.fill();
+      }
+  },
   _default: (h, ctx, alpha) => {
       ctx.fillStyle = `rgba(255,200,100,${alpha})`;
       ctx.beginPath(); ctx.arc(h.x, h.y, 6 * (1 - alpha) + 3, 0, Math.PI * 2); ctx.fill();

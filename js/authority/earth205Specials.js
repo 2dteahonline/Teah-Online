@@ -2965,4 +2965,79 @@ MOB_SPECIALS.critical_meltdown = (m, ctx) => {
   return { skip: true };
 };
 
+// ===================== MISSING FLOOR 5 SPECIALS =====================
+
+// plasma_bolt — reactor_technician: fast piercing energy bolt with armor_break
+MOB_SPECIALS.plasma_bolt = (m, ctx) => {
+  const { player, dist, hitEffects, bullets } = ctx;
+  if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 480;
+  if (m._specialTimer > 0) { m._specialTimer--; return {}; }
+  if (dist > 350) { m._specialTimer = 30; return {}; }
+  const dir = Math.atan2(player.y - m.y, player.x - m.x);
+  bullets.push({
+    id: nextBulletId++, x: m.x, y: m.y - 8,
+    vx: Math.cos(dir) * 14, vy: Math.sin(dir) * 14,
+    fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
+    ownerId: m.id, bulletColor: '#44ddff', pierce: true,
+    onHitPlayer: () => {
+      StatusFX.applyToPlayer('armor_break', { duration: 180, mult: 1.25 });
+      hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "stun" });
+    },
+  });
+  hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
+  m._specialTimer = m._specialCD || 480;
+  return {};
+};
+
+// ooze_spread — containment_breach_blob: creates 3 poison puddles around mob
+MOB_SPECIALS.ooze_spread = (m, ctx) => {
+  const { player, dist, hitEffects } = ctx;
+  if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 540;
+  if (m._specialTimer > 0) { m._specialTimer--; return {}; }
+  if (dist > 280) { m._specialTimer = 30; return {}; }
+  for (let i = 0; i < 3; i++) {
+    const angle = (i * 2 * Math.PI / 3) + Math.random() * 0.5;
+    const px = m.x + Math.cos(angle) * 70;
+    const py = m.y + Math.sin(angle) * 70;
+    if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
+      HazardSystem.createZone({ cx: px, cy: py, radius: 50, duration: 240, tickRate: 30, tickDamage: 5, color: [100, 200, 100], slow: 0.15 });
+    }
+    hitEffects.push({ x: px, y: py, life: 15, type: "smoke" });
+  }
+  hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
+  m._specialTimer = m._specialCD || 540;
+  return {};
+};
+
+// reactor_slam — lockdown_sentinel_e205: telegraphed AoE slam with knockback + stun
+MOB_SPECIALS.reactor_slam = (m, ctx) => {
+  const { player, dist, hitEffects } = ctx;
+  if (m._specialTimer === undefined) m._specialTimer = m._specialCD || 600;
+  if (m._reactorSlamTele) {
+    m._reactorSlamTele--;
+    if (m._reactorSlamTele <= 0) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 80)) {
+        const dmg = Math.round(38 * getMobDamageMultiplier());
+        const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
+        hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+        const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
+        player.knockVx = Math.cos(kbDir) * 14;
+        player.knockVy = Math.sin(kbDir) * 14;
+        StatusFX.applyToPlayer('root', { duration: 45 });
+      }
+      hitEffects.push({ x: m.x, y: m.y, life: 25, type: "sledgehammer_shockwave" });
+      m._specialTimer = m._specialCD || 600;
+    }
+    return { skip: true };
+  }
+  if (m._specialTimer > 0) { m._specialTimer--; return {}; }
+  if (dist > 120) { m._specialTimer = 30; return {}; }
+  m._reactorSlamTele = 60;
+  if (typeof TelegraphSystem !== 'undefined') {
+    TelegraphSystem.create({ shape: 'circle', params: { cx: m.x, cy: m.y, radius: 80 }, delayFrames: 60, color: [200, 80, 80], owner: m.id });
+  }
+  hitEffects.push({ x: m.x, y: m.y - 20, life: 15, type: "cast" });
+  return { skip: true };
+};
+
 // ===================== END OF PART 3 — Floor 5 + Lady Elixir + Nofaux =====================
