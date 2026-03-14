@@ -131,14 +131,14 @@ function endCookingShift() {
   cookingState.assembly = [];
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  // Reset grill state if active
-  if (typeof grillState !== 'undefined' && grillState.active) {
-    grillState.active = false;
-    grillState.phase = 'idle';
-  }
+  // Fully reset grill state
+  if (typeof resetGrillState === 'function') resetGrillState();
 }
 
 function resetCookingState() {
+  // Fully reset grill state so nothing bleeds into next visit
+  if (typeof resetGrillState === 'function') resetGrillState();
+
   // Remove spatula from inventory
   for (let i = inventory.length - 1; i >= 0; i--) {
     if (inventory[i] && inventory[i].id === 'spatula') {
@@ -200,7 +200,12 @@ function resetCookingState() {
 function _generateTicket() {
   const recipe = _pickActiveRecipe();
   if (!recipe) return;
-  const customerType = pickCustomerType();
+  // Use the correct customer type pool for each restaurant
+  const customerType = cookingState.activeRestaurantId === 'fine_dining' && typeof pickFineDiningCustomerType === 'function'
+    ? pickFineDiningCustomerType()
+    : cookingState.activeRestaurantId === 'diner' && typeof pickDinerCustomerType === 'function'
+      ? pickDinerCustomerType()
+      : pickCustomerType();
   const moodThresholds = MOOD_STAGES.map(s => Math.round(s.baseFrames * customerType.patience));
 
   // Build ticket (multi-item for diner, single for deli/fine_dining)
@@ -239,6 +244,8 @@ function _activateNextTicket() {
     moodThresholds: ticket.moodThresholds,
     startFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
     npcId: null,
+    _fdTableId: ticket._fdTableId != null ? ticket._fdTableId : null,
+    _fdPartyId: ticket._fdPartyId != null ? ticket._fdPartyId : null,
   };
   cookingState.assembly = [];
 
@@ -458,6 +465,13 @@ function handleStationInteract(entityType) {
       cookingState.assembly.length >= cookingState.currentOrder.recipe.ingredients.length &&
       (typeof grillState === 'undefined' || !grillState.active)) {
     const tableId = parseInt(entityType.split('_').pop());
+    // Validate player is at the correct table for the current order
+    if (cookingState.currentOrder._fdTableId != null && tableId !== cookingState.currentOrder._fdTableId) {
+      if (typeof hitEffects !== 'undefined') {
+        hitEffects.push({ x: player.x, y: player.y - 40, life: 25, maxLife: 25, type: "heal", dmg: "Wrong table! Check order." });
+      }
+      return;
+    }
     if (typeof startGrillSequence === 'function') startGrillSequence(tableId, cookingState.currentOrder.recipe);
     return;
   }
@@ -571,7 +585,8 @@ function gradeOrder() {
 
   // Calculate tip — grade multiplier × customer generosity × combo streak
   const comboMult = cookingState.comboMultiplier || 1.0;
-  const rawTip = pay * 0.2 * grade.tipMult * order.customer.tipMultiplier * comboMult;
+  const customerTipMult = order.customer.tipMultiplier || order.customer.tipMult || 1.0;
+  const rawTip = pay * 0.2 * grade.tipMult * customerTipMult * comboMult;
   const tip = Math.round(rawTip);
 
   // Calculate XP
@@ -696,6 +711,9 @@ function applyOrderResult(result) {
       npc.linkedOrderId = null;
     }
   }
+
+  // Reset grill trick score so it doesn't bleed into the next order
+  if (typeof grillState !== 'undefined') grillState.trickScore = 0;
 
   // Clear current order and schedule next
   cookingState.currentOrder = null;

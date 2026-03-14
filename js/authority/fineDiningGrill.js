@@ -118,7 +118,7 @@ function updateGrill() {
 
   if (!grillState.active) return;
 
-  // --- Finishing phase: wait then reset ---
+  // --- Finishing phase: wait then auto-submit order ---
   if (grillState.phase === 'finishing') {
     grillState.finishTimer--;
     if (grillState.finishTimer <= 0) {
@@ -130,6 +130,13 @@ function updateGrill() {
         FD_TABLES[grillState.tableId].state = 'eating';
       }
       _setGrillLinkedNPCState(grillState.tableId, 'eating');
+
+      // Auto-submit the order — grill completion IS the submission for fine dining
+      if (typeof cookingState !== 'undefined' && cookingState.active && cookingState.currentOrder &&
+          cookingState.assembly.length > 0 && typeof gradeOrder === 'function' && typeof applyOrderResult === 'function') {
+        const result = gradeOrder();
+        applyOrderResult(result);
+      }
     }
     return;
   }

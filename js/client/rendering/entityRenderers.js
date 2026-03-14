@@ -4628,9 +4628,16 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
   }
   // Waiting indicator — pulsing "!" when table needs cooking
   const tableData = typeof FD_TABLES !== 'undefined' ? FD_TABLES[tableId] : null;
+  const isOrderTarget = typeof cookingState !== 'undefined' && cookingState.currentOrder &&
+    cookingState.currentOrder._fdTableId === tableId;
   if (tableData && tableData.state === 'waiting_cook' && !isActive) {
     const pulse = 0.5 + Math.sin(t * 3) * 0.5;
     ctx.font = "bold 18px monospace"; ctx.textAlign = "center";
+    // Brighter gold arrow + "!" for the active order's table
+    if (isOrderTarget) {
+      ctx.fillStyle = `rgba(255,215,0,${0.7 + Math.sin(t * 4) * 0.3})`;
+      ctx.fillText("\u25BC", ex + cw/2, ey - 16);
+    }
     ctx.fillStyle = `rgba(255,215,0,${pulse})`;
     ctx.fillText("!", ex + cw/2, ey - 8);
     ctx.textAlign = "left";

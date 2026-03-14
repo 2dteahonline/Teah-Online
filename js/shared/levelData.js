@@ -1086,7 +1086,7 @@ const LEVELS = {
       // === KITCHEN WORK STATIONS ===
       { type: 'fd_counter', tx: 7, ty: 10, w: 4, h: 2, solid: true },           // clear plate
       { type: 'fd_pickup_counter', tx: 12, ty: 10, w: 4, h: 2, solid: true },    // submit order
-      { type: 'fd_tip_jar', tx: 15, ty: 16, w: 2, h: 1, solid: true },           // tip jar
+      { type: 'fd_tip_jar', tx: 15, ty: 16, w: 2, h: 1, solid: false },          // tip jar (not solid — NPCs walk here to tip)
 
       // === INGREDIENT STATIONS (2x2 each, 2 rows of 6) ===
       // Row 1 (ty: 1)

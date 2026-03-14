@@ -847,7 +847,7 @@ const FD_NPC_AI = {
     // Only leader generates the ticket
     if (npc.isLeader) {
       _generateFDTicket(party);
-      table.state = 'waiting';
+      table.state = 'waiting_cook';
 
       // All seated members → waiting_cook
       const members = _getFDPartyMembers(party);
