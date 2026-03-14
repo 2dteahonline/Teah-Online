@@ -3011,6 +3011,11 @@ let _mafiaLobbySettingsOpen = false;
 let _mafiaLobbyColorOpen = false;
 let _mafiaLobbySettingsScroll = 0;
 let _mafiaLobbySettingsTab = 'game'; // 'game' | 'roles'
+let _mafiaLobbyContentTotalH = 0;   // actual content height from last render (for scroll clamping)
+let _mafiaLobbyListH = 0;           // visible list height from last render
+let _mafiaLobbyListY = 0;           // list Y position from last render
+let _mafiaLobbyScrollbarDrag = false;
+let _mafiaLobbyScrollbarGrabY = 0;
 
 // Click regions for lobby UI
 window._mafiaLobbySettingsCloseBtn = null;
@@ -3340,14 +3345,26 @@ function _drawLobbySettingsPanel(cw, ch) {
 
     // Compute total content height for scrolling
     const totalH = drawY - listY + _mafiaLobbySettingsScroll;
+    _mafiaLobbyContentTotalH = totalH;
+    _mafiaLobbyListH = listH;
+    _mafiaLobbyListY = listY;
+    // Clamp scroll in case content shrank
+    const maxScroll = Math.max(0, totalH - listH);
+    if (_mafiaLobbySettingsScroll > maxScroll) _mafiaLobbySettingsScroll = maxScroll;
     ctx.restore();
 
     // Scrollbar
     if (totalH > listH) {
       const barH = Math.max(30, listH * (listH / totalH));
-      const barY = listY + (_mafiaLobbySettingsScroll / (totalH - listH)) * (listH - barH);
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.beginPath(); ctx.roundRect(px + pw - 8, barY, 6, barH, 3); ctx.fill();
+      const barY = listY + (_mafiaLobbySettingsScroll / maxScroll) * (listH - barH);
+      const barX = px + pw - 10;
+      const barW = 6;
+      // Track
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.beginPath(); ctx.roundRect(barX, listY, barW, listH, 3); ctx.fill();
+      // Thumb
+      ctx.fillStyle = _mafiaLobbyScrollbarDrag ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.2)';
+      ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 3); ctx.fill();
     }
 
     window._mafiaLobbySettingBtns = settingBtns;
@@ -3480,13 +3497,24 @@ function _drawLobbySettingsPanel(cw, ch) {
   ctx.restore();
   window._mafiaLobbySettingBtns = settingBtns;
 
-  // Scrollbar
-  const totalH = MAFIA_SETTING_DEFS.length * rowH;
+  // Scrollbar — use actual drawn height
+  const totalH = drawY - listY + _mafiaLobbySettingsScroll;
+  _mafiaLobbyContentTotalH = totalH;
+  _mafiaLobbyListH = listH;
+  _mafiaLobbyListY = listY;
+  const maxScroll = Math.max(0, totalH - listH);
+  if (_mafiaLobbySettingsScroll > maxScroll) _mafiaLobbySettingsScroll = maxScroll;
   if (totalH > listH) {
     const barH = Math.max(30, listH * (listH / totalH));
-    const barY = listY + (_mafiaLobbySettingsScroll / (totalH - listH)) * (listH - barH);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.beginPath(); ctx.roundRect(px + pw - 10, barY, 6, barH, 3); ctx.fill();
+    const barY = listY + (_mafiaLobbySettingsScroll / maxScroll) * (listH - barH);
+    const barX = px + pw - 10;
+    const barW = 6;
+    // Track
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.roundRect(barX, listY, barW, listH, 3); ctx.fill();
+    // Thumb
+    ctx.fillStyle = _mafiaLobbyScrollbarDrag ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)';
+    ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 3); ctx.fill();
   }
 }
 
@@ -3629,9 +3657,9 @@ function handleMafiaSettingChange(key, dir) {
 
 function handleMafiaSettingsScroll(deltaY) {
   if (!_mafiaLobbySettingsOpen) return;
-  const rowH = 40;
-  const totalH = MAFIA_SETTING_DEFS.length * rowH;
-  const listH = 560 - 110 - 16;
+  // Use actual content height from last render (works for both game & roles tabs)
+  const totalH = _mafiaLobbyContentTotalH;
+  const listH = _mafiaLobbyListH || (560 - 110 - 16);
   const maxScroll = Math.max(0, totalH - listH);
   _mafiaLobbySettingsScroll = Math.max(0, Math.min(maxScroll, _mafiaLobbySettingsScroll + deltaY));
 }

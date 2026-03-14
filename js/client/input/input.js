@@ -36,6 +36,18 @@ canvas.addEventListener("mousemove", e => {
   // Inventory hover
   handleInventoryHover(mouse.x, mouse.y);
 
+  // Mafia lobby settings scrollbar drag
+  if (_mafiaLobbyScrollbarDrag && _mafiaLobbySettingsOpen) {
+    const my = mouse.y;
+    const _listY = _mafiaLobbyListY;
+    const _listH = _mafiaLobbyListH;
+    const _totalH = _mafiaLobbyContentTotalH;
+    const _maxS = Math.max(1, _totalH - _listH);
+    const _barH = Math.max(30, _listH * (_listH / _totalH));
+    const pct = (my - _mafiaLobbyScrollbarGrabY - _listY) / (_listH - _barH);
+    _mafiaLobbySettingsScroll = Math.max(0, Math.min(_maxS, pct * _maxS));
+  }
+
   // Settings scrollbar drag
   if (settingsScrollbarDrag && UI.isOpen('settings')) {
     const my = mouse.y;
@@ -141,6 +153,33 @@ canvas.addEventListener("mousedown", e => {
         }
       }
     }
+    // Scrollbar drag detection for mafia lobby settings
+    if (_mafiaLobbySettingsOpen && _mafiaLobbyContentTotalH > _mafiaLobbyListH) {
+      const _listY = _mafiaLobbyListY;
+      const _listH = _mafiaLobbyListH;
+      const _totalH = _mafiaLobbyContentTotalH;
+      const _maxS = Math.max(1, _totalH - _listH);
+      const _barH = Math.max(30, _listH * (_listH / _totalH));
+      const _barY = _listY + (_mafiaLobbySettingsScroll / _maxS) * (_listH - _barH);
+      // Use the same barX from render (px + pw - 10), approximate from screen center
+      const _pw = 720, _px = BASE_W / 2 - _pw / 2;
+      const _barX = _px + _pw - 10, _barW = 6;
+      // Hit test on thumb (wider hit area)
+      if (mx >= _barX - 8 && mx <= _barX + _barW + 8 && my >= _barY && my <= _barY + _barH) {
+        _mafiaLobbyScrollbarDrag = true;
+        _mafiaLobbyScrollbarGrabY = my - _barY;
+        return;
+      }
+      // Click on track (jump)
+      if (mx >= _barX - 8 && mx <= _barX + _barW + 8 && my >= _listY && my <= _listY + _listH) {
+        const clickPct = (my - _listY - _barH / 2) / (_listH - _barH);
+        _mafiaLobbySettingsScroll = Math.max(0, Math.min(_maxS, clickPct * _maxS));
+        _mafiaLobbyScrollbarDrag = true;
+        _mafiaLobbyScrollbarGrabY = _barH / 2;
+        return;
+      }
+    }
+
     // Map selection buttons
     if (window._mafiaLobbyMapBtns) {
       for (const b of window._mafiaLobbyMapBtns) {
@@ -1220,7 +1259,7 @@ canvas.addEventListener("mousedown", e => {
 canvas.addEventListener("mouseup", e => {
   if (e.button === 0) {
     mouse.down = false;
-    draggingSV = false; draggingHue = false; isDraggingTile = false; settingsScrollbarDrag = false; handleModifyGunUp();
+    draggingSV = false; draggingHue = false; isDraggingTile = false; settingsScrollbarDrag = false; _mafiaLobbyScrollbarDrag = false; handleModifyGunUp();
     hotbarHoldSlot = -1; hotbarHoldTime = 0; showWeaponStats = false;
     // Release reactor hand hold
     if (typeof _sabPanel !== 'undefined' && _sabPanel.active && _sabPanel.type === 'reactor') {
