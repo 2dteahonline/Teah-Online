@@ -324,9 +324,11 @@ function _casinoDrawResult(px, py, pw, ph) {
   ctx.font = 'bold 22px monospace';
   ctx.fillStyle = r.won ? '#ffd700' : '#ff6666';
   ctx.fillText(r.message, px + pw / 2, py + ph / 2 + 15);
-  // Play Again button
+  // Tap anywhere hint
   if (elapsed > 400) {
-    _casinoDrawButton(px + pw / 2 - 80, py + ph / 2 + 45, 160, 42, 'Play Again', true, false);
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#666';
+    ctx.fillText('tap to continue', px + pw / 2, py + ph / 2 + 55);
   }
   ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
