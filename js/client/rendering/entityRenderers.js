@@ -5164,3 +5164,65 @@ ENTITY_RENDERERS['casino_baccarat'] = (e, ctx, ex, ey, w, h) => {
   ctx.fillText('BACCARAT', ex + cw / 2, ey + 8);
   ctx.textAlign = 'left';
 };
+
+ENTITY_RENDERERS['casino_slots'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Purple machine body
+  ctx.fillStyle = '#2a0a3a';
+  ctx.beginPath(); ctx.roundRect(ex + 6, ey + 8, cw - 12, ch - 12, 10); ctx.fill();
+  ctx.strokeStyle = '#8a4aaa';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(ex + 6, ey + 8, cw - 12, ch - 12, 10); ctx.stroke();
+  ctx.lineWidth = 1;
+  // 3 reel windows
+  const rw = 22, rh = 24;
+  for (let i = 0; i < 3; i++) {
+    const rx = ex + cw / 2 - 38 + i * 26;
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(rx, ey + ch / 2 - 14, rw, rh);
+    ctx.strokeStyle = '#6a4a8a';
+    ctx.strokeRect(rx, ey + ch / 2 - 14, rw, rh);
+    // Random symbol hint
+    ctx.font = '14px serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = ['#ff4444', '#ffdd00', '#ff8800'][i];
+    ctx.fillText(['🍒', '🔔', '7'][i], rx + rw / 2, ey + ch / 2 + 5);
+  }
+  // Lever
+  ctx.fillStyle = '#888';
+  ctx.fillRect(ex + cw - 18, ey + ch / 2 - 16, 4, 28);
+  ctx.fillStyle = '#ff4444';
+  ctx.beginPath(); ctx.arc(ex + cw - 16, ey + ch / 2 - 18, 6, 0, Math.PI * 2); ctx.fill();
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('SLOTS', ex + cw / 2, ey + 10);
+  ctx.textAlign = 'left';
+};
+
+ENTITY_RENDERERS['casino_keno'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Dark blue terminal
+  ctx.fillStyle = '#0a1a2a';
+  ctx.beginPath(); ctx.roundRect(ex + 6, ey + 8, cw - 12, ch - 12, 10); ctx.fill();
+  ctx.strokeStyle = '#2a5a8a';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(ex + 6, ey + 8, cw - 12, ch - 12, 10); ctx.stroke();
+  ctx.lineWidth = 1;
+  // Mini grid (4x3 dots)
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 4; c++) {
+      const dx = ex + cw / 2 - 24 + c * 14;
+      const dy = ey + ch / 2 - 10 + r * 12;
+      ctx.fillStyle = (r + c) % 3 === 0 ? '#ffd700' : '#2a4a6a';
+      ctx.beginPath(); ctx.arc(dx, dy, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Label
+  ctx.fillStyle = '#4aa0ff';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('KENO', ex + cw / 2, ey + 10);
+  ctx.textAlign = 'left';
+};

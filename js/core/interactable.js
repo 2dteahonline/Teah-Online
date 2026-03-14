@@ -110,14 +110,16 @@ registerInteractable({
 
 // Register casino game station interactables
 const _CASINO_STATIONS = [
-  { id: 'casino_blackjack', tx: 6,  ty: 5,  game: 'blackjack',    label: 'Blackjack' },
-  { id: 'casino_roulette',  tx: 31, ty: 5,  game: 'roulette',     label: 'Roulette' },
-  { id: 'casino_dice',      tx: 6,  ty: 14, game: 'dice',         label: 'Dice' },
-  { id: 'casino_mines',     tx: 31, ty: 14, game: 'mines',        label: 'Mines' },
-  { id: 'casino_coinflip',  tx: 6,  ty: 22, game: 'headsOrTails', label: 'Heads or Tails' },
-  { id: 'casino_cases',     tx: 31, ty: 22, game: 'cases',        label: 'Cases' },
-  { id: 'casino_rps',       tx: 18, ty: 14, game: 'rps',          label: 'Rock Paper Scissors' },
-  { id: 'casino_baccarat', tx: 18, ty: 22, game: 'baccarat', label: 'Baccarat' },
+  { id: 'casino_blackjack', tx: 8,  ty: 5,  game: 'blackjack',    label: 'Blackjack' },
+  { id: 'casino_roulette',  tx: 24, ty: 5,  game: 'roulette',     label: 'Roulette' },
+  { id: 'casino_slots',     tx: 40, ty: 5,  game: 'slots',        label: 'Slots' },
+  { id: 'casino_dice',      tx: 8,  ty: 14, game: 'dice',         label: 'Dice' },
+  { id: 'casino_rps',       tx: 24, ty: 14, game: 'rps',          label: 'Rock Paper Scissors' },
+  { id: 'casino_mines',     tx: 40, ty: 14, game: 'mines',        label: 'Mines' },
+  { id: 'casino_coinflip',  tx: 8,  ty: 22, game: 'headsOrTails', label: 'Heads or Tails' },
+  { id: 'casino_baccarat',  tx: 24, ty: 22, game: 'baccarat',     label: 'Baccarat' },
+  { id: 'casino_cases',     tx: 40, ty: 22, game: 'cases',        label: 'Cases' },
+  { id: 'casino_keno',      tx: 16, ty: 30, game: 'keno',         label: 'Keno' },
 ];
 for (const s of _CASINO_STATIONS) {
   registerInteractable({

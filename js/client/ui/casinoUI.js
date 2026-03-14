@@ -389,6 +389,8 @@ function drawCasinoPanel() {
   else if (g === 'dice') _drawDice(px, py, pw, ph);
   else if (g === 'rps') _drawRPS(px, py, pw, ph);
   else if (g === 'baccarat') _drawBaccarat(px, py, pw, ph);
+  else if (g === 'slots') _drawSlots(px, py, pw, ph);
+  else if (g === 'keno') _drawKeno(px, py, pw, ph);
   ctx.textAlign = 'left';
   ctx.lineWidth = 1;
 }
@@ -413,6 +415,8 @@ function handleCasinoClick(mx, my) {
   if (g === 'dice') return _clickDice(mx, my, px, py, pw, ph);
   if (g === 'rps') return _clickRPS(mx, my, px, py, pw, ph);
   if (g === 'baccarat') return _clickBaccarat(mx, my, px, py, pw, ph);
+  if (g === 'slots') return _clickSlots(mx, my, px, py, pw, ph);
+  if (g === 'keno') return _clickKeno(mx, my, px, py, pw, ph);
   return true;
 }
 
@@ -1920,6 +1924,314 @@ function _clickBaccarat(mx, my, px, py, pw, ph) {
     // Deal button
     if (_casinoHitBtn(mx, my, cx - 70, py + 260, 140, 48) && gold >= _casinoBetInput) {
       casinoBAC_deal(_casinoBetInput, _bacSelectedBet);
+      return true;
+    }
+    return true;
+  }
+
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SLOTS — 3-reel classic slot machine
+// ═══════════════════════════════════════════════════════════════
+
+function _drawSlots(px, py, pw, ph) {
+  const sl = casinoState.sl;
+  const cx = px + pw / 2;
+  // Machine background
+  ctx.fillStyle = '#1a0a2a';
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.fill();
+  ctx.strokeStyle = '#4a2a6a';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // Jackpot meter at top
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd700';
+  ctx.fillText('JACKPOT: ' + Math.floor(sl.jackpotPool) + 'g', cx, py + 72);
+  // Decorative lights around jackpot
+  const lightPhase = Math.floor(Date.now() / 200) % 6;
+  for (let i = 0; i < 6; i++) {
+    const lx = cx - 120 + i * 48;
+    const on = (i + lightPhase) % 3 === 0;
+    ctx.fillStyle = on ? '#ffcc00' : '#332200';
+    ctx.beginPath(); ctx.arc(lx, py + 82, 4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // 3 reel windows
+  const reelW = 120, reelH = 120, reelGap = 20;
+  const reelsStartX = cx - (3 * reelW + 2 * reelGap) / 2;
+  const reelY = py + 100;
+
+  for (let i = 0; i < 3; i++) {
+    const rx = reelsStartX + i * (reelW + reelGap);
+    // Reel frame
+    ctx.fillStyle = '#0a0a1a';
+    ctx.beginPath(); ctx.roundRect(rx, reelY, reelW, reelH, 6); ctx.fill();
+    ctx.strokeStyle = '#6a4a8a';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(rx, reelY, reelW, reelH, 6); ctx.stroke();
+    ctx.lineWidth = 1;
+
+    if (sl.phase === 'spinning') {
+      const elapsed = Date.now() - sl.spinTimer;
+      const reelStopTime = SLOTS_CONFIG.SPIN_DURATION - (2 - i) * SLOTS_CONFIG.REEL_STAGGER;
+      if (elapsed < reelStopTime) {
+        // Spinning animation — show random symbols scrolling
+        ctx.save();
+        ctx.beginPath(); ctx.roundRect(rx + 2, reelY + 2, reelW - 4, reelH - 4, 4); ctx.clip();
+        const speed = 8;
+        const offset = (elapsed * speed / 16) % 60;
+        for (let sy = -1; sy <= 2; sy++) {
+          const symIdx = (Math.floor(elapsed / 80) + sy + i * 7) % SLOTS_SYMBOLS.length;
+          const sym = SLOTS_SYMBOLS[Math.abs(symIdx) % SLOTS_SYMBOLS.length];
+          const display = SLOTS_SYMBOL_DISPLAY[sym];
+          const drawY = reelY + reelH / 2 + sy * 50 - offset + 10;
+          ctx.font = '36px serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = display.color;
+          ctx.fillText(display.emoji, rx + reelW / 2, drawY);
+        }
+        ctx.restore();
+      } else {
+        // This reel has stopped — show final symbol
+        _drawSlotSymbol(rx, reelY, reelW, reelH, sl.reels[i]);
+      }
+    } else if (sl.phase === 'result' || sl.phase === 'betting') {
+      // Show result or idle
+      if (sl.reels[i]) {
+        _drawSlotSymbol(rx, reelY, reelW, reelH, sl.reels[i]);
+      } else {
+        // Idle — show question marks
+        ctx.font = 'bold 44px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#333';
+        ctx.fillText('?', rx + reelW / 2, reelY + reelH / 2 + 16);
+      }
+    }
+  }
+
+  // Center line across reels
+  ctx.strokeStyle = '#ff4444';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(reelsStartX - 10, reelY + reelH / 2);
+  ctx.lineTo(reelsStartX + 3 * reelW + 2 * reelGap + 10, reelY + reelH / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.lineWidth = 1;
+
+  // Paytable (right side)
+  const ptX = cx + 160, ptY = py + 245;
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#888';
+  ctx.fillText('PAYTABLE', ptX, ptY);
+  const payEntries = [
+    ['🍒🍒🍒', '2x'], ['🍋🍋🍋', '3x'], ['🍊🍊🍊', '4x'],
+    ['🍇🍇🍇', '6x'], ['🔔🔔🔔', '10x'], ['📊📊📊', '20x'],
+    ['7️⃣7️⃣7️⃣', 'JACKPOT'], ['🍒🍒×', '1x'],
+  ];
+  for (let i = 0; i < payEntries.length; i++) {
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(payEntries[i][0], ptX, ptY + 15 + i * 14);
+    ctx.fillStyle = payEntries[i][1] === 'JACKPOT' ? '#ffd700' : '#5fca80';
+    ctx.fillText(payEntries[i][1], ptX + 60, ptY + 15 + i * 14);
+  }
+
+  // Auto-resolve when spin animation completes
+  if (sl.phase === 'spinning') {
+    const elapsed = Date.now() - sl.spinTimer;
+    if (elapsed >= SLOTS_CONFIG.SPIN_DURATION + 200) {
+      casinoSL_resolve();
+    }
+  }
+
+  // Betting UI or Spin button
+  if (sl.phase === 'betting') {
+    // Spin button
+    _casinoDrawButton(cx - 70, py + 240, 140, 48, 'SPIN', gold >= _casinoBetInput, true);
+    // Bet controls
+    _casinoDrawBetControls(px, py);
+  }
+
+  // Result overlay
+  if (sl.phase === 'result') {
+    _casinoDrawResult(px, py, pw, ph);
+  }
+}
+
+function _drawSlotSymbol(rx, ry, rw, rh, symbol) {
+  const display = SLOTS_SYMBOL_DISPLAY[symbol];
+  if (!display) return;
+  ctx.font = '44px serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = display.color;
+  ctx.fillText(display.emoji, rx + rw / 2, ry + rh / 2 + 16);
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = '#aaa';
+  ctx.fillText(display.label, rx + rw / 2, ry + rh - 8);
+}
+
+function _clickSlots(mx, my, px, py, pw, ph) {
+  const sl = casinoState.sl;
+  const cx = px + pw / 2;
+
+  if (sl.phase === 'betting') {
+    if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
+    // Spin button
+    if (_casinoHitBtn(mx, my, cx - 70, py + 240, 140, 48) && gold >= _casinoBetInput) {
+      casinoSL_spin(_casinoBetInput);
+      return true;
+    }
+    return true;
+  }
+
+  return true; // consume clicks during spin/result
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  KENO — Pick numbers, watch the draw
+// ═══════════════════════════════════════════════════════════════
+
+function _drawKeno(px, py, pw, ph) {
+  const kn = casinoState.kn;
+  const cx = px + pw / 2;
+  // Background
+  ctx.fillStyle = '#0a1a2a';
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.fill();
+  ctx.strokeStyle = '#1a4a6a';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // Number grid (8×5)
+  const cols = KENO_CONFIG.BOARD_COLS, rows = KENO_CONFIG.BOARD_ROWS;
+  const cellW = 60, cellH = 44;
+  const gridW = cols * cellW, gridH = rows * cellH;
+  const gridX = cx - gridW / 2;
+  const gridY = py + 70;
+
+  const drawnSet = new Set(kn.drawn.slice(0, kn.drawIndex));
+  const picksSet = new Set(kn.picks);
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const num = r * cols + c + 1;
+      if (num > KENO_CONFIG.BOARD_SIZE) break;
+      const nx = gridX + c * cellW, ny = gridY + r * cellH;
+
+      const isPicked = picksSet.has(num);
+      const isDrawn = drawnSet.has(num);
+      const isMatch = isPicked && isDrawn;
+
+      // Cell background
+      if (isMatch) {
+        ctx.fillStyle = '#8a6a00';
+        // Flash effect for recent match
+        const matchIdx = kn.drawn.indexOf(num);
+        if (matchIdx === kn.drawIndex - 1) {
+          const flash = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+          ctx.fillStyle = 'rgba(255, 215, 0, ' + flash + ')';
+        }
+      } else if (isDrawn) {
+        ctx.fillStyle = '#1a4a2a';
+      } else if (isPicked) {
+        ctx.fillStyle = '#1a2a5a';
+      } else {
+        ctx.fillStyle = '#111828';
+      }
+      ctx.beginPath(); ctx.roundRect(nx + 2, ny + 2, cellW - 4, cellH - 4, 4); ctx.fill();
+
+      // Border
+      ctx.strokeStyle = isMatch ? '#ffd700' : isDrawn ? '#2a6a3a' : isPicked ? '#4a6aaa' : '#2a2a3a';
+      ctx.lineWidth = isMatch ? 2 : 1;
+      ctx.beginPath(); ctx.roundRect(nx + 2, ny + 2, cellW - 4, cellH - 4, 4); ctx.stroke();
+      ctx.lineWidth = 1;
+
+      // Number
+      ctx.font = 'bold 16px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isMatch ? '#ffd700' : isDrawn ? '#5fca80' : isPicked ? '#6a9aff' : '#888';
+      ctx.fillText(num.toString(), nx + cellW / 2, ny + cellH / 2 + 6);
+    }
+  }
+
+  // Info bar below grid
+  const infoY = gridY + gridH + 10;
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+
+  if (kn.phase === 'picking') {
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Pick ' + kn.picks.length + '/' + KENO_CONFIG.MAX_PICKS + ' numbers', cx, infoY);
+
+    // Clear + Start buttons
+    const btnY = infoY + 12;
+    _casinoDrawButton(cx - 160, btnY, 100, 36, 'Clear', kn.picks.length > 0, false);
+    _casinoDrawButton(cx - 40, btnY, 100, 36, 'Start', kn.picks.length > 0 && gold >= _casinoBetInput, true);
+
+    // Bet controls
+    _casinoDrawBetControls(px, py);
+  } else if (kn.phase === 'drawing') {
+    // Auto-draw next number
+    const elapsed = Date.now() - kn.drawTimer;
+    if (elapsed >= KENO_CONFIG.DRAW_INTERVAL && kn.drawIndex < KENO_CONFIG.DRAW_COUNT) {
+      const more = _knDrawNext();
+      if (!more) {
+        // All drawn, resolve after a brief pause
+        setTimeout(function() { casinoKN_resolve(); }, 600);
+      }
+    }
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Drawing... ' + kn.drawIndex + '/' + KENO_CONFIG.DRAW_COUNT + '  Matches: ' + kn.matches, cx, infoY);
+  }
+
+  // Result overlay
+  if (kn.phase === 'result') {
+    _casinoDrawResult(px, py, pw, ph);
+  }
+}
+
+function _clickKeno(mx, my, px, py, pw, ph) {
+  const kn = casinoState.kn;
+  const cx = px + pw / 2;
+
+  if (kn.phase === 'picking') {
+    if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
+
+    // Number grid clicks
+    const cols = KENO_CONFIG.BOARD_COLS, rows = KENO_CONFIG.BOARD_ROWS;
+    const cellW = 60, cellH = 44;
+    const gridW = cols * cellW;
+    const gridX = cx - gridW / 2;
+    const gridY = py + 70;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const num = r * cols + c + 1;
+        if (num > KENO_CONFIG.BOARD_SIZE) break;
+        const nx = gridX + c * cellW, ny = gridY + r * cellH;
+        if (_casinoHitBtn(mx, my, nx + 2, ny + 2, cellW - 4, cellH - 4)) {
+          casinoKN_togglePick(num);
+          return true;
+        }
+      }
+    }
+
+    // Clear + Start buttons
+    const gridH = rows * cellH;
+    const btnY = gridY + gridH + 22;
+    if (_casinoHitBtn(mx, my, cx - 160, btnY, 100, 36)) {
+      casinoKN_clearPicks();
+      return true;
+    }
+    if (_casinoHitBtn(mx, my, cx - 40, btnY, 100, 36) && kn.picks.length > 0 && gold >= _casinoBetInput) {
+      casinoKN_start(_casinoBetInput);
       return true;
     }
     return true;

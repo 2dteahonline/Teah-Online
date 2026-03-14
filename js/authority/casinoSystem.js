@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const casinoState = {
-  activeGame: null,     // 'blackjack'|'roulette'|'headsOrTails'|'cases'|'mines'|'dice'|null
+  activeGame: null,     // 'blackjack'|'roulette'|'headsOrTails'|'cases'|'mines'|'dice'|'rps'|'baccarat'|'slots'|'keno'|null
   bet: 0,
   phase: 'idle',        // 'idle'|'betting'|'playing'|'result'
   result: null,         // { won: bool, payout: number, message: '' }
@@ -91,6 +91,24 @@ const casinoState = {
     dealTimer: 0,
     phase: 'betting',     // 'betting'|'dealing'|'result'
     _animateCallback: null,
+  },
+
+  // Slots
+  sl: {
+    reels: [null, null, null],  // result symbol for each reel
+    spinTimer: 0,
+    jackpotPool: 500,           // progressive jackpot (session-only)
+    phase: 'betting',           // 'betting'|'spinning'|'result'
+  },
+
+  // Keno
+  kn: {
+    picks: [],                  // player-selected numbers (1-40)
+    drawn: [],                  // drawn numbers so far
+    drawIndex: 0,               // how many drawn
+    drawTimer: 0,               // timestamp of last draw
+    matches: 0,
+    phase: 'picking',           // 'picking'|'drawing'|'result'
   },
 };
 
@@ -180,6 +198,16 @@ function casinoReset() {
   casinoState.bac.dealTimer = 0;
   casinoState.bac._animateCallback = null;
   casinoState.bac.phase = 'betting';
+  casinoState.sl.reels = [null, null, null];
+  casinoState.sl.spinTimer = 0;
+  casinoState.sl.phase = 'betting';
+  // Don't reset jackpotPool on full reset — it's session-persistent
+  casinoState.kn.picks = [];
+  casinoState.kn.drawn = [];
+  casinoState.kn.drawIndex = 0;
+  casinoState.kn.drawTimer = 0;
+  casinoState.kn.matches = 0;
+  casinoState.kn.phase = 'picking';
 }
 
 // Reset just the current game for "play again"
@@ -245,6 +273,17 @@ function casinoResetGame() {
     casinoState.bac.dealTimer = 0;
     casinoState.bac._animateCallback = null;
     casinoState.bac.phase = 'betting';
+  } else if (g === 'slots') {
+    casinoState.sl.reels = [null, null, null];
+    casinoState.sl.spinTimer = 0;
+    casinoState.sl.phase = 'betting';
+  } else if (g === 'keno') {
+    casinoState.kn.picks = [];
+    casinoState.kn.drawn = [];
+    casinoState.kn.drawIndex = 0;
+    casinoState.kn.drawTimer = 0;
+    casinoState.kn.matches = 0;
+    casinoState.kn.phase = 'picking';
   }
   casinoState.phase = 'betting';
 }
@@ -1043,5 +1082,147 @@ function _bacResolve() {
     casinoState.resultTimer = Date.now();
   } else {
     casinoLose(winner.charAt(0).toUpperCase() + winner.slice(1) + ' wins (' + pVal + ' vs ' + bVal + ')');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SLOTS
+// ═══════════════════════════════════════════════════════════════
+
+// Build weighted reel strip (array of 64 symbols)
+let _slotReelStrip = null;
+function _slGetReelStrip() {
+  if (_slotReelStrip) return _slotReelStrip;
+  _slotReelStrip = [];
+  for (const w of SLOTS_CONFIG.REEL_WEIGHTS) {
+    for (let i = 0; i < w.count; i++) _slotReelStrip.push(w.symbol);
+  }
+  // Shuffle
+  for (let i = _slotReelStrip.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [_slotReelStrip[i], _slotReelStrip[j]] = [_slotReelStrip[j], _slotReelStrip[i]];
+  }
+  return _slotReelStrip;
+}
+
+function _slGetReelResult() {
+  const strip = _slGetReelStrip();
+  return strip[Math.floor(Math.random() * strip.length)];
+}
+
+function casinoSL_spin(betAmount) {
+  if (!casinoPlaceBet(betAmount)) return false;
+  const sl = casinoState.sl;
+  // Contribute to jackpot
+  sl.jackpotPool += Math.floor(betAmount * SLOTS_CONFIG.JACKPOT_CONTRIBUTION);
+  // Pre-determine results
+  sl.reels = [_slGetReelResult(), _slGetReelResult(), _slGetReelResult()];
+  sl.spinTimer = Date.now();
+  sl.phase = 'spinning';
+  casinoState.phase = 'playing';
+  return true;
+}
+
+function casinoSL_resolve() {
+  const sl = casinoState.sl;
+  const r = sl.reels;
+  sl.phase = 'result';
+
+  // Check 3 of a kind
+  if (r[0] === r[1] && r[1] === r[2]) {
+    if (r[0] === 'seven') {
+      // JACKPOT!
+      const jackpot = sl.jackpotPool;
+      sl.jackpotPool = SLOTS_CONFIG.JACKPOT_SEED;
+      casinoWin(jackpot + casinoState.bet); // return bet + jackpot
+      casinoState.result.message = 'JACKPOT! +' + (jackpot + casinoState.bet) + 'g';
+      return;
+    }
+    const mult = SLOTS_CONFIG.PAYTABLE[r[0]];
+    if (mult > 0) {
+      const payout = Math.floor(casinoState.bet * mult) + casinoState.bet; // winnings + bet return
+      casinoWin(payout);
+      return;
+    }
+  }
+
+  // Check 2× cherry consolation
+  let cherryCount = 0;
+  for (const s of r) { if (s === 'cherry') cherryCount++; }
+  if (cherryCount >= 2) {
+    casinoWin(casinoState.bet); // return bet (1x)
+    casinoState.result.message = '2× Cherry — Bet returned!';
+    return;
+  }
+
+  casinoLose('No match!');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  KENO
+// ═══════════════════════════════════════════════════════════════
+
+function casinoKN_togglePick(num) {
+  const kn = casinoState.kn;
+  if (kn.phase !== 'picking') return;
+  if (num < 1 || num > KENO_CONFIG.BOARD_SIZE) return;
+  const idx = kn.picks.indexOf(num);
+  if (idx >= 0) {
+    kn.picks.splice(idx, 1);
+  } else {
+    if (kn.picks.length >= KENO_CONFIG.MAX_PICKS) return;
+    kn.picks.push(num);
+  }
+}
+
+function casinoKN_clearPicks() {
+  casinoState.kn.picks = [];
+}
+
+function casinoKN_start(betAmount) {
+  const kn = casinoState.kn;
+  if (kn.picks.length === 0) return false;
+  if (!casinoPlaceBet(betAmount)) return false;
+
+  // Generate 10 unique random draws from 1-40
+  const pool = [];
+  for (let i = 1; i <= KENO_CONFIG.BOARD_SIZE; i++) pool.push(i);
+  // Fisher-Yates partial shuffle
+  for (let i = pool.length - 1; i > pool.length - 1 - KENO_CONFIG.DRAW_COUNT; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  kn.drawn = pool.slice(pool.length - KENO_CONFIG.DRAW_COUNT);
+  kn.drawIndex = 0;
+  kn.drawTimer = Date.now();
+  kn.matches = 0;
+  kn.phase = 'drawing';
+  casinoState.phase = 'playing';
+  return true;
+}
+
+function _knDrawNext() {
+  const kn = casinoState.kn;
+  if (kn.drawIndex >= KENO_CONFIG.DRAW_COUNT) return false;
+  const num = kn.drawn[kn.drawIndex];
+  if (kn.picks.includes(num)) kn.matches++;
+  kn.drawIndex++;
+  kn.drawTimer = Date.now();
+  return kn.drawIndex < KENO_CONFIG.DRAW_COUNT;
+}
+
+function casinoKN_resolve() {
+  const kn = casinoState.kn;
+  kn.phase = 'result';
+  const picks = kn.picks.length;
+  const matches = kn.matches;
+  const payoutTable = KENO_CONFIG.PAYOUTS[picks];
+  const mult = payoutTable && payoutTable[matches] ? payoutTable[matches] : 0;
+  if (mult > 0) {
+    const payout = Math.floor(casinoState.bet * mult) + casinoState.bet;
+    casinoWin(payout);
+    casinoState.result.message = matches + '/' + picks + ' matched! ' + mult + 'x';
+  } else {
+    casinoLose(matches + '/' + picks + ' matched — no payout');
   }
 }

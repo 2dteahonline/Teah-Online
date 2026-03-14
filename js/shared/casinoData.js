@@ -156,6 +156,69 @@ const BACCARAT_CONFIG = {
   TIE_PAYOUT: 8,        // 8:1
 };
 
+const SLOTS_SYMBOLS = ['cherry', 'lemon', 'orange', 'plum', 'bell', 'bar', 'seven'];
+const SLOTS_SYMBOL_DISPLAY = {
+  cherry: { emoji: '🍒', color: '#ff4444', label: 'Cherry' },
+  lemon:  { emoji: '🍋', color: '#ffdd00', label: 'Lemon' },
+  orange: { emoji: '🍊', color: '#ff8800', label: 'Orange' },
+  plum:   { emoji: '🍇', color: '#9944cc', label: 'Plum' },
+  bell:   { emoji: '🔔', color: '#ffcc00', label: 'Bell' },
+  bar:    { emoji: '📊', color: '#4488ff', label: 'Bar' },
+  seven:  { emoji: '7️⃣',  color: '#ff2222', label: 'Seven' },
+};
+
+const SLOTS_CONFIG = {
+  REELS: 3,
+  STOPS_PER_REEL: 64,
+  // Weighted symbol distribution per reel (same for all 3 reels)
+  REEL_WEIGHTS: [
+    { symbol: 'cherry', count: 12 },
+    { symbol: 'lemon',  count: 11 },
+    { symbol: 'orange', count: 10 },
+    { symbol: 'plum',   count: 10 },
+    { symbol: 'bell',   count: 9 },
+    { symbol: 'bar',    count: 8 },
+    { symbol: 'seven',  count: 4 },
+  ],
+  // Paytable: 3-of-a-kind multipliers on bet
+  PAYTABLE: {
+    cherry: 2,
+    lemon:  3,
+    orange: 4,
+    plum:   6,
+    bell:   10,
+    bar:    20,
+    seven:  0,  // jackpot — handled separately
+  },
+  TWO_CHERRY_PAYOUT: 1,  // 2× cherry in any positions = return bet
+  JACKPOT_SEED: 500,
+  JACKPOT_CONTRIBUTION: 0.02,  // 2% of each bet added to pool
+  SPIN_DURATION: 1800,  // ms total spin time
+  REEL_STAGGER: 400,    // ms between each reel stopping
+};
+
+const KENO_CONFIG = {
+  BOARD_SIZE: 40,
+  BOARD_COLS: 8,
+  BOARD_ROWS: 5,
+  MAX_PICKS: 10,
+  DRAW_COUNT: 10,
+  DRAW_INTERVAL: 300,  // ms between each number drawn
+  // Payout table: PAYOUTS[picks][matches] = multiplier (0 = no payout)
+  PAYOUTS: {
+    1:  { 1: 3.5 },
+    2:  { 2: 8 },
+    3:  { 2: 2, 3: 20 },
+    4:  { 2: 1, 3: 4, 4: 50 },
+    5:  { 3: 2, 4: 10, 5: 100 },
+    6:  { 3: 1, 4: 4, 5: 20, 6: 200 },
+    7:  { 4: 2, 5: 8, 6: 50, 7: 400 },
+    8:  { 4: 1, 5: 4, 6: 20, 7: 100, 8: 800 },
+    9:  { 5: 2, 6: 8, 7: 40, 8: 200, 9: 1500 },
+    10: { 5: 1, 6: 4, 7: 20, 8: 80, 9: 400, 10: 2000 },
+  },
+};
+
 const CASINO_GAMES = [
   { id: 'blackjack',    label: 'Blackjack',     stationEntity: 'casino_blackjack' },
   { id: 'roulette',     label: 'Roulette',      stationEntity: 'casino_roulette' },
@@ -165,4 +228,6 @@ const CASINO_GAMES = [
   { id: 'dice',         label: 'Dice',           stationEntity: 'casino_dice' },
   { id: 'rps',          label: 'Rock Paper Scissors', stationEntity: 'casino_rps' },
   { id: 'baccarat',     label: 'Baccarat',           stationEntity: 'casino_baccarat' },
+  { id: 'slots',        label: 'Slots',          stationEntity: 'casino_slots' },
+  { id: 'keno',         label: 'Keno',           stationEntity: 'casino_keno' },
 ];
