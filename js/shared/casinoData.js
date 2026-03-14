@@ -203,7 +203,7 @@ const KENO_CONFIG = {
   BOARD_ROWS: 5,
   MAX_PICKS: 10,
   DRAW_COUNT: 10,
-  DRAW_INTERVAL: 120,  // ms between each number drawn
+  DRAW_INTERVAL: 40,  // ms between each number drawn
   // Payout table: PAYOUTS[picks][matches] = multiplier (0 = no payout)
   PAYOUTS: {
     1:  { 1: 3.5 },
