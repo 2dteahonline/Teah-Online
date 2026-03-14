@@ -1606,21 +1606,14 @@ const ENTITY_RENDERERS = {
       for (let py = 0; py < th; py++) {
         for (let px = 0; px < tw; px++) {
           const rx = ex + px * TILE, ry = ey + py * TILE;
-          const half = TILE / 2;
-          // 2x2 checkered pattern within each tile
-          for (let sy = 0; sy < 2; sy++) {
-            for (let sx = 0; sx < 2; sx++) {
-              const isBlack = (px * 2 + sx + py * 2 + sy) % 2 === 0;
-              ctx.fillStyle = isBlack ? '#1a1a1a' : '#e0e0e0';
-              ctx.fillRect(rx + sx * half, ry + sy * half, half, half);
-            }
-          }
-          // Subtle grout
-          ctx.fillStyle = 'rgba(128,128,128,0.15)';
-          ctx.fillRect(rx, ry, TILE, 1);
-          ctx.fillRect(rx, ry, 1, TILE);
-          ctx.fillRect(rx + half, ry, 1, TILE);
-          ctx.fillRect(rx, ry + half, TILE, 1);
+          // Retro diner checkered floor — warm cream and muted red
+          const isAccent = (px + py) % 2 === 0;
+          ctx.fillStyle = isAccent ? '#c43830' : '#e8dcc8';
+          ctx.fillRect(rx, ry, TILE, TILE);
+          // Subtle tile edge grout
+          ctx.strokeStyle = 'rgba(80,60,40,0.12)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(rx, ry, TILE, TILE);
         }
       }
   },

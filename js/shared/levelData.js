@@ -952,7 +952,9 @@ const LEVELS = {
       // Vertical wall on right side of kitchen (gap at ty:13-14 for door)
       { type: 'diner_service_counter', tx: 23, ty: 1, w: 1, h: 12, solid: true },
       // Kitchen door (2 tiles tall so player can walk through)
-      { type: 'kitchen_door_diner', tx: 23, ty: 13, w: 1, h: 2, solid: false },
+      { type: 'kitchen_door_diner', tx: 23, ty: 13, w: 2, h: 2, solid: false },
+      // Corner block where kitchen wall meets service counter
+      { type: 'diner_service_counter', tx: 23, ty: 15, w: 1, h: 1, solid: true },
 
       // === INGREDIENT STATIONS (2x2 each) ===
       // Breakfast row 1 (ty: 1)
