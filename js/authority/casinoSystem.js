@@ -437,7 +437,7 @@ function casinoBJ_split() {
   const bj = casinoState.bj;
   if (bj.phase === 'animating') return;
   if (bj.playerHand.length !== 2) return;
-  if (bj.playerHand[0].rank !== bj.playerHand[1].rank) return;
+  if (_bjCardValue(bj.playerHand[0]) !== _bjCardValue(bj.playerHand[1])) return;
   if (bj.splitHand) return;
   if (gold < casinoState.bet) return;
   gold -= casinoState.bet;
@@ -514,7 +514,7 @@ function casinoBJ_canSplit() {
   const bj = casinoState.bj;
   return bj.phase === 'player' && !bj.splitHand &&
     bj.playerHand.length === 2 &&
-    bj.playerHand[0].rank === bj.playerHand[1].rank &&
+    _bjCardValue(bj.playerHand[0]) === _bjCardValue(bj.playerHand[1]) &&
     gold >= casinoState.bet;
 }
 
