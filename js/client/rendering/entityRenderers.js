@@ -4227,6 +4227,99 @@ ENTITY_RENDERERS.paper_lantern = (e, ctx, ex, ey) => {
     ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2, 2, 0, Math.PI * 2); ctx.fill();
 };
 
+// ===================== EARTH-216 DUNGEON ENTITY RENDERERS =====================
+ENTITY_RENDERERS.building_earth216 = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const t = Date.now() / 1000;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(ex+cw/2+6, ey+ch+7, cw*0.48, 9, 0, 0, Math.PI*2); ctx.fill();
+    // Main structure — dark with gold trim
+    ctx.fillStyle = '#0e0c0a';
+    ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
+    // Brick pattern
+    ctx.strokeStyle = '#1a1610'; ctx.lineWidth = 1;
+    for (let r = 0; r < 6; r++) {
+      const ly = ey+ch*0.28+r*ch*0.12;
+      ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
+      const off = r % 2 === 0 ? cw*0.3 : cw*0.6;
+      ctx.beginPath(); ctx.moveTo(ex+off, ly); ctx.lineTo(ex+off, ly+ch*0.12); ctx.stroke();
+    }
+    // Roof — art deco peaked
+    ctx.fillStyle = '#1a1008';
+    ctx.beginPath();
+    ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.5, ey-2);
+    ctx.lineTo(ex+cw+6, ey+ch*0.24); ctx.closePath(); ctx.fill();
+    // Gold roof trim
+    ctx.strokeStyle = '#ccaa44'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ex-6, ey+ch*0.24); ctx.lineTo(ex+cw*0.5, ey-2);
+    ctx.lineTo(ex+cw+6, ey+ch*0.24); ctx.stroke();
+    // Neon border glow
+    const nGlow = 0.5 + Math.sin(t * 2) * 0.2;
+    ctx.strokeStyle = `rgba(204,68,68,${nGlow})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ex+2, ey+ch*0.22, cw-4, ch*0.78);
+    // Windows with neon glow
+    const winGlow = 0.5 + Math.sin(t * 1.5) * 0.15;
+    for (let wx = 0; wx < 3; wx++) {
+      const px = ex + cw*0.2 + wx * cw*0.25;
+      const py = ey + ch*0.45;
+      ctx.fillStyle = `rgba(204,170,68,${winGlow * 0.3})`;
+      ctx.fillRect(px-7, py-12, 14, 24);
+      ctx.strokeStyle = '#ccaa44'; ctx.lineWidth = 1;
+      ctx.strokeRect(px-7, py-12, 14, 24);
+    }
+    // Door
+    ctx.fillStyle = '#1a1008';
+    ctx.fillRect(ex+cw/2-12, ey+ch*0.82, 24, ch*0.18);
+    ctx.strokeStyle = '#ccaa44'; ctx.lineWidth = 1;
+    ctx.strokeRect(ex+cw/2-12, ey+ch*0.82, 24, ch*0.18);
+    // Sign
+    ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(204,68,68,${nGlow * 0.9})`;
+    ctx.fillText('EARTH-216', ex + cw/2, ey + ch*0.15);
+    ctx.textAlign = 'left';
+};
+ENTITY_RENDERERS.earth216_entrance = (e, ctx, ex, ey, w, h) => {
+    const ew = w * TILE, eh = h * TILE;
+    const t = Date.now() / 1000;
+    const glow = 0.4 + Math.sin(t * 2) * 0.15;
+    ctx.fillStyle = `rgba(204,68,68,${glow * 0.15})`;
+    ctx.fillRect(ex, ey, ew, eh);
+    ctx.strokeStyle = `rgba(204,68,68,${glow * 0.5})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = `rgba(204,68,68,${glow * 0.7})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u25B2 ENTER", ex + ew/2, ey + eh + 14);
+    ctx.textAlign = "left";
+};
+ENTITY_RENDERERS.earth216_exit = (e, ctx, ex, ey, w, h) => {
+    const t = Date.now() / 1000;
+    ctx.fillStyle = `rgba(204,68,68,${0.15 + Math.sin(t * 2) * 0.05})`;
+    ctx.fillRect(ex + 4, ey + 4, w * TILE - 8, h * TILE - 8);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = `rgba(204,68,68,${0.6 + Math.sin(t * 3) * 0.2})`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u27F5 EXIT \u27F6", ex + w * TILE / 2, ey + h * TILE + 14);
+    ctx.textAlign = "left";
+};
+ENTITY_RENDERERS.neon_sign_e216 = (e, ctx, ex, ey) => {
+    const t = Date.now() / 1000;
+    const flicker = 0.5 + Math.sin(t * 3 + e.tx * 2 + e.ty * 1.5) * 0.2;
+    // Neon glow
+    ctx.fillStyle = `rgba(204,68,68,${flicker * 0.12})`;
+    ctx.beginPath(); ctx.arc(ex + TILE/2, ey + TILE/2, 18, 0, Math.PI * 2); ctx.fill();
+    // Sign body
+    ctx.fillStyle = '#1a0808';
+    ctx.fillRect(ex + TILE/2 - 6, ey + TILE/2 - 4, 12, 8);
+    // Neon tube
+    ctx.fillStyle = `rgba(204,68,68,${flicker})`;
+    ctx.fillRect(ex + TILE/2 - 4, ey + TILE/2 - 2, 8, 4);
+};
+
 ENTITY_RENDERERS.gas_lamp = (e, ctx, ex, ey) => {
     const t = Date.now() / 1000;
     const flicker = 0.5 + Math.sin(t * 3 + e.tx * 2) * 0.15;

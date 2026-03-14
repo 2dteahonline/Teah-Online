@@ -1111,6 +1111,209 @@ const _wagashiConfig = {
   }),
 };
 
+// ===================== EARTH-216 (DUNGEON 6) =====================
+const _earth216Config = {
+  1: _buildFloor({
+    name: 'Crime & Casino',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'crime_casino',
+        waveComps: {
+          1: { primary: [{ type: 'chip_runner', weight: 3 }], support: [{ type: 'pit_bruiser', weight: 1 }], primaryPct: 0.85, theme: 'Chip Runners' },
+          2: { primary: [{ type: 'pit_bruiser', weight: 3 }, { type: 'chip_runner', weight: 2 }], support: [{ type: 'velvet_knifer', weight: 1 }], primaryPct: 0.7, theme: 'Pit Bruisers' },
+          3: { primary: [{ type: 'velvet_knifer', weight: 3 }, { type: 'pit_bruiser', weight: 1 }], support: [{ type: 'chip_runner', weight: 2 }, { type: 'vault_hound_e216', weight: 1 }], primaryPct: 0.6, theme: 'Velvet Knifers' },
+          4: { primary: [{ type: 'vault_hound_e216', weight: 3 }, { type: 'velvet_knifer', weight: 2 }], support: [{ type: 'chip_runner', weight: 1 }, { type: 'pit_bruiser', weight: 1 }], primaryPct: 0.6, theme: 'Vault Hounds' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'victor_graves_arena',
+        boss: 'victor_graves',
+        bossComp: { theme: 'Victor Graves', forceGolem: false, forceBoss: 'victor_graves', support: [{ type: 'chip_runner', count: 2 }, { type: 'pit_bruiser', count: 2 }, { type: 'vault_hound_e216', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'casino_floor',
+        waveComps: {
+          6: { primary: [{ type: 'gilded_maid', weight: 3 }], support: [{ type: 'chip_runner', weight: 1 }], primaryPct: 0.8, theme: 'Gilded Maids' },
+          7: { primary: [{ type: 'cashmere_viper', weight: 3 }, { type: 'gilded_maid', weight: 1 }], support: [{ type: 'pit_bruiser', weight: 1 }], primaryPct: 0.7, theme: 'Cashmere Vipers' },
+          8: { primary: [{ type: 'jewel_wraith', weight: 3 }, { type: 'cashmere_viper', weight: 1 }], support: [{ type: 'gilded_maid', weight: 1 }], primaryPct: 0.65, theme: 'Jewel Wraiths' },
+          9: { primary: [{ type: 'bullion_knight', weight: 2 }, { type: 'jewel_wraith', weight: 2 }], support: [{ type: 'gilded_maid', weight: 1 }, { type: 'cashmere_viper', weight: 1 }], primaryPct: 0.6, theme: 'Bullion Knights' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'madame_midas_arena',
+        boss: 'madame_midas',
+        bossComp: { theme: 'Madame Midas', forceGolem: false, forceBoss: 'madame_midas', support: [{ type: 'gilded_maid', count: 2 }, { type: 'cashmere_viper', count: 2 }, { type: 'jewel_wraith', count: 1 }, { type: 'bullion_knight', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1812', floor2: '#181610', wall: '#0a0806', wallAccent: '#ccaa44', accent2: '#cc4444', gridLine: '#2a2822' },
+    hazards: [],
+  }),
+
+  2: _buildFloor({
+    name: 'Cursed Flesh & Dead Performance',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'cursed_flesh',
+        waveComps: {
+          1: { primary: [{ type: 'scar_punk', weight: 3 }], support: [{ type: 'splitjaw', weight: 1 }], primaryPct: 0.85, theme: 'Scar Punks' },
+          2: { primary: [{ type: 'splitjaw', weight: 3 }, { type: 'scar_punk', weight: 2 }], support: [{ type: 'razorback_youth', weight: 1 }], primaryPct: 0.7, theme: 'Splitjaws' },
+          3: { primary: [{ type: 'razorback_youth', weight: 3 }, { type: 'splitjaw', weight: 1 }], support: [{ type: 'scar_punk', weight: 2 }, { type: 'grin_stitcher', weight: 1 }], primaryPct: 0.6, theme: 'Razorback Youth' },
+          4: { primary: [{ type: 'grin_stitcher', weight: 3 }, { type: 'razorback_youth', weight: 2 }], support: [{ type: 'scar_punk', weight: 1 }, { type: 'splitjaw', weight: 1 }], primaryPct: 0.6, theme: 'Grin Stitchers' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'slasher_arena',
+        boss: 'slasher_e216',
+        bossComp: { theme: 'Slasher', forceGolem: false, forceBoss: 'slasher_e216', support: [{ type: 'scar_punk', count: 2 }, { type: 'splitjaw', count: 2 }, { type: 'grin_stitcher', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'dead_performance',
+        waveComps: {
+          6: { primary: [{ type: 'chorus_shade', weight: 3 }], support: [{ type: 'scar_punk', weight: 1 }], primaryPct: 0.8, theme: 'Chorus Shades' },
+          7: { primary: [{ type: 'spotlight_stalker', weight: 3 }, { type: 'chorus_shade', weight: 1 }], support: [{ type: 'splitjaw', weight: 1 }], primaryPct: 0.7, theme: 'Spotlight Stalkers' },
+          8: { primary: [{ type: 'velvet_mourner', weight: 3 }, { type: 'spotlight_stalker', weight: 1 }], support: [{ type: 'chorus_shade', weight: 1 }], primaryPct: 0.65, theme: 'Velvet Mourners' },
+          9: { primary: [{ type: 'static_tenor', weight: 2 }, { type: 'velvet_mourner', weight: 2 }], support: [{ type: 'chorus_shade', weight: 1 }, { type: 'spotlight_stalker', weight: 1 }], primaryPct: 0.6, theme: 'Static Tenors' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'blackout_belle_arena',
+        boss: 'blackout_belle',
+        bossComp: { theme: 'Blackout Belle', forceGolem: false, forceBoss: 'blackout_belle', support: [{ type: 'chorus_shade', count: 2 }, { type: 'spotlight_stalker', count: 2 }, { type: 'velvet_mourner', count: 1 }, { type: 'static_tenor', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1218', floor2: '#181016', wall: '#0a060e', wallAccent: '#cc2244', accent2: '#882244', gridLine: '#2a2228' },
+    hazards: [],
+  }),
+
+  3: _buildFloor({
+    name: 'Spirit & Death',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'spirit_death',
+        waveComps: {
+          1: { primary: [{ type: 'marrow_guard', weight: 3 }], support: [{ type: 'candle_child', weight: 1 }], primaryPct: 0.85, theme: 'Marrow Guards' },
+          2: { primary: [{ type: 'candle_child', weight: 3 }, { type: 'marrow_guard', weight: 2 }], support: [{ type: 'ofrenda_keeper', weight: 1 }], primaryPct: 0.7, theme: 'Candle Children' },
+          3: { primary: [{ type: 'ofrenda_keeper', weight: 3 }, { type: 'candle_child', weight: 1 }], support: [{ type: 'marrow_guard', weight: 2 }, { type: 'grave_trumpeter', weight: 1 }], primaryPct: 0.6, theme: 'Ofrenda Keepers' },
+          4: { primary: [{ type: 'grave_trumpeter', weight: 3 }, { type: 'ofrenda_keeper', weight: 2 }], support: [{ type: 'marrow_guard', weight: 1 }, { type: 'candle_child', weight: 1 }], primaryPct: 0.6, theme: 'Grave Trumpeters' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'macabre_arena',
+        boss: 'macabre_e216',
+        bossComp: { theme: 'Macabre', forceGolem: false, forceBoss: 'macabre_e216', support: [{ type: 'marrow_guard', count: 2 }, { type: 'candle_child', count: 2 }, { type: 'grave_trumpeter', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'death_rites',
+        waveComps: {
+          6: { primary: [{ type: 'veil_sister', weight: 3 }], support: [{ type: 'marrow_guard', weight: 1 }], primaryPct: 0.8, theme: 'Veil Sisters' },
+          7: { primary: [{ type: 'candle_bride', weight: 3 }, { type: 'veil_sister', weight: 1 }], support: [{ type: 'candle_child', weight: 1 }], primaryPct: 0.7, theme: 'Candle Brides' },
+          8: { primary: [{ type: 'rosary_fencer', weight: 3 }, { type: 'candle_bride', weight: 1 }], support: [{ type: 'veil_sister', weight: 1 }], primaryPct: 0.65, theme: 'Rosary Fencers' },
+          9: { primary: [{ type: 'choir_widow', weight: 2 }, { type: 'rosary_fencer', weight: 2 }], support: [{ type: 'veil_sister', weight: 1 }, { type: 'candle_bride', weight: 1 }], primaryPct: 0.6, theme: 'Choir Widows' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'rosa_calavera_arena',
+        boss: 'rosa_calavera',
+        bossComp: { theme: 'Rosa Calavera', forceGolem: false, forceBoss: 'rosa_calavera', support: [{ type: 'veil_sister', count: 2 }, { type: 'candle_bride', count: 2 }, { type: 'rosary_fencer', count: 1 }, { type: 'choir_widow', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1a12', floor2: '#181810', wall: '#0a0a06', wallAccent: '#cc8844', accent2: '#8844cc', gridLine: '#2a2a22' },
+    hazards: [],
+  }),
+
+  4: _buildFloor({
+    name: 'Hell Engines & Speed',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'hell_engines',
+        waveComps: {
+          1: { primary: [{ type: 'chain_gremlin', weight: 3 }], support: [{ type: 'road_reaper', weight: 1 }], primaryPct: 0.85, theme: 'Chain Gremlins' },
+          2: { primary: [{ type: 'road_reaper', weight: 3 }, { type: 'chain_gremlin', weight: 2 }], support: [{ type: 'furnace_knuckle', weight: 1 }], primaryPct: 0.7, theme: 'Road Reapers' },
+          3: { primary: [{ type: 'furnace_knuckle', weight: 3 }, { type: 'road_reaper', weight: 1 }], support: [{ type: 'chain_gremlin', weight: 2 }, { type: 'rev_hound', weight: 1 }], primaryPct: 0.6, theme: 'Furnace Knuckles' },
+          4: { primary: [{ type: 'rev_hound', weight: 3 }, { type: 'furnace_knuckle', weight: 2 }], support: [{ type: 'chain_gremlin', weight: 1 }, { type: 'road_reaper', weight: 1 }], primaryPct: 0.6, theme: 'Rev Hounds' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'motor_demon_arena',
+        boss: 'motor_demon',
+        bossComp: { theme: 'Motor Demon', forceGolem: false, forceBoss: 'motor_demon', support: [{ type: 'chain_gremlin', count: 2 }, { type: 'road_reaper', count: 2 }, { type: 'rev_hound', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'speed_district',
+        waveComps: {
+          6: { primary: [{ type: 'drift_phantom', weight: 3 }], support: [{ type: 'chain_gremlin', weight: 1 }], primaryPct: 0.8, theme: 'Drift Phantoms' },
+          7: { primary: [{ type: 'crash_dummy', weight: 3 }, { type: 'drift_phantom', weight: 1 }], support: [{ type: 'road_reaper', weight: 1 }], primaryPct: 0.7, theme: 'Crash Dummies' },
+          8: { primary: [{ type: 'neon_screamer', weight: 3 }, { type: 'crash_dummy', weight: 1 }], support: [{ type: 'drift_phantom', weight: 1 }], primaryPct: 0.65, theme: 'Neon Screamers' },
+          9: { primary: [{ type: 'ramp_widow', weight: 2 }, { type: 'neon_screamer', weight: 2 }], support: [{ type: 'drift_phantom', weight: 1 }, { type: 'crash_dummy', weight: 1 }], primaryPct: 0.6, theme: 'Ramp Widows' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'nitro_wraith_arena',
+        boss: 'nitro_wraith',
+        bossComp: { theme: 'Nitro Wraith', forceGolem: false, forceBoss: 'nitro_wraith', support: [{ type: 'drift_phantom', count: 2 }, { type: 'crash_dummy', count: 2 }, { type: 'neon_screamer', count: 1 }, { type: 'ramp_widow', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#1a1210', floor2: '#181010', wall: '#0a0606', wallAccent: '#cc4422', accent2: '#ff8844', gridLine: '#2a2220' },
+    hazards: [],
+  }),
+
+  5: _buildFloor({
+    name: 'Fate & Corruption',
+    subFloors: [
+      {
+        waves: [1, 2, 3, 4],
+        theme: 'fate_corruption',
+        waveComps: {
+          1: { primary: [{ type: 'cardling', weight: 3 }], support: [{ type: 'pit_oracle', weight: 1 }], primaryPct: 0.85, theme: 'Cardlings' },
+          2: { primary: [{ type: 'pit_oracle', weight: 3 }, { type: 'cardling', weight: 2 }], support: [{ type: 'roulette_revenant', weight: 1 }], primaryPct: 0.7, theme: 'Pit Oracles' },
+          3: { primary: [{ type: 'roulette_revenant', weight: 3 }, { type: 'pit_oracle', weight: 1 }], support: [{ type: 'cardling', weight: 2 }, { type: 'suit_reaper', weight: 1 }], primaryPct: 0.6, theme: 'Roulette Revenants' },
+          4: { primary: [{ type: 'suit_reaper', weight: 3 }, { type: 'roulette_revenant', weight: 2 }], support: [{ type: 'cardling', weight: 1 }, { type: 'pit_oracle', weight: 1 }], primaryPct: 0.6, theme: 'Suit Reapers' },
+        },
+      },
+      {
+        waves: [5],
+        theme: 'hollow_ace_arena',
+        boss: 'hollow_ace',
+        bossComp: { theme: 'Hollow Ace', forceGolem: false, forceBoss: 'hollow_ace', support: [{ type: 'cardling', count: 2 }, { type: 'pit_oracle', count: 2 }, { type: 'suit_reaper', count: 1 }] },
+      },
+      {
+        waves: [6, 7, 8, 9],
+        theme: 'corruption_depths',
+        waveComps: {
+          6: { primary: [{ type: 'blight_husk', weight: 3 }], support: [{ type: 'cardling', weight: 1 }], primaryPct: 0.8, theme: 'Blight Husks' },
+          7: { primary: [{ type: 'maw_sprite', weight: 3 }, { type: 'blight_husk', weight: 1 }], support: [{ type: 'pit_oracle', weight: 1 }], primaryPct: 0.7, theme: 'Maw Sprites' },
+          8: { primary: [{ type: 'rift_penitent', weight: 3 }, { type: 'maw_sprite', weight: 1 }], support: [{ type: 'blight_husk', weight: 1 }], primaryPct: 0.65, theme: 'Rift Penitents' },
+          9: { primary: [{ type: 'grin_apostle', weight: 2 }, { type: 'rift_penitent', weight: 2 }], support: [{ type: 'blight_husk', weight: 1 }, { type: 'maw_sprite', weight: 1 }], primaryPct: 0.6, theme: 'Grin Apostles' },
+        },
+      },
+      {
+        waves: [10],
+        theme: 'alcazar_arena',
+        boss: 'alcazar',
+        bossComp: { theme: 'Alcazar', forceGolem: false, forceBoss: 'alcazar', support: [{ type: 'blight_husk', count: 2 }, { type: 'maw_sprite', count: 2 }, { type: 'rift_penitent', count: 1 }, { type: 'grin_apostle', count: 1 }] },
+      },
+    ],
+    palette: { floor1: '#14121a', floor2: '#121018', wall: '#06040e', wallAccent: '#8844cc', accent2: '#cc44aa', gridLine: '#24222a' },
+    hazards: [],
+  }),
+};
+
 // ===================== ASSEMBLE FLOOR_CONFIG =====================
 const FLOOR_CONFIG = {
   cave: _caveConfig,
@@ -1118,6 +1321,7 @@ const FLOOR_CONFIG = {
   vortalis: _vortalisConfig,
   dungeon_4: _earth205Config,
   dungeon_5: _wagashiConfig,
+  dungeon_6: _earth216Config,
 };
 
 // Helper: get the wave composition for a floor-configured wave

@@ -1501,6 +1501,384 @@ const MOB_TYPES = {
     bulletColor: { main: '#1a1a3a', core: '#4a3a6a', glow: 'rgba(30,20,60,0.4)' },
     deathColors: ["#1a1a2a","#2a1a3a","#3a3a5a","#0a0a1a"],
   },
+
+  // ===================== EARTH-216 FLOOR 1: CRIME & CASINO =====================
+  // Section A — Crime & Casino (waves 1-4)
+  chip_runner: {
+    name: "Chip Runner", hp: 240, speed: 4.2, damage: 30, killHeal: 8, goldReward: 5,
+    skin: "#9a8a6a", hair: "#3a2a1a", shirt: "#8a7a4a", pants: "#5a4a2a", contactRange: 74,
+    ai: 'runner', _specials: ['chip_toss'], specialCD: 360, // 6s
+    deathColors: ["#9a8a6a","#8a7a4a","#baa88a","#5a4a2a"],
+  },
+  pit_bruiser: {
+    name: "Pit Bruiser", hp: 350, speed: 2.8, damage: 38, killHeal: 15, goldReward: 8,
+    skin: "#6a5a4a", hair: "#1a1a1a", shirt: "#4a3a2a", pants: "#2a2a1a", contactRange: 78,
+    ai: 'tank', _specials: ['pit_slam'], specialCD: 540, // 9s
+    deathColors: ["#6a5a4a","#4a3a2a","#8a7a6a","#2a2a1a"],
+  },
+  velvet_knifer: {
+    name: "Velvet Knifer", hp: 260, speed: 3.8, damage: 32, killHeal: 10, goldReward: 6,
+    skin: "#8a6a6a", hair: "#2a1a1a", shirt: "#6a2a3a", pants: "#3a1a1a", contactRange: 76,
+    ai: 'grunt', _specials: ['velvet_slash'], specialCD: 480, // 8s
+    deathColors: ["#8a6a6a","#6a2a3a","#aa8a8a","#3a1a1a"],
+  },
+  vault_hound_e216: {
+    name: "Vault Hound", hp: 220, speed: 4.8, damage: 28, killHeal: 6, goldReward: 5,
+    skin: "#7a6a5a", hair: "#2a2a1a", shirt: "#5a4a3a", pants: "#3a2a1a", contactRange: 74,
+    ai: 'runner', _specials: ['vault_leap'], specialCD: 360, // 6s
+    deathColors: ["#7a6a5a","#5a4a3a","#9a8a7a","#3a2a1a"],
+  },
+
+  // Earth-216 Floor 1 — Mini-Boss: Victor Graves (L5)
+  victor_graves: {
+    name: "Victor Graves", hp: 4000, speed: 2.8, damage: 48, killHeal: 40, goldReward: 30,
+    skin: "#7a6a5a", hair: "#2a2a2a", shirt: "#3a3a2a", pants: "#1a1a0a", contactRange: 80,
+    ai: 'tank', _specials: ['tribute_taken', 'call_collection', 'iron_debt'],
+    isBoss: true, bossScale: 1.4, specialCD: 600, // 10s
+    deathColors: ["#7a6a5a","#3a3a2a","#9a8a7a","#1a1a0a"],
+  },
+
+  // Section B — Casino (waves 6-9)
+  gilded_maid: {
+    name: "Gilded Maid", hp: 280, speed: 3.4, damage: 34, killHeal: 12, goldReward: 7,
+    skin: "#aa9a7a", hair: "#4a3a2a", shirt: "#9a8a5a", pants: "#6a5a3a", contactRange: 76,
+    ai: 'grunt', _specials: ['gilded_sweep'], specialCD: 480, // 8s
+    deathColors: ["#aa9a7a","#9a8a5a","#ccbb99","#6a5a3a"],
+  },
+  cashmere_viper: {
+    name: "Cashmere Viper", hp: 230, speed: 4.2, damage: 30, killHeal: 8, goldReward: 6,
+    skin: "#5a7a5a", hair: "#1a2a1a", shirt: "#3a5a3a", pants: "#1a3a1a", contactRange: 74,
+    ai: 'runner', _specials: ['venom_lunge'], specialCD: 420, // 7s
+    deathColors: ["#5a7a5a","#3a5a3a","#7a9a7a","#1a3a1a"],
+  },
+  jewel_wraith: {
+    name: "Jewel Wraith", hp: 300, speed: 3.0, damage: 32, killHeal: 14, goldReward: 8,
+    skin: "#6a5a8a", hair: "#2a1a4a", shirt: "#4a3a6a", pants: "#2a1a3a", contactRange: 76,
+    ai: 'witch', _specials: ['gem_bolt'], specialCD: 540, // 9s
+    kiteRange: 300,
+    deathColors: ["#6a5a8a","#4a3a6a","#8a7aaa","#2a1a3a"],
+  },
+  bullion_knight: {
+    name: "Bullion Knight", hp: 380, speed: 2.8, damage: 40, killHeal: 16, goldReward: 9,
+    skin: "#aa9a5a", hair: "#5a4a1a", shirt: "#8a7a3a", pants: "#5a4a1a", contactRange: 78,
+    ai: 'tank', _specials: ['bullion_charge'], specialCD: 600, // 10s
+    deathColors: ["#aa9a5a","#8a7a3a","#ccbb77","#5a4a1a"],
+  },
+
+  // Earth-216 Floor 1 — Boss: Madame Midas (L10)
+  madame_midas: {
+    name: "Madame Midas", hp: 5000, speed: 3.2, damage: 52, killHeal: 50, goldReward: 40,
+    skin: "#ccaa44", hair: "#aa8822", shirt: "#bb9933", pants: "#886611", contactRange: 80,
+    ai: 'witch', _specials: ['jackpot_bloom', 'crown_of_debt', 'touch_of_midas'],
+    isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
+    kiteRange: 280,
+    deathColors: ["#ccaa44","#bb9933","#eeccaa","#886611"],
+  },
+
+  // ===================== EARTH-216 FLOOR 2: CURSED FLESH & DEAD PERFORMANCE =====================
+  // Section A — Cursed Flesh (waves 1-4)
+  scar_punk: {
+    name: "Scar Punk", hp: 270, speed: 4.0, damage: 34, killHeal: 10, goldReward: 6,
+    skin: "#8a5a5a", hair: "#2a0a0a", shirt: "#6a2a2a", pants: "#3a1a1a", contactRange: 76,
+    ai: 'grunt', _specials: ['scar_flurry'], specialCD: 420, // 7s
+    deathColors: ["#8a5a5a","#6a2a2a","#aa7a7a","#3a1a1a"],
+  },
+  splitjaw: {
+    name: "Splitjaw", hp: 240, speed: 4.3, damage: 32, killHeal: 8, goldReward: 5,
+    skin: "#7a5a4a", hair: "#1a0a0a", shirt: "#5a3a2a", pants: "#2a1a0a", contactRange: 74,
+    ai: 'runner', _specials: ['jaw_lunge'], specialCD: 360, // 6s
+    deathColors: ["#7a5a4a","#5a3a2a","#9a7a6a","#2a1a0a"],
+  },
+  razorback_youth: {
+    name: "Razorback Youth", hp: 210, speed: 4.8, damage: 28, killHeal: 6, goldReward: 5,
+    skin: "#6a4a3a", hair: "#0a0a0a", shirt: "#4a2a1a", pants: "#2a0a0a", contactRange: 74,
+    ai: 'runner', _specials: ['razor_sprint'], specialCD: 360, // 6s
+    deathColors: ["#6a4a3a","#4a2a1a","#8a6a5a","#2a0a0a"],
+  },
+  grin_stitcher: {
+    name: "Grin Stitcher", hp: 290, speed: 3.4, damage: 34, killHeal: 12, goldReward: 7,
+    skin: "#8a7a6a", hair: "#2a2a1a", shirt: "#5a4a3a", pants: "#3a2a1a", contactRange: 76,
+    ai: 'grunt', _specials: ['stitch_bomb'], specialCD: 540, // 9s
+    deathColors: ["#8a7a6a","#5a4a3a","#aa9a8a","#3a2a1a"],
+  },
+
+  // Earth-216 Floor 2 — Mini-Boss: Slasher (L15)
+  slasher_e216: {
+    name: "Slasher", hp: 4500, speed: 4.0, damage: 52, killHeal: 40, goldReward: 35,
+    skin: "#5a2a2a", hair: "#1a0a0a", shirt: "#3a1a1a", pants: "#1a0a0a", contactRange: 80,
+    ai: 'grunt', _specials: ['carnage_arm', 'blood_trail_dash', 'predator_lock'],
+    isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
+    deathColors: ["#5a2a2a","#3a1a1a","#7a4a4a","#1a0a0a"],
+  },
+
+  // Section B — Dead Performance (waves 6-9)
+  chorus_shade: {
+    name: "Chorus Shade", hp: 310, speed: 3.2, damage: 34, killHeal: 14, goldReward: 8,
+    skin: "#5a5a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#1a1a2a", contactRange: 76,
+    ai: 'witch', _specials: ['shade_note'], specialCD: 540, // 9s
+    kiteRange: 300,
+    deathColors: ["#5a5a6a","#3a3a4a","#7a7a8a","#1a1a2a"],
+  },
+  spotlight_stalker: {
+    name: "Spotlight Stalker", hp: 250, speed: 4.2, damage: 32, killHeal: 8, goldReward: 6,
+    skin: "#7a7a5a", hair: "#2a2a0a", shirt: "#5a5a3a", pants: "#3a3a1a", contactRange: 74,
+    ai: 'runner', _specials: ['spotlight_dash'], specialCD: 420, // 7s
+    deathColors: ["#7a7a5a","#5a5a3a","#9a9a7a","#3a3a1a"],
+  },
+  velvet_mourner: {
+    name: "Velvet Mourner", hp: 300, speed: 3.6, damage: 34, killHeal: 14, goldReward: 8,
+    skin: "#4a3a4a", hair: "#1a0a1a", shirt: "#3a2a3a", pants: "#1a0a1a", contactRange: 76,
+    ai: 'witch', _specials: ['mourning_wail'], specialCD: 600, // 10s
+    kiteRange: 280,
+    deathColors: ["#4a3a4a","#3a2a3a","#6a5a6a","#1a0a1a"],
+  },
+  static_tenor: {
+    name: "Static Tenor", hp: 270, speed: 3.2, damage: 30, killHeal: 12, goldReward: 7,
+    skin: "#6a6a7a", hair: "#2a2a3a", shirt: "#4a4a5a", pants: "#2a2a3a", contactRange: 76,
+    ai: 'archer', _specials: ['static_shot'], specialCD: 480, // 8s
+    arrowRate: 90, arrowSpeed: 9, arrowRange: 380, arrowBounces: 0, arrowLife: 450,
+    projectileStyle: 'static_bolt',
+    deathColors: ["#6a6a7a","#4a4a5a","#8a8a9a","#2a2a3a"],
+  },
+
+  // Earth-216 Floor 2 — Boss: Blackout Belle (L20)
+  blackout_belle: {
+    name: "Blackout Belle", hp: 5500, speed: 4.5, damage: 55, killHeal: 50, goldReward: 45,
+    skin: "#3a2a3a", hair: "#0a0a1a", shirt: "#2a1a2a", pants: "#0a0a0a", contactRange: 80,
+    ai: 'runner', _specials: ['total_blackout', 'feedback_kiss', 'dead_applause'],
+    isBoss: true, bossScale: 1.5, specialCD: 480, // 8s
+    deathColors: ["#3a2a3a","#2a1a2a","#5a4a5a","#0a0a0a"],
+  },
+
+  // ===================== EARTH-216 FLOOR 3: SPIRIT & DEATH =====================
+  // Section A — Spirit & Death (waves 1-4)
+  marrow_guard: {
+    name: "Marrow Guard", hp: 360, speed: 3.0, damage: 38, killHeal: 15, goldReward: 8,
+    skin: "#d0c8b0", hair: "#b0a890", shirt: "#c0b8a0", pants: "#a09880", contactRange: 78,
+    ai: 'tank', _specials: ['bone_wall'], specialCD: 600, // 10s
+    deathColors: ["#d0c8b0","#c0b8a0","#e8e0c8","#a09880"],
+  },
+  candle_child: {
+    name: "Candle Child", hp: 260, speed: 3.4, damage: 32, killHeal: 10, goldReward: 6,
+    skin: "#aa9a6a", hair: "#6a5a3a", shirt: "#8a7a4a", pants: "#5a4a2a", contactRange: 76,
+    ai: 'grunt', _specials: ['candle_toss'], specialCD: 480, // 8s
+    deathColors: ["#aa9a6a","#8a7a4a","#ccbb88","#5a4a2a"],
+  },
+  ofrenda_keeper: {
+    name: "Ofrenda Keeper", hp: 320, speed: 2.8, damage: 30, killHeal: 16, goldReward: 9,
+    skin: "#8a6a8a", hair: "#4a2a4a", shirt: "#6a4a6a", pants: "#3a1a3a", contactRange: 76,
+    ai: 'witch', _specials: ['spirit_ward'], specialCD: 720, // 12s
+    kiteRange: 300,
+    deathColors: ["#8a6a8a","#6a4a6a","#aa8aaa","#3a1a3a"],
+  },
+  grave_trumpeter: {
+    name: "Grave Trumpeter", hp: 280, speed: 3.2, damage: 32, killHeal: 12, goldReward: 7,
+    skin: "#7a7a6a", hair: "#3a3a2a", shirt: "#5a5a4a", pants: "#3a3a2a", contactRange: 76,
+    ai: 'archer', _specials: ['death_note'], specialCD: 480, // 8s
+    arrowRate: 100, arrowSpeed: 8, arrowRange: 400, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'death_note',
+    deathColors: ["#7a7a6a","#5a5a4a","#9a9a8a","#3a3a2a"],
+  },
+
+  // Earth-216 Floor 3 — Mini-Boss: Macabre (L25)
+  macabre_e216: {
+    name: "Macabre", hp: 5000, speed: 3.4, damage: 55, killHeal: 40, goldReward: 35,
+    skin: "#d8d0c0", hair: "#b0a890", shirt: "#c8c0a8", pants: "#a09880", contactRange: 80,
+    ai: 'grunt', _specials: ['cemetery_call', 'funeral_ring', 'ofrenda_burst'],
+    isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
+    deathColors: ["#d8d0c0","#c8c0a8","#f0e8d8","#a09880"],
+  },
+
+  // Section B — Spirit & Death (waves 6-9)
+  veil_sister: {
+    name: "Veil Sister", hp: 320, speed: 3.0, damage: 34, killHeal: 16, goldReward: 9,
+    skin: "#8a8a9a", hair: "#3a3a4a", shirt: "#6a6a7a", pants: "#3a3a4a", contactRange: 76,
+    ai: 'witch', _specials: ['veil_mist'], specialCD: 660, // 11s
+    kiteRange: 300,
+    deathColors: ["#8a8a9a","#6a6a7a","#aaaabc","#3a3a4a"],
+  },
+  candle_bride: {
+    name: "Candle Bride", hp: 280, speed: 3.4, damage: 36, killHeal: 12, goldReward: 7,
+    skin: "#ccaa66", hair: "#8a6a2a", shirt: "#aa8844", pants: "#6a4a1a", contactRange: 76,
+    ai: 'grunt', _specials: ['flame_kiss'], specialCD: 480, // 8s
+    deathColors: ["#ccaa66","#aa8844","#eeccaa","#6a4a1a"],
+  },
+  rosary_fencer: {
+    name: "Rosary Fencer", hp: 260, speed: 3.8, damage: 34, killHeal: 10, goldReward: 7,
+    skin: "#7a6a5a", hair: "#2a1a0a", shirt: "#5a4a3a", pants: "#2a1a0a", contactRange: 74,
+    ai: 'runner', _specials: ['rosary_thrust'], specialCD: 420, // 7s
+    deathColors: ["#7a6a5a","#5a4a3a","#9a8a7a","#2a1a0a"],
+  },
+  choir_widow: {
+    name: "Choir Widow", hp: 300, speed: 3.2, damage: 32, killHeal: 14, goldReward: 8,
+    skin: "#5a4a5a", hair: "#1a0a1a", shirt: "#3a2a3a", pants: "#1a0a1a", contactRange: 76,
+    ai: 'archer', _specials: ['dirge_arrow'], specialCD: 540, // 9s
+    arrowRate: 110, arrowSpeed: 6, arrowRange: 380, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'dirge',
+    deathColors: ["#5a4a5a","#3a2a3a","#7a6a7a","#1a0a1a"],
+  },
+
+  // Earth-216 Floor 3 — Boss: Rosa Calavera (L30)
+  rosa_calavera: {
+    name: "Rosa Calavera", hp: 6000, speed: 3.0, damage: 58, killHeal: 50, goldReward: 45,
+    skin: "#d0c8b0", hair: "#a09880", shirt: "#c0b8a0", pants: "#8a8070", contactRange: 82,
+    ai: 'witch', _specials: ['ghost_mariachi', 'candle_procession', 'last_serenade'],
+    isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
+    kiteRange: 260,
+    bulletColor: { main: '#ff8844', core: '#ffcc88', glow: 'rgba(255,136,68,0.3)' },
+    deathColors: ["#d0c8b0","#c0b8a0","#f0e8d8","#8a8070"],
+  },
+
+  // ===================== EARTH-216 FLOOR 4: HELL ENGINES & SPEED =====================
+  // Section A — Hell Engines (waves 1-4)
+  chain_gremlin: {
+    name: "Chain Gremlin", hp: 250, speed: 4.2, damage: 32, killHeal: 8, goldReward: 6,
+    skin: "#5a4a3a", hair: "#1a0a0a", shirt: "#3a2a1a", pants: "#1a0a0a", contactRange: 74,
+    ai: 'runner', _specials: ['chain_whip'], specialCD: 420, // 7s
+    deathColors: ["#5a4a3a","#3a2a1a","#7a6a5a","#1a0a0a"],
+  },
+  road_reaper: {
+    name: "Road Reaper", hp: 280, speed: 4.0, damage: 36, killHeal: 10, goldReward: 7,
+    skin: "#4a4a4a", hair: "#0a0a0a", shirt: "#2a2a2a", pants: "#0a0a0a", contactRange: 76,
+    ai: 'grunt', _specials: ['road_rage'], specialCD: 420, // 7s
+    deathColors: ["#4a4a4a","#2a2a2a","#6a6a6a","#0a0a0a"],
+  },
+  furnace_knuckle: {
+    name: "Furnace Knuckle", hp: 380, speed: 3.0, damage: 40, killHeal: 16, goldReward: 9,
+    skin: "#8a4a2a", hair: "#3a1a0a", shirt: "#6a3a1a", pants: "#3a1a0a", contactRange: 78,
+    ai: 'tank', _specials: ['furnace_punch'], specialCD: 600, // 10s
+    deathColors: ["#8a4a2a","#6a3a1a","#aa6a4a","#3a1a0a"],
+  },
+  rev_hound: {
+    name: "Rev Hound", hp: 220, speed: 5.0, damage: 30, killHeal: 6, goldReward: 5,
+    skin: "#3a3a3a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 74,
+    ai: 'runner', _specials: ['rev_charge'], specialCD: 360, // 6s
+    deathColors: ["#3a3a3a","#1a1a1a","#5a5a5a","#0a0a0a"],
+  },
+
+  // Earth-216 Floor 4 — Mini-Boss: Motor Demon (L35)
+  motor_demon: {
+    name: "Motor Demon", hp: 5500, speed: 3.8, damage: 58, killHeal: 40, goldReward: 35,
+    skin: "#4a2a2a", hair: "#1a0a0a", shirt: "#3a1a0a", pants: "#1a0a0a", contactRange: 80,
+    ai: 'tank', _specials: ['redline_e216', 'hell_exhaust', 'geargrind_slam'],
+    isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
+    deathColors: ["#4a2a2a","#3a1a0a","#6a4a4a","#1a0a0a"],
+  },
+
+  // Section B — Speed (waves 6-9)
+  drift_phantom: {
+    name: "Drift Phantom", hp: 240, speed: 5.0, damage: 34, killHeal: 8, goldReward: 6,
+    skin: "#5a5a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#1a1a2a", contactRange: 74,
+    ai: 'runner', _specials: ['drift_blink'], specialCD: 420, // 7s
+    deathColors: ["#5a5a6a","#3a3a4a","#7a7a8a","#1a1a2a"],
+  },
+  crash_dummy: {
+    name: "Crash Dummy", hp: 300, speed: 3.6, damage: 38, killHeal: 12, goldReward: 7,
+    skin: "#aa8a3a", hair: "#5a4a1a", shirt: "#8a6a2a", pants: "#5a4a1a", contactRange: 76,
+    ai: 'grunt', _specials: ['dummy_detonate'], specialCD: 540, // 9s
+    deathColors: ["#aa8a3a","#8a6a2a","#ccaa5a","#5a4a1a"],
+  },
+  neon_screamer: {
+    name: "Neon Screamer", hp: 280, speed: 4.0, damage: 34, killHeal: 14, goldReward: 8,
+    skin: "#6a3a6a", hair: "#2a0a2a", shirt: "#4a1a4a", pants: "#2a0a2a", contactRange: 76,
+    ai: 'witch', _specials: ['neon_shriek'], specialCD: 540, // 9s
+    kiteRange: 250,
+    deathColors: ["#6a3a6a","#4a1a4a","#8a5a8a","#2a0a2a"],
+  },
+  ramp_widow: {
+    name: "Ramp Widow", hp: 290, speed: 3.6, damage: 36, killHeal: 14, goldReward: 8,
+    skin: "#5a3a4a", hair: "#1a0a1a", shirt: "#3a1a2a", pants: "#1a0a0a", contactRange: 76,
+    ai: 'witch', _specials: ['ramp_launch'], specialCD: 600, // 10s
+    kiteRange: 280,
+    deathColors: ["#5a3a4a","#3a1a2a","#7a5a6a","#1a0a0a"],
+  },
+
+  // Earth-216 Floor 4 — Boss: Nitro Wraith (L40)
+  nitro_wraith: {
+    name: "Nitro Wraith", hp: 6500, speed: 5.0, damage: 62, killHeal: 50, goldReward: 45,
+    skin: "#2a2a3a", hair: "#0a0a1a", shirt: "#1a1a2a", pants: "#0a0a0a", contactRange: 80,
+    ai: 'runner', _specials: ['nitro_line', 'phantom_splitstream', 'crash_bloom'],
+    isBoss: true, bossScale: 1.5, specialCD: 480, // 8s
+    deathColors: ["#2a2a3a","#1a1a2a","#4a4a5a","#0a0a0a"],
+  },
+
+  // ===================== EARTH-216 FLOOR 5: FATE & CORRUPTION =====================
+  // Section A — Fate & Corruption (waves 1-4)
+  cardling: {
+    name: "Cardling", hp: 240, speed: 4.2, damage: 32, killHeal: 8, goldReward: 6,
+    skin: "#8a8a8a", hair: "#3a3a3a", shirt: "#6a6a6a", pants: "#3a3a3a", contactRange: 74,
+    ai: 'runner', _specials: ['card_flick'], specialCD: 360, // 6s
+    deathColors: ["#8a8a8a","#6a6a6a","#aaaaaa","#3a3a3a"],
+  },
+  pit_oracle: {
+    name: "Pit Oracle", hp: 320, speed: 3.2, damage: 34, killHeal: 16, goldReward: 9,
+    skin: "#6a4a8a", hair: "#2a1a4a", shirt: "#4a2a6a", pants: "#2a1a3a", contactRange: 76,
+    ai: 'witch', _specials: ['oracle_curse'], specialCD: 600, // 10s
+    kiteRange: 300,
+    deathColors: ["#6a4a8a","#4a2a6a","#8a6aaa","#2a1a3a"],
+  },
+  roulette_revenant: {
+    name: "Roulette Revenant", hp: 290, speed: 3.6, damage: 36, killHeal: 12, goldReward: 7,
+    skin: "#5a5a3a", hair: "#1a1a0a", shirt: "#3a3a1a", pants: "#1a1a0a", contactRange: 76,
+    ai: 'grunt', _specials: ['spin_slash'], specialCD: 480, // 8s
+    deathColors: ["#5a5a3a","#3a3a1a","#7a7a5a","#1a1a0a"],
+  },
+  suit_reaper: {
+    name: "Suit Reaper", hp: 280, speed: 3.4, damage: 36, killHeal: 12, goldReward: 7,
+    skin: "#3a3a3a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 76,
+    ai: 'grunt', _specials: ['reaper_cut'], specialCD: 480, // 8s
+    deathColors: ["#3a3a3a","#1a1a1a","#5a5a5a","#0a0a0a"],
+  },
+
+  // Earth-216 Floor 5 — Mini-Boss: Hollow Ace (L45)
+  hollow_ace: {
+    name: "Hollow Ace", hp: 6000, speed: 3.8, damage: 60, killHeal: 40, goldReward: 40,
+    skin: "#5a5a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#1a1a1a", contactRange: 80,
+    ai: 'witch', _specials: ['stacked_deck', 'cold_read_e216', 'house_pull'],
+    isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
+    kiteRange: 260,
+    bulletColor: { main: '#8a8aaa', core: '#ccccee', glow: 'rgba(138,138,170,0.3)' },
+    deathColors: ["#5a5a6a","#3a3a4a","#7a7a8a","#1a1a1a"],
+  },
+
+  // Section B — Corruption (waves 6-9)
+  blight_husk: {
+    name: "Blight Husk", hp: 300, speed: 3.4, damage: 36, killHeal: 12, goldReward: 7,
+    skin: "#4a5a3a", hair: "#1a2a0a", shirt: "#3a4a2a", pants: "#1a2a0a", contactRange: 76,
+    ai: 'grunt', _specials: ['blight_burst'], specialCD: 480, // 8s
+    deathColors: ["#4a5a3a","#3a4a2a","#6a7a5a","#1a2a0a"],
+  },
+  maw_sprite: {
+    name: "Maw Sprite", hp: 230, speed: 4.8, damage: 32, killHeal: 6, goldReward: 6,
+    skin: "#3a2a3a", hair: "#0a0a0a", shirt: "#2a1a2a", pants: "#0a0a0a", contactRange: 74,
+    ai: 'runner', _specials: ['maw_bite'], specialCD: 360, // 6s
+    deathColors: ["#3a2a3a","#2a1a2a","#5a4a5a","#0a0a0a"],
+  },
+  rift_penitent: {
+    name: "Rift Penitent", hp: 330, speed: 3.0, damage: 34, killHeal: 16, goldReward: 9,
+    skin: "#4a4a6a", hair: "#1a1a3a", shirt: "#3a3a5a", pants: "#1a1a2a", contactRange: 76,
+    ai: 'witch', _specials: ['rift_pulse'], specialCD: 660, // 11s
+    kiteRange: 300,
+    deathColors: ["#4a4a6a","#3a3a5a","#6a6a8a","#1a1a2a"],
+  },
+  grin_apostle: {
+    name: "Grin Apostle", hp: 260, speed: 4.2, damage: 34, killHeal: 10, goldReward: 7,
+    skin: "#5a3a5a", hair: "#1a0a1a", shirt: "#3a1a3a", pants: "#1a0a0a", contactRange: 74,
+    ai: 'runner', _specials: ['apostle_dash'], specialCD: 420, // 7s
+    deathColors: ["#5a3a5a","#3a1a3a","#7a5a7a","#1a0a0a"],
+  },
+
+  // Earth-216 Floor 5 — Final Boss: Alcazar (L50)
+  alcazar: {
+    name: "Alcazar", hp: 8500, speed: 3.4, damage: 70, killHeal: 70, goldReward: 65,
+    skin: "#2a1a3a", hair: "#0a0a1a", shirt: "#1a0a2a", pants: "#0a0a0a", contactRange: 84,
+    ai: 'archer', _specials: ['corrupt_vessel', 'black_benediction', 'unsealing_maw'],
+    isBoss: true, bossScale: 1.6, specialCD: 480, // 8s
+    arrowRate: 100, arrowSpeed: 9, arrowRange: 450, arrowBounces: 0, arrowLife: 500,
+    projectileStyle: 'corrupt',
+    bulletColor: { main: '#4a1a6a', core: '#8a4aaa', glow: 'rgba(74,26,106,0.4)' },
+    deathColors: ["#2a1a3a","#1a0a2a","#4a3a5a","#0a0a0a"],
+  },
 };
 
 // Per-type caps per wave
@@ -1586,6 +1964,26 @@ const MOB_CAPS = {
   miregulp_tadpole: 8, gulchspine_bloater: 8, hymn_eater_toadlet: 8, abyssal_swallower: 8,
   shrine_shard_monkey: 8, seal_fragment_sprite: 8, thundertail_ape: 8, heavens_gate_breaker: 8,
   celestial_toad: 1, lord_sarugami: 1,
+  // Earth-216 Floor 1
+  chip_runner: 8, pit_bruiser: 8, velvet_knifer: 8, vault_hound_e216: 8,
+  gilded_maid: 8, cashmere_viper: 8, jewel_wraith: 8, bullion_knight: 8,
+  victor_graves: 1, madame_midas: 1,
+  // Earth-216 Floor 2
+  scar_punk: 8, splitjaw: 8, razorback_youth: 8, grin_stitcher: 8,
+  chorus_shade: 8, spotlight_stalker: 8, velvet_mourner: 8, static_tenor: 8,
+  slasher_e216: 1, blackout_belle: 1,
+  // Earth-216 Floor 3
+  marrow_guard: 8, candle_child: 8, ofrenda_keeper: 8, grave_trumpeter: 8,
+  veil_sister: 8, candle_bride: 8, rosary_fencer: 8, choir_widow: 8,
+  macabre_e216: 1, rosa_calavera: 1,
+  // Earth-216 Floor 4
+  chain_gremlin: 8, road_reaper: 8, furnace_knuckle: 8, rev_hound: 8,
+  drift_phantom: 8, crash_dummy: 8, neon_screamer: 8, ramp_widow: 8,
+  motor_demon: 1, nitro_wraith: 1,
+  // Earth-216 Floor 5
+  cardling: 8, pit_oracle: 8, roulette_revenant: 8, suit_reaper: 8,
+  blight_husk: 8, maw_sprite: 8, rift_penitent: 8, grin_apostle: 8,
+  hollow_ace: 1, alcazar: 1,
 };
 
 const CROWD_EXEMPT_TYPES = new Set(["runner", "golem", "mini_golem", "archer", "healer", "drone_lookout", "renegade_sniper", "the_don",
@@ -1602,7 +2000,13 @@ const CROWD_EXEMPT_TYPES = new Set(["runner", "golem", "mini_golem", "archer", "
   "syndicate_enforcer", "tactical_spotter", "sackhead", "mr_schwallie",
   "balloon_twister", "illusionist", "phantom_chorus", "human_statue", "killer_mime", "major_phantom",
   "vault_hacker", "smokescreen_smuggler", "the_cleaner", "sprayer_drone", "mad_assistant", "lady_red", "the_boss_e205",
-  "irradiated_walker", "reactor_technician", "containment_breach_blob", "lady_elixir", "nofaux"]);
+  "irradiated_walker", "reactor_technician", "containment_breach_blob", "lady_elixir", "nofaux",
+  // Earth-216
+  "jewel_wraith", "victor_graves", "madame_midas",
+  "chorus_shade", "velvet_mourner", "static_tenor", "slasher_e216", "blackout_belle",
+  "ofrenda_keeper", "grave_trumpeter", "macabre_e216", "veil_sister", "choir_widow", "rosa_calavera",
+  "neon_screamer", "ramp_widow", "motor_demon", "nitro_wraith",
+  "pit_oracle", "rift_penitent", "hollow_ace", "alcazar"]);
 
 // All entity sub-arrays a mob can carry. Used for cleanup on death + floor transitions.
 const MOB_ENTITY_ARRAYS = [

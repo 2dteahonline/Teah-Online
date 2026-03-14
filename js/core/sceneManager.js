@@ -50,6 +50,7 @@ const Scene = {
     else if (level.isVortalis) this._current = 'vortalis';
     else if (level.isEarth205) this._current = 'earth205';
     else if (level.isWagashi) this._current = 'wagashi';
+    else if (level.isEarth216) this._current = 'earth216';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -73,6 +74,7 @@ const Scene = {
   get inVortalis() { return this._current === 'vortalis'; },
   get inEarth205() { return this._current === 'earth205'; },
   get inWagashi() { return this._current === 'wagashi'; },
+  get inEarth216() { return this._current === 'earth216'; },
 };
 
 // ---- PORTAL TYPE REGISTRY ----
@@ -96,10 +98,12 @@ const PORTAL_SCENES = {
   earth205_exit: 'earth205',
   wagashi_entrance: 'lobby',
   wagashi_exit: 'wagashi',
+  earth216_entrance: 'lobby',
+  earth216_exit: 'earth216',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
-const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi']);
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi', 'earth216']);
 
 // ---- /LEAVE SYSTEM ----
 // Registry for enclosed scenes that require /leave to exit (no walkable door).
@@ -176,6 +180,12 @@ const LEAVE_HANDLERS = {
     returnLevel: 'lobby_01',
     returnTX: 53, returnTY: 45,
     message: 'Leaving Wagashi...',
+  },
+  earth216: {
+    cleanup() {},
+    returnLevel: 'lobby_01',
+    returnTX: 53, returnTY: 57,
+    message: 'Leaving Earth-216...',
   },
   gunsmith: {
     cleanup() {},
@@ -377,7 +387,7 @@ function checkPortals() {
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }
-    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine || Scene.inVortalis || Scene.inEarth205 || Scene.inWagashi) && inZone) {
+    if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine || Scene.inVortalis || Scene.inEarth205 || Scene.inWagashi || Scene.inEarth216) && inZone) {
       nearQueue = true;
       queueDungeonId = e.dungeonId;
       queueSpawnTX = e.spawnTX;

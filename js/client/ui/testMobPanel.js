@@ -430,6 +430,96 @@ const MOB_ABILITY_DESCRIPTIONS = {
   black_orb_sentinels:     "5 orbiting spheres. Guard and damage nearby players.",
   orb_bomb_command:        "3 orbs travel to positions and explode.",
   divine_form_shift:       "HP-triggered phase shift: Titan → Statue → Primal.",
+
+  // --- Earth-216 Floor 1: Crime & Casino ---
+  chip_toss:               "Chip projectile toward player. Slow on hit.",
+  pit_slam:                "Circle telegraph at self. Ground pound damage.",
+  velvet_slash:            "Cone telegraph + bleed DoT.",
+  vault_leap:              "Dash-pounce to player position.",
+  gilded_sweep:            "Cone telegraph + pushback knockback.",
+  venom_lunge:             "Line dash + poison DoT on hit.",
+  gem_bolt:                "Homing gem projectile.",
+  bullion_charge:          "Dash + shield bash + stun.",
+  // Victor Graves (mini-boss)
+  tribute_taken:           "Gold shockwave line. Damage + knockback.",
+  call_collection:         "Summons 2 temporary thug minions.",
+  iron_debt:               "Self-buff: +50% damage for 4s.",
+  // Madame Midas (boss)
+  jackpot_bloom:           "3 circle telegraphs. Gold pillar eruptions.",
+  crown_of_debt:           "Ring telegraph on player. Slow 30% for 3s.",
+  touch_of_midas:          "Self-buff: gold armor reduces damage 40% for 5s.",
+
+  // --- Earth-216 Floor 2: Cursed Flesh & Dead Performance ---
+  scar_flurry:             "Cone telegraph + 3-hit rapid melee.",
+  jaw_lunge:               "Short dash + bite + bleed.",
+  razor_sprint:            "Dash-through + damage trail.",
+  stitch_bomb:             "Circle telegraph at player. Delayed bomb.",
+  shade_note:              "Projectile → silence zone on landing.",
+  spotlight_dash:          "Mark player position → dash to mark.",
+  mourning_wail:           "Circle AoE around self + slow.",
+  static_shot:             "Chain-lightning arrow. Stun on hit.",
+  // Slasher (mini-boss)
+  carnage_arm:             "Self-buff: +30% melee range and damage for 4s.",
+  blood_trail_dash:        "Line telegraph → dash leaving damage trail.",
+  predator_lock:           "Mark player pos. Leap to mark after delay + AoE.",
+  // Blackout Belle (boss)
+  total_blackout:          "Arena dims (blind 3s). Boss repositions + speed buff.",
+  feedback_kiss:           "Cone sonic blast. Damage + speed debuff 3s.",
+  dead_applause:           "4-5 delayed circle telegraphs on player.",
+
+  // --- Earth-216 Floor 3: Spirit & Death ---
+  bone_wall:               "Temporary barrier near player.",
+  candle_toss:             "Projectile → small fire zone on landing.",
+  spirit_ward:             "Healing zone for nearby mobs.",
+  death_note:              "Piercing sound projectile.",
+  veil_mist:               "Fog zone: slows player + heals mobs.",
+  flame_kiss:              "Cone telegraph + fire burst + burn DoT.",
+  rosary_thrust:           "Line telegraph + dash lunge.",
+  dirge_arrow:             "Slow projectile + slow debuff on hit.",
+  // Macabre (mini-boss)
+  cemetery_call:           "Summons 3 skeleton minions.",
+  funeral_ring:            "Ring telegraph around self. Damage + root 1.5s.",
+  ofrenda_burst:           "Circle telegraph on player. Spirit explosion + slow.",
+  // Rosa Calavera (boss)
+  ghost_mariachi:          "3 spirit projectiles launch sequentially.",
+  candle_procession:       "4 fire hazard zones toward player, igniting in sequence.",
+  last_serenade:           "Large AoE burst + fear (forced movement away) 2s.",
+
+  // --- Earth-216 Floor 4: Hell Engines & Speed ---
+  chain_whip:              "Line telegraph + pull player toward mob.",
+  road_rage:               "Short dash + cone slash.",
+  furnace_punch:           "Circle telegraph + burn DoT.",
+  rev_charge:              "Long dash-through + trail damage.",
+  drift_blink:             "Teleport behind player + backstab.",
+  dummy_detonate:          "Circle telegraph AoE explosion.",
+  neon_shriek:             "Cone + damage + fear push.",
+  ramp_launch:             "Leap arc + explosive landing AoE.",
+  // Motor Demon (mini-boss)
+  redline_e216:            "Self-buff: speed doubles for 3s + fire trail.",
+  hell_exhaust:            "Backward flame cone. Damage + knockback + burn.",
+  geargrind_slam:          "Circle telegraph → leap + AoE slam + stun 1.5s.",
+  // Nitro Wraith (boss)
+  nitro_line:              "Full-arena dash leaving persistent fire trail.",
+  phantom_splitstream:     "2 afterimage decoys + real dash. All 3 deal damage.",
+  crash_bloom:             "Charges to center → 3 expanding ring blasts.",
+
+  // --- Earth-216 Floor 5: Fate & Corruption ---
+  card_flick:              "2 card projectiles in spread pattern.",
+  oracle_curse:            "Circle telegraph on player + damage-taken debuff.",
+  spin_slash:              "Self-circle telegraph + spinning slash.",
+  reaper_cut:              "Cone telegraph + bleed DoT.",
+  blight_burst:            "Circle telegraph + poison DoT.",
+  maw_bite:                "Dash + bite + self-heal 5% max HP.",
+  rift_pulse:              "Expanding ring telegraph + slow.",
+  apostle_dash:            "Dash to player + corruption zone at endpoint.",
+  // Hollow Ace (mini-boss)
+  stacked_deck:            "4 card projectiles with different statuses.",
+  cold_read_e216:          "Mark player pos → delayed void eruption.",
+  house_pull:              "Pull vortex at self for 2s. Drags player + tick damage.",
+  // Alcazar (final boss)
+  corrupt_vessel:          "5 corruption projectiles in fan. Leave puddles (slow + DoT).",
+  black_benediction:       "Large circle. Heals boss 10% + damages player if in range.",
+  unsealing_maw:           "Circle on player → tentacle eruption: heavy damage + root + hazard.",
 };
 
 // Dungeon → Floor → Mob mapping
@@ -482,6 +572,16 @@ const TESTMOB_DUNGEONS = {
       3: { name: 'Floor 3 — Storm Palace / Inferno Bastion', mobs: ['tempest_spearman', 'cloudscale_archer', 'tideblade_disciple', 'thunder_crest_knight', 'azure_dragon', 'ember_guard', 'furnace_hound', 'ashen_banner_monk', 'crimson_furnace_captain', 'jaja'] },
       4: { name: 'Floor 4 — Execution Grounds / Void Sanctum', mobs: ['ashen_blade_retainer', 'lantern_veil_assassin', 'blood_script_archer', 'crimson_gate_executioner', 'gensai', 'lunar_dust_hare', 'crescent_mirror_wisp', 'gravity_ear_monk', 'eclipse_burrower', 'moon_rabbit'] },
       5: { name: 'Floor 5 — Devouring Maw / Unsealed Heaven', mobs: ['miregulp_tadpole', 'gulchspine_bloater', 'hymn_eater_toadlet', 'abyssal_swallower', 'celestial_toad', 'shrine_shard_monkey', 'seal_fragment_sprite', 'thundertail_ape', 'heavens_gate_breaker', 'lord_sarugami'] },
+    }
+  },
+  dungeon_6: {
+    name: 'Earth-216',
+    floors: {
+      1: { name: 'Floor 1 — Crime & Casino', mobs: ['chip_runner', 'pit_bruiser', 'velvet_knifer', 'vault_hound_e216', 'victor_graves', 'gilded_maid', 'cashmere_viper', 'jewel_wraith', 'bullion_knight', 'madame_midas'] },
+      2: { name: 'Floor 2 — Cursed Flesh / Dead Performance', mobs: ['scar_punk', 'splitjaw', 'razorback_youth', 'grin_stitcher', 'slasher_e216', 'chorus_shade', 'spotlight_stalker', 'velvet_mourner', 'static_tenor', 'blackout_belle'] },
+      3: { name: 'Floor 3 — Spirit & Death', mobs: ['marrow_guard', 'candle_child', 'ofrenda_keeper', 'grave_trumpeter', 'macabre_e216', 'veil_sister', 'candle_bride', 'rosary_fencer', 'choir_widow', 'rosa_calavera'] },
+      4: { name: 'Floor 4 — Hell Engines & Speed', mobs: ['chain_gremlin', 'road_reaper', 'furnace_knuckle', 'rev_hound', 'motor_demon', 'drift_phantom', 'crash_dummy', 'neon_screamer', 'ramp_widow', 'nitro_wraith'] },
+      5: { name: 'Floor 5 — Fate & Corruption', mobs: ['cardling', 'pit_oracle', 'roulette_revenant', 'suit_reaper', 'hollow_ace', 'blight_husk', 'maw_sprite', 'rift_penitent', 'grin_apostle', 'alcazar'] },
     }
   }
 };

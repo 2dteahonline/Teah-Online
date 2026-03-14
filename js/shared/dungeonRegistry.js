@@ -69,6 +69,19 @@ const DUNGEON_REGISTRY = {
     difficulty: 0,
     music: '',
   },
+  dungeon_6: {
+    name: 'Earth-216: Sin City',
+    maxFloors: 5,
+    returnLevel: 'earth216_01',
+    hasHazards: false,
+    spawnTX: 20,
+    spawnTY: 20,
+    requiredLevel: 0,
+    rewardMult: 0,
+    tileset: '',
+    difficulty: 0,
+    music: '',
+  },
 };
 
 // Validate a dungeon key — returns the key if valid, or 'cave' as safe fallback

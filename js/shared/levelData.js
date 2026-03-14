@@ -127,6 +127,9 @@ const LEVELS = {
       // === WAGASHI DUNGEON (east district, below earth-205) ===
       { type: 'building_wagashi', tx: 50, ty: 36, w: 7, h: 8, solid: true },
       { type: 'wagashi_entrance', tx: 52, ty: 43, w: 3, h: 2, solid: false, target: 'wagashi_01', spawnTX: 20, spawnTY: 19 },
+      // === EARTH-216 DUNGEON (east district, below wagashi) ===
+      { type: 'building_earth216', tx: 50, ty: 48, w: 7, h: 8, solid: true },
+      { type: 'earth216_entrance', tx: 52, ty: 55, w: 3, h: 2, solid: false, target: 'earth216_01', spawnTX: 20, spawnTY: 19 },
       // === DINER (west district, below deli) ===
       { type: 'building_diner', tx: 3, ty: 24, w: 7, h: 8, solid: true },
       { type: 'diner_entrance', tx: 5, ty: 31, w: 3, h: 2, solid: false, target: 'diner_01', spawnTX: 27, spawnTY: 33 },
@@ -1938,6 +1941,57 @@ const LEVELS = {
       { type: 'paper_lantern', tx: 38, ty: 13, solid: false },
       { type: 'paper_lantern', tx: 38, ty: 16, solid: false },
       { type: 'paper_lantern', tx: 38, ty: 19, solid: false },
+    ],
+  },
+
+  // ===================== EARTH-216 DUNGEON ENTRANCE =====================
+  earth216_01: {
+    id: 'earth216_01',
+    widthTiles: 40,
+    heightTiles: 24,
+    isEarth216: true,
+    collisionAscii: [
+      "########################################",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "########################################"
+    ],
+    entities: [
+      { type: 'earth216_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 57 },
+      { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'earth216_dungeon_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_6' },
+      // Neon signs (left wall)
+      { type: 'neon_sign_e216', tx: 1, ty: 2, solid: false },
+      { type: 'neon_sign_e216', tx: 1, ty: 6, solid: false },
+      { type: 'neon_sign_e216', tx: 1, ty: 10, solid: false },
+      { type: 'neon_sign_e216', tx: 1, ty: 14, solid: false },
+      { type: 'neon_sign_e216', tx: 1, ty: 18, solid: false },
+      // Neon signs (right wall)
+      { type: 'neon_sign_e216', tx: 38, ty: 2, solid: false },
+      { type: 'neon_sign_e216', tx: 38, ty: 6, solid: false },
+      { type: 'neon_sign_e216', tx: 38, ty: 10, solid: false },
+      { type: 'neon_sign_e216', tx: 38, ty: 14, solid: false },
+      { type: 'neon_sign_e216', tx: 38, ty: 18, solid: false },
     ],
   },
 };

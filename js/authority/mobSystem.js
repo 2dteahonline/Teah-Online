@@ -1058,7 +1058,51 @@ function updateMobs() {
               m._gravWellTele > 0 || m._phaseTimer > 0 || m._phaseReappear > 0 ||
               m._devourPullTele > 0 || m._devourPullTimer > 0 || m._voidSpitTele > 0 || m._corrMireTele > 0 ||
               m._orbSentinelTele > 0 || (m._orbSentinels && m._orbSentinels.length > 0) ||
-              m._orbBombTele > 0 || (m._orbBombs && m._orbBombs.length > 0) || m._statuePhase > 0;
+              m._orbBombTele > 0 || (m._orbBombs && m._orbBombs.length > 0) || m._statuePhase > 0 ||
+              // Earth-216 dungeon — Floor 1
+              m._chipTossTele > 0 || m._pitSlamTele > 0 || m._velvetSlashTele > 0 ||
+              m._vaultLeapTele > 0 || m._vaultLeapDash ||
+              m._gildedSweepTele > 0 || m._venomLungeTele > 0 || m._venomLungeDash ||
+              m._gemBoltTele > 0 || m._bullionChargeTele > 0 || m._bullionDash ||
+              m._tributeTele > 0 || m._collectionTele > 0 || m._ironDebtTimer > 0 ||
+              m._jackpotTele > 0 || m._crownTele > 0 || m._midasTimer > 0 ||
+              // Earth-216 — Floor 2
+              m._scarFlurryTele > 0 || m._jawLungeTele > 0 || m._jawLungeDash ||
+              m._razorSprintTele > 0 || m._razorSprintDash ||
+              m._stitchBombTele > 0 || m._shadeNoteTele > 0 ||
+              m._spotlightTele > 0 || m._spotlightDash ||
+              m._mourningTele > 0 || m._staticShotTele > 0 ||
+              m._blackoutTele > 0 || m._feedbackTele > 0 || m._applauseTele > 0 ||
+              m._carnageTimer > 0 || m._bloodTrailTele > 0 || m._bloodTrailDash ||
+              m._predatorTele > 0 || m._predatorLeap ||
+              // Earth-216 — Floor 3
+              m._boneWallTele > 0 || m._candleTossTele > 0 ||
+              m._spiritWardTele > 0 || m._spiritWardTimer > 0 ||
+              m._deathNoteTele > 0 || m._veilMistTele > 0 || m._veilMistTimer > 0 ||
+              m._flameKissTele > 0 || m._rosaryThrustTele > 0 || m._rosaryDash ||
+              m._dirgeArrowTele > 0 ||
+              m._cemeteryTele > 0 || m._funeralRingTele > 0 || m._ofrendaBurstTele > 0 ||
+              m._mariTele > 0 || m._mariTimer > 0 ||
+              m._processionTele > 0 || m._processionTimer > 0 ||
+              m._serenadeTele > 0 ||
+              // Earth-216 — Floor 4
+              m._chainWhipTele > 0 || m._roadRageTele > 0 || m._roadRageDash ||
+              m._furnacePunchTele > 0 || m._revChargeTele > 0 || m._revChargeDash ||
+              m._driftBlinkTele > 0 || m._detonateTele > 0 ||
+              m._neonShriekTele > 0 || m._rampLaunchTele > 0 ||
+              m._redlineTimer > 0 || m._exhaustTele > 0 ||
+              m._geargrindTele > 0 || m._geargrindLeap ||
+              m._nitroLineTele > 0 || m._nitroLineDash ||
+              m._splitstreamTele > 0 || m._crashBloomTele > 0 || m._crashBloomPhase > 0 ||
+              // Earth-216 — Floor 5
+              m._cardFlickTele > 0 || m._oracleCurseTele > 0 ||
+              m._spinSlashTele > 0 || m._reaperCutTele > 0 ||
+              m._blightBurstTele > 0 || m._mawBiteTele > 0 || m._mawBiteDash ||
+              m._riftPulseTele > 0 || m._apostleDashTele > 0 || m._apostleDashDash ||
+              m._stackedDeckTele > 0 || m._stackedDeckTimer > 0 ||
+              m._coldReadTele > 0 || m._coldReadTimer > 0 ||
+              m._housePullTele > 0 || m._housePullTimer > 0 ||
+              m._corruptVesselTele > 0 || m._benedictionTele > 0 || m._unsealingMawTele > 0;
             if (isMultiFrame) m._activeAbility = abilKey;
             if (specResult && specResult.skip) skipMovement = true;
             break;
