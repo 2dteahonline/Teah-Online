@@ -1677,7 +1677,7 @@ const LEVELS = {
         { type: 'skeld_task', tx: 71 + XO, ty: 73, w: 2, h: 1, solid: true, label: 'Empty Trash', taskId: 'empty_trash', room: 'storage', taskStep: 2 },
 
         // ===== SECURITY CAMERAS CONSOLE =====
-        { type: 'skeld_cameras', tx: 28 + XO, ty: 25, w: 5, h: 3, solid: true, label: 'Security Cameras', room: 'security' },
+        { type: 'skeld_cameras', tx: 28 + XO, ty: 24, w: 5, h: 3, solid: true, label: 'Security Cameras', room: 'security' },
 
         // ===== SABOTAGE PLACEHOLDERS =====
         { type: 'skeld_sabotage', tx: 2 + XO, ty: 25, w: 2, h: 1, solid: true, label: 'Reactor Fix', sabotageId: 'reactor_meltdown', room: 'reactor', fixPanel: 1 },
