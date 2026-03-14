@@ -1379,64 +1379,63 @@ const ENTITY_RENDERERS = {
       // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.beginPath(); ctx.ellipse(ex + cw/2 + 5, ey + ch + 6, cw*0.42, 8, 0, 0, Math.PI*2); ctx.fill();
-      // Main structure — retro 50s chrome/red diner
-      ctx.fillStyle = '#c0c0c8';
+      // Main structure — dark body matching game aesthetic
+      ctx.fillStyle = '#12121e';
       ctx.fillRect(ex+4, ey+ch*0.22, cw-8, ch*0.78);
-      // Chrome panel lines
-      ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 1;
+      // Steel panel lines
+      ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1;
       for (let r = 0; r < 5; r++) {
         const ly = ey+ch*0.3+r*ch*0.14;
         ctx.beginPath(); ctx.moveTo(ex+6, ly); ctx.lineTo(ex+cw-6, ly); ctx.stroke();
       }
-      // Red accent strip along middle
-      ctx.fillStyle = '#cc2020';
-      ctx.fillRect(ex+4, ey+ch*0.52, cw-8, ch*0.06);
-      // Roof — flat with red/chrome trim
-      ctx.fillStyle = '#aa1818';
+      // Red neon accent strip along middle
+      ctx.fillStyle = `rgba(255,50,50,${0.4 + Math.sin(t*1.5)*0.15})`;
+      ctx.fillRect(ex+4, ey+ch*0.52, cw-8, ch*0.04);
+      // Roof — flat dark with neon red trim
+      ctx.fillStyle = '#181828';
       ctx.fillRect(ex-4, ey+ch*0.16, cw+8, ch*0.1);
-      // Chrome trim on roof edges
-      ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 2;
+      // Neon red trim — double line awning
+      ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(ex-4, ey+ch*0.16); ctx.lineTo(ex+cw+4, ey+ch*0.16); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(ex-4, ey+ch*0.26); ctx.lineTo(ex+cw+4, ey+ch*0.26); ctx.stroke();
-      // Checkered trim along roofline
-      for (let d = 0; d < 10; d++) {
-        ctx.fillStyle = d % 2 === 0 ? '#1a1a1a' : '#e0e0e0';
-        ctx.fillRect(ex + cw*0.05 + d*cw*0.09, ey+ch*0.14, cw*0.09, ch*0.02);
+      // Neon dots along awning
+      for (let d = 0; d < 5; d++) {
+        const phase = (d * 0.4 + t*2) % (Math.PI*2);
+        const dg = 0.4 + Math.sin(phase)*0.3;
+        ctx.fillStyle = `rgba(255,68,68,${dg})`;
+        ctx.beginPath(); ctx.arc(ex+cw*0.12+d*cw*0.19, ey+ch*0.21, 3, 0, Math.PI*2); ctx.fill();
       }
-      // Round porthole windows
+      // Windows — two display cases with warm glow
       const glow = 0.5 + Math.sin(t * 1.5) * 0.15;
-      for (let wc = 0; wc < 3; wc++) {
-        const wx = ex + cw*0.15 + wc*cw*0.28;
-        const wy = ey + ch*0.4;
-        const wr = Math.min(cw*0.08, ch*0.08);
+      for (let wc = 0; wc < 2; wc++) {
+        const wx = ex + cw*0.06 + wc*cw*0.5;
+        const wy = ey + ch*0.34;
         ctx.fillStyle = '#0a0a18';
-        ctx.beginPath(); ctx.arc(wx, wy, wr + 2, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = `rgba(255,220,180,${glow * 0.3})`;
-        ctx.beginPath(); ctx.arc(wx, wy, wr, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(wx, wy, wr + 2, 0, Math.PI*2); ctx.stroke();
+        ctx.fillRect(wx, wy, cw*0.36, ch*0.22);
+        ctx.fillStyle = `rgba(255,68,68,${glow * 0.2})`;
+        ctx.fillRect(wx+2, wy+2, cw*0.36-4, ch*0.22-4);
+        ctx.strokeStyle = `rgba(255,68,68,${glow * 0.6})`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(wx, wy, cw*0.36, ch*0.22);
       }
       // Door
       ctx.fillStyle = '#08081a';
       ctx.fillRect(ex+cw*0.36, ey+ch*0.64, cw*0.28, ch*0.36);
-      ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 2;
+      ctx.strokeStyle = `rgba(255,68,68,${0.6 + Math.sin(t*2)*0.2})`;
+      ctx.lineWidth = 2;
       ctx.strokeRect(ex+cw*0.36, ey+ch*0.64, cw*0.28, ch*0.36);
       // Door window pane
-      ctx.fillStyle = `rgba(255,220,180,${glow*0.15})`;
+      ctx.fillStyle = `rgba(255,68,68,${glow*0.15})`;
       ctx.fillRect(ex+cw*0.4, ey+ch*0.68, cw*0.2, ch*0.12);
-      // Chrome side strips
-      ctx.fillStyle = `rgba(224,224,232,${0.3 + Math.sin(t*1.2)*0.08})`;
+      // Neon side strips
+      ctx.fillStyle = `rgba(255,68,68,${0.15 + Math.sin(t*1.2)*0.08})`;
       ctx.fillRect(ex+4, ey+ch*0.25, 3, ch*0.7);
       ctx.fillRect(ex+cw-7, ey+ch*0.25, 3, ch*0.7);
-      // Neon "DINER" sign (animated glow)
-      const neonGlow = 0.7 + Math.sin(t*2.5)*0.2;
-      ctx.font = "bold 12px monospace";
-      ctx.fillStyle = `rgba(255,60,60,${neonGlow})`;
+      // Neon "DINER" sign
+      ctx.font = "bold 10px monospace";
+      ctx.fillStyle = `rgba(255,68,68,${0.7 + Math.sin(t*2.5)*0.2})`;
       ctx.textAlign = "center";
       ctx.fillText("DINER", ex+cw/2, ey+ch*0.12);
-      // Neon glow halo behind text
-      ctx.fillStyle = `rgba(255,60,60,${neonGlow * 0.15})`;
-      ctx.fillRect(ex+cw*0.25, ey+ch*0.02, cw*0.5, ch*0.14);
       // Label below
       ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ff4444'; ctx.textAlign = "center";
       ctx.fillText("Diner", ex+cw/2, ey+ch+14); ctx.textAlign = "left";
@@ -1446,13 +1445,13 @@ const ENTITY_RENDERERS = {
       const ew = w * TILE, eh = h * TILE;
       const t = Date.now() / 1000;
       const glow = 0.4 + Math.sin(t * 2) * 0.15;
-      ctx.fillStyle = `rgba(255,60,60,${glow * 0.12})`;
+      ctx.fillStyle = `rgba(255,68,68,${glow * 0.12})`;
       ctx.fillRect(ex, ey, ew, eh);
-      ctx.strokeStyle = `rgba(224,224,232,${glow * 0.5})`;
+      ctx.strokeStyle = `rgba(255,68,68,${glow * 0.5})`;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(ex+2, ey+2, ew-4, eh-4);
       ctx.font = "bold 10px monospace";
-      ctx.fillStyle = `rgba(255,60,60,${glow * 0.8})`;
+      ctx.fillStyle = `rgba(255,68,68,${glow * 0.8})`;
       ctx.textAlign = "center";
       ctx.fillText("\u25B2 ENTER DINER", ex + ew/2, ey + eh + 12);
       ctx.textAlign = "left";

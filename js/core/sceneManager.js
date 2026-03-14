@@ -361,35 +361,9 @@ function checkPortals() {
     // Portal registry lookup — replaces 13 individual if-statements
     const requiredScene = PORTAL_SCENES[e.type];
     if (requiredScene && Scene.is(requiredScene) && inZone) {
-      // Diner entrance gating
-      if (e.type === 'diner_entrance') {
-        const cp = typeof cookingProgress !== 'undefined' ? cookingProgress : null;
-        const cookLvl = typeof skillData !== 'undefined' && skillData.Cooking ? skillData.Cooking.level : 0;
-        const totalOrders = cp ? cp.lifetimeOrdersTotal : 0;
-        if (cookLvl < 10 || totalOrders < 500) {
-          if (typeof hitEffects !== 'undefined') {
-            hitEffects.push({ x: player.x, y: player.y - 40, life: 60, maxLife: 60, type: 'heal',
-              dmg: 'Requires: Cooking Lv10 + 500 orders (You: Lv' + cookLvl + ', ' + totalOrders + ' orders)' });
-          }
-          return;
-        }
-        if (cp && !cp.purchasedShops.includes('diner')) {
-          if (typeof gold !== 'undefined' && gold < 5000) {
-            if (typeof hitEffects !== 'undefined') {
-              hitEffects.push({ x: player.x, y: player.y - 40, life: 60, maxLife: 60, type: 'heal',
-                dmg: 'Diner costs 5000 gold to unlock! (You have: ' + gold + ')' });
-            }
-            return;
-          }
-          gold -= 5000;
-          cp.purchasedShops.push('diner');
-          if (typeof SaveLoad !== 'undefined') SaveLoad.save();
-          if (typeof hitEffects !== 'undefined') {
-            hitEffects.push({ x: player.x, y: player.y - 40, life: 60, maxLife: 60, type: 'heal',
-              dmg: 'Diner unlocked! -5000 gold' });
-          }
-        }
-      }
+      // Diner entrance gating — PLACEHOLDER: re-enable when progression is balanced
+      // Requirements: Cooking Lv10, 500 lifetime orders, 5000 gold purchase
+      // if (e.type === 'diner_entrance') { ... check cookingProgress, skillData.Cooking ... }
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }
