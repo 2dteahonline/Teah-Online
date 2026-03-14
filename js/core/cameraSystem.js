@@ -45,8 +45,8 @@ const CameraSystem = {
 
     // Panel layout — 2×2 grid, 75% size centered
     const gap = 12;
-    const fullW = BASE_W * 0.75;
-    const fullH = BASE_H * 0.75;
+    const fullW = BASE_W * 0.6;
+    const fullH = BASE_H * 0.6;
     const panelW = (fullW - gap) / 2;
     const panelH = (fullH - gap) / 2;
     const marginX = (BASE_W - fullW) / 2;
@@ -267,8 +267,8 @@ const CameraSystem = {
   // Handle click on close button (top-left)
   handleClick(mx, my) {
     if (!CameraState.active) return false;
-    const fullH = BASE_H * 0.75;
-    const marginX = (BASE_W - BASE_W * 0.75) / 2;
+    const fullH = BASE_H * 0.6;
+    const marginX = (BASE_W - BASE_W * 0.6) / 2;
     const topY = (BASE_H - fullH) / 2 + 32;
     const bx = marginX - 36, by = topY - 38, bs = 28;
     const dx = mx - (bx + bs / 2), dy = my - (by + bs / 2);
