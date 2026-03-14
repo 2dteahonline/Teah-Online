@@ -332,11 +332,22 @@ function updateCooking() {
       if (npc) {
         npc.linkedOrderId = null;
         npc.hasOrdered = true;
-        npc._queueIdx = -1;
-        if (typeof _advanceQueue === 'function') _advanceQueue(0);
-        // Route to exit using new route system
-        npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
-        npc.state = '_despawn_walk';
+        // Release counter slot and trigger party leave for diner NPCs
+        if (typeof _dinerDequeueCounter === 'function' && npc.partyId) {
+          _dinerDequeueCounter(npc.partyId);
+          if (typeof _getDinerParty === 'function') {
+            const party = _getDinerParty(npc.partyId);
+            if (party && typeof _triggerPartyLeave === 'function') {
+              _triggerPartyLeave(party);
+            }
+          }
+        } else {
+          // Fallback for deli NPCs
+          npc._queueIdx = -1;
+          if (typeof _advanceQueue === 'function') _advanceQueue(0);
+          npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
+          npc.state = '_despawn_walk';
+        }
       }
     }
     // Customer left — automatic F grade

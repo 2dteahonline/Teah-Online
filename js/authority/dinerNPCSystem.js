@@ -29,13 +29,13 @@ const DINER_SPOTS = {
 // 3 left column (tx: 27-32), 3 right column (tx: 38-43)
 const DINER_BOOTHS = [
   // Left column
-  { id: 0, tx: 27, ty: 2,  w: 5, h: 3, seats: [{ tx: 28, ty: 2, sitDir: 0 }, { tx: 30, ty: 2, sitDir: 0 }, { tx: 28, ty: 4, sitDir: 1 }, { tx: 30, ty: 4, sitDir: 1 }], capacity: 4, claimedBy: null },
-  { id: 1, tx: 27, ty: 6,  w: 5, h: 3, seats: [{ tx: 28, ty: 6, sitDir: 0 }, { tx: 30, ty: 6, sitDir: 0 }, { tx: 28, ty: 8, sitDir: 1 }, { tx: 30, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null },
-  { id: 2, tx: 27, ty: 10, w: 5, h: 3, seats: [{ tx: 28, ty: 10, sitDir: 0 }, { tx: 30, ty: 10, sitDir: 0 }, { tx: 28, ty: 12, sitDir: 1 }, { tx: 30, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null },
+  { id: 0, tx: 27, ty: 2,  w: 5, h: 3, entry: { tx: 26, ty: 3 }, topRowAccess: { tx: 26, ty: 2 }, bottomRowAccess: { tx: 26, ty: 4 }, seats: [{ tx: 28, ty: 2, sitDir: 0 }, { tx: 30, ty: 2, sitDir: 0 }, { tx: 28, ty: 4, sitDir: 1 }, { tx: 30, ty: 4, sitDir: 1 }], capacity: 4, claimedBy: null },
+  { id: 1, tx: 27, ty: 6,  w: 5, h: 3, entry: { tx: 26, ty: 7 }, topRowAccess: { tx: 26, ty: 6 }, bottomRowAccess: { tx: 26, ty: 8 }, seats: [{ tx: 28, ty: 6, sitDir: 0 }, { tx: 30, ty: 6, sitDir: 0 }, { tx: 28, ty: 8, sitDir: 1 }, { tx: 30, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null },
+  { id: 2, tx: 27, ty: 10, w: 5, h: 3, entry: { tx: 26, ty: 11 }, topRowAccess: { tx: 26, ty: 10 }, bottomRowAccess: { tx: 26, ty: 12 }, seats: [{ tx: 28, ty: 10, sitDir: 0 }, { tx: 30, ty: 10, sitDir: 0 }, { tx: 28, ty: 12, sitDir: 1 }, { tx: 30, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null },
   // Right column
-  { id: 3, tx: 38, ty: 2,  w: 5, h: 3, seats: [{ tx: 39, ty: 2, sitDir: 0 }, { tx: 41, ty: 2, sitDir: 0 }, { tx: 39, ty: 4, sitDir: 1 }, { tx: 41, ty: 4, sitDir: 1 }], capacity: 4, claimedBy: null },
-  { id: 4, tx: 38, ty: 6,  w: 5, h: 3, seats: [{ tx: 39, ty: 6, sitDir: 0 }, { tx: 41, ty: 6, sitDir: 0 }, { tx: 39, ty: 8, sitDir: 1 }, { tx: 41, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null },
-  { id: 5, tx: 38, ty: 10, w: 5, h: 3, seats: [{ tx: 39, ty: 10, sitDir: 0 }, { tx: 41, ty: 10, sitDir: 0 }, { tx: 39, ty: 12, sitDir: 1 }, { tx: 41, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null },
+  { id: 3, tx: 38, ty: 2,  w: 5, h: 3, entry: { tx: 36, ty: 3 }, topRowAccess: { tx: 36, ty: 2 }, bottomRowAccess: { tx: 36, ty: 4 }, seats: [{ tx: 39, ty: 2, sitDir: 0 }, { tx: 41, ty: 2, sitDir: 0 }, { tx: 39, ty: 4, sitDir: 1 }, { tx: 41, ty: 4, sitDir: 1 }], capacity: 4, claimedBy: null },
+  { id: 4, tx: 38, ty: 6,  w: 5, h: 3, entry: { tx: 36, ty: 7 }, topRowAccess: { tx: 36, ty: 6 }, bottomRowAccess: { tx: 36, ty: 8 }, seats: [{ tx: 39, ty: 6, sitDir: 0 }, { tx: 41, ty: 6, sitDir: 0 }, { tx: 39, ty: 8, sitDir: 1 }, { tx: 41, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null },
+  { id: 5, tx: 38, ty: 10, w: 5, h: 3, entry: { tx: 36, ty: 11 }, topRowAccess: { tx: 36, ty: 10 }, bottomRowAccess: { tx: 36, ty: 12 }, seats: [{ tx: 39, ty: 10, sitDir: 0 }, { tx: 41, ty: 10, sitDir: 0 }, { tx: 39, ty: 12, sitDir: 1 }, { tx: 41, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null },
 ];
 
 // ===================== ARCADE SPOTS =====================
@@ -66,12 +66,42 @@ let _dinerPartyId = 0;
 let _dinerSpawnTimer = 0;
 let _dinerNextSpawnInterval = 600;
 
+// Counter queue — only one leader at the counter at a time
+const _dinerCounterQueue = [];  // array of partyIds in order
+let _dinerCounterActiveParty = null;  // partyId currently at counter
+
 // ===================== HELPERS =====================
 function _dinerRandRange(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
 function _dinerRandFromArray(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function _dinerTilePx(tx, ty) {
   return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 };
+}
+
+function _dinerWP(tx, ty, lane) {
+  return lane ? { tx: tx, ty: ty, lane: true } : { tx: tx, ty: ty };
+}
+
+function _cloneDinerRoute(route) {
+  if (!route) return null;
+  return route.map(wp => wp.lane ? { tx: wp.tx, ty: wp.ty, lane: true } : { tx: wp.tx, ty: wp.ty });
+}
+
+function _pushDinerRoute(route, wp) {
+  if (!wp) return;
+  const prev = route[route.length - 1];
+  if (prev && prev.tx === wp.tx && prev.ty === wp.ty && !!prev.lane === !!wp.lane) return;
+  route.push(wp.lane ? { tx: wp.tx, ty: wp.ty, lane: true } : { tx: wp.tx, ty: wp.ty });
+}
+
+function _concatDinerRoutes() {
+  const route = [];
+  for (let i = 0; i < arguments.length; i++) {
+    const segment = arguments[i];
+    if (!segment) continue;
+    for (const wp of segment) _pushDinerRoute(route, wp);
+  }
+  return route;
 }
 
 // Kitchen zone check — NPCs must not enter kitchen interior
@@ -85,12 +115,13 @@ function _isDinerKitchenZone(px, py) {
 
 // Find an available booth (not claimed by any party)
 function _findFreeBooth(partySize) {
+  const candidates = [];
   for (let i = 0; i < DINER_BOOTHS.length; i++) {
     if (DINER_BOOTHS[i].claimedBy === null && DINER_BOOTHS[i].capacity >= partySize) {
-      return i;
+      candidates.push(i);
     }
   }
-  return -1;
+  return candidates.length ? _dinerRandFromArray(candidates) : -1;
 }
 
 // Find a free arcade spot
@@ -132,6 +163,216 @@ function _getPartyMembers(party) {
   return members;
 }
 
+// ===================== COUNTER QUEUE =====================
+function _dinerEnqueueCounter(partyId) {
+  if (_dinerCounterActiveParty === partyId) return;
+  if (_dinerCounterQueue.includes(partyId)) return;
+  _dinerCounterQueue.push(partyId);
+}
+
+function _dinerDequeueCounter(partyId) {
+  if (_dinerCounterActiveParty === partyId) {
+    _dinerCounterActiveParty = null;
+  }
+  const idx = _dinerCounterQueue.indexOf(partyId);
+  if (idx >= 0) _dinerCounterQueue.splice(idx, 1);
+  _dinerPromoteCounter();
+}
+
+function _dinerPromoteCounter() {
+  if (_dinerCounterActiveParty !== null) return;
+  while (_dinerCounterQueue.length > 0) {
+    const nextId = _dinerCounterQueue.shift();
+    const party = _getDinerParty(nextId);
+    if (!party || party.state === 'leaving' || party.state === 'done') continue;
+    _dinerCounterActiveParty = nextId;
+    const leader = _getPartyLeader(party);
+    if (leader && leader.state === 'waiting_for_counter') {
+      leader.state = 'go_order';
+      leader._idleTime = 0;
+    }
+    return;
+  }
+}
+
+function _dinerIsCounterFree(partyId) {
+  return _dinerCounterActiveParty === null || _dinerCounterActiveParty === partyId;
+}
+
+function _getDinerSeatAccess(booth, seatIdx) {
+  const seat = booth && booth.seats ? booth.seats[seatIdx] : null;
+  if (!booth || !seat) return null;
+  return {
+    seat: seat,
+    entry: booth.entry,
+    rowAccess: seat.sitDir === 0 ? booth.topRowAccess : booth.bottomRowAccess,
+  };
+}
+
+function _routeDinerBoothToSeat(boothId, seatIdx) {
+  const booth = DINER_BOOTHS[boothId];
+  const access = _getDinerSeatAccess(booth, seatIdx);
+  if (!access) return [];
+  return _concatDinerRoutes(
+    [_dinerWP(access.rowAccess.tx, access.rowAccess.ty)],
+    [_dinerWP(access.seat.tx, access.seat.ty)]
+  );
+}
+
+function _routeDinerSeatToBoothEntry(boothId, seatIdx) {
+  const booth = DINER_BOOTHS[boothId];
+  const access = _getDinerSeatAccess(booth, seatIdx);
+  if (!access) return [];
+  return _concatDinerRoutes(
+    [_dinerWP(access.rowAccess.tx, access.rowAccess.ty)],
+    [_dinerWP(access.entry.tx, access.entry.ty)]
+  );
+}
+
+function _routeDinerBoothEntryToCounter(booth) {
+  if (!booth) return [];
+  return _concatDinerRoutes(
+    booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : [_dinerWP(26, 14)],
+    [_dinerWP(26, 16)],
+    [_dinerWP(13, 16)]
+  );
+}
+
+function _routeDinerCounterToBoothEntry(booth) {
+  if (!booth) return [];
+  return _concatDinerRoutes(
+    [_dinerWP(26, 16)],
+    [_dinerWP(26, 14)],
+    booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : null,
+    [_dinerWP(booth.entry.tx, booth.entry.ty)]
+  );
+}
+
+function _routeDinerSeatToCounter(boothId, seatIdx) {
+  const booth = DINER_BOOTHS[boothId];
+  return _concatDinerRoutes(
+    _routeDinerSeatToBoothEntry(boothId, seatIdx),
+    _routeDinerBoothEntryToCounter(booth)
+  );
+}
+
+function _routeDinerCounterToSeat(boothId, seatIdx) {
+  const booth = DINER_BOOTHS[boothId];
+  return _concatDinerRoutes(
+    _routeDinerCounterToBoothEntry(booth),
+    _routeDinerBoothToSeat(boothId, seatIdx)
+  );
+}
+
+function _routeDinerSeatToArcade(boothId, seatIdx, arcadeIdx) {
+  const booth = DINER_BOOTHS[boothId];
+  const spot = DINER_ARCADE_SPOTS[arcadeIdx];
+  if (!booth || !spot) return [];
+  return _concatDinerRoutes(
+    _routeDinerSeatToBoothEntry(boothId, seatIdx),
+    booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : [_dinerWP(26, 14)],
+    booth.entry.tx >= 36 ? null : [_dinerWP(36, 14, true)],
+    [_dinerWP(36, spot.ty)],
+    [_dinerWP(spot.tx, spot.ty)]
+  );
+}
+
+function _routeDinerSeatToExit(boothId, seatIdx) {
+  const booth = DINER_BOOTHS[boothId];
+  if (!booth) return [];
+  return _concatDinerRoutes(
+    _routeDinerSeatToBoothEntry(boothId, seatIdx),
+    booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : [_dinerWP(26, 14)],
+    [_dinerWP(27, 14, true)],
+    [_dinerWP(27, 33)]
+  );
+}
+
+function _routeDinerSeatToTipJar(boothId, seatIdx) {
+  const booth = DINER_BOOTHS[boothId];
+  if (!booth) return [];
+  return _concatDinerRoutes(
+    _routeDinerSeatToBoothEntry(boothId, seatIdx),
+    _routeDinerBoothEntryToCounter(booth),
+    [_dinerWP(17, 16)]
+  );
+}
+
+function _buildDinerRouteFromIntent(intent) {
+  if (!intent) return null;
+  switch (intent.kind) {
+    case 'exit_to_booth': return _routeDinerExitToBooth(intent.boothId);
+    case 'booth_to_seat': return _routeDinerBoothToSeat(intent.boothId, intent.seatIdx);
+    case 'seat_to_counter': return _routeDinerSeatToCounter(intent.boothId, intent.seatIdx);
+    case 'counter_to_seat': return _routeDinerCounterToSeat(intent.boothId, intent.seatIdx);
+    case 'seat_to_arcade': return _routeDinerSeatToArcade(intent.boothId, intent.seatIdx, intent.arcadeIdx);
+    case 'seat_to_exit': return _routeDinerSeatToExit(intent.boothId, intent.seatIdx);
+    case 'seat_to_tipjar': return _routeDinerSeatToTipJar(intent.boothId, intent.seatIdx);
+    case 'counter_to_exit': return _routeDinerToExit(DINER_SPOTS.counter.tx, DINER_SPOTS.counter.ty);
+    case 'tipjar_to_exit': return _routeDinerToExit(DINER_SPOTS.tipJar.tx, DINER_SPOTS.tipJar.ty);
+    case 'tile_to_exit': return _routeDinerToExit(intent.tx, intent.ty);
+    default: return null;
+  }
+}
+
+function _getDinerIntentAnchor(intent, npc) {
+  if (!intent) return null;
+  switch (intent.kind) {
+    case 'exit_to_booth':
+      return DINER_SPOTS.exit;
+    case 'booth_to_seat': {
+      const booth = DINER_BOOTHS[intent.boothId];
+      return booth ? booth.entry : null;
+    }
+    case 'seat_to_counter':
+    case 'seat_to_arcade':
+    case 'seat_to_exit':
+    case 'seat_to_tipjar': {
+      const booth = DINER_BOOTHS[intent.boothId];
+      return booth && booth.seats ? booth.seats[intent.seatIdx] : null;
+    }
+    case 'counter_to_seat':
+    case 'counter_to_exit':
+      return DINER_SPOTS.counter;
+    case 'tipjar_to_exit':
+      return DINER_SPOTS.tipJar;
+    case 'tile_to_exit':
+      return { tx: intent.tx, ty: intent.ty };
+    default:
+      return npc && npc.route && npc.route.length ? { tx: npc.route[0].tx, ty: npc.route[0].ty } : null;
+  }
+}
+
+function _recoverDinerNPC(npc) {
+  if (npc._recoveryTried) return false;
+
+  npc._recoveryTried = true;
+  npc._laneOffX = 0;
+  npc._laneOffY = 0;
+
+  const intent = npc._routeIntent;
+  let route = _buildDinerRouteFromIntent(intent);
+  let anchor = _getDinerIntentAnchor(intent, npc);
+
+  if ((!route || route.length === 0) && _isDinerKitchenZone(npc.x, npc.y)) {
+    anchor = { tx: 26, ty: 16 };
+    route = _routeDinerToExit(anchor.tx, anchor.ty);
+    npc._routeIntent = { kind: 'tile_to_exit', tx: anchor.tx, ty: anchor.ty };
+  }
+
+  if (!anchor || !route || route.length === 0) return false;
+
+  const pos = _dinerTilePx(anchor.tx, anchor.ty);
+  npc.x = pos.x;
+  npc.y = pos.y;
+  npc.route = _cloneDinerRoute(route);
+  npc.state = 'walking';
+  npc.moving = true;
+  npc._idleTime = 0;
+  npc._stuckFrames = 0;
+  return true;
+}
+
 // ===================== ROUTE BUILDERS =====================
 // All legs are horizontal or vertical to prevent clipping through solids.
 //
@@ -155,77 +396,6 @@ function _routeDinerExitToBooth(boothId) {
     // Left column booth — go to tx:26 corridor then north
     route.push({ tx: 26, ty: 14 });          // west to corridor
     route.push({ tx: 26, ty: booth.ty + 1 }); // north to booth row
-  }
-  return route;
-}
-
-function _routeDinerNPCToSeat(npc, booth, seatIdx) {
-  // From booth entrance area, walk to specific seat
-  const seat = booth.seats[seatIdx];
-  return [{ tx: seat.tx, ty: seat.ty }];
-}
-
-function _routeDinerBoothToCounter(boothId) {
-  const booth = DINER_BOOTHS[boothId];
-  const route = [];
-  // From booth area → south to corridor → west to counter
-  if (booth.tx >= 38) {
-    // Right column → go to gap → south to corridor
-    route.push({ tx: 36, ty: booth.ty + 1 });
-    route.push({ tx: 36, ty: 14 });
-  } else {
-    // Left column → go to tx:26 → south to corridor
-    route.push({ tx: 26, ty: booth.ty + 1 });
-    route.push({ tx: 26, ty: 14 });
-  }
-  route.push({ tx: 26, ty: 16 });   // south to counter corridor
-  route.push({ tx: 13, ty: 16 });   // west to counter
-  return route;
-}
-
-function _routeDinerCounterToBooth(boothId) {
-  const booth = DINER_BOOTHS[boothId];
-  const route = [];
-  route.push({ tx: 26, ty: 16 });   // east from counter to corridor
-  route.push({ tx: 26, ty: 14 });   // north to main corridor
-  if (booth.tx >= 38) {
-    route.push({ tx: 36, ty: 14 });
-    route.push({ tx: 36, ty: booth.ty + 1 });
-  } else {
-    route.push({ tx: 26, ty: booth.ty + 1 });
-  }
-  return route;
-}
-
-function _routeDinerBoothToArcade(boothId, arcadeIdx) {
-  const booth = DINER_BOOTHS[boothId];
-  const spot = DINER_ARCADE_SPOTS[arcadeIdx];
-  const route = [];
-  if (booth.tx >= 38) {
-    route.push({ tx: 36, ty: booth.ty + 1 });
-    route.push({ tx: 36, ty: 14 });
-  } else {
-    route.push({ tx: 26, ty: booth.ty + 1 });
-    route.push({ tx: 26, ty: 14 });
-  }
-  // Arcade is at top-right area
-  route.push({ tx: 36, ty: 14 });
-  route.push({ tx: 36, ty: spot.ty });
-  route.push({ tx: spot.tx, ty: spot.ty });
-  return route;
-}
-
-function _routeDinerArcadeToBooth(arcadeIdx, boothId) {
-  const spot = DINER_ARCADE_SPOTS[arcadeIdx];
-  const booth = DINER_BOOTHS[boothId];
-  const route = [];
-  route.push({ tx: 36, ty: spot.ty });
-  route.push({ tx: 36, ty: 14 });
-  if (booth.tx >= 38) {
-    route.push({ tx: 36, ty: booth.ty + 1 });
-  } else {
-    route.push({ tx: 26, ty: 14 });
-    route.push({ tx: 26, ty: booth.ty + 1 });
   }
   return route;
 }
@@ -278,16 +448,6 @@ function _routeDinerToTipJar(fromTX, fromTY) {
   return route;
 }
 
-// ===================== ROUTE-BASED MOVEMENT =====================
-function _dinerNPCStartRoute(npc, route, nextState, nextTimer) {
-  npc.route = route;
-  npc._nextState = nextState;
-  npc._nextTimer = nextTimer || 0;
-  npc.state = 'walking';
-  npc.moving = true;
-  npc._idleTime = 0;
-}
-
 function moveDinerNPC(npc) {
   if (!npc.route || npc.route.length === 0) {
     npc.moving = false;
@@ -321,7 +481,7 @@ function moveDinerNPC(npc) {
     if (other.state === 'eating' || other.state === 'menu_reading' ||
         other.state === 'waiting_at_booth' || other.state === 'arcade_playing' ||
         other.state === '_despawn' || other.state === 'ordering' ||
-        other.state === 'waiting_food') continue;
+        other.state === 'waiting_food' || other.state === 'waiting_for_counter') continue;
     // Skip avoidance if we are ordering
     if (npc.state === 'ordering' || npc.state === 'waiting_food') continue;
     const sx = npc.x - other.x;
@@ -419,6 +579,17 @@ function _spawnDinerNPC(partyId, isLeader) {
   return npc;
 }
 
+function _dinerNPCStartRoute(npc, route, nextState, nextTimer, intent) {
+  npc.route = _cloneDinerRoute(route);
+  npc._nextState = nextState;
+  npc._nextTimer = nextTimer || 0;
+  npc._routeIntent = intent || null;
+  npc._recoveryTried = false;
+  npc.state = 'walking';
+  npc.moving = true;
+  npc._idleTime = 0;
+}
+
 function spawnDinerParty() {
   const partySize = _dinerRandRange(1, 3);
   const boothIdx = _findFreeBooth(partySize);
@@ -463,6 +634,9 @@ function initDinerNPCs() {
   _dinerPartyId = 0;
   _dinerSpawnTimer = 0;
   _dinerNextSpawnInterval = 600;
+  // Reset counter queue
+  _dinerCounterQueue.length = 0;
+  _dinerCounterActiveParty = null;
   // Reset booths
   for (const b of DINER_BOOTHS) b.claimedBy = null;
   // Reset arcade spots
@@ -488,7 +662,7 @@ const DINER_NPC_AI = {
     const booth = DINER_BOOTHS[party.boothId];
     const route = _routeDinerExitToBooth(party.boothId);
 
-    _dinerNPCStartRoute(npc, route, 'seating', 0);
+    _dinerNPCStartRoute(npc, route, 'seating', 0, { kind: 'exit_to_booth', boothId: party.boothId });
   },
 
   // ─── SEATING: Walk to individual seat in booth ─────────
@@ -496,12 +670,16 @@ const DINER_NPC_AI = {
     const party = _getDinerParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
 
-    const booth = DINER_BOOTHS[party.boothId];
-    const seat = booth.seats[npc.claimedSeatIdx];
-    if (!seat) { npc.state = '_despawn'; return; }
+    const route = _routeDinerBoothToSeat(party.boothId, npc.claimedSeatIdx);
+    if (!route.length) { npc.state = '_despawn'; return; }
 
-    _dinerNPCStartRoute(npc, [{ tx: seat.tx, ty: seat.ty }], 'menu_reading',
-      _dinerRandRange(DINER_NPC_CONFIG.menuReadDuration[0], DINER_NPC_CONFIG.menuReadDuration[1]));
+    _dinerNPCStartRoute(
+      npc,
+      route,
+      'menu_reading',
+      _dinerRandRange(DINER_NPC_CONFIG.menuReadDuration[0], DINER_NPC_CONFIG.menuReadDuration[1]),
+      { kind: 'booth_to_seat', boothId: party.boothId, seatIdx: npc.claimedSeatIdx }
+    );
   },
 
   // ─── MENU_READING: Idle at seat, reading menu ──────────
@@ -520,12 +698,42 @@ const DINER_NPC_AI = {
     }
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
 
-    // Leader goes to order, others wait
+    // Leader goes to order (or waits for counter), others wait
     if (npc.isLeader) {
-      npc.state = 'go_order';
+      _dinerEnqueueCounter(npc.partyId);
+      if (_dinerIsCounterFree(npc.partyId)) {
+        _dinerCounterActiveParty = npc.partyId;
+        const idx = _dinerCounterQueue.indexOf(npc.partyId);
+        if (idx >= 0) _dinerCounterQueue.splice(idx, 1);
+        npc.state = 'go_order';
+      } else {
+        npc.state = 'waiting_for_counter';
+      }
     } else {
       npc.state = 'waiting_at_booth';
       npc._idleTime = 0;
+    }
+  },
+
+  // ─── WAITING_FOR_COUNTER: Leader waits in booth for counter ─
+  waiting_for_counter: (npc) => {
+    npc.moving = false;
+    const party = _getDinerParty(npc.partyId);
+    if (party) {
+      const booth = DINER_BOOTHS[party.boothId];
+      const seat = booth.seats[npc.claimedSeatIdx];
+      if (seat) {
+        npc.dir = seat.sitDir;
+        npc.x = seat.tx * TILE + TILE / 2;
+        npc.y = seat.ty * TILE + TILE / 2;
+      }
+    }
+    // _dinerPromoteCounter() will set state to go_order when it's our turn
+    // Safety timeout — 90 sec
+    npc._idleTime = (npc._idleTime || 0) + 1;
+    if (npc._idleTime >= 5400) {
+      _dinerDequeueCounter(npc.partyId);
+      if (party) _triggerPartyLeave(party);
     }
   },
 
@@ -534,8 +742,8 @@ const DINER_NPC_AI = {
     const party = _getDinerParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
 
-    const route = _routeDinerBoothToCounter(party.boothId);
-    _dinerNPCStartRoute(npc, route, 'ordering', 0);
+    const route = _routeDinerSeatToCounter(party.boothId, npc.claimedSeatIdx);
+    _dinerNPCStartRoute(npc, route, 'ordering', 0, { kind: 'seat_to_counter', boothId: party.boothId, seatIdx: npc.claimedSeatIdx });
   },
 
   // ─── ORDERING: Leader at counter, waiting for cookingSystem to link order ─
@@ -551,11 +759,12 @@ const DINER_NPC_AI = {
     // If shift ends while waiting, leave
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
       npc.hasOrdered = true;
+      _dinerDequeueCounter(npc.partyId);
       const party = _getDinerParty(npc.partyId);
       if (party) {
         _triggerPartyLeave(party);
       } else {
-        _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0);
+        _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       }
       return;
     }
@@ -563,11 +772,12 @@ const DINER_NPC_AI = {
     // Patience timeout — leave after 15 sec if order never linked
     if (npc._idleTime >= 900) {
       npc.hasOrdered = true;
+      _dinerDequeueCounter(npc.partyId);
       const party = _getDinerParty(npc.partyId);
       if (party) {
         _triggerPartyLeave(party);
       } else {
-        _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0);
+        _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       }
     }
   },
@@ -584,18 +794,20 @@ const DINER_NPC_AI = {
     // applyOrderResult() in cookingSystem will set us to pickup_food
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
       npc.linkedOrderId = null;
+      _dinerDequeueCounter(npc.partyId);
       const party = _getDinerParty(npc.partyId);
       if (party) _triggerPartyLeave(party);
-      else _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0);
+      else _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       return;
     }
 
     // Patience timeout — leave angry after 30 sec
     if (npc._idleTime >= 1800) {
       npc.linkedOrderId = null;
+      _dinerDequeueCounter(npc.partyId);
       const party = _getDinerParty(npc.partyId);
       if (party) _triggerPartyLeave(party);
-      else _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0);
+      else _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
     }
   },
 
@@ -618,7 +830,7 @@ const DINER_NPC_AI = {
     // Patience timeout — 60 sec max waiting at booth
     if (npc._idleTime >= 3600) {
       if (party) _triggerPartyLeave(party);
-      else _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0);
+      else _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
     }
   },
 
@@ -628,20 +840,20 @@ const DINER_NPC_AI = {
 
     npc.hasOrdered = true;
     npc.hasFood = true;
+    _dinerDequeueCounter(npc.partyId);
 
     const party = _getDinerParty(npc.partyId);
     if (!party) {
-      _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0);
+      _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       return;
     }
 
-    const route = _routeDinerCounterToBooth(party.boothId);
-    _dinerNPCStartRoute(npc, route, 'return_to_booth', 0);
+    const route = _routeDinerCounterToSeat(party.boothId, npc.claimedSeatIdx);
+    _dinerNPCStartRoute(npc, route, 'return_to_booth', 0, { kind: 'counter_to_seat', boothId: party.boothId, seatIdx: npc.claimedSeatIdx });
   },
 
   // ─── RETURN_TO_BOOTH: Leader walking back with food ────
   return_to_booth: (npc) => {
-    // Walk to seat
     const party = _getDinerParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
 
@@ -649,8 +861,11 @@ const DINER_NPC_AI = {
     const seat = booth.seats[npc.claimedSeatIdx];
     if (!seat) { npc.state = '_despawn'; return; }
 
-    _dinerNPCStartRoute(npc, [{ tx: seat.tx, ty: seat.ty }], 'eating',
-      _dinerRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]));
+    npc.state = 'eating';
+    npc.stateTimer = _dinerRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
+    npc.x = seat.tx * TILE + TILE / 2;
+    npc.y = seat.ty * TILE + TILE / 2;
+    npc.dir = seat.sitDir;
 
     // Trigger all waiting party members to start eating too
     const members = _getPartyMembers(party);
@@ -690,7 +905,7 @@ const DINER_NPC_AI = {
     npc.moving = false;
     const party = _getDinerParty(npc.partyId);
     if (!party) {
-      _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0);
+      _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
       return;
     }
 
@@ -763,9 +978,14 @@ const DINER_NPC_AI = {
       npc.state = 'post_meal_wait';
       return;
     }
-    const route = _routeDinerBoothToArcade(party.boothId, npc._claimedArcadeIdx);
-    _dinerNPCStartRoute(npc, route, 'arcade_playing',
-      _dinerRandRange(DINER_NPC_CONFIG.arcadeDuration[0], DINER_NPC_CONFIG.arcadeDuration[1]));
+    const route = _routeDinerSeatToArcade(party.boothId, npc.claimedSeatIdx, npc._claimedArcadeIdx);
+    _dinerNPCStartRoute(
+      npc,
+      route,
+      'arcade_playing',
+      _dinerRandRange(DINER_NPC_CONFIG.arcadeDuration[0], DINER_NPC_CONFIG.arcadeDuration[1]),
+      { kind: 'seat_to_arcade', boothId: party.boothId, seatIdx: npc.claimedSeatIdx, arcadeIdx: npc._claimedArcadeIdx }
+    );
   },
 
   // ─── ARCADE_PLAYING: Idle at arcade cabinet ────────────
@@ -788,7 +1008,7 @@ const DINER_NPC_AI = {
     // Return to booth area, then trigger leaving check
     const party = _getDinerParty(npc.partyId);
     if (!party) {
-      _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0);
+      _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
       return;
     }
 
@@ -832,7 +1052,7 @@ const DINER_NPC_AI = {
     }
 
     // After tipping, leave
-    _dinerNPCStartRoute(npc, _routeDinerToExit(17, 16), '_despawn', 0);
+    _dinerNPCStartRoute(npc, _routeDinerToExit(17, 16), '_despawn', 0, { kind: 'tipjar_to_exit' });
   },
 
   // ─── LEAVING: Walking to exit ──────────────────────────
@@ -861,8 +1081,52 @@ const DINER_NPC_AI = {
 
 // ===================== PARTY HELPERS =====================
 
+function _buildDinerExitPlan(npc) {
+  const party = _getDinerParty(npc.partyId);
+  if (party && npc.claimedSeatIdx >= 0 &&
+      (npc.state === 'menu_reading' || npc.state === 'waiting_at_booth' ||
+       npc.state === 'eating' || npc.state === 'post_meal' ||
+       npc.state === 'post_meal_wait' || npc.state === 'return_to_booth' ||
+       npc.state === 'waiting_for_counter')) {
+    return {
+      route: _routeDinerSeatToExit(party.boothId, npc.claimedSeatIdx),
+      intent: { kind: 'seat_to_exit', boothId: party.boothId, seatIdx: npc.claimedSeatIdx },
+    };
+  }
+
+  if (npc.state === 'ordering' || npc.state === 'waiting_food' || npc.state === 'pickup_food') {
+    return {
+      route: _routeDinerToExit(DINER_SPOTS.counter.tx, DINER_SPOTS.counter.ty),
+      intent: { kind: 'counter_to_exit' },
+    };
+  }
+
+  const curTX = Math.floor(npc.x / TILE);
+  const curTY = Math.floor(npc.y / TILE);
+  return {
+    route: _routeDinerToExit(curTX, curTY),
+    intent: { kind: 'tile_to_exit', tx: curTX, ty: curTY },
+  };
+}
+
+function _buildDinerTipPlan(npc, party) {
+  if (party && npc.claimedSeatIdx >= 0) {
+    return {
+      route: _routeDinerSeatToTipJar(party.boothId, npc.claimedSeatIdx),
+      intent: { kind: 'seat_to_tipjar', boothId: party.boothId, seatIdx: npc.claimedSeatIdx },
+    };
+  }
+  const curTX = Math.floor(npc.x / TILE);
+  const curTY = Math.floor(npc.y / TILE);
+  return {
+    route: _routeDinerToTipJar(curTX, curTY),
+    intent: null,
+  };
+}
+
 // Trigger the whole party to leave (walk to exit → despawn)
 function _triggerPartyLeave(party) {
+  _dinerDequeueCounter(party.id);
   const booth = DINER_BOOTHS[party.boothId];
   const members = _getPartyMembers(party);
 
@@ -877,9 +1141,8 @@ function _triggerPartyLeave(party) {
     m._recipeIngredients = null;
     m.linkedOrderId = null;
 
-    const curTX = Math.floor(m.x / TILE);
-    const curTY = Math.floor(m.y / TILE);
-    _dinerNPCStartRoute(m, _routeDinerToExit(curTX, curTY), '_despawn', 0);
+    const exitPlan = _buildDinerExitPlan(m);
+    _dinerNPCStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Release booth
@@ -889,18 +1152,17 @@ function _triggerPartyLeave(party) {
 
 // Post-meal exit: leader tips (maybe), all leave
 function _triggerPartyPostMealExit(party) {
+  _dinerDequeueCounter(party.id);
   const leader = _getPartyLeader(party);
   const members = _getPartyMembers(party);
 
   // Leader tips (40% chance)
   if (leader && !leader.hasTipped && Math.random() < DINER_NPC_CONFIG.tipChance) {
-    const curTX = Math.floor(leader.x / TILE);
-    const curTY = Math.floor(leader.y / TILE);
-    _dinerNPCStartRoute(leader, _routeDinerToTipJar(curTX, curTY), 'tipping', 0);
+    const tipPlan = _buildDinerTipPlan(leader, party);
+    _dinerNPCStartRoute(leader, tipPlan.route, 'tipping', 0, tipPlan.intent);
   } else if (leader) {
-    const curTX = Math.floor(leader.x / TILE);
-    const curTY = Math.floor(leader.y / TILE);
-    _dinerNPCStartRoute(leader, _routeDinerToExit(curTX, curTY), '_despawn', 0);
+    const exitPlan = _buildDinerExitPlan(leader);
+    _dinerNPCStartRoute(leader, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Non-leaders leave directly
@@ -913,9 +1175,8 @@ function _triggerPartyPostMealExit(party) {
     }
     m.hasFood = false;
     m._recipeIngredients = null;
-    const curTX = Math.floor(m.x / TILE);
-    const curTY = Math.floor(m.y / TILE);
-    _dinerNPCStartRoute(m, _routeDinerToExit(curTX, curTY), '_despawn', 0);
+    const exitPlan = _buildDinerExitPlan(m);
+    _dinerNPCStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Release booth
@@ -965,17 +1226,19 @@ function updateDinerNPCs() {
         npc.state !== 'waiting_at_booth' && npc.state !== 'post_meal_wait' &&
         npc.state !== 'ordering' && npc.state !== 'waiting_food' &&
         npc.state !== 'menu_reading' && npc.state !== 'arcade_playing' &&
+        npc.state !== 'waiting_for_counter' &&
         (npc._idleTime || 0) >= 3600) {
       npc._idleTime = 0;
       npc.hasFood = false;
       npc._recipeIngredients = null;
+      if (npc.partyId) _dinerDequeueCounter(npc.partyId);
       if (npc._claimedArcadeIdx >= 0) {
         DINER_ARCADE_SPOTS[npc._claimedArcadeIdx].claimedBy = null;
         npc._claimedArcadeIdx = -1;
       }
       const curTX = Math.floor(npc.x / TILE);
       const curTY = Math.floor(npc.y / TILE);
-      _dinerNPCStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0);
+      _dinerNPCStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
     }
 
     // Stuck detection — blocked 1+ second → abandon route, head to exit
@@ -983,18 +1246,20 @@ function updateDinerNPCs() {
       npc._stuckFrames = 0;
       npc.hasFood = false;
       npc._recipeIngredients = null;
+      if (npc.partyId) _dinerDequeueCounter(npc.partyId);
       if (npc._claimedArcadeIdx >= 0) {
         DINER_ARCADE_SPOTS[npc._claimedArcadeIdx].claimedBy = null;
         npc._claimedArcadeIdx = -1;
       }
-      // If stuck in kitchen, teleport to safe corridor
-      if (_isDinerKitchenZone(npc.x, npc.y)) {
-        npc.x = 26 * TILE + TILE / 2;
-        npc.y = 16 * TILE + TILE / 2;
+      if (!_recoverDinerNPC(npc)) {
+        if (_isDinerKitchenZone(npc.x, npc.y)) {
+          npc.x = 26 * TILE + TILE / 2;
+          npc.y = 16 * TILE + TILE / 2;
+        }
+        const curTX = Math.floor(npc.x / TILE);
+        const curTY = Math.floor(npc.y / TILE);
+        _dinerNPCStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
       }
-      const curTX = Math.floor(npc.x / TILE);
-      const curTY = Math.floor(npc.y / TILE);
-      _dinerNPCStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0);
     }
 
     // Despawn
