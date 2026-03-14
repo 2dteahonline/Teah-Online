@@ -18,27 +18,16 @@ function _casinoGetPanelXY() {
 }
 
 function _casinoDrawButton(x, y, w, h, label, enabled, highlight) {
-  // Shadow
-  if (enabled) {
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.beginPath(); ctx.roundRect(x + 2, y + 2, w, h, 6); ctx.fill();
-  }
-  ctx.fillStyle = !enabled ? '#1a1a2a' : highlight ? '#2a5a1a' : '#2a2a4a';
+  // Stake-style flat buttons
+  ctx.fillStyle = !enabled ? '#111822' : highlight ? '#00e701' : '#1a2a3a';
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
-  // Gradient shine on top
-  if (enabled) {
-    const grad = ctx.createLinearGradient(x, y, x, y + h);
-    grad.addColorStop(0, 'rgba(255,255,255,0.08)');
-    grad.addColorStop(0.5, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+  if (enabled && !highlight) {
+    ctx.strokeStyle = '#2a3a4a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.stroke();
   }
-  ctx.strokeStyle = !enabled ? '#333' : highlight ? '#5aaa3a' : '#5a5a8a';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.stroke();
-  ctx.lineWidth = 1;
   ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = enabled ? '#fff' : '#555';
+  ctx.fillStyle = !enabled ? '#334' : highlight ? '#000' : '#fff';
   ctx.textAlign = 'center';
   ctx.fillText(label, x + w / 2, y + h / 2 + 5);
 }
@@ -146,33 +135,31 @@ function _casinoDrawDie(x, y, size, value, rotation) {
 
 function _casinoDrawBetControls(px, py, pw) {
   const by = py + _CASINO_PH - 60;
-  // Background strip
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.fillRect(px + 8, by - 22, pw - 16, 62);
+  // Background strip — Stake dark
+  ctx.fillStyle = '#0a1520';
+  ctx.fillRect(px + 4, by - 22, (pw || _CASINO_PW) - 8, 62);
   // Gold display
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffd700';
   ctx.fillText('\u2B25 ' + gold + 'g', px + 20, by - 6);
 
-  // Bet input field (clickable to type)
+  // Bet input field
   const inputX = px + 150, inputY = by - 14, inputW = 120, inputH = 28;
-  ctx.fillStyle = _casinoBetEditing ? '#1a1a30' : '#0e0e1a';
+  ctx.fillStyle = _casinoBetEditing ? '#111e2e' : '#0a1520';
   ctx.beginPath(); ctx.roundRect(inputX, inputY, inputW, inputH, 4); ctx.fill();
-  ctx.strokeStyle = _casinoBetEditing ? '#ffd700' : '#3a3a5a';
-  ctx.lineWidth = _casinoBetEditing ? 2 : 1;
-  ctx.beginPath(); ctx.roundRect(inputX, inputY, inputW, inputH, 4); ctx.stroke();
+  ctx.strokeStyle = _casinoBetEditing ? '#00e701' : '#1a2a3a';
   ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(inputX, inputY, inputW, inputH, 4); ctx.stroke();
   ctx.font = 'bold 14px monospace';
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   const displayText = _casinoBetEditing ? (_casinoBetString + (_casinoBetCursorBlink() ? '|' : '')) : _casinoBetInput + 'g';
   ctx.fillText(displayText, inputX + inputW / 2, inputY + 19);
-  // Label
-  ctx.font = '11px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'left';
+  ctx.font = '11px monospace'; ctx.fillStyle = '#556'; ctx.textAlign = 'left';
   ctx.fillText('Bet:', px + 150 - 30, inputY + 19);
 
-  // - and + buttons next to input
+  // - and + buttons
   const decX = inputX + inputW + 6, incX = decX + 32;
   _casinoDrawButton(decX, inputY, 28, inputH, '-', _casinoBetInput > CASINO_CONFIG.BET_MIN, false);
   _casinoDrawButton(incX, inputY, 28, inputH, '+', _casinoBetInput < CASINO_CONFIG.BET_MAX && _casinoBetInput < gold, false);
@@ -187,31 +174,31 @@ function _casinoDrawBetControls(px, py, pw) {
   ];
   for (let i = 0; i < qBtns.length; i++) {
     const bx = halfX + i * (qBtnW + qBtnGap);
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = '#111e2e';
     ctx.beginPath(); ctx.roundRect(bx, inputY, qBtnW, inputH, 4); ctx.fill();
-    ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#1a2a3a'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(bx, inputY, qBtnW, inputH, 4); ctx.stroke();
-    ctx.font = 'bold 10px monospace'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
+    ctx.font = 'bold 10px monospace'; ctx.fillStyle = '#889'; ctx.textAlign = 'center';
     ctx.fillText(qBtns[i].label, bx + qBtnW / 2, inputY + 18);
   }
 
-  // Preset buttons (row below)
+  // Preset buttons
   const presets = CASINO_CONFIG.BET_PRESETS;
   const btnW = 62, btnH = 24, gap = 4;
   const startX = px + 20;
   const presetY = by + 14;
   for (let i = 0; i < presets.length; i++) {
     const bx = startX + i * (btnW + gap);
-    if (bx + btnW > px + pw - 16) break;
+    if (bx + btnW > px + (pw || _CASINO_PW) - 16) break;
     const active = _casinoBetInput === presets[i];
     const afford = gold >= presets[i];
-    ctx.fillStyle = active ? '#2a4a1a' : '#111';
+    ctx.fillStyle = active ? '#0a2a0a' : '#111e2e';
     ctx.beginPath(); ctx.roundRect(bx, presetY, btnW, btnH, 4); ctx.fill();
-    ctx.strokeStyle = active ? '#5a8a4a' : '#2a2a3a';
+    ctx.strokeStyle = active ? '#00e701' : '#1a2a3a';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(bx, presetY, btnW, btnH, 4); ctx.stroke();
     ctx.font = '11px monospace';
-    ctx.fillStyle = afford ? (active ? '#8f8' : '#ccc') : '#444';
+    ctx.fillStyle = afford ? (active ? '#00e701' : '#aab') : '#334';
     ctx.textAlign = 'center';
     ctx.fillText(presets[i] >= 1000 ? (presets[i] / 1000) + 'k' : presets[i] + '', bx + btnW / 2, presetY + 16);
   }
@@ -306,30 +293,43 @@ function _casinoBetStep() {
 
 function _casinoDrawResult(px, py, pw, ph) {
   if (!casinoState.result) return false;
+  // Only show result for wins — losses silently reset
+  if (!casinoState.result.won) return false;
   const elapsed = Date.now() - casinoState.resultTimer;
-  const fadeIn = Math.min(1, elapsed / 300);
-  ctx.globalAlpha = fadeIn * 0.8;
+  const fadeIn = Math.min(1, elapsed / 200);
+  const cx = px + pw / 2, cy = py + ph / 2;
+  // Semi-transparent backdrop
+  ctx.globalAlpha = fadeIn * 0.5;
   ctx.fillStyle = '#000';
   ctx.fillRect(px + 4, py + 48, pw - 8, ph - 56);
   ctx.globalAlpha = fadeIn;
-  const r = casinoState.result;
-  // Glow effect
-  ctx.shadowColor = r.won ? '#5fca80' : '#ff4a4a';
-  ctx.shadowBlur = 20;
-  ctx.font = 'bold 40px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = r.won ? '#5fca80' : '#ff4a4a';
-  ctx.fillText(r.won ? 'WIN!' : 'LOSE', px + pw / 2, py + ph / 2 - 30);
+  // Stake-style inline win popup box
+  const boxW = 260, boxH = 90;
+  const boxX = cx - boxW / 2, boxY = cy - boxH / 2;
+  // Green glow border
+  ctx.shadowColor = '#00e701';
+  ctx.shadowBlur = 25;
+  ctx.fillStyle = '#0d1b2a';
+  ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 10); ctx.fill();
+  ctx.strokeStyle = '#00e701';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 10); ctx.stroke();
   ctx.shadowBlur = 0;
-  ctx.font = 'bold 22px monospace';
-  ctx.fillStyle = r.won ? '#ffd700' : '#ff6666';
-  ctx.fillText(r.message, px + pw / 2, py + ph / 2 + 15);
-  // Tap anywhere hint
-  if (elapsed > 400) {
-    ctx.font = '12px monospace';
-    ctx.fillStyle = '#666';
-    ctx.fillText('tap to continue', px + pw / 2, py + ph / 2 + 55);
-  }
+  ctx.lineWidth = 1;
+  // Multiplier text
+  const r = casinoState.result;
+  const mult = casinoState.bet > 0 ? (r.payout / casinoState.bet).toFixed(2) : '0.00';
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(mult + 'x', cx, cy - 8);
+  // Divider line
+  ctx.strokeStyle = '#1a3a2a';
+  ctx.beginPath(); ctx.moveTo(boxX + 40, cy + 4); ctx.lineTo(boxX + boxW - 40, cy + 4); ctx.stroke();
+  // Payout amount
+  ctx.font = 'bold 20px monospace';
+  ctx.fillStyle = '#00e701';
+  ctx.fillText('+' + r.payout + 'g', cx, cy + 30);
   ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
   return true;
@@ -352,33 +352,27 @@ function drawCasinoPanel() {
   const { px, py } = _casinoGetPanelXY();
   const pw = _CASINO_PW, ph = _CASINO_PH;
   // Dimmed backdrop
-  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
-  // Panel bg with inner glow
-  ctx.fillStyle = '#08080f';
-  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 14); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,215,0,0.35)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 14); ctx.stroke();
-  // Inner border
-  ctx.strokeStyle = 'rgba(255,215,0,0.08)';
-  ctx.beginPath(); ctx.roundRect(px + 4, py + 4, pw - 8, ph - 8, 12); ctx.stroke();
-  // Title bar
-  const titleGrad = ctx.createLinearGradient(px, py, px + pw, py + 44);
-  titleGrad.addColorStop(0, 'rgba(60,40,10,0.6)');
-  titleGrad.addColorStop(1, 'rgba(30,20,5,0.6)');
-  ctx.fillStyle = titleGrad;
-  ctx.beginPath(); ctx.roundRect(px + 3, py + 3, pw - 6, 42, [10, 10, 0, 0]); ctx.fill();
+  // Panel bg — Stake-style dark navy
+  ctx.fillStyle = '#0d1b2a';
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.fill();
+  ctx.strokeStyle = '#1a2a3a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.stroke();
+  // Title bar — subtle dark
+  ctx.fillStyle = '#0a1520';
+  ctx.beginPath(); ctx.roundRect(px + 1, py + 1, pw - 2, 40, [10, 10, 0, 0]); ctx.fill();
   const gameLabel = CASINO_GAMES.find(g => g.id === casinoState.activeGame);
-  ctx.font = 'bold 20px monospace';
-  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
-  ctx.fillText(gameLabel ? gameLabel.label.toUpperCase() : 'CASINO', px + pw / 2, py + 30);
+  ctx.fillText(gameLabel ? gameLabel.label.toUpperCase() : 'CASINO', px + pw / 2, py + 27);
   // Close button
-  ctx.fillStyle = '#4a1a1a';
-  ctx.beginPath(); ctx.roundRect(px + pw - 42, py + 8, 32, 32, 6); ctx.fill();
-  ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center'; ctx.fillText('\u2715', px + pw - 26, py + 30);
+  ctx.fillStyle = '#1a2535';
+  ctx.beginPath(); ctx.roundRect(px + pw - 40, py + 6, 30, 30, 6); ctx.fill();
+  ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#556';
+  ctx.textAlign = 'center'; ctx.fillText('\u2715', px + pw - 25, py + 26);
   // Dispatch
   const g = casinoState.activeGame;
   if (g === 'blackjack') _drawBlackjack(px, py, pw, ph);
@@ -427,10 +421,10 @@ function handleCasinoClick(mx, my) {
 function _drawBlackjack(px, py, pw, ph) {
   const bj = casinoState.bj;
   const cx = px + pw / 2;
-  // Green felt background
-  ctx.fillStyle = '#0e3d0e';
+  // Dark navy background
+  ctx.fillStyle = '#0f1923';
   ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.fill();
-  ctx.strokeStyle = '#1a5a1a';
+  ctx.strokeStyle = '#1a2a3a';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.stroke();
 
@@ -438,7 +432,7 @@ function _drawBlackjack(px, py, pw, ph) {
     _casinoDrawBetControls(px, py, pw);
     _casinoDrawButton(cx - 70, py + ph / 2 - 25, 140, 48, 'DEAL', gold >= _casinoBetInput, true);
     ctx.font = '15px monospace';
-    ctx.fillStyle = '#8a8';
+    ctx.fillStyle = '#8899aa';
     ctx.textAlign = 'center';
     ctx.fillText('Place your bet and deal', cx, py + 100);
     return;
@@ -800,12 +794,12 @@ function _drawRoulette(px, py, pw, ph) {
   const outsideBets1 = [
     { type: 'red', label: 'RED', color: '#881111' },
     { type: 'black', label: 'BLACK', color: '#151515' },
-    { type: 'odd', label: 'ODD', color: '#1a1a2e' },
+    { type: 'odd', label: 'ODD', color: '#111e2e' },
   ];
   const outsideBets2 = [
-    { type: 'even', label: 'EVEN', color: '#1a1a2e' },
-    { type: 'low', label: '1-18', color: '#1a1a2e' },
-    { type: 'high', label: '19-36', color: '#1a1a2e' },
+    { type: 'even', label: 'EVEN', color: '#111e2e' },
+    { type: 'low', label: '1-18', color: '#111e2e' },
+    { type: 'high', label: '19-36', color: '#111e2e' },
   ];
   for (let i = 0; i < 3; i++) {
     const bx = gridX + i * (obW + 4);
@@ -842,9 +836,9 @@ function _drawRoulette(px, py, pw, ph) {
   ];
   for (let i = 0; i < 3; i++) {
     const bx = gridX + i * (dcW + 4);
-    ctx.fillStyle = '#0e0e1e';
+    ctx.fillStyle = '#111e2e';
     ctx.beginPath(); ctx.roundRect(bx, dcY, dcW, obH, 3); ctx.fill();
-    ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#1a2a3a'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(bx, dcY, dcW, obH, 3); ctx.stroke();
     ctx.font = '10px monospace'; ctx.fillStyle = '#bbb';
     ctx.textAlign = 'center';
@@ -853,9 +847,9 @@ function _drawRoulette(px, py, pw, ph) {
   const dc2Y = dcY + obH + 3;
   for (let i = 0; i < 3; i++) {
     const bx = gridX + i * (dcW + 4);
-    ctx.fillStyle = '#0e0e1e';
+    ctx.fillStyle = '#111e2e';
     ctx.beginPath(); ctx.roundRect(bx, dc2Y, dcW, obH, 3); ctx.fill();
-    ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#1a2a3a'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(bx, dc2Y, dcW, obH, 3); ctx.stroke();
     ctx.font = '10px monospace'; ctx.fillStyle = '#bbb';
     ctx.textAlign = 'center';
@@ -1079,7 +1073,7 @@ function _drawHeadsOrTails(px, py, pw, ph) {
     ctx.fillText('HEADS', cx - 135, btnY + 29);
 
     // Tails button (silver colored)
-    ctx.fillStyle = '#1a1a2a';
+    ctx.fillStyle = '#111e2e';
     ctx.beginPath(); ctx.roundRect(cx - 60, btnY, 120, 46, 6); ctx.fill();
     ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(cx - 60, btnY, 120, 46, 6); ctx.stroke();
@@ -1167,7 +1161,7 @@ function _drawCases(px, py, pw, ph) {
     const tx = startX + i * (caseW + caseGap);
     const ty = py + 88;
     const canAfford = gold >= tier.cost;
-    ctx.fillStyle = canAfford ? '#0c0c1a' : '#08080e';
+    ctx.fillStyle = canAfford ? '#0f1923' : '#0a1218';
     ctx.beginPath(); ctx.roundRect(tx, ty, caseW, caseH, 8); ctx.fill();
     ctx.strokeStyle = canAfford ? tier.color : '#222';
     ctx.lineWidth = 2;
@@ -1245,9 +1239,9 @@ function _drawMines(px, py, pw, ph) {
     for (let i = 0; i < mPresets.length; i++) {
       const bx = mpStartX + i * (mpW + mpGap);
       const active = mn.mineCount === mPresets[i];
-      ctx.fillStyle = active ? '#2a4a1a' : '#111';
+      ctx.fillStyle = active ? '#0a2a0a' : '#111e2e';
       ctx.beginPath(); ctx.roundRect(bx, py + 145, mpW, 26, 4); ctx.fill();
-      ctx.strokeStyle = active ? '#5a8a4a' : '#2a2a3a'; ctx.lineWidth = 1;
+      ctx.strokeStyle = active ? '#00e701' : '#1a2a3a'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(bx, py + 145, mpW, 26, 4); ctx.stroke();
       ctx.font = '11px monospace'; ctx.fillStyle = active ? '#8f8' : '#aaa'; ctx.textAlign = 'center';
       ctx.fillText(mPresets[i] + '', bx + mpW / 2, py + 162);
@@ -1302,12 +1296,12 @@ function _drawMines(px, py, pw, ph) {
             ctx.stroke();
           }
         } else {
-          ctx.fillStyle = '#0e2e0e';
+          ctx.fillStyle = '#172230';
           ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.fill();
-          ctx.strokeStyle = '#2a6a2a'; ctx.lineWidth = 2;
+          ctx.strokeStyle = '#00e701'; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.stroke();
           // Checkmark
-          ctx.strokeStyle = '#5fca80'; ctx.lineWidth = 3;
+          ctx.strokeStyle = '#00e701'; ctx.lineWidth = 3;
           ctx.beginPath();
           ctx.moveTo(gx + 18, gy + cellSize / 2);
           ctx.lineTo(gx + cellSize / 2 - 4, gy + cellSize / 2 + 10);
@@ -1320,13 +1314,10 @@ function _drawMines(px, py, pw, ph) {
         ctx.font = '20px monospace'; ctx.fillStyle = '#aa3333'; ctx.textAlign = 'center';
         ctx.fillText('\u2716', gx + cellSize / 2, gy + cellSize / 2 + 7);
       } else {
-        // Unrevealed tile with subtle gradient
-        const tileGrad = ctx.createLinearGradient(gx, gy, gx, gy + cellSize);
-        tileGrad.addColorStop(0, '#1e1e30');
-        tileGrad.addColorStop(1, '#141422');
-        ctx.fillStyle = tileGrad;
+        // Unrevealed tile
+        ctx.fillStyle = '#1a2535';
         ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.fill();
-        ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 1;
+        ctx.strokeStyle = '#1a2a3a'; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.stroke();
       }
     }
@@ -1433,8 +1424,8 @@ function _drawDice(px, py, pw, ph) {
     if (elapsed > 1200) casinoDC_resolve();
   }
 
-  // Felt background for dice area
-  ctx.fillStyle = '#0e2e0e';
+  // Dark navy background for dice area
+  ctx.fillStyle = '#0f1923';
   ctx.beginPath(); ctx.roundRect(px + 50, py + 70, pw - 100, 180, 10); ctx.fill();
 
   const dieSize = 90;
@@ -1471,7 +1462,7 @@ function _drawDice(px, py, pw, ph) {
     // Empty placeholder
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath(); ctx.roundRect(die2X, dieY, dieSize, dieSize, 8); ctx.fill();
-    ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#1a2a3a'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
     ctx.beginPath(); ctx.roundRect(die2X, dieY, dieSize, dieSize, 8); ctx.stroke();
     ctx.setLineDash([]); ctx.lineWidth = 1;
     ctx.font = 'bold 32px monospace'; ctx.fillStyle = '#333'; ctx.textAlign = 'center';
@@ -1553,9 +1544,9 @@ function _drawRPSHand(x, y, size, choice, faceDown, shake) {
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath(); ctx.arc(x + 3, y + 3, size, 0, Math.PI * 2); ctx.fill();
   if (faceDown) {
-    ctx.fillStyle = '#1a1a2e';
+    ctx.fillStyle = '#111e2e';
     ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#1a2a3a'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.stroke();
     ctx.font = 'bold ' + (size * 0.7) + 'px monospace';
     ctx.fillStyle = '#333'; ctx.textAlign = 'center';
@@ -1591,9 +1582,9 @@ function _drawRPS(px, py, pw, ph) {
       const fmt = RPS_FORMATS[i];
       const bx = fmtStartX + i * (fmtBtnW + fmtGap);
       const active = rps.format === fmt.id;
-      ctx.fillStyle = active ? '#2a4a1a' : '#111';
+      ctx.fillStyle = active ? '#0a2a0a' : '#111e2e';
       ctx.beginPath(); ctx.roundRect(bx, py + 105, fmtBtnW, 36, 6); ctx.fill();
-      ctx.strokeStyle = active ? '#5a8a4a' : '#2a2a3a'; ctx.lineWidth = 2;
+      ctx.strokeStyle = active ? '#00e701' : '#1a2a3a'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.roundRect(bx, py + 105, fmtBtnW, 36, 6); ctx.stroke();
       ctx.font = 'bold 13px monospace';
       ctx.fillStyle = active ? '#8f8' : '#aaa'; ctx.textAlign = 'center';
@@ -1820,10 +1811,10 @@ function _drawBaccarat(px, py, pw, ph) {
     return;
   }
 
-  // Green felt background
-  ctx.fillStyle = '#0e3d0e';
+  // Dark navy background
+  ctx.fillStyle = '#0f1923';
   ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.fill();
-  ctx.strokeStyle = '#1a5a1a'; ctx.lineWidth = 2;
+  ctx.strokeStyle = '#1a2a3a'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.stroke();
   ctx.lineWidth = 1;
 
@@ -1940,9 +1931,9 @@ function _drawSlots(px, py, pw, ph) {
   const sl = casinoState.sl;
   const cx = px + pw / 2;
   // Machine background
-  ctx.fillStyle = '#1a0a2a';
+  ctx.fillStyle = '#0f1923';
   ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.fill();
-  ctx.strokeStyle = '#4a2a6a';
+  ctx.strokeStyle = '#1a2a3a';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.stroke();
   ctx.lineWidth = 1;
@@ -1969,9 +1960,9 @@ function _drawSlots(px, py, pw, ph) {
   for (let i = 0; i < 3; i++) {
     const rx = reelsStartX + i * (reelW + reelGap);
     // Reel frame
-    ctx.fillStyle = '#0a0a1a';
+    ctx.fillStyle = '#111e2e';
     ctx.beginPath(); ctx.roundRect(rx, reelY, reelW, reelH, 6); ctx.fill();
-    ctx.strokeStyle = '#6a4a8a';
+    ctx.strokeStyle = '#1a2a3a';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(rx, reelY, reelW, reelH, 6); ctx.stroke();
     ctx.lineWidth = 1;
@@ -2101,89 +2092,140 @@ function _clickSlots(mx, my, px, py, pw, ph) {
 function _drawKeno(px, py, pw, ph) {
   const kn = casinoState.kn;
   const cx = px + pw / 2;
-  // Background
-  ctx.fillStyle = '#0a1a2a';
-  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.fill();
-  ctx.strokeStyle = '#1a4a6a';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.stroke();
-  ctx.lineWidth = 1;
+  // Stake-style dark background
+  ctx.fillStyle = '#0f1923';
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 48, pw - 16, ph - 112, 8); ctx.fill();
 
-  // Number grid (8×5)
+  // Number grid (8x5)
   const cols = KENO_CONFIG.BOARD_COLS, rows = KENO_CONFIG.BOARD_ROWS;
-  const cellW = 60, cellH = 44;
+  const cellW = 72, cellH = 52;
   const gridW = cols * cellW, gridH = rows * cellH;
   const gridX = cx - gridW / 2;
-  const gridY = py + 70;
+  const gridY = py + 56;
 
   const drawnSet = new Set(kn.drawn.slice(0, kn.drawIndex));
   const picksSet = new Set(kn.picks);
+  const drawingDone = kn.phase === 'result' || kn.drawIndex >= KENO_CONFIG.DRAW_COUNT;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const num = r * cols + c + 1;
       if (num > KENO_CONFIG.BOARD_SIZE) break;
       const nx = gridX + c * cellW, ny = gridY + r * cellH;
-
       const isPicked = picksSet.has(num);
       const isDrawn = drawnSet.has(num);
       const isMatch = isPicked && isDrawn;
+      const isMiss = isPicked && drawingDone && !isDrawn;
 
       // Cell background
       if (isMatch) {
-        ctx.fillStyle = '#8a6a00';
-        // Flash effect for recent match
-        const matchIdx = kn.drawn.indexOf(num);
-        if (matchIdx === kn.drawIndex - 1) {
-          const flash = Math.sin(Date.now() / 100) * 0.3 + 0.7;
-          ctx.fillStyle = 'rgba(255, 215, 0, ' + flash + ')';
-        }
-      } else if (isDrawn) {
-        ctx.fillStyle = '#1a4a2a';
+        // Green gem match - purple border + green fill
+        ctx.fillStyle = '#7b2fbe';
+        ctx.beginPath(); ctx.roundRect(nx + 2, ny + 2, cellW - 4, cellH - 4, 6); ctx.fill();
+        ctx.fillStyle = '#0a2a0a';
+        ctx.beginPath(); ctx.roundRect(nx + 5, ny + 5, cellW - 10, cellH - 10, 4); ctx.fill();
+      } else if (isDrawn && !isPicked) {
+        ctx.fillStyle = '#111e2e';
+        ctx.beginPath(); ctx.roundRect(nx + 2, ny + 2, cellW - 4, cellH - 4, 6); ctx.fill();
       } else if (isPicked) {
-        ctx.fillStyle = '#1a2a5a';
+        ctx.fillStyle = '#7b2fbe';
+        ctx.beginPath(); ctx.roundRect(nx + 2, ny + 2, cellW - 4, cellH - 4, 6); ctx.fill();
       } else {
-        ctx.fillStyle = '#111828';
+        ctx.fillStyle = '#1a2535';
+        ctx.beginPath(); ctx.roundRect(nx + 2, ny + 2, cellW - 4, cellH - 4, 6); ctx.fill();
       }
-      ctx.beginPath(); ctx.roundRect(nx + 2, ny + 2, cellW - 4, cellH - 4, 4); ctx.fill();
 
-      // Border
-      ctx.strokeStyle = isMatch ? '#ffd700' : isDrawn ? '#2a6a3a' : isPicked ? '#4a6aaa' : '#2a2a3a';
-      ctx.lineWidth = isMatch ? 2 : 1;
-      ctx.beginPath(); ctx.roundRect(nx + 2, ny + 2, cellW - 4, cellH - 4, 4); ctx.stroke();
-      ctx.lineWidth = 1;
-
-      // Number
-      ctx.font = 'bold 16px monospace';
+      // Number text
+      ctx.font = 'bold 18px monospace';
       ctx.textAlign = 'center';
-      ctx.fillStyle = isMatch ? '#ffd700' : isDrawn ? '#5fca80' : isPicked ? '#6a9aff' : '#888';
-      ctx.fillText(num.toString(), nx + cellW / 2, ny + cellH / 2 + 6);
+      if (isMatch) {
+        // Green gem diamond icon
+        ctx.fillStyle = '#00e701';
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText('\u25C6', nx + cellW / 2, ny + cellH / 2 - 4);
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(num.toString(), nx + cellW / 2, ny + cellH / 2 + 14);
+      } else if (isMiss) {
+        ctx.fillStyle = '#b83232';
+        ctx.fillText(num.toString(), nx + cellW / 2, ny + cellH / 2 + 6);
+      } else if (isDrawn) {
+        ctx.fillStyle = '#556';
+        ctx.fillText(num.toString(), nx + cellW / 2, ny + cellH / 2 + 6);
+      } else if (isPicked) {
+        ctx.fillStyle = '#fff';
+        ctx.fillText(num.toString(), nx + cellW / 2, ny + cellH / 2 + 6);
+      } else {
+        ctx.fillStyle = '#8899aa';
+        ctx.fillText(num.toString(), nx + cellW / 2, ny + cellH / 2 + 6);
+      }
     }
   }
 
-  // Info bar below grid
-  const infoY = gridY + gridH + 10;
-  ctx.font = 'bold 14px monospace';
+  // Payout multiplier strip (below grid)
+  const stripY = gridY + gridH + 6;
+  if (kn.picks.length > 0) {
+    const payoutTable = KENO_CONFIG.PAYOUTS[kn.picks.length];
+    if (payoutTable) {
+      const keys = Object.keys(payoutTable).map(Number).sort((a, b) => a - b);
+      const stripW = Math.min(80, (gridW - 8) / Math.max(keys.length, 1));
+      const totalStripW = keys.length * stripW;
+      const stripStartX = cx - totalStripW / 2;
+      for (let i = 0; i < keys.length; i++) {
+        const sx = stripStartX + i * stripW;
+        const isCurrentMatch = kn.matches === keys[i] && drawingDone;
+        ctx.fillStyle = isCurrentMatch ? '#0a2a0a' : '#111e2e';
+        ctx.beginPath(); ctx.roundRect(sx + 1, stripY, stripW - 2, 22, 3); ctx.fill();
+        if (isCurrentMatch) {
+          ctx.strokeStyle = '#00e701';
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.roundRect(sx + 1, stripY, stripW - 2, 22, 3); ctx.stroke();
+        }
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = isCurrentMatch ? '#00e701' : '#667';
+        ctx.fillText(payoutTable[keys[i]].toFixed(1) + 'x', sx + stripW / 2, stripY + 15);
+      }
+    }
+  }
+
+  // Match counter bar (below strip)
+  const barY = stripY + 28;
+  if (kn.picks.length > 0) {
+    const maxMatch = Math.min(kn.picks.length, KENO_CONFIG.DRAW_COUNT);
+    const barCellW = Math.min(60, (gridW - 8) / (maxMatch + 1));
+    const totalBarW = (maxMatch + 1) * barCellW;
+    const barStartX = cx - totalBarW / 2;
+    for (let m = 0; m <= maxMatch; m++) {
+      const bx = barStartX + m * barCellW;
+      const isCurrent = kn.matches === m && drawingDone;
+      const isPast = kn.matches > m && kn.phase !== 'picking';
+      ctx.fillStyle = isCurrent ? '#00e701' : '#111e2e';
+      ctx.beginPath(); ctx.roundRect(bx + 1, barY, barCellW - 2, 22, 3); ctx.fill();
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isCurrent ? '#000' : isPast ? '#556' : '#667';
+      ctx.fillText(m + 'x', bx + barCellW / 2, barY + 15);
+    }
+  }
+
+  // Info text
+  const infoY = barY + 32;
+  ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'center';
 
   if (kn.phase === 'picking') {
-    ctx.fillStyle = '#aaa';
+    ctx.fillStyle = '#8899aa';
     ctx.fillText('Pick ' + kn.picks.length + '/' + KENO_CONFIG.MAX_PICKS + ' numbers', cx, infoY);
-
     // Clear + Start buttons
-    const btnY = infoY + 12;
-    _casinoDrawButton(cx - 160, btnY, 100, 36, 'Clear', kn.picks.length > 0, false);
-    _casinoDrawButton(cx - 40, btnY, 100, 36, 'Start', kn.picks.length > 0 && gold >= _casinoBetInput, true);
-
-    // Bet controls
+    const btnY = infoY + 8;
+    _casinoDrawButton(cx - 160, btnY, 100, 34, 'Clear', kn.picks.length > 0, false);
+    _casinoDrawButton(cx - 40, btnY, 120, 34, 'Bet', kn.picks.length > 0 && gold >= _casinoBetInput, true);
     _casinoDrawBetControls(px, py);
   } else if (kn.phase === 'drawing') {
-    // Auto-draw next number
     const elapsed = Date.now() - kn.drawTimer;
     if (elapsed >= KENO_CONFIG.DRAW_INTERVAL && kn.drawIndex < KENO_CONFIG.DRAW_COUNT) {
       const more = _knDrawNext();
       if (!more) {
-        // All drawn, resolve after a brief pause
         setTimeout(function() { casinoKN_resolve(); }, 100);
       }
     }
@@ -2191,8 +2233,8 @@ function _drawKeno(px, py, pw, ph) {
     ctx.fillText('Drawing... ' + kn.drawIndex + '/' + KENO_CONFIG.DRAW_COUNT + '  Matches: ' + kn.matches, cx, infoY);
   }
 
-  // Result overlay
-  if (kn.phase === 'result') {
+  // Win result overlay (losses auto-reset, no overlay)
+  if (kn.phase === 'result' && casinoState.result) {
     _casinoDrawResult(px, py, pw, ph);
   }
 }
@@ -2206,10 +2248,10 @@ function _clickKeno(mx, my, px, py, pw, ph) {
 
     // Number grid clicks
     const cols = KENO_CONFIG.BOARD_COLS, rows = KENO_CONFIG.BOARD_ROWS;
-    const cellW = 60, cellH = 44;
+    const cellW = 72, cellH = 52;
     const gridW = cols * cellW;
     const gridX = cx - gridW / 2;
-    const gridY = py + 70;
+    const gridY = py + 56;
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -2223,14 +2265,17 @@ function _clickKeno(mx, my, px, py, pw, ph) {
       }
     }
 
-    // Clear + Start buttons
+    // Clear + Bet buttons (match _drawKeno layout)
     const gridH = rows * cellH;
-    const btnY = gridY + gridH + 22;
-    if (_casinoHitBtn(mx, my, cx - 160, btnY, 100, 36)) {
+    const stripY = gridY + gridH + 6;
+    const barY = stripY + 28;
+    const infoY = barY + 32;
+    const btnY = infoY + 8;
+    if (_casinoHitBtn(mx, my, cx - 160, btnY, 100, 34)) {
       casinoKN_clearPicks();
       return true;
     }
-    if (_casinoHitBtn(mx, my, cx - 40, btnY, 100, 36) && kn.picks.length > 0 && gold >= _casinoBetInput) {
+    if (_casinoHitBtn(mx, my, cx - 40, btnY, 120, 34) && kn.picks.length > 0 && gold >= _casinoBetInput) {
       casinoKN_start(_casinoBetInput);
       return true;
     }

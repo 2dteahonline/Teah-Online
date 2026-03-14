@@ -134,9 +134,9 @@ function casinoWin(payout) {
 }
 
 function casinoLose(msg) {
-  casinoState.result = { won: false, payout: 0, message: msg || 'You lose!' };
-  casinoState.phase = 'result';
-  casinoState.resultTimer = Date.now();
+  // No loss screen — balance already went down when bet was placed.
+  // Just silently reset back to betting.
+  casinoResetGame();
 }
 
 function casinoReset() {
