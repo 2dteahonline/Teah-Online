@@ -551,8 +551,10 @@ function drawMafiaHUD() {
     drawSabFixPanel();
   }
 
-  // ---- Meeting / Voting / Vote Results / Ejection overlays ----
-  if (mk.phase === 'meeting' || mk.phase === 'voting') {
+  // ---- Report splash / Meeting / Voting / Vote Results / Ejection overlays ----
+  if (mk.phase === 'report_splash') {
+    _drawReportSplash();
+  } else if (mk.phase === 'meeting' || mk.phase === 'voting') {
     _drawMeetingUI();
   } else if (mk.phase === 'vote_results') {
     _drawVoteResultsUI();
@@ -1418,6 +1420,256 @@ function _drawMiniCrewmate(cx, cy, color, darkColor, scale, isDead) {
     ctx.stroke();
   }
 
+  ctx.restore();
+}
+
+// ===================== REPORT / EMERGENCY SPLASH SCREEN =====================
+function _drawReportSplash() {
+  const mk = MafiaState;
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const isReport = mk.meeting && mk.meeting.type === 'report';
+  const t = Date.now() / 1000;
+  const splashTimer = mk.meeting ? mk.meeting.splashTimer : 0;
+  const progress = 1 - (splashTimer / 120); // 0→1 over 2 seconds
+
+  ctx.save();
+
+  // ---- Full screen dark background ----
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillRect(0, 0, cw, ch);
+
+  if (isReport) {
+    // ======= DEAD BODY REPORTED =======
+
+    // Red speed-lines background (top half)
+    const topH = ch * 0.42;
+    ctx.fillStyle = '#1a0000';
+    ctx.fillRect(0, 0, cw, topH);
+
+    // Speed lines (horizontal streaks)
+    for (let i = 0; i < 40; i++) {
+      const ly = ((i * 37 + Math.floor(t * 200)) % topH);
+      const lw = 100 + (i * 73 % 300);
+      const lx = (i * 131 + Math.floor(t * 80 * (i % 3 + 1))) % (cw + 200) - 100;
+      const alpha = 0.08 + (i % 5) * 0.03;
+      ctx.fillStyle = `rgba(200,20,10,${alpha})`;
+      ctx.fillRect(lx, ly, lw, 2 + (i % 3));
+    }
+
+    // White banner across center
+    const bannerY = topH * 0.35;
+    const bannerH = topH * 0.35;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, bannerY, cw, bannerH);
+
+    // "DEAD BODY REPORTED" text
+    const fontSize = Math.floor(cw / 22);
+    ctx.font = `bold ${fontSize}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Red text with dark outline
+    const textY = bannerY + bannerH / 2;
+    ctx.fillStyle = '#cc1111';
+    ctx.fillText('DEAD BODY REPORTED', cw / 2, textY);
+    // Text outline
+    ctx.strokeStyle = '#550000';
+    ctx.lineWidth = 2;
+    ctx.strokeText('DEAD BODY REPORTED', cw / 2, textY);
+
+    // ---- Dead body (lower half) ----
+    const bodyY = ch * 0.62;
+    const bodyColor = mk._reportedBody ? mk._reportedBody.color : { body: '#c51111', dark: '#7a0838' };
+    const bodyCol = bodyColor.body || bodyColor || '#c51111';
+    const darkCol = bodyColor.dark || '#7a0838';
+
+    // Dark ground area
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, topH, cw, ch - topH);
+
+    // Yellow/black hazard stripes at bottom
+    const stripeH = 50;
+    const stripeY = ch - stripeH;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, stripeY, cw, stripeH);
+    for (let sx = -stripeH; sx < cw + stripeH; sx += stripeH * 1.4) {
+      ctx.fillStyle = '#ccaa00';
+      ctx.beginPath();
+      ctx.moveTo(sx, stripeY);
+      ctx.lineTo(sx + stripeH * 0.7, stripeY);
+      ctx.lineTo(sx + stripeH * 1.4, ch);
+      ctx.lineTo(sx + stripeH * 0.7, ch);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Dead crewmate body (lying on side, Among Us style)
+    const bx = cw / 2, by = bodyY + 20;
+    const s = 2.5; // scale factor
+
+    // Body (half — bottom half visible, lying down)
+    ctx.fillStyle = bodyCol;
+    ctx.beginPath();
+    ctx.ellipse(bx, by + 5 * s, 18 * s, 12 * s, 0, 0, Math.PI);
+    ctx.fill();
+    // Upper body (tilted/fallen)
+    ctx.beginPath();
+    ctx.ellipse(bx - 8 * s, by - 6 * s, 14 * s, 10 * s, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // Darker underside
+    ctx.fillStyle = darkCol;
+    ctx.beginPath();
+    ctx.ellipse(bx, by + 8 * s, 16 * s, 6 * s, 0, 0, Math.PI);
+    ctx.fill();
+    // Visor (askew)
+    ctx.fillStyle = 'rgba(150,210,255,0.8)';
+    ctx.beginPath();
+    ctx.ellipse(bx - 2 * s, by - 12 * s, 8 * s, 5 * s, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Backpack (lying behind)
+    ctx.fillStyle = bodyCol;
+    ctx.beginPath();
+    ctx.roundRect(bx + 14 * s, by - 8 * s, 7 * s, 16 * s, 3 * s);
+    ctx.fill();
+    // Bone sticking out
+    ctx.fillStyle = '#eee';
+    ctx.beginPath();
+    ctx.arc(bx + 4 * s, by - 18 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(bx - 2 * s, by - 22 * s, 3 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(bx, by - 20 * s, 3 * s, 8 * s);
+
+    // Speech bubble with skull
+    const bubX = bx + 5 * s, bubY = by - 35 * s;
+    ctx.fillStyle = 'rgba(180,180,180,0.9)';
+    ctx.beginPath();
+    ctx.arc(bubX, bubY, 16 * s, 0, Math.PI * 2);
+    ctx.fill();
+    // Bubble tail
+    ctx.beginPath();
+    ctx.moveTo(bubX - 4 * s, bubY + 14 * s);
+    ctx.lineTo(bubX - 10 * s, bubY + 22 * s);
+    ctx.lineTo(bubX + 2 * s, bubY + 14 * s);
+    ctx.closePath();
+    ctx.fill();
+    // Skull
+    ctx.fillStyle = '#f0f0f0';
+    ctx.beginPath();
+    ctx.arc(bubX, bubY - 2 * s, 10 * s, 0, Math.PI * 2);
+    ctx.fill();
+    // Jaw
+    ctx.fillRect(bubX - 6 * s, bubY + 6 * s, 12 * s, 5 * s);
+    // Eyes (X X)
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 2 * s;
+    const ex1 = bubX - 4 * s, ex2 = bubX + 4 * s, eyeY = bubY - 3 * s;
+    ctx.beginPath();
+    ctx.moveTo(ex1 - 2.5 * s, eyeY - 2.5 * s); ctx.lineTo(ex1 + 2.5 * s, eyeY + 2.5 * s);
+    ctx.moveTo(ex1 + 2.5 * s, eyeY - 2.5 * s); ctx.lineTo(ex1 - 2.5 * s, eyeY + 2.5 * s);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(ex2 - 2.5 * s, eyeY - 2.5 * s); ctx.lineTo(ex2 + 2.5 * s, eyeY + 2.5 * s);
+    ctx.moveTo(ex2 + 2.5 * s, eyeY - 2.5 * s); ctx.lineTo(ex2 - 2.5 * s, eyeY + 2.5 * s);
+    ctx.stroke();
+    // Mouth (wavy line)
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(bubX - 4 * s, bubY + 5 * s);
+    for (let i = 0; i < 5; i++) {
+      ctx.lineTo(bubX + (-4 + i * 2) * s, bubY + (5 + (i % 2 === 0 ? 2 : -1)) * s);
+    }
+    ctx.stroke();
+
+  } else {
+    // ======= EMERGENCY MEETING =======
+
+    // Dark red/orange background
+    ctx.fillStyle = '#1a0800';
+    ctx.fillRect(0, 0, cw, ch);
+
+    // Speed lines (orange/yellow)
+    for (let i = 0; i < 40; i++) {
+      const ly = ((i * 37 + Math.floor(t * 200)) % ch);
+      const lw = 100 + (i * 73 % 400);
+      const lx = (i * 131 + Math.floor(t * 100 * (i % 3 + 1))) % (cw + 200) - 100;
+      const alpha = 0.06 + (i % 5) * 0.02;
+      ctx.fillStyle = `rgba(220,160,20,${alpha})`;
+      ctx.fillRect(lx, ly, lw, 2 + (i % 3));
+    }
+
+    // White banner across center
+    const bannerY = ch * 0.3;
+    const bannerH = ch * 0.18;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, bannerY, cw, bannerH);
+
+    // "EMERGENCY MEETING" text
+    const fontSize = Math.floor(cw / 20);
+    ctx.font = `bold ${fontSize}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const textY = bannerY + bannerH / 2;
+    ctx.fillStyle = '#cc2200';
+    ctx.fillText('EMERGENCY MEETING', cw / 2, textY);
+    ctx.strokeStyle = '#660000';
+    ctx.lineWidth = 2;
+    ctx.strokeText('EMERGENCY MEETING', cw / 2, textY);
+
+    // Emergency button (below banner)
+    const btnX = cw / 2, btnY = ch * 0.62;
+    const btnR = 55;
+
+    // Button base (dark circle)
+    ctx.fillStyle = '#2a2a35';
+    ctx.beginPath();
+    ctx.arc(btnX, btnY, btnR + 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#444450';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(btnX, btnY, btnR + 10, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Button dome (red, pulsing)
+    const pulse = 0.5 + Math.sin(t * 6) * 0.5;
+    ctx.fillStyle = `rgb(${180 + pulse * 75}, ${20 + pulse * 15}, ${15 + pulse * 10})`;
+    ctx.beginPath();
+    ctx.arc(btnX, btnY - 4, btnR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Button highlight
+    ctx.fillStyle = `rgba(255,180,150,${0.15 + pulse * 0.15})`;
+    ctx.beginPath();
+    ctx.arc(btnX - 15, btnY - 20, btnR * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // "!" on button
+    ctx.font = `bold ${btnR}px monospace`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText('!', btnX, btnY + 2);
+
+    // Yellow/black hazard stripes at bottom
+    const stripeH = 50;
+    const stripeY = ch - stripeH;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, stripeY, cw, stripeH);
+    for (let sx = -stripeH; sx < cw + stripeH; sx += stripeH * 1.4) {
+      ctx.fillStyle = '#ccaa00';
+      ctx.beginPath();
+      ctx.moveTo(sx, stripeY);
+      ctx.lineTo(sx + stripeH * 0.7, stripeY);
+      ctx.lineTo(sx + stripeH * 1.4, ch);
+      ctx.lineTo(sx + stripeH * 0.7, ch);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
   ctx.restore();
 }
 

@@ -331,6 +331,8 @@ window.MafiaSystem = {
     if (Math.sqrt(dx * dx + dy * dy) > MAFIA_GAME.REPORT_RANGE) return false;
 
     const localP = this.getLocalPlayer();
+    // Store reported body info for splash screen
+    mk._reportedBody = { color: body.color, name: body.name };
     this._startMeeting(localP ? localP.name : 'Player', 'report');
     return true;
   },
@@ -377,10 +379,11 @@ window.MafiaSystem = {
     if (typeof _taskPanel !== 'undefined' && _taskPanel.active) { _taskPanel.active = false; }
     if (typeof _sabPanel !== 'undefined' && _sabPanel.active) { if (typeof closeSabFixPanel === 'function') closeSabFixPanel(); }
 
-    mk.phase = 'meeting';
+    mk.phase = 'report_splash';
     mk.meeting = {
       caller: callerName,
       type: type,  // 'report' | 'emergency'
+      splashTimer: 120, // 2 seconds at 60fps
       votes: {},
       discussionTimer: (mk._settings ? mk._settings.discussionTime : 15) * 60,
       votingTimer: (mk._settings ? mk._settings.votingTime : 30) * 60,
@@ -823,6 +826,8 @@ window.MafiaSystem = {
 
     if (mk.phase === 'playing') {
       this._tickPlaying();
+    } else if (mk.phase === 'report_splash') {
+      this._tickReportSplash();
     } else if (mk.phase === 'meeting') {
       this._tickMeeting();
     } else if (mk.phase === 'voting') {
@@ -861,6 +866,15 @@ window.MafiaSystem = {
 
     // Check win conditions
     this._checkWinConditions();
+  },
+
+  // ---- Report splash screen tick (2 seconds before meeting) ----
+  _tickReportSplash() {
+    const mk = MafiaState;
+    mk.meeting.splashTimer--;
+    if (mk.meeting.splashTimer <= 0) {
+      mk.phase = 'meeting';
+    }
   },
 
   // ---- Meeting (discussion) phase tick ----
@@ -1114,7 +1128,7 @@ window.MafiaSystem = {
   // ===================== FREEZE CHECK =====================
   isPlayerFrozen() {
     const mk = MafiaState;
-    if (mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'vote_results' || mk.phase === 'ejecting') return true;
+    if (mk.phase === 'report_splash' || mk.phase === 'meeting' || mk.phase === 'voting' || mk.phase === 'vote_results' || mk.phase === 'ejecting') return true;
     // Freeze while emergency popup is open
     if (window._mafiaEmergencyPopup) return true;
     // Freeze while sabotage fix panel is open
