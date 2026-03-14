@@ -9,22 +9,13 @@ const CameraState = {
   blinking: false,     // cameras should blink (someone is watching)
 };
 
-// Camera definitions — each has a center tile and viewport size (in tiles)
-// Coordinates are ACTUAL grid coords (virtual + XO already applied in entity placement,
-// but these are raw grid positions for rendering)
+// Camera definitions — center tile (ACTUAL grid coords) for each feed
+// Viewport size is calculated from panel size at 1:1 pixel ratio
 const SKELD_CAMERAS = [
-  { id: 'hallway',  name: 'Hallway',       cx: 40, cy: 10, vw: 20, vh: 8  },
-  { id: 'xroads',   name: 'Corridor',      cx: 20, cy: 34, vw: 16, vh: 16 },
-  { id: 'admin',    name: 'Admin',          cx: 76, cy: 44, vw: 16, vh: 14 },
-  { id: 'lower',    name: 'Storage/Comms',  cx: 72, cy: 68, vw: 18, vh: 12 },
-];
-
-// Camera mount positions on the map (actual grid coords, where the small cameras sit)
-const SKELD_CAMERA_MOUNTS = [
-  { id: 'hallway',  tx: 40, ty: 8  },
-  { id: 'xroads',   tx: 18, ty: 32 },
-  { id: 'admin',    tx: 74, ty: 42 },
-  { id: 'lower',    tx: 70, ty: 66 },
+  { id: 'hallway',  name: 'Hallway',       cx: 40, cy: 10 },
+  { id: 'xroads',   name: 'Corridor',      cx: 20, cy: 34 },
+  { id: 'admin',    name: 'Admin',          cx: 76, cy: 44 },
+  { id: 'lower',    name: 'Storage/Comms',  cx: 72, cy: 68 },
 ];
 
 const CameraSystem = {
@@ -56,10 +47,10 @@ const CameraSystem = {
     const margin = 24;
     const gap = 8;
     const totalW = BASE_W - margin * 2;
-    const totalH = BASE_H - margin * 2 - 30; // leave room for title bar
+    const totalH = BASE_H - margin * 2 - 30;
     const panelW = (totalW - gap) / 2;
     const panelH = (totalH - gap) / 2;
-    const topY = margin + 26; // after title
+    const topY = margin + 26;
 
     // Title bar
     ctx.font = 'bold 14px monospace';
@@ -108,20 +99,11 @@ const CameraSystem = {
     ctx.lineWidth = 2;
     ctx.strokeRect(px, py, pw, ph);
 
-    // Calculate world viewport for this camera
-    const viewWidthPx = cam.vw * TILE;
-    const viewHeightPx = cam.vh * TILE;
+    // 1:1 pixel ratio — panel size IS the viewport size (no scaling)
+    const viewWidthPx = pw;
+    const viewHeightPx = ph;
     const worldX = cam.cx * TILE - viewWidthPx / 2;
     const worldY = cam.cy * TILE - viewHeightPx / 2;
-
-    // Scale to fit the panel
-    const scaleX = pw / viewWidthPx;
-    const scaleY = ph / viewHeightPx;
-    const scale = Math.min(scaleX, scaleY);
-    const drawW = viewWidthPx * scale;
-    const drawH = viewHeightPx * scale;
-    const offsetX = px + (pw - drawW) / 2;
-    const offsetY = py + (ph - drawH) / 2;
 
     // Clip to panel
     ctx.save();
@@ -129,10 +111,9 @@ const CameraSystem = {
     ctx.rect(px + 1, py + 1, pw - 2, ph - 2);
     ctx.clip();
 
-    // Render world tiles in camera viewport
+    // Translate so world coords map to panel position (1:1 scale, no ctx.scale)
     ctx.save();
-    ctx.translate(offsetX, offsetY);
-    ctx.scale(scale, scale);
+    ctx.translate(px, py);
 
     // Background
     ctx.fillStyle = '#050508';
@@ -176,7 +157,6 @@ const CameraSystem = {
         const eh = e.h ?? 1;
         const epx = e.tx * TILE;
         const epy = e.ty * TILE;
-        // Check if entity is in camera viewport
         if (epx + ew * TILE < worldX || epx > worldX + viewWidthPx) continue;
         if (epy + eh * TILE < worldY || epy > worldY + viewHeightPx) continue;
         const renderer = typeof ENTITY_RENDERERS !== 'undefined' && ENTITY_RENDERERS[e.type];
@@ -188,13 +168,11 @@ const CameraSystem = {
     if (typeof MafiaState !== 'undefined' && MafiaState.participants) {
       for (const p of MafiaState.participants) {
         if (!p.alive || !p.entity) continue;
-        if (p.isLocal) continue; // don't show local player on cams
+        if (p.isLocal) continue;
         const bx = p.entity.x - worldX;
         const by = p.entity.y - worldY;
-        // Check if bot is in viewport (with some margin)
         if (bx < -TILE || bx > viewWidthPx + TILE) continue;
         if (by < -TILE || by > viewHeightPx + TILE) continue;
-        // Draw simple colored circle for the bot (Among Us style crewmate silhouette)
         this._drawCamCrewmate(bx, by, p.entity.skin || p.color || '#888', p.entity.name);
       }
     }
@@ -216,12 +194,10 @@ const CameraSystem = {
         const by = body.y - worldY;
         if (bx < -TILE || bx > viewWidthPx + TILE) continue;
         if (by < -TILE || by > viewHeightPx + TILE) continue;
-        // Dead body — half circle
         ctx.fillStyle = body.color || '#888';
         ctx.beginPath();
         ctx.ellipse(bx, by + 4, 12, 8, 0, 0, Math.PI);
         ctx.fill();
-        // Bone sticking out
         ctx.fillStyle = '#ddd';
         ctx.beginPath();
         ctx.arc(bx + 6, by - 2, 3, 0, Math.PI * 2);
@@ -229,28 +205,23 @@ const CameraSystem = {
       }
     }
 
-    ctx.restore(); // scale + translate
+    ctx.restore(); // translate
 
-    // Camera overlay effects (scan lines, green tint, static)
+    // Camera overlay effects — subtle scan lines only (no green bar)
     // Green security camera tint
-    ctx.fillStyle = 'rgba(0,40,20,0.15)';
+    ctx.fillStyle = 'rgba(0,40,20,0.12)';
     ctx.fillRect(px, py, pw, ph);
 
     // Scan lines
-    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
     for (let sy = py; sy < py + ph; sy += 3) {
       ctx.fillRect(px, sy, pw, 1);
     }
 
-    // Moving scan bar
-    const scanBarY = py + ((t * 30 + idx * 60) % ph);
-    ctx.fillStyle = 'rgba(80,200,120,0.08)';
-    ctx.fillRect(px, scanBarY, pw, 3);
-
     // Slight static noise (sparse random dots)
-    ctx.fillStyle = 'rgba(150,200,150,0.05)';
+    ctx.fillStyle = 'rgba(150,200,150,0.04)';
     const seed = Math.floor(t * 10) + idx * 100;
-    for (let n = 0; n < 12; n++) {
+    for (let n = 0; n < 8; n++) {
       const nx = px + ((seed * 7 + n * 131) % (pw | 1));
       const ny = py + ((seed * 13 + n * 97) % (ph | 1));
       ctx.fillRect(nx, ny, 2, 2);
@@ -287,7 +258,7 @@ const CameraSystem = {
     ctx.restore(); // clip
   },
 
-  // Draw a simple Among Us-style crewmate silhouette for camera feeds
+  // Draw a simple Among Us-style crewmate silhouette for camera feeds (1:1 scale)
   _drawCamCrewmate(x, y, color, name) {
     // Body (pill shape)
     ctx.fillStyle = color;
@@ -302,11 +273,11 @@ const CameraSystem = {
     // Backpack
     ctx.fillStyle = color;
     ctx.fillRect(x - 13, y - 8, 5, 12);
-    // Name tag (small)
+    // Name tag
     if (name) {
-      ctx.font = '7px monospace';
+      ctx.font = '9px monospace';
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
       ctx.fillText(name, x, y - 22);
       ctx.textAlign = 'left';
     }
@@ -315,7 +286,6 @@ const CameraSystem = {
   // Handle click on close button
   handleClick(mx, my) {
     if (!CameraState.active) return false;
-    // Check close button (top-right)
     const margin = 24;
     const bx = BASE_W - margin - 20, by = margin + 2, bs = 18;
     const dx = mx - (bx + bs / 2), dy = my - (by + bs / 2);
