@@ -204,7 +204,7 @@ MOB_SPECIALS.flame_kiss = (m, ctx) => {
     m._flameKissTele--;
     if (m._flameKissTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, 160, Math.PI / 6)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 6, 160)) {
         const dmg = Math.round(35 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         StatusFX.applyToPlayer('slow', { duration: 90, amount: 0.4 });
@@ -587,7 +587,7 @@ MOB_SPECIALS.road_rage = (m, ctx) => {
     if (m._roadRageDash <= 0) {
       // Cone slash at end of dash
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, 100, Math.PI / 4)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 4, 100)) {
         const dmg = Math.round(35 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -779,7 +779,7 @@ MOB_SPECIALS.neon_shriek = (m, ctx) => {
     m._neonShriekTele--;
     if (m._neonShriekTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, 180, Math.PI / 4)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 4, 180)) {
         const dmg = Math.round(30 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         StatusFX.applyToPlayer('fear', { duration: 90 });
@@ -897,7 +897,7 @@ MOB_SPECIALS.hell_exhaust = (m, ctx) => {
     if (m._exhaustTele <= 0) {
       // Cone fires BACKWARD (away from player)
       const backDir = Math.atan2(m.y - player.y, m.x - player.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, backDir, 180, Math.PI / 4)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, backDir, Math.PI / 4, 180)) {
         const dmg = Math.round(40 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         StatusFX.applyToPlayer('slow', { duration: 90, amount: 0.4 });

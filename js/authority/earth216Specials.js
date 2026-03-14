@@ -253,7 +253,7 @@ MOB_SPECIALS.gem_bolt = (m, ctx) => {
         vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
         fromPlayer: false, mobBullet: true, damage: Math.round(28 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#aa44ff',
-        _homing: true, _homingStr: 0.08,
+        life: 180,
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
       m._specialTimer = m._specialCD || 200;
@@ -532,13 +532,13 @@ MOB_SPECIALS.touch_of_midas = (m, ctx) => {
   if (m._midasTimer && m._midasTimer > 0) {
     m._midasTimer--;
     if (m._midasTimer <= 0) {
-      m._goldenArmor = false;
+      delete m._damageReduction;
     }
     return {};
   }
   if (m._specialTimer > 0) { m._specialTimer--; return {}; }
   if (dist > 400) { m._specialTimer = 30; return {}; }
-  m._goldenArmor = true;
+  m._damageReduction = 0.4;
   m._midasTimer = 300;
   hitEffects.push({ x: m.x, y: m.y - 25, life: 30, type: "cast" });
   if (typeof TelegraphSystem !== 'undefined') {

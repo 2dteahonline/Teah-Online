@@ -1089,11 +1089,12 @@ function updateMobs() {
               m._chainWhipTele > 0 || m._roadRageTele > 0 || m._roadRageDash ||
               m._furnacePunchTele > 0 || m._revChargeTele > 0 || m._revChargeDash ||
               m._driftBlinkTele > 0 || m._detonateTele > 0 ||
-              m._neonShriekTele > 0 || m._rampLaunchTele > 0 ||
-              m._redlineTimer > 0 || m._exhaustTele > 0 ||
+              m._neonShriekTele > 0 || m._rampLaunchTele > 0 || m._rampLeaping ||
+              m._redlineTele > 0 || m._redlineTimer > 0 || m._exhaustTele > 0 ||
               m._geargrindTele > 0 || m._geargrindLeap ||
               m._nitroLineTele > 0 || m._nitroLineDash ||
-              m._splitstreamTele > 0 || m._crashBloomTele > 0 || m._crashBloomPhase > 0 ||
+              m._splitstreamTele > 0 || m._splitDashing ||
+              m._crashBloomTele > 0 || m._crashBloomPhase > 0 || m._crashChargeDash > 0 ||
               // Earth-216 — Floor 5
               m._cardFlickTele > 0 || m._oracleCurseTele > 0 ||
               m._spinSlashTele > 0 || m._reaperCutTele > 0 ||

@@ -102,7 +102,7 @@ MOB_SPECIALS.reaper_cut = (m, ctx) => {
     m._reaperCutTele--;
     if (m._reaperCutTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, 120, Math.PI / 4.5)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 4.5, 120)) {
         const dmg = Math.round(30 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         StatusFX.applyToPlayer('slow', { duration: 150, amount: 0.5 });
