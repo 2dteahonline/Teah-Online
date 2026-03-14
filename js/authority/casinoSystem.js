@@ -113,6 +113,7 @@ function casinoReset() {
   casinoState.bj.doubled = false;
   casinoState.bj.insurance = 0;
   casinoState.bj.dealTimer = 0;
+  casinoState.bj._animateCallback = null;
   casinoState.bj.phase = 'betting';
   casinoState.rl.bets = [];
   casinoState.rl.resultNumber = null;
@@ -156,6 +157,7 @@ function casinoResetGame() {
     casinoState.bj.doubled = false;
     casinoState.bj.insurance = 0;
     casinoState.bj.dealTimer = 0;
+    casinoState.bj._animateCallback = null;
     casinoState.bj.phase = 'betting';
   } else if (g === 'roulette') {
     casinoState.rl.bets = [];
@@ -247,18 +249,26 @@ function casinoBJ_initShoe() {
 
 function _bjDraw() {
   if (casinoState.bj.shoe.length < 20) casinoBJ_initShoe();
-  return casinoState.bj.shoe.pop();
+  const card = casinoState.bj.shoe.pop();
+  card._addedAt = Date.now(); // timestamp for slide-in animation
+  return card;
 }
 
 function casinoBJ_deal() {
   const bj = casinoState.bj;
   if (bj.shoe.length < 20) casinoBJ_initShoe();
+  const now = Date.now();
   bj.playerHand = [_bjDraw(), _bjDraw()];
   bj.dealerHand = [_bjDraw(), _bjDraw()];
+  // Stagger timestamps: player[0]=0ms, dealer[0]=400ms, player[1]=800ms, dealer[1]=1200ms
+  bj.playerHand[0]._addedAt = now;
+  bj.dealerHand[0]._addedAt = now + 400;
+  bj.playerHand[1]._addedAt = now + 800;
+  bj.dealerHand[1]._addedAt = now + 1200;
   bj.splitHand = null;
   bj.playingSplit = false;
   bj.doubled = false;
-  bj.dealTimer = Date.now();
+  bj.dealTimer = now;
   bj.phase = 'dealing';
   casinoState.phase = 'playing';
 }
@@ -329,27 +339,34 @@ function casinoBJ_declineInsurance() {
 
 function casinoBJ_hit() {
   const bj = casinoState.bj;
+  if (bj.phase === 'animating') return; // block input during card animation
   const hand = bj.playingSplit ? bj.splitHand : bj.playerHand;
   hand.push(_bjDraw());
-  if (_bjIsBust(hand)) {
-    if (bj.playingSplit) {
-      // Bust on split hand — check main hand
-      bj.playingSplit = false;
-      if (_bjIsBust(bj.playerHand)) {
-        bj.phase = 'result';
-        casinoLose('Bust!');
+  // Brief animation delay before resolving bust
+  bj.phase = 'animating';
+  bj._animateCallback = function() {
+    if (_bjIsBust(hand)) {
+      if (bj.playingSplit) {
+        bj.playingSplit = false;
+        if (_bjIsBust(bj.playerHand)) {
+          bj.phase = 'result';
+          casinoLose('Bust!');
+        } else {
+          bj.phase = 'player';
+        }
+        return;
       }
-      // else main hand already resolved or waiting
-      return;
+      if (bj.splitHand && !bj.playingSplit) {
+        bj.playingSplit = true;
+        bj.phase = 'player';
+        return;
+      }
+      bj.phase = 'result';
+      casinoLose('Bust!');
+    } else {
+      bj.phase = 'player';
     }
-    if (bj.splitHand && !bj.playingSplit) {
-      // Main hand bust, switch to split
-      bj.playingSplit = true;
-      return;
-    }
-    bj.phase = 'result';
-    casinoLose('Bust!');
-  }
+  };
 }
 
 function casinoBJ_stand() {
@@ -366,6 +383,7 @@ function casinoBJ_stand() {
 
 function casinoBJ_double() {
   const bj = casinoState.bj;
+  if (bj.phase === 'animating') return;
   const hand = bj.playingSplit ? bj.splitHand : bj.playerHand;
   if (hand.length !== 2) return;
   if (gold < casinoState.bet) return;
@@ -373,36 +391,63 @@ function casinoBJ_double() {
   casinoState.bet *= 2;
   bj.doubled = true;
   hand.push(_bjDraw());
-  if (_bjIsBust(hand)) {
-    bj.phase = 'result';
-    casinoLose('Bust on Double!');
-    return;
-  }
-  casinoBJ_stand();
+  bj.phase = 'animating';
+  bj._animateCallback = function() {
+    if (_bjIsBust(hand)) {
+      bj.phase = 'result';
+      casinoLose('Bust on Double!');
+      return;
+    }
+    casinoBJ_stand();
+  };
 }
 
 function casinoBJ_split() {
   const bj = casinoState.bj;
+  if (bj.phase === 'animating') return;
   if (bj.playerHand.length !== 2) return;
   if (bj.playerHand[0].rank !== bj.playerHand[1].rank) return;
   if (bj.splitHand) return;
   if (gold < casinoState.bet) return;
   gold -= casinoState.bet;
   bj.splitHand = [bj.playerHand.pop()];
-  bj.playerHand.push(_bjDraw());
-  bj.splitHand.push(_bjDraw());
+  // Stagger the two new cards
+  const now = Date.now();
+  const newCard1 = _bjDraw();
+  newCard1._addedAt = now;
+  bj.playerHand.push(newCard1);
+  const newCard2 = _bjDraw();
+  newCard2._addedAt = now + 400;
+  bj.splitHand.push(newCard2);
   bj.playingSplit = false;
-  bj.phase = 'player';
+  bj.phase = 'animating';
+  bj._animateCallback = function() {
+    bj.phase = 'player';
+  };
 }
 
 function casinoBJ_dealerPlay() {
   const bj = casinoState.bj;
-  // Dealer hits until 17+ (stands on soft 17)
+  // Dealer hits until 17+ (stands on soft 17) — stagger card timestamps
+  let delay = 0;
+  const now = Date.now();
   while (_bjHandValue(bj.dealerHand) < BLACKJACK_CONFIG.DEALER_STAND) {
-    bj.dealerHand.push(_bjDraw());
+    const card = _bjDraw();
+    card._addedAt = now + delay;
+    bj.dealerHand.push(card);
+    delay += 500; // 500ms between each dealer card
   }
-  bj.phase = 'result';
-  _bjResolve();
+  if (delay > 0) {
+    // Wait for animations to finish, then resolve
+    bj.phase = 'animating';
+    bj._animateCallback = function() {
+      bj.phase = 'result';
+      _bjResolve();
+    };
+  } else {
+    bj.phase = 'result';
+    _bjResolve();
+  }
 }
 
 function _bjResolve() {

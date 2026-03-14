@@ -436,45 +436,60 @@ function _drawBlackjack(px, py, pw, ph) {
     return;
   }
 
-  // Dealing animation — cards slide in one by one (slow, cinematic)
-  const dealElapsed = Date.now() - bj.dealTimer;
-  const dealing = bj.phase === 'dealing';
-  // Card order: player[0] 0ms, dealer[0] 400ms, player[1] 800ms, dealer[1] 1200ms
-  const cardDelay = 400;
-  const slideDuration = 450;
+  // Card slide animation duration
+  const _bjSlideDur = 450;
+  const now = Date.now();
 
-  // How many cards are visible during dealing
-  const visibleCards = dealing ? Math.floor(dealElapsed / cardDelay) + 1 : 99;
-  // Check if dealing is done
-  if (dealing && dealElapsed > cardDelay * 4 + slideDuration) {
-    casinoBJ_finishDeal();
+  // Check if dealing is done (all 4 initial cards fully animated)
+  if (bj.phase === 'dealing') {
+    const lastCard = bj.dealerHand[1]; // last dealt card
+    if (lastCard && lastCard._addedAt && now - lastCard._addedAt > _bjSlideDur) {
+      casinoBJ_finishDeal();
+    }
+  }
+
+  // Check if animating phase callback should fire
+  if (bj.phase === 'animating' && bj._animateCallback) {
+    // Find the most recently added card across all hands
+    let latestAdd = 0;
+    for (const c of bj.playerHand) if (c._addedAt > latestAdd) latestAdd = c._addedAt;
+    for (const c of bj.dealerHand) if (c._addedAt > latestAdd) latestAdd = c._addedAt;
+    if (bj.splitHand) for (const c of bj.splitHand) if (c._addedAt > latestAdd) latestAdd = c._addedAt;
+    if (now - latestAdd > _bjSlideDur) {
+      const cb = bj._animateCallback;
+      bj._animateCallback = null;
+      cb();
+    }
   }
 
   const showDealer = bj.phase === 'dealer' || bj.phase === 'result';
+
+  // Helper: draw a hand of cards with per-card slide animation
+  function _bjDrawHand(hand, baseX, baseY, faceDownIdx) {
+    let allDone = true;
+    for (let i = 0; i < hand.length; i++) {
+      const card = hand[i];
+      const elapsed = now - (card._addedAt || 0);
+      if (elapsed < 0) continue; // card not yet "dealt"
+      const slideT = Math.min(1, elapsed / _bjSlideDur);
+      if (slideT < 1) allDone = false;
+      const eased = _easeOutCubic(slideT);
+      const targetX = baseX + i * 56;
+      const cardX = cx + (targetX - cx) * eased;
+      ctx.globalAlpha = Math.min(1, slideT * 1.5); // fade in slightly faster than slide
+      _casinoDrawCard(cardX, baseY, card, i === faceDownIdx);
+      ctx.globalAlpha = 1;
+    }
+    return allDone;
+  }
 
   // Dealer hand
   ctx.font = 'bold 13px monospace';
   ctx.fillStyle = '#bdb';
   ctx.textAlign = 'left';
   ctx.fillText('DEALER', px + 24, py + 68);
-  for (let i = 0; i < bj.dealerHand.length; i++) {
-    const cardIdx = i === 0 ? 1 : 3; // deal order position
-    if (visibleCards <= cardIdx) continue;
-    // Slide animation
-    let slideProgress = 1;
-    if (dealing) {
-      const cardStart = cardIdx * cardDelay;
-      slideProgress = Math.min(1, Math.max(0, (dealElapsed - cardStart) / slideDuration));
-    }
-    const targetX = px + 50 + i * 56;
-    const startX = cx; // cards come from center (shoe position)
-    const cardX = startX + (targetX - startX) * _easeOutCubic(slideProgress);
-    const cardY = py + 78;
-    ctx.globalAlpha = slideProgress;
-    _casinoDrawCard(cardX, cardY, bj.dealerHand[i], i === 1 && !showDealer);
-    ctx.globalAlpha = 1;
-  }
-  if (showDealer && bj.dealerHand.length > 0) {
+  const dealerDone = _bjDrawHand(bj.dealerHand, px + 50, py + 78, showDealer ? -1 : 1);
+  if (showDealer && bj.dealerHand.length > 0 && dealerDone) {
     const totalX = px + 50 + bj.dealerHand.length * 56 + 12;
     ctx.font = 'bold 18px monospace';
     ctx.fillStyle = _bjIsBust(bj.dealerHand) ? '#ff5555' : '#fff';
@@ -488,22 +503,8 @@ function _drawBlackjack(px, py, pw, ph) {
   ctx.textAlign = 'left';
   const pLabel = bj.splitHand ? (bj.playingSplit ? 'HAND 1' : 'HAND 1 \u25B8') : 'PLAYER';
   ctx.fillText(pLabel, px + 24, py + 210);
-  for (let i = 0; i < bj.playerHand.length; i++) {
-    const cardIdx = i === 0 ? 0 : 2; // deal order position
-    if (visibleCards <= cardIdx) continue;
-    let slideProgress = 1;
-    if (dealing && i < 2) {
-      const cardStart = cardIdx * cardDelay;
-      slideProgress = Math.min(1, Math.max(0, (dealElapsed - cardStart) / slideDuration));
-    }
-    const targetX = px + 50 + i * 56;
-    const startX = cx;
-    const cardX = startX + (targetX - startX) * _easeOutCubic(slideProgress);
-    ctx.globalAlpha = slideProgress;
-    _casinoDrawCard(cardX, py + 220, bj.playerHand[i], false);
-    ctx.globalAlpha = 1;
-  }
-  if (bj.playerHand.length > 0 && !dealing) {
+  const playerDone = _bjDrawHand(bj.playerHand, px + 50, py + 220, -1);
+  if (bj.playerHand.length > 0 && playerDone) {
     const totalX = px + 50 + bj.playerHand.length * 56 + 12;
     ctx.font = 'bold 18px monospace';
     ctx.fillStyle = _bjIsBust(bj.playerHand) ? '#ff5555' : '#5fca80';
@@ -516,13 +517,13 @@ function _drawBlackjack(px, py, pw, ph) {
     ctx.font = 'bold 13px monospace';
     ctx.fillStyle = '#bdb';
     ctx.fillText(bj.playingSplit ? 'HAND 2 \u25B8' : 'HAND 2', px + 24, py + 320);
-    for (let i = 0; i < bj.splitHand.length; i++) {
-      _casinoDrawCard(px + 50 + i * 56, py + 330, bj.splitHand[i], false);
+    const splitDone = _bjDrawHand(bj.splitHand, px + 50, py + 330, -1);
+    if (splitDone) {
+      const stx = px + 50 + bj.splitHand.length * 56 + 12;
+      ctx.font = 'bold 18px monospace';
+      ctx.fillStyle = _bjIsBust(bj.splitHand) ? '#ff5555' : '#5fca80';
+      ctx.fillText(_bjHandValue(bj.splitHand).toString(), stx, py + 370);
     }
-    const stx = px + 50 + bj.splitHand.length * 56 + 12;
-    ctx.font = 'bold 18px monospace';
-    ctx.fillStyle = _bjIsBust(bj.splitHand) ? '#ff5555' : '#5fca80';
-    ctx.fillText(_bjHandValue(bj.splitHand).toString(), stx, py + 370);
   }
 
   // Bet display
