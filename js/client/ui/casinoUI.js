@@ -388,6 +388,7 @@ function drawCasinoPanel() {
   else if (g === 'mines') _drawMines(px, py, pw, ph);
   else if (g === 'dice') _drawDice(px, py, pw, ph);
   else if (g === 'rps') _drawRPS(px, py, pw, ph);
+  else if (g === 'baccarat') _drawBaccarat(px, py, pw, ph);
   ctx.textAlign = 'left';
   ctx.lineWidth = 1;
 }
@@ -411,6 +412,7 @@ function handleCasinoClick(mx, my) {
   if (g === 'mines') return _clickMines(mx, my, px, py, pw, ph);
   if (g === 'dice') return _clickDice(mx, my, px, py, pw, ph);
   if (g === 'rps') return _clickRPS(mx, my, px, py, pw, ph);
+  if (g === 'baccarat') return _clickBaccarat(mx, my, px, py, pw, ph);
   return true;
 }
 
@@ -1753,5 +1755,175 @@ function _clickRPS(mx, my, px, py, pw, ph) {
       casinoRPS_nextRound(); return true;
     }
   }
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BACCARAT — Player vs Banker card game
+// ═══════════════════════════════════════════════════════════════
+
+const _BAC_BET_TYPES = [
+  { id: 'player', label: 'PLAYER', color: '#4a9eff', desc: 'Pays 1:1', bg: '#0a1a3a' },
+  { id: 'banker', label: 'BANKER', color: '#ff6666', desc: 'Pays 0.95:1', bg: '#3a0a0a' },
+  { id: 'tie',    label: 'TIE',    color: '#ffd700', desc: 'Pays 8:1', bg: '#2a2a0a' },
+];
+
+let _bacSelectedBet = 'player';
+
+function _drawBaccarat(px, py, pw, ph) {
+  const bac = casinoState.bac;
+  const cx = px + pw / 2;
+  const now = Date.now();
+  const _slideDur = 400;
+
+  if (bac.phase === 'betting') {
+    _casinoDrawBetControls(px, py, pw);
+
+    // Bet type selector — centered
+    ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText('Choose Your Bet:', cx, py + 85);
+
+    const btnW = 160, btnH = 80, btnGap = 24;
+    const totalW = 3 * btnW + 2 * btnGap;
+    const startX = cx - totalW / 2;
+    for (let i = 0; i < _BAC_BET_TYPES.length; i++) {
+      const bt = _BAC_BET_TYPES[i];
+      const bx = startX + i * (btnW + btnGap);
+      const by = py + 100;
+      const active = _bacSelectedBet === bt.id;
+      ctx.fillStyle = active ? bt.bg : '#0a0a14';
+      ctx.beginPath(); ctx.roundRect(bx, by, btnW, btnH, 8); ctx.fill();
+      ctx.strokeStyle = active ? bt.color : '#333';
+      ctx.lineWidth = active ? 3 : 1;
+      ctx.beginPath(); ctx.roundRect(bx, by, btnW, btnH, 8); ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.font = 'bold 20px monospace';
+      ctx.fillStyle = active ? bt.color : '#666';
+      ctx.textAlign = 'center';
+      ctx.fillText(bt.label, bx + btnW / 2, by + 35);
+      ctx.font = '12px monospace';
+      ctx.fillStyle = active ? '#aaa' : '#555';
+      ctx.fillText(bt.desc, bx + btnW / 2, by + 58);
+    }
+
+    // Info text
+    ctx.font = '13px monospace'; ctx.fillStyle = '#666'; ctx.textAlign = 'center';
+    ctx.fillText('Tie returns your bet if you bet Player or Banker', cx, py + 210);
+    ctx.fillText('Natural 8 or 9 = instant win  |  Closest to 9 wins', cx, py + 228);
+
+    // Deal button
+    _casinoDrawButton(cx - 70, py + 260, 140, 48, 'DEAL', gold >= _casinoBetInput, true);
+    return;
+  }
+
+  // Green felt background
+  ctx.fillStyle = '#0e3d0e';
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.fill();
+  ctx.strokeStyle = '#1a5a1a'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // Bet info
+  ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'right';
+  ctx.fillText('Bet: ' + casinoState.bet + 'g on ' + bac.betType.toUpperCase(), px + pw - 20, py + 70);
+  ctx.fillText('\u2B25 ' + gold + 'g', px + pw - 20, py + 88);
+
+  // Draw hands with animation
+  function _bacDrawHand(hand, label, labelColor, baseY) {
+    const handW = hand.length * 56;
+    const baseX = cx - handW / 2;
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = labelColor;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, cx, baseY - 8);
+
+    let allDone = true;
+    for (let i = 0; i < hand.length; i++) {
+      const card = hand[i];
+      const elapsed = now - (card._addedAt || 0);
+      if (elapsed < 0) continue;
+      const slideT = Math.min(1, elapsed / _slideDur);
+      if (slideT < 1) allDone = false;
+      const eased = 1 - Math.pow(1 - slideT, 3);
+      const targetX = baseX + i * 56;
+      const cardX = cx + (targetX - cx) * eased;
+      ctx.globalAlpha = Math.min(1, slideT * 1.5);
+      _casinoDrawCard(cardX, baseY, card, false);
+      ctx.globalAlpha = 1;
+    }
+
+    // Show hand value when all cards are visible
+    if (allDone && hand.length > 0) {
+      const val = _bacHandValue(hand);
+      const totalX = baseX + hand.length * 56 + 12;
+      ctx.font = 'bold 22px monospace';
+      ctx.fillStyle = val >= 8 ? '#ffd700' : '#fff';
+      ctx.textAlign = 'left';
+      ctx.fillText(val.toString(), totalX, baseY + 40);
+    }
+    return allDone;
+  }
+
+  // Banker hand (top)
+  const bankerDone = _bacDrawHand(bac.bankerHand, 'BANKER', '#ff6666', py + 110);
+  // Player hand (bottom)
+  const playerDone = _bacDrawHand(bac.playerHand, 'PLAYER', '#4a9eff', py + 280);
+
+  // Check animation completion
+  if (bac.phase === 'dealing') {
+    let latestTime = 0;
+    for (const c of bac.playerHand) latestTime = Math.max(latestTime, c._addedAt || 0);
+    for (const c of bac.bankerHand) latestTime = Math.max(latestTime, c._addedAt || 0);
+    if (now - latestTime > _slideDur + 200 && playerDone && bankerDone) {
+      if (bac._animateCallback) {
+        bac._animateCallback();
+        bac._animateCallback = null;
+      }
+    }
+  }
+
+  // Natural indicator
+  if (playerDone && bankerDone && bac.playerHand.length >= 2 && bac.bankerHand.length >= 2) {
+    const pVal = _bacHandValue(bac.playerHand);
+    const bVal = _bacHandValue(bac.bankerHand);
+    if ((pVal >= 8 || bVal >= 8) && bac.playerHand.length === 2 && bac.bankerHand.length === 2) {
+      ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'center';
+      ctx.fillText('NATURAL!', cx, py + 240);
+    }
+  }
+
+  // Result overlay
+  if (bac.phase === 'result') {
+    _casinoDrawResult(px, py, pw, ph);
+  }
+}
+
+function _clickBaccarat(mx, my, px, py, pw, ph) {
+  const bac = casinoState.bac;
+  const cx = px + pw / 2;
+
+  if (bac.phase === 'betting') {
+    if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
+
+    // Bet type buttons
+    const btnW = 160, btnH = 80, btnGap = 24;
+    const totalW = 3 * btnW + 2 * btnGap;
+    const startX = cx - totalW / 2;
+    for (let i = 0; i < _BAC_BET_TYPES.length; i++) {
+      const bx = startX + i * (btnW + btnGap);
+      if (_casinoHitBtn(mx, my, bx, py + 100, btnW, btnH)) {
+        _bacSelectedBet = _BAC_BET_TYPES[i].id;
+        return true;
+      }
+    }
+
+    // Deal button
+    if (_casinoHitBtn(mx, my, cx - 70, py + 260, 140, 48) && gold >= _casinoBetInput) {
+      casinoBAC_deal(_casinoBetInput, _bacSelectedBet);
+      return true;
+    }
+    return true;
+  }
+
   return true;
 }

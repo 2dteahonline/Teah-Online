@@ -5137,3 +5137,30 @@ ENTITY_RENDERERS['casino_rps'] = (e, ctx, ex, ey, w, h) => {
   ctx.fillText('RPS', ex + cw / 2, ey + 8);
   ctx.textAlign = 'left';
 };
+
+// Baccarat table
+ENTITY_RENDERERS['casino_baccarat'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Dark green felt table
+  ctx.fillStyle = '#0d4a28';
+  ctx.beginPath(); ctx.roundRect(ex + 6, ey + 8, cw - 12, ch - 12, 10); ctx.fill();
+  ctx.strokeStyle = '#8a7a4a';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(ex + 6, ey + 8, cw - 12, ch - 12, 10); ctx.stroke();
+  ctx.lineWidth = 1;
+  // P / B labels
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#4a9eff';
+  ctx.fillText('P', ex + cw / 2 - 26, ey + ch / 2 + 6);
+  ctx.fillStyle = '#ff6666';
+  ctx.fillText('B', ex + cw / 2 + 26, ey + ch / 2 + 6);
+  // Small card shapes
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(ex + cw / 2 - 8, ey + ch / 2 - 8, 16, 20);
+  // Label
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '9px monospace';
+  ctx.fillText('BACCARAT', ex + cw / 2, ey + 8);
+  ctx.textAlign = 'left';
+};

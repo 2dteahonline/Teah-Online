@@ -2121,6 +2121,7 @@ const LEVELS = {
 
       // Game station — Center
       { type: 'casino_rps',       tx: 18, ty: 14, w: 3, h: 2, solid: true },
+      { type: 'casino_baccarat',   tx: 18, ty: 22, w: 3, h: 2, solid: true },
 
       // Pillars
       { type: 'casino_pillar', tx: 4,  ty: 10, w: 1, h: 1, solid: true },

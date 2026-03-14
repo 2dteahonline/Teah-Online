@@ -117,6 +117,7 @@ const _CASINO_STATIONS = [
   { id: 'casino_coinflip',  tx: 6,  ty: 22, game: 'headsOrTails', label: 'Heads or Tails' },
   { id: 'casino_cases',     tx: 31, ty: 22, game: 'cases',        label: 'Cases' },
   { id: 'casino_rps',       tx: 18, ty: 14, game: 'rps',          label: 'Rock Paper Scissors' },
+  { id: 'casino_baccarat', tx: 18, ty: 22, game: 'baccarat', label: 'Baccarat' },
 ];
 for (const s of _CASINO_STATIONS) {
   registerInteractable({

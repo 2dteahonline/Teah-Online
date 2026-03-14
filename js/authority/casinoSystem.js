@@ -81,6 +81,17 @@ const casinoState = {
     revealTimer: 0,       // animation timestamp
     phase: 'betting',     // 'betting'|'format'|'choosing'|'revealing'|'roundResult'|'result'
   },
+
+  // Baccarat
+  bac: {
+    shoe: [],
+    playerHand: [],
+    bankerHand: [],
+    betType: null,        // 'player'|'banker'|'tie'
+    dealTimer: 0,
+    phase: 'betting',     // 'betting'|'dealing'|'result'
+    _animateCallback: null,
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -162,6 +173,13 @@ function casinoReset() {
   casinoState.rps.houseChoice = null;
   casinoState.rps.revealTimer = 0;
   casinoState.rps.phase = 'betting';
+  casinoState.bac.shoe = [];
+  casinoState.bac.playerHand = [];
+  casinoState.bac.bankerHand = [];
+  casinoState.bac.betType = null;
+  casinoState.bac.dealTimer = 0;
+  casinoState.bac._animateCallback = null;
+  casinoState.bac.phase = 'betting';
 }
 
 // Reset just the current game for "play again"
@@ -220,6 +238,13 @@ function casinoResetGame() {
     casinoState.rps.houseChoice = null;
     casinoState.rps.revealTimer = 0;
     casinoState.rps.phase = 'betting';
+  } else if (g === 'baccarat') {
+    casinoState.bac.playerHand = [];
+    casinoState.bac.bankerHand = [];
+    casinoState.bac.betType = null;
+    casinoState.bac.dealTimer = 0;
+    casinoState.bac._animateCallback = null;
+    casinoState.bac.phase = 'betting';
   }
   casinoState.phase = 'betting';
 }
@@ -875,4 +900,148 @@ function casinoRPS_nextRound() {
   rps.houseChoice = null;
   rps.revealTimer = 0;
   rps.phase = 'choosing';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BACCARAT
+// ═══════════════════════════════════════════════════════════════
+
+function _bacInitShoe() {
+  const shoe = [];
+  const suits = ['♠', '♥', '♦', '♣'];
+  const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  for (let d = 0; d < BACCARAT_CONFIG.DECKS; d++) {
+    for (const suit of suits) {
+      for (const rank of ranks) {
+        shoe.push({ rank, suit, color: (suit === '♥' || suit === '♦') ? 'red' : 'black' });
+      }
+    }
+  }
+  for (let i = shoe.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
+  }
+  casinoState.bac.shoe = shoe;
+}
+
+function _bacDraw() {
+  if (casinoState.bac.shoe.length < 20) _bacInitShoe();
+  const card = casinoState.bac.shoe.pop();
+  card._addedAt = Date.now();
+  return card;
+}
+
+function _bacCardValue(card) {
+  if (['10', 'J', 'Q', 'K'].includes(card.rank)) return 0;
+  if (card.rank === 'A') return 1;
+  return parseInt(card.rank);
+}
+
+function _bacHandValue(hand) {
+  let total = 0;
+  for (const c of hand) total += _bacCardValue(c);
+  return total % 10;
+}
+
+function casinoBAC_deal(betAmount, betType) {
+  if (!casinoPlaceBet(betAmount)) return false;
+  const bac = casinoState.bac;
+  if (bac.shoe.length < 20) _bacInitShoe();
+  bac.betType = betType;
+  const now = Date.now();
+  // Deal: player card, banker card, player card, banker card
+  bac.playerHand = [_bacDraw(), _bacDraw()];
+  bac.bankerHand = [_bacDraw(), _bacDraw()];
+  bac.playerHand[0]._addedAt = now;
+  bac.bankerHand[0]._addedAt = now + 400;
+  bac.playerHand[1]._addedAt = now + 800;
+  bac.bankerHand[1]._addedAt = now + 1200;
+  bac.dealTimer = now;
+  bac.phase = 'dealing';
+  casinoState.phase = 'playing';
+
+  // Pre-determine third card draws according to tableau rules
+  // These will be added with staggered timestamps after initial deal
+  let delay = 1600; // after 4 initial cards
+  const playerVal = _bacHandValue(bac.playerHand);
+  const bankerVal = _bacHandValue(bac.bankerHand);
+
+  // Natural: 8 or 9 — no more cards
+  if (playerVal >= 8 || bankerVal >= 8) {
+    bac._animateCallback = function() { _bacResolve(); };
+    return true;
+  }
+
+  // Player third card rule
+  let playerThird = null;
+  if (playerVal <= 5) {
+    playerThird = _bacDraw();
+    playerThird._addedAt = now + delay;
+    bac.playerHand.push(playerThird);
+    delay += 500;
+  }
+
+  // Banker third card rule
+  if (playerThird === null) {
+    // Player stood — banker draws on 0-5
+    if (bankerVal <= 5) {
+      const bCard = _bacDraw();
+      bCard._addedAt = now + delay;
+      bac.bankerHand.push(bCard);
+    }
+  } else {
+    // Player drew — banker decision depends on player's third card value
+    const p3 = _bacCardValue(playerThird);
+    let bankerDraws = false;
+    if (bankerVal <= 2) {
+      bankerDraws = true;
+    } else if (bankerVal === 3) {
+      bankerDraws = p3 !== 8;
+    } else if (bankerVal === 4) {
+      bankerDraws = p3 >= 2 && p3 <= 7;
+    } else if (bankerVal === 5) {
+      bankerDraws = p3 >= 4 && p3 <= 7;
+    } else if (bankerVal === 6) {
+      bankerDraws = p3 === 6 || p3 === 7;
+    }
+    // bankerVal 7: always stands
+    if (bankerDraws) {
+      const bCard = _bacDraw();
+      bCard._addedAt = now + delay;
+      bac.bankerHand.push(bCard);
+    }
+  }
+
+  bac._animateCallback = function() { _bacResolve(); };
+  return true;
+}
+
+function _bacResolve() {
+  const bac = casinoState.bac;
+  const pVal = _bacHandValue(bac.playerHand);
+  const bVal = _bacHandValue(bac.bankerHand);
+  bac.phase = 'result';
+
+  let winner; // 'player'|'banker'|'tie'
+  if (pVal > bVal) winner = 'player';
+  else if (bVal > pVal) winner = 'banker';
+  else winner = 'tie';
+
+  if (bac.betType === winner) {
+    let mult;
+    if (winner === 'player') mult = 1 + BACCARAT_CONFIG.PLAYER_PAYOUT;
+    else if (winner === 'banker') mult = 1 + BACCARAT_CONFIG.BANKER_PAYOUT;
+    else mult = 1 + BACCARAT_CONFIG.TIE_PAYOUT;
+    const payout = Math.floor(casinoState.bet * mult);
+    casinoWin(payout);
+    casinoState.result.message = winner.charAt(0).toUpperCase() + winner.slice(1) + ' wins! (' + pVal + ' vs ' + bVal + ')';
+  } else if (winner === 'tie' && bac.betType !== 'tie') {
+    // Tie but didn't bet on tie — push (return bet)
+    gold += casinoState.bet;
+    casinoState.result = { won: true, payout: casinoState.bet, message: 'Tie (' + pVal + ' vs ' + bVal + ') — Bet returned!' };
+    casinoState.phase = 'result';
+    casinoState.resultTimer = Date.now();
+  } else {
+    casinoLose(winner.charAt(0).toUpperCase() + winner.slice(1) + ' wins (' + pVal + ' vs ' + bVal + ')');
+  }
 }

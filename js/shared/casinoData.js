@@ -149,6 +149,13 @@ const RPS_FORMATS = [
   { id: 'bo5', label: 'Best of 5', winsNeeded: 3 },
 ];
 
+const BACCARAT_CONFIG = {
+  DECKS: 8,
+  PLAYER_PAYOUT: 1,     // 1:1
+  BANKER_PAYOUT: 0.95,  // 1:1 minus 5% commission
+  TIE_PAYOUT: 8,        // 8:1
+};
+
 const CASINO_GAMES = [
   { id: 'blackjack',    label: 'Blackjack',     stationEntity: 'casino_blackjack' },
   { id: 'roulette',     label: 'Roulette',      stationEntity: 'casino_roulette' },
@@ -157,4 +164,5 @@ const CASINO_GAMES = [
   { id: 'mines',        label: 'Mines',          stationEntity: 'casino_mines' },
   { id: 'dice',         label: 'Dice',           stationEntity: 'casino_dice' },
   { id: 'rps',          label: 'Rock Paper Scissors', stationEntity: 'casino_rps' },
+  { id: 'baccarat',     label: 'Baccarat',           stationEntity: 'casino_baccarat' },
 ];
