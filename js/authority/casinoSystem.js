@@ -19,7 +19,8 @@ const casinoState = {
     splitHand: null,      // null or array of cards (when split)
     playingSplit: false,   // true when acting on split hand
     doubled: false,
-    phase: 'betting',     // 'betting'|'player'|'dealer'|'result'|'split'
+    dealTimer: 0,         // timestamp for deal animation
+    phase: 'betting',     // 'betting'|'dealing'|'player'|'dealer'|'result'|'split'
   },
 
   // Roulette
@@ -54,6 +55,7 @@ const casinoState = {
     revealed: null,       // 5x5 array: true=revealed
     safeRevealed: 0,
     currentMultiplier: 1,
+    mineCount: 5,         // user-selectable, 1-24
     phase: 'betting',     // 'betting'|'playing'|'result'
   },
 
@@ -63,7 +65,7 @@ const casinoState = {
     die2: 0,
     choice: null,         // 'higher'|'lower'|'equal'
     rollTimer: 0,         // animation timestamp
-    phase: 'betting',     // 'betting'|'rolled1'|'rolling2'|'result'
+    phase: 'betting',     // 'betting'|'rolling1'|'rolled1'|'rolling2'|'result'
   },
 };
 
@@ -107,6 +109,7 @@ function casinoReset() {
   casinoState.bj.splitHand = null;
   casinoState.bj.playingSplit = false;
   casinoState.bj.doubled = false;
+  casinoState.bj.dealTimer = 0;
   casinoState.bj.phase = 'betting';
   casinoState.rl.bets = [];
   casinoState.rl.resultNumber = null;
@@ -126,6 +129,7 @@ function casinoReset() {
   casinoState.mn.revealed = null;
   casinoState.mn.safeRevealed = 0;
   casinoState.mn.currentMultiplier = 1;
+  casinoState.mn.mineCount = MINES_CONFIG.DEFAULT_MINES;
   casinoState.mn.phase = 'betting';
   casinoState.dc.die1 = 0;
   casinoState.dc.die2 = 0;
@@ -146,6 +150,7 @@ function casinoResetGame() {
     casinoState.bj.splitHand = null;
     casinoState.bj.playingSplit = false;
     casinoState.bj.doubled = false;
+    casinoState.bj.dealTimer = 0;
     casinoState.bj.phase = 'betting';
   } else if (g === 'roulette') {
     casinoState.rl.bets = [];
@@ -247,13 +252,19 @@ function casinoBJ_deal() {
   bj.splitHand = null;
   bj.playingSplit = false;
   bj.doubled = false;
+  bj.dealTimer = Date.now();
+  bj.phase = 'dealing';
+  casinoState.phase = 'playing';
+}
 
-  // Check natural blackjack
+// Called from UI after dealing animation completes (~1s)
+function casinoBJ_finishDeal() {
+  const bj = casinoState.bj;
   const playerBJ = _bjIsBlackjack(bj.playerHand);
   const dealerBJ = _bjIsBlackjack(bj.dealerHand);
   if (playerBJ && dealerBJ) {
     bj.phase = 'result';
-    casinoWin(casinoState.bet); // push — return bet
+    casinoWin(casinoState.bet);
     casinoState.result.message = 'Push! Both Blackjack';
     return;
   }
@@ -270,7 +281,6 @@ function casinoBJ_deal() {
     return;
   }
   bj.phase = 'player';
-  casinoState.phase = 'playing';
 }
 
 function casinoBJ_hit() {
@@ -565,9 +575,10 @@ function casinoMN_start(betAmount) {
     }
   }
 
-  // Place mines randomly
+  // Place mines randomly using user-selected count
+  const mineCount = mn.mineCount;
   let placed = 0;
-  while (placed < MINES_CONFIG.MINE_COUNT) {
+  while (placed < mineCount) {
     const r = Math.floor(Math.random() * size);
     const c = Math.floor(Math.random() * size);
     if (!mn.board[r][c]) {
@@ -599,7 +610,7 @@ function casinoMN_reveal(r, c) {
   }
 
   mn.safeRevealed++;
-  const totalSafe = MINES_CONFIG.GRID_SIZE * MINES_CONFIG.GRID_SIZE - MINES_CONFIG.MINE_COUNT;
+  const totalSafe = MINES_CONFIG.GRID_SIZE * MINES_CONFIG.GRID_SIZE - mn.mineCount;
   // Multiplier: product of (total_cells - i) / (safe_cells - i) for each reveal, with house edge
   let mult = 1;
   const totalCells = MINES_CONFIG.GRID_SIZE * MINES_CONFIG.GRID_SIZE;
@@ -623,13 +634,12 @@ function casinoMN_cashOut() {
 
 function casinoDC_start(betAmount) {
   if (!casinoPlaceBet(betAmount)) return false;
-  casinoState.dc.die1 = 0;
   casinoState.dc.die2 = 0;
   casinoState.dc.choice = null;
-  casinoState.dc.phase = 'rolled1';
   casinoState.dc.rollTimer = Date.now();
+  casinoState.dc.phase = 'rolling1';  // animate die 1 rolling
   casinoState.phase = 'playing';
-  // Roll first die
+  // Pre-determine result but show animation first
   casinoState.dc.die1 = Math.floor(Math.random() * 6) + 1;
   return true;
 }

@@ -1,12 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
 //  CASINO UI — Drawing + click handling for all 6 casino games
-//  Client-only: renders panels, handles mouse clicks, dispatches
-//  to casinoSystem.js for game logic
+//  Full animations, polished visuals, responsive layouts
 // ═══════════════════════════════════════════════════════════════
 
-const _CASINO_PW = 720, _CASINO_PH = 520;
-let _casinoBetInput = 100;   // current bet amount selected by player
-let _casinoRL_selectedBet = null; // roulette: which bet type is selected
+const _CASINO_PW = 740, _CASINO_PH = 540;
+let _casinoBetInput = 100;
+let _casinoRL_selectedBet = null;
 
 // ═══════════════════════════════════════════════════════════════
 //  COMMON UI HELPERS
@@ -17,9 +16,22 @@ function _casinoGetPanelXY() {
 }
 
 function _casinoDrawButton(x, y, w, h, label, enabled, highlight) {
-  ctx.fillStyle = !enabled ? '#1a1a2a' : highlight ? '#3a5a2a' : '#2a2a4a';
+  // Shadow
+  if (enabled) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.roundRect(x + 2, y + 2, w, h, 6); ctx.fill();
+  }
+  ctx.fillStyle = !enabled ? '#1a1a2a' : highlight ? '#2a5a1a' : '#2a2a4a';
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
-  ctx.strokeStyle = !enabled ? '#333' : highlight ? '#5a8a4a' : '#4a4a7a';
+  // Gradient shine on top
+  if (enabled) {
+    const grad = ctx.createLinearGradient(x, y, x, y + h);
+    grad.addColorStop(0, 'rgba(255,255,255,0.08)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+  }
+  ctx.strokeStyle = !enabled ? '#333' : highlight ? '#5aaa3a' : '#5a5a8a';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.stroke();
   ctx.lineWidth = 1;
@@ -33,103 +45,146 @@ function _casinoHitBtn(mx, my, x, y, w, h) {
   return mx >= x && mx <= x + w && my >= y && my <= y + h;
 }
 
-function _casinoDrawCard(x, y, card, faceDown) {
-  const cw = 44, ch = 62;
+function _casinoDrawCard(x, y, card, faceDown, scale) {
+  const s = scale || 1;
+  const cw = 48 * s, ch = 68 * s;
+  ctx.save();
+  // Card shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.roundRect(x + 3, y + 3, cw, ch, 4 * s); ctx.fill();
   if (faceDown) {
-    ctx.fillStyle = '#2244aa';
-    ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 4); ctx.fill();
-    ctx.strokeStyle = '#3366cc';
+    ctx.fillStyle = '#1a3388';
+    ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 4 * s); ctx.fill();
+    ctx.strokeStyle = '#2244aa';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 4 * s); ctx.stroke();
+    // Diamond pattern
+    ctx.strokeStyle = '#3355bb';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 4); ctx.stroke();
-    // Pattern
-    ctx.strokeStyle = '#4477dd';
-    ctx.beginPath();
-    ctx.moveTo(x + 8, y + 8); ctx.lineTo(x + cw - 8, y + ch - 8);
-    ctx.moveTo(x + cw - 8, y + 8); ctx.lineTo(x + 8, y + ch - 8);
-    ctx.stroke();
+    const ds = 10 * s;
+    for (let dy = ds; dy < ch - ds; dy += ds) {
+      for (let dx = ds; dx < cw - ds; dx += ds) {
+        ctx.beginPath();
+        ctx.moveTo(x + dx, y + dy - 4 * s); ctx.lineTo(x + dx + 4 * s, y + dy);
+        ctx.lineTo(x + dx, y + dy + 4 * s); ctx.lineTo(x + dx - 4 * s, y + dy);
+        ctx.closePath(); ctx.stroke();
+      }
+    }
+    ctx.restore();
     return;
   }
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 4); ctx.fill();
-  ctx.strokeStyle = '#999';
+  // White card face
+  ctx.fillStyle = '#f8f8f0';
+  ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 4 * s); ctx.fill();
+  ctx.strokeStyle = '#bbb';
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 4); ctx.stroke();
-  ctx.fillStyle = card.color === 'red' ? '#cc1111' : '#111';
-  ctx.font = 'bold 14px monospace';
+  ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 4 * s); ctx.stroke();
+  // Rank & suit
+  const isRed = card.color === 'red';
+  ctx.fillStyle = isRed ? '#cc1111' : '#111';
+  ctx.font = 'bold ' + (15 * s) + 'px monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(card.rank, x + 4, y + 16);
-  ctx.font = '16px serif';
-  ctx.fillText(card.suit, x + 4, y + 34);
+  ctx.fillText(card.rank, x + 4 * s, y + 16 * s);
+  ctx.font = (18 * s) + 'px serif';
+  ctx.fillText(card.suit, x + 4 * s, y + 34 * s);
+  // Center suit large
+  ctx.font = (28 * s) + 'px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(card.suit, x + cw / 2, y + ch / 2 + 8 * s);
   // Bottom-right mirror
-  ctx.font = 'bold 10px monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText(card.rank, x + cw - 4, y + ch - 6);
+  ctx.save();
+  ctx.translate(x + cw - 4 * s, y + ch - 6 * s);
+  ctx.rotate(Math.PI);
+  ctx.font = 'bold ' + (11 * s) + 'px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(card.rank, 0, 0);
+  ctx.restore();
+  ctx.restore();
 }
 
-function _casinoDrawDie(x, y, size, value) {
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.roundRect(x, y, size, size, 6); ctx.fill();
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(x, y, size, size, 6); ctx.stroke();
-  ctx.lineWidth = 1;
-  ctx.fillStyle = '#111';
+function _casinoDrawDie(x, y, size, value, rotation) {
+  ctx.save();
   const cx = x + size / 2, cy = y + size / 2;
-  const d = size * 0.25;
-  const dot = (dx, dy) => { ctx.beginPath(); ctx.arc(dx, dy, size * 0.06, 0, Math.PI * 2); ctx.fill(); };
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.roundRect(x + 3, y + 3, size, size, 8); ctx.fill();
+  // Rotate if animating
+  if (rotation) {
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+    ctx.translate(-cx, -cy);
+  }
+  // Die body
+  const grad = ctx.createLinearGradient(x, y, x + size, y + size);
+  grad.addColorStop(0, '#fff');
+  grad.addColorStop(1, '#ddd');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.roundRect(x, y, size, size, 8); ctx.fill();
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x, y, size, size, 8); ctx.stroke();
+  ctx.lineWidth = 1;
+  // Dots
+  ctx.fillStyle = '#222';
+  const d = size * 0.24;
+  const dotR = size * 0.065;
+  const dot = (dx, dy) => { ctx.beginPath(); ctx.arc(dx, dy, dotR, 0, Math.PI * 2); ctx.fill(); };
   if (value === 1) { dot(cx, cy); }
   else if (value === 2) { dot(cx - d, cy - d); dot(cx + d, cy + d); }
   else if (value === 3) { dot(cx - d, cy - d); dot(cx, cy); dot(cx + d, cy + d); }
   else if (value === 4) { dot(cx - d, cy - d); dot(cx + d, cy - d); dot(cx - d, cy + d); dot(cx + d, cy + d); }
   else if (value === 5) { dot(cx - d, cy - d); dot(cx + d, cy - d); dot(cx, cy); dot(cx - d, cy + d); dot(cx + d, cy + d); }
   else if (value === 6) { dot(cx - d, cy - d); dot(cx + d, cy - d); dot(cx - d, cy); dot(cx + d, cy); dot(cx - d, cy + d); dot(cx + d, cy + d); }
+  ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  BET CONTROLS — shared across games
+//  BET CONTROLS
 // ═══════════════════════════════════════════════════════════════
 
 function _casinoDrawBetControls(px, py, pw) {
-  const bx = px + 20, by = py + _CASINO_PH - 70;
+  const by = py + _CASINO_PH - 60;
+  // Background strip
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(px + 8, by - 18, pw - 16, 56);
   // Gold display
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffd700';
-  ctx.fillText('Gold: ' + gold, bx, by - 6);
-
+  ctx.fillText('\u2B25 ' + gold + 'g', px + 20, by);
   // Current bet
-  ctx.fillStyle = '#aaa';
-  ctx.fillText('Bet: ' + _casinoBetInput, bx + 160, by - 6);
-
+  ctx.fillStyle = '#ccc';
+  ctx.fillText('Bet: ' + _casinoBetInput + 'g', px + 180, by);
   // Preset buttons
   const presets = CASINO_CONFIG.BET_PRESETS;
-  const btnW = 70, btnH = 28, gap = 6;
-  const startX = bx;
+  const btnW = 62, btnH = 26, gap = 4;
+  const startX = px + 20;
   for (let i = 0; i < presets.length; i++) {
-    const bx2 = startX + i * (btnW + gap);
-    if (bx2 + btnW > px + pw - 20) break;
+    const bx = startX + i * (btnW + gap);
+    if (bx + btnW > px + pw - 16) break;
     const active = _casinoBetInput === presets[i];
-    ctx.fillStyle = active ? '#3a5a2a' : '#1a1a2e';
-    ctx.beginPath(); ctx.roundRect(bx2, by + 4, btnW, btnH, 4); ctx.fill();
-    ctx.strokeStyle = active ? '#5a8a4a' : '#3a3a5a';
+    const afford = gold >= presets[i];
+    ctx.fillStyle = active ? '#2a4a1a' : '#111';
+    ctx.beginPath(); ctx.roundRect(bx, by + 8, btnW, btnH, 4); ctx.fill();
+    ctx.strokeStyle = active ? '#5a8a4a' : '#2a2a3a';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(bx2, by + 4, btnW, btnH, 4); ctx.stroke();
-    ctx.font = '12px monospace';
-    ctx.fillStyle = gold >= presets[i] ? '#fff' : '#555';
+    ctx.beginPath(); ctx.roundRect(bx, by + 8, btnW, btnH, 4); ctx.stroke();
+    ctx.font = '11px monospace';
+    ctx.fillStyle = afford ? (active ? '#8f8' : '#ccc') : '#444';
     ctx.textAlign = 'center';
-    ctx.fillText(presets[i] + 'g', bx2 + btnW / 2, by + 22);
+    ctx.fillText(presets[i] >= 1000 ? (presets[i] / 1000) + 'k' : presets[i] + '', bx + btnW / 2, by + 25);
   }
   ctx.textAlign = 'left';
 }
 
 function _casinoHandleBetClick(mx, my, px, py, pw) {
-  const bx = px + 20, by = py + _CASINO_PH - 70;
+  const by = py + _CASINO_PH - 60;
   const presets = CASINO_CONFIG.BET_PRESETS;
-  const btnW = 70, btnH = 28, gap = 6;
+  const btnW = 62, btnH = 26, gap = 4;
   for (let i = 0; i < presets.length; i++) {
-    const bx2 = bx + i * (btnW + gap);
-    if (bx2 + btnW > px + pw - 20) break;
-    if (_casinoHitBtn(mx, my, bx2, by + 4, btnW, btnH)) {
+    const bx = px + 20 + i * (btnW + gap);
+    if (bx + btnW > px + pw - 16) break;
+    if (_casinoHitBtn(mx, my, bx, by + 8, btnW, btnH)) {
       _casinoBetInput = presets[i];
       return true;
     }
@@ -143,28 +198,37 @@ function _casinoHandleBetClick(mx, my, px, py, pw) {
 
 function _casinoDrawResult(px, py, pw, ph) {
   if (!casinoState.result) return false;
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(px + 4, py + 50, pw - 8, ph - 100);
-
+  const elapsed = Date.now() - casinoState.resultTimer;
+  const fadeIn = Math.min(1, elapsed / 300);
+  ctx.globalAlpha = fadeIn * 0.8;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(px + 4, py + 48, pw - 8, ph - 56);
+  ctx.globalAlpha = fadeIn;
   const r = casinoState.result;
-  ctx.font = 'bold 32px monospace';
+  // Glow effect
+  ctx.shadowColor = r.won ? '#5fca80' : '#ff4a4a';
+  ctx.shadowBlur = 20;
+  ctx.font = 'bold 40px monospace';
   ctx.textAlign = 'center';
   ctx.fillStyle = r.won ? '#5fca80' : '#ff4a4a';
   ctx.fillText(r.won ? 'WIN!' : 'LOSE', px + pw / 2, py + ph / 2 - 30);
-
-  ctx.font = 'bold 20px monospace';
+  ctx.shadowBlur = 0;
+  ctx.font = 'bold 22px monospace';
   ctx.fillStyle = r.won ? '#ffd700' : '#ff6666';
-  ctx.fillText(r.message, px + pw / 2, py + ph / 2 + 10);
-
+  ctx.fillText(r.message, px + pw / 2, py + ph / 2 + 15);
   // Play Again button
-  _casinoDrawButton(px + pw / 2 - 80, py + ph / 2 + 40, 160, 40, 'Play Again', true, false);
+  if (elapsed > 400) {
+    _casinoDrawButton(px + pw / 2 - 80, py + ph / 2 + 45, 160, 42, 'Play Again', true, false);
+  }
+  ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
   return true;
 }
 
 function _casinoHandleResultClick(mx, my, px, py, pw, ph) {
   if (!casinoState.result) return false;
-  if (_casinoHitBtn(mx, my, px + pw / 2 - 80, py + ph / 2 + 40, 160, 40)) {
+  if (Date.now() - casinoState.resultTimer < 400) return true; // wait for button to appear
+  if (_casinoHitBtn(mx, my, px + pw / 2 - 80, py + ph / 2 + 45, 160, 42)) {
     casinoResetGame();
     return true;
   }
@@ -177,37 +241,37 @@ function _casinoHandleResultClick(mx, my, px, py, pw, ph) {
 
 function drawCasinoPanel() {
   if (!UI.isOpen('casino') || !casinoState.activeGame) return;
-
   const { px, py } = _casinoGetPanelXY();
   const pw = _CASINO_PW, ph = _CASINO_PH;
-
   // Dimmed backdrop
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(0, 0, BASE_W, BASE_H);
-
-  // Panel bg
-  ctx.fillStyle = '#0a0a14';
-  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 12); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,215,0,0.4)';
+  // Panel bg with inner glow
+  ctx.fillStyle = '#08080f';
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 14); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,215,0,0.35)';
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 12); ctx.stroke();
-
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 14); ctx.stroke();
+  // Inner border
+  ctx.strokeStyle = 'rgba(255,215,0,0.08)';
+  ctx.beginPath(); ctx.roundRect(px + 4, py + 4, pw - 8, ph - 8, 12); ctx.stroke();
   // Title bar
-  ctx.fillStyle = 'rgba(40,30,10,0.6)';
+  const titleGrad = ctx.createLinearGradient(px, py, px + pw, py + 44);
+  titleGrad.addColorStop(0, 'rgba(60,40,10,0.6)');
+  titleGrad.addColorStop(1, 'rgba(30,20,5,0.6)');
+  ctx.fillStyle = titleGrad;
   ctx.beginPath(); ctx.roundRect(px + 3, py + 3, pw - 6, 42, [10, 10, 0, 0]); ctx.fill();
   const gameLabel = CASINO_GAMES.find(g => g.id === casinoState.activeGame);
   ctx.font = 'bold 20px monospace';
   ctx.fillStyle = '#ffd700';
   ctx.textAlign = 'center';
   ctx.fillText(gameLabel ? gameLabel.label.toUpperCase() : 'CASINO', px + pw / 2, py + 30);
-
   // Close button
   ctx.fillStyle = '#4a1a1a';
   ctx.beginPath(); ctx.roundRect(px + pw - 42, py + 8, 32, 32, 6); ctx.fill();
   ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#fff';
   ctx.textAlign = 'center'; ctx.fillText('\u2715', px + pw - 26, py + 30);
-
-  // Dispatch to game-specific draw
+  // Dispatch
   const g = casinoState.activeGame;
   if (g === 'blackjack') _drawBlackjack(px, py, pw, ph);
   else if (g === 'roulette') _drawRoulette(px, py, pw, ph);
@@ -215,7 +279,6 @@ function drawCasinoPanel() {
   else if (g === 'cases') _drawCases(px, py, pw, ph);
   else if (g === 'mines') _drawMines(px, py, pw, ph);
   else if (g === 'dice') _drawDice(px, py, pw, ph);
-
   ctx.textAlign = 'left';
   ctx.lineWidth = 1;
 }
@@ -228,20 +291,9 @@ function handleCasinoClick(mx, my) {
   if (!UI.isOpen('casino') || !casinoState.activeGame) return false;
   const { px, py } = _casinoGetPanelXY();
   const pw = _CASINO_PW, ph = _CASINO_PH;
-
-  // Outside panel
-  if (mx < px || mx > px + pw || my < py || my > py + ph) {
-    UI.close(); return true;
-  }
-  // Close button
-  if (_casinoHitBtn(mx, my, px + pw - 42, py + 8, 32, 32)) {
-    UI.close(); return true;
-  }
-
-  // Result overlay takes priority
+  if (mx < px || mx > px + pw || my < py || my > py + ph) { UI.close(); return true; }
+  if (_casinoHitBtn(mx, my, px + pw - 42, py + 8, 32, 32)) { UI.close(); return true; }
   if (_casinoHandleResultClick(mx, my, px, py, pw, ph)) return true;
-
-  // Dispatch to game-specific click
   const g = casinoState.activeGame;
   if (g === 'blackjack') return _clickBlackjack(mx, my, px, py, pw, ph);
   if (g === 'roulette') return _clickRoulette(mx, my, px, py, pw, ph);
@@ -253,343 +305,482 @@ function handleCasinoClick(mx, my) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  BLACKJACK
+//  BLACKJACK — animated card dealing
 // ═══════════════════════════════════════════════════════════════
 
 function _drawBlackjack(px, py, pw, ph) {
   const bj = casinoState.bj;
   const cx = px + pw / 2;
+  // Green felt background
+  ctx.fillStyle = '#0e3d0e';
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.fill();
+  ctx.strokeStyle = '#1a5a1a';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px + 8, py + 50, pw - 16, ph - 115, 10); ctx.stroke();
 
   if (bj.phase === 'betting') {
-    // Bet controls
     _casinoDrawBetControls(px, py, pw);
-    // Deal button
-    _casinoDrawButton(cx - 60, py + ph / 2 - 30, 120, 44, 'DEAL', gold >= _casinoBetInput, true);
-    // Instructions
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#888';
+    _casinoDrawButton(cx - 70, py + ph / 2 - 25, 140, 48, 'DEAL', gold >= _casinoBetInput, true);
+    ctx.font = '15px monospace';
+    ctx.fillStyle = '#8a8';
     ctx.textAlign = 'center';
-    ctx.fillText('Place your bet and deal', cx, py + 80);
+    ctx.fillText('Place your bet and deal', cx, py + 100);
     return;
   }
 
-  // Draw dealer hand
-  ctx.font = '13px monospace';
-  ctx.fillStyle = '#aaa';
-  ctx.textAlign = 'left';
-  ctx.fillText('Dealer', px + 20, py + 70);
+  // Dealing animation — cards slide in one by one
+  const dealElapsed = Date.now() - bj.dealTimer;
+  const dealing = bj.phase === 'dealing';
+  // Card order: player[0] 0ms, dealer[0] 250ms, player[1] 500ms, dealer[1] 750ms
+  const cardDelay = 200;
+  const slideDuration = 250;
+
+  // How many cards are visible during dealing
+  const visibleCards = dealing ? Math.floor(dealElapsed / cardDelay) + 1 : 99;
+  // Check if dealing is done
+  if (dealing && dealElapsed > cardDelay * 4 + slideDuration) {
+    casinoBJ_finishDeal();
+  }
+
   const showDealer = bj.phase === 'dealer' || bj.phase === 'result';
-  for (let i = 0; i < bj.dealerHand.length; i++) {
-    _casinoDrawCard(px + 40 + i * 52, py + 80, bj.dealerHand[i], i === 1 && !showDealer);
-  }
-  if (showDealer) {
-    ctx.font = 'bold 16px monospace';
-    ctx.fillStyle = _bjIsBust(bj.dealerHand) ? '#ff4a4a' : '#fff';
-    ctx.fillText(_bjHandValue(bj.dealerHand).toString(), px + 40 + bj.dealerHand.length * 52 + 10, py + 118);
-  }
 
-  // Draw player hand
-  ctx.font = '13px monospace';
-  ctx.fillStyle = '#aaa';
+  // Dealer hand
+  ctx.font = 'bold 13px monospace';
+  ctx.fillStyle = '#bdb';
   ctx.textAlign = 'left';
-  const playerLabel = bj.splitHand && !bj.playingSplit ? 'Hand 1 ▸' : bj.splitHand ? 'Hand 1' : 'Player';
-  ctx.fillText(playerLabel, px + 20, py + 200);
-  for (let i = 0; i < bj.playerHand.length; i++) {
-    _casinoDrawCard(px + 40 + i * 52, py + 210, bj.playerHand[i], false);
-  }
-  ctx.font = 'bold 16px monospace';
-  ctx.fillStyle = _bjIsBust(bj.playerHand) ? '#ff4a4a' : '#5fca80';
-  ctx.fillText(_bjHandValue(bj.playerHand).toString(), px + 40 + bj.playerHand.length * 52 + 10, py + 248);
-
-  // Draw split hand if exists
-  if (bj.splitHand) {
-    const splitLabel = bj.playingSplit ? 'Hand 2 ▸' : 'Hand 2';
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#aaa';
-    ctx.fillText(splitLabel, px + 20, py + 300);
-    for (let i = 0; i < bj.splitHand.length; i++) {
-      _casinoDrawCard(px + 40 + i * 52, py + 310, bj.splitHand[i], false);
+  ctx.fillText('DEALER', px + 24, py + 68);
+  for (let i = 0; i < bj.dealerHand.length; i++) {
+    const cardIdx = i === 0 ? 1 : 3; // deal order position
+    if (visibleCards <= cardIdx) continue;
+    // Slide animation
+    let slideProgress = 1;
+    if (dealing) {
+      const cardStart = cardIdx * cardDelay;
+      slideProgress = Math.min(1, Math.max(0, (dealElapsed - cardStart) / slideDuration));
     }
-    ctx.font = 'bold 16px monospace';
-    ctx.fillStyle = _bjIsBust(bj.splitHand) ? '#ff4a4a' : '#5fca80';
-    ctx.fillText(_bjHandValue(bj.splitHand).toString(), px + 40 + bj.splitHand.length * 52 + 10, py + 348);
+    const targetX = px + 50 + i * 56;
+    const startX = cx; // cards come from center (shoe position)
+    const cardX = startX + (targetX - startX) * _easeOutCubic(slideProgress);
+    const cardY = py + 78;
+    ctx.globalAlpha = slideProgress;
+    _casinoDrawCard(cardX, cardY, bj.dealerHand[i], i === 1 && !showDealer);
+    ctx.globalAlpha = 1;
+  }
+  if (showDealer && bj.dealerHand.length > 0) {
+    const totalX = px + 50 + bj.dealerHand.length * 56 + 12;
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = _bjIsBust(bj.dealerHand) ? '#ff5555' : '#fff';
+    ctx.textAlign = 'left';
+    ctx.fillText(_bjHandValue(bj.dealerHand).toString(), totalX, py + 120);
   }
 
-  // Bet amount display
-  ctx.font = '14px monospace';
+  // Player hand
+  ctx.font = 'bold 13px monospace';
+  ctx.fillStyle = '#bdb';
+  ctx.textAlign = 'left';
+  const pLabel = bj.splitHand ? (bj.playingSplit ? 'HAND 1' : 'HAND 1 \u25B8') : 'PLAYER';
+  ctx.fillText(pLabel, px + 24, py + 210);
+  for (let i = 0; i < bj.playerHand.length; i++) {
+    const cardIdx = i === 0 ? 0 : 2; // deal order position
+    if (visibleCards <= cardIdx) continue;
+    let slideProgress = 1;
+    if (dealing && i < 2) {
+      const cardStart = cardIdx * cardDelay;
+      slideProgress = Math.min(1, Math.max(0, (dealElapsed - cardStart) / slideDuration));
+    }
+    const targetX = px + 50 + i * 56;
+    const startX = cx;
+    const cardX = startX + (targetX - startX) * _easeOutCubic(slideProgress);
+    ctx.globalAlpha = slideProgress;
+    _casinoDrawCard(cardX, py + 220, bj.playerHand[i], false);
+    ctx.globalAlpha = 1;
+  }
+  if (bj.playerHand.length > 0 && !dealing) {
+    const totalX = px + 50 + bj.playerHand.length * 56 + 12;
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = _bjIsBust(bj.playerHand) ? '#ff5555' : '#5fca80';
+    ctx.textAlign = 'left';
+    ctx.fillText(_bjHandValue(bj.playerHand).toString(), totalX, py + 260);
+  }
+
+  // Split hand
+  if (bj.splitHand) {
+    ctx.font = 'bold 13px monospace';
+    ctx.fillStyle = '#bdb';
+    ctx.fillText(bj.playingSplit ? 'HAND 2 \u25B8' : 'HAND 2', px + 24, py + 320);
+    for (let i = 0; i < bj.splitHand.length; i++) {
+      _casinoDrawCard(px + 50 + i * 56, py + 330, bj.splitHand[i], false);
+    }
+    const stx = px + 50 + bj.splitHand.length * 56 + 12;
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = _bjIsBust(bj.splitHand) ? '#ff5555' : '#5fca80';
+    ctx.fillText(_bjHandValue(bj.splitHand).toString(), stx, py + 370);
+  }
+
+  // Bet display
+  ctx.font = 'bold 15px monospace';
   ctx.fillStyle = '#ffd700';
   ctx.textAlign = 'right';
-  ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 20, py + 70);
+  ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 24, py + 68);
 
-  // Action buttons (during player phase)
+  // Action buttons
   if (bj.phase === 'player') {
-    const btnY = py + ph - 80;
-    const btns = [];
-    btns.push({ label: 'Hit', x: cx - 220, enabled: true });
-    btns.push({ label: 'Stand', x: cx - 105, enabled: true });
-    btns.push({ label: 'Double', x: cx + 10, enabled: casinoBJ_canDouble() });
-    btns.push({ label: 'Split', x: cx + 125, enabled: casinoBJ_canSplit() });
-    for (const b of btns) {
-      _casinoDrawButton(b.x, btnY, 105, 38, b.label, b.enabled, false);
-    }
+    const btnY = py + ph - 62;
+    const btnW = 110;
+    const btns = [
+      { label: 'HIT', x: cx - btnW * 2 - 12, enabled: true },
+      { label: 'STAND', x: cx - btnW - 4, enabled: true },
+      { label: 'DOUBLE', x: cx + 4, enabled: casinoBJ_canDouble() },
+      { label: 'SPLIT', x: cx + btnW + 12, enabled: casinoBJ_canSplit() },
+    ];
+    for (const b of btns) _casinoDrawButton(b.x, btnY, btnW, 38, b.label, b.enabled, false);
   }
-
-  // Result
   _casinoDrawResult(px, py, pw, ph);
 }
+
+function _easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
 function _clickBlackjack(mx, my, px, py, pw, ph) {
   const bj = casinoState.bj;
   const cx = px + pw / 2;
-
   if (bj.phase === 'betting') {
     if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
-    // Deal button
-    if (_casinoHitBtn(mx, my, cx - 60, py + ph / 2 - 30, 120, 44) && gold >= _casinoBetInput) {
-      if (casinoPlaceBet(_casinoBetInput)) {
-        casinoBJ_deal();
-      }
+    if (_casinoHitBtn(mx, my, cx - 70, py + ph / 2 - 25, 140, 48) && gold >= _casinoBetInput) {
+      if (casinoPlaceBet(_casinoBetInput)) casinoBJ_deal();
       return true;
     }
     return true;
   }
-
   if (bj.phase === 'player') {
-    const btnY = py + ph - 80;
-    if (_casinoHitBtn(mx, my, cx - 220, btnY, 105, 38)) { casinoBJ_hit(); return true; }
-    if (_casinoHitBtn(mx, my, cx - 105, btnY, 105, 38)) { casinoBJ_stand(); return true; }
-    if (_casinoHitBtn(mx, my, cx + 10, btnY, 105, 38) && casinoBJ_canDouble()) { casinoBJ_double(); return true; }
-    if (_casinoHitBtn(mx, my, cx + 125, btnY, 105, 38) && casinoBJ_canSplit()) { casinoBJ_split(); return true; }
+    const btnY = py + ph - 62;
+    const btnW = 110;
+    if (_casinoHitBtn(mx, my, cx - btnW * 2 - 12, btnY, btnW, 38)) { casinoBJ_hit(); return true; }
+    if (_casinoHitBtn(mx, my, cx - btnW - 4, btnY, btnW, 38)) { casinoBJ_stand(); return true; }
+    if (_casinoHitBtn(mx, my, cx + 4, btnY, btnW, 38) && casinoBJ_canDouble()) { casinoBJ_double(); return true; }
+    if (_casinoHitBtn(mx, my, cx + btnW + 12, btnY, btnW, 38) && casinoBJ_canSplit()) { casinoBJ_split(); return true; }
   }
-
   return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ROULETTE
+//  ROULETTE — spinning wheel animation
 // ═══════════════════════════════════════════════════════════════
+
+function _drawRouletteWheel(cx, cy, radius, angle, resultNum) {
+  const order = ROULETTE_WHEEL_ORDER;
+  const segAngle = (Math.PI * 2) / order.length;
+  ctx.save();
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#3a2a10';
+  ctx.fill();
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Segments
+  for (let i = 0; i < order.length; i++) {
+    const n = order[i];
+    const startA = angle + i * segAngle;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, startA, startA + segAngle);
+    ctx.closePath();
+    ctx.fillStyle = ROULETTE_REDS.has(n) ? '#aa1111' : n === 0 ? '#007700' : '#111';
+    ctx.fill();
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+    // Number label
+    const midA = startA + segAngle / 2;
+    const tx = cx + Math.cos(midA) * (radius * 0.72);
+    const ty = cy + Math.sin(midA) * (radius * 0.72);
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.rotate(midA + Math.PI / 2);
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText(n.toString(), 0, 0);
+    ctx.restore();
+  }
+  // Center hub
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#2a1a0a';
+  ctx.fill();
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+  // Ball marker (top)
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(cx, cy - radius - 2, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#aaa';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // If result, highlight which number is at top
+  if (resultNum !== null && resultNum !== undefined) {
+    const idx = order.indexOf(resultNum);
+    if (idx >= 0) {
+      const numAngle = angle + idx * segAngle + segAngle / 2;
+      // Normalize to find if this segment is at the top (-PI/2)
+      const bx = cx + Math.cos(numAngle) * (radius * 0.9);
+      const by = cy + Math.sin(numAngle) * (radius * 0.9);
+    }
+  }
+}
 
 function _drawRoulette(px, py, pw, ph) {
   const rl = casinoState.rl;
+  const cx = px + pw / 2;
 
   if (rl.phase === 'spinning') {
-    // Spin animation — cycling numbers
     const elapsed = Date.now() - rl.spinTimer;
-    if (elapsed > 2000) {
+    const spinDuration = 3500;
+    if (elapsed > spinDuration) {
       casinoRL_resolve();
       return;
     }
-    const speed = Math.max(50, 300 - elapsed * 0.1);
-    const displayNum = Math.floor(Date.now() / speed) % 37;
-    const displayColor = ROULETTE_REDS.has(displayNum) ? '#cc1111' : displayNum === 0 ? '#00aa00' : '#111';
-    ctx.font = 'bold 80px monospace';
+    // Wheel animation: fast spin that decelerates
+    const progress = elapsed / spinDuration;
+    const decel = 1 - Math.pow(progress, 2); // slows down
+    const totalRotation = 15 + Math.random() * 0.01; // many full rotations
+    const angle = totalRotation * Math.PI * 2 * (progress - progress * progress / 2) * 0.15;
+    // Position the result number at top when stopped
+    const order = ROULETTE_WHEEL_ORDER;
+    const idx = order.indexOf(rl.resultNumber);
+    const segAngle = (Math.PI * 2) / order.length;
+    const finalAngle = -Math.PI / 2 - idx * segAngle - segAngle / 2;
+    // Blend towards final position
+    const currentAngle = progress < 0.8 ? angle : angle + (finalAngle - angle) * ((progress - 0.8) / 0.2);
+    _drawRouletteWheel(cx, py + ph / 2 - 20, 140, currentAngle, null);
+    // Spinning text
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = '#ffd700';
     ctx.textAlign = 'center';
-    ctx.fillStyle = displayColor;
-    ctx.fillText(displayNum.toString(), px + pw / 2, py + ph / 2 + 20);
-    ctx.font = '16px monospace';
-    ctx.fillStyle = '#aaa';
-    ctx.fillText('Spinning...', px + pw / 2, py + ph / 2 + 60);
+    ctx.fillText('Spinning...', cx, py + ph - 50);
     return;
   }
 
   if (rl.phase === 'result') {
-    // Show result number
+    // Show wheel stopped on result
+    const order = ROULETTE_WHEEL_ORDER;
+    const idx = order.indexOf(rl.resultNumber);
+    const segAngle = (Math.PI * 2) / order.length;
+    const finalAngle = -Math.PI / 2 - idx * segAngle - segAngle / 2;
+    _drawRouletteWheel(cx, py + 180, 120, finalAngle, rl.resultNumber);
+    // Result number display
     const n = rl.resultNumber;
-    const col = ROULETTE_REDS.has(n) ? '#cc1111' : n === 0 ? '#00aa00' : '#111';
-    ctx.font = 'bold 60px monospace';
-    ctx.textAlign = 'center';
+    const col = ROULETTE_REDS.has(n) ? '#cc1111' : n === 0 ? '#00aa00' : '#222';
     ctx.fillStyle = col;
-    ctx.fillText(n.toString(), px + pw / 2, py + 140);
-    ctx.font = '16px monospace';
-    ctx.fillStyle = '#aaa';
-    ctx.fillText(ROULETTE_REDS.has(n) ? 'Red' : n === 0 ? 'Green' : 'Black', px + pw / 2, py + 165);
+    ctx.beginPath(); ctx.roundRect(cx - 30, py + 60, 60, 50, 8); ctx.fill();
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(cx - 30, py + 60, 60, 50, 8); ctx.stroke();
+    ctx.font = 'bold 28px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText(n.toString(), cx, py + 95);
+    ctx.font = '13px monospace';
+    ctx.fillStyle = '#bbb';
+    ctx.fillText(ROULETTE_REDS.has(n) ? 'Red' : n === 0 ? 'Green' : 'Black', cx, py + 115);
     _casinoDrawResult(px, py, pw, ph);
     return;
   }
 
-  // BETTING PHASE — draw roulette grid + bet options
-  const gridX = px + 20, gridY = py + 60;
-  const cellW = 38, cellH = 28;
+  // BETTING PHASE — compact layout: grid left, bets list right
+  const gridX = px + 16, gridY = py + 58;
+  const cellW = 34, cellH = 26;
 
   // Zero
   ctx.fillStyle = '#006600';
   ctx.fillRect(gridX, gridY, cellW, cellH * 3);
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#888'; ctx.lineWidth = 1;
   ctx.strokeRect(gridX, gridY, cellW, cellH * 3);
-  ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px monospace'; ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   ctx.fillText('0', gridX + cellW / 2, gridY + cellH * 1.5 + 5);
 
-  // Number grid: 3 rows × 12 cols
+  // Number grid: 3 rows x 12 cols
   for (let col = 0; col < 12; col++) {
     for (let row = 0; row < 3; row++) {
-      const num = col * 3 + (3 - row); // 1-36 in standard layout
-      const cx2 = gridX + cellW + col * cellW;
-      const cy2 = gridY + row * cellH;
-      ctx.fillStyle = ROULETTE_REDS.has(num) ? '#881111' : '#111';
-      ctx.fillRect(cx2, cy2, cellW, cellH);
-      ctx.strokeStyle = '#555';
-      ctx.strokeRect(cx2, cy2, cellW, cellH);
-      ctx.fillStyle = '#fff';
-      ctx.font = '11px monospace';
+      const num = col * 3 + (3 - row);
+      const gx = gridX + cellW + col * cellW;
+      const gy = gridY + row * cellH;
+      ctx.fillStyle = ROULETTE_REDS.has(num) ? '#881111' : '#151515';
+      ctx.fillRect(gx, gy, cellW, cellH);
+      ctx.strokeStyle = '#444'; ctx.lineWidth = 1;
+      ctx.strokeRect(gx, gy, cellW, cellH);
+      ctx.fillStyle = '#ddd';
+      ctx.font = '10px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(num.toString(), cx2 + cellW / 2, cy2 + cellH / 2 + 4);
+      ctx.fillText(num.toString(), gx + cellW / 2, gy + cellH / 2 + 4);
     }
   }
 
-  // Outside bets buttons (below grid)
-  const obY = gridY + cellH * 3 + 10;
-  const outsideBets = [
-    { type: 'red', label: 'Red', color: '#881111' },
-    { type: 'black', label: 'Black', color: '#111' },
-    { type: 'odd', label: 'Odd', color: '#2a2a4a' },
-    { type: 'even', label: 'Even', color: '#2a2a4a' },
-    { type: 'low', label: '1-18', color: '#2a2a4a' },
-    { type: 'high', label: '19-36', color: '#2a2a4a' },
+  // Outside bets (below grid, 2 rows of 3)
+  const obY = gridY + cellH * 3 + 8;
+  const obW = (cellW * 13) / 3 - 4;
+  const obH = 26;
+  const outsideBets1 = [
+    { type: 'red', label: 'RED', color: '#881111' },
+    { type: 'black', label: 'BLACK', color: '#151515' },
+    { type: 'odd', label: 'ODD', color: '#1a1a2e' },
   ];
-  const obW = 72, obH = 30, obGap = 6;
-  for (let i = 0; i < outsideBets.length; i++) {
-    const bx = gridX + i * (obW + obGap);
-    const ob = outsideBets[i];
-    ctx.fillStyle = _casinoRL_selectedBet === ob.type ? '#3a5a2a' : ob.color;
-    ctx.beginPath(); ctx.roundRect(bx, obY, obW, obH, 4); ctx.fill();
-    ctx.strokeStyle = _casinoRL_selectedBet === ob.type ? '#5a8a4a' : '#555';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(bx, obY, obW, obH, 4); ctx.stroke();
-    ctx.font = '12px monospace';
-    ctx.fillStyle = '#fff';
+  const outsideBets2 = [
+    { type: 'even', label: 'EVEN', color: '#1a1a2e' },
+    { type: 'low', label: '1-18', color: '#1a1a2e' },
+    { type: 'high', label: '19-36', color: '#1a1a2e' },
+  ];
+  for (let i = 0; i < 3; i++) {
+    const bx = gridX + i * (obW + 4);
+    const ob = outsideBets1[i];
+    ctx.fillStyle = ob.color;
+    ctx.beginPath(); ctx.roundRect(bx, obY, obW, obH, 3); ctx.fill();
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(bx, obY, obW, obH, 3); ctx.stroke();
+    ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
     ctx.fillText(ob.label, bx + obW / 2, obY + obH / 2 + 4);
   }
-
-  // Dozen + Column bets
-  const dcY = obY + obH + 8;
-  const dcBets = [
-    { type: 'dozen1', label: '1st 12' }, { type: 'dozen2', label: '2nd 12' },
-    { type: 'dozen3', label: '3rd 12' }, { type: 'col1', label: 'Col 1' },
-    { type: 'col2', label: 'Col 2' }, { type: 'col3', label: 'Col 3' },
-  ];
-  for (let i = 0; i < dcBets.length; i++) {
-    const bx = gridX + i * (obW + obGap);
-    const db = dcBets[i];
-    ctx.fillStyle = _casinoRL_selectedBet === db.type ? '#3a5a2a' : '#1a1a2e';
-    ctx.beginPath(); ctx.roundRect(bx, dcY, obW, obH, 4); ctx.fill();
-    ctx.strokeStyle = _casinoRL_selectedBet === db.type ? '#5a8a4a' : '#3a3a5a';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(bx, dcY, obW, obH, 4); ctx.stroke();
-    ctx.font = '11px monospace';
-    ctx.fillStyle = '#fff';
+  const ob2Y = obY + obH + 4;
+  for (let i = 0; i < 3; i++) {
+    const bx = gridX + i * (obW + 4);
+    const ob = outsideBets2[i];
+    ctx.fillStyle = ob.color;
+    ctx.beginPath(); ctx.roundRect(bx, ob2Y, obW, obH, 3); ctx.fill();
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(bx, ob2Y, obW, obH, 3); ctx.stroke();
+    ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
-    ctx.fillText(db.label, bx + obW / 2, dcY + obH / 2 + 4);
+    ctx.fillText(ob.label, bx + obW / 2, ob2Y + obH / 2 + 4);
   }
 
-  // Current bets list (right side)
-  const listX = px + pw - 200, listY = py + 60;
-  ctx.font = 'bold 13px monospace';
+  // Dozens + Columns (below outside bets)
+  const dcY = ob2Y + obH + 8;
+  const dcW = (cellW * 13) / 3 - 4;
+  const dcBets1 = [
+    { type: 'dozen1', label: '1st 12' }, { type: 'dozen2', label: '2nd 12' }, { type: 'dozen3', label: '3rd 12' },
+  ];
+  const dcBets2 = [
+    { type: 'col1', label: 'Col 1' }, { type: 'col2', label: 'Col 2' }, { type: 'col3', label: 'Col 3' },
+  ];
+  for (let i = 0; i < 3; i++) {
+    const bx = gridX + i * (dcW + 4);
+    ctx.fillStyle = '#0e0e1e';
+    ctx.beginPath(); ctx.roundRect(bx, dcY, dcW, obH, 3); ctx.fill();
+    ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(bx, dcY, dcW, obH, 3); ctx.stroke();
+    ctx.font = '10px monospace'; ctx.fillStyle = '#bbb';
+    ctx.textAlign = 'center';
+    ctx.fillText(dcBets1[i].label, bx + dcW / 2, dcY + obH / 2 + 4);
+  }
+  const dc2Y = dcY + obH + 4;
+  for (let i = 0; i < 3; i++) {
+    const bx = gridX + i * (dcW + 4);
+    ctx.fillStyle = '#0e0e1e';
+    ctx.beginPath(); ctx.roundRect(bx, dc2Y, dcW, obH, 3); ctx.fill();
+    ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(bx, dc2Y, dcW, obH, 3); ctx.stroke();
+    ctx.font = '10px monospace'; ctx.fillStyle = '#bbb';
+    ctx.textAlign = 'center';
+    ctx.fillText(dcBets2[i].label, bx + dcW / 2, dc2Y + obH / 2 + 4);
+  }
+
+  // Right panel: bets list + actions
+  const listX = px + pw - 230, listY = py + 58;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.roundRect(listX - 8, listY - 8, 224, ph - 130, 8); ctx.fill();
+  ctx.font = 'bold 14px monospace';
   ctx.fillStyle = '#ffd700';
   ctx.textAlign = 'left';
-  ctx.fillText('Your Bets:', listX, listY);
+  ctx.fillText('Your Bets', listX, listY + 8);
   ctx.font = '12px monospace';
   ctx.fillStyle = '#ccc';
   for (let i = 0; i < Math.min(rl.bets.length, 10); i++) {
     const b = rl.bets[i];
-    const label = ROULETTE_BET_TYPES[b.type] ? ROULETTE_BET_TYPES[b.type].label : b.type + ':' + b.value;
-    ctx.fillText(label + ' — ' + b.amount + 'g', listX, listY + 20 + i * 18);
+    const label = ROULETTE_BET_TYPES[b.type] ? ROULETTE_BET_TYPES[b.type].label : '#' + b.value;
+    ctx.fillText(label + '  ' + b.amount + 'g', listX, listY + 30 + i * 18);
   }
-  if (rl.bets.length > 10) {
-    ctx.fillText('... +' + (rl.bets.length - 10) + ' more', listX, listY + 20 + 10 * 18);
-  }
+  if (rl.bets.length > 10) ctx.fillText('... +' + (rl.bets.length - 10) + ' more', listX, listY + 30 + 10 * 18);
   ctx.fillStyle = '#ffd700';
-  ctx.fillText('Total: ' + rl.totalBet + 'g', listX, listY + 20 + Math.min(rl.bets.length, 10) * 18 + 16);
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText('Total: ' + rl.totalBet + 'g', listX, listY + 240);
 
-  // Spin + Clear buttons
-  const spinY = py + ph - 80;
-  _casinoDrawButton(px + pw / 2 - 140, spinY, 120, 40, 'SPIN', rl.bets.length > 0, true);
-  _casinoDrawButton(px + pw / 2 + 20, spinY, 120, 40, 'Clear Bets', rl.bets.length > 0, false);
+  // Spin + Clear buttons (in right panel)
+  const sbY = listY + 260;
+  _casinoDrawButton(listX, sbY, 100, 36, 'SPIN', rl.bets.length > 0, true);
+  _casinoDrawButton(listX + 108, sbY, 100, 36, 'CLEAR', rl.bets.length > 0, false);
 
   // Bet controls
   _casinoDrawBetControls(px, py, pw);
-
-  // Instruction
-  if (!_casinoRL_selectedBet) {
-    ctx.font = '12px monospace';
-    ctx.fillStyle = '#888';
-    ctx.textAlign = 'center';
-    ctx.fillText('Select a bet type, then click a number or outside bet', px + pw / 2, spinY - 10);
-  }
 }
 
 function _clickRoulette(mx, my, px, py, pw, ph) {
   const rl = casinoState.rl;
   if (rl.phase !== 'betting') return true;
+  const gridX = px + 16, gridY = py + 58;
+  const cellW = 34, cellH = 26;
+  const obW = (cellW * 13) / 3 - 4, obH = 26;
+  const listX = px + pw - 230, listY = py + 58;
 
-  const gridX = px + 20, gridY = py + 60;
-  const cellW = 38, cellH = 28;
-  const obY = gridY + cellH * 3 + 10;
-  const obW = 72, obH = 30, obGap = 6;
-  const dcY = obY + obH + 8;
-
-  // Bet preset clicks
   if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
 
-  // Spin button
-  const spinY = py + ph - 80;
-  if (_casinoHitBtn(mx, my, px + pw / 2 - 140, spinY, 120, 40) && rl.bets.length > 0) {
-    casinoRL_spin();
-    return true;
-  }
-  // Clear button
-  if (_casinoHitBtn(mx, my, px + pw / 2 + 20, spinY, 120, 40) && rl.bets.length > 0) {
-    casinoRL_clearBets();
-    return true;
-  }
+  // Spin/Clear
+  const sbY = listY + 260;
+  if (_casinoHitBtn(mx, my, listX, sbY, 100, 36) && rl.bets.length > 0) { casinoRL_spin(); return true; }
+  if (_casinoHitBtn(mx, my, listX + 108, sbY, 100, 36) && rl.bets.length > 0) { casinoRL_clearBets(); return true; }
 
-  // Zero click
+  // Zero
   if (mx >= gridX && mx <= gridX + cellW && my >= gridY && my <= gridY + cellH * 3) {
-    casinoRL_placeBet('straight', 0, _casinoBetInput);
-    return true;
+    casinoRL_placeBet('straight', 0, _casinoBetInput); return true;
   }
-
-  // Number grid click (straight bet)
+  // Numbers
   for (let col = 0; col < 12; col++) {
     for (let row = 0; row < 3; row++) {
-      const cx2 = gridX + cellW + col * cellW;
-      const cy2 = gridY + row * cellH;
-      if (_casinoHitBtn(mx, my, cx2, cy2, cellW, cellH)) {
-        const num = col * 3 + (3 - row);
-        casinoRL_placeBet('straight', num, _casinoBetInput);
-        return true;
+      const gx = gridX + cellW + col * cellW, gy = gridY + row * cellH;
+      if (_casinoHitBtn(mx, my, gx, gy, cellW, cellH)) {
+        casinoRL_placeBet('straight', col * 3 + (3 - row), _casinoBetInput); return true;
       }
     }
   }
-
-  // Outside bet buttons
-  const outsideTypes = ['red', 'black', 'odd', 'even', 'low', 'high'];
-  for (let i = 0; i < outsideTypes.length; i++) {
-    const bx = gridX + i * (obW + obGap);
-    if (_casinoHitBtn(mx, my, bx, obY, obW, obH)) {
-      casinoRL_placeBet(outsideTypes[i], null, _casinoBetInput);
-      return true;
-    }
+  // Outside bets row 1
+  const obY = gridY + cellH * 3 + 8;
+  const outsideTypes1 = ['red', 'black', 'odd'];
+  for (let i = 0; i < 3; i++) {
+    const bx = gridX + i * (obW + 4);
+    if (_casinoHitBtn(mx, my, bx, obY, obW, obH)) { casinoRL_placeBet(outsideTypes1[i], null, _casinoBetInput); return true; }
   }
-
-  // Dozen/Column bets
-  const dcTypes = ['dozen1', 'dozen2', 'dozen3', 'col1', 'col2', 'col3'];
-  for (let i = 0; i < dcTypes.length; i++) {
-    const bx = gridX + i * (obW + obGap);
-    if (_casinoHitBtn(mx, my, bx, dcY, obW, obH)) {
-      casinoRL_placeBet(dcTypes[i], null, _casinoBetInput);
-      return true;
-    }
+  // Outside bets row 2
+  const ob2Y = obY + obH + 4;
+  const outsideTypes2 = ['even', 'low', 'high'];
+  for (let i = 0; i < 3; i++) {
+    const bx = gridX + i * (obW + 4);
+    if (_casinoHitBtn(mx, my, bx, ob2Y, obW, obH)) { casinoRL_placeBet(outsideTypes2[i], null, _casinoBetInput); return true; }
   }
-
+  // Dozens
+  const dcY = ob2Y + obH + 8;
+  const dcTypes1 = ['dozen1', 'dozen2', 'dozen3'];
+  const dcW = obW;
+  for (let i = 0; i < 3; i++) {
+    const bx = gridX + i * (dcW + 4);
+    if (_casinoHitBtn(mx, my, bx, dcY, dcW, obH)) { casinoRL_placeBet(dcTypes1[i], null, _casinoBetInput); return true; }
+  }
+  // Columns
+  const dc2Y = dcY + obH + 4;
+  const dcTypes2 = ['col1', 'col2', 'col3'];
+  for (let i = 0; i < 3; i++) {
+    const bx = gridX + i * (dcW + 4);
+    if (_casinoHitBtn(mx, my, bx, dc2Y, dcW, obH)) { casinoRL_placeBet(dcTypes2[i], null, _casinoBetInput); return true; }
+  }
   return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  HEADS OR TAILS
+//  HEADS OR TAILS — fixed layout, better animation
 // ═══════════════════════════════════════════════════════════════
 
 function _drawHeadsOrTails(px, py, pw, ph) {
@@ -598,70 +789,113 @@ function _drawHeadsOrTails(px, py, pw, ph) {
 
   if (hot.phase === 'betting') {
     _casinoDrawBetControls(px, py, pw);
-    _casinoDrawButton(cx - 60, py + ph / 2 - 30, 120, 44, 'START', gold >= _casinoBetInput, true);
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#888';
-    ctx.textAlign = 'center';
-    ctx.fillText('Win streaks multiply your bet by 1.5x each flip', cx, py + 80);
-    ctx.fillText('Cash out anytime or lose it all on tails!', cx, py + 100);
+    _casinoDrawButton(cx - 70, py + ph / 2 - 25, 140, 48, 'START', gold >= _casinoBetInput, true);
+    ctx.font = '14px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center';
+    ctx.fillText('Win streaks multiply your bet by 1.5x each flip', cx, py + 100);
+    ctx.fillText('Cash out anytime or lose it all on tails!', cx, py + 122);
     return;
   }
 
-  // Coin display
-  const coinY = py + 160;
-  const coinR = 50;
+  // Bet display (top right, out of the way)
+  ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#ffd700';
+  ctx.textAlign = 'right';
+  ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 24, py + 68);
+  ctx.fillText('\u2B25 ' + gold + 'g', px + pw - 24, py + 88);
 
-  // Flip animation
+  // Coin — centered vertically in panel
+  const coinCX = cx;
+  const coinCY = py + 190;
+  const coinR = 60;
+
+  // Flip animation (3D-like Y rotation)
   let flipScale = 1;
+  let showFace = true;
   if (hot.flipTimer) {
     const elapsed = Date.now() - hot.flipTimer;
-    if (elapsed < 600) {
-      flipScale = Math.abs(Math.cos(elapsed / 600 * Math.PI * 3));
+    if (elapsed < 800) {
+      const phase = (elapsed / 800) * Math.PI * 4; // 2 full rotations
+      flipScale = Math.abs(Math.cos(phase));
+      showFace = Math.cos(phase) > 0;
     }
   }
 
   ctx.save();
-  ctx.translate(cx, coinY);
-  ctx.scale(1, flipScale);
-  ctx.beginPath();
-  ctx.arc(0, 0, coinR, 0, Math.PI * 2);
-  ctx.fillStyle = hot.lastFlip === 'tails' ? '#888' : '#ffd700';
-  ctx.fill();
-  ctx.strokeStyle = hot.lastFlip === 'tails' ? '#555' : '#b8860b';
+  ctx.translate(coinCX, coinCY);
+  ctx.scale(1, flipScale || 0.01);
+
+  // Coin shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.arc(3, 3, coinR, 0, Math.PI * 2); ctx.fill();
+
+  // Coin body
+  const isHeads = showFace ? (hot.lastFlip !== 'tails') : (hot.lastFlip === 'tails');
+  const coinGrad = ctx.createRadialGradient(-10, -10, 5, 0, 0, coinR);
+  if (isHeads) {
+    coinGrad.addColorStop(0, '#ffe44d');
+    coinGrad.addColorStop(1, '#cc9900');
+  } else {
+    coinGrad.addColorStop(0, '#aaa');
+    coinGrad.addColorStop(1, '#555');
+  }
+  ctx.fillStyle = coinGrad;
+  ctx.beginPath(); ctx.arc(0, 0, coinR, 0, Math.PI * 2); ctx.fill();
+  // Rim
+  ctx.strokeStyle = isHeads ? '#8a6a00' : '#333';
   ctx.lineWidth = 4;
-  ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, coinR, 0, Math.PI * 2); ctx.stroke();
   ctx.lineWidth = 1;
-  if (flipScale > 0.3) {
-    ctx.font = 'bold 24px monospace';
-    ctx.fillStyle = hot.lastFlip === 'tails' ? '#333' : '#8a6a00';
+
+  // Face text
+  if (flipScale > 0.2) {
+    ctx.font = 'bold 36px monospace';
+    ctx.fillStyle = isHeads ? '#6a4a00' : '#222';
     ctx.textAlign = 'center';
-    ctx.fillText(hot.lastFlip ? (hot.lastFlip === 'heads' ? 'H' : 'T') : '?', 0, 9);
+    const faceChar = hot.lastFlip ? (isHeads ? 'H' : 'T') : '?';
+    ctx.fillText(faceChar, 0, 13);
   }
   ctx.restore();
 
-  // Streak info
-  ctx.font = 'bold 18px monospace';
-  ctx.fillStyle = '#fff';
+  // Stats area — below coin with clear spacing
+  const infoY = coinCY + coinR + 30;
+  const lineH = 30;
+
   ctx.textAlign = 'center';
-  ctx.fillText('Streak: ' + hot.streak, cx, coinY + 80);
+  ctx.font = 'bold 16px monospace';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('Streak: ' + hot.streak, cx, infoY);
+
+  ctx.font = 'bold 18px monospace';
   ctx.fillStyle = '#ffd700';
-  ctx.fillText('Multiplier: ' + hot.currentMultiplier.toFixed(2) + 'x', cx, coinY + 105);
-  ctx.fillStyle = '#5fca80';
+  ctx.fillText('Multiplier: ' + hot.currentMultiplier.toFixed(2) + 'x', cx, infoY + lineH);
+
   const potential = Math.floor(casinoState.bet * hot.currentMultiplier);
-  ctx.fillText('Payout: ' + potential + 'g', cx, coinY + 130);
+  ctx.font = 'bold 18px monospace';
+  ctx.fillStyle = '#5fca80';
+  ctx.fillText('Payout: ' + potential + 'g', cx, infoY + lineH * 2);
 
-  // Bet amount
-  ctx.font = '14px monospace';
-  ctx.fillStyle = '#ffd700';
-  ctx.textAlign = 'right';
-  ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 20, py + 70);
+  // Flip history (small coins)
+  if (hot.streak > 0) {
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#666';
+    ctx.fillText('History:', cx, infoY + lineH * 2 + 28);
+    const histY = infoY + lineH * 2 + 38;
+    const maxShow = Math.min(hot.streak, 12);
+    const histStartX = cx - maxShow * 10;
+    for (let i = 0; i < maxShow; i++) {
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath(); ctx.arc(histStartX + i * 20, histY + 8, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8a6a00';
+      ctx.font = 'bold 8px monospace';
+      ctx.fillText('H', histStartX + i * 20, histY + 11);
+    }
+  }
 
-  // Buttons
+  // Buttons — at bottom, well separated
   if (hot.phase === 'streaking') {
-    const btnY = py + ph - 80;
-    _casinoDrawButton(cx - 140, btnY, 120, 40, 'FLIP', true, false);
+    const btnY = py + ph - 62;
+    _casinoDrawButton(cx - 145, btnY, 130, 42, 'FLIP', true, false);
     if (hot.streak > 0) {
-      _casinoDrawButton(cx + 20, btnY, 120, 40, 'CASH OUT', true, true);
+      _casinoDrawButton(cx + 15, btnY, 130, 42, 'CASH OUT', true, true);
     }
   }
 
@@ -671,165 +905,128 @@ function _drawHeadsOrTails(px, py, pw, ph) {
 function _clickHeadsOrTails(mx, my, px, py, pw, ph) {
   const hot = casinoState.hot;
   const cx = px + pw / 2;
-
   if (hot.phase === 'betting') {
     if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
-    if (_casinoHitBtn(mx, my, cx - 60, py + ph / 2 - 30, 120, 44) && gold >= _casinoBetInput) {
-      casinoHOT_startRound(_casinoBetInput);
-      return true;
+    if (_casinoHitBtn(mx, my, cx - 70, py + ph / 2 - 25, 140, 48) && gold >= _casinoBetInput) {
+      casinoHOT_startRound(_casinoBetInput); return true;
     }
     return true;
   }
-
   if (hot.phase === 'streaking') {
-    const btnY = py + ph - 80;
-    if (_casinoHitBtn(mx, my, cx - 140, btnY, 120, 40)) { casinoHOT_flip(); return true; }
-    if (hot.streak > 0 && _casinoHitBtn(mx, my, cx + 20, btnY, 120, 40)) { casinoHOT_cashOut(); return true; }
+    const btnY = py + ph - 62;
+    if (_casinoHitBtn(mx, my, cx - 145, btnY, 130, 42)) { casinoHOT_flip(); return true; }
+    if (hot.streak > 0 && _casinoHitBtn(mx, my, cx + 15, btnY, 130, 42)) { casinoHOT_cashOut(); return true; }
   }
-
   return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASES
+//  CASES — same as before but with result overlay fix
 // ═══════════════════════════════════════════════════════════════
 
 function _drawCases(px, py, pw, ph) {
   const cs = casinoState.cs;
   const cx = px + pw / 2;
-
   if (cs.phase === 'opening') {
-    // Opening animation
     const elapsed = Date.now() - cs.openTimer;
-    if (elapsed > 1500) {
-      casinoCS_reveal();
-      return;
-    }
-    // Shaking case
-    const shake = Math.sin(elapsed / 30) * (5 - elapsed / 300);
+    if (elapsed > 1800) { casinoCS_reveal(); return; }
     const tier = CASE_TIERS[cs.selectedTier];
+    // Shaking case with glow buildup
+    const shake = Math.sin(elapsed / 25) * Math.max(0, 6 - elapsed / 300);
+    const glow = Math.min(1, elapsed / 1200);
     ctx.save();
-    ctx.translate(cx + shake, py + ph / 2 - 40);
+    ctx.translate(cx + shake, py + ph / 2 - 30);
+    // Glow
+    ctx.shadowColor = tier.color;
+    ctx.shadowBlur = glow * 30;
     ctx.fillStyle = tier.color;
-    ctx.beginPath(); ctx.roundRect(-50, -30, 100, 60, 8); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-60, -35, 120, 70, 10); ctx.fill();
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = '#ffd700';
     ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.roundRect(-50, -30, 100, 60, 8); ctx.stroke();
-    ctx.lineWidth = 1;
-    ctx.font = 'bold 16px monospace';
+    ctx.beginPath(); ctx.roundRect(-60, -35, 120, 70, 10); ctx.stroke();
+    // Handle
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-14, -42, 28, 10);
+    ctx.font = 'bold 28px monospace';
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
-    ctx.fillText('?', 0, 8);
+    ctx.fillText('?', 0, 10);
     ctx.restore();
     ctx.font = '16px monospace';
-    ctx.fillStyle = '#aaa';
-    ctx.textAlign = 'center';
-    ctx.fillText('Opening...', cx, py + ph / 2 + 50);
+    ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
+    ctx.fillText('Opening...', cx, py + ph / 2 + 60);
     return;
   }
-
-  if (cs.phase === 'result') {
-    _casinoDrawResult(px, py, pw, ph);
-    return;
-  }
-
-  // SELECTING phase — show 3 cases
-  ctx.font = '14px monospace';
-  ctx.fillStyle = '#888';
-  ctx.textAlign = 'center';
+  if (cs.phase === 'result') { _casinoDrawResult(px, py, pw, ph); return; }
+  // SELECTING phase
+  ctx.font = '15px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center';
   ctx.fillText('Choose a case to open', cx, py + 70);
-
-  // Gold display
-  ctx.fillStyle = '#ffd700';
-  ctx.textAlign = 'right';
-  ctx.fillText('Gold: ' + gold, px + pw - 20, py + 70);
-
+  ctx.fillStyle = '#ffd700'; ctx.textAlign = 'right';
+  ctx.fillText('\u2B25 ' + gold + 'g', px + pw - 24, py + 70);
   const tiers = ['cheap', 'medium', 'expensive'];
-  const caseW = 180, caseH = 300, caseGap = 20;
+  const caseW = 190, caseH = 310, caseGap = 18;
   const startX = cx - (caseW * 3 + caseGap * 2) / 2;
-
   for (let i = 0; i < 3; i++) {
     const tier = CASE_TIERS[tiers[i]];
     const tx = startX + i * (caseW + caseGap);
-    const ty = py + 90;
+    const ty = py + 88;
     const canAfford = gold >= tier.cost;
-
-    // Case card
-    ctx.fillStyle = canAfford ? '#0f0f1e' : '#0a0a12';
+    ctx.fillStyle = canAfford ? '#0c0c1a' : '#08080e';
     ctx.beginPath(); ctx.roundRect(tx, ty, caseW, caseH, 8); ctx.fill();
-    ctx.strokeStyle = canAfford ? tier.color : '#333';
+    ctx.strokeStyle = canAfford ? tier.color : '#222';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(tx, ty, caseW, caseH, 8); ctx.stroke();
-    ctx.lineWidth = 1;
-
     // Case icon
     ctx.fillStyle = tier.color;
-    ctx.globalAlpha = canAfford ? 1 : 0.4;
-    ctx.beginPath(); ctx.roundRect(tx + caseW / 2 - 30, ty + 20, 60, 40, 6); ctx.fill();
-    ctx.strokeStyle = '#ffd700';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(tx + caseW / 2 - 30, ty + 20, 60, 40, 6); ctx.stroke();
-    ctx.lineWidth = 1;
-    // Handle
-    ctx.strokeRect(tx + caseW / 2 - 12, ty + 14, 24, 8);
+    ctx.globalAlpha = canAfford ? 1 : 0.3;
+    ctx.beginPath(); ctx.roundRect(tx + caseW / 2 - 35, ty + 20, 70, 45, 6); ctx.fill();
+    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(tx + caseW / 2 - 35, ty + 20, 70, 45, 6); ctx.stroke();
+    ctx.strokeRect(tx + caseW / 2 - 14, ty + 13, 28, 10);
     ctx.globalAlpha = 1;
-
-    // Tier label
-    ctx.font = 'bold 16px monospace';
-    ctx.fillStyle = tier.color;
-    ctx.textAlign = 'center';
-    ctx.fillText(tier.label, tx + caseW / 2, ty + 85);
-
-    // Cost
-    ctx.font = 'bold 14px monospace';
-    ctx.fillStyle = canAfford ? '#ffd700' : '#666';
-    ctx.fillText(tier.cost + 'g', tx + caseW / 2, ty + 108);
-
-    // Outcomes list
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'left';
+    ctx.font = 'bold 16px monospace'; ctx.fillStyle = tier.color; ctx.textAlign = 'center';
+    ctx.fillText(tier.label, tx + caseW / 2, ty + 88);
+    ctx.font = 'bold 14px monospace'; ctx.fillStyle = canAfford ? '#ffd700' : '#555';
+    ctx.fillText(tier.cost + 'g', tx + caseW / 2, ty + 110);
+    ctx.font = '11px monospace'; ctx.textAlign = 'left';
     const totalWeight = tier.outcomes.reduce((s, o) => s + o.weight, 0);
     for (let j = 0; j < tier.outcomes.length; j++) {
       const o = tier.outcomes[j];
       const pct = Math.round(o.weight / totalWeight * 100);
-      const oy = ty + 130 + j * 28;
-      // Rarity bar
-      const barW = (o.weight / totalWeight) * (caseW - 40);
-      ctx.fillStyle = j === 0 ? '#444' : j === 1 ? '#3a5a3a' : j === 2 ? '#3a3a6a' : '#6a3a3a';
-      ctx.fillRect(tx + 10, oy, barW, 18);
-      // Label
-      ctx.fillStyle = '#fff';
-      ctx.fillText(o.label + ' (' + pct + '%)', tx + 14, oy + 14);
+      const oy = ty + 128 + j * 32;
+      const barW = (o.weight / totalWeight) * (caseW - 30);
+      const colors = ['#333', '#2a4a2a', '#2a2a5a', '#5a2a2a'];
+      ctx.fillStyle = colors[j] || '#333';
+      ctx.beginPath(); ctx.roundRect(tx + 10, oy, barW, 22, 3); ctx.fill();
+      ctx.fillStyle = '#ddd';
+      ctx.fillText(o.label + ' (' + pct + '%)', tx + 14, oy + 16);
     }
-
-    // Open button
-    _casinoDrawButton(tx + caseW / 2 - 50, ty + caseH - 45, 100, 32, 'OPEN', canAfford, canAfford);
+    _casinoDrawButton(tx + caseW / 2 - 55, ty + caseH - 48, 110, 34, 'OPEN', canAfford, canAfford);
   }
 }
 
 function _clickCases(mx, my, px, py, pw, ph) {
   const cs = casinoState.cs;
   if (cs.phase !== 'selecting') return true;
-
   const cx = px + pw / 2;
   const tiers = ['cheap', 'medium', 'expensive'];
-  const caseW = 180, caseH = 300, caseGap = 20;
+  const caseW = 190, caseH = 310, caseGap = 18;
   const startX = cx - (caseW * 3 + caseGap * 2) / 2;
-
   for (let i = 0; i < 3; i++) {
     const tier = CASE_TIERS[tiers[i]];
     const tx = startX + i * (caseW + caseGap);
-    const ty = py + 90;
-    if (_casinoHitBtn(mx, my, tx + caseW / 2 - 50, ty + caseH - 45, 100, 32) && gold >= tier.cost) {
-      casinoCS_open(tiers[i]);
-      return true;
+    const ty = py + 88;
+    if (_casinoHitBtn(mx, my, tx + caseW / 2 - 55, ty + caseH - 48, 110, 34) && gold >= tier.cost) {
+      casinoCS_open(tiers[i]); return true;
     }
   }
   return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  MINES
+//  MINES — selectable mine count
 // ═══════════════════════════════════════════════════════════════
 
 function _drawMines(px, py, pw, ph) {
@@ -838,22 +1035,46 @@ function _drawMines(px, py, pw, ph) {
 
   if (mn.phase === 'betting') {
     _casinoDrawBetControls(px, py, pw);
-    _casinoDrawButton(cx - 60, py + ph / 2 - 30, 120, 44, 'START', gold >= _casinoBetInput, true);
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#888';
-    ctx.textAlign = 'center';
-    ctx.fillText('5x5 grid with 5 hidden mines', cx, py + 80);
-    ctx.fillText('Reveal safe tiles to increase your multiplier', cx, py + 100);
-    ctx.fillText('Cash out anytime or hit a mine and lose!', cx, py + 120);
+
+    // Mine count selector
+    ctx.font = 'bold 15px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText('Mines: ' + mn.mineCount, cx, py + 90);
+
+    // - and + buttons
+    _casinoDrawButton(cx - 100, py + 100, 40, 34, '-', mn.mineCount > MINES_CONFIG.MIN_MINES, false);
+    _casinoDrawButton(cx + 60, py + 100, 40, 34, '+', mn.mineCount < MINES_CONFIG.MAX_MINES, false);
+
+    // Preset mine counts
+    const mPresets = [1, 3, 5, 10, 15, 20, 24];
+    const mpW = 42, mpGap = 6;
+    const mpStartX = cx - (mPresets.length * (mpW + mpGap) - mpGap) / 2;
+    for (let i = 0; i < mPresets.length; i++) {
+      const bx = mpStartX + i * (mpW + mpGap);
+      const active = mn.mineCount === mPresets[i];
+      ctx.fillStyle = active ? '#2a4a1a' : '#111';
+      ctx.beginPath(); ctx.roundRect(bx, py + 145, mpW, 26, 4); ctx.fill();
+      ctx.strokeStyle = active ? '#5a8a4a' : '#2a2a3a'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(bx, py + 145, mpW, 26, 4); ctx.stroke();
+      ctx.font = '11px monospace'; ctx.fillStyle = active ? '#8f8' : '#aaa'; ctx.textAlign = 'center';
+      ctx.fillText(mPresets[i] + '', bx + mpW / 2, py + 162);
+    }
+
+    // Info text
+    ctx.font = '13px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center';
+    const safeTiles = 25 - mn.mineCount;
+    ctx.fillText('5x5 grid \u00B7 ' + mn.mineCount + ' mines \u00B7 ' + safeTiles + ' safe tiles', cx, py + 195);
+    ctx.fillText('More mines = higher multipliers!', cx, py + 215);
+
+    _casinoDrawButton(cx - 70, py + ph / 2 + 20, 140, 48, 'START', gold >= _casinoBetInput, true);
     return;
   }
 
-  // Draw the grid
+  // Grid
   const gridSize = MINES_CONFIG.GRID_SIZE;
-  const cellSize = 64;
+  const cellSize = 62;
   const gridW = gridSize * cellSize;
-  const gridX = cx - gridW / 2;
-  const gridY = py + 70;
+  const gridX = cx - gridW / 2 - 50;
+  const gridY = py + 65;
   const isResult = mn.phase === 'result';
 
   for (let r = 0; r < gridSize; r++) {
@@ -863,62 +1084,80 @@ function _drawMines(px, py, pw, ph) {
       const revealed = mn.revealed && mn.revealed[r][c];
       const isMine = mn.board && mn.board[r][c];
 
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath(); ctx.roundRect(gx + 4, gy + 4, cellSize - 6, cellSize - 6, 6); ctx.fill();
+
       if (revealed) {
         if (isMine) {
-          // Mine - red
-          ctx.fillStyle = '#4a1111';
-          ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 4, cellSize - 4, 4); ctx.fill();
-          ctx.font = 'bold 28px monospace';
+          ctx.fillStyle = '#3a0808';
+          ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.fill();
+          ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.stroke();
+          // Mine icon (drawn, not emoji)
+          const mcx = gx + cellSize / 2 - 1, mcy = gy + cellSize / 2 - 1;
           ctx.fillStyle = '#ff4444';
-          ctx.textAlign = 'center';
-          ctx.fillText('💣', gx + cellSize / 2, gy + cellSize / 2 + 10);
+          ctx.beginPath(); ctx.arc(mcx, mcy, 12, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#ff6666'; ctx.lineWidth = 2;
+          for (let a = 0; a < 8; a++) {
+            const ang = a * Math.PI / 4;
+            ctx.beginPath();
+            ctx.moveTo(mcx + Math.cos(ang) * 10, mcy + Math.sin(ang) * 10);
+            ctx.lineTo(mcx + Math.cos(ang) * 16, mcy + Math.sin(ang) * 16);
+            ctx.stroke();
+          }
         } else {
-          // Safe - green
-          ctx.fillStyle = '#1a3a1a';
-          ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 4, cellSize - 4, 4); ctx.fill();
-          ctx.font = 'bold 24px monospace';
-          ctx.fillStyle = '#5fca80';
-          ctx.textAlign = 'center';
-          ctx.fillText('✓', gx + cellSize / 2, gy + cellSize / 2 + 8);
+          ctx.fillStyle = '#0e2e0e';
+          ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.fill();
+          ctx.strokeStyle = '#2a6a2a'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.stroke();
+          // Checkmark
+          ctx.strokeStyle = '#5fca80'; ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(gx + 18, gy + cellSize / 2);
+          ctx.lineTo(gx + cellSize / 2 - 4, gy + cellSize / 2 + 10);
+          ctx.lineTo(gx + cellSize - 16, gy + cellSize / 2 - 10);
+          ctx.stroke();
         }
       } else if (isResult && isMine) {
-        // Show hidden mines on game over
-        ctx.fillStyle = '#2a1111';
-        ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 4, cellSize - 4, 4); ctx.fill();
-        ctx.font = '20px monospace';
-        ctx.fillStyle = '#cc4444';
-        ctx.textAlign = 'center';
-        ctx.fillText('✕', gx + cellSize / 2, gy + cellSize / 2 + 7);
+        ctx.fillStyle = '#1a0808';
+        ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.fill();
+        ctx.font = '20px monospace'; ctx.fillStyle = '#aa3333'; ctx.textAlign = 'center';
+        ctx.fillText('\u2716', gx + cellSize / 2, gy + cellSize / 2 + 7);
       } else {
-        // Unrevealed
-        ctx.fillStyle = '#1a1a2e';
-        ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 4, cellSize - 4, 4); ctx.fill();
-        ctx.strokeStyle = '#3a3a5a';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 4, cellSize - 4, 4); ctx.stroke();
+        // Unrevealed tile with subtle gradient
+        const tileGrad = ctx.createLinearGradient(gx, gy, gx, gy + cellSize);
+        tileGrad.addColorStop(0, '#1e1e30');
+        tileGrad.addColorStop(1, '#141422');
+        ctx.fillStyle = tileGrad;
+        ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.fill();
+        ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(gx + 2, gy + 2, cellSize - 6, cellSize - 6, 6); ctx.stroke();
       }
     }
   }
 
   // Stats panel (right side)
-  const statsX = gridX + gridW + 30;
-  ctx.font = 'bold 14px monospace';
-  ctx.textAlign = 'left';
+  const statsX = gridX + gridW + 20;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.roundRect(statsX - 8, gridY - 4, 190, 250, 8); ctx.fill();
+  ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
+  ctx.fillStyle = '#aaa'; ctx.fillText('Mines: ' + mn.mineCount, statsX, gridY + 16);
+  ctx.fillStyle = '#ffd700'; ctx.fillText('Bet: ' + casinoState.bet + 'g', statsX, gridY + 44);
+  ctx.fillStyle = '#fff'; ctx.fillText('Revealed: ' + mn.safeRevealed, statsX, gridY + 72);
   ctx.fillStyle = '#ffd700';
-  ctx.fillText('Bet: ' + casinoState.bet + 'g', statsX, gridY + 20);
-  ctx.fillStyle = '#fff';
-  ctx.fillText('Revealed: ' + mn.safeRevealed, statsX, gridY + 50);
-  ctx.fillStyle = '#ffd700';
-  ctx.fillText('Multiplier: ' + mn.currentMultiplier.toFixed(2) + 'x', statsX, gridY + 80);
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText(mn.currentMultiplier.toFixed(2) + 'x', statsX, gridY + 104);
+  ctx.font = '12px monospace'; ctx.fillStyle = '#888'; ctx.fillText('multiplier', statsX, gridY + 120);
   ctx.fillStyle = '#5fca80';
+  ctx.font = 'bold 18px monospace';
   const mPayout = Math.floor(casinoState.bet * mn.currentMultiplier);
-  ctx.fillText('Payout: ' + mPayout + 'g', statsX, gridY + 110);
+  ctx.fillText(mPayout + 'g', statsX, gridY + 150);
+  ctx.font = '12px monospace'; ctx.fillStyle = '#888'; ctx.fillText('payout', statsX, gridY + 166);
 
-  // Cash out button
   if (mn.phase === 'playing' && mn.safeRevealed > 0) {
-    _casinoDrawButton(statsX, gridY + 140, 130, 40, 'CASH OUT', true, true);
+    _casinoDrawButton(statsX, gridY + 185, 160, 42, 'CASH OUT', true, true);
   }
-
   _casinoDrawResult(px, py, pw, ph);
 }
 
@@ -928,45 +1167,51 @@ function _clickMines(mx, my, px, py, pw, ph) {
 
   if (mn.phase === 'betting') {
     if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
-    if (_casinoHitBtn(mx, my, cx - 60, py + ph / 2 - 30, 120, 44) && gold >= _casinoBetInput) {
-      casinoMN_start(_casinoBetInput);
-      return true;
+    // Mine count - / +
+    if (_casinoHitBtn(mx, my, cx - 100, py + 100, 40, 34) && mn.mineCount > MINES_CONFIG.MIN_MINES) {
+      mn.mineCount--; return true;
+    }
+    if (_casinoHitBtn(mx, my, cx + 60, py + 100, 40, 34) && mn.mineCount < MINES_CONFIG.MAX_MINES) {
+      mn.mineCount++; return true;
+    }
+    // Mine count presets
+    const mPresets = [1, 3, 5, 10, 15, 20, 24];
+    const mpW = 42, mpGap = 6;
+    const mpStartX = cx - (mPresets.length * (mpW + mpGap) - mpGap) / 2;
+    for (let i = 0; i < mPresets.length; i++) {
+      if (_casinoHitBtn(mx, my, mpStartX + i * (mpW + mpGap), py + 145, mpW, 26)) {
+        mn.mineCount = mPresets[i]; return true;
+      }
+    }
+    // Start
+    if (_casinoHitBtn(mx, my, cx - 70, py + ph / 2 + 20, 140, 48) && gold >= _casinoBetInput) {
+      casinoMN_start(_casinoBetInput); return true;
     }
     return true;
   }
 
   if (mn.phase === 'playing') {
     const gridSize = MINES_CONFIG.GRID_SIZE;
-    const cellSize = 64;
+    const cellSize = 62;
     const gridW = gridSize * cellSize;
-    const gridX = cx - gridW / 2;
-    const gridY = py + 70;
-
-    // Cash out button
-    const statsX = gridX + gridW + 30;
-    if (mn.safeRevealed > 0 && _casinoHitBtn(mx, my, statsX, gridY + 140, 130, 40)) {
-      casinoMN_cashOut();
-      return true;
+    const gridX = cx - gridW / 2 - 50;
+    const gridY = py + 65;
+    const statsX = gridX + gridW + 20;
+    if (mn.safeRevealed > 0 && _casinoHitBtn(mx, my, statsX, gridY + 185, 160, 42)) {
+      casinoMN_cashOut(); return true;
     }
-
-    // Grid click
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
-        const gx = gridX + c * cellSize;
-        const gy = gridY + r * cellSize;
-        if (_casinoHitBtn(mx, my, gx, gy, cellSize, cellSize)) {
-          casinoMN_reveal(r, c);
-          return true;
-        }
+        const gx = gridX + c * cellSize, gy = gridY + r * cellSize;
+        if (_casinoHitBtn(mx, my, gx, gy, cellSize, cellSize)) { casinoMN_reveal(r, c); return true; }
       }
     }
   }
-
   return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DICE
+//  DICE — animated rolling
 // ═══════════════════════════════════════════════════════════════
 
 function _drawDice(px, py, pw, ph) {
@@ -975,90 +1220,93 @@ function _drawDice(px, py, pw, ph) {
 
   if (dc.phase === 'betting') {
     _casinoDrawBetControls(px, py, pw);
-    _casinoDrawButton(cx - 60, py + ph / 2 - 30, 120, 44, 'ROLL', gold >= _casinoBetInput, true);
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#888';
-    ctx.textAlign = 'center';
-    ctx.fillText('Roll the first die, then predict the second!', cx, py + 80);
-    ctx.fillText('Payouts based on actual probability (5% edge)', cx, py + 100);
+    _casinoDrawButton(cx - 70, py + ph / 2 - 25, 140, 48, 'ROLL', gold >= _casinoBetInput, true);
+    ctx.font = '14px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center';
+    ctx.fillText('Roll the first die, then predict the second!', cx, py + 100);
+    ctx.fillText('Payouts based on actual probability (5% edge)', cx, py + 122);
     return;
   }
 
-  // Rolling2 animation check
+  // Check phase transitions
+  if (dc.phase === 'rolling1') {
+    const elapsed = Date.now() - dc.rollTimer;
+    if (elapsed > 1200) dc.phase = 'rolled1';
+  }
   if (dc.phase === 'rolling2') {
     const elapsed = Date.now() - dc.rollTimer;
-    if (elapsed > 1000) {
-      casinoDC_resolve();
-    }
+    if (elapsed > 1200) casinoDC_resolve();
   }
 
-  // Draw dice
-  const dieSize = 80;
-  const die1X = cx - dieSize - 30, dieY = py + 120;
-  _casinoDrawDie(die1X, dieY, dieSize, dc.die1);
-  ctx.font = '14px monospace';
-  ctx.fillStyle = '#aaa';
-  ctx.textAlign = 'center';
-  ctx.fillText('Die 1', die1X + dieSize / 2, dieY - 10);
+  // Felt background for dice area
+  ctx.fillStyle = '#0e2e0e';
+  ctx.beginPath(); ctx.roundRect(px + 50, py + 70, pw - 100, 180, 10); ctx.fill();
 
-  const die2X = cx + 30;
-  if (dc.phase === 'rolling2') {
+  const dieSize = 90;
+  const die1X = cx - dieSize - 40, dieY = py + 110;
+  const die2X = cx + 40;
+
+  // Die 1
+  ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#bdb'; ctx.textAlign = 'center';
+  ctx.fillText('DIE 1', die1X + dieSize / 2, dieY - 12);
+  if (dc.phase === 'rolling1') {
     const elapsed = Date.now() - dc.rollTimer;
-    const showVal = elapsed > 800 ? dc.die2 : (Math.floor(Date.now() / 80) % 6) + 1;
-    _casinoDrawDie(die2X, dieY, dieSize, showVal);
-  } else if (dc.die2 > 0) {
-    _casinoDrawDie(die2X, dieY, dieSize, dc.die2);
+    const speed = Math.max(60, 200 - elapsed * 0.12);
+    const tumbleVal = (Math.floor(Date.now() / speed) % 6) + 1;
+    const rotation = (elapsed / 100) * (1 - elapsed / 1500);
+    const bounce = Math.sin(elapsed / 80) * Math.max(0, 8 - elapsed / 150);
+    _casinoDrawDie(die1X, dieY + bounce, dieSize, tumbleVal, rotation);
   } else {
-    // Placeholder
-    ctx.fillStyle = '#1a1a2e';
-    ctx.beginPath(); ctx.roundRect(die2X, dieY, dieSize, dieSize, 6); ctx.fill();
-    ctx.strokeStyle = '#3a3a5a';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(die2X, dieY, dieSize, dieSize, 6); ctx.stroke();
-    ctx.lineWidth = 1;
-    ctx.font = 'bold 30px monospace';
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'center';
-    ctx.fillText('?', die2X + dieSize / 2, dieY + dieSize / 2 + 10);
+    _casinoDrawDie(die1X, dieY, dieSize, dc.die1, 0);
   }
-  ctx.font = '14px monospace';
-  ctx.fillStyle = '#aaa';
-  ctx.textAlign = 'center';
-  ctx.fillText('Die 2', die2X + dieSize / 2, dieY - 10);
+
+  // Die 2
+  ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#bdb'; ctx.textAlign = 'center';
+  ctx.fillText('DIE 2', die2X + dieSize / 2, dieY - 12);
+  if (dc.phase === 'rolling2') {
+    const elapsed = Date.now() - dc.rollTimer;
+    const speed = Math.max(60, 200 - elapsed * 0.12);
+    const tumbleVal = elapsed > 900 ? dc.die2 : (Math.floor(Date.now() / speed) % 6) + 1;
+    const rotation = elapsed > 900 ? 0 : (elapsed / 100) * (1 - elapsed / 1500);
+    const bounce = elapsed > 900 ? 0 : Math.sin(elapsed / 80) * Math.max(0, 8 - elapsed / 150);
+    _casinoDrawDie(die2X, dieY + bounce, dieSize, tumbleVal, rotation);
+  } else if (dc.die2 > 0) {
+    _casinoDrawDie(die2X, dieY, dieSize, dc.die2, 0);
+  } else {
+    // Empty placeholder
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.roundRect(die2X, dieY, dieSize, dieSize, 8); ctx.fill();
+    ctx.strokeStyle = '#3a3a5a'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.roundRect(die2X, dieY, dieSize, dieSize, 8); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineWidth = 1;
+    ctx.font = 'bold 32px monospace'; ctx.fillStyle = '#333'; ctx.textAlign = 'center';
+    ctx.fillText('?', die2X + dieSize / 2, dieY + dieSize / 2 + 11);
+  }
 
   // Bet display
-  ctx.font = '14px monospace';
-  ctx.fillStyle = '#ffd700';
-  ctx.textAlign = 'right';
-  ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 20, py + 70);
+  ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'right';
+  ctx.fillText('Bet: ' + casinoState.bet + 'g', px + pw - 24, py + 68);
 
-  // Choice + selected display
+  // Choice display
   if (dc.choice) {
-    ctx.font = 'bold 16px monospace';
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.fillText('You chose: ' + dc.choice.toUpperCase(), cx, dieY + dieSize + 30);
+    ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'center';
+    ctx.fillText('You chose: ' + dc.choice.toUpperCase(), cx, py + 280);
   }
 
-  // Choice buttons (after die1 rolled)
+  // Choice buttons
   if (dc.phase === 'rolled1') {
     const legal = casinoDC_getLegalChoices();
-    const btnY = dieY + dieSize + 40;
-    const btnW = 140, btnGap = 20;
+    const btnY = py + 300;
+    const btnW = 150, btnGap = 16;
     const totalW = legal.length * btnW + (legal.length - 1) * btnGap;
     const startBtnX = cx - totalW / 2;
-
     for (let i = 0; i < legal.length; i++) {
       const choice = legal[i];
       const bx = startBtnX + i * (btnW + btnGap);
       const payoutMult = DICE_PAYOUTS[dc.die1][choice];
       const label = choice.charAt(0).toUpperCase() + choice.slice(1) + ' (' + payoutMult.toFixed(2) + 'x)';
-      _casinoDrawButton(bx, btnY, btnW, 42, label, true, false);
+      _casinoDrawButton(bx, btnY, btnW, 44, label, true, false);
     }
-
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#888';
-    ctx.textAlign = 'center';
+    ctx.font = '13px monospace'; ctx.fillStyle = '#8a8'; ctx.textAlign = 'center';
     ctx.fillText('Will die 2 be higher, lower, or equal to ' + dc.die1 + '?', cx, btnY + 62);
   }
 
@@ -1068,33 +1316,23 @@ function _drawDice(px, py, pw, ph) {
 function _clickDice(mx, my, px, py, pw, ph) {
   const dc = casinoState.dc;
   const cx = px + pw / 2;
-
   if (dc.phase === 'betting') {
     if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
-    if (_casinoHitBtn(mx, my, cx - 60, py + ph / 2 - 30, 120, 44) && gold >= _casinoBetInput) {
-      casinoDC_start(_casinoBetInput);
-      return true;
+    if (_casinoHitBtn(mx, my, cx - 70, py + ph / 2 - 25, 140, 48) && gold >= _casinoBetInput) {
+      casinoDC_start(_casinoBetInput); return true;
     }
     return true;
   }
-
   if (dc.phase === 'rolled1') {
-    const dieSize = 80;
-    const dieY = py + 120;
     const legal = casinoDC_getLegalChoices();
-    const btnY = dieY + dieSize + 40;
-    const btnW = 140, btnGap = 20;
+    const btnY = py + 300;
+    const btnW = 150, btnGap = 16;
     const totalW = legal.length * btnW + (legal.length - 1) * btnGap;
     const startBtnX = cx - totalW / 2;
-
     for (let i = 0; i < legal.length; i++) {
       const bx = startBtnX + i * (btnW + btnGap);
-      if (_casinoHitBtn(mx, my, bx, btnY, btnW, 42)) {
-        casinoDC_choose(legal[i]);
-        return true;
-      }
+      if (_casinoHitBtn(mx, my, bx, btnY, btnW, 44)) { casinoDC_choose(legal[i]); return true; }
     }
   }
-
   return true;
 }
