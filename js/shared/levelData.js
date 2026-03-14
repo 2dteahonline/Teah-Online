@@ -124,9 +124,9 @@ const LEVELS = {
       // === EARTH-205 DUNGEON (east district, below vortalis row) ===
       { type: 'building_earth205', tx: 50, ty: 24, w: 7, h: 8, solid: true },
       { type: 'earth205_entrance', tx: 52, ty: 31, w: 3, h: 2, solid: false, target: 'earth205_01', spawnTX: 20, spawnTY: 19 },
-      // === DINER (west district, next to Skeld) ===
-      { type: 'building_diner', tx: 36, ty: 24, w: 7, h: 8, solid: true },
-      { type: 'diner_entrance', tx: 38, ty: 31, w: 3, h: 2, solid: false, target: 'diner_01', spawnTX: 27, spawnTY: 33 },
+      // === DINER (west district, below deli) ===
+      { type: 'building_diner', tx: 3, ty: 24, w: 7, h: 8, solid: true },
+      { type: 'diner_entrance', tx: 5, ty: 31, w: 3, h: 2, solid: false, target: 'diner_01', spawnTX: 27, spawnTY: 33 },
       // === CRYSTAL FORMATIONS (replacing trees, 3 variants) ===
       { type: 'tree', tx: 10, ty: 38, solid: true, variant: 1 },
       { type: 'tree', tx: 22, ty: 44, solid: true, variant: 0 },

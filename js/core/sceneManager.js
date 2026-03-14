@@ -125,7 +125,7 @@ const LEAVE_HANDLERS = {
     cleanup() {},
     get returnLevel() { return 'lobby_01'; },
     get returnTX() {
-      if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') return 39;
+      if (typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') return 6;
       return 6;
     },
     get returnTY() {
