@@ -786,16 +786,22 @@ window.addEventListener("keydown", e => {
             chatMessages.push({ name: "SYSTEM", text: "/ghost only works in Mafia mode.", time: Date.now() });
           }
         } else if (cmdLower.startsWith("/role")) {
-          // /role impostor  or  /role crewmate — Mafia debug command
+          // /role <team or subrole> — Mafia debug command
           const rolePart = cmd.split(" ")[1] || "";
           const roleNorm = rolePart.toLowerCase();
           // Accept both "impostor" and "imposter"
           const resolvedRole = (roleNorm === 'imposter') ? 'impostor' : roleNorm;
-          if (typeof MafiaSystem !== 'undefined' && Scene.inSkeld && (resolvedRole === 'impostor' || resolvedRole === 'crewmate')) {
-            MafiaSystem.setRole(resolvedRole);
-            chatMessages.push({ name: "SYSTEM", text: "Role set to " + resolvedRole.toUpperCase(), time: Date.now() });
+          if (typeof MafiaSystem !== 'undefined' && Scene.inSkeld && MafiaState.phase !== 'idle') {
+            const result = MafiaSystem.setRole(resolvedRole);
+            if (result) {
+              chatMessages.push({ name: "SYSTEM", text: result, time: Date.now() });
+            } else {
+              const validRoles = ['impostor', 'crewmate'];
+              if (typeof MAFIA_ROLES !== 'undefined') validRoles.push(...Object.keys(MAFIA_ROLES));
+              chatMessages.push({ name: "SYSTEM", text: "Usage: /role <" + validRoles.join(' | ') + ">", time: Date.now() });
+            }
           } else {
-            chatMessages.push({ name: "SYSTEM", text: "Usage: /role impostor | /role crewmate (must be in Skeld)", time: Date.now() });
+            chatMessages.push({ name: "SYSTEM", text: "Must be in an active Mafia match to use /role", time: Date.now() });
           }
         } else if (cmdLower.startsWith("/sabo")) {
           // /sabo <reactor|o2|lights> — debug: trigger sabotage as crewmate

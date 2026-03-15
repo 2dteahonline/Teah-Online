@@ -225,22 +225,43 @@ window.MafiaSystem = {
 
 
   // ===================== ROLE COMMAND =====================
-  // /role impostor  or  /role crewmate
+  // /role impostor | crewmate | engineer | tracker | scientist | noisemaker | shapeshifter | phantom | viper
   setRole(roleName) {
     const mk = MafiaState;
     if (mk.phase === 'idle') return;
 
     const role = roleName.toLowerCase();
-    if (role !== 'impostor' && role !== 'crewmate') return;
 
-    mk.playerRole = role;
-    const localP = this.getLocalPlayer();
-    if (localP) localP.role = role;
-
-    // Reset kill cooldown when switching to impostor
-    if (role === 'impostor') {
-      mk.killCooldown = 0;
+    // Direct team role
+    if (role === 'impostor' || role === 'crewmate') {
+      mk.playerRole = role;
+      mk.playerSubrole = null;
+      const localP = this.getLocalPlayer();
+      if (localP) { localP.role = role; localP.subrole = null; }
+      if (role === 'impostor') mk.killCooldown = 0;
+      return 'Role set to ' + role.toUpperCase();
     }
+
+    // Subrole — look up in MAFIA_ROLES
+    if (typeof MAFIA_ROLES !== 'undefined' && MAFIA_ROLES[role]) {
+      const roleDef = MAFIA_ROLES[role];
+      mk.playerRole = roleDef.team;
+      mk.playerSubrole = role;
+      const localP = this.getLocalPlayer();
+      if (localP) { localP.role = roleDef.team; localP.subrole = role; }
+      if (roleDef.team === 'impostor') mk.killCooldown = 0;
+      // Reset role state so abilities start fresh
+      mk._roleState = {
+        trackedTarget: null, trackTimer: 0, trackCooldown: 0,
+        vitalsOpen: false, vitalsTimer: 0, vitalsCooldown: 0,
+        shiftedAs: null, shiftTimer: 0, shiftCooldown: 0,
+        invisible: false, invisTimer: 0, invisCooldown: 0,
+        deathAlert: null,
+      };
+      return 'Role set to ' + roleDef.name + ' (' + roleDef.team + ')';
+    }
+
+    return null; // invalid
   },
 
 
