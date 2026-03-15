@@ -15,6 +15,17 @@ function drawLevelBackground(camX, camY) {
   const endTX = Math.min(level.widthTiles - 1, startTX + Math.ceil(VIEW_W / TILE) + 1);
   const endTY = Math.min(level.heightTiles - 1, startTY + Math.ceil(VIEW_H / TILE) + 1);
 
+  // Cache dungeon palette once per frame (not per-tile)
+  const _pal = (Scene.inDungeon && typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[currentDungeon] && FLOOR_CONFIG[currentDungeon][dungeonFloor])
+    ? FLOOR_CONFIG[currentDungeon][dungeonFloor].palette || {}
+    : {};
+  const _pFloor1 = _pal.floor1 || '#3a3840';
+  const _pFloor2 = _pal.floor2 || '#383638';
+  const _pWall = _pal.wall || '#2a2a32';
+  const _pWallAccent = _pal.wallAccent || '#454552';
+  const _pAccent2 = _pal.accent2 || '#8a2020';
+  const _pGridLine = _pal.gridLine || '#32303a';
+
   for (let ty = startTY; ty <= endTY; ty++) {
     for (let tx = startTX; tx <= endTX; tx++) {
       const x = tx * TILE - camX;
@@ -540,17 +551,7 @@ function drawLevelBackground(camX, camY) {
         continue;
       }
 
-      // === DUNGEON TILES (palette-driven) ===
-      // Read palette from FLOOR_CONFIG if available
-      const _pal = (typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[currentDungeon] && FLOOR_CONFIG[currentDungeon][dungeonFloor])
-        ? FLOOR_CONFIG[currentDungeon][dungeonFloor].palette || {}
-        : {};
-      const _pFloor1 = _pal.floor1 || '#3a3840';
-      const _pFloor2 = _pal.floor2 || '#383638';
-      const _pWall = _pal.wall || '#2a2a32';
-      const _pWallAccent = _pal.wallAccent || '#454552';
-      const _pAccent2 = _pal.accent2 || '#8a2020';
-      const _pGridLine = _pal.gridLine || '#32303a';
+      // === DUNGEON TILES (palette-driven, cached above loop) ===
 
       if (collisionGrid[ty][tx] === 1) {
         if (isBorder) {
