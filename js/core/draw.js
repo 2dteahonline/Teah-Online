@@ -2209,8 +2209,22 @@ function draw() {
     drawPlacementPreview(cx, cy);
   }
 
-  // ===== PLAYER HP BAR (top center) — hidden in Skeld =====
-  if (Scene.inSkeld) { /* skip HP bar */ } else {
+  // ===== PLAYER HP BAR (top center) — hidden in Skeld & Casino =====
+  if (Scene.inCasino) {
+    // Show gold balance instead of HP bar
+    const balW = 260, balH = 32;
+    const balX = BASE_W / 2 - balW / 2, balY = 12;
+    ctx.fillStyle = 'rgba(13,27,42,0.9)';
+    ctx.beginPath(); ctx.roundRect(balX, balY, balW, balH, 8); ctx.fill();
+    ctx.strokeStyle = '#1a2a3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(balX, balY, balW, balH, 8); ctx.stroke();
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText('\u2B25 ' + gold + 'g', BASE_W / 2, balY + 23);
+    ctx.textAlign = 'left';
+  } else if (Scene.inSkeld) { /* skip HP bar */ } else {
   const hpBarW = 360, hpBarH = 24;
   const hpBarX = BASE_W / 2 - hpBarW / 2;
   const hpBarY = 16;
