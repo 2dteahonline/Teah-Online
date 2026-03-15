@@ -17,7 +17,7 @@ MOB_SPECIALS.mire_spit = (m, ctx) => {
         vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
         fromPlayer: false, mobBullet: true, damage: Math.round(48 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#6a4a8a',
-        onHitPlayer: () => {
+        onHitPlayer: (b, hitTarget) => {
           StatusFX.applyToPlayer('slow', { duration: 60, amount: 0.4 });
         },
       });

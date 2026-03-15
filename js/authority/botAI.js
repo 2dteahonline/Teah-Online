@@ -15,7 +15,6 @@ const BotAI = {
 
   // Main tick — called once per frame for all bots
   tick() {
-    if (!PartyState.active) return;
     for (const member of PartyState.members) {
       if (member.controlType !== 'bot' || !member.active) continue;
       if (member.dead) {
@@ -539,7 +538,7 @@ const BotAI = {
         if (item.action()) {
           item.bought++;
           // Show effect on ALL members
-          if (typeof PartyState !== 'undefined' && PartyState.active) {
+          if (PartyState.members.length > 0) {
             for (const _pm of PartyState.members) {
               if (!_pm.dead && _pm.entity) {
                 hitEffects.push({ x: _pm.entity.x, y: _pm.entity.y - 30, life: 20, type: "heal", dmg: "Party Lifesteal +5" });

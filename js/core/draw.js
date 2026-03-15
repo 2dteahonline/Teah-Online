@@ -259,7 +259,7 @@ function draw() {
   sortedChars.push({ y: player.y, type: "player" });
   for (const m of mobs) if (m.hp > 0) sortedChars.push({ y: m.y, type: "mob", mob: m });
   // Party bots — render as characters with Y-sorting
-  if (typeof PartyState !== 'undefined' && PartyState.active) {
+  if (PartyState.members.length > 1) {
     for (const pm of PartyState.members) {
       if (pm.controlType !== 'bot' || !pm.active) continue;
       if (pm.dead && pm.deathTimer <= 0) continue; // fully dead, don't render
@@ -2444,7 +2444,7 @@ function draw() {
   ctx.textAlign = "left";
 
   // ===== PARTY HUD — member status panel =====
-  if (typeof PartyState !== 'undefined' && PartyState.active && Scene.inDungeon) {
+  if (PartyState.members.length > 1 && Scene.inDungeon) {
     const _phX = 10, _phY = 140;
     ctx.font = "bold 11px monospace";
     ctx.textAlign = "left";
@@ -2494,7 +2494,7 @@ function draw() {
   }
 
   // ===== SPECTATOR OVERLAY =====
-  if (typeof PartyState !== 'undefined' && PartyState.active && playerDead && !PartySystem.allDead() && Scene.inDungeon) {
+  if (PartyState.members.length > 1 && playerDead && !PartySystem.allDead() && Scene.inDungeon) {
     // Dim screen edges
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(0, 0, BASE_W, 40);
@@ -2509,7 +2509,7 @@ function draw() {
   }
 
   // ===== REVIVE SHOP OVERLAY =====
-  if (typeof PartyState !== 'undefined' && PartyState.active && waveState === 'revive_shop' && Scene.inDungeon) {
+  if (PartyState.members.length > 1 && waveState === 'revive_shop' && Scene.inDungeon) {
     const _rsW = 300, _rsH = 200;
     const _rsX = (BASE_W - _rsW) / 2, _rsY = (BASE_H - _rsH) / 2 - 30;
     // Background
@@ -2651,7 +2651,7 @@ function draw() {
   // === DEATH / RESPAWN OVERLAY ===
   if (playerDead) {
     // Check if we're in spectator mode (party alive, player out of lives, past death anim)
-    const _isSpectating = typeof PartyState !== 'undefined' && PartyState.active
+    const _isSpectating = PartyState.members.length > 1
       && !PartySystem.allDead() && lives <= 0 && deathTimer <= 0 && respawnTimer <= 0;
 
     if (_isSpectating) {

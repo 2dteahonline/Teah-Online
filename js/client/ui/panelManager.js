@@ -854,7 +854,7 @@ window.addEventListener("keydown", e => {
               chatMessages.push({ name: "SYSTEM", text: "Party set to " + sz + " members (" + (sz - 1) + " bots).", time: Date.now() });
             }
           } else {
-            const _partyActive = typeof PartyState !== 'undefined' && PartyState.active;
+            const _partyActive = PartyState.members.length > 1;
             const _partySize = _partyActive ? PartyState.members.length : 0;
             chatMessages.push({ name: "SYSTEM", text: "Party: " + (_partyActive ? _partySize + "P active" : "inactive") + ". Usage: /party <1-4> | /party reset", time: Date.now() });
           }

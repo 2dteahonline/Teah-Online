@@ -393,7 +393,7 @@ MOB_SPECIALS.paralysis_dart = (m, ctx) => {
     vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
     fromPlayer: false, mobBullet: true, damage: Math.round(m.damage * 0.5 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#77cc44',
-    onHitPlayer: () => { StatusFX.applyToPlayer('root', { duration: 42 }); hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "stun" }); },
+    onHitPlayer: (b, hitTarget) => { StatusFX.applyToPlayer('root', { duration: 42 }); hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 30, type: "stun" }); },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
   m._specialTimer = m._specialCD || 540;
@@ -415,7 +415,7 @@ MOB_SPECIALS.shard_spread = (m, ctx) => {
       vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
       fromPlayer: false, mobBullet: true, damage: Math.round(m.damage * 0.6 * getMobDamageMultiplier()),
       ownerId: m.id, bulletColor: '#88ddff',
-      onHitPlayer: () => { StatusFX.applyToPlayer('slow', { amount: 0.3, duration: 90 }); },
+      onHitPlayer: (b, hitTarget) => { StatusFX.applyToPlayer('slow', { amount: 0.3, duration: 90 }); },
     });
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -501,7 +501,7 @@ MOB_SPECIALS.venom_spit = (m, ctx) => {
     vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7 - 2,
     fromPlayer: false, mobBullet: true, damage: Math.round(m.damage * 0.6 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#44cc22',
-    onHitPlayer: () => { StatusFX.applyToPlayer('poison', { duration: 180, dmg: Math.round(m.damage * 0.15) }); },
+    onHitPlayer: (b, hitTarget) => { StatusFX.applyToPlayer('poison', { duration: 180, dmg: Math.round(m.damage * 0.15) }); },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
   m._specialTimer = m._specialCD || 480;

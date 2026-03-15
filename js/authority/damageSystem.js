@@ -327,12 +327,12 @@ const GUN_BEHAVIORS = {
 // Heal multipliers per melee source (used in processKill)
 const MELEE_HEAL_MULTS = {
   gun: 2.0,
-  melee: function() {
-    if (melee.special === 'ninja' && melee.dashActive) return 2.0;
-    if (melee.special === 'storm') return 1.5;
+  melee: function(m) {
+    if (m.special === 'ninja' && m.dashActive) return 2.0;
+    if (m.special === 'storm') return 1.5;
     return 1.0;
   },
-  ninja_splash: function() { return melee.dashActive ? 2.0 : 1.0; },
+  ninja_splash: function(m) { return m.dashActive ? 2.0 : 1.0; },
   ninja_dash_kill: 2.0,
   storm_shock: 1.5,
   storm_chain: 1.5,
@@ -344,9 +344,9 @@ const MELEE_HEAL_MULTS = {
   piercing_blood: 1.5,
 };
 
-function getKillHealMult(source) {
+function getKillHealMult(source, killerMelee) {
   const entry = MELEE_HEAL_MULTS[source];
-  if (typeof entry === 'function') return entry();
+  if (typeof entry === 'function') return entry(killerMelee || melee);
   if (typeof entry === 'number') return entry;
   return 1.0;
 }
@@ -364,7 +364,7 @@ function processKill(mob, source, killerId) {
   }
 
   // Resolve member + entity — works identically for player or any remote user
-  const _partyActive = typeof PartySystem !== 'undefined' && PartyState.active;
+  const _partyActive = PartyState.members.length > 0;
   const killerMember = _partyActive ? PartySystem.getMemberById(killerId) : null;
   const killerEntity = killerMember ? killerMember.entity : player;
   const killerEquip = killerMember ? killerMember.equip : playerEquip;
@@ -404,7 +404,7 @@ function processKill(mob, source, killerId) {
   }
 
   // Source-specific heal multiplier (from MELEE_HEAL_MULTS registry)
-  const healMult = getKillHealMult(source);
+  const healMult = getKillHealMult(source, killerMelee);
 
   // Apply chest armor heal boost — uses killer's own equipment
   const chestHealBoost = killerEquip.chest && killerEquip.chest.healBoost ? killerEquip.chest.healBoost : 0;

@@ -153,9 +153,7 @@ function resetCombatState(mode) {
     reviveUsed = false;
     player._reviveUsed = false;
     // Reset revive for party bots too
-    if (typeof PartyState !== 'undefined' && PartyState.active) {
-      for (const m of PartyState.members) { if (m.entity) m.entity._reviveUsed = false; }
-    }
+    for (const m of PartyState.members) { if (m.entity) m.entity._reviveUsed = false; }
     recalcMaxHp(); player.hp = player.maxHp;
     contactCooldown = 60;
     // Shop runtime state lives in shopState; _resetShopPrices handles all of it
@@ -178,9 +176,7 @@ function resetCombatState(mode) {
     potion.count += 2;
     reviveUsed = false;
     player._reviveUsed = false;
-    if (typeof PartyState !== 'undefined' && PartyState.active) {
-      for (const m of PartyState.members) { if (m.entity) m.entity._reviveUsed = false; }
-    }
+    for (const m of PartyState.members) { if (m.entity) m.entity._reviveUsed = false; }
     // Clean up any in-progress melee state (dash mid-flight, swing, cooldowns)
     // Equipment (melee.special, melee.damage, etc.) is preserved — only transient state resets
     melee.dashing = false; melee.dashTimer = 0; melee.dashTrail = [];

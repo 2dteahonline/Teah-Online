@@ -1198,7 +1198,7 @@ canvas.addEventListener("mousedown", e => {
   }
 
   // Revive shop clicks (party mode)
-  if (typeof PartyState !== 'undefined' && PartyState.active && waveState === 'revive_shop') {
+  if (PartyState.members.length > 1 && waveState === 'revive_shop') {
     const _rsW = 300, _rsH = 200;
     const _rsX = (BASE_W - _rsW) / 2, _rsY = (BASE_H - _rsH) / 2 - 30;
     if (mx >= _rsX && mx <= _rsX + _rsW && my >= _rsY && my <= _rsY + _rsH) {

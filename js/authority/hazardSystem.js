@@ -33,7 +33,7 @@ const HazardSystem = {
       if (z.life <= 0) { this.zones.splice(i, 1); continue; }
 
       // Check if party members are inside
-      const _hzTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+      const _hzTargets = PartySystem.getAliveEntities();
       let _hzAnyInside = false;
       for (const _ht of _hzTargets) {
         const dx = _ht.x - z.cx, dy = _ht.y - z.cy;

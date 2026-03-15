@@ -171,9 +171,9 @@ MOB_SPECIALS.pneumatic_shot = (m, ctx) => {
     vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
     fromPlayer: false, mobBullet: true, damage: Math.round(22 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#8899aa',
-    onHitPlayer: () => {
+    onHitPlayer: (b, hitTarget) => {
       StatusFX.applyToPlayer('root', { duration: 60 });
-      hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "nail_pin" });
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "nail_pin" });
     },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -393,7 +393,7 @@ MOB_SPECIALS.suppressive_burst = (m, ctx) => {
       vx: Math.cos(angle) * 8, vy: Math.sin(angle) * 8,
       fromPlayer: false, mobBullet: true, damage: Math.round(15 * getMobDamageMultiplier()),
       ownerId: m.id, bulletColor: '#778899',
-      onHitPlayer: () => {
+      onHitPlayer: (b, hitTarget) => {
         StatusFX.applyToPlayer('slow', { duration: 60, amount: 0.5 });
       },
     });
@@ -542,9 +542,9 @@ MOB_SPECIALS.jury_rigged_taser = (m, ctx) => {
     vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
     fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#44ddff',
-    onHitPlayer: () => {
+    onHitPlayer: (b, hitTarget) => {
       StatusFX.applyToPlayer('stun', { duration: 60 });
-      hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "stun" });
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 25, type: "stun" });
     },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -1017,11 +1017,11 @@ MOB_SPECIALS.cigar_flick = (m, ctx) => {
     vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
     fromPlayer: false, mobBullet: true, damage: Math.round(15 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#ff8844',
-    onHitPlayer: () => {
+    onHitPlayer: (b, hitTarget) => {
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
-        HazardSystem.createZone({ cx: player.x, cy: player.y, radius: 60, duration: 180, tickDamage: 6, color: [255, 100, 40] });
+        HazardSystem.createZone({ cx: hitTarget.x, cy: hitTarget.y, radius: 60, duration: 180, tickDamage: 6, color: [255, 100, 40] });
       }
-      hitEffects.push({ x: player.x, y: player.y, life: 25, type: "burn_tick" });
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y, life: 25, type: "burn_tick" });
     },
     onExpire: function() {
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
@@ -1127,9 +1127,9 @@ MOB_SPECIALS.flashbang_breach = (m, ctx) => {
     vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
     fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#ffffaa',
-    onHitPlayer: () => {
+    onHitPlayer: (b, hitTarget) => {
       StatusFX.applyToPlayer('blind', { duration: 90, mode: 'flash' });
-      hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "stun" });
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 30, type: "stun" });
     },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -1187,9 +1187,9 @@ MOB_SPECIALS.one_man_army = (m, ctx) => {
         vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
         fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#ffffaa',
-        onHitPlayer: () => {
+        onHitPlayer: (b, hitTarget) => {
           StatusFX.applyToPlayer('blind', { duration: 90, mode: 'flash' });
-          hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "stun" });
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 30, type: "stun" });
         },
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -2389,11 +2389,11 @@ MOB_SPECIALS.acid_splash = (m, ctx) => {
     ownerId: m.id, bulletColor: '#88cc22',
     life: 60,
     _acidTargetX: targetX, _acidTargetY: targetY,
-    onHitPlayer: () => {
-      hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "chemical_beam" });
+    onHitPlayer: (b, hitTarget) => {
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 19, type: "chemical_beam" });
       // Create poison puddle at impact
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
-        HazardSystem.createZone({ cx: player.x, cy: player.y, radius: 60, duration: 240, tickRate: 30, tickDamage: 5, color: [100, 200, 100], slow: 0.2 });
+        HazardSystem.createZone({ cx: hitTarget.x, cy: hitTarget.y, radius: 60, duration: 240, tickRate: 30, tickDamage: 5, color: [100, 200, 100], slow: 0.2 });
       }
     },
     onExpire: function() {
@@ -2457,8 +2457,8 @@ MOB_SPECIALS.volatile_reaction = (m, ctx) => {
     fromPlayer: false, mobBullet: true,
     damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#66ff44',
-    onHitPlayer: () => {
-      hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "grenade_explosion" });
+    onHitPlayer: (b, hitTarget) => {
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 24, type: "grenade_explosion" });
     },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -2667,9 +2667,9 @@ MOB_SPECIALS.toxic_stream = (m, ctx) => {
         });
       }
     },
-    onHitPlayer: () => {
+    onHitPlayer: (b, hitTarget) => {
       StatusFX.applyToPlayer('bleed', { duration: 120, dmg: 4 });
-      hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "chemical_beam" });
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 19, type: "chemical_beam" });
     },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -2711,9 +2711,9 @@ MOB_SPECIALS.volatile_flask_boss = (m, ctx) => {
     damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#aaff44',
     life: 50,
-    onHitPlayer: () => {
-      // AoE 80px (already hit the player since this is onHitPlayer)
-      hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "grenade_explosion" });
+    onHitPlayer: (b, hitTarget) => {
+      // AoE 80px (already hit the target since this is onHitPlayer)
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 24, type: "grenade_explosion" });
       // Random effect
       const roll = Math.random();
       if (roll < 0.33) {
@@ -2827,11 +2827,11 @@ MOB_SPECIALS.viscous_sludge = (m, ctx) => {
     fromPlayer: false, mobBullet: true,
     damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#668844',
-    onHitPlayer: () => {
-      hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "chemical_beam" });
+    onHitPlayer: (b, hitTarget) => {
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 19, type: "chemical_beam" });
       // Create slow zone at impact
       if (typeof HazardSystem !== 'undefined' && HazardSystem.createZone) {
-        HazardSystem.createZone({ cx: player.x, cy: player.y, radius: 80, duration: 240, tickRate: 999, tickDamage: 0, color: [100, 136, 68], slow: 0.4 });
+        HazardSystem.createZone({ cx: hitTarget.x, cy: hitTarget.y, radius: 80, duration: 240, tickRate: 999, tickDamage: 0, color: [100, 136, 68], slow: 0.4 });
       }
     },
   });
@@ -2974,9 +2974,9 @@ MOB_SPECIALS.plasma_bolt = (m, ctx) => {
     vx: Math.cos(dir) * 14, vy: Math.sin(dir) * 14,
     fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#44ddff', pierce: true,
-    onHitPlayer: () => {
+    onHitPlayer: (b, hitTarget) => {
       StatusFX.applyToPlayer('armor_break', { duration: 180, mult: 1.25 });
-      hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "stun" });
+      hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "stun" });
     },
   });
   hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });

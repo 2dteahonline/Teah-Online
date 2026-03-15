@@ -212,7 +212,7 @@ function updateMedpacks() {
     const mp = medpacks[i];
     mp.bobFrame++;
     // Check all party members (or just player in solo)
-    const _mpTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+    const _mpTargets = PartySystem.getAliveEntities();
     let _mpPickedUp = false;
     for (const _mpt of _mpTargets) {
       const dx = _mpt.x - mp.x;
@@ -306,7 +306,7 @@ function getMobCountForWave(w) {
   const floorBonus = Math.floor((dungeonFloor - 1) * 2); // +2 mobs per floor
   let count = Math.min(base + floorBonus, 22); // cap at 22
   // Party scaling: more mobs for larger parties
-  if (typeof PartySystem !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+  if (typeof PartySystem !== 'undefined' && PartyState.members.length > 1) {
     count = Math.round(count * PartySystem.getMobCountScale());
   }
   return count;
@@ -317,7 +317,7 @@ function getWaveHPMultiplier(w) {
   // +12% HP per wave within each floor
   let mult = (1 + (w - 1) * 0.12) * floorMult;
   // Party scaling: modest HP bump
-  if (typeof PartySystem !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+  if (typeof PartySystem !== 'undefined' && PartyState.members.length > 1) {
     mult *= PartySystem.getMobHPScale();
   }
   return mult;

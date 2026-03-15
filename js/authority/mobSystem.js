@@ -111,7 +111,7 @@ function updateMobs() {
     if (!m._testDummy) {
 
     // Party-aware targeting: mob chases its assigned party target
-    const _mobTarget = typeof PartySystem !== 'undefined' && PartyState.active ? PartySystem.getMobTarget(m) : player;
+    const _mobTarget = PartySystem.getMobTarget(m);
     _currentDamageTarget = _mobTarget; // set for dealDamageToPlayer/StatusFX calls in specials
 
     // Chase target with flanking AI
@@ -500,7 +500,7 @@ function updateMobs() {
               if (mine.armTimer <= 0) mine.armed = true;
               continue;
             }
-            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            const _peTargets = PartySystem.getAliveEntities();
             let _mineHit = false;
             for (const _pet of _peTargets) {
               const mdx = _pet.x - mine.x, mdy = _pet.y - mine.y;
@@ -534,7 +534,7 @@ function updateMobs() {
               const partner = m._pillars.find(p => p.id === pillar.pairedWith);
               if (partner && partner.life > 0) {
                 if (typeof AttackShapes !== 'undefined') {
-                  const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+                  const _peTargets = PartySystem.getAliveEntities();
                   for (const _pet of _peTargets) {
                     if (AttackShapes._pointInLine(_pet.x, _pet.y, pillar.x, pillar.y, partner.x, partner.y, 24)) {
                       _currentDamageTarget = _pet;
@@ -568,7 +568,7 @@ function updateMobs() {
             turret.fireTimer = (turret.fireTimer || 0) - 1;
             if (turret.fireTimer <= 0) {
               // Target nearest party member
-              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              const _peTargets = PartySystem.getAliveEntities();
               let _nearest = _peTargets[0], _nearDist = Infinity;
               for (const _pet of _peTargets) {
                 const _d = (_pet.x - turret.x) * (_pet.x - turret.x) + (_pet.y - turret.y) * (_pet.y - turret.y);
@@ -595,7 +595,7 @@ function updateMobs() {
             drone.life--;
             if (drone.diving) {
               // Target nearest party member
-              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              const _peTargets = PartySystem.getAliveEntities();
               let _nearest = _peTargets[0], _nearDist = Infinity;
               for (const _pet of _peTargets) {
                 const _d = (_pet.x - drone.x) * (_pet.x - drone.x) + (_pet.y - drone.y) * (_pet.y - drone.y);
@@ -642,7 +642,7 @@ function updateMobs() {
             laser.life--;
             if (laser.life <= 0) { m._lasers.splice(li, 1); continue; }
             // Track toward nearest party member
-            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            const _peTargets = PartySystem.getAliveEntities();
             let _nearest = _peTargets[0], _nearDist = Infinity;
             for (const _pet of _peTargets) {
               const _d = (_pet.x - laser.cx) * (_pet.x - laser.cx) + (_pet.y - laser.cy) * (_pet.y - laser.cy);
@@ -678,7 +678,7 @@ function updateMobs() {
             const bait = m._baits[bi];
             bait.life--;
             if (bait.life <= 0) { m._baits.splice(bi, 1); continue; }
-            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            const _peTargets = PartySystem.getAliveEntities();
             let _baitHit = false;
             for (const _pet of _peTargets) {
               const bdx = _pet.x - bait.x, bdy = _pet.y - bait.y;
@@ -718,7 +718,7 @@ function updateMobs() {
             drone.fireTimer = (drone.fireTimer || 0) - 1;
             if (drone.fireTimer <= 0) {
               // Target nearest party member
-              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              const _peTargets = PartySystem.getAliveEntities();
               let _nearest = _peTargets[0], _nearDist = Infinity;
               for (const _pet of _peTargets) {
                 const _d = (_pet.x - drone.x) * (_pet.x - drone.x) + (_pet.y - drone.y) * (_pet.y - drone.y);
@@ -745,7 +745,7 @@ function updateMobs() {
         if (m._junzBeam && m._junzBeam.life > 0 && m._activeAbility !== 'repulsor_beam') {
           m._junzBeam.life--;
           // Track toward nearest party member
-          const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+          const _peTargets = PartySystem.getAliveEntities();
           let _nearest = _peTargets[0], _nearDist = Infinity;
           for (const _pet of _peTargets) {
             const _d = (_pet.x - m._junzBeam.cx) * (_pet.x - m._junzBeam.cx) + (_pet.y - m._junzBeam.cy) * (_pet.y - m._junzBeam.cy);
@@ -782,7 +782,7 @@ function updateMobs() {
             clone.life--;
             clone.frame = (clone.frame || 0) + 0.08;
             // Chase nearest party member
-            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            const _peTargets = PartySystem.getAliveEntities();
             let _nearest = _peTargets[0], _nearDist = Infinity;
             for (const _pet of _peTargets) {
               const _d = (_pet.x - clone.x) * (_pet.x - clone.x) + (_pet.y - clone.y) * (_pet.y - clone.y);
@@ -835,7 +835,7 @@ function updateMobs() {
               if (orb.orbitTimer <= 0) {
                 orb.diving = true;
                 // Target nearest party member
-                const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+                const _peTargets = PartySystem.getAliveEntities();
                 let _nearest = _peTargets[0], _nearDist = Infinity;
                 for (const _pet of _peTargets) {
                   const _d = (_pet.x - orb.x) * (_pet.x - orb.x) + (_pet.y - orb.y) * (_pet.y - orb.y);
@@ -851,7 +851,7 @@ function updateMobs() {
               orb.x += (odx / oDist) * spd;
               orb.y += (ody / oDist) * spd;
               // Check hit against all party members
-              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              const _peTargets = PartySystem.getAliveEntities();
               let _orbHit = false;
               for (const _pet of _peTargets) {
                 const pdx = _pet.x - orb.x, pdy = _pet.y - orb.y;
@@ -900,7 +900,7 @@ function updateMobs() {
             c.life--;
             if (c.life <= 0) { m._caltrops.splice(ci, 1); continue; }
             if (!c._hit) {
-              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              const _peTargets = PartySystem.getAliveEntities();
               for (const _pet of _peTargets) {
                 const cdx = _pet.x - c.x, cdy = _pet.y - c.y;
                 if (Math.sqrt(cdx * cdx + cdy * cdy) < 20) {
@@ -955,7 +955,7 @@ function updateMobs() {
           for (const snare of m._silkSnares) {
             snare.life--;
             if (!snare._hit) {
-              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              const _peTargets = PartySystem.getAliveEntities();
               for (const _pet of _peTargets) {
                 const sdx = _pet.x - snare.x, sdy = _pet.y - snare.y;
                 if (Math.sqrt(sdx * sdx + sdy * sdy) < 50) {
@@ -978,7 +978,7 @@ function updateMobs() {
             const zone = m._blazeTrail[bi];
             zone.timer--;
             if (zone.timer > 0 && zone.timer % 30 === 0) {
-              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              const _peTargets = PartySystem.getAliveEntities();
               for (const _pet of _peTargets) {
                 const zdx = _pet.x - zone.x, zdy = _pet.y - zone.y;
                 if (Math.sqrt(zdx * zdx + zdy * zdy) < 50) {
@@ -1003,7 +1003,7 @@ function updateMobs() {
             pool._tick = (pool._tick || 0) + 1;
             if (pool._tick >= 30) {
               pool._tick = 0;
-              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              const _peTargets = PartySystem.getAliveEntities();
               for (const _pet of _peTargets) {
                 const pdx = _pet.x - pool.x, pdy = _pet.y - pool.y;
                 if (Math.sqrt(pdx * pdx + pdy * pdy) < 50) {
@@ -1020,7 +1020,7 @@ function updateMobs() {
         // Gravity well (Moon Rabbit boss)
         if (m._gravWell && m._gravWell.timer > 0 && m._activeAbility !== 'gravity_well') {
           m._gravWell.timer--;
-          const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+          const _peTargets = PartySystem.getAliveEntities();
           for (const _pet of _peTargets) {
             const gdx = _pet.x - m._gravWell.x, gdy = _pet.y - m._gravWell.y;
             const gDist = Math.sqrt(gdx * gdx + gdy * gdy);
@@ -1044,7 +1044,7 @@ function updateMobs() {
         if (m._cinderZone && m._cinderZone.timer > 0 && m._activeAbility !== 'cinder_step') {
           m._cinderZone.timer--;
           if (m._cinderZone.timer > 0 && m._cinderZone.timer % 30 === 0) {
-            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            const _peTargets = PartySystem.getAliveEntities();
             for (const _pet of _peTargets) {
               const cdx = _pet.x - m._cinderZone.x, cdy = _pet.y - m._cinderZone.y;
               if (Math.sqrt(cdx * cdx + cdy * cdy) < 50) {
@@ -1318,7 +1318,7 @@ function updateMobs() {
     if (m.attackCooldown > 0) { m.attackCooldown--; continue; }
 
     // Check contact with all alive party members (or just player in solo)
-    const _contactTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+    const _contactTargets = PartySystem.getAliveEntities();
     for (const _ct of _contactTargets) {
       const _isCtBot = _ct !== player && _ct._isBot;
       const _ctDead = _isCtBot ? _ct._isDead : playerDead;
@@ -1334,16 +1334,22 @@ function updateMobs() {
 
       if (hitDist < m.contactRange) {
         try {
-        if (!_isCtBot) {
-          // Player: dodge check (boots)
-          const dodgeCh = getDodgeChance();
+        {
+          // Dodge check (boots) — works for all entities
+          const _ctMember = PartySystem.getMemberByEntity(_ct);
+          const ctEquip = _ctMember ? _ctMember.equip : playerEquip;
+          const dodgeCh = getDodgeChance(ctEquip);
           if (dodgeCh > 0 && Math.random() < dodgeCh) {
-            contactCooldown = 30;
+            if (_isCtBot) {
+              _ct._contactCD = 30;
+            } else {
+              contactCooldown = 30;
+            }
             m.attackCooldown = 60;
-            if (playerEquip.boots && (playerEquip.boots.special === 'shadowstep' || playerEquip.boots.special === 'phase')) {
+            if (!_isCtBot && ctEquip.boots && (ctEquip.boots.special === 'shadowstep' || ctEquip.boots.special === 'phase')) {
               shadowStepActive = true;
             }
-            if (playerEquip.boots && playerEquip.boots.special === 'phase') {
+            if (!_isCtBot && ctEquip.boots && ctEquip.boots.special === 'phase') {
               phaseTimer = 45;
             }
             continue;
@@ -1533,9 +1539,7 @@ function updateMobs() {
     deathEffects.length = 0;
     mobParticles.length = 0;
     // Full heal on wave clear (all party members)
-    if (typeof PartySystem !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
-      PartySystem.healAll();
-    }
+    PartySystem.healAll();
     const healAmt = player.maxHp - player.hp;
     if (healAmt > 0) {
       player.hp = player.maxHp;
@@ -1544,11 +1548,9 @@ function updateMobs() {
     // +2 potions on wave clear (player + all bots)
     potion.count += 2;
     hitEffects.push({ x: player.x, y: player.y - 50, life: 25, maxLife: 25, type: "heal", dmg: "+2 Potions" });
-    if (typeof PartyState !== 'undefined' && PartyState.active) {
-      for (const _pm of PartyState.members) {
-        if (_pm.controlType === 'bot' && _pm.potion) {
-          _pm.potion.count += 2;
-        }
+    for (const _pm of PartyState.members) {
+      if (_pm.controlType === 'bot' && _pm.potion) {
+        _pm.potion.count += 2;
       }
     }
     // Check if floor is complete
@@ -1567,7 +1569,7 @@ function updateMobs() {
     Events.emit('wave_cleared', { wave, floor: dungeonFloor, stairsOpen, dungeonComplete });
 
     // Party: check if we need revive shop before next wave
-    if (typeof PartyState !== 'undefined' && PartyState.active && PartySystem.hasRevivable() && !stairsOpen) {
+    if (PartySystem.hasRevivable() && !stairsOpen) {
       waveState = "revive_shop";
       waveTimer = PARTY_CONFIG.REVIVE_SHOP_DURATION;
     }
@@ -1583,9 +1585,9 @@ function updateMobs() {
     waveTimer--;
     // Chest armor regen during cleared phase (1 HP/s = every 60 frames)
     if (waveTimer % 60 === 0) {
-      const _regenTargets = (typeof PartyState !== 'undefined' && PartyState.active) ? PartySystem.getAliveEntities() : [player];
+      const _regenTargets = PartySystem.getAliveEntities();
       for (const _rt of _regenTargets) {
-        const _rtMember = (typeof PartyState !== 'undefined' && PartyState.active) ? PartySystem.getMemberByEntity(_rt) : null;
+        const _rtMember = PartySystem.getMemberByEntity(_rt);
         const _rtEquip = _rtMember ? _rtMember.equip : playerEquip;
         const _rtRegen = getChestRegen(_rtEquip);
         if (_rtRegen > 0 && _rt.hp < _rt.maxHp) {

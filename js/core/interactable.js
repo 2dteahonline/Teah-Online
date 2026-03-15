@@ -322,7 +322,7 @@ function checkPlayerDeath() {
     deathY = player.y;
     deathRotation = 0;
     // In party mode, game over only when ALL members are dead
-    if (typeof PartyState !== 'undefined' && PartyState.active) {
+    if (PartyState.members.length > 0) {
       // Update local player member
       const localMember = PartySystem.getLocalMember();
       if (localMember) {
@@ -505,13 +505,13 @@ const SHOP_ITEMS = {
       // Per-member share of the cost
       get splitCost() {
         const total = this.cost;
-        const size = (typeof PartyState !== 'undefined' && PartyState.active) ? PartyState.members.length : 1;
+        const size = PartyState.members.length || 1;
         return Math.ceil(total / size);
       },
       action() {
         if (shopState.buffsBought[5] >= this.maxBuy) return false;
         const total = this.cost;
-        const members = (typeof PartyState !== 'undefined' && PartyState.active) ? PartyState.members : [];
+        const members = PartyState.members;
         if (members.length === 0) {
           // Solo fallback — full cost from player
           if (gold < total) return false;

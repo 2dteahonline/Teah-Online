@@ -285,9 +285,9 @@ MOB_SPECIALS.dirge_arrow = (m, ctx) => {
         vx: Math.cos(dir) * 5, vy: Math.sin(dir) * 5,
         fromPlayer: false, mobBullet: true, damage: Math.round(25 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#9988aa', life: 90,
-        onHitPlayer: () => {
+        onHitPlayer: (b, hitTarget) => {
           StatusFX.applyToPlayer('slow', { duration: 120, amount: 0.4 });
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "hit" });
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "hit" });
         },
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });

@@ -4,7 +4,7 @@
 
 // ---- Party State (global) ----
 const PartyState = {
-  active: false,       // true when dungeon entered with bots
+  active: false,       // true when in any combat scene (solo or party)
   members: [],         // PartyMember[] (slot 0 = player, 1-3 = bots)
   localPlayerId: 'player',
   shopOpen: false,     // revive shop active between waves
@@ -55,7 +55,7 @@ function createPartyMember(slotIndex, controlType) {
   // Bot gun state — starts with DEFAULT_GUN (Sidearm), upgrades via shop purchases
   const defGun = typeof DEFAULT_GUN !== 'undefined' ? DEFAULT_GUN : { damage: 28, fireRate: 5, magSize: 35, special: null, bulletColor: null };
   const defMelee = typeof DEFAULT_MELEE !== 'undefined' ? DEFAULT_MELEE : { damage: 15, range: 90, cooldown: 28, special: null };
-  const botGun = isLocal ? null : {
+  const botGun = isLocal ? gun : {
     id: defGun.id || 'sidearm',
     name: defGun.name || 'Sidearm',
     tier: defGun.tier || 0,
@@ -78,7 +78,7 @@ function createPartyMember(slotIndex, controlType) {
     controlType, // 'local' | 'bot' | 'remote' (future)
     entity,
     gun: botGun,
-    melee: isLocal ? null : {
+    melee: isLocal ? melee : {
       damage: defMelee.damage,
       range: defMelee.range,
       cooldown: defMelee.cooldown || 28,
@@ -87,8 +87,8 @@ function createPartyMember(slotIndex, controlType) {
       special: defMelee.special || null,
     },
     equip: isLocal ? playerEquip : { armor: null, boots: null, pants: null, chest: null, helmet: null, gun: null, melee: null },
-    gold: 0, // per-member gold wallet (player uses global `gold`, bots use this)
-    potion: isLocal ? null : { count: 3, cooldown: 0, cooldownMax: 120, healAmount: 25 }, // bots get their own potions
+    gold: isLocal ? gold : 0, // local reads current gold; bots start at 0
+    potion: isLocal ? potion : { count: 3, cooldown: 0, cooldownMax: 120, healAmount: 25 }, // local uses global potion ref
     lives: lives, // copy current lives count
     dead: false,
     deathTimer: 0,
@@ -102,22 +102,18 @@ function createPartyMember(slotIndex, controlType) {
 const PartySystem = {
   // Initialize party for dungeon entry
   init(slotCount) {
-    if (slotCount <= 1) {
-      // Solo mode — no party system
-      PartyState.active = false;
-      PartyState.members = [];
-      return;
-    }
+    // Always activate — even solo (party of 1). This makes every player
+    // "just another member" so networking is trivial to add later.
     PartyState.active = true;
     PartyState.members = [];
     PartyState.shopOpen = false;
     PartyState.spectateTarget = null;
 
-    // Slot 0 = local player
+    // Slot 0 = local player (always present)
     PartyState.members.push(createPartyMember(0, 'local'));
 
-    // Slots 1-3 = bots
-    for (let i = 1; i < slotCount; i++) {
+    // Slots 1+ = bots (if any)
+    for (let i = 1; i < (slotCount || 1); i++) {
       PartyState.members.push(createPartyMember(i, 'bot'));
     }
   },
@@ -133,7 +129,7 @@ const PartySystem = {
 
   // Get all alive member entities (including player)
   getAliveEntities() {
-    if (!PartyState.active) return [player];
+    if (PartyState.members.length === 0) return [player]; // safety: lobby/non-combat
     return PartyState.members
       .filter(m => m.active && !m.dead)
       .map(m => m.entity);
@@ -141,19 +137,18 @@ const PartySystem = {
 
   // Get alive count
   getAliveCount() {
-    if (!PartyState.active) return playerDead ? 0 : 1;
+    if (PartyState.members.length === 0) return playerDead ? 0 : 1;
     return PartyState.members.filter(m => m.active && !m.dead).length;
   },
 
   // Get all alive members (full objects, not just entities)
   getAlive() {
-    if (!PartyState.active) return [];
     return PartyState.members.filter(m => m.active && !m.dead);
   },
 
   // All party members dead?
   allDead() {
-    if (!PartyState.active) return playerDead;
+    if (PartyState.members.length === 0) return playerDead;
     return PartyState.members.every(m => !m.active || m.dead);
   },
 
@@ -172,8 +167,6 @@ const PartySystem = {
 
   // Get mob's current target (with sticky targeting + retarget)
   getMobTarget(mob) {
-    if (!PartyState.active) return player;
-
     // Retarget periodically or when target is dead
     mob._targetAge = (mob._targetAge || 0) + 1;
     const targetDead = mob._partyTarget && (mob._partyTarget.hp <= 0 || mob._partyTarget._isDead);
@@ -196,13 +189,11 @@ const PartySystem = {
 
   // Get member by entity reference
   getMemberByEntity(entity) {
-    if (!PartyState.active) return null;
     return PartyState.members.find(m => m.entity === entity) || null;
   },
 
   // Add gold to the correct member's wallet
   addGold(memberId, amount) {
-    if (!PartyState.active) { gold += amount; return; }
     if (!memberId || memberId === 'player') {
       gold += amount; // player uses global gold
     } else {
@@ -234,7 +225,7 @@ const PartySystem = {
   // Resolve a killerId to { member, entity, gun, melee, equip }
   // Works uniformly for any participant — player, bot, or future remote user
   resolveKiller(killerId) {
-    if (!PartyState.active || !killerId) {
+    if (!killerId) {
       return { member: null, entity: player, gun, melee, equip: playerEquip, id: 'player' };
     }
     const m = this.getMemberById(killerId);
@@ -331,7 +322,7 @@ const PartySystem = {
 
   // Get spectator target (nearest alive bot when player is dead)
   getSpectateTarget() {
-    if (!PartyState.active || !playerDead) return null;
+    if (!playerDead) return null;
     const aliveBots = PartyState.members.filter(m => m.controlType === 'bot' && !m.dead);
     if (aliveBots.length === 0) return null;
 
@@ -351,7 +342,6 @@ const PartySystem = {
   // Get wave scaling multiplier for mob count
   // Uses total party size, not alive — rates don't change when someone dies
   getMobCountScale() {
-    if (!PartyState.active) return 1;
     const total = PartyState.members.length;
     return 1 + (total - 1) * PARTY_CONFIG.MOB_COUNT_SCALE_PER_MEMBER;
   },
@@ -359,7 +349,6 @@ const PartySystem = {
   // Get wave scaling multiplier for mob HP
   // Uses total party size, not alive — rates don't change when someone dies
   getMobHPScale() {
-    if (!PartyState.active) return 1;
     const total = PartyState.members.length;
     return 1 + (total - 1) * PARTY_CONFIG.MOB_HP_SCALE_PER_MEMBER;
   },

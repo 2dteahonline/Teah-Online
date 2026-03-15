@@ -285,7 +285,7 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
     player.y = spawnTY * TILE + TILE / 2;
     player.vx = 0; player.vy = 0;
     // Reposition party bots near player on scene transition
-    if (typeof PartyState !== 'undefined' && PartyState.active) {
+    if (PartyState.members.length > 0) {
       for (const _pm of PartyState.members) {
         if (_pm.controlType === 'bot' && !_pm.dead && _pm.entity) {
           _pm.entity.x = player.x + (_pm.slotIndex - 1) * 40 - 40;
@@ -308,6 +308,7 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
       if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
       if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
       if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
+      if (!PartyState.active) PartySystem.init(1);
     } else if (LOBBY_RESET_SCENES.has(Scene.current)) {
       resetCombatState('lobby');
     } else if (Scene.is('mine')) {
@@ -336,6 +337,8 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
       pendingDungeonType = queueDungeonType;
       pendingReturnLevel = queueReturnLevel;
       resetCombatState('dungeon');
+      // Ensure party is initialized (solo if not already set up via queue)
+      if (!PartyState.active) PartySystem.init(1);
     }
     transitioning = true;
     transitionPhase = 2;
@@ -475,7 +478,7 @@ function goToNextFloor() {
   transitionAlpha = 1;
   hitEffects.push({ x: player.x, y: player.y - 30, life: 30, maxLife: 30, type: "heal", dmg: "FLOOR " + dungeonFloor });
   // Party: respawn dead members with lives, reposition bots
-  if (typeof PartySystem !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+  if (typeof PartySystem !== 'undefined' && PartyState.members.length > 0) {
     PartySystem.onFloorAdvance();
   }
   Events.emit('floor_changed', { floor: dungeonFloor });

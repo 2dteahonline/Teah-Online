@@ -17,9 +17,9 @@ MOB_SPECIALS.chip_toss = (m, ctx) => {
         vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
         fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#e8c44a',
-        onHitPlayer: () => {
+        onHitPlayer: (b, hitTarget) => {
           StatusFX.applyToPlayer('slow', { duration: 60, amount: 0.4 });
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "hit" });
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "hit" });
         },
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -717,9 +717,9 @@ MOB_SPECIALS.shade_note = (m, ctx) => {
         vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
         fromPlayer: false, mobBullet: true, damage: Math.round(18 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#8844aa',
-        onHitPlayer: () => {
+        onHitPlayer: (b, hitTarget) => {
           StatusFX.applyToPlayer('silence', { duration: 120 });
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "stun" });
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "stun" });
         },
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -827,9 +827,9 @@ MOB_SPECIALS.static_shot = (m, ctx) => {
         vx: Math.cos(dir) * 11, vy: Math.sin(dir) * 11,
         fromPlayer: false, mobBullet: true, damage: Math.round(24 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#66ccff',
-        onHitPlayer: () => {
+        onHitPlayer: (b, hitTarget) => {
           StatusFX.applyToPlayer('stun', { duration: 45 });
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "stun" });
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "stun" });
         },
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });

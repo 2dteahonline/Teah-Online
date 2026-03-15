@@ -17,9 +17,9 @@ MOB_SPECIALS.snap_web = (m, ctx) => {
         vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
         fromPlayer: false, mobBullet: true, damage: Math.round(25 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#ccccdd',
-        onHitPlayer: () => {
+        onHitPlayer: (b, hitTarget) => {
           StatusFX.applyToPlayer('slow', { duration: 90, amount: 0.5 });
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "hit" });
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "hit" });
         },
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
@@ -361,9 +361,9 @@ MOB_SPECIALS.thread_shot = (m, ctx) => {
         vx: Math.cos(dir) * 11, vy: Math.sin(dir) * 11,
         fromPlayer: false, mobBullet: true, damage: Math.round(35 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#eeeedd',
-        onHitPlayer: () => {
+        onHitPlayer: (b, hitTarget) => {
           StatusFX.applyToPlayer('slow', { duration: 120, amount: 0.4 });
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "hit" });
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "hit" });
         },
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });

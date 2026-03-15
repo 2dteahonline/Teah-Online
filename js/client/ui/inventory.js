@@ -2289,7 +2289,7 @@ const camera = { x: 0, y: 0 };
 function updateCamera() {
   // Party spectator camera: follow nearest alive bot when player is dead
   let camTarget = player;
-  if (typeof PartyState !== 'undefined' && PartyState.active && playerDead) {
+  if (PartyState.members.length > 1 && playerDead) {
     const specTarget = PartySystem.getSpectateTarget();
     if (specTarget) camTarget = specTarget;
   }
@@ -2331,7 +2331,7 @@ function update() {
   // === DEATH ANIMATION & RESPAWN ===
   if (playerDead) {
     // Check if party is active and has alive members — world keeps running
-    const _partyAlive = typeof PartyState !== 'undefined' && PartyState.active && !PartySystem.allDead();
+    const _partyAlive = PartyState.members.length > 1 && !PartySystem.allDead();
 
     // Death animation phase
     if (deathTimer > 0) {

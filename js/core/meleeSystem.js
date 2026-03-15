@@ -950,7 +950,7 @@ function updateBullets() {
         // Boulder explodes on wall
         hitEffects.push({ x: b.x, y: b.y, life: 30, type: "explosion" });
         // Blast damage if party members nearby
-        const _boulderTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+        const _boulderTargets = PartySystem.getAliveEntities();
         for (const _bt of _boulderTargets) {
           const dxP = b.x - _bt.x;
           const dyP = b.y - (_bt.y - 20);
@@ -1051,15 +1051,17 @@ function updateBullets() {
     if (!b.fromPlayer) {
       // Arrow: poison on hit, arrow is destroyed
       if (b.isArrow) {
-        const _arrowTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+        const _arrowTargets = PartySystem.getAliveEntities();
         let _arrowHit = false;
         for (const _at of _arrowTargets) {
           const dxA = b.x - _at.x;
           const dyA = b.y - (_at.y - 20);
           if (dxA * dxA + dyA * dyA < HIT_DIST_SQ && !(_at === player && playerDead) && !_at._isDead) {
             dealDamageToPlayer(b.damage, "projectile", null, _at);
-            // Apply/reset poison — 20 seconds (player only, bots skip status)
-            if (_at === player) StatusFX.applyPoison(Math.round(1200 * (1 - getEffectReduction())));
+            // Apply/reset poison — 20 seconds (all entities via _currentDamageTarget)
+            _currentDamageTarget = _at;
+            StatusFX.applyPoison(Math.round(1200 * (1 - getEffectReduction())));
+            _currentDamageTarget = null;
             hitEffects.push({ x: b.x, y: b.y, life: 20, type: "poison_hit" });
             bullets.splice(i, 1);
             _arrowHit = true;
@@ -1071,7 +1073,7 @@ function updateBullets() {
       }
       // Boulder: only explodes on direct party member hit (walls handled above)
       if (b.isBoulder) {
-        const _bdrTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+        const _bdrTargets = PartySystem.getAliveEntities();
         let _bdrHit = false;
         for (const _bdt of _bdrTargets) {
           const dxB = b.x - _bdt.x;
@@ -1091,7 +1093,7 @@ function updateBullets() {
         continue; // boulders don't use normal bullet collision
       }
       // Generic mob bullet vs party members
-      const _genTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+      const _genTargets = PartySystem.getAliveEntities();
       let _genHit = false;
       for (const _gt of _genTargets) {
         const dx = b.x - _gt.x;
@@ -1100,7 +1102,11 @@ function updateBullets() {
           const bDmg = b.damage || gun.damage;
           const dmgDealt = dealDamageToPlayer(bDmg, "projectile", null, _gt);
           hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: dmgDealt });
-          if (b.onHitPlayer) b.onHitPlayer(b);
+          if (b.onHitPlayer) {
+            _currentDamageTarget = _gt;
+            b.onHitPlayer(b, _gt);
+            _currentDamageTarget = null;
+          }
           bullets.splice(i, 1);
           _genHit = true;
           break;

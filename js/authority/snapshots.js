@@ -221,8 +221,8 @@ function serializeGameState() {
     nextBulletId: nextBulletId,
 
     // ---- Party state ----
-    partyActive: typeof PartyState !== 'undefined' ? PartyState.active : false,
-    partyMembers: typeof PartyState !== 'undefined' && PartyState.active
+    partyActive: PartyState.members.length > 0,
+    partyMembers: PartyState.members.length > 0
       ? PartyState.members.map(m => ({
           id: m.id, name: m.name, controlType: m.controlType, slotIndex: m.slotIndex,
           dead: m.dead, lives: m.lives, active: m.active,

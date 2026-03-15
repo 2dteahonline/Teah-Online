@@ -319,9 +319,9 @@ MOB_SPECIALS.stacked_deck = (m, ctx) => {
         vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
         fromPlayer: false, mobBullet: true, damage: Math.round(35 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: colors[shotIndex],
-        onHitPlayer: status ? () => {
+        onHitPlayer: status ? (b, hitTarget) => {
           StatusFX.applyToPlayer(status.type, status.opts);
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "stun" });
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "stun" });
         } : undefined,
       });
     }
@@ -477,9 +477,9 @@ MOB_SPECIALS.corrupt_vessel = (m, ctx) => {
           vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
           fromPlayer: false, mobBullet: true, damage: Math.round(40 * getMobDamageMultiplier()),
           ownerId: m.id, bulletColor: '#9944cc',
-          onHitPlayer: () => {
+          onHitPlayer: (b, hitTarget) => {
             StatusFX.applyToPlayer('slow', { duration: 90, amount: 0.5 });
-            hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "stun" });
+            hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 20, type: "stun" });
           },
           onExpire: (b) => {
             m._corruptPuddles.push({ x: b.x, y: b.y, life: 240 });

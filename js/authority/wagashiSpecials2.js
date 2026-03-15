@@ -387,13 +387,13 @@ MOB_SPECIALS.tidal_wave = (m, ctx) => {
         vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
         fromPlayer: false, mobBullet: true, damage: Math.round(50 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#2288cc',
-        onHitPlayer: () => {
-          // Push player away from projectile path
-          const pushDir = Math.atan2(player.y - m.y, player.x - m.x);
-          const nx = player.x + Math.cos(pushDir) * 60;
-          const ny = player.y + Math.sin(pushDir) * 60;
-          if (positionClear(nx, ny)) { player.x = nx; player.y = ny; }
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit" });
+        onHitPlayer: (b, hitTarget) => {
+          // Push target away from projectile path
+          const pushDir = Math.atan2(hitTarget.y - m.y, hitTarget.x - m.x);
+          const nx = hitTarget.x + Math.cos(pushDir) * 60;
+          const ny = hitTarget.y + Math.sin(pushDir) * 60;
+          if (positionClear(nx, ny)) { hitTarget.x = nx; hitTarget.y = ny; }
+          hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 10, life: 19, type: "hit" });
         },
       });
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });

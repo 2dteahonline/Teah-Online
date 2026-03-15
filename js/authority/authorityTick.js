@@ -159,7 +159,7 @@ window.authorityTick = function() {
   _authorityDriven = false;
 
   // ---- 3b. Bot AI tick (after update, before snapshot) ----
-  if (typeof BotAI !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+  if (typeof BotAI !== 'undefined' && PartyState.members.length > 1) {
     BotAI.tick();
   }
 
