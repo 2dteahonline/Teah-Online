@@ -241,8 +241,7 @@ MOB_SPECIALS.rosary_thrust = (m, ctx) => {
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 5;
-        player.knockVy = Math.sin(kbDir) * 5;
+        applyKnockback(Math.cos(kbDir) * 5, Math.sin(kbDir) * 5);
       }
       m._specialTimer = m._specialCD || 180;
     }
@@ -520,8 +519,7 @@ MOB_SPECIALS.last_serenade = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "stun", dmg: dealt });
         // Push player away
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 8;
-        player.knockVy = Math.sin(kbDir) * 8;
+        applyKnockback(Math.cos(kbDir) * 8, Math.sin(kbDir) * 8);
       }
       hitEffects.push({ x: m.x, y: m.y, life: 30, type: "hit" });
       m._specialTimer = m._specialCD || 360;
@@ -554,8 +552,7 @@ MOB_SPECIALS.chain_whip = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Pull player toward mob (negative knockback)
         const pullDir = Math.atan2(m.y - player.y, m.x - player.x);
-        player.knockVx = Math.cos(pullDir) * 7;
-        player.knockVy = Math.sin(pullDir) * 7;
+        applyKnockback(Math.cos(pullDir) * 7, Math.sin(pullDir) * 7);
       }
       hitEffects.push({ x: m.x, y: m.y - 15, life: 12, type: "cast" });
       m._specialTimer = m._specialCD || 200;
@@ -753,8 +750,7 @@ MOB_SPECIALS.dummy_detonate = (m, ctx) => {
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 8;
-        player.knockVy = Math.sin(kbDir) * 8;
+        applyKnockback(Math.cos(kbDir) * 8, Math.sin(kbDir) * 8);
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "hit" });
       m._specialTimer = m._specialCD || 240;
@@ -785,8 +781,7 @@ MOB_SPECIALS.neon_shriek = (m, ctx) => {
         StatusFX.applyToPlayer('fear', { duration: 90 });
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "stun", dmg: dealt });
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 6;
-        player.knockVy = Math.sin(kbDir) * 6;
+        applyKnockback(Math.cos(kbDir) * 6, Math.sin(kbDir) * 6);
       }
       hitEffects.push({ x: m.x, y: m.y - 15, life: 18, type: "cast" });
       m._specialTimer = m._specialCD || 210;
@@ -820,8 +815,7 @@ MOB_SPECIALS.ramp_launch = (m, ctx) => {
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 7;
-        player.knockVy = Math.sin(kbDir) * 7;
+        applyKnockback(Math.cos(kbDir) * 7, Math.sin(kbDir) * 7);
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "hit" });
       m._rampLeaping = false;
@@ -903,8 +897,7 @@ MOB_SPECIALS.hell_exhaust = (m, ctx) => {
         StatusFX.applyToPlayer('slow', { duration: 90, amount: 0.4 });
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 8;
-        player.knockVy = Math.sin(kbDir) * 8;
+        applyKnockback(Math.cos(kbDir) * 8, Math.sin(kbDir) * 8);
       }
       hitEffects.push({ x: m.x, y: m.y - 15, life: 18, type: "cast" });
       m._specialTimer = m._specialCD || 210;

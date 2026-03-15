@@ -2,6 +2,11 @@
 // Client rendering: color utils, spritesheet, big character renderer
 // Extracted from index_2.html — Phase C
 
+// ---- Override context for drawing bots with equipment ----
+// Set before drawChar() for partyBots, cleared after. drawChoso reads these.
+let _charEquipOverride = null;   // bot's equip object (replaces playerEquip)
+let _charColorOverride = null;   // { skin, hair, shirt, pants } for bots
+
 // ===================== COLOR UTILS =====================
 function parseHex(hex) {
   return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
@@ -400,7 +405,7 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   ctx.scale(effectiveScale, effectiveScale);
   ctx.translate(-sx, -sy);
 
-  if (isPlayer) drawChoso(sx, sy, dir, frame, moving, name, hp);
+  if (isPlayer || mobType === 'partyBot') drawChoso(sx, sy, dir, frame, moving, name, hp);
   else drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp, mobType, boneSwing, castTimer);
 
   ctx.restore();
@@ -416,13 +421,14 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   const legSwing = moving ? Math.sin(frame * Math.PI / 2) * 6 : 0;
   const armSwing = moving ? Math.sin(frame * Math.PI / 2) * 5 : 0;
   const x = sx - 20, y = sy - 68;
-  const skin = player.skin;
-  const black = player.shirt;
-  const hairColor = player.hair;
-  const pantsColor = player.pants;
+  const skin = _charColorOverride ? _charColorOverride.skin : player.skin;
+  const black = _charColorOverride ? _charColorOverride.shirt : player.shirt;
+  const hairColor = _charColorOverride ? _charColorOverride.hair : player.hair;
+  const pantsColor = _charColorOverride ? _charColorOverride.pants : player.pants;
+  const _eq = _charEquipOverride || playerEquip;
 
   // === LEGS (PANTS — tier-aware) ===
-  const pantsTier = (playerEquip.pants && playerEquip.pants.tier) || 0;
+  const pantsTier = (_eq.pants && _eq.pants.tier) || 0;
   const pFront = (dir === 0 || dir === 1);
   // Leg positions
   const l1x = pFront ? x + 6 : x + 10;
@@ -513,7 +519,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     ctx.fillRect(l2x - 1, l2y + 4, 1, 6); ctx.fillRect(l2x + l2w, l2y + 4, 1, 6);
   }
   // Boots — tier-aware visuals
-  const bootTier = (playerEquip.boots && playerEquip.boots.tier) || 0;
+  const bootTier = (_eq.boots && _eq.boots.tier) || 0;
   // Boot positions per direction
   const bFront = (dir === 0 || dir === 1);
   const b1x = bFront ? x + 4 : x + 8;
@@ -609,7 +615,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   }
 
   // === BODY (CHEST — tier-aware) ===
-  const chestTier = (playerEquip.chest && playerEquip.chest.tier) || 0;
+  const chestTier = (_eq.chest && _eq.chest.tier) || 0;
   const bodyX = x + 4, bodyY = y + 28 + bobY, bodyW = 32, bodyH = 20;
 
   if (chestTier === 0) {
@@ -801,7 +807,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   };
 
   const drawRifle = (rx, ry, pointDir) => {
-    const eq = playerEquip.gun;
+    const eq = _eq.gun;
     const gunId = eq ? eq.id : 'recruit';
 
     // Ironwood Bow: special rendering
@@ -1663,7 +1669,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
 
   // Katana blade held in hand
   const drawKatanaBlade = (rx, ry, pointDir) => {
-    const eq = playerEquip.melee;
+    const eq = _eq.melee;
     const meleeId = eq ? eq.id : 'knife';
 
     // Color configs per weapon
@@ -2456,7 +2462,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   }
 
   // === HELMET (tier-aware overlay on head) ===
-  const helmetTier = (playerEquip.helmet && playerEquip.helmet.tier) || 0;
+  const helmetTier = (_eq.helmet && _eq.helmet.tier) || 0;
   if (helmetTier === 1) {
     // T1 Leather Cap — warm brown
     const tv = ARMOR_VISUALS[1];

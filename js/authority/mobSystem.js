@@ -431,7 +431,7 @@ function updateMobs() {
         if (auraDist <= auraRange && typeof dealDamageToPlayer === 'function') {
           const auraDmg = m._contactDamageAura.damage || Math.round(m.damage * 0.3);
           dealDamageToPlayer(auraDmg, 'dot', m);
-          hitEffects.push({ x: player.x, y: player.y - 20, life: 15, type: "burn_hit" });
+          hitEffects.push({ x: _mobTarget.x, y: _mobTarget.y - 20, life: 15, type: "burn_hit" });
         }
       }
     }

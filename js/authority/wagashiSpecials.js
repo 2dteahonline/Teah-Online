@@ -162,8 +162,7 @@ MOB_SPECIALS.metal_skull_bash = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 5;
-        player.knockVy = Math.sin(kbDir) * 5;
+        applyKnockback(Math.cos(kbDir) * 5, Math.sin(kbDir) * 5);
       }
       m._skullDashing = false;
       m._specialTimer = m._specialCD || 200;
@@ -445,8 +444,7 @@ MOB_SPECIALS.titan_charge = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 10;
-        player.knockVy = Math.sin(kbDir) * 10;
+        applyKnockback(Math.cos(kbDir) * 10, Math.sin(kbDir) * 10);
       }
       m._titanDashing = false;
       m._specialTimer = m._specialCD || 240;
@@ -963,8 +961,7 @@ MOB_SPECIALS.earthbreaker_slam = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 8;
-        player.knockVy = Math.sin(kbDir) * 8;
+        applyKnockback(Math.cos(kbDir) * 8, Math.sin(kbDir) * 8);
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "hit" });
       m._specialTimer = m._specialCD || 240;

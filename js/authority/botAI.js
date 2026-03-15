@@ -71,6 +71,27 @@ const BotAI = {
     if (ai.meleeCD > 0) ai.meleeCD--;
     if (e._contactCD > 0) e._contactCD--;
 
+    // Process knockback (same physics as player in inventory.js)
+    if (e.knockVx !== 0 || e.knockVy !== 0) {
+      const knx = e.x + e.knockVx;
+      const kny = e.y + e.knockVy;
+      const hw2 = GAME_CONFIG.PLAYER_WALL_HW;
+      const kcL = Math.floor((knx - hw2) / TILE), kcR = Math.floor((knx + hw2) / TILE);
+      const krT = Math.floor((e.y - hw2) / TILE), krB = Math.floor((e.y + hw2) / TILE);
+      if (!isSolid(kcL, krT) && !isSolid(kcR, krT) && !isSolid(kcL, krB) && !isSolid(kcR, krB)) {
+        e.x = knx;
+      } else { e.knockVx = 0; }
+      const kcL2 = Math.floor((e.x - hw2) / TILE), kcR2 = Math.floor((e.x + hw2) / TILE);
+      const krT2 = Math.floor((kny - hw2) / TILE), krB2 = Math.floor((kny + hw2) / TILE);
+      if (!isSolid(kcL2, krT2) && !isSolid(kcR2, krT2) && !isSolid(kcL2, krB2) && !isSolid(kcR2, krB2)) {
+        e.y = kny;
+      } else { e.knockVy = 0; }
+      e.knockVx *= GAME_CONFIG.KNOCKBACK_DECAY;
+      e.knockVy *= GAME_CONFIG.KNOCKBACK_DECAY;
+      if (Math.abs(e.knockVx) < GAME_CONFIG.KNOCKBACK_THRESHOLD) e.knockVx = 0;
+      if (Math.abs(e.knockVy) < GAME_CONFIG.KNOCKBACK_THRESHOLD) e.knockVy = 0;
+    }
+
     // Tick reload
     if (member.gun && member.gun.reloading) {
       member.gun.reloadTimer--;
@@ -771,11 +792,21 @@ const BotAI = {
     const nx = dx / dist, ny = dy / dist;
     const fxMult = (member && member.ai && member.ai._fxSpeedMult) || 1;
     const spd = (e.speed || GAME_CONFIG.PLAYER_BASE_SPEED) * fxMult;
+    const hw = GAME_CONFIG.PLAYER_WALL_HW;
     const newX = e.x + nx * spd;
     const newY = e.y + ny * spd;
-    if (positionClear(newX, e.y, GAME_CONFIG.PLAYER_WALL_HW)) e.x = newX;
-    if (positionClear(e.x, newY, GAME_CONFIG.PLAYER_WALL_HW)) e.y = newY;
-    e.moving = true;
+    let movedX = false, movedY = false;
+    if (positionClear(newX, e.y, hw)) { e.x = newX; movedX = true; }
+    if (positionClear(e.x, newY, hw)) { e.y = newY; movedY = true; }
+    // Wall-slide: if blocked on both axes, try perpendicular slide to avoid getting stuck
+    if (!movedX && !movedY) {
+      // Try sliding along the dominant axis
+      const slideX = e.x + (nx > 0 ? spd : -spd);
+      const slideY = e.y + (ny > 0 ? spd : -spd);
+      if (positionClear(slideX, e.y, hw)) { e.x = slideX; movedX = true; }
+      else if (positionClear(e.x, slideY, hw)) { e.y = slideY; movedY = true; }
+    }
+    e.moving = movedX || movedY;
     this.faceDirection(e, nx, ny);
   },
 

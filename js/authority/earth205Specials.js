@@ -233,8 +233,7 @@ MOB_SPECIALS.earthquake_slam_e205 = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 12;
-        player.knockVy = Math.sin(kbDir) * 12;
+        applyKnockback(Math.cos(kbDir) * 12, Math.sin(kbDir) * 12);
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "sledgehammer_shockwave" });
       m._specialTimer = m._specialCD || 300;
@@ -770,8 +769,7 @@ MOB_SPECIALS.shattering_swing = (m, ctx) => {
     hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
     // Knockback
     const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-    player.knockVx = Math.cos(kbDir) * 14;
-    player.knockVy = Math.sin(kbDir) * 14;
+    applyKnockback(Math.cos(kbDir) * 14, Math.sin(kbDir) * 14);
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 15, type: "cast" });
   m._abilityCDs.shattering_swing = 240;
@@ -849,8 +847,7 @@ MOB_SPECIALS.brutal_beatdown = (m, ctx) => {
         // Final hit knockback
         if (m._beatdownHits >= 5) {
           const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-          player.knockVx = Math.cos(kbDir) * 16;
-          player.knockVy = Math.sin(kbDir) * 16;
+          applyKnockback(Math.cos(kbDir) * 16, Math.sin(kbDir) * 16);
         }
       }
     }
@@ -929,8 +926,7 @@ MOB_SPECIALS.bull_charge = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 16;
-        player.knockVy = Math.sin(kbDir) * 16;
+        applyKnockback(Math.cos(kbDir) * 16, Math.sin(kbDir) * 16);
       }
       m._chargeDashing = false;
       m._abilityCDs.bull_charge = 420;
@@ -990,8 +986,7 @@ MOB_SPECIALS.batter_up = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 20;
-        player.knockVy = Math.sin(kbDir) * 20;
+        applyKnockback(Math.cos(kbDir) * 20, Math.sin(kbDir) * 20);
         StatusFX.applyToPlayer('stun', { duration: 90 });
         hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "stun" });
       }
@@ -3021,8 +3016,7 @@ MOB_SPECIALS.reactor_slam = (m, ctx) => {
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 14;
-        player.knockVy = Math.sin(kbDir) * 14;
+        applyKnockback(Math.cos(kbDir) * 14, Math.sin(kbDir) * 14);
         StatusFX.applyToPlayer('root', { duration: 45 });
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "sledgehammer_shockwave" });

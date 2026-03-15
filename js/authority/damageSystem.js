@@ -152,6 +152,14 @@ function dealDamageToMob(mob, amount, source, attackerEntity) {
 }
 
 // ===================== CENTRALIZED PLAYER DAMAGE SYSTEM =====================
+// Apply knockback to the current damage target (bot or player).
+// All specials should call this instead of hardcoding player.knockVx/knockVy.
+function applyKnockback(vx, vy) {
+  const t = _currentDamageTarget || player;
+  t.knockVx = vx;
+  t.knockVy = vy;
+}
+
 // dealDamageToPlayer(rawDamage, source, attacker)
 //   source: "contact"    — armor reduction + thorns (melee mob hits)
 //           "projectile" — armor + projectile reduction (arrows, generic bullets)
@@ -406,7 +414,13 @@ function processKill(mob, source, killerId) {
     : (typeof lifestealPerKill !== 'undefined' ? lifestealPerKill : 0);
   if (killerLifesteal > 0) finalHeal = Math.max(finalHeal, killerLifesteal);
   if (finalHeal > 0) {
+    const _prevKillerHp = killerEntity.hp;
     killerEntity.hp = Math.min(killerEntity.maxHp, killerEntity.hp + finalHeal);
+    // Lifesteal visual feedback (show on bots too)
+    const _actualHeal = killerEntity.hp - _prevKillerHp;
+    if (_actualHeal > 0 && killerLifesteal > 0) {
+      hitEffects.push({ x: killerEntity.x, y: killerEntity.y - 35, life: 12, type: "heal", dmg: "+" + _actualHeal });
+    }
   }
 
   // 4b. Party Lifesteal — heal ALL alive party members (stacks with personal lifesteal)

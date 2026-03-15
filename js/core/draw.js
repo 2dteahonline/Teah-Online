@@ -932,9 +932,11 @@ function draw() {
       }
 
     } else if (e.type === "partyBot") {
-      // Party bot rendering
+      // Party bot rendering — set equip/color overrides so drawChoso uses bot's gear
       const _pm = e.member;
       const _pe = _pm.entity;
+      _charEquipOverride = _pm.equip;
+      _charColorOverride = { skin: _pe.skin, hair: _pe.hair, shirt: _pe.shirt, pants: _pe.pants };
       if (_pm.dead) {
         // Death animation
         if (_pm.deathTimer > 0) {
@@ -951,13 +953,24 @@ function draw() {
           ctx.restore();
         }
       } else {
-        // Alive bot — draw with damage flash
+        // Alive bot — draw with damage flash + status FX tint
         const _botFlash = _pe._contactCD > 0 && Math.floor(renderTime / 80) % 2 === 0;
         if (_botFlash) ctx.globalAlpha = 0.5;
+        // Status effect visual tint for bots
+        if (_pe._statusFX) {
+          if (_pe._statusFX.burn) { ctx.filter = 'sepia(0.4) saturate(1.5)'; }
+          else if (_pe._statusFX.slow) { ctx.filter = 'hue-rotate(180deg) saturate(0.6)'; }
+          else if (_pe._statusFX.stun) { ctx.filter = 'brightness(1.5) saturate(0.3)'; }
+        }
         drawChar(_pe.x, _pe.y, _pe.dir, _pe.frame, _pe.moving,
           _pe.skin, _pe.hair, _pe.shirt, _pe.pants, _pe.name, _pe.hp, false, 'partyBot', _pe.maxHp);
+        if (_pe._statusFX && (_pe._statusFX.burn || _pe._statusFX.slow || _pe._statusFX.stun)) {
+          ctx.filter = 'none';
+        }
         if (_botFlash) ctx.globalAlpha = 1.0;
       }
+      _charEquipOverride = null;
+      _charColorOverride = null;
 
     } else if (e.mob) {
       const m = e.mob;
@@ -2463,6 +2476,20 @@ function draw() {
       ctx.fillText(_pmGold + 'g', _phX + 70, _py + 11);
       ctx.fillStyle = '#aaa';
       ctx.fillText('x' + _pm.lives, _phX + 115, _py + 11);
+      // Equipment tier dots (gun, melee, chest, boots — colored by tier)
+      if (!_pm.dead && _pm.controlType === 'bot') {
+        const _eqSlots = [
+          _pm.gun ? (_pm.gun.tier || 0) : 0,
+          _pm.melee ? (_pm.melee.tier || 0) : 0,
+          _pm.equip.chest ? (_pm.equip.chest.tier || 0) : 0,
+          _pm.equip.boots ? (_pm.equip.boots.tier || 0) : 0,
+        ];
+        const _tierColors = ['#555', '#8b6914', '#888', '#d4af37', '#c850c0'];
+        for (let _ei = 0; _ei < 4; _ei++) {
+          ctx.fillStyle = _tierColors[_eqSlots[_ei]] || '#555';
+          ctx.fillRect(_phX + 108 + _ei * 6, _py + 14, 4, 6);
+        }
+      }
     }
   }
 

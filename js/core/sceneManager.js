@@ -284,6 +284,16 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
     player.x = spawnTX * TILE + TILE / 2;
     player.y = spawnTY * TILE + TILE / 2;
     player.vx = 0; player.vy = 0;
+    // Reposition party bots near player on scene transition
+    if (typeof PartyState !== 'undefined' && PartyState.active) {
+      for (const _pm of PartyState.members) {
+        if (_pm.controlType === 'bot' && !_pm.dead && _pm.entity) {
+          _pm.entity.x = player.x + (_pm.slotIndex - 1) * 40 - 40;
+          _pm.entity.y = player.y + 30;
+          _pm.entity.knockVx = 0; _pm.entity.knockVy = 0;
+        }
+      }
+    }
     UI.close();
     mobs.length = 0;
     bullets.length = 0;

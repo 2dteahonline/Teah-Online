@@ -165,8 +165,7 @@ MOB_SPECIALS.gilded_sweep = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 6;
-        player.knockVy = Math.sin(kbDir) * 6;
+        applyKnockback(Math.cos(kbDir) * 6, Math.sin(kbDir) * 6);
       }
       m._specialTimer = m._specialCD || 190;
     }
@@ -290,8 +289,7 @@ MOB_SPECIALS.bullion_charge = (m, ctx) => {
         StatusFX.applyToPlayer('stun', { duration: 60 });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 4;
-        player.knockVy = Math.sin(kbDir) * 4;
+        applyKnockback(Math.cos(kbDir) * 4, Math.sin(kbDir) * 4);
       }
       m._bullionDash = 0;
       m._specialTimer = m._specialCD || 220;
@@ -342,8 +340,7 @@ MOB_SPECIALS.tribute_taken = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback away from boss
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        player.knockVx = Math.cos(kbDir) * 8;
-        player.knockVy = Math.sin(kbDir) * 8;
+        applyKnockback(Math.cos(kbDir) * 8, Math.sin(kbDir) * 8);
       }
       hitEffects.push({ x: m.x, y: m.y - 15, life: 20, type: "cast" });
       m._specialTimer = m._specialCD || 210;
