@@ -373,7 +373,9 @@ function processKill(mob, source, killerId) {
   const qkb = getQuickKillBonus(mob);
 
   // 3. Gold reward — goes to killer's own wallet
-  const goldEarned = Math.round(getGoldReward(mob.type, wave) * qkb);
+  // Scale gold by party size: more members = fewer kills each, so each kill pays more
+  const _partyGoldMult = _partyActive ? (typeof PartySystem !== 'undefined' ? PartyState.members.filter(m => m.active).length : 1) : 1;
+  const goldEarned = Math.round(getGoldReward(mob.type, wave) * qkb * _partyGoldMult);
   if (_partyActive) {
     PartySystem.addGold(killerId, goldEarned);
   } else {
