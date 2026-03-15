@@ -1,6 +1,7 @@
 // ===================== BOT AI =====================
 // Authority: bot movement, combat AI, shooting, pathfinding.
-// Simple FSM: FOLLOW → ENGAGE → FLEE
+// FSM: FOLLOW → HUNT → ENGAGE → FLEE
+// Bots are autonomous — they roam, find mobs, and fight independently.
 // Called from authorityTick when PartyState.active.
 
 const BotAI = {
@@ -32,7 +33,7 @@ const BotAI = {
       }
     }
 
-    // Find nearest mob
+    // Find nearest mob (any distance)
     let nearestMob = null, nearestDist = Infinity;
     for (const m of mobs) {
       if (m.hp <= 0) continue;
@@ -45,10 +46,16 @@ const BotAI = {
     const hpFrac = e.hp / e.maxHp;
     if (hpFrac < PARTY_CONFIG.BOT_FLEE_THRESHOLD && nearestMob && nearestDist < 150) {
       ai.state = 'flee';
-    } else if (nearestMob && nearestDist < PARTY_CONFIG.BOT_ENGAGE_RANGE) {
+    } else if (nearestMob && nearestDist <= PARTY_CONFIG.BOT_ENGAGE_RANGE) {
+      // Close enough to shoot — engage
       ai.state = 'engage';
       ai.target = nearestMob;
+    } else if (nearestMob) {
+      // Mob exists but far away — hunt it down
+      ai.state = 'hunt';
+      ai.target = nearestMob;
     } else {
+      // No mobs alive — chill near player
       ai.state = 'follow';
       ai.target = null;
     }
@@ -56,8 +63,9 @@ const BotAI = {
     // Execute state
     switch (ai.state) {
       case 'follow': this.doFollow(member); break;
+      case 'hunt':   this.doHunt(member, nearestMob, nearestDist); break;
       case 'engage': this.doEngage(member, nearestMob, nearestDist); break;
-      case 'flee': this.doFlee(member, nearestMob); break;
+      case 'flee':   this.doFlee(member, nearestMob); break;
     }
 
     // Update animation
@@ -69,12 +77,11 @@ const BotAI = {
     }
   },
 
-  // FOLLOW: trail the leader at a spread offset (each bot picks a unique angle)
+  // FOLLOW: loosely stay near player when no mobs exist (between waves)
   doFollow(member) {
     const e = member.entity;
     let leader = null;
 
-    // Follow player if alive, else nearest alive bot
     if (!playerDead) {
       leader = player;
     } else {
@@ -101,38 +108,51 @@ const BotAI = {
     const dx = goalX - e.x, dy = goalY - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > 20) {
+    if (dist > 30) {
       this.moveToward(e, goalX, goalY, dist);
     } else {
       e.moving = false;
     }
 
-    // Apply separation from other bots
     this.applySeparation(member);
   },
 
-  // ENGAGE: move to effective range + shoot, with lateral spread
+  // HUNT: mob exists but out of engage range — run toward it independently
+  doHunt(member, mob, dist) {
+    if (!mob || mob.hp <= 0) { member.ai.state = 'follow'; return; }
+    const e = member.entity;
+
+    // Face and move toward the mob
+    this.faceTarget(e, mob);
+
+    // Each bot approaches from a slightly different angle so they don't stack
+    const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2;
+    const offsetX = Math.cos(spreadAngle) * 35;
+    const offsetY = Math.sin(spreadAngle) * 35;
+    this.moveToward(e, mob.x + offsetX, mob.y + offsetY, dist);
+
+    this.applySeparation(member);
+  },
+
+  // ENGAGE: in shooting range — shoot + position for combat
   doEngage(member, mob, dist) {
     if (!mob || mob.hp <= 0) { member.ai.state = 'follow'; return; }
     const e = member.entity;
 
-    // Face the mob
     this.faceTarget(e, mob);
 
     if (dist > PARTY_CONFIG.BOT_EFFECTIVE_RANGE + 20) {
-      // Move closer but at a spread angle (not straight at mob)
+      // Move closer but at a spread angle
       const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2;
       const offsetX = Math.cos(spreadAngle) * 40;
       const offsetY = Math.sin(spreadAngle) * 40;
       this.moveToward(e, mob.x + offsetX, mob.y + offsetY, dist);
     } else if (dist < PARTY_CONFIG.BOT_EFFECTIVE_RANGE - 30) {
-      // Too close, back up slightly
       this.moveAway(e, mob.x, mob.y, dist);
     } else {
       e.moving = false;
     }
 
-    // Apply separation from other bots even during combat
     this.applySeparation(member);
 
     // Shoot
@@ -143,7 +163,7 @@ const BotAI = {
     // Reload if empty
     if (member.gun && member.gun.ammo <= 0 && !member.gun.reloading) {
       member.gun.reloading = true;
-      member.gun.reloadTimer = 90; // 1.5s reload
+      member.gun.reloadTimer = 90;
     }
 
     // Melee if close
@@ -159,8 +179,13 @@ const BotAI = {
     const dx = mob.x - e.x, dy = mob.y - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-    // Move away
     this.moveAway(e, mob.x, mob.y, dist);
+
+    // Still shoot while fleeing if possible
+    if (member.gun && !member.gun.reloading && member.ai.shootCD <= 0 && member.gun.ammo > 0) {
+      this.faceTarget(e, mob);
+      this.botShoot(member, mob);
+    }
   },
 
   // ---- Separation: push bots apart so they don't stack ----
@@ -174,7 +199,7 @@ const BotAI = {
       const dx = e.x - oe.x, dy = e.y - oe.y;
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d < sepDist && d > 0.1) {
-        const force = (sepDist - d) / sepDist; // 0→1 as overlap increases
+        const force = (sepDist - d) / sepDist;
         pushX += (dx / d) * force * 3;
         pushY += (dy / d) * force * 3;
       }
@@ -217,9 +242,9 @@ const BotAI = {
   faceTarget(e, target) {
     const dx = target.x - e.x, dy = target.y - e.y;
     if (Math.abs(dx) > Math.abs(dy)) {
-      e.dir = dx > 0 ? 3 : 2; // right : left
+      e.dir = dx > 0 ? 3 : 2;
     } else {
-      e.dir = dy > 0 ? 0 : 1; // down : up
+      e.dir = dy > 0 ? 0 : 1;
     }
   },
 
