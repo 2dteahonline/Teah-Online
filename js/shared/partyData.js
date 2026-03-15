@@ -8,21 +8,27 @@ const PARTY_CONFIG = {
   REVIVE_BASE_COST: 50,
   // Revive shop duration (frames)
   REVIVE_SHOP_DURATION: 600, // 10 seconds
-  // Bot HP multiplier (relative to player maxHp)
-  BOT_HP_MULT: 0.8,
+  // Bot HP multiplier (relative to player maxHp) — cranked up for testing
+  BOT_HP_MULT: 10,
+  // Bot damage multiplier (applied to gun + melee at init) — cranked up for testing
+  BOT_DMG_MULT: 8,
   // Bot shoot cooldown (frames)
-  BOT_SHOOT_CD: 20,
+  BOT_SHOOT_CD: 10,
   // Bot melee cooldown (frames)
-  BOT_MELEE_CD: 40,
+  BOT_MELEE_CD: 20,
   // Bot follow distance range
   BOT_FOLLOW_MIN: 80,
-  BOT_FOLLOW_MAX: 120,
+  BOT_FOLLOW_MAX: 150,
   // Bot engage range (will start shooting at mobs within this)
-  BOT_ENGAGE_RANGE: 200,
+  BOT_ENGAGE_RANGE: 250,
   // Bot flee HP threshold (fraction of maxHp)
-  BOT_FLEE_THRESHOLD: 0.25,
+  BOT_FLEE_THRESHOLD: 0.15,
   // Bot effective range for shooting
   BOT_EFFECTIVE_RANGE: 140,
+  // Bot-to-bot separation distance (push apart when closer than this)
+  BOT_SEPARATION_DIST: 60,
+  // Bot spread radius around leader (each bot picks a different offset)
+  BOT_SPREAD_RADIUS: 70,
   // Mob retarget interval (frames)
   MOB_RETARGET_INTERVAL: 30,
   // Wave scaling per alive party member

@@ -52,11 +52,12 @@ function createPartyMember(slotIndex, controlType) {
     _isBot: true,
   };
 
-  // Bot gun state (copy player gun stats at init)
+  // Bot gun state (copy player gun stats at init, multiplied for testing)
+  const dmgMult = PARTY_CONFIG.BOT_DMG_MULT || 1;
   const botGun = isLocal ? null : {
-    damage: gun.damage,
-    magSize: gun.magSize,
-    ammo: gun.magSize,
+    damage: Math.round(gun.damage * dmgMult),
+    magSize: gun.magSize * 2,
+    ammo: gun.magSize * 2,
     reloading: false,
     reloadTimer: 0,
     fireCooldown: 0,
@@ -70,7 +71,7 @@ function createPartyMember(slotIndex, controlType) {
     controlType, // 'local' | 'bot' | 'remote' (future)
     entity,
     gun: botGun,
-    melee: isLocal ? null : { damage: melee.damage, range: melee.range },
+    melee: isLocal ? null : { damage: Math.round(melee.damage * dmgMult), range: melee.range + 20 },
     equip: isLocal ? playerEquip : { armor: null, boots: null, pants: null, chest: null, helmet: null },
     lives: lives, // copy current lives count
     dead: false,

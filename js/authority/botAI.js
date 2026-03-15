@@ -69,7 +69,7 @@ const BotAI = {
     }
   },
 
-  // FOLLOW: trail the leader (player if alive, else nearest alive member)
+  // FOLLOW: trail the leader at a spread offset (each bot picks a unique angle)
   doFollow(member) {
     const e = member.entity;
     let leader = null;
@@ -92,19 +92,26 @@ const BotAI = {
 
     if (!leader) { e.moving = false; return; }
 
-    const dx = leader.x - e.x, dy = leader.y - e.y;
+    // Each bot slot gets a unique spread angle around the leader
+    const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2 + Math.PI * 0.5;
+    const spreadR = PARTY_CONFIG.BOT_SPREAD_RADIUS;
+    const goalX = leader.x + Math.cos(spreadAngle) * spreadR;
+    const goalY = leader.y + Math.sin(spreadAngle) * spreadR;
+
+    const dx = goalX - e.x, dy = goalY - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > PARTY_CONFIG.BOT_FOLLOW_MAX) {
-      this.moveToward(e, leader.x, leader.y, dist);
-    } else if (dist < PARTY_CONFIG.BOT_FOLLOW_MIN) {
-      e.moving = false;
+    if (dist > 20) {
+      this.moveToward(e, goalX, goalY, dist);
     } else {
       e.moving = false;
     }
+
+    // Apply separation from other bots
+    this.applySeparation(member);
   },
 
-  // ENGAGE: move to effective range + shoot
+  // ENGAGE: move to effective range + shoot, with lateral spread
   doEngage(member, mob, dist) {
     if (!mob || mob.hp <= 0) { member.ai.state = 'follow'; return; }
     const e = member.entity;
@@ -113,14 +120,20 @@ const BotAI = {
     this.faceTarget(e, mob);
 
     if (dist > PARTY_CONFIG.BOT_EFFECTIVE_RANGE + 20) {
-      // Move closer
-      this.moveToward(e, mob.x, mob.y, dist);
+      // Move closer but at a spread angle (not straight at mob)
+      const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2;
+      const offsetX = Math.cos(spreadAngle) * 40;
+      const offsetY = Math.sin(spreadAngle) * 40;
+      this.moveToward(e, mob.x + offsetX, mob.y + offsetY, dist);
     } else if (dist < PARTY_CONFIG.BOT_EFFECTIVE_RANGE - 30) {
       // Too close, back up slightly
       this.moveAway(e, mob.x, mob.y, dist);
     } else {
       e.moving = false;
     }
+
+    // Apply separation from other bots even during combat
+    this.applySeparation(member);
 
     // Shoot
     if (member.gun && !member.gun.reloading && member.ai.shootCD <= 0 && member.gun.ammo > 0) {
@@ -148,6 +161,30 @@ const BotAI = {
 
     // Move away
     this.moveAway(e, mob.x, mob.y, dist);
+  },
+
+  // ---- Separation: push bots apart so they don't stack ----
+  applySeparation(member) {
+    const e = member.entity;
+    const sepDist = PARTY_CONFIG.BOT_SEPARATION_DIST;
+    let pushX = 0, pushY = 0;
+    for (const other of PartyState.members) {
+      if (other === member || other.dead || !other.active) continue;
+      const oe = other.entity;
+      const dx = e.x - oe.x, dy = e.y - oe.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < sepDist && d > 0.1) {
+        const force = (sepDist - d) / sepDist; // 0→1 as overlap increases
+        pushX += (dx / d) * force * 3;
+        pushY += (dy / d) * force * 3;
+      }
+    }
+    if (pushX !== 0 || pushY !== 0) {
+      const newX = e.x + pushX;
+      const newY = e.y + pushY;
+      if (positionClear(newX, e.y, GAME_CONFIG.PLAYER_WALL_HW)) e.x = newX;
+      if (positionClear(e.x, newY, GAME_CONFIG.PLAYER_WALL_HW)) e.y = newY;
+    }
   },
 
   // ---- Movement Helpers ----
