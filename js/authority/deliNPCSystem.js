@@ -23,7 +23,6 @@ const DELI_SPOTS = {
   exit:        { tx: 13, ty: 30 },
   counterArea: { tx: 13, ty: 22 },   // corridor in front of counter
   counter:     { tx: 11, ty: 22 },   // pickup/order spot
-  tipJar:      { tx: 15, ty: 22 },
   corridorE:   { tx: 25, ty: 22 },   // east end — past the counter wall
   diningEntry: { tx: 26, ty: 20 },   // gap into dining area
   condiments:  { tx: 35, ty: 13 },   // south side of condiment table
@@ -71,8 +70,6 @@ const DELI_NPC_CONFIG = {
   condimentTime:  [300, 480],   // 5-8 sec at condiments
   condimentChance: 0.5,
   aisleChance:     0.7,        // chance to browse aisles after eating
-  tipChance:       0.4,
-  tipAmount:       [1, 5],
   // Pre-queue aisle browsing
   preQueueBrowseChance: 0.3,      // 30% chance to browse aisles before joining line
   // Mid-queue line leaving
@@ -267,28 +264,6 @@ function _routeToExit(fromTX, fromTY) {
   return route;
 }
 
-function _routeToTipJar(fromTX, fromTY) {
-  const route = [];
-  if (fromTX >= 25) {
-    if (fromTY < 20) {
-      route.push({ tx: fromTX, ty: 20 });
-    } else if (fromTY >= 22) {
-      const gap = _nearestAisleGap(fromTX);
-      route.push({ tx: gap, ty: fromTY });
-      if (gap !== 26) {
-        route.push({ tx: gap, ty: 20 });
-        route.push({ tx: 26, ty: 20 });
-      } else {
-        route.push({ tx: 26, ty: 20 });
-      }
-    }
-    route.push({ tx: 26, ty: 23 });              // south past counter wall
-  }
-  route.push({ tx: 15, ty: 23 });                // west to tip jar column (safe row)
-  route.push({ tx: 15, ty: 22 });                // north to tip jar (approach from south)
-  return route;
-}
-
 // Route from exit to an aisle (for pre-queue browsing)
 function _routeExitToAisle(aisle) {
   // NPC enters from exit (tx:13, ty:30). _routeCounterToAisle starts at tx:13, ty:23,
@@ -371,21 +346,21 @@ function moveDeliNPC(npc) {
 
   // NPC-NPC avoidance — lower-ID NPCs have priority, higher-ID yields
   const npcInQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
-  const npcStationary = npcInQueue || npc.state === 'tipping';
+  const npcStationary = npcInQueue;
   for (const other of deliNPCs) {
     if (other === npc) continue;
     // Skip seated/despawning NPCs — they're snapped to fixed positions
     if (other.state === 'eating' || other.state === 'at_condiments' ||
         other.state === 'spawn_wait' || other.state === '_despawn') continue;
     const otherInQueue = (other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food');
-    const otherStationary = otherInQueue || other.state === 'tipping';
-    // If BOTH are stationary (queue or tipping), skip avoidance entirely
+    const otherStationary = otherInQueue;
+    // If BOTH are stationary (queue), skip avoidance entirely
     if (npcStationary && otherStationary) continue;
     const sx = npc.x - other.x;
     const sy = npc.y - other.y;
     const sd = Math.sqrt(sx * sx + sy * sy);
     if (sd > 0 && sd < 50) {
-      // If the other NPC is stationary (queue/tipping), just slow down — don't nudge
+      // If the other NPC is stationary (queue), just slow down — don't nudge
       // (nudging near the counter wall at ty:21 pushes NPCs into solid tiles)
       if (otherStationary) {
         spd *= 0.15;
@@ -502,7 +477,7 @@ function spawnDeliNPC() {
     _nextState: null,
     _nextTimer: 0,
     _queueIdx: -1,
-    hasOrdered: false, hasFood: false, hasTipped: false,
+    hasOrdered: false, hasFood: false,
     purchasedExtras: [],
     claimedChair: null,
     linkedOrderId: null,
@@ -859,10 +834,6 @@ const DELI_NPC_AI = {
       npc._pendingPurchase = Math.random() < 0.6 ? aisle : null;
       _npcStartRoute(npc, _routeChairToAisle(lastChair, aisle), 'shopping_aisle',
         _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
-    } else if (!npc.hasTipped && Math.random() < DELI_NPC_CONFIG.tipChance) {
-      // Go tip
-      const ch = DELI_CHAIRS[lastChair];
-      _npcStartRoute(npc, _routeToTipJar(ch.tx, ch.ty), 'tipping', 0);
     } else {
       // Leave
       const ch = DELI_CHAIRS[lastChair];
@@ -917,37 +888,8 @@ const DELI_NPC_AI = {
         return;
       }
     }
-    // Already ordered or queue full — tip or leave
-    if (!npc.hasTipped && Math.random() < DELI_NPC_CONFIG.tipChance) {
-      _npcStartRoute(npc, _routeToTipJar(aTX, aTY), 'tipping', 0);
-    } else {
-      _npcStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
-    }
-  },
-
-  // ─── TIPPING: At tip jar ───────────────────────────────
-  tipping: (npc) => {
-    npc.moving = false;
-    npc.dir = 1;
-    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
-
-    if (!npc.hasTipped) {
-      npc.hasTipped = true;
-      npc.stateTimer = 60; // pause while tipping (~1 sec)
-      const tipAmt = _randRange(DELI_NPC_CONFIG.tipAmount[0], DELI_NPC_CONFIG.tipAmount[1]);
-      if (typeof cookingState !== 'undefined' && cookingState.active) {
-        cookingState.tipJar += tipAmt;
-      } else {
-        if (typeof gold !== 'undefined') gold += tipAmt;
-      }
-      if (typeof hitEffects !== 'undefined') {
-        hitEffects.push({ x: npc.x, y: npc.y - 40, life: 30, maxLife: 30, type: 'heal', dmg: 'Tip +$' + tipAmt });
-      }
-      return;
-    }
-
-    // After tipping, leave
-    _npcStartRoute(npc, _routeToExit(15, 22), '_despawn', 0);
+    // Already ordered or queue full — leave
+    _npcStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
   },
 
   // ─── DESPAWN WALK: Walking to exit then despawn ────────

@@ -803,8 +803,7 @@ const LEVELS = {
       // Service counter wall — split around serve window + tip jar
       { type: 'deli_service_counter', tx: 1,  ty: 21, w: 7,  h: 1, solid: true }, // left segment
       { type: 'pickup_counter',       tx: 8,  ty: 21, w: 6,  h: 1, solid: true }, // serve window (in the wall)
-      { type: 'tip_jar',              tx: 14, ty: 21, w: 2,  h: 1, solid: true }, // tip jar (in the wall)
-      { type: 'deli_service_counter', tx: 16, ty: 21, w: 9,  h: 1, solid: true }, // right segment
+      { type: 'deli_service_counter', tx: 14, ty: 21, w: 11, h: 1, solid: true }, // right segment
       // Service counter — vertical bar on right side (rows 1-18, door at 19-20)
       { type: 'deli_service_counter', tx: 24, ty: 1, w: 1, h: 18, solid: true },
       // Kitchen door (right side)
@@ -911,8 +910,7 @@ const LEVELS = {
       // === SERVICE COUNTER WALL (ty: 15, horizontal divider) ===
       { type: 'diner_service_counter', tx: 1, ty: 15, w: 8, h: 1, solid: true },
       { type: 'diner_pickup_counter', tx: 9, ty: 15, w: 6, h: 1, solid: true },
-      { type: 'diner_tip_jar', tx: 15, ty: 15, w: 2, h: 1, solid: true },
-      { type: 'diner_service_counter', tx: 17, ty: 15, w: 6, h: 1, solid: true },
+      { type: 'diner_service_counter', tx: 15, ty: 15, w: 8, h: 1, solid: true },
       // Vertical wall on right side of kitchen (gap at ty:13-14 for door)
       { type: 'diner_service_counter', tx: 23, ty: 1, w: 1, h: 12, solid: true },
       // Kitchen door (1 tile wide, 2 tiles tall)
@@ -1056,7 +1054,6 @@ const LEVELS = {
       // === KITCHEN WORK STATIONS ===
       { type: 'fd_counter', tx: 7, ty: 10, w: 4, h: 2, solid: true },           // clear plate
       { type: 'fd_pickup_counter', tx: 12, ty: 10, w: 4, h: 2, solid: true },    // submit order
-      { type: 'fd_tip_jar', tx: 15, ty: 16, w: 2, h: 1, solid: false },          // tip jar (not solid — NPCs walk here to tip)
 
       // === INGREDIENT STATIONS (2x2 each, 2 rows of 6) ===
       // Row 1 (ty: 1)

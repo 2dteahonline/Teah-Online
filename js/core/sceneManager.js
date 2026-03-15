@@ -399,9 +399,23 @@ function checkPortals() {
     // Portal registry lookup — replaces 13 individual if-statements
     const requiredScene = PORTAL_SCENES[e.type];
     if (requiredScene && Scene.is(requiredScene) && inZone) {
-      // Diner entrance gating — PLACEHOLDER: re-enable when progression is balanced
-      // Requirements: Cooking Lv10, 500 lifetime orders, 5000 gold purchase
-      // if (e.type === 'diner_entrance') { ... check cookingProgress, skillData.Cooking ... }
+      // Restaurant entrance gating — check cooking level requirements
+      if (e.type === 'diner_entrance' || e.type === 'fine_dining_entrance') {
+        const shopId = e.type === 'diner_entrance' ? 'diner' : 'fine_dining';
+        const shop = typeof COOKING_SHOPS !== 'undefined' ? COOKING_SHOPS[shopId] : null;
+        if (shop) {
+          const cookingLvl = typeof skillData !== 'undefined' && skillData.Cooking ? skillData.Cooking.level : 1;
+          if (cookingLvl < shop.levelReq) {
+            if (typeof hitEffects !== 'undefined') {
+              hitEffects.push({
+                x: player.x, y: player.y - 40, life: 50, maxLife: 50,
+                type: "heal", dmg: "Requires Cooking Lv" + shop.levelReq + " (you are Lv" + cookingLvl + ")"
+              });
+            }
+            continue;
+          }
+        }
+      }
       startTransition(e.target, e.spawnTX, e.spawnTY);
       return;
     }

@@ -1674,44 +1674,6 @@ const ENTITY_RENDERERS = {
       ctx.textAlign = "left";
   },
 
-  diner_tip_jar: (e, ctx, ex, ey, w, h) => {
-      const cw = (w || 2) * TILE, ch = (h || 1) * TILE;
-      const t = Date.now() / 1000;
-      // Chrome counter surface
-      ctx.fillStyle = '#b0b0b8';
-      ctx.fillRect(ex, ey, cw, ch);
-      ctx.fillStyle = '#c0c0c8';
-      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
-      // Jar body (chrome-tinted glass)
-      const jw = cw * 0.4, jh = ch * 0.65;
-      const jx = ex + (cw - jw) / 2, jy = ey + ch * 0.05;
-      ctx.fillStyle = 'rgba(200,220,240,0.35)';
-      ctx.beginPath(); ctx.roundRect(jx, jy, jw, jh, 4); ctx.fill();
-      ctx.strokeStyle = 'rgba(224,224,232,0.5)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(jx, jy, jw, jh, 4); ctx.stroke();
-      // Coins inside
-      const hasTips = typeof cookingState !== 'undefined' && cookingState.tipJar > 0;
-      if (hasTips) {
-        const fillPct = Math.min(1, cookingState.tipJar / 20);
-        const coinH = jh * 0.2 + jh * 0.5 * fillPct;
-        ctx.fillStyle = '#d4a030';
-        ctx.fillRect(jx + 3, jy + jh - coinH, jw - 6, coinH);
-        ctx.fillStyle = '#e8c040';
-        ctx.fillRect(jx + 5, jy + jh - coinH + 1, jw - 10, coinH * 0.4);
-        const sparkle = 0.4 + 0.3 * Math.sin(t * 4);
-        ctx.fillStyle = `rgba(255,215,0,${sparkle})`;
-        ctx.beginPath(); ctx.arc(jx + jw * 0.35, jy + jh * 0.45, 2, 0, Math.PI * 2); ctx.fill();
-      }
-      // Chrome lid
-      ctx.fillStyle = '#c0c0c8';
-      ctx.fillRect(jx - 1, jy - 2, jw + 2, 4);
-      // TIPS label
-      ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = '#ffd700';
-      ctx.fillText(hasTips ? "TIPS $" + cookingState.tipJar : "TIPS", ex + cw / 2, ey + ch - 4);
-      ctx.textAlign = "left";
-  },
-
   diner_service_counter: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;
       // Chrome counter divider wall
@@ -2214,46 +2176,6 @@ const ENTITY_RENDERERS = {
       ctx.fillText("KITCHEN", ex + cw / 2, ey + ch / 2 + 3);
       ctx.textAlign = "left";
   },
-
-  tip_jar: (e, ctx, ex, ey, w, h) => {
-      const cw = (w || 2) * TILE, ch = (h || 1) * TILE;
-      const t = Date.now() / 1000;
-      // Counter surface (warm brown, stands out from wall)
-      ctx.fillStyle = '#5a4a38';
-      ctx.fillRect(ex, ey, cw, ch);
-      ctx.fillStyle = '#6a5a48';
-      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
-      // Jar body (glass, compact for 1-tile height)
-      const jw = cw * 0.4, jh = ch * 0.65;
-      const jx = ex + (cw - jw) / 2, jy = ey + ch * 0.05;
-      ctx.fillStyle = 'rgba(180,220,255,0.35)';
-      ctx.beginPath(); ctx.roundRect(jx, jy, jw, jh, 4); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(jx, jy, jw, jh, 4); ctx.stroke();
-      // Coins inside
-      const hasTips = typeof cookingState !== 'undefined' && cookingState.tipJar > 0;
-      if (hasTips) {
-        const fillPct = Math.min(1, cookingState.tipJar / 20);
-        const coinH = jh * 0.2 + jh * 0.5 * fillPct;
-        ctx.fillStyle = '#d4a030';
-        ctx.fillRect(jx + 3, jy + jh - coinH, jw - 6, coinH);
-        ctx.fillStyle = '#e8c040';
-        ctx.fillRect(jx + 5, jy + jh - coinH + 1, jw - 10, coinH * 0.4);
-        // Sparkle
-        const sparkle = 0.4 + 0.3 * Math.sin(t * 4);
-        ctx.fillStyle = `rgba(255,215,0,${sparkle})`;
-        ctx.beginPath(); ctx.arc(jx + jw * 0.35, jy + jh * 0.45, 2, 0, Math.PI * 2); ctx.fill();
-      }
-      // Lid
-      ctx.fillStyle = '#a08040';
-      ctx.fillRect(jx - 1, jy - 2, jw + 2, 4);
-      // TIPS label + amount on counter
-      ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = '#ffd700';
-      ctx.fillText(hasTips ? "TIPS $" + cookingState.tipJar : "TIPS", ex + cw / 2, ey + ch - 4);
-      ctx.textAlign = "left";
-  },
-
 
   deli_vending: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;
@@ -4546,30 +4468,6 @@ ENTITY_RENDERERS.fd_pickup_counter = (e, ctx, ex, ey, w, h) => {
 };
 
 // --- Tip jar ---
-ENTITY_RENDERERS.fd_tip_jar = (e, ctx, ex, ey, w, h) => {
-  const cw = w * TILE, ch = h * TILE;
-  ctx.fillStyle = '#2a1a14';
-  ctx.fillRect(ex, ey, cw, ch);
-  ctx.fillStyle = '#3a2a20';
-  ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
-  // Jar
-  const jx = ex + cw/2, jy = ey + ch/2 - 4;
-  ctx.fillStyle = 'rgba(200,180,140,0.4)';
-  ctx.beginPath(); ctx.roundRect(jx - 12, jy - 8, 24, 20, 4); ctx.fill();
-  ctx.strokeStyle = '#c0a060'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.roundRect(jx - 12, jy - 8, 24, 20, 4); ctx.stroke();
-  // Gold coins inside
-  ctx.fillStyle = '#ffd700';
-  ctx.beginPath(); ctx.ellipse(jx - 3, jy + 2, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(jx + 4, jy + 4, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
-  // Label
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(ex, ey + ch - 14, cw, 14);
-  ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-  ctx.fillStyle = '#ffd700'; ctx.fillText("Tip Jar", ex + cw/2, ey + ch - 3);
-  ctx.textAlign = "left";
-};
-
 // --- Service counter (decorative) ---
 ENTITY_RENDERERS.fd_service_counter = (e, ctx, ex, ey, w, h) => {
   const cw = w * TILE, ch = h * TILE;

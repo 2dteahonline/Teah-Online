@@ -27,7 +27,7 @@ const cookingState = {
   rushActive: false,
   shiftEnded: false,     // true = show summary overlay
   shiftComplete: false,  // true = shift finished, don't auto-restart
-  tipJar: 0,             // uncollected tips — player hits tip jar to collect
+  // Tips are added directly to gold on order completion (no tip jar)
   // Ticket queue — orders auto-generate on timer, independent of NPCs
   ticketQueue: [],       // pre-generated order tickets waiting to activate
   ticketSpawnTimer: 0,   // frames until next ticket generation
@@ -108,7 +108,7 @@ function startCookingShift(restaurantId) {
   cookingState.rushActive = false;
   cookingState.shiftEnded = false;
   cookingState.shiftComplete = false;
-  cookingState.tipJar = 0;
+  // tipJar removed — tips go directly to gold
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
   cookingState.lastResult = null;
@@ -182,7 +182,7 @@ function resetCookingState() {
   cookingState.assembly = [];
   cookingState.comboCount = 0;
   cookingState.comboMultiplier = 1.0;
-  cookingState.tipJar = 0;
+  // tipJar removed — tips go directly to gold
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
   cookingState.lastResult = null;
@@ -354,9 +354,9 @@ function updateCooking() {
       // Detect individual ingredient entities (ing_*/ding_*) + work stations
       const activeEntityMap = _getActiveEntityToIngredient();
       const isIngredient = activeEntityMap[e.type];
-      const isWorkStation = e.type === 'deli_counter' || e.type === 'pickup_counter' || e.type === 'tip_jar' ||
-                            e.type === 'diner_counter' || e.type === 'diner_pickup_counter' || e.type === 'diner_tip_jar' ||
-                            e.type === 'fd_counter' || e.type === 'fd_pickup_counter' || e.type === 'fd_tip_jar' ||
+      const isWorkStation = e.type === 'deli_counter' || e.type === 'pickup_counter' ||
+                            e.type === 'diner_counter' || e.type === 'diner_pickup_counter' ||
+                            e.type === 'fd_counter' || e.type === 'fd_pickup_counter' ||
                             e.type.startsWith('fd_teppanyaki_grill_');
       if (!isIngredient && !isWorkStation) continue;
       const ew = (e.w || 1), eh = (e.h || 1);
@@ -510,28 +510,7 @@ function handleStationInteract(entityType) {
     applyOrderResult(result);
   }
 
-  if (entityType === 'tip_jar' || entityType === 'diner_tip_jar' || entityType === 'fd_tip_jar') {
-    // Collect accumulated tips
-    if (cookingState.tipJar > 0) {
-      const collected = cookingState.tipJar;
-      cookingState.tipJar = 0;
-      if (typeof gold !== 'undefined') gold += collected;
-      cookingState.stats.totalEarned += collected;
-      if (typeof hitEffects !== 'undefined') {
-        hitEffects.push({
-          x: player.x, y: player.y - 40, life: 30, maxLife: 30,
-          type: "heal", dmg: "Tips collected: $" + collected
-        });
-      }
-    } else {
-      if (typeof hitEffects !== 'undefined') {
-        hitEffects.push({
-          x: player.x, y: player.y - 40, life: 20, maxLife: 20,
-          type: "heal", dmg: "Tip jar empty!"
-        });
-      }
-    }
-  }
+  // Tip jars removed — tips added directly to gold on order completion
 }
 
 // ===================== GRADING =====================
@@ -629,14 +608,9 @@ function applyOrderResult(result) {
     cookingState.comboMultiplier = 1.0;
   }
 
-  // Award gold (pay only — tips go to tip jar)
+  // Award gold (pay + tips combined)
   if (typeof gold !== 'undefined') {
-    gold += result.pay;
-  }
-
-  // Tips go into tip jar (player collects by hitting tip jar)
-  if (result.tip > 0) {
-    cookingState.tipJar += result.tip;
+    gold += result.pay + result.tip;
   }
 
   // Award Cooking XP
@@ -665,11 +639,11 @@ function applyOrderResult(result) {
         type: "heal", dmg: "+" + result.xp + " Cooking XP"
       });
     }
-    // Tip to jar popup
+    // Tip popup
     if (result.tip > 0) {
       hitEffects.push({
         x: player.x, y: player.y - 65, life: 30, maxLife: 30,
-        type: "heal", dmg: "Tip Jar +$" + result.tip
+        type: "heal", dmg: "+$" + result.tip + " tip"
       });
     }
   }

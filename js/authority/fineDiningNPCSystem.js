@@ -21,7 +21,6 @@ const FD_NPC_NAMES = ['Guest', 'VIP', 'Patron', 'Connoisseur', 'Foodie', 'Celebr
 const FD_SPOTS = {
   exit: { tx: 40, ty: 23 },
   hostStand: { tx: 40, ty: 20 },
-  tipJar: { tx: 16, ty: 16 },
 };
 
 // ===================== TEPPANYAKI TABLES =====================
@@ -39,8 +38,6 @@ const FD_NPC_CONFIG = {
   baseSpeed: 1.0,
   speedVariance: 0.15,
   eatDuration: [600, 900],    // 10-15s
-  tipChance: 0.5,
-  tipAmount: [5, 15],
   hostPauseDuration: [90, 150],  // 1.5-2.5s at host stand
 };
 
@@ -227,38 +224,6 @@ function _routeFDHostToTable(tableId, seatIdx) {
   return route;
 }
 
-// Table seat → Tip Jar (through service wall door at ty:16-17, tx:18-19)
-function _routeFDTableToTipJar(tableId, seatIdx) {
-  const table = FD_TABLES[tableId];
-  if (!table) return [];
-  const seat = table.seats[seatIdx];
-  if (!seat) return [];
-
-  const route = [];
-  const isRightCol = (table.grillTX >= 30);
-  const isBottomRow = (table.grillTY >= 10);
-
-  // Seat → vertical corridor
-  if (isRightCol) {
-    route.push(_fdWP(31, seat.ty));
-    route.push(_fdWP(31, 20));
-  } else {
-    route.push(_fdWP(20, seat.ty));
-    route.push(_fdWP(20, 20));
-  }
-
-  // Main walkway to service wall door area
-  route.push(_fdWP(20, 20));
-  // Through service wall door (ty:14-15 gap at tx:18-19)
-  route.push(_fdWP(20, 15));
-  route.push(_fdWP(18, 15));
-  // Into kitchen area to tip jar
-  route.push(_fdWP(16, 15));
-  route.push(_fdWP(16, 16));
-
-  return route;
-}
-
 // Table seat → Exit
 function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
   const table = FD_TABLES[tableId];
@@ -285,20 +250,6 @@ function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
   route.push(_fdWP(cx, 23));
 
   return route;
-}
-
-// Tip jar → Exit
-function _routeFDTipJarToExit(corridorTX) {
-  const cx = corridorTX || 40;
-  return _concatFDRoutes(
-    [_fdWP(16, 16)],
-    [_fdWP(16, 15)],
-    [_fdWP(18, 15)],
-    [_fdWP(20, 15)],
-    [_fdWP(20, 20)],
-    [_fdWP(40, 20)],
-    [_fdWP(cx, 23)]
-  );
 }
 
 // Generic: from any tile position → Exit
@@ -346,9 +297,7 @@ function _buildFDRouteFromIntent(intent, corridorTX) {
   switch (intent.kind) {
     case 'exit_to_host': return _routeFDExitToHost(cx);
     case 'host_to_table': return _routeFDHostToTable(intent.tableId, intent.seatIdx);
-    case 'table_to_tipjar': return _routeFDTableToTipJar(intent.tableId, intent.seatIdx);
     case 'table_to_exit': return _routeFDTableToExit(intent.tableId, intent.seatIdx, cx);
-    case 'tipjar_to_exit': return _routeFDTipJarToExit(cx);
     case 'tile_to_exit': return _routeFDToExit(intent.tx, intent.ty, cx);
     default: return null;
   }
@@ -361,13 +310,10 @@ function _getFDIntentAnchor(intent, npc) {
       return FD_SPOTS.exit;
     case 'host_to_table':
       return FD_SPOTS.hostStand;
-    case 'table_to_tipjar':
     case 'table_to_exit': {
       const table = FD_TABLES[intent.tableId];
       return table && table.seats ? table.seats[intent.seatIdx] : null;
     }
-    case 'tipjar_to_exit':
-      return FD_SPOTS.tipJar;
     case 'tile_to_exit':
       return { tx: intent.tx, ty: intent.ty };
     default:
@@ -521,7 +467,7 @@ function _spawnFDNPC(partyId, isLeader, corridorTX) {
     _nextTimer: 0,
     partyId: partyId,
     isLeader: isLeader,
-    hasOrdered: false, hasFood: false, hasTipped: false,
+    hasOrdered: false, hasFood: false,
     claimedSeatIdx: -1,
     linkedOrderId: null,
     _stuckFrames: 0,
@@ -642,21 +588,6 @@ function _buildFDExitPlan(npc) {
   };
 }
 
-function _buildFDTipPlan(npc, party) {
-  if (party && npc.claimedSeatIdx >= 0) {
-    return {
-      route: _routeFDTableToTipJar(party.tableId, npc.claimedSeatIdx),
-      intent: { kind: 'table_to_tipjar', tableId: party.tableId, seatIdx: npc.claimedSeatIdx },
-    };
-  }
-  const curTX = Math.floor(npc.x / TILE);
-  const curTY = Math.floor(npc.y / TILE);
-  return {
-    route: _routeFDToExit(curTX, curTY),
-    intent: null,
-  };
-}
-
 // ===================== PARTY HELPERS =====================
 
 // Trigger the whole party to leave
@@ -686,11 +617,8 @@ function _triggerFDPartyPostMealExit(party) {
   const leader = _getFDPartyLeader(party);
   const members = _getFDPartyMembers(party);
 
-  // Leader tips (50% chance)
-  if (leader && !leader.hasTipped && Math.random() < FD_NPC_CONFIG.tipChance) {
-    const tipPlan = _buildFDTipPlan(leader, party);
-    _fdNPCStartRoute(leader, tipPlan.route, 'tipping', 0, tipPlan.intent);
-  } else if (leader) {
+  // Leader exits
+  if (leader) {
     const exitPlan = _buildFDExitPlan(leader);
     _fdNPCStartRoute(leader, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
@@ -968,37 +896,6 @@ const FD_NPC_AI = {
 
     // Trigger tip or leave
     _triggerFDPartyPostMealExit(party);
-  },
-
-  // ─── TIPPING: Leader at tip jar ────────────────────────
-  tipping: (npc) => {
-    npc.moving = false;
-    npc.dir = 1;
-    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
-
-    if (!npc.hasTipped) {
-      npc.hasTipped = true;
-      npc.stateTimer = 60; // pause ~1 sec
-      const tipAmt = _fdRandRange(FD_NPC_CONFIG.tipAmount[0], FD_NPC_CONFIG.tipAmount[1]);
-      if (typeof cookingState !== 'undefined' && cookingState.active) {
-        cookingState.tipJar = (cookingState.tipJar || 0) + tipAmt;
-      } else {
-        if (typeof gold !== 'undefined') gold += tipAmt;
-      }
-      if (typeof hitEffects !== 'undefined') {
-        hitEffects.push({ x: npc.x, y: npc.y - 40, life: 30, maxLife: 30, type: 'heal', dmg: 'Tip +$' + tipAmt });
-      }
-      // Track in stats
-      if (typeof cookingState !== 'undefined' && cookingState.stats) {
-        cookingState.stats.totalEarned = (cookingState.stats.totalEarned || 0) + tipAmt;
-      }
-      return;
-    }
-
-    // After tipping, leave
-    const party = _getFDParty(npc.partyId);
-    const cx = party ? party.corridorTX : undefined;
-    _fdNPCStartRoute(npc, _routeFDTipJarToExit(cx), '_despawn', 0, { kind: 'tipjar_to_exit' });
   },
 
   // ─── LEAVING: Walking to exit ──────────────────────────

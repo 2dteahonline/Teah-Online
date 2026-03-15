@@ -21,7 +21,6 @@ const DINER_SPOTS = {
   exit:        { tx: 27, ty: 21 },
   counterArea: { tx: 27, ty: 16 },
   counter:     { tx: 13, ty: 16 },
-  tipJar:      { tx: 17, ty: 16 },
 };
 
 // ===================== BOOTHS =====================
@@ -53,8 +52,6 @@ const DINER_NPC_CONFIG = {
   eatDuration: [900, 1200],
   arcadeChance: 0.2,
   arcadeDuration: [300, 600],
-  tipChance: 0.4,
-  tipAmount: [2, 8],
   menuReadDuration: [180, 300],   // 3-5 sec
 };
 
@@ -303,16 +300,6 @@ function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
   );
 }
 
-function _routeDinerSeatToTipJar(boothId, seatIdx) {
-  const booth = DINER_BOOTHS[boothId];
-  if (!booth) return [];
-  return _concatDinerRoutes(
-    _routeDinerSeatToBoothEntry(boothId, seatIdx),
-    _routeDinerBoothEntryToCounter(booth),
-    [_dinerWP(17, 16)]
-  );
-}
-
 function _buildDinerRouteFromIntent(intent, corridorTX) {
   if (!intent) return null;
   const cx = corridorTX;
@@ -323,9 +310,7 @@ function _buildDinerRouteFromIntent(intent, corridorTX) {
     case 'counter_to_seat': return _routeDinerCounterToSeat(intent.boothId, intent.seatIdx);
     case 'seat_to_arcade': return _routeDinerSeatToArcade(intent.boothId, intent.seatIdx, intent.arcadeIdx);
     case 'seat_to_exit': return _routeDinerSeatToExit(intent.boothId, intent.seatIdx, cx);
-    case 'seat_to_tipjar': return _routeDinerSeatToTipJar(intent.boothId, intent.seatIdx);
     case 'counter_to_exit': return _routeDinerToExit(DINER_SPOTS.counter.tx, DINER_SPOTS.counter.ty, cx);
-    case 'tipjar_to_exit': return _routeDinerToExit(DINER_SPOTS.tipJar.tx, DINER_SPOTS.tipJar.ty, cx);
     case 'tile_to_exit': return _routeDinerToExit(intent.tx, intent.ty, cx);
     default: return null;
   }
@@ -342,16 +327,13 @@ function _getDinerIntentAnchor(intent, npc) {
     }
     case 'seat_to_counter':
     case 'seat_to_arcade':
-    case 'seat_to_exit':
-    case 'seat_to_tipjar': {
+    case 'seat_to_exit': {
       const booth = DINER_BOOTHS[intent.boothId];
       return booth && booth.seats ? booth.seats[intent.seatIdx] : null;
     }
     case 'counter_to_seat':
     case 'counter_to_exit':
       return DINER_SPOTS.counter;
-    case 'tipjar_to_exit':
-      return DINER_SPOTS.tipJar;
     case 'tile_to_exit':
       return { tx: intent.tx, ty: intent.ty };
     default:
@@ -441,29 +423,6 @@ function _routeDinerToExit(fromTX, fromTY, corridorTX) {
   }
   route.push({ tx: cx, ty: 14 });    // to exit column
   route.push({ tx: cx, ty: DINER_SPOTS.exit.ty });    // south to exit
-  return route;
-}
-
-function _routeDinerToTipJar(fromTX, fromTY) {
-  const route = [];
-  // Get to counter corridor
-  if (fromTY < 14) {
-    if (fromTX >= 35) {
-      route.push({ tx: 36, ty: fromTY });
-      route.push({ tx: 36, ty: 14 });
-    } else if (fromTX >= 24) {
-      route.push({ tx: 26, ty: fromTY });
-      route.push({ tx: 26, ty: 14 });
-    } else {
-      route.push({ tx: fromTX, ty: 14 });
-    }
-    route.push({ tx: 26, ty: 14 });
-    route.push({ tx: 26, ty: 16 });
-  } else if (fromTY >= 14 && fromTX >= 26) {
-    route.push({ tx: 26, ty: fromTY });
-    route.push({ tx: 26, ty: 16 });
-  }
-  route.push({ tx: 17, ty: 16 });    // west to tip jar
   return route;
 }
 
@@ -582,7 +541,7 @@ function _spawnDinerNPC(partyId, isLeader, corridorTX) {
     _nextTimer: 0,
     partyId: partyId,
     isLeader: isLeader,
-    hasOrdered: false, hasFood: false, hasTipped: false,
+    hasOrdered: false, hasFood: false,
     claimedSeatIdx: -1,
     linkedOrderId: null,
     _claimedArcadeIdx: -1,
@@ -1060,31 +1019,6 @@ const DINER_NPC_AI = {
     _triggerPartyPostMealExit(party);
   },
 
-  // ─── TIPPING: Leader at tip jar ────────────────────────
-  tipping: (npc) => {
-    npc.moving = false;
-    npc.dir = 1;
-    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
-
-    if (!npc.hasTipped) {
-      npc.hasTipped = true;
-      npc.stateTimer = 60; // pause ~1 sec
-      const tipAmt = _dinerRandRange(DINER_NPC_CONFIG.tipAmount[0], DINER_NPC_CONFIG.tipAmount[1]);
-      if (typeof cookingState !== 'undefined' && cookingState.active) {
-        cookingState.tipJar += tipAmt;
-      } else {
-        if (typeof gold !== 'undefined') gold += tipAmt;
-      }
-      if (typeof hitEffects !== 'undefined') {
-        hitEffects.push({ x: npc.x, y: npc.y - 40, life: 30, maxLife: 30, type: 'heal', dmg: 'Tip +$' + tipAmt });
-      }
-      return;
-    }
-
-    // After tipping, leave
-    _dinerNPCStartRoute(npc, _routeDinerToExit(17, 16), '_despawn', 0, { kind: 'tipjar_to_exit' });
-  },
-
   // ─── LEAVING: Walking to exit ──────────────────────────
   leaving: (npc) => {
     // Route already set by _triggerPartyLeave
@@ -1140,21 +1074,6 @@ function _buildDinerExitPlan(npc) {
   };
 }
 
-function _buildDinerTipPlan(npc, party) {
-  if (party && npc.claimedSeatIdx >= 0) {
-    return {
-      route: _routeDinerSeatToTipJar(party.boothId, npc.claimedSeatIdx),
-      intent: { kind: 'seat_to_tipjar', boothId: party.boothId, seatIdx: npc.claimedSeatIdx },
-    };
-  }
-  const curTX = Math.floor(npc.x / TILE);
-  const curTY = Math.floor(npc.y / TILE);
-  return {
-    route: _routeDinerToTipJar(curTX, curTY),
-    intent: null,
-  };
-}
-
 // Trigger the whole party to leave (walk to exit → despawn)
 function _triggerPartyLeave(party) {
   _dinerDequeueCounter(party.id);
@@ -1187,11 +1106,8 @@ function _triggerPartyPostMealExit(party) {
   const leader = _getPartyLeader(party);
   const members = _getPartyMembers(party);
 
-  // Leader tips (40% chance)
-  if (leader && !leader.hasTipped && Math.random() < DINER_NPC_CONFIG.tipChance) {
-    const tipPlan = _buildDinerTipPlan(leader, party);
-    _dinerNPCStartRoute(leader, tipPlan.route, 'tipping', 0, tipPlan.intent);
-  } else if (leader) {
+  // Leader exits
+  if (leader) {
     const exitPlan = _buildDinerExitPlan(leader);
     _dinerNPCStartRoute(leader, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
