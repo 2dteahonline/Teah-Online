@@ -17,6 +17,8 @@ const farmingState = {
   equippedHoe: 'bronze_hoe',   // hoe ID string, e.g. 'iron_hoe' (persisted)
   selectedSeed: null,  // crop id currently selected for planting
   actionCooldown: 0,   // frames until next action allowed
+  swingTimer: 0,       // frames remaining on hoe swing animation
+  swingDir: 0,         // direction of swing (0=down,1=up,2=left,3=right)
   stats: {
     totalHarvested: 0,
     totalEarned: 0,
@@ -45,22 +47,24 @@ function initFarmState() {
   const zone = levelEntities.find(e => e.type === 'farm_zone');
   if (!zone) return;
 
-  // Build tile grid based on land level
+  // Build tile grid based on land level (each plot is PLOT_SIZE x PLOT_SIZE tiles)
   const exp = getLandExpansion(farmingState.landLevel);
-  const gridW = exp.gridW;
+  const gridW = exp.gridW; // plot count
   const gridH = exp.gridH;
+  const tilesW = gridW * PLOT_SIZE; // total tiles wide
+  const tilesH = gridH * PLOT_SIZE;
 
   // Center the grid within the farm zone
   const zoneW = zone.w || 12;
   const zoneH = zone.h || 12;
-  const startTX = zone.tx + Math.floor((zoneW - gridW) / 2);
-  const startTY = zone.ty + Math.floor((zoneH - gridH) / 2);
+  const startTX = zone.tx + Math.floor((zoneW - tilesW) / 2);
+  const startTY = zone.ty + Math.floor((zoneH - tilesH) / 2);
 
   for (let dy = 0; dy < gridH; dy++) {
     for (let dx = 0; dx < gridW; dx++) {
       farmingState.tiles.push({
-        tx: startTX + dx,
-        ty: startTY + dy,
+        tx: startTX + dx * PLOT_SIZE,
+        ty: startTY + dy * PLOT_SIZE,
         state: FARM_TILE_STATES.EMPTY,
         cropId: null,
         growthTimer: 0,
@@ -93,8 +97,9 @@ function resetFarmingState() {
 function updateFarming() {
   if (!farmingState.active || !Scene.inFarm) return;
 
-  // Tick action cooldown
+  // Tick action cooldown + swing animation
   if (farmingState.actionCooldown > 0) farmingState.actionCooldown--;
+  if (farmingState.swingTimer > 0) farmingState.swingTimer--;
 
   // Tick growth — watered crops grow continuously, no re-watering needed
   for (const tile of farmingState.tiles) {
@@ -125,14 +130,22 @@ function handleFarmAction(fromClick) {
     return;
   }
 
+  // Plot center in pixels (each plot is PLOT_SIZE x PLOT_SIZE tiles)
+  const plotCX = tile.tx * TILE + PLOT_SIZE * TILE / 2;
+  const plotCY = tile.ty * TILE + PLOT_SIZE * TILE / 2;
+
   // Face toward the targeted tile
-  const tdx = (tile.tx * TILE + TILE / 2) - player.x;
-  const tdy = (tile.ty * TILE + TILE / 2) - player.y;
+  const tdx = plotCX - player.x;
+  const tdy = plotCY - player.y;
   if (Math.abs(tdx) > Math.abs(tdy)) {
     player.dir = tdx > 0 ? 3 : 2; // right : left
   } else {
     player.dir = tdy > 0 ? 0 : 1; // down : up
   }
+
+  // Trigger swing animation
+  farmingState.swingTimer = 12;
+  farmingState.swingDir = player.dir;
 
   const cfg = FARMING_CONFIG;
 
@@ -141,7 +154,7 @@ function handleFarmAction(fromClick) {
       // Till the soil
       tile.state = FARM_TILE_STATES.TILLED;
       farmingState.actionCooldown = cfg.tillCooldown;
-      hitEffects.push({ x: tile.tx * TILE + TILE / 2, y: tile.ty * TILE + TILE / 2 - 10, life: 20, type: 'text_popup', text: 'Tilled!', color: '#c0a060' });
+      hitEffects.push({ x: plotCX, y: plotCY - 10, life: 20, type: 'text_popup', text: 'Tilled!', color: '#c0a060' });
       break;
 
     case FARM_TILE_STATES.TILLED:
@@ -174,7 +187,7 @@ function handleFarmAction(fromClick) {
       tile.cropId = farmingState.selectedSeed;
       tile.growthTimer = 0;
       farmingState.actionCooldown = cfg.plantCooldown;
-      hitEffects.push({ x: tile.tx * TILE + TILE / 2, y: tile.ty * TILE + TILE / 2 - 10, life: 20, type: 'text_popup', text: 'Planted ' + crop.name + '!', color: crop.color });
+      hitEffects.push({ x: plotCX, y: plotCY - 10, life: 20, type: 'text_popup', text: 'Planted ' + crop.name + '!', color: crop.color });
       break;
 
     case FARM_TILE_STATES.PLANTED:
@@ -182,7 +195,7 @@ function handleFarmAction(fromClick) {
       tile.state = FARM_TILE_STATES.GROWING;
       tile.growthTimer = 0;
       farmingState.actionCooldown = cfg.plantCooldown;
-      hitEffects.push({ x: tile.tx * TILE + TILE / 2, y: tile.ty * TILE + TILE / 2 - 10, life: 20, type: 'text_popup', text: 'Watered!', color: '#40a0ff' });
+      hitEffects.push({ x: plotCX, y: plotCY - 10, life: 20, type: 'text_popup', text: 'Watered!', color: '#40a0ff' });
       break;
 
     case FARM_TILE_STATES.GROWING:
@@ -191,7 +204,7 @@ function handleFarmAction(fromClick) {
       if (growCrop) {
         const remaining = Math.max(0, growCrop.growthFrames - tile.growthTimer);
         const secs = Math.ceil(remaining / 60);
-        hitEffects.push({ x: tile.tx * TILE + TILE / 2, y: tile.ty * TILE + TILE / 2 - 10, life: 20, type: 'text_popup', text: 'Growing... ' + secs + 's', color: '#80c060' });
+        hitEffects.push({ x: plotCX, y: plotCY - 10, life: 20, type: 'text_popup', text: 'Growing... ' + secs + 's', color: '#80c060' });
       }
       break;
 
@@ -208,7 +221,7 @@ function handleFarmAction(fromClick) {
         farmingState.stats.bestCrop = harvestCrop.name;
         farmingState.stats.bestCropValue = harvestCrop.sellPrice;
       }
-      hitEffects.push({ x: tile.tx * TILE + TILE / 2, y: tile.ty * TILE + TILE / 2 - 10, life: 30, type: 'text_popup', text: '+' + harvestCrop.sellPrice + 'g  +' + harvestCrop.xp + ' XP', color: '#50d050' });
+      hitEffects.push({ x: plotCX, y: plotCY - 10, life: 30, type: 'text_popup', text: '+' + harvestCrop.sellPrice + 'g  +' + harvestCrop.xp + ' XP', color: '#50d050' });
       // Reset tile to tilled (can re-plant)
       tile.state = FARM_TILE_STATES.TILLED;
       tile.cropId = null;
@@ -229,7 +242,8 @@ function getEquippedHoe() {
 function getFarmTileAtAction(fromClick) {
   const hoe = getEquippedHoe();
   const reach = hoe ? hoe.reach : 1;
-  const maxReachPx = TILE * (reach + 1.5); // generous max distance from player
+  const plotPx = PLOT_SIZE * TILE; // size of one plot in pixels
+  const maxReachPx = plotPx * (reach + 1.2); // generous max distance from player
 
   if (fromClick && typeof InputIntent !== 'undefined') {
     // CLICK MODE: find closest tile to mouse world position, within reach of player
@@ -239,13 +253,11 @@ function getFarmTileAtAction(fromClick) {
     let bestDist = Infinity;
 
     for (const tile of farmingState.tiles) {
-      const tileCX = tile.tx * TILE + TILE / 2;
-      const tileCY = tile.ty * TILE + TILE / 2;
-      // Must be within reach of player
-      const playerDist = Math.sqrt((tileCX - player.x) ** 2 + (tileCY - player.y) ** 2);
+      const cx = tile.tx * TILE + plotPx / 2;
+      const cy = tile.ty * TILE + plotPx / 2;
+      const playerDist = Math.sqrt((cx - player.x) ** 2 + (cy - player.y) ** 2);
       if (playerDist > maxReachPx) continue;
-      // Pick closest to mouse
-      const mouseDist = Math.sqrt((tileCX - mwx) ** 2 + (tileCY - mwy) ** 2);
+      const mouseDist = Math.sqrt((cx - mwx) ** 2 + (cy - mwy) ** 2);
       if (mouseDist < bestDist) {
         bestDist = mouseDist;
         bestTile = tile;
@@ -255,26 +267,25 @@ function getFarmTileAtAction(fromClick) {
   }
 
   // F KEY MODE: find closest tile in facing direction
-  const dir = player.dir; // 0=down, 1=up, 2=left, 3=right
+  const dir = player.dir;
   let ddx = 0, ddy = 0;
   if (dir === 0) ddy = 1;
   else if (dir === 1) ddy = -1;
   else if (dir === 2) ddx = -1;
   else if (dir === 3) ddx = 1;
 
-  // Target point ahead of player
-  const targetX = player.x + ddx * TILE * reach;
-  const targetY = player.y + ddy * TILE * reach;
+  const targetX = player.x + ddx * plotPx * reach;
+  const targetY = player.y + ddy * plotPx * reach;
 
   let bestTile = null;
   let bestDist = Infinity;
 
   for (const tile of farmingState.tiles) {
-    const tileCX = tile.tx * TILE + TILE / 2;
-    const tileCY = tile.ty * TILE + TILE / 2;
-    const playerDist = Math.sqrt((tileCX - player.x) ** 2 + (tileCY - player.y) ** 2);
+    const cx = tile.tx * TILE + plotPx / 2;
+    const cy = tile.ty * TILE + plotPx / 2;
+    const playerDist = Math.sqrt((cx - player.x) ** 2 + (cy - player.y) ** 2);
     if (playerDist > maxReachPx) continue;
-    const dist = Math.sqrt((tileCX - targetX) ** 2 + (tileCY - targetY) ** 2);
+    const dist = Math.sqrt((cx - targetX) ** 2 + (cy - targetY) ** 2);
     if (dist < bestDist) {
       bestDist = dist;
       bestTile = tile;
@@ -293,11 +304,13 @@ function expandFarmGrid(newLandLevel) {
   const exp = getLandExpansion(newLandLevel);
   const gridW = exp.gridW;
   const gridH = exp.gridH;
+  const tilesW = gridW * PLOT_SIZE;
+  const tilesH = gridH * PLOT_SIZE;
 
   const zoneW = zone.w || 12;
   const zoneH = zone.h || 12;
-  const startTX = zone.tx + Math.floor((zoneW - gridW) / 2);
-  const startTY = zone.ty + Math.floor((zoneH - gridH) / 2);
+  const startTX = zone.tx + Math.floor((zoneW - tilesW) / 2);
+  const startTY = zone.ty + Math.floor((zoneH - tilesH) / 2);
 
   // Build set of existing tile positions
   const existing = new Set();
@@ -308,24 +321,23 @@ function expandFarmGrid(newLandLevel) {
   // Add new tiles for expanded area
   for (let dy = 0; dy < gridH; dy++) {
     for (let dx = 0; dx < gridW; dx++) {
-      const tx = startTX + dx;
-      const ty = startTY + dy;
+      const tx = startTX + dx * PLOT_SIZE;
+      const ty = startTY + dy * PLOT_SIZE;
       if (!existing.has(tx + ',' + ty)) {
         farmingState.tiles.push({
-          tx: tx,
-          ty: ty,
+          tx: tx, ty: ty,
           state: FARM_TILE_STATES.EMPTY,
-          cropId: null,
-          growthTimer: 0,
+          cropId: null, growthTimer: 0,
         });
       }
     }
   }
 
-  // Remove tiles that are now outside the new grid bounds
+  // Remove tiles outside the new grid bounds
+  const endTX = startTX + tilesW;
+  const endTY = startTY + tilesH;
   farmingState.tiles = farmingState.tiles.filter(t =>
-    t.tx >= startTX && t.tx < startTX + gridW &&
-    t.ty >= startTY && t.ty < startTY + gridH
+    t.tx >= startTX && t.tx < endTX && t.ty >= startTY && t.ty < endTY
   );
 }
 
@@ -333,91 +345,81 @@ function expandFarmGrid(newLandLevel) {
 function drawFarmTiles() {
   if (!farmingState.active || !Scene.inFarm) return;
 
+  const ps = PLOT_SIZE * TILE; // plot size in pixels (96)
+
   for (const tile of farmingState.tiles) {
     const x = tile.tx * TILE;
     const y = tile.ty * TILE;
+    const cx = x + ps / 2;
+    const cy = y + ps / 2;
 
     if (tile.state === FARM_TILE_STATES.EMPTY) {
-      // Visible grid outline to show tillable area
+      // Visible grid square
       ctx.fillStyle = 'rgba(90,70,40,0.25)';
-      ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+      ctx.fillRect(x + 2, y + 2, ps - 4, ps - 4);
       ctx.strokeStyle = 'rgba(180,150,100,0.4)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(x + 2, y + 2, TILE - 4, TILE - 4);
-      // Corner dots for visibility
-      const dotR = 2;
-      ctx.fillStyle = 'rgba(200,170,110,0.5)';
-      ctx.beginPath(); ctx.arc(x + 6, y + 6, dotR, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x + TILE - 6, y + 6, dotR, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x + 6, y + TILE - 6, dotR, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x + TILE - 6, y + TILE - 6, dotR, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeRect(x + 2, y + 2, ps - 4, ps - 4);
       continue;
     }
 
     if (tile.state === FARM_TILE_STATES.TILLED) {
       // Dark tilled soil with furrow lines
       ctx.fillStyle = '#5a4020';
-      ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+      ctx.fillRect(x + 2, y + 2, ps - 4, ps - 4);
       ctx.strokeStyle = 'rgba(40,25,10,0.4)';
       ctx.lineWidth = 1;
-      for (let fy = 6; fy < TILE - 4; fy += 8) {
-        ctx.beginPath(); ctx.moveTo(x + 4, y + fy); ctx.lineTo(x + TILE - 4, y + fy); ctx.stroke();
+      for (let fy = 8; fy < ps - 4; fy += 12) {
+        ctx.beginPath(); ctx.moveTo(x + 6, y + fy); ctx.lineTo(x + ps - 6, y + fy); ctx.stroke();
       }
       continue;
     }
 
-    // Planted / Growing / Harvestable — show soil + crop
-    // Soil base
+    // Planted / Growing / Harvestable — soil + crop
     ctx.fillStyle = '#5a4020';
-    ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
-    // Furrows
+    ctx.fillRect(x + 2, y + 2, ps - 4, ps - 4);
     ctx.strokeStyle = 'rgba(40,25,10,0.3)';
     ctx.lineWidth = 1;
-    for (let fy = 6; fy < TILE - 4; fy += 8) {
-      ctx.beginPath(); ctx.moveTo(x + 4, y + fy); ctx.lineTo(x + TILE - 4, y + fy); ctx.stroke();
+    for (let fy = 8; fy < ps - 4; fy += 12) {
+      ctx.beginPath(); ctx.moveTo(x + 6, y + fy); ctx.lineTo(x + ps - 6, y + fy); ctx.stroke();
     }
 
-    // Draw crop at growth stage — 4 stages: seed(0), sprout(1), medium(2), mature(3)
+    // Draw crop — scaled up for 2x2 plots
     const crop = CROP_TYPES[tile.cropId];
     if (!crop) continue;
 
     const progress = tile.state === FARM_TILE_STATES.HARVESTABLE ? 1.0
       : Math.min(1.0, tile.growthTimer / crop.growthFrames);
-    const stage = Math.floor(progress * 3); // 0-3 (4 stages)
-    const cx = x + TILE / 2;
-    const cy = y + TILE / 2;
+    const stage = Math.floor(progress * 3); // 0-3
 
     if (stage === 0) {
-      // Seed / tiny sprout
       ctx.fillStyle = crop.color;
-      ctx.beginPath(); ctx.arc(cx, cy + 6, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy + 10, 5, 0, Math.PI * 2); ctx.fill();
     } else if (stage === 1) {
-      // Small sprout
-      ctx.strokeStyle = '#4a8030'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(cx, cy + 8); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.strokeStyle = '#4a8030'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx, cy + 14); ctx.lineTo(cx, cy - 2); ctx.stroke();
       ctx.fillStyle = '#5a9a40';
-      ctx.beginPath(); ctx.arc(cx - 3, cy - 1, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + 3, cy - 1, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - 6, cy - 2, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 6, cy - 2, 5, 0, Math.PI * 2); ctx.fill();
     } else if (stage === 2) {
-      // Medium plant
-      ctx.strokeStyle = '#3a7020'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(cx, cy + 10); ctx.lineTo(cx, cy - 4); ctx.stroke();
+      ctx.strokeStyle = '#3a7020'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx, cy + 16); ctx.lineTo(cx, cy - 8); ctx.stroke();
       ctx.fillStyle = '#4a9030';
-      ctx.beginPath(); ctx.arc(cx - 5, cy - 2, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + 5, cy - 2, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx, cy - 6, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - 8, cy - 4, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 8, cy - 4, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy - 10, 6, 0, Math.PI * 2); ctx.fill();
     } else {
-      // Mature / harvestable — large plant with crop color
-      ctx.strokeStyle = '#2a6010'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(cx, cy + 12); ctx.lineTo(cx, cy - 8); ctx.stroke();
+      // Mature — large with crop color fruit
+      ctx.strokeStyle = '#2a6010'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(cx, cy + 18); ctx.lineTo(cx, cy - 12); ctx.stroke();
       ctx.fillStyle = '#3a8020';
-      ctx.beginPath(); ctx.arc(cx - 6, cy - 4, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + 6, cy - 4, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx, cy - 10, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - 10, cy - 6, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 10, cy - 6, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy - 16, 8, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = crop.color;
-      ctx.beginPath(); ctx.arc(cx - 4, cy - 8, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + 4, cy - 8, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx, cy - 14, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - 7, cy - 12, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 7, cy - 12, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy - 20, 6, 0, Math.PI * 2); ctx.fill();
     }
 
     // Harvestable sparkle
@@ -425,8 +427,54 @@ function drawFarmTiles() {
       const t = Date.now() / 1000;
       const sparkle = 0.4 + Math.sin(t * 4 + tile.tx * 3 + tile.ty * 7) * 0.3;
       ctx.fillStyle = `rgba(255,255,200,${sparkle})`;
-      ctx.beginPath(); ctx.arc(cx + Math.sin(t * 3 + tile.tx) * 5, cy - 16, 2, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + Math.cos(t * 2.5 + tile.ty) * 6, cy - 12, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + Math.sin(t * 3) * 10, cy - 24, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + Math.cos(t * 2.5) * 12, cy - 18, 2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // === HOE SWING ARC ===
+  if (farmingState.swingTimer > 0) {
+    const st = farmingState.swingTimer;
+    const sd = farmingState.swingDir;
+    const progress = 1 - st / 12; // 0→1
+    const hoe = getEquippedHoe();
+    const hoeColor = hoe ? hoe.color : '#8a6a3a';
+
+    // Swing arc origin at player, sweeps in facing direction
+    const px = player.x, py = player.y - 8;
+    const handleLen = 28;
+    const headLen = 16;
+
+    // Base angle for each direction (pointing outward)
+    const baseAngle = sd === 0 ? Math.PI / 2 : sd === 1 ? -Math.PI / 2 : sd === 2 ? Math.PI : 0;
+    // Sweep from -45° to +45° around base angle
+    const sweep = (progress - 0.5) * Math.PI * 0.8;
+    const angle = baseAngle + sweep;
+
+    // Handle
+    const hx = px + Math.cos(angle) * handleLen;
+    const hy = py + Math.sin(angle) * handleLen;
+    ctx.strokeStyle = '#6a4a20';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(hx, hy); ctx.stroke();
+
+    // Hoe head (perpendicular bar at end)
+    const perpAngle = angle + Math.PI / 2;
+    ctx.strokeStyle = hoeColor;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(hx + Math.cos(perpAngle) * headLen / 2, hy + Math.sin(perpAngle) * headLen / 2);
+    ctx.lineTo(hx - Math.cos(perpAngle) * headLen / 2, hy - Math.sin(perpAngle) * headLen / 2);
+    ctx.stroke();
+
+    // Motion trail
+    if (progress < 0.7) {
+      ctx.strokeStyle = `rgba(200,180,140,${0.3 * (1 - progress)})`;
+      ctx.lineWidth = 2;
+      const trailAngle = baseAngle + (progress - 0.6) * Math.PI * 0.8;
+      const tx2 = px + Math.cos(trailAngle) * handleLen;
+      const ty2 = py + Math.sin(trailAngle) * handleLen;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(tx2, ty2); ctx.stroke();
     }
   }
 }
@@ -446,7 +494,7 @@ function drawFarmCountdownBubble() {
   const secs = Math.ceil(remaining / 60);
   const text = secs + 's';
 
-  const x = tile.tx * TILE + TILE / 2;
+  const x = tile.tx * TILE + PLOT_SIZE * TILE / 2;
   const y = tile.ty * TILE - 8;
 
   // Bubble background
