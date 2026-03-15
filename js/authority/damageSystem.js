@@ -139,7 +139,13 @@ function dealDamageToMob(mob, amount, source, attackerEntity) {
   }
 
   if (mob.hp <= 0) {
-    processKill(mob, source);
+    // Derive killerId from attackerEntity so bot kills are attributed correctly
+    let _killerId = undefined;
+    if (attackerEntity && attackerEntity._isBot) {
+      const _km = typeof PartySystem !== 'undefined' ? PartySystem.getMemberByEntity(attackerEntity) : null;
+      _killerId = _km ? _km.id : 'player';
+    }
+    processKill(mob, source, _killerId);
     return true; // died
   }
   return false; // survived
