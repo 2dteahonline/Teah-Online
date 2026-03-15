@@ -403,6 +403,9 @@ const PROG_ITEMS = {
 
 
 // ---- STAT INTERPOLATION ----
+// Stats that should keep fractional precision (2 decimal places) instead of rounding to int.
+const _FRACTIONAL_STATS = new Set(['critChance', 'miningSpeed', 'fireRate', 'bulletSpeed', 'catchBonus']);
+
 // Universal stat calculator. Returns computed stats for any PROG_ITEM at tier+level.
 // Same formula as getGunStatsAtLevel() — linear interpolation within tier.
 function getProgressedStats(itemId, tier, level) {
@@ -433,7 +436,9 @@ function getProgressedStats(itemId, tier, level) {
     const b = tierDef.base[key];
     const m = tierDef.max[key];
     if (b !== undefined && m !== undefined) {
-      stats[key] = Math.round(b + (m - b) * t);
+      stats[key] = _FRACTIONAL_STATS.has(key)
+        ? Math.round((b + (m - b) * t) * 100) / 100  // 2 decimal places
+        : Math.round(b + (m - b) * t);                // integer
     } else if (b !== undefined) {
       stats[key] = b;
     } else if (m !== undefined) {
@@ -486,22 +491,22 @@ const EVOLUTION_COSTS = {
   // Tier 0 → 1 (Common → Uncommon)
   0: {
     gold: 2000,
-    materials: { uncommon_weapon_parts: 5, steel: 10, gold_ore: 5 },
+    materials: { uncommon_weapon_parts: 5, ore_steel: 10, ore_gold: 5 },
   },
   // Tier 1 → 2 (Uncommon → Rare)
   1: {
     gold: 5000,
-    materials: { rare_weapon_parts: 8, ruby: 8, diamond: 5 },
+    materials: { rare_weapon_parts: 8, ore_ruby: 8, ore_diamond: 5 },
   },
   // Tier 2 → 3 (Rare → Epic)
   2: {
     gold: 12000,
-    materials: { epic_weapon_parts: 12, emerald: 10, titanium: 8 },
+    materials: { epic_weapon_parts: 12, ore_emerald: 10, ore_titanium: 8 },
   },
   // Tier 3 → 4 (Epic → Legendary)
   3: {
     gold: 30000,
-    materials: { legendary_weapon_parts: 15, mythril: 12, celestium: 10, dusk: 5 },
+    materials: { legendary_weapon_parts: 15, ore_mythril: 12, ore_celestium: 10, ore_dusk: 5 },
   },
 };
 
@@ -607,7 +612,7 @@ function getProgUpgradeRecipe(itemId, tier, toLevel) {
     baseGold = 200 + (toLevel - 7) * 50;
     const amt = toLevel - 4;
     if (toLevel <= 9)       ores = { steel: amt };
-    else if (toLevel <= 11) ores = { gold_ore: amt };
+    else if (toLevel <= 11) ores = { gold: amt };
     else                    ores = { amethyst: amt };
   } else if (toLevel <= 19) {
     baseGold = 600 + (toLevel - 14) * 120;

@@ -292,6 +292,7 @@ function draw() {
 
   // Ore nodes (under characters)
   if (typeof drawOreNodes === 'function') drawOreNodes();
+  if (typeof drawOrePickups === 'function') drawOrePickups();
 
   // Telegraph ground markers (under characters, over ground)
   if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.draw(ctx, 0, 0);

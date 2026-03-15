@@ -17,6 +17,7 @@ function resetCombatState(mode) {
   mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
   deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
   oreNodes.length = 0;
+  if (typeof _orePickups !== 'undefined') _orePickups.length = 0;
   waveState = "waiting"; waveTimer = 0;
   resetPhaseState();
   StatusFX.clearPoison();
@@ -45,15 +46,33 @@ function resetCombatState(mode) {
     addToInventory(createItem('gun', DEFAULT_GUN));
     addToInventory(createItem('gun', CT_X_GUN));
     addToInventory(createItem('melee', DEFAULT_MELEE));
-    // Pickaxe — use PROG_ITEMS if available
-    if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['pickaxe']) {
-      const _pickItem = createProgressedItem('pickaxe', 0, 1);
-      if (_pickItem) {
-        _pickItem.data.special = 'pickaxe';
-        addToInventory(_pickItem);
-      } else {
-        addToInventory(createItem('melee', DEFAULT_PICKAXE));
+    // Pickaxes — restore from _pickaxeLevels (mirrors gun restoration pattern)
+    if (typeof window._pickaxeLevels !== 'undefined' && typeof createPickaxe === 'function') {
+      let anyAdded = false;
+      for (const pickId in window._pickaxeLevels) {
+        const v = window._pickaxeLevels[pickId];
+        let tier = 0, lvl = 0;
+        if (typeof v === 'number') { lvl = v; }
+        else if (v && typeof v === 'object') { tier = v.tier || 0; lvl = v.level || 0; }
+        if (lvl > 0) {
+          const pickItem = createPickaxe(pickId, tier, lvl);
+          if (pickItem) { addToInventory(pickItem); anyAdded = true; }
+        }
       }
+      // Fallback: if no owned pickaxes, add starter
+      if (!anyAdded) {
+        if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['pickaxe']) {
+          const _pickItem = createProgressedItem('pickaxe', 0, 1);
+          if (_pickItem) { _pickItem.data.special = 'pickaxe'; addToInventory(_pickItem); }
+          else addToInventory(createItem('melee', DEFAULT_PICKAXE));
+        } else {
+          addToInventory(createItem('melee', DEFAULT_PICKAXE));
+        }
+      }
+    } else if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['pickaxe']) {
+      const _pickItem = createProgressedItem('pickaxe', 0, 1);
+      if (_pickItem) { _pickItem.data.special = 'pickaxe'; addToInventory(_pickItem); }
+      else addToInventory(createItem('melee', DEFAULT_PICKAXE));
     } else {
       addToInventory(createItem('melee', DEFAULT_PICKAXE));
     }

@@ -76,8 +76,64 @@ function createOreItem(oreId) {
   item.tier = oreType.tier;
   item.data.value = oreType.value;
   item.data.color = oreType.color;
-  item.data.oreId = oreId;
+  item.data.oreId = oreId;       // ORE_TYPES key (for recipe lookups)
+  item.data.tier = oreType.tier;  // ore tier (for recipe band filtering)
   return item;
+}
+
+// Ground ore pickups — ore dropped when inventory is full
+let _orePickups = [];
+
+function spawnOrePickup(oreId, x, y) {
+  const oreType = ORE_TYPES[oreId];
+  if (!oreType) return;
+  _orePickups.push({
+    oreId: oreId,
+    x: x, y: y,
+    life: 1800,  // ~30s at 60fps before despawn
+    bobOffset: Math.random() * Math.PI * 2,
+  });
+}
+
+function updateOrePickups() {
+  if (!Scene.inMine) { _orePickups.length = 0; return; }
+  for (let i = _orePickups.length - 1; i >= 0; i--) {
+    const p = _orePickups[i];
+    p.life--;
+    if (p.life <= 0) { _orePickups.splice(i, 1); continue; }
+    // Check player collision (pickup range)
+    const dx = player.x - p.x, dy = (player.y - 20) - p.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 40) {
+      if (addToInventory(createOreItem(p.oreId))) {
+        const oreType = ORE_TYPES[p.oreId];
+        hitEffects.push({ x: p.x, y: p.y - 20, life: 25, maxLife: 25, type: "heal", dmg: "+1 " + oreType.name });
+        _orePickups.splice(i, 1);
+      }
+    }
+  }
+}
+
+function drawOrePickups() {
+  if (!Scene.inMine) return;
+  const t = Date.now() / 1000;
+  for (const p of _orePickups) {
+    const ore = ORE_TYPES[p.oreId];
+    if (!ore) continue;
+    const bob = Math.sin(t * 3 + p.bobOffset) * 3;
+    const fadeAlpha = p.life < 120 ? p.life / 120 : 1;  // fade out last 2s
+    ctx.globalAlpha = fadeAlpha;
+    // Small ore sprite
+    ctx.fillStyle = ore.colorDark;
+    ctx.beginPath(); ctx.arc(p.x, p.y + bob, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = ore.color;
+    ctx.beginPath(); ctx.arc(p.x - 2, p.y + bob - 2, 5, 0, Math.PI * 2); ctx.fill();
+    // Sparkle
+    ctx.fillStyle = ore.sparkle;
+    ctx.globalAlpha = fadeAlpha * (0.4 + 0.3 * Math.sin(t * 4 + p.bobOffset));
+    ctx.beginPath(); ctx.arc(p.x + 3, p.y + bob - 4, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1.0;
+  }
 }
 
 // Legacy aliases for backward compat (other files may reference these)
@@ -304,18 +360,38 @@ function updateMining() {
     miningProgress++;
 
     // Ore damage scales with pickaxe tier (higher tier = more damage per tick)
-    const dmgPerTick = getOreDamagePerTick();
+    let dmgPerTick = getOreDamagePerTick();
+
+    // Crit chance — roll using equipped pickaxe's critChance stat
+    const equip = (typeof playerEquip !== 'undefined') ? playerEquip.melee : null;
+    const critChance = (equip && equip.special === 'pickaxe' && equip.critChance) ? equip.critChance : 0;
+    let isCrit = false;
+    if (critChance > 0 && Math.random() < critChance) {
+      dmgPerTick *= 2;
+      isCrit = true;
+    }
+
     nearest.hp = Math.max(0, nearest.hp - dmgPerTick);
     window._miningHitFlash = MINING_CONFIG.hitFlashFrames;
 
     // Mining hit effect
-    hitEffects.push({
-      x: nearest.x + (Math.random() - 0.5) * 16,
-      y: nearest.y + (Math.random() - 0.5) * 16,
-      life: 15, maxLife: 15,
-      type: "hit",
-      dmg: dmgPerTick > 1 ? ("\u26CF " + dmgPerTick) : "\u26CF"
-    });
+    if (isCrit) {
+      hitEffects.push({
+        x: nearest.x + (Math.random() - 0.5) * 16,
+        y: nearest.y + (Math.random() - 0.5) * 16,
+        life: 20, maxLife: 20,
+        type: "crit",
+        dmg: "CRIT! \u26CF " + dmgPerTick
+      });
+    } else {
+      hitEffects.push({
+        x: nearest.x + (Math.random() - 0.5) * 16,
+        y: nearest.y + (Math.random() - 0.5) * 16,
+        life: 15, maxLife: 15,
+        type: "hit",
+        dmg: dmgPerTick > 1 ? ("\u26CF " + dmgPerTick) : "\u26CF"
+      });
+    }
 
     // Check if ore is depleted
     if (nearest.hp <= 0) {
@@ -324,19 +400,29 @@ function updateMining() {
       miningTarget = null;
       miningProgress = 0;
 
-      // Collect ore into inventory (uses createOreItem factory)
-      addToInventory(createOreItem(nearest.oreId));
       // Track discovered ores for pickaxe unlock gates
       if (typeof window._discoveredOres !== 'undefined') window._discoveredOres.add(nearest.oreId);
 
-      // Collection effect
-      hitEffects.push({
-        x: nearest.x,
-        y: nearest.y - 20,
-        life: 30, maxLife: 30,
-        type: "heal",
-        dmg: "+1 " + oreType.name
-      });
+      // Collect ore into inventory — auto-drop on ground if full
+      if (!addToInventory(createOreItem(nearest.oreId))) {
+        spawnOrePickup(nearest.oreId, nearest.x, nearest.y);
+        hitEffects.push({
+          x: nearest.x,
+          y: nearest.y - 20,
+          life: 35, maxLife: 35,
+          type: "heal",
+          dmg: "BAG FULL \u2014 dropped!"
+        });
+      } else {
+        // Collection effect
+        hitEffects.push({
+          x: nearest.x,
+          y: nearest.y - 20,
+          life: 30, maxLife: 30,
+          type: "heal",
+          dmg: "+1 " + oreType.name
+        });
+      }
 
       // Award Mining XP
       if (typeof addSkillXP === 'function') {

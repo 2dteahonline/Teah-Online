@@ -343,8 +343,31 @@ const ROLL_CHANCES = { 1: 0.20, 2: 0.10, 3: 0.05 }; // 65% = nothing
   addToInventory(createItem('gun', DEFAULT_GUN));
   addToInventory(createItem('gun', CT_X_GUN));
   addToInventory(createItem('melee', DEFAULT_MELEE));
-  // Pickaxe — skip if SaveLoad already restored one
-  if (!isInInventory('pickaxe')) {
+  // Pickaxes — restore from _pickaxeLevels if available (skip if SaveLoad already restored)
+  if (typeof window._pickaxeLevels !== 'undefined' && typeof createPickaxe === 'function') {
+    let anyAdded = false;
+    for (const pickId in window._pickaxeLevels) {
+      if (isInInventory(pickId)) { anyAdded = true; continue; } // already restored
+      const v = window._pickaxeLevels[pickId];
+      let tier = 0, lvl = 0;
+      if (typeof v === 'number') { lvl = v; }
+      else if (v && typeof v === 'object') { tier = v.tier || 0; lvl = v.level || 0; }
+      if (lvl > 0) {
+        const pickItem = createPickaxe(pickId, tier, lvl);
+        if (pickItem) { addToInventory(pickItem); anyAdded = true; }
+      }
+    }
+    // Fallback: if no owned pickaxes at all, add starter
+    if (!anyAdded && !isInInventory('pickaxe')) {
+      if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['pickaxe']) {
+        const _pi = createProgressedItem('pickaxe', 0, 1);
+        if (_pi) { _pi.data.special = 'pickaxe'; addToInventory(_pi); }
+        else addToInventory(createItem('melee', DEFAULT_PICKAXE));
+      } else {
+        addToInventory(createItem('melee', DEFAULT_PICKAXE));
+      }
+    }
+  } else if (!isInInventory('pickaxe')) {
     if (typeof PROG_ITEMS !== 'undefined' && PROG_ITEMS['pickaxe']) {
       const _pi = createProgressedItem('pickaxe', 0, 1);
       if (_pi) { _pi.data.special = 'pickaxe'; addToInventory(_pi); }
