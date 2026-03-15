@@ -19,6 +19,7 @@ const casinoState = {
     splitHand: null,      // null or array of cards (when split)
     playingSplit: false,   // true when acting on split hand
     doubled: false,
+    _handBets: [0, 0],    // [main hand bet, split hand bet] — tracks per-hand wagers
     insurance: 0,         // insurance bet amount (0 = none)
     dealTimer: 0,         // timestamp for deal animation
     phase: 'betting',     // 'betting'|'dealing'|'insurance'|'player'|'dealer'|'result'|'split'
@@ -156,6 +157,7 @@ function casinoReset() {
   casinoState.bj.splitHand = null;
   casinoState.bj.playingSplit = false;
   casinoState.bj.doubled = false;
+  casinoState.bj._handBets = [0, 0];
   casinoState.bj.insurance = 0;
   casinoState.bj.dealTimer = 0;
   casinoState.bj._animateCallback = null;
@@ -227,6 +229,7 @@ function casinoResetGame() {
     casinoState.bj.splitHand = null;
     casinoState.bj.playingSplit = false;
     casinoState.bj.doubled = false;
+    casinoState.bj._handBets = [0, 0];
     casinoState.bj.insurance = 0;
     casinoState.bj.dealTimer = 0;
     casinoState.bj._animateCallback = null;
@@ -368,6 +371,7 @@ function casinoBJ_deal() {
   bj.splitHand = null;
   bj.playingSplit = false;
   bj.doubled = false;
+  bj._handBets = [casinoState.bet, 0];
   bj.dealTimer = now;
   bj.phase = 'dealing';
   casinoState.phase = 'playing';
@@ -400,7 +404,8 @@ function _bjPostInsuranceCheck() {
   }
   if (playerBJ) {
     bj.phase = 'result';
-    const payout = Math.floor(casinoState.bet * (1 + BLACKJACK_CONFIG.BJ_PAYOUT));
+    const winnings = Math.floor(casinoState.bet * BLACKJACK_CONFIG.BJ_PAYOUT * (1 - CASINO_CONFIG.HOUSE_EDGE));
+    const payout = casinoState.bet + winnings;
     casinoWin(payout); // insurance lost if taken, but BJ pays big
     casinoState.result.message = 'Blackjack! +' + payout + 'g';
     return;
@@ -484,11 +489,13 @@ function casinoBJ_stand() {
 function casinoBJ_double() {
   const bj = casinoState.bj;
   if (bj.phase === 'animating') return;
-  const hand = bj.playingSplit ? bj.splitHand : bj.playerHand;
-  if (hand.length !== 2) return;
-  if (gold < casinoState.bet) return;
-  gold -= casinoState.bet;
-  casinoState.bet *= 2;
+  const handIdx = bj.playingSplit ? 1 : 0;
+  const hand = handIdx === 1 ? bj.splitHand : bj.playerHand;
+  if (!hand || hand.length !== 2) return;
+  const handBet = bj._handBets[handIdx];
+  if (gold < handBet) return;
+  gold -= handBet;
+  bj._handBets[handIdx] *= 2;
   bj.doubled = true;
   hand.push(_bjDraw());
   bj.phase = 'animating';
@@ -508,8 +515,10 @@ function casinoBJ_split() {
   if (bj.playerHand.length !== 2) return;
   if (_bjCardValue(bj.playerHand[0]) !== _bjCardValue(bj.playerHand[1])) return;
   if (bj.splitHand) return;
-  if (gold < casinoState.bet) return;
-  gold -= casinoState.bet;
+  const handBet = bj._handBets[0];
+  if (gold < handBet) return;
+  gold -= handBet;
+  bj._handBets[1] = handBet;
   bj.splitHand = [bj.playerHand.pop()];
   // Stagger the two new cards
   const now = Date.now();
@@ -552,26 +561,32 @@ function _bjResolve() {
   const bj = casinoState.bj;
   const dealerVal = _bjHandValue(bj.dealerHand);
   const dealerBust = _bjIsBust(bj.dealerHand);
+  const edge = CASINO_CONFIG.HOUSE_EDGE;
 
   let totalPayout = 0;
+  let totalBets = 0;
   const hands = [bj.playerHand];
   if (bj.splitHand) hands.push(bj.splitHand);
-  const betPerHand = bj.splitHand ? casinoState.bet / 2 : casinoState.bet;
 
-  for (const hand of hands) {
+  for (let i = 0; i < hands.length; i++) {
+    const hand = hands[i];
+    const handBet = bj._handBets[i];
+    if (!handBet) continue;
+    totalBets += handBet;
     const val = _bjHandValue(hand);
     if (_bjIsBust(hand)) continue; // already lost
     if (dealerBust || val > dealerVal) {
-      totalPayout += betPerHand * 2; // win: bet + winnings
+      // Win: return bet + winnings (5% edge on winnings)
+      totalPayout += handBet + Math.floor(handBet * (1 - edge));
     } else if (val === dealerVal) {
-      totalPayout += betPerHand; // push: return bet
+      totalPayout += handBet; // push: return bet
     }
     // else dealer wins, no payout
   }
 
   if (totalPayout > 0) {
     casinoWin(totalPayout);
-    if (totalPayout === casinoState.bet) {
+    if (totalPayout <= totalBets) {
       casinoState.result.message = 'Push!';
     }
   } else {
@@ -584,13 +599,14 @@ function casinoBJ_canSplit() {
   return bj.phase === 'player' && !bj.splitHand &&
     bj.playerHand.length === 2 &&
     _bjCardValue(bj.playerHand[0]) === _bjCardValue(bj.playerHand[1]) &&
-    gold >= casinoState.bet;
+    gold >= bj._handBets[0];
 }
 
 function casinoBJ_canDouble() {
   const bj = casinoState.bj;
-  const hand = bj.playingSplit ? bj.splitHand : bj.playerHand;
-  return bj.phase === 'player' && hand && hand.length === 2 && gold >= casinoState.bet;
+  const handIdx = bj.playingSplit ? 1 : 0;
+  const hand = handIdx === 1 ? bj.splitHand : bj.playerHand;
+  return bj.phase === 'player' && hand && hand.length === 2 && gold >= bj._handBets[handIdx];
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1225,7 +1241,7 @@ function casinoKN_resolve() {
   const payoutTable = riskTable[picks];
   const mult = payoutTable && payoutTable[matches] ? payoutTable[matches] : 0;
   if (mult > 0) {
-    const payout = Math.floor(casinoState.bet * mult) + casinoState.bet;
+    const payout = Math.floor(casinoState.bet * mult);
     casinoWin(payout);
     casinoState.result.message = matches + '/' + picks + ' matched! ' + mult + 'x';
   } else {

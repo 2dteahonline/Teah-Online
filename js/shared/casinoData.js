@@ -75,33 +75,36 @@ const CASE_TIERS = {
     cost: 100,
     label: 'Cheap Case',
     color: '#888',
+    // EV = 95g (5% house edge): 50×34 + 30×100 + 15×200 + 5×360 = 9500
     outcomes: [
-      { weight: 50, gold: 50,  label: '50g' },
-      { weight: 30, gold: 150, label: '150g' },
-      { weight: 15, gold: 300, label: '300g' },
-      { weight: 5,  gold: 500, label: '500g' },
+      { weight: 50, gold: 34,  label: '34g' },
+      { weight: 30, gold: 100, label: '100g' },
+      { weight: 15, gold: 200, label: '200g' },
+      { weight: 5,  gold: 360, label: '360g' },
     ],
   },
   medium: {
     cost: 500,
     label: 'Medium Case',
     color: '#4a9eff',
+    // EV = 475.5g (~5% house edge): 45×150 + 30×400 + 18×900 + 7×1800 = 47550
     outcomes: [
-      { weight: 45, gold: 200,  label: '200g' },
-      { weight: 30, gold: 600,  label: '600g' },
-      { weight: 18, gold: 1200, label: '1200g' },
-      { weight: 7,  gold: 2500, label: '2500g' },
+      { weight: 45, gold: 150,  label: '150g' },
+      { weight: 30, gold: 400,  label: '400g' },
+      { weight: 18, gold: 900,  label: '900g' },
+      { weight: 7,  gold: 1800, label: '1800g' },
     ],
   },
   expensive: {
     cost: 2000,
     label: 'Expensive Case',
     color: '#ff9a40',
+    // EV = 1900g (5% house edge): 40×500 + 30×1500 + 20×3100 + 10×6300 = 190000
     outcomes: [
-      { weight: 40, gold: 800,   label: '800g' },
-      { weight: 30, gold: 2500,  label: '2500g' },
-      { weight: 20, gold: 5000,  label: '5000g' },
-      { weight: 10, gold: 10000, label: '10000g' },
+      { weight: 40, gold: 500,  label: '500g' },
+      { weight: 30, gold: 1500, label: '1500g' },
+      { weight: 20, gold: 3100, label: '3100g' },
+      { weight: 10, gold: 6300, label: '6300g' },
     ],
   },
 };
@@ -111,13 +114,13 @@ const MINES_CONFIG = {
   MIN_MINES: 1,
   MAX_MINES: 24,
   DEFAULT_MINES: 5,
-  EDGE: 0.03,  // 3% house edge on multipliers
+  EDGE: 0.05,  // 5% house edge on multipliers
 };
 
 // European roulette wheel order (clockwise from 0)
 const ROULETTE_WHEEL_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 
-const STREAK_MULTIPLIER = 1.5;  // Heads or Tails: Math.pow(1.5, streak)
+const STREAK_MULTIPLIER = 1.9;  // Heads or Tails: Math.pow(1.9, streak) — 5% edge per flip
 
 // Dice: precomputed payouts per die1 value and choice, with 5% house edge
 // payout = (1 / probability) * (1 - HOUSE_EDGE)
@@ -151,9 +154,9 @@ const RPS_FORMATS = [
 
 const BACCARAT_CONFIG = {
   DECKS: 8,
-  PLAYER_PAYOUT: 1,     // 1:1
-  BANKER_PAYOUT: 0.95,  // 1:1 minus 5% commission
-  TIE_PAYOUT: 8,        // 8:1
+  PLAYER_PAYOUT: 0.91,  // ~5% house edge (fair ≈ 1.03:1, reduced to 0.91:1)
+  BANKER_PAYOUT: 0.86,  // ~5% house edge (fair ≈ 0.96:1, reduced to 0.86:1)
+  TIE_PAYOUT: 9,        // ~5% house edge (P(tie)≈9.52%, 9+1=10, 0.0952×10≈0.95)
 };
 
 const SLOTS_SYMBOLS = ['cherry', 'lemon', 'orange', 'plum', 'bell', 'bar', 'seven'];
@@ -180,14 +183,15 @@ const SLOTS_CONFIG = {
     { symbol: 'bar',    count: 8 },
     { symbol: 'seven',  count: 4 },
   ],
-  // Paytable: 3-of-a-kind multipliers on bet
+  // Paytable: 3-of-a-kind multipliers on bet (winnings only, bet returned on top)
+  // Calibrated with 2-cherry consolation for ~93% paytable return + ~2% jackpot = ~95% total
   PAYTABLE: {
-    cherry: 2,
-    lemon:  3,
-    orange: 4,
-    plum:   6,
-    bell:   10,
-    bar:    20,
+    cherry: 12,
+    lemon:  18,
+    orange: 25,
+    plum:   36,
+    bell:   62,
+    bar:    125,
     seven:  0,  // jackpot — handled separately
   },
   TWO_CHERRY_PAYOUT: 1,  // 2× cherry in any positions = return bet

@@ -978,7 +978,7 @@ function _drawHeadsOrTails(px, py, pw, ph) {
     _casinoDrawBetControls(px, py, pw);
     _casinoDrawButton(cx - 70, py + ph / 2 - 25, 140, 48, 'START', gold >= _casinoBetInput, true);
     ctx.font = '14px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center';
-    ctx.fillText('Choose heads or tails each flip — 1.5x multiplier per win!', cx, py + 100);
+    ctx.fillText('Choose heads or tails each flip — 1.9x multiplier per win!', cx, py + 100);
     ctx.fillText('Cash out anytime or lose it all on a wrong guess!', cx, py + 122);
     return;
   }
@@ -1775,9 +1775,9 @@ function _clickRPS(mx, my, px, py, pw, ph) {
 // ═══════════════════════════════════════════════════════════════
 
 const _BAC_BET_TYPES = [
-  { id: 'player', label: 'PLAYER', color: '#4a9eff', desc: 'Pays 1:1', bg: '#0a1a3a' },
-  { id: 'banker', label: 'BANKER', color: '#ff6666', desc: 'Pays 0.95:1', bg: '#3a0a0a' },
-  { id: 'tie',    label: 'TIE',    color: '#ffd700', desc: 'Pays 8:1', bg: '#2a2a0a' },
+  { id: 'player', label: 'PLAYER', color: '#4a9eff', desc: 'Pays 0.91:1', bg: '#0a1a3a' },
+  { id: 'banker', label: 'BANKER', color: '#ff6666', desc: 'Pays 0.86:1', bg: '#3a0a0a' },
+  { id: 'tie',    label: 'TIE',    color: '#ffd700', desc: 'Pays 9:1', bg: '#2a2a0a' },
 ];
 
 let _bacSelectedBet = 'player';
