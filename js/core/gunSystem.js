@@ -573,8 +573,9 @@ function updateGun() {
   }
 
   // Continuous shooting — authority reads InputIntent.shootHeld (set by mouse/arrow keys)
+  // Suppressed in farm scene — clicks are consumed by farm action dispatch
   if (InputIntent.shootHeld && !InputIntent.chatActive && !nameEditActive && !statusEditActive
-      && !Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino) {
+      && !Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino && !Scene.inFarm) {
     if (activeSlot === 0) shoot();
     else if (activeSlot === 1) {
       meleeSwing();

@@ -2436,9 +2436,11 @@ function update() {
       gun.reloading = true;
       gun.reloadTimer = getReloadTime();
     }
-    // Farm action dispatch — intercept melee in farm scene when hoe equipped
-    if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && InputIntent.meleePressed && typeof handleFarmAction === 'function') {
+    // Farm action dispatch — intercept melee AND click in farm scene when hoe equipped
+    if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && (InputIntent.meleePressed || InputIntent.shootPressed) && typeof handleFarmAction === 'function') {
       handleFarmAction();
+      InputIntent.shootPressed = false; // consume so gun system doesn't fire
+      InputIntent.shootHeld = false;
     }
     // Melee swing (disabled in Skeld, lobby, mafia lobby)
     else if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && !Scene.inCasino && InputIntent.meleePressed) {
