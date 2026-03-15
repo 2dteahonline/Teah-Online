@@ -2436,15 +2436,13 @@ function update() {
       gun.reloading = true;
       gun.reloadTimer = getReloadTime();
     }
-    // Farm action dispatch — intercept melee AND click in farm scene when hoe equipped
-    if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && (InputIntent.meleePressed || InputIntent.shootPressed) && typeof handleFarmAction === 'function') {
-      handleFarmAction(InputIntent.shootPressed);
-      InputIntent.shootPressed = false; // consume so gun system doesn't fire
-      InputIntent.shootHeld = false;
-    }
-    // Melee swing (disabled in Skeld, lobby, mafia lobby)
-    else if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && !Scene.inCasino && InputIntent.meleePressed) {
-      meleeSwing();
+    // Melee swing — in farm scene with hoe, melee triggers hoe action instead
+    if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && !Scene.inCasino && InputIntent.meleePressed) {
+      if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && typeof handleFarmAction === 'function') {
+        handleFarmAction(false);
+      } else {
+        meleeSwing();
+      }
     }
     // Ninja dash activation (blocked by mobility_lock)
     if (InputIntent.dashPressed && melee.special === 'ninja' && Scene.inDungeon) {
