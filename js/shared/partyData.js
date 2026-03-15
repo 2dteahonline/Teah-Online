@@ -32,8 +32,8 @@ const PARTY_CONFIG = {
   // Mob retarget interval (frames)
   MOB_RETARGET_INTERVAL: 30,
   // Wave scaling per alive party member
-  MOB_COUNT_SCALE_PER_MEMBER: 0.5,  // duo 1.5x, trio 2x, quad 2.5x
-  MOB_HP_SCALE_PER_MEMBER: 0.25,    // duo 1.25x, trio 1.5x, quad 1.75x
+  MOB_COUNT_SCALE_PER_MEMBER: 1.0,  // duo 2x, trio 3x, quad 4x — dungeons should be HARD
+  MOB_HP_SCALE_PER_MEMBER: 0.5,    // duo 1.5x, trio 2x, quad 2.5x — tanky mobs require strategy
 };
 
 // Bot cosmetic presets (distinct visual identity per slot)
