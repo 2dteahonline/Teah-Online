@@ -82,6 +82,10 @@ UI.register('casino', {
     if (typeof casinoReset === 'function') casinoReset();
   },
 });
+UI.register('farmVendor', {
+  onOpen() { if (typeof farmVendorTab !== 'undefined') farmVendorTab = 0; },
+});
+UI.register('miningShop');
 
 let playerStatus = ""; // player's status message
 let statusEditActive = false;
@@ -1076,7 +1080,7 @@ window.addEventListener("keydown", e => {
     InputIntent.slot4Pressed = true;
   }
   // Farming seed selection — number keys 1-9 when in farm
-  if (!chatInputActive && !nameEditActive && !statusEditActive) {
+  if (!chatInputActive && !nameEditActive && !statusEditActive && Scene.inFarm) {
     const numMatch = key.match(/^[1-9]$/);
     if (numMatch && typeof handleFarmSeedSelect === 'function') {
       handleFarmSeedSelect(parseInt(key));
