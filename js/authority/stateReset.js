@@ -172,6 +172,25 @@ function resetCombatState(mode) {
     recalcMaxHp(); player.hp = player.maxHp;
     potion.count += 2;
     reviveUsed = false;
+    // Clean up any in-progress melee state (dash mid-flight, swing, cooldowns)
+    // Equipment (melee.special, melee.damage, etc.) is preserved — only transient state resets
+    melee.dashing = false; melee.dashTimer = 0; melee.dashTrail = [];
+    melee.dashActive = false; melee.dashesLeft = 0; melee.dashChainWindow = 0;
+    melee.dashCooldown = 0; melee.dashGap = 0;
+    melee.swinging = false; melee.swingTimer = 0; melee.cooldown = 0;
+    // Also reset ultimates' transient state (don't lose charges, just stop active)
+    if (shrine.active) { shrine.active = false; shrine.timer = 0; }
+    if (godspeed.active) { godspeed.active = false; godspeed.timer = 0; }
+    // Clean up gun transient state (mid-reload, fire cooldown)
+    gun.reloading = false; gun.reloadTimer = 0; gun.fireCooldown = 0; gun.recoilTimer = 0;
+    gun.ammo = gun.magSize; // full mag on new floor
+    // Defensive re-apply: restore equipped weapon specials in case they were lost
+    if (playerEquip.melee && playerEquip.melee.special) {
+      melee.special = playerEquip.melee.special;
+    }
+    if (playerEquip.gun && playerEquip.gun.special) {
+      gun.special = playerEquip.gun.special;
+    }
     // Init hazards for the new floor
     if (typeof HazardSystem !== 'undefined') HazardSystem.initForFloor(dungeonFloor);
   }
