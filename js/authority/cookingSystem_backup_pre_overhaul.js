@@ -1,15 +1,15 @@
 // ===================== COOKING SYSTEM =====================
-// Authority: continuous cooking loop, customer orders, grading, XP
-// No shift timer — restaurants run continuously until the player leaves.
+// Authority: cooking shift loop, customer orders, grading, XP
+// V1 — Street Deli only. One order at a time.
 //
 // Flow:
-//   1. Player enters restaurant → startCookingSession() auto-starts
-//   2. Customer spawns with random order + service timer
-//   3. Player interacts with stations to assemble food
+//   1. Player enters deli → startCookingShift() auto-starts
+//   2. Customer spawns with random order
+//   3. Player interacts with stations to assemble sandwich
 //   4. Player submits at pickup counter → gradeOrder()
 //   5. Award gold + tip + Cooking XP
 //   6. Next customer spawns
-//   7. Session ends when player leaves the scene
+//   7. Shift ends after timer expires → shift-end overlay
 
 // ===================== COOKING STATE =====================
 const cookingState = {
@@ -17,17 +17,20 @@ const cookingState = {
   shopId: 'street_deli',
   activeRestaurantId: 'street_deli',
   ticket: null,  // multi-item ticket: { items: [{recipe, qty}], completedCount: 0 }
+  shiftTimer: 0,
+  shiftDuration: COOKING_CONFIG.shiftDuration,
   orderSpawnDelay: 0,
   assembly: [],          // ingredients the player has added so far
-  currentOrder: null,    // { id, recipe, customer, serviceTimer, serviceDuration, timerType, npcId, ... }
+  currentOrder: null,    // { id, recipe, customer, moodTimer, mood, moodStageIdx }
   comboCount: 0,
   comboMultiplier: 1.0,
-  missedOrders: 0,       // count of missed/timed-out orders
+  rushActive: false,
+  shiftEnded: false,     // true = show summary overlay
+  shiftComplete: false,  // true = shift finished, don't auto-restart
+  // Tips are added directly to gold on order completion (no tip jar)
   // Ticket queue — orders auto-generate on timer, independent of NPCs
   ticketQueue: [],       // pre-generated order tickets waiting to activate
   ticketSpawnTimer: 0,   // frames until next ticket generation
-  // Plate staging for multi-item tickets
-  stagingPlates: [],     // { tableOrBooth: number, items: [{recipe, completed: bool}], totalItems }
   stats: {
     ordersCompleted: 0,
     perfectDishes: 0,
@@ -66,17 +69,12 @@ function _getActiveNPCs() {
   if (cookingState.activeRestaurantId === 'diner') return typeof dinerNPCs !== 'undefined' ? dinerNPCs : [];
   return typeof deliNPCs !== 'undefined' ? deliNPCs : [];
 }
-function _getActiveTimerTypes() {
-  if (cookingState.activeRestaurantId === 'fine_dining') return typeof FD_TIMER_TYPES !== 'undefined' ? FD_TIMER_TYPES : null;
-  if (cookingState.activeRestaurantId === 'diner') return typeof DINER_TIMER_TYPES !== 'undefined' ? DINER_TIMER_TYPES : null;
-  return typeof DELI_TIMER_TYPES !== 'undefined' ? DELI_TIMER_TYPES : null;
-}
 
-// Saved weapon state (restore when leaving)
+// Saved weapon state (restore when leaving deli)
 let _savedMeleeEquip = null;
 let _savedActiveSlot = null;
 
-// ===================== SESSION START / END =====================
+// ===================== SHIFT START / END =====================
 
 function startCookingShift(restaurantId) {
   if (cookingState.active) return;
@@ -100,15 +98,19 @@ function startCookingShift(restaurantId) {
   activeSlot = 1; // switch to melee
 
   cookingState.active = true;
+  cookingState.shiftTimer = 0;
+  cookingState.shiftDuration = COOKING_CONFIG.shiftDuration;
   cookingState.orderSpawnDelay = 30; // 0.5 second delay before first order
   cookingState.assembly = [];
   cookingState.currentOrder = null;
   cookingState.comboCount = 0;
   cookingState.comboMultiplier = 1.0;
-  cookingState.missedOrders = 0;
+  cookingState.rushActive = false;
+  cookingState.shiftEnded = false;
+  cookingState.shiftComplete = false;
+  // tipJar removed — tips go directly to gold
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.stagingPlates = [];
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
   cookingState.stats = {
@@ -123,11 +125,12 @@ function startCookingShift(restaurantId) {
 
 function endCookingShift() {
   cookingState.active = false;
+  cookingState.shiftEnded = true;
+  cookingState.shiftComplete = true;
   cookingState.currentOrder = null;
   cookingState.assembly = [];
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.stagingPlates = [];
   // Fully reset grill state
   if (typeof resetGrillState === 'function') resetGrillState();
 }
@@ -172,15 +175,16 @@ function resetCookingState() {
   _savedActiveSlot = null;
 
   cookingState.active = false;
+  cookingState.shiftEnded = false;
+  cookingState.shiftComplete = false;
   cookingState.currentOrder = null;
   cookingState.ticket = null;
   cookingState.assembly = [];
   cookingState.comboCount = 0;
   cookingState.comboMultiplier = 1.0;
-  cookingState.missedOrders = 0;
+  // tipJar removed — tips go directly to gold
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.stagingPlates = [];
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
   cookingState._swingHandled = false;
@@ -204,10 +208,6 @@ function _generateTicket() {
       : pickCustomerType();
   const moodThresholds = MOOD_STAGES.map(s => Math.round(s.baseFrames * customerType.patience));
 
-  // Pick a service timer type for the active restaurant
-  const timerTypes = _getActiveTimerTypes();
-  const timerType = timerTypes ? _pickTimerType(timerTypes) : { id: 'patient', duration: 3600 };
-
   // Build ticket (multi-item for diner, single for deli/fine_dining)
   let ticketItems = [{ recipe: recipe, qty: 1 }];
   if (cookingState.activeRestaurantId === 'diner') {
@@ -219,18 +219,10 @@ function _generateTicket() {
   }
   // Fine dining: single item per ticket (like deli), trick data comes from recipe
 
-  // Compute per-ingredient pay for deli
-  if (cookingState.activeRestaurantId === 'street_deli' && typeof _calcDeliPay === 'function') {
-    for (const item of ticketItems) {
-      item.recipe = Object.assign({}, item.recipe, { basePay: _calcDeliPay(item.recipe) });
-    }
-  }
-
   cookingState.ticketQueue.push({
     ticketItems: ticketItems,
     customer: customerType,
     moodThresholds: moodThresholds,
-    timerType: timerType,
   });
 }
 
@@ -250,15 +242,10 @@ function _activateNextTicket() {
     mood: MOOD_STAGES[0].id,
     moodStageIdx: 0,
     moodThresholds: ticket.moodThresholds,
-    serviceTimer: 0,
-    serviceDuration: ticket.timerType.duration,
-    timerType: ticket.timerType,
     startFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
     npcId: null,
     _fdTableId: ticket._fdTableId != null ? ticket._fdTableId : null,
     _fdPartyId: ticket._fdPartyId != null ? ticket._fdPartyId : null,
-    _dinerBoothId: ticket._dinerBoothId != null ? ticket._dinerBoothId : null,
-    _dinerPartyId: ticket._dinerPartyId != null ? ticket._dinerPartyId : null,
   };
   cookingState.assembly = [];
 
@@ -280,22 +267,41 @@ function _tryLinkNPCToOrder() {
   }
 }
 
-// Increment missed orders counter
-function _incrementMissedOrders() {
-  cookingState.missedOrders++;
-}
-
 // ===================== MAIN UPDATE =====================
 
 function updateCooking() {
   if (!Scene.inCooking) return;
 
-  // Auto-start session when entering restaurant (continuous — no shift end)
-  if (!cookingState.active) {
+  // Auto-start shift when entering deli (only once per visit)
+  if (!cookingState.active && !cookingState.shiftEnded && !cookingState.shiftComplete) {
     startCookingShift();
   }
 
+  // Shift-end overlay: press E to dismiss and allow new shift
+  if (cookingState.shiftEnded) {
+    if (InputIntent.interactPressed) {
+      cookingState.shiftEnded = false;
+      cookingState.shiftComplete = false; // allow auto-start of next shift
+      InputIntent.interactPressed = false; // consume so inventory doesn't open
+    }
+    return;
+  }
+
   if (!cookingState.active) return;
+
+  // Advance shift timer
+  cookingState.shiftTimer++;
+
+  // Check rush mode
+  if (!cookingState.rushActive && cookingState.stats.ordersCompleted >= COOKING_CONFIG.rushStartAfter) {
+    cookingState.rushActive = true;
+  }
+
+  // Shift time expired
+  if (cookingState.shiftTimer >= cookingState.shiftDuration) {
+    endCookingShift();
+    return;
+  }
 
   // Generate tickets on timer (independent of NPCs)
   cookingState.ticketSpawnTimer++;
@@ -320,12 +326,9 @@ function updateCooking() {
     _tryLinkNPCToOrder();
   }
 
-  // Update service timer (green→red bar countdown)
+  // Update mood timer
   const order = cookingState.currentOrder;
-  order.serviceTimer++;
-
-  // Update mood timer (legacy mood stages still used for NPC mood display)
-  const moodSpeed = order.customer.moodSpeed || 0.7;
+  const moodSpeed = order.customer.moodSpeed * (cookingState.rushActive ? COOKING_CONFIG.rushMoodSpeedMult : 1.0);
   order.moodTimer += moodSpeed;
 
   // Check mood stage transitions
@@ -373,8 +376,10 @@ function updateCooking() {
   }
   if (!melee.swinging) cookingState._swingHandled = false;
 
-  // Customer leaves if service timer expires
-  if (order.serviceTimer >= order.serviceDuration) {
+  // Customer leaves if past all mood stages
+  let totalAllThresholds = 0;
+  for (const th of order.moodThresholds) totalAllThresholds += th;
+  if (order.moodTimer >= totalAllThresholds) {
     // Notify linked NPC to leave angry
     const angryNPCs = _getActiveNPCs();
     if (order.npcId) {
@@ -382,25 +387,25 @@ function updateCooking() {
       if (npc) {
         npc.linkedOrderId = null;
         npc.hasOrdered = true;
-        // Deli NPCs — release queue slot and despawn walk
-        npc._queueIdx = -1;
-        if (typeof _advanceQueue === 'function') _advanceQueue(0);
-        npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
-        npc.state = '_despawn_walk';
+        // Release counter slot and trigger party leave for diner NPCs
+        if (typeof _dinerDequeueCounter === 'function' && npc.partyId) {
+          _dinerDequeueCounter(npc.partyId);
+          if (typeof _getDinerParty === 'function') {
+            const party = _getDinerParty(npc.partyId);
+            if (party && typeof _triggerPartyLeave === 'function') {
+              _triggerPartyLeave(party);
+            }
+          }
+        } else {
+          // Fallback for deli NPCs
+          npc._queueIdx = -1;
+          if (typeof _advanceQueue === 'function') _advanceQueue(0);
+          npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
+          npc.state = '_despawn_walk';
+        }
       }
     }
-    // Diner: if service timer expires, trigger party leave for the booth
-    if (cookingState.activeRestaurantId === 'diner' &&
-        order._dinerPartyId != null &&
-        typeof _getDinerParty === 'function' &&
-        typeof _triggerPartyLeave === 'function') {
-      const party = _getDinerParty(order._dinerPartyId);
-      if (party && party.state !== 'leaving') {
-        _triggerPartyLeave(party);
-      }
-    }
-    // Customer left — automatic F grade + increment missed
-    _incrementMissedOrders();
+    // Customer left — automatic F grade
     const result = {
       grade: COOKING_GRADES.F,
       pay: 0,
@@ -504,6 +509,8 @@ function handleStationInteract(entityType) {
     const result = gradeOrder();
     applyOrderResult(result);
   }
+
+  // Tip jars removed — tips added directly to gold on order completion
 }
 
 // ===================== GRADING =====================
@@ -529,8 +536,10 @@ function gradeOrder() {
   }
   const qualityScore = Math.max(0, (correctCount / recipe.ingredients.length) - extraWrong * 0.1);
 
-  // Time score: how fast relative to service timer duration
-  const timeScore = Math.max(0, 1.0 - (order.serviceTimer / order.serviceDuration));
+  // Time score: how fast relative to total mood time
+  let totalMoodTime = 0;
+  for (const th of order.moodThresholds) totalMoodTime += th;
+  const timeScore = Math.max(0, 1.0 - (order.moodTimer / totalMoodTime));
 
   // Fine dining: modified scoring with trick score
   let effectiveQuality = qualityScore;
@@ -661,47 +670,19 @@ function applyOrderResult(result) {
     return; // don't clear order — more items to serve
   }
 
-  // All ticket items done — notify NPC or waitress
-  if (cookingState.currentOrder) {
-    // Diner: push to waitress pending serve queue
-    if (cookingState.activeRestaurantId === 'diner' &&
-        cookingState.currentOrder._dinerBoothId != null &&
-        cookingState.currentOrder._dinerPartyId != null &&
-        typeof _dinerPendingServe !== 'undefined') {
-      const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
-        ? cookingState.currentOrder.recipe.ingredients.slice()
-        : null;
-      _dinerPendingServe.push({
-        boothId: cookingState.currentOrder._dinerBoothId,
-        partyId: cookingState.currentOrder._dinerPartyId,
-        recipeIngredients: recipeIngredients,
-      });
-    } else if (cookingState.activeRestaurantId === 'fine_dining' &&
-               cookingState.currentOrder._fdTableId != null &&
-               cookingState.currentOrder._fdPartyId != null &&
-               typeof _fdPendingServe !== 'undefined') {
-      // Fine dining: push to waiter pending serve queue
-      const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
-        ? cookingState.currentOrder.recipe.ingredients.slice()
-        : null;
-      _fdPendingServe.push({
-        tableId: cookingState.currentOrder._fdTableId,
-        partyId: cookingState.currentOrder._fdPartyId,
-        recipeIngredients: recipeIngredients,
-      });
-    } else if (cookingState.currentOrder.npcId) {
-      // Deli: direct NPC pickup
-      const activeNPCs = _getActiveNPCs();
-      const npc = activeNPCs.find(n => n.id === cookingState.currentOrder.npcId);
-      if (npc && (npc.state === 'waiting_food' || npc.state === 'ordering')) {
-        npc.state = 'pickup_food';
-        npc.stateTimer = 30;
-        npc.hasFood = true;
-        if (cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients) {
-          npc._recipeIngredients = cookingState.currentOrder.recipe.ingredients.slice();
-        }
-        npc.linkedOrderId = null;
+  // All ticket items done — notify NPC
+  const activeNPCs = _getActiveNPCs();
+  if (cookingState.currentOrder && cookingState.currentOrder.npcId) {
+    const npc = activeNPCs.find(n => n.id === cookingState.currentOrder.npcId);
+    if (npc && (npc.state === 'waiting_food' || npc.state === 'ordering')) {
+      npc.state = 'pickup_food';
+      npc.stateTimer = 30;
+      npc.hasFood = true;
+      // Store recipe ingredients for food visual colors
+      if (cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients) {
+        npc._recipeIngredients = cookingState.currentOrder.recipe.ingredients.slice();
       }
+      npc.linkedOrderId = null;
     }
   }
 
@@ -712,7 +693,10 @@ function applyOrderResult(result) {
   cookingState.currentOrder = null;
   cookingState.ticket = null;
   cookingState.assembly = [];
-  cookingState.orderSpawnDelay = COOKING_CONFIG.orderSpawnDelay;
+  const baseDelay = COOKING_CONFIG.orderSpawnDelay;
+  cookingState.orderSpawnDelay = Math.round(
+    baseDelay * (cookingState.rushActive ? COOKING_CONFIG.rushOrderDelayMult : 1.0)
+  );
 }
 
 // ===================== REGISTER STATION INTERACTABLES =====================
@@ -737,16 +721,49 @@ function _stationWorldPos(stationType) {
 
 function drawCookingHUD() {
   if (!Scene.inCooking) return;
+
+  // Shift-end overlay
+  if (cookingState.shiftEnded) {
+    drawShiftEndOverlay();
+    return;
+  }
+
   if (!cookingState.active) return;
 
   const order = cookingState.currentOrder;
 
-  // === Combo counter (top-right area) ===
+  // === Top-center: Shift timer bar (below HP bar which ends ~y50) ===
+  const barW = 200, barH = 14;
+  const barX = BASE_W / 2 - barW / 2, barY = 54;
+  const shiftPct = 1.0 - (cookingState.shiftTimer / cookingState.shiftDuration);
+
+  // Background
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.beginPath(); ctx.roundRect(barX - 2, barY - 2, barW + 4, barH + 4, 4); ctx.fill();
+  // Fill
+  ctx.fillStyle = shiftPct > 0.3 ? '#60a040' : shiftPct > 0.1 ? '#d0a020' : '#e04040';
+  ctx.beginPath(); ctx.roundRect(barX, barY, barW * shiftPct, barH, 3); ctx.fill();
+  // Border
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 3); ctx.stroke();
+  // Label
+  const mins = Math.floor((cookingState.shiftDuration - cookingState.shiftTimer) / 3600);
+  const secs = Math.floor(((cookingState.shiftDuration - cookingState.shiftTimer) % 3600) / 60);
+  ctx.font = "bold 10px monospace"; ctx.fillStyle = '#fff'; ctx.textAlign = "center";
+  ctx.fillText("Shift: " + mins + ":" + (secs < 10 ? "0" : "") + secs, barX + barW / 2, barY + barH - 2);
+
+  // === Combo counter (top-right of timer) ===
   if (cookingState.comboCount > 0) {
     ctx.font = "bold 11px monospace";
     ctx.fillStyle = cookingState.comboCount >= COOKING_CONFIG.comboThreshold ? '#ffd700' : '#c0c0c0';
     ctx.textAlign = "left";
-    ctx.fillText("Combo x" + cookingState.comboCount, BASE_W / 2 + 110, 66);
+    ctx.fillText("Combo x" + cookingState.comboCount, barX + barW + 10, barY + barH - 2);
+  }
+
+  // Rush indicator
+  if (cookingState.rushActive) {
+    ctx.font = "bold 10px monospace"; ctx.fillStyle = '#ff6040'; ctx.textAlign = "right";
+    ctx.fillText("RUSH HOUR!", barX - 10, barY + barH - 2);
   }
 
   // === Grill HUD override ===
@@ -755,18 +772,10 @@ function drawCookingHUD() {
     // Still show stats line below
   } else
 
-  // === Order display (top-center) ===
-  // Fine dining: hide order until waiter submits it at pass window
-  if (order && cookingState.activeRestaurantId === 'fine_dining' &&
-      typeof _fdOrderVisible !== 'undefined' && !_fdOrderVisible) {
-    // Show "Waiter taking order..." placeholder
-    ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
-    ctx.fillStyle = '#a0a0a0';
-    ctx.fillText("Waiter taking order...", BASE_W / 2, 90);
-  } else
+  // === Order display (top-center, below shift timer) ===
   if (order) {
-    const panelW = 220, panelH = 140;
-    const panelX = BASE_W / 2 - panelW / 2, panelY = 54;
+    const panelW = 220, panelH = 130;
+    const panelX = BASE_W / 2 - panelW / 2, panelY = 76;
 
     // Panel background
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -774,39 +783,23 @@ function drawCookingHUD() {
     ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, panelH, 6); ctx.stroke();
 
-    // Customer type + timer type label
+    // Customer type + mood
+    const moodStage = MOOD_STAGES[order.moodStageIdx];
     ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
-    ctx.fillStyle = order.customer.color || '#80a0c0';
-    ctx.fillText((order.customer.name || order.customer.type || 'Customer'), panelX + 8, panelY + 14);
-    // Timer type label
-    const timerLabel = order.timerType ? order.timerType.label : '';
-    if (timerLabel) {
-      ctx.fillStyle = '#a0a0a0';
-      ctx.fillText(timerLabel, panelX + panelW - 60, panelY + 14);
-    }
+    ctx.fillStyle = order.customer.color;
+    ctx.fillText(order.customer.name + " Customer", panelX + 8, panelY + 14);
+    ctx.fillStyle = moodStage.color;
+    ctx.fillText(moodStage.icon + " " + moodStage.label, panelX + panelW - 80, panelY + 14);
 
-    // === Service timer bar (green→yellow→red) ===
-    const sTimerPct = Math.max(0, 1.0 - (order.serviceTimer / order.serviceDuration));
-    const sBarW = panelW - 16, sBarH = 8;
-    const sBarX = panelX + 8, sBarY = panelY + 20;
-    // Background
+    // Mood timer bar
+    let totalMoodTime = 0;
+    for (const th of order.moodThresholds) totalMoodTime += th;
+    const moodPct = Math.max(0, 1.0 - (order.moodTimer / totalMoodTime));
+    const moodBarW = panelW - 16, moodBarH = 6;
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(sBarX, sBarY, sBarW, sBarH);
-    // Color interpolation: green→yellow→red
-    let barR, barG;
-    if (sTimerPct > 0.5) {
-      // green to yellow (pct 1.0→0.5)
-      const t = (sTimerPct - 0.5) / 0.5;
-      barR = Math.round(255 * (1 - t));
-      barG = 200;
-    } else {
-      // yellow to red (pct 0.5→0.0)
-      const t = sTimerPct / 0.5;
-      barR = 230;
-      barG = Math.round(200 * t);
-    }
-    ctx.fillStyle = 'rgb(' + barR + ',' + barG + ',40)';
-    ctx.fillRect(sBarX, sBarY, sBarW * sTimerPct, sBarH);
+    ctx.fillRect(panelX + 8, panelY + 20, moodBarW, moodBarH);
+    ctx.fillStyle = moodStage.color;
+    ctx.fillRect(panelX + 8, panelY + 20, moodBarW * moodPct, moodBarH);
 
     // Order name + ticket progress
     ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ffd700';
@@ -814,7 +807,7 @@ function drawCookingHUD() {
     if (cookingState.ticket && cookingState.ticket.items.length > 1) {
       orderLabel = "Item " + (cookingState.ticket.completedCount + 1) + "/" + cookingState.ticket.items.length + ": " + order.recipe.name;
     }
-    ctx.fillText(orderLabel, panelX + 8, panelY + 42);
+    ctx.fillText(orderLabel, panelX + 8, panelY + 40);
 
     // Recipe ingredients — check off based on how many collected vs how many needed
     ctx.font = "9px monospace"; ctx.fillStyle = '#c0c0c0';
@@ -832,7 +825,7 @@ function drawCookingHUD() {
       if (!ing) continue;
       checkedOff[ingId] = (checkedOff[ingId] || 0) + 1;
       const added = (assemblyCount[ingId] || 0) >= checkedOff[ingId];
-      const iy = panelY + 52 + i * 11;
+      const iy = panelY + 50 + i * 11;
       if (iy > panelY + panelH - 8) break;
 
       // Checkbox
@@ -894,16 +887,72 @@ function drawCookingHUD() {
   ctx.fillText("Orders: " + cookingState.stats.ordersCompleted, 12, BASE_H - 50);
   // Earned (green)
   ctx.fillStyle = '#50e050';
-  ctx.fillText("Earned: $" + cookingState.stats.totalEarned, 150, BASE_H - 50);
+  ctx.fillText("Earned: $" + cookingState.stats.totalEarned, 170, BASE_H - 50);
   // Tips (gold)
   ctx.fillStyle = '#f0d040';
-  ctx.fillText("Tips: $" + cookingState.stats.totalTips, 310, BASE_H - 50);
+  ctx.fillText("Tips: $" + cookingState.stats.totalTips, 360, BASE_H - 50);
 
-  // === Missed orders counter (bottom-left, red) ===
-  if (cookingState.missedOrders > 0) {
-    ctx.fillStyle = '#e04040';
-    ctx.fillText("Missed: " + cookingState.missedOrders, 12, BASE_H - 30);
+  ctx.textAlign = "left";
+}
+
+// ===================== SHIFT-END OVERLAY =====================
+
+function drawShiftEndOverlay() {
+  const s = cookingState.stats;
+
+  // Full-screen dark overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  // Panel
+  const panelW = 320, panelH = 300;
+  const panelX = BASE_W / 2 - panelW / 2, panelY = BASE_H / 2 - panelH / 2;
+
+  ctx.fillStyle = 'rgba(30,25,20,0.95)';
+  ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, panelH, 10); ctx.fill();
+  ctx.strokeStyle = '#c0a060'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, panelH, 10); ctx.stroke();
+
+  // Title
+  ctx.font = "bold 18px monospace"; ctx.fillStyle = '#ffd700'; ctx.textAlign = "center";
+  ctx.fillText("SHIFT COMPLETE", panelX + panelW / 2, panelY + 28);
+
+  // Divider
+  ctx.strokeStyle = '#605030'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(panelX + 20, panelY + 38); ctx.lineTo(panelX + panelW - 20, panelY + 38); ctx.stroke();
+
+  // Stats
+  ctx.font = "bold 12px monospace"; ctx.textAlign = "left";
+  const col1 = panelX + 24, col2 = panelX + panelW - 24;
+  let ly = panelY + 60;
+  const lineH = 22;
+
+  const statLines = [
+    { label: "Orders Completed", value: s.ordersCompleted, color: '#c0c0c0' },
+    { label: "Perfect Dishes (S)", value: s.perfectDishes, color: '#ffd700' },
+    { label: "Total Earned", value: "$" + s.totalEarned, color: '#60c060' },
+    { label: "Total Tips", value: "$" + s.totalTips, color: '#80d080' },
+    { label: "Cooking XP Earned", value: "+" + s.totalXP, color: '#80a0e0' },
+    { label: "S Grades", value: s.grades.S, color: '#ffd700' },
+    { label: "A Grades", value: s.grades.A, color: '#60c060' },
+    { label: "B Grades", value: s.grades.B, color: '#80a0e0' },
+    { label: "C Grades", value: s.grades.C, color: '#c0c0c0' },
+    { label: "F Grades", value: s.grades.F, color: '#e04040' },
+  ];
+
+  for (const line of statLines) {
+    ctx.fillStyle = '#a0a0a0';
+    ctx.fillText(line.label, col1, ly);
+    ctx.fillStyle = line.color;
+    ctx.textAlign = "right";
+    ctx.fillText("" + line.value, col2, ly);
+    ctx.textAlign = "left";
+    ly += lineH;
   }
+
+  // Footer
+  ctx.font = "bold 10px monospace"; ctx.fillStyle = '#808080'; ctx.textAlign = "center";
+  ctx.fillText("Press [" + getKeyDisplayName(keybinds.interact) + "] to continue", panelX + panelW / 2, panelY + panelH - 14);
 
   ctx.textAlign = "left";
 }

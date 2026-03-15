@@ -62,39 +62,6 @@ const CUSTOMER_TYPES = {
   impatient: { id: 'impatient', name: 'Impatient', tipMult: 0.6, moodSpeed: 1.0, patience: 0.9, color: '#e06040', weight: 0.15 },
 };
 
-// ===================== SERVICE TIMER TYPES =====================
-// Per-restaurant timer types replace mood stages for duration.
-// Timer assigned at order creation. Bar color interpolates green→yellow→red.
-const DELI_TIMER_TYPES = {
-  patient: { id: 'patient', label: 'Patient', duration: 3600, weight: 0.50 },  // 60s
-  busy:    { id: 'busy',    label: 'Busy',    duration: 1800, weight: 0.35 },  // 30s
-  urgent:  { id: 'urgent',  label: 'Urgent',  duration: 900,  weight: 0.15 },  // 15s
-};
-
-const DINER_TIMER_TYPES = {
-  calm:   { id: 'calm',   label: 'Calm',   duration: 5400, weight: 0.40 },  // 90s
-  feisty: { id: 'feisty', label: 'Feisty', duration: 3600, weight: 0.40 },  // 60s
-  rowdy:  { id: 'rowdy',  label: 'Rowdy',  duration: 2700, weight: 0.20 },  // 45s
-};
-
-const FD_TIMER_TYPES = {
-  calm:   { id: 'calm',   label: 'Calm',   duration: 3600, weight: 0.40 },  // 60s
-  feisty: { id: 'feisty', label: 'Feisty', duration: 2700, weight: 0.35 },  // 45s
-  rowdy:  { id: 'rowdy',  label: 'Rowdy',  duration: 1800, weight: 0.25 },  // 30s
-};
-
-function _pickTimerType(timerTypes) {
-  const types = Object.values(timerTypes);
-  let totalWeight = 0;
-  for (const t of types) totalWeight += t.weight;
-  let r = Math.random() * totalWeight;
-  for (const t of types) {
-    r -= t.weight;
-    if (r <= 0) return t;
-  }
-  return types[0];
-}
-
 // ===================== MOOD STAGES =====================
 // baseFrames: frames at 60fps before mood shifts (scaled by customer patience)
 const MOOD_STAGES = [
@@ -115,18 +82,17 @@ const COOKING_GRADES = {
 
 // ===================== COOKING CONFIG =====================
 const COOKING_CONFIG = {
+  shiftDuration: 18000,    // 5 minutes at 60fps
   orderSpawnDelay: 30,     // 0.5 seconds between orders (constant cooking)
   comboThreshold: 3,       // perfect orders needed for combo bonus (easier)
   comboTipBonus: 0.2,      // +20% tip per combo level
   comboMaxBonus: 1.0,      // max +100% tip from combos
+  rushStartAfter: 15,      // orders before rush hour kicks in (later)
+  rushMoodSpeedMult: 1.15, // mood decays 15% faster during rush (gentler)
+  rushOrderDelayMult: 0.75, // orders come 25% faster during rush (gentler)
   ticketQueueMax: 3,       // max pre-queued orders waiting
   ticketSpawnInterval: 60, // generate a ticket every 1 second (60 frames)
 };
-
-// Per-ingredient pay formula for deli (replaces static basePay)
-function _calcDeliPay(recipe) {
-  return 8 + (recipe.ingredients.length * 2);
-}
 
 // ===================== SPATULA WEAPON =====================
 const SPATULA_WEAPON = { id: 'spatula', name: 'Spatula', tier: 0, damage: 1, range: 80, cooldown: 20, critChance: 0, color: '#c0c0c0', special: 'spatula' };
@@ -265,9 +231,11 @@ const FINE_DINING_RECIPES = [
 
 // ===================== FINE DINING CUSTOMER TYPES =====================
 const FINE_DINING_CUSTOMER_TYPES = {
-  regular:   { type: 'regular',   partySize: [1, 3], tipMult: 1.0, moodSpeed: 0.6, patience: 1.3, coverFee: 10, weight: 0.50 },
-  vip:       { type: 'vip',       partySize: [1, 3], tipMult: 1.8, moodSpeed: 0.5, patience: 1.3, coverFee: 25, weight: 0.35 },
-  critic:    { type: 'critic',    partySize: [1, 2], tipMult: 2.0, moodSpeed: 0.7, patience: 1.0, coverFee: 40, weight: 0.15 },
+  regular:   { type: 'regular',   partySize: [1, 3], tipMult: 1.0, moodSpeed: 0.6, patience: 1.3, coverFee: 10, weight: 0.35 },
+  generous:  { type: 'generous',  partySize: [2, 4], tipMult: 1.5, moodSpeed: 0.4, patience: 1.5, coverFee: 15, weight: 0.20 },
+  impatient: { type: 'impatient', partySize: [1, 2], tipMult: 0.8, moodSpeed: 0.9, patience: 1.0, coverFee: 10, weight: 0.10 },
+  vip:       { type: 'vip',       partySize: [1, 3], tipMult: 1.8, moodSpeed: 0.5, patience: 1.3, coverFee: 25, weight: 0.20 },
+  celebrity: { type: 'celebrity', partySize: [1, 2], tipMult: 2.5, moodSpeed: 0.8, patience: 0.8, coverFee: 50, weight: 0.15 },
 };
 
 function pickFineDiningCustomerType() {

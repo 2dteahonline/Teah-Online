@@ -1,10 +1,6 @@
 // ===================== DELI NPC SYSTEM =====================
 // Customer NPCs that line up, order food, sit at tables, buy extras.
 // NO pathfinding — straight-line movement between defined waypoints.
-//
-// Two NPC roles:
-//   meal (70%)   — enter → queue → order → wait → receive → condiments → eat → leave
-//   retail (30%) — enter → walk to shelf → browse → cashier → pay → leave
 
 // ===================== APPEARANCE POOL =====================
 const DELI_NPC_APPEARANCES = [
@@ -54,16 +50,13 @@ const DELI_CHAIRS = [
   { tx: 28, ty: 19, sitDir: 1 },  { tx: 30, ty: 19, sitDir: 1 },
 ];
 
-// Aisle browse spots — 4 shelves, NPCs stand at ty:27 (below shelf row)
+// Aisle browse spots (stand next to shelves — all items are in the aisles now)
+// NPCs stand in the walkway below shelf row, centered on a shelf.
+// Shelf row: ty:24-25. Browse spots at ty:27 (below shelves).
 const DELI_AISLES = [
-  { name: 'Frozen',  price: 4, tx: 27, ty: 27 },
-  { name: 'Snacks',  price: 3, tx: 30, ty: 27 },
-  { name: 'Candy',   price: 2, tx: 33, ty: 27 },
-  { name: 'Bevs',    price: 3, tx: 36, ty: 27 },
+  { name: 'Frozen',    price: 4, tx: 29, ty: 27 },
+  { name: 'Snacks',    price: 3, tx: 36, ty: 27 },
 ];
-
-// Cashier spot for retail shoppers
-const DELI_CASHIER = { tx: 40, ty: 24 };
 
 // ===================== CONFIG =====================
 const DELI_NPC_CONFIG = {
@@ -76,16 +69,18 @@ const DELI_NPC_CONFIG = {
   browseDuration: [480, 900],   // 8-15 sec browsing at an aisle
   condimentTime:  [300, 480],   // 5-8 sec at condiments
   condimentChance: 0.5,
-  aisleChance:     0.7,        // chance to browse aisles after eating (meal customers)
+  aisleChance:     0.7,        // chance to browse aisles after eating
+  // Pre-queue aisle browsing
+  preQueueBrowseChance: 0.3,      // 30% chance to browse aisles before joining line
+  // Mid-queue line leaving
+  midQueueLeaveChance: 0.0003,    // per-frame chance (~1.8% per second) to leave line
+  midQueueMinIdx: 2,              // only leave if queueIdx >= this (not near front)
 };
 
 // ===================== STATE =====================
 const deliNPCs = [];
 const _deliIdCounter = { value: 0 };
 const _deliSpawnState = { timer: 0, nextInterval: 600 };
-
-// Queue advancement delay — frames remaining before next NPC can advance to ordering
-let _queueAdvanceDelay = 0;
 
 // ===================== HELPERS =====================
 // _cRandRange, _cRandFromArray, _cTilePx provided by cookingNPCBase.js
@@ -105,7 +100,7 @@ function _isKitchenZone(px, py) {
 function _pickFreeAisle() {
   const occupied = new Set();
   for (const n of deliNPCs) {
-    if (n.state === 'shopping_aisle' || n.state === 'browsing_shelf') {
+    if (n.state === 'shopping_aisle' || n.state === 'pre_queue_browse' || n.state === 'mid_queue_browse') {
       const ntx = Math.floor(n.x / TILE);
       const nty = Math.floor(n.y / TILE);
       for (let i = 0; i < DELI_AISLES.length; i++) {
@@ -134,7 +129,7 @@ function _pickFreeAisle() {
 //
 // GAPS between shelves (safe vertical corridors through aisle area):
 //   tx:26  — west of all shelves (main corridor)
-//   tx:32-33 — between shelf columns
+//   tx:32-33 — between shelf 1 (tx:27-31) and shelf 2 (tx:34-38)
 //
 // SAFE CORRIDORS:
 //   tx:26  vertical  ty:1-30   (just east of kitchen wall — main N/S corridor)
@@ -263,48 +258,14 @@ function _routeToExit(fromTX, fromTY) {
   return route;
 }
 
-// Route from exit (13,30) to a shelf browse spot (for retail shoppers)
-function _routeExitToShelf(shelf) {
-  const gap = _nearestAisleGap(shelf.tx);
-  if (gap <= 26) {
-    return [
-      { tx: 13, ty: 23 },              // north to counter area
-      { tx: 26, ty: 23 },              // east past counter wall
-      { tx: 26, ty: shelf.ty },        // south to browse row
-      { tx: shelf.tx, ty: shelf.ty },  // east to shelf spot
-    ];
-  }
-  return [
-    { tx: 13, ty: 23 },              // north to counter area
-    { tx: 26, ty: 23 },              // east past counter wall
-    { tx: 26, ty: 20 },              // north above shelves
-    { tx: gap, ty: 20 },             // east to gap column
-    { tx: gap, ty: shelf.ty },       // south through gap to browse row
-    { tx: shelf.tx, ty: shelf.ty },  // east/west to shelf spot
-  ];
+// Route from exit to an aisle (for pre-queue browsing)
+function _routeExitToAisle(aisle) {
+  // NPC enters from exit (tx:13, ty:30). _routeCounterToAisle starts at tx:13, ty:23,
+  // so the NPC walks north from exit to ty:23, then follows the aisle route.
+  return _routeCounterToAisle(aisle);
 }
 
-// Route from shelf browse spot to cashier (40,24)
-function _routeShelfToCashier() {
-  // From browse row (ty:27) → east along ty:27 to cashier column → north to cashier
-  return [
-    { tx: DELI_CASHIER.tx, ty: 27 },             // east along browse row to cashier column
-    { tx: DELI_CASHIER.tx, ty: DELI_CASHIER.ty }, // north to cashier spot
-  ];
-}
-
-// Route from cashier (40,24) to exit (13,30)
-function _routeCashierToExit() {
-  return [
-    { tx: DELI_CASHIER.tx, ty: 27 },  // south to browse row
-    { tx: 26, ty: 27 },               // west along browse row to main corridor
-    { tx: 26, ty: 23 },               // north to safe clearance
-    { tx: 13, ty: 23 },               // west to exit area
-    { tx: 13, ty: 30 },               // south to exit
-  ];
-}
-
-// Route from aisle area back to a queue spot (meal customers only)
+// Route from aisle area back to a queue spot
 function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
   const route = [];
   const gap = _nearestAisleGap(fromTX);
@@ -381,25 +342,22 @@ function _advanceQueue(fromIdx) {
       // Don't change state — stay in_queue but walk forward
     }
   }
-  // Set queue advance delay: 3-5 seconds (180-300 frames)
-  _queueAdvanceDelay = _cRandRange(180, 300);
 }
 
 // ===================== SPAWN =====================
 function spawnDeliNPC() {
-  // Decide role: 70% meal, 30% retail
-  const role = Math.random() < 0.7 ? 'meal' : 'retail';
   const npc = _cCreateNPC(_deliIdCounter, DELI_SPOTS.exit, DELI_NPC_APPEARANCES, DELI_NPC_NAMES, DELI_NPC_CONFIG, {
     _queueIdx: -1,
     purchasedExtras: [],
     claimedChair: null,
     _pendingPurchase: null,
     _lastChairIdx: -1,
+    _browseFirst: false,
+    _browsedPreQueue: false,
     _aisleVisits: 0,
     _recipeIngredients: null,
     _laneOffX: (Math.random() - 0.5) * 32,
     _laneOffY: (Math.random() - 0.5) * 32,
-    _role: role,
     isDeliNPC: true,
   });
   deliNPCs.push(npc);
@@ -411,7 +369,6 @@ function initDeliNPCs() {
   _deliIdCounter.value = 0;
   _deliSpawnState.timer = 0;
   _deliSpawnState.nextInterval = _cRandRange(60, 180);
-  _queueAdvanceDelay = 0;
 }
 
 // ===================== AI STATE HANDLERS =====================
@@ -425,19 +382,20 @@ const DELI_NPC_AI = {
     npc.state = 'entering';
   },
 
-  // ─── ENTERING: Walk from exit to queue (meal) or shelf (retail) ──
+  // ─── ENTERING: Walk from exit to queue (or browse aisles first) ──
   entering: (npc) => {
-    // Retail shoppers go directly to a shelf — never enter food queue
-    if (npc._role === 'retail') {
-      const shelf = _pickFreeAisle();
-      npc._pendingPurchase = shelf;
-      _cStartRoute(npc, _routeExitToShelf(shelf),
-        'browsing_shelf', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
+    // Pre-queue browsing chance — some customers grab sides before lining up
+    if (!npc._browseFirst && !npc._browsedPreQueue &&
+        Math.random() < DELI_NPC_CONFIG.preQueueBrowseChance) {
+      npc._browseFirst = true;
+      const aisle = _pickFreeAisle();
+      npc._pendingPurchase = Math.random() < 0.6 ? aisle : null;
+      _cStartRoute(npc, _routeExitToAisle(aisle),
+        'pre_queue_browse', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
       );
       return;
     }
 
-    // Meal customers join the queue
     const qIdx = _nextQueueSpot();
     if (qIdx < 0) {
       // Queue full — browse aisles instead
@@ -459,6 +417,55 @@ const DELI_NPC_AI = {
     );
   },
 
+  // ─── PRE-QUEUE BROWSE: Browsing aisles before joining queue ──
+  pre_queue_browse: (npc) => {
+    npc.moving = false;
+    npc.dir = 1; // face shelves
+    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
+
+    // Process purchase
+    if (npc._pendingPurchase) {
+      const item = npc._pendingPurchase;
+      if (typeof gold !== 'undefined') gold += item.price;
+      if (typeof cookingState !== 'undefined' && cookingState.active) {
+        cookingState.stats.totalEarned += item.price;
+      }
+      npc.purchasedExtras.push(item.name);
+      if (typeof hitEffects !== 'undefined') {
+        hitEffects.push({ x: npc.x, y: npc.y - 40, life: 30, maxLife: 30, type: 'heal', dmg: '+$' + item.price + ' (' + item.name + ')' });
+      }
+      npc._pendingPurchase = null;
+    }
+
+    // Done browsing — try to join queue
+    npc._browsedPreQueue = true;
+    const qIdx = _nextQueueSpot();
+    if (qIdx < 0) {
+      // Queue still full — browse another aisle or leave
+      npc._aisleVisits++;
+      if (npc._aisleVisits < 2 && Math.random() < 0.5) {
+        const aisle = _pickFreeAisle();
+        npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
+        const curTX = Math.floor(npc.x / TILE);
+        const curTY = Math.floor(npc.y / TILE);
+        _cStartRoute(npc, _routeAisleToAisle(curTX, curTY, aisle),
+          'pre_queue_browse', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+      } else {
+        const aTX = Math.floor(npc.x / TILE);
+        const aTY = Math.floor(npc.y / TILE);
+        _cStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
+      }
+      return;
+    }
+
+    // Join the queue from aisle
+    npc._queueIdx = qIdx;
+    const spot = QUEUE_SPOTS[qIdx];
+    const curTX = Math.floor(npc.x / TILE);
+    const curTY = Math.floor(npc.y / TILE);
+    _cStartRoute(npc, _routeAisleToQueue(curTX, curTY, spot), 'in_queue', 0);
+  },
+
   // ─── WALKING: Follow route, then transition ────────────
   walking: (npc) => {
     // Movement handled by moveDeliNPC. Just check if route is done.
@@ -467,7 +474,7 @@ const DELI_NPC_AI = {
     npc.stateTimer = npc._nextTimer || 0;
   },
 
-  // ─── IN QUEUE: Stand in line, wait for turn (meal customers only) ────────────
+  // ─── IN QUEUE: Stand in line, wait for turn ────────────
   in_queue: (npc) => {
     // If we're still walking to our queue spot, keep going
     if (npc.route && npc.route.length > 0) {
@@ -502,13 +509,11 @@ const DELI_NPC_AI = {
       npc.y = spot.ty * TILE + TILE / 2;
     }
 
-    // Front of line + shift active + no advance delay → become ordering
+    // Front of line + shift active → become ordering
     if (npc._queueIdx === 0 && typeof cookingState !== 'undefined' && cookingState.active) {
-      if (_queueAdvanceDelay <= 0) {
-        npc.state = 'ordering';
-        npc._idleTime = 0;
-        return;
-      }
+      npc.state = 'ordering';
+      npc._idleTime = 0;
+      return;
     }
 
     // Patience timeout — leave if shift not active (5 sec) or waited too long (30 sec)
@@ -518,13 +523,63 @@ const DELI_NPC_AI = {
       const leftIdx = npc._queueIdx;
       npc._queueIdx = -1;
       _advanceQueue(leftIdx);
-      // Cancel any linked ticket and increment missed
-      if (npc.linkedOrderId && typeof _incrementMissedOrders === 'function') {
-        _incrementMissedOrders();
-      }
       _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
       return;
     }
+
+    // Mid-queue leave: customers stuck far back may leave to grab items
+    if (npc._queueIdx >= DELI_NPC_CONFIG.midQueueMinIdx &&
+        Math.random() < DELI_NPC_CONFIG.midQueueLeaveChance) {
+      // Forfeit queue slot — advance only NPCs behind this position
+      const leftIdx = npc._queueIdx;
+      npc._queueIdx = -1;
+      _advanceQueue(leftIdx);
+      // Reset browse flags for re-entry
+      npc._browseFirst = false;
+      npc._browsedPreQueue = false;
+      npc._aisleVisits = 0;
+      const aisle = _pickFreeAisle();
+      npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
+      _cStartRoute(npc, _routeCounterToAisle(aisle),
+        'mid_queue_browse', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+    }
+  },
+
+  // ─── MID-QUEUE BROWSE: Left queue to browse, will re-enter ──
+  mid_queue_browse: (npc) => {
+    npc.moving = false;
+    npc.dir = 1;
+    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
+
+    // Process purchase
+    if (npc._pendingPurchase) {
+      const item = npc._pendingPurchase;
+      if (typeof gold !== 'undefined') gold += item.price;
+      if (typeof cookingState !== 'undefined' && cookingState.active) {
+        cookingState.stats.totalEarned += item.price;
+      }
+      npc.purchasedExtras.push(item.name);
+      if (typeof hitEffects !== 'undefined') {
+        hitEffects.push({ x: npc.x, y: npc.y - 40, life: 30, maxLife: 30, type: 'heal', dmg: '+$' + item.price + ' (' + item.name + ')' });
+      }
+      npc._pendingPurchase = null;
+    }
+
+    // Try to rejoin queue
+    const qIdx = _nextQueueSpot();
+    if (qIdx < 0) {
+      // Queue full — give up and leave
+      const aTX = Math.floor(npc.x / TILE);
+      const aTY = Math.floor(npc.y / TILE);
+      _cStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
+      return;
+    }
+
+    npc._queueIdx = qIdx;
+    const spot = QUEUE_SPOTS[qIdx];
+    const curTX = Math.floor(npc.x / TILE);
+    const curTY = Math.floor(npc.y / TILE);
+    _cStartRoute(npc, _routeAisleToQueue(curTX, curTY, spot), 'in_queue', 0);
   },
 
   // ─── ORDERING: At counter, waiting for spawnOrder() to link us ──
@@ -532,20 +587,6 @@ const DELI_NPC_AI = {
     npc.moving = false;
     npc.dir = 1;
     npc._idleTime = (npc._idleTime || 0) + 1;
-
-    // Counter validity: only valid if NPC is on queue spot 0
-    if (npc._queueIdx !== 0) {
-      // Not at front — cancel ticket, increment missed, leave
-      if (npc.linkedOrderId && typeof _incrementMissedOrders === 'function') {
-        _incrementMissedOrders();
-        npc.linkedOrderId = null;
-      }
-      npc.hasOrdered = true;
-      npc._queueIdx = -1;
-      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
-      return;
-    }
-
     // Snap to queue spot 0 (counter)
     npc.x = QUEUE_SPOTS[0].tx * TILE + TILE / 2;
     npc.y = QUEUE_SPOTS[0].ty * TILE + TILE / 2;
@@ -565,10 +606,6 @@ const DELI_NPC_AI = {
     // Patience timeout — leave after 15 sec if order never gets linked
     if (npc._idleTime >= 900) {
       npc.hasOrdered = true;
-      if (npc.linkedOrderId && typeof _incrementMissedOrders === 'function') {
-        _incrementMissedOrders();
-        npc.linkedOrderId = null;
-      }
       npc._queueIdx = -1;
       _advanceQueue(0);
       _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
@@ -580,26 +617,11 @@ const DELI_NPC_AI = {
     npc.moving = false;
     npc.dir = 1;
     npc._idleTime = (npc._idleTime || 0) + 1;
-
-    // Counter validity: must still be at queue spot 0
-    if (npc._queueIdx !== 0) {
-      if (npc.linkedOrderId && typeof _incrementMissedOrders === 'function') {
-        _incrementMissedOrders();
-      }
-      npc.linkedOrderId = null;
-      npc._queueIdx = -1;
-      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
-      return;
-    }
-
     // Snap to queue spot 0 (counter)
     npc.x = QUEUE_SPOTS[0].tx * TILE + TILE / 2;
     npc.y = QUEUE_SPOTS[0].ty * TILE + TILE / 2;
     // applyOrderResult() in cookingSystem.js will set us to pickup_food
     if (typeof cookingState !== 'undefined' && !cookingState.active) {
-      if (npc.linkedOrderId && typeof _incrementMissedOrders === 'function') {
-        _incrementMissedOrders();
-      }
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
       _advanceQueue(0);
@@ -608,9 +630,6 @@ const DELI_NPC_AI = {
     }
     // Patience timeout — leave angry after 30 sec if food never comes
     if (npc._idleTime >= 1800) {
-      if (npc.linkedOrderId && typeof _incrementMissedOrders === 'function') {
-        _incrementMissedOrders();
-      }
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
       _advanceQueue(0);
@@ -673,7 +692,7 @@ const DELI_NPC_AI = {
     const lastChair = npc.claimedChair;
     npc.claimedChair = null;
 
-    // Browse aisles after eating (meal customers post-eat browsing)
+    // Browse aisles after eating
     if (Math.random() < DELI_NPC_CONFIG.aisleChance) {
       const aisle = _pickFreeAisle();
       npc._pendingPurchase = Math.random() < 0.6 ? aisle : null;
@@ -686,7 +705,7 @@ const DELI_NPC_AI = {
     }
   },
 
-  // ─── SHOPPING AISLE: Browsing grocery shelves (meal customers post-eat) ──────────
+  // ─── SHOPPING AISLE: Browsing grocery shelves ──────────
   shopping_aisle: (npc) => {
     npc.moving = false;
     npc.dir = 1; // face shelves
@@ -737,49 +756,6 @@ const DELI_NPC_AI = {
     _cStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
   },
 
-  // ─── BROWSING SHELF: Retail shopper standing at shelf, browsing ──────────
-  browsing_shelf: (npc) => {
-    npc.moving = false;
-    npc.dir = 1; // face north (toward shelves)
-    if (npc.stateTimer > 0) { npc.stateTimer--; return; }
-
-    // Purchase the item
-    if (npc._pendingPurchase) {
-      const item = npc._pendingPurchase;
-      if (typeof gold !== 'undefined') gold += item.price;
-      if (typeof cookingState !== 'undefined' && cookingState.active) {
-        cookingState.stats.totalEarned += item.price;
-      }
-      npc.purchasedExtras.push(item.name);
-      if (typeof hitEffects !== 'undefined') {
-        hitEffects.push({ x: npc.x, y: npc.y - 40, life: 30, maxLife: 30, type: 'heal', dmg: '+$' + item.price + ' (' + item.name + ')' });
-      }
-      npc._pendingPurchase = null;
-    }
-
-    // Route to cashier to pay
-    _cStartRoute(npc, _routeShelfToCashier(), 'at_cashier', 0);
-  },
-
-  // ─── AT CASHIER: Retail shopper paying at cashier ──────────
-  at_cashier: (npc) => {
-    npc.moving = false;
-    npc.dir = 1; // face north (toward cashier counter)
-
-    // Brief pause at cashier (1-2 sec)
-    npc._idleTime = (npc._idleTime || 0) + 1;
-    if (npc._idleTime < 90) return;
-
-    // Payment gold popup for any remaining purchases
-    const totalSpent = npc.purchasedExtras.length;
-    if (totalSpent > 0 && npc._idleTime === 90) {
-      // Already paid at shelf — just show a "Thank you" or similar
-    }
-
-    // Route to exit
-    _cStartRoute(npc, _routeCashierToExit(), '_despawn', 0);
-  },
-
   // ─── DESPAWN WALK: Walking to exit then despawn ────────
   _despawn_walk: (npc) => {
     if (npc.route && npc.route.length > 0) {
@@ -794,9 +770,6 @@ const DELI_NPC_AI = {
 function updateDeliNPCs() {
   if (typeof Scene === 'undefined' || !Scene.inCooking) return;
   if (typeof cookingState === 'undefined' || cookingState.activeRestaurantId !== 'street_deli') return;
-
-  // Tick down queue advance delay
-  if (_queueAdvanceDelay > 0) _queueAdvanceDelay--;
 
   // Queue deduplication — detect multiple NPCs claiming same queue slot
   const _queueSlots = new Map(); // idx → npc
@@ -842,7 +815,7 @@ function updateDeliNPCs() {
     npcList: deliNPCs,
     stateHandlers: DELI_NPC_AI,
     moveFn: moveDeliNPC,
-    exemptIdleStates: new Set(['eating', 'in_queue', 'ordering', 'waiting_food', 'browsing_shelf', 'at_cashier']),
+    exemptIdleStates: new Set(['eating', 'in_queue', 'ordering', 'waiting_food']),
     onIdleTimeout: (npc) => {
       npc._idleTime = 0;
       npc.hasFood = false;
@@ -881,10 +854,6 @@ function updateDeliNPCs() {
         const leftIdx = npc._queueIdx;
         npc._queueIdx = -1;
         _advanceQueue(leftIdx);
-        // If NPC despawns while at counter with a linked order, count as missed
-        if (npc.linkedOrderId && typeof _incrementMissedOrders === 'function') {
-          _incrementMissedOrders();
-        }
       }
       npc.hasFood = false;
       npc._recipeIngredients = null;

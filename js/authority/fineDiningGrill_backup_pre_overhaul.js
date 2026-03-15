@@ -24,8 +24,6 @@ const FD_GRILL_CONFIG = {
   maxComboMult: 2.5,
   missComboReset: true,
   finishDelay: 60,          // 1 sec pause after bar ends
-  vipCriticBarDuration: 300, // 5 sec fixed for VIP/Critic
-  vipCriticTrickCount: 5,    // always 5 tricks for VIP/Critic
 };
 
 // ----- Grill State -----
@@ -47,10 +45,6 @@ const grillState = {
   missCount: 0,
   // Current hit popup
   hitPopup: null,          // { text, color, timer }
-  // VIP/Critic tracking
-  _customerType: null,     // 'regular' | 'vip' | 'critic' — set per grill sequence
-  // Red grill visual flag
-  _grillRedTableId: null,  // tableId while grill is active, null otherwise
 };
 
 // ============================================================
@@ -61,28 +55,13 @@ const grillState = {
 function startGrillSequence(tableId, recipe) {
   const cfg = FD_GRILL_CONFIG;
 
-  // Determine customer type from current order
-  let customerType = 'regular';
-  if (typeof cookingState !== 'undefined' && cookingState.currentOrder &&
-      cookingState.currentOrder.customer && cookingState.currentOrder.customer.type) {
-    customerType = cookingState.currentOrder.customer.type;
-  }
-
-  const isVipOrCritic = (customerType === 'vip' || customerType === 'critic');
-
-  // Determine bar duration
-  let barDuration;
-  if (isVipOrCritic) {
-    barDuration = cfg.vipCriticBarDuration; // fixed 5 sec (300 frames)
-  } else {
-    // Determine difficulty-based bar duration
-    // difficulty 1 = slow (easier), difficulty 3 = fast (harder)
-    const diff = Math.max(1, Math.min(3, recipe.trickDifficulty || 1));
-    const t = (diff - 1) / 2; // 0..1
-    barDuration = cfg.barDuration[0] + (cfg.barDuration[1] - cfg.barDuration[0]) * (1 - t);
-    // Higher difficulty → shorter duration → faster cursor
-    // diff 1 → barDuration = 480 (slow), diff 3 → barDuration = 300 (fast)
-  }
+  // Determine difficulty-based bar duration
+  // difficulty 1 = slow (easier), difficulty 3 = fast (harder)
+  const diff = Math.max(1, Math.min(3, recipe.trickDifficulty || 1));
+  const t = (diff - 1) / 2; // 0..1
+  const barDuration = cfg.barDuration[0] + (cfg.barDuration[1] - cfg.barDuration[0]) * (1 - t);
+  // Higher difficulty → shorter duration → faster cursor
+  // diff 1 → barDuration = 480 (slow), diff 3 → barDuration = 300 (fast)
 
   grillState.active = true;
   grillState.phase = 'active';
@@ -98,18 +77,9 @@ function startGrillSequence(tableId, recipe) {
   grillState.trickIdx = 0;
   grillState.hitPopup = null;
   grillState.finishTimer = 0;
-  grillState._customerType = customerType;
-  grillState._grillRedTableId = tableId;
 
   // Generate trick zones
-  let trickCount;
-  if (isVipOrCritic) {
-    trickCount = cfg.vipCriticTrickCount; // always 5 for VIP/Critic
-  } else {
-    trickCount = Math.max(1, Math.min(6, recipe.trickCount || 3));
-  }
-
-  const diff = isVipOrCritic ? 2 : Math.max(1, Math.min(3, recipe.trickDifficulty || 1));
+  const trickCount = Math.max(1, Math.min(6, recipe.trickCount || 3));
   const diffMult = diff === 1 ? 1.0 : diff === 2 ? 0.8 : 0.6;
   const zoneW = cfg.trickZoneWidth * diffMult;
 
@@ -164,69 +134,9 @@ function updateGrill() {
       // Auto-submit the order — grill completion IS the submission for fine dining
       if (typeof cookingState !== 'undefined' && cookingState.active && cookingState.currentOrder &&
           cookingState.assembly.length > 0 && typeof gradeOrder === 'function' && typeof applyOrderResult === 'function') {
-
-        // --- VIP/Critic grade override ---
-        const custType = grillState._customerType;
-
-        if (custType === 'critic') {
-          // Critic: ALL 5 hits must be perfect or good. Any miss = F grade
-          const totalHits = grillState.perfectCount + grillState.goodCount;
-          if (totalHits < grillState.tricks.length) {
-            // Critic failed — force F grade, party leaves, count as missed
-            if (typeof _incrementMissedOrders === 'function') _incrementMissedOrders();
-
-            const result = {
-              grade: (typeof COOKING_GRADES !== 'undefined') ? COOKING_GRADES.F : { payMult: 0.25, tipMult: 0, xpMult: 0.25, label: 'F', color: '#e04040' },
-              pay: 0,
-              tip: 0,
-              xp: 0,
-              quality: 0,
-              timeScore: 0,
-              reason: 'Critic unsatisfied!',
-            };
-            applyOrderResult(result);
-
-            // Trigger party leave
-            if (typeof FD_TABLES !== 'undefined' && FD_TABLES[grillState.tableId]) {
-              const table = FD_TABLES[grillState.tableId];
-              if (table.claimedBy !== null && typeof _getFDParty === 'function') {
-                const party = _getFDParty(table.claimedBy);
-                if (party && party.state !== 'leaving') {
-                  _triggerFDPartyLeave(party);
-                }
-              }
-            }
-
-            // Show popup
-            _showGrillPopup('Critic Failed!', '#e04040');
-
-            grillState._grillRedTableId = null;
-            return;
-          }
-        }
-
-        if (custType === 'vip') {
-          // VIP: need 3+ of 5 hits for bonus. Check after grading.
-          const totalHits = grillState.perfectCount + grillState.goodCount;
-          const vipBonus = totalHits >= 3;
-
-          const result = gradeOrder();
-
-          // Apply VIP bonus — boost grade if they hit 3+
-          if (vipBonus && result.grade) {
-            result.tip = Math.round(result.tip * 1.5);  // 50% tip bonus
-            result.pay = Math.round(result.pay * 1.2);   // 20% pay bonus
-          }
-
-          applyOrderResult(result);
-        } else {
-          // Regular customer — normal grading
-          const result = gradeOrder();
-          applyOrderResult(result);
-        }
+        const result = gradeOrder();
+        applyOrderResult(result);
       }
-
-      grillState._grillRedTableId = null;
     }
     return;
   }
@@ -420,18 +330,8 @@ function drawGrillHUD() {
 
   ctx.font = 'bold 12px monospace';
   ctx.textAlign = 'left';
-
-  // Show customer type label for VIP/Critic
-  if (grillState._customerType === 'vip') {
-    ctx.fillStyle = '#ffd700';
-    ctx.fillText('VIP TEPPANYAKI', panelX + pad, textY);
-  } else if (grillState._customerType === 'critic') {
-    ctx.fillStyle = '#e04040';
-    ctx.fillText('CRITIC TEPPANYAKI', panelX + pad, textY);
-  } else {
-    ctx.fillStyle = '#ffd700';
-    ctx.fillText('TEPPANYAKI GRILL', panelX + pad, textY);
-  }
+  ctx.fillStyle = '#ffd700';
+  ctx.fillText('TEPPANYAKI GRILL', panelX + pad, textY);
 
   ctx.textAlign = 'right';
   if (grillState.comboCount > 0) {
@@ -675,8 +575,6 @@ function resetGrillState() {
   grillState.goodCount = 0;
   grillState.missCount = 0;
   grillState.hitPopup = null;
-  grillState._customerType = null;
-  grillState._grillRedTableId = null;
 }
 
 // ============================================================
@@ -702,6 +600,5 @@ function getGrillSummary() {
     totalTricks: grillState.tricks.length,
     combo: grillState.comboCount,
     comboMultiplier: grillState.comboMultiplier,
-    customerType: grillState._customerType,
   };
 }
