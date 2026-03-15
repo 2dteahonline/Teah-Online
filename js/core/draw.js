@@ -937,6 +937,9 @@ function draw() {
       const _pe = _pm.entity;
       _charEquipOverride = _pm.equip;
       _charColorOverride = { skin: _pe.skin, hair: _pe.hair, shirt: _pe.shirt, pants: _pe.pants };
+      // Override weapon slot so bots don't mirror player's active weapon
+      const _savedSlot = activeSlot;
+      activeSlot = 0; // bots always show gun
       if (_pm.dead) {
         // Death animation
         if (_pm.deathTimer > 0) {
@@ -971,6 +974,7 @@ function draw() {
       }
       _charEquipOverride = null;
       _charColorOverride = null;
+      activeSlot = _savedSlot; // restore player's weapon slot
 
     } else if (e.mob) {
       const m = e.mob;
