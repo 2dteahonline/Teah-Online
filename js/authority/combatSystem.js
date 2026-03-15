@@ -94,47 +94,72 @@ const StatusFX = {
 
   // ---- PLAYER STATUS EFFECTS ----
   // Player-targeted effects from mob specials (separate from mob effects above)
-  playerEffects: {
-    _slow: 0,      // speed multiplier reduction (0 = none)
-    _slowTimer: 0,
-    _root: false,
-    _rootTimer: 0,
-    _mark: false,
-    _markTimer: 0,
-    _markBonus: 0,
-    _silence: false,
-    _silenceTimer: 0,
-    _bleed: false,       // bleed DoT (Floor 5)
-    _bleedTimer: 0,
-    _bleedDmg: 0,
-    _bleedTick: 0,
-    _confuse: false,     // swap movement directions (Floor 4)
-    _confuseTimer: 0,
-    _disorient: false,   // random drift added to movement (Floor 5)
-    _disorientTimer: 0,
-    _fear: false,        // override movement with random walk (Vortalis)
-    _fearTimer: 0,
-    _fearDirTimer: 0,    // frames until next random direction change
-    _fearDirX: 0,
-    _fearDirY: 0,
-    _blind: false,       // black vignette overlay (Vortalis)
-    _blindTimer: 0,
-    _blindMode: null,    // 'flash' = white overlay, 'darken' = black (default)
-    _mobilityLocked: false, // disables dash/sprint but not attacks
-    _mobilityLockTimer: 0,
-    _armorBreak: false,  // incoming damage multiplier (Vortalis)
-    _armorBreakTimer: 0,
-    _armorBreakMult: 1.0,
-    _tether: false,      // linked to a mob, heavy slow (Vortalis)
-    _tetherTimer: 0,
-    _tetherMobId: null,
-    _tetherSlow: 0.6,
+  // playerEffects is the player's own effect state — initialized by _createEffectState()
+  // and aliased to player._statusFX so per-entity and legacy access both work.
+  playerEffects: null, // set in _initPlayerEffects()
+
+  _createEffectState() {
+    return {
+      _slow: 0,      // speed multiplier reduction (0 = none)
+      _slowTimer: 0,
+      _root: false,
+      _rootTimer: 0,
+      _mark: false,
+      _markTimer: 0,
+      _markBonus: 0,
+      _silence: false,
+      _silenceTimer: 0,
+      _bleed: false,       // bleed DoT (Floor 5)
+      _bleedTimer: 0,
+      _bleedDmg: 0,
+      _bleedTick: 0,
+      _confuse: false,     // swap movement directions (Floor 4)
+      _confuseTimer: 0,
+      _disorient: false,   // random drift added to movement (Floor 5)
+      _disorientTimer: 0,
+      _fear: false,        // override movement with random walk (Vortalis)
+      _fearTimer: 0,
+      _fearDirTimer: 0,    // frames until next random direction change
+      _fearDirX: 0,
+      _fearDirY: 0,
+      _blind: false,       // black vignette overlay (Vortalis)
+      _blindTimer: 0,
+      _blindMode: null,    // 'flash' = white overlay, 'darken' = black (default)
+      _mobilityLocked: false, // disables dash/sprint but not attacks
+      _mobilityLockTimer: 0,
+      _armorBreak: false,  // incoming damage multiplier (Vortalis)
+      _armorBreakTimer: 0,
+      _armorBreakMult: 1.0,
+      _tether: false,      // linked to a mob, heavy slow (Vortalis)
+      _tetherTimer: 0,
+      _tetherMobId: null,
+      _tetherSlow: 0.6,
+    };
+  },
+
+  // Initialize player's effect state. Call once after player object exists.
+  _initPlayerEffects() {
+    if (!this.playerEffects) {
+      this.playerEffects = this._createEffectState();
+    }
+    if (typeof player !== 'undefined' && player) {
+      player._statusFX = this.playerEffects;
+    }
   },
 
   applyToPlayer(effectId, params = {}) {
-    // V1: bots don't get status effects (too many call sites to refactor)
-    if (typeof _currentDamageTarget !== 'undefined' && _currentDamageTarget && _currentDamageTarget._isBot) return;
-    const pe = this.playerEffects;
+    // Resolve target: explicit damage target (bot/pet) or player
+    const target = (typeof _currentDamageTarget !== 'undefined' && _currentDamageTarget)
+      ? _currentDamageTarget : (typeof player !== 'undefined' ? player : null);
+    // Ensure target has a _statusFX bag
+    if (target && !target._statusFX) {
+      target._statusFX = this._createEffectState();
+    }
+    const pe = (target && target._statusFX) ? target._statusFX : this.playerEffects;
+    // Keep playerEffects alias pointing at player's bag (backward compat)
+    if (typeof player !== 'undefined' && target === player) {
+      this.playerEffects = pe;
+    }
     switch (effectId) {
       case 'slow':
         pe._slow = params.amount || 0.35;
@@ -200,6 +225,10 @@ const StatusFX = {
   },
 
   tickPlayer() {
+    // Lazy-bind player._statusFX ↔ playerEffects (player may not exist at load time)
+    if (typeof player !== 'undefined' && player && !player._statusFX) {
+      player._statusFX = this.playerEffects;
+    }
     const pe = this.playerEffects;
     let speedMult = 1.0;
     let rooted = false;
@@ -293,6 +322,7 @@ const StatusFX = {
 
   clearPlayer() {
     const pe = this.playerEffects;
+    if (!pe) return;
     pe._slow = 0; pe._slowTimer = 0;
     pe._root = false; pe._rootTimer = 0;
     pe._mark = false; pe._markTimer = 0; pe._markBonus = 0;
@@ -305,6 +335,107 @@ const StatusFX = {
     pe._mobilityLocked = false; pe._mobilityLockTimer = 0;
     pe._armorBreak = false; pe._armorBreakTimer = 0; pe._armorBreakMult = 1.0;
     pe._tether = false; pe._tetherTimer = 0; pe._tetherMobId = null; pe._tetherSlow = 0.6;
+  },
+
+  // Tick status effects on an arbitrary entity (bot, pet, etc.)
+  // Same logic as tickPlayer but uses entity position and passes entity to dealDamageToPlayer.
+  // Returns same shape: { speedMult, rooted, marked, ... }
+  tickEntity(entity) {
+    const _defaultResult = { speedMult: 1, rooted: false, marked: false, markBonus: 0, silenced: false, confused: false, disoriented: false, bleeding: false, feared: false, blind: false, armorBreak: false, armorBreakMult: 1.0, tethered: false };
+    if (!entity || !entity._statusFX) return _defaultResult;
+    const pe = entity._statusFX;
+    let speedMult = 1.0;
+    let rooted = false;
+
+    if (pe._slowTimer > 0) {
+      pe._slowTimer--;
+      speedMult *= (1 - pe._slow);
+      if (pe._slowTimer <= 0) pe._slow = 0;
+    }
+    if (pe._rootTimer > 0) {
+      pe._rootTimer--;
+      rooted = pe._root;
+      if (pe._rootTimer <= 0) pe._root = false;
+    }
+    if (pe._markTimer > 0) {
+      pe._markTimer--;
+      if (pe._markTimer <= 0) { pe._mark = false; pe._markBonus = 0; }
+    }
+    if (pe._silenceTimer > 0) {
+      pe._silenceTimer--;
+      if (pe._silenceTimer <= 0) pe._silence = false;
+    }
+    if (pe._bleedTimer > 0) {
+      pe._bleedTimer--;
+      pe._bleedTick++;
+      if (pe._bleedTick >= 60) {
+        pe._bleedTick = 0;
+        if (typeof dealDamageToPlayer === 'function') {
+          dealDamageToPlayer(pe._bleedDmg, 'dot', null, entity);
+          hitEffects.push({ x: entity.x, y: entity.y - 20, life: 15, type: "bleed_tick" });
+        }
+      }
+      if (pe._bleedTimer <= 0) { pe._bleed = false; pe._bleedDmg = 0; pe._bleedTick = 0; }
+    }
+    if (pe._confuseTimer > 0) {
+      pe._confuseTimer--;
+      if (pe._confuseTimer <= 0) pe._confuse = false;
+    }
+    if (pe._disorientTimer > 0) {
+      pe._disorientTimer--;
+      if (pe._disorientTimer <= 0) pe._disorient = false;
+    }
+    if (pe._fearTimer > 0) {
+      pe._fearTimer--;
+      pe._fearDirTimer--;
+      if (pe._fearDirTimer <= 0) {
+        const ang = Math.random() * Math.PI * 2;
+        pe._fearDirX = Math.cos(ang);
+        pe._fearDirY = Math.sin(ang);
+        pe._fearDirTimer = 15 + Math.floor(Math.random() * 10);
+      }
+      if (pe._fearTimer <= 0) { pe._fear = false; pe._fearDirX = 0; pe._fearDirY = 0; }
+    }
+    if (pe._blindTimer > 0) {
+      pe._blindTimer--;
+      if (pe._blindTimer <= 0) { pe._blind = false; pe._blindMode = null; }
+    }
+    if (pe._mobilityLockTimer > 0) {
+      pe._mobilityLockTimer--;
+      if (pe._mobilityLockTimer <= 0) pe._mobilityLocked = false;
+    }
+    if (pe._armorBreakTimer > 0) {
+      pe._armorBreakTimer--;
+      if (pe._armorBreakTimer <= 0) { pe._armorBreak = false; pe._armorBreakMult = 1.0; }
+    }
+    if (pe._tetherTimer > 0) {
+      pe._tetherTimer--;
+      if (pe._tetherMobId !== null && typeof mobs !== 'undefined') {
+        const tm = mobs.find(function(mob) { return mob.id === pe._tetherMobId && mob.hp > 0; });
+        if (!tm) { pe._tetherTimer = 0; pe._tether = false; pe._tetherMobId = null; }
+        else {
+          const ddx = tm.x - entity.x, ddy = tm.y - entity.y;
+          let blocked = false;
+          for (let s = 1; s <= 5; s++) {
+            const t = s / 6;
+            const cx = Math.floor((entity.x + ddx * t) / TILE);
+            const cy = Math.floor((entity.y + ddy * t) / TILE);
+            if (typeof isSolid === 'function' && isSolid(cx, cy)) { blocked = true; break; }
+          }
+          if (blocked) { pe._tetherTimer = 0; pe._tether = false; pe._tetherMobId = null; }
+          else { speedMult *= (1 - pe._tetherSlow); }
+        }
+      }
+      if (pe._tetherTimer <= 0) { pe._tether = false; pe._tetherMobId = null; }
+    }
+    return { speedMult, rooted, marked: pe._mark, markBonus: pe._markBonus, silenced: pe._silence, confused: pe._confuse, disoriented: pe._disorient, bleeding: pe._bleed, feared: pe._fear, blind: pe._blind, armorBreak: pe._armorBreak, armorBreakMult: pe._armorBreakMult, tethered: pe._tether };
+  },
+
+  // Clear all status effects from an arbitrary entity
+  clearEntity(entity) {
+    if (entity && entity._statusFX) {
+      entity._statusFX = this._createEffectState();
+    }
   },
 
   // Apply a status effect to a mob
@@ -371,6 +502,9 @@ const StatusFX = {
     }
   },
 };
+
+// Auto-init playerEffects so it's never null (player object may not exist yet at load time)
+StatusFX.playerEffects = StatusFX._createEffectState();
 
 // MOB_TYPES, MOB_CAPS, CROWD_EXEMPT_TYPES → js/shared/mobTypes.js
 

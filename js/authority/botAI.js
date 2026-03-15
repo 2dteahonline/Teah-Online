@@ -41,6 +41,33 @@ const BotAI = {
       }
     }
 
+    // --- Tick status effects (slow, root, stun, bleed, fear, etc.) ---
+    const fxResult = typeof StatusFX !== 'undefined' ? StatusFX.tickEntity(e) : null;
+    if (fxResult) {
+      // Rooted/stunned — can't move, can't act
+      if (fxResult.rooted) {
+        e.moving = false;
+        e.vx = 0; e.vy = 0;
+        this._updateAnim(e);
+        return;
+      }
+      // Feared — random walk override, can't control
+      if (fxResult.feared && e._statusFX) {
+        const spd = (e.speed || GAME_CONFIG.PLAYER_BASE_SPEED) * 0.6;
+        const fx = e._statusFX._fearDirX, fy = e._statusFX._fearDirY;
+        const newX = e.x + fx * spd, newY = e.y + fy * spd;
+        if (positionClear(newX, e.y, GAME_CONFIG.PLAYER_WALL_HW)) e.x = newX;
+        if (positionClear(e.x, newY, GAME_CONFIG.PLAYER_WALL_HW)) e.y = newY;
+        e.moving = true;
+        this._updateAnim(e);
+        return;
+      }
+      // Store speed mult for movement helpers
+      ai._fxSpeedMult = fxResult.speedMult;
+    } else {
+      ai._fxSpeedMult = 1;
+    }
+
     // --- Telegraph dodge check (highest priority) ---
     if (this.checkTelegraphDanger(member)) {
       // Dodging telegraph — skip normal FSM
@@ -532,11 +559,12 @@ const BotAI = {
   },
 
   // ---- Movement Helpers ----
-  moveToward(e, tx, ty, dist) {
+  moveToward(e, tx, ty, dist, member) {
     if (dist < 1) { e.moving = false; return; }
     const dx = tx - e.x, dy = ty - e.y;
     const nx = dx / dist, ny = dy / dist;
-    const spd = e.speed || GAME_CONFIG.PLAYER_BASE_SPEED;
+    const fxMult = (member && member.ai && member.ai._fxSpeedMult) || 1;
+    const spd = (e.speed || GAME_CONFIG.PLAYER_BASE_SPEED) * fxMult;
     const newX = e.x + nx * spd;
     const newY = e.y + ny * spd;
     if (positionClear(newX, e.y, GAME_CONFIG.PLAYER_WALL_HW)) e.x = newX;
@@ -545,11 +573,12 @@ const BotAI = {
     this.faceDirection(e, nx, ny);
   },
 
-  moveAway(e, fx, fy, dist) {
+  moveAway(e, fx, fy, dist, member) {
     if (dist < 1) dist = 1;
     const dx = e.x - fx, dy = e.y - fy;
     const nx = dx / dist, ny = dy / dist;
-    const spd = e.speed || GAME_CONFIG.PLAYER_BASE_SPEED;
+    const fxMult = (member && member.ai && member.ai._fxSpeedMult) || 1;
+    const spd = (e.speed || GAME_CONFIG.PLAYER_BASE_SPEED) * fxMult;
     const newX = e.x + nx * spd * 0.7;
     const newY = e.y + ny * spd * 0.7;
     if (positionClear(newX, e.y, GAME_CONFIG.PLAYER_WALL_HW)) e.x = newX;

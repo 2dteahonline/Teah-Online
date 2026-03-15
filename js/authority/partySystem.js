@@ -245,6 +245,8 @@ const PartySystem = {
     member.entity._deathX = member.entity.x;
     member.entity._deathY = member.entity.y;
     member.entity._deathRotation = 0;
+    // Clear status effects on death
+    if (typeof StatusFX !== 'undefined') StatusFX.clearEntity(member.entity);
 
     // If all dead, trigger game over
     if (this.allDead()) {
