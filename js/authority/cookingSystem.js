@@ -585,7 +585,7 @@ function gradeOrder() {
 
   // Calculate tip — grade multiplier × customer generosity × combo streak
   const comboMult = cookingState.comboMultiplier || 1.0;
-  const customerTipMult = order.customer.tipMultiplier || order.customer.tipMult || 1.0;
+  const customerTipMult = order.customer.tipMult || 1.0;
   const rawTip = pay * 0.2 * grade.tipMult * customerTipMult * comboMult;
   const tip = Math.round(rawTip);
 

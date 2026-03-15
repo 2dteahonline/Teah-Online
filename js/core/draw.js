@@ -430,7 +430,9 @@ function draw() {
           const layerH = 7;
           const maxW = 50;
           for (let ai = 0; ai < assembly.length; ai++) {
-            const ing = typeof DELI_INGREDIENTS !== 'undefined' ? DELI_INGREDIENTS[assembly[ai]] : null;
+            const ing = typeof cookingState !== 'undefined' && typeof _getActiveIngredients === 'function'
+              ? _getActiveIngredients()[assembly[ai]]
+              : (typeof DELI_INGREDIENTS !== 'undefined' ? DELI_INGREDIENTS[assembly[ai]] : null);
             if (!ing) continue;
             const ly = fy + 3 - ai * layerH;
             const isBread = assembly[ai] === 'bread' || assembly[ai] === 'bagel';

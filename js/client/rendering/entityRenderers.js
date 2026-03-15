@@ -1690,9 +1690,9 @@ const ENTITY_RENDERERS = {
       ctx.strokeStyle = 'rgba(224,224,232,0.5)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(jx, jy, jw, jh, 4); ctx.stroke();
       // Coins inside
-      const hasTips = typeof dinerCookingState !== 'undefined' && dinerCookingState.tipJar > 0;
+      const hasTips = typeof cookingState !== 'undefined' && cookingState.tipJar > 0;
       if (hasTips) {
-        const fillPct = Math.min(1, dinerCookingState.tipJar / 20);
+        const fillPct = Math.min(1, cookingState.tipJar / 20);
         const coinH = jh * 0.2 + jh * 0.5 * fillPct;
         ctx.fillStyle = '#d4a030';
         ctx.fillRect(jx + 3, jy + jh - coinH, jw - 6, coinH);
@@ -1708,7 +1708,7 @@ const ENTITY_RENDERERS = {
       // TIPS label
       ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
       ctx.fillStyle = '#ffd700';
-      ctx.fillText(hasTips ? "TIPS $" + dinerCookingState.tipJar : "TIPS", ex + cw / 2, ey + ch - 4);
+      ctx.fillText(hasTips ? "TIPS $" + cookingState.tipJar : "TIPS", ex + cw / 2, ey + ch - 4);
       ctx.textAlign = "left";
   },
 

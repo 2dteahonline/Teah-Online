@@ -53,13 +53,13 @@ const DELI_RECIPES = [
 ];
 
 // ===================== CUSTOMER TYPES =====================
-// tipMultiplier: multiplies final tip amount
+// tipMult: multiplies final tip amount
 // moodSpeed: multiplier for mood decay speed (>1 = faster decay = more impatient)
 // patience: multiplier for mood thresholds (>1 = more patient)
 const CUSTOMER_TYPES = {
-  regular:   { id: 'regular',   name: 'Regular',   tipMultiplier: 1.0, moodSpeed: 0.7, patience: 1.2, color: '#80a0c0', weight: 0.55 },
-  generous:  { id: 'generous',  name: 'Generous',  tipMultiplier: 1.8, moodSpeed: 0.5, patience: 1.5, color: '#60c060', weight: 0.30 },
-  impatient: { id: 'impatient', name: 'Impatient', tipMultiplier: 0.6, moodSpeed: 1.0, patience: 0.9, color: '#e06040', weight: 0.15 },
+  regular:   { id: 'regular',   name: 'Regular',   tipMult: 1.0, moodSpeed: 0.7, patience: 1.2, color: '#80a0c0', weight: 0.55 },
+  generous:  { id: 'generous',  name: 'Generous',  tipMult: 1.8, moodSpeed: 0.5, patience: 1.5, color: '#60c060', weight: 0.30 },
+  impatient: { id: 'impatient', name: 'Impatient', tipMult: 0.6, moodSpeed: 1.0, patience: 0.9, color: '#e06040', weight: 0.15 },
 };
 
 // ===================== MOOD STAGES =====================
