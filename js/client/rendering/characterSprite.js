@@ -373,15 +373,22 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   // Legacy canvas drawing
   // Draw hitbox circle at normal scale (before character) — skip for deli NPCs
   // Radius is per-mob (MOB_TYPES[type].radius) or DEFAULT_HITBOX_RADIUS fallback
+  // Hitbox colors: green = you/allies (party members), dark blue = enemies/mobs
+  const isAlly = isPlayer || mobType === 'partyBot';
   const showHitbox = isPlayer ? gameSettings.showOwnHitbox : gameSettings.showOtherHitbox;
   if (showHitbox && mobType !== 'deliNPC') {
-    const hitboxR = (!isPlayer && mobType && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || DEFAULT_HITBOX_RADIUS;
-    ctx.strokeStyle = "rgba(0,220,68,0.7)";
+    const hitboxR = (!isPlayer && mobType && mobType !== 'partyBot' && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || DEFAULT_HITBOX_RADIUS;
+    if (isAlly) {
+      ctx.strokeStyle = "rgba(0,220,68,0.7)";
+      ctx.fillStyle = "rgba(0,200,60,0.18)";
+    } else {
+      ctx.strokeStyle = "rgba(34,68,170,0.7)";
+      ctx.fillStyle = "rgba(34,68,170,0.18)";
+    }
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(sx, sy - 20, hitboxR, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = "rgba(0,200,60,0.18)";
     ctx.beginPath();
     ctx.arc(sx, sy - 20, hitboxR, 0, Math.PI * 2);
     ctx.fill();

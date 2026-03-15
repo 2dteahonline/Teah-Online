@@ -8,10 +8,10 @@ const PARTY_CONFIG = {
   REVIVE_BASE_COST: 50,
   // Revive shop duration (frames)
   REVIVE_SHOP_DURATION: 600, // 10 seconds
-  // Bot HP multiplier (relative to player maxHp) — cranked up for testing
-  BOT_HP_MULT: 10,
-  // Bot damage multiplier (applied to gun + melee at init) — cranked up for testing
-  BOT_DMG_MULT: 8,
+  // Bot HP multiplier (relative to player maxHp) — moderate buff for survivability
+  BOT_HP_MULT: 3,
+  // Bot damage multiplier (applied to gun + melee at init) — 1x = same as default gun
+  BOT_DMG_MULT: 1,
   // Bot shoot cooldown (frames)
   BOT_SHOOT_CD: 10,
   // Bot melee cooldown (frames)
@@ -33,7 +33,7 @@ const PARTY_CONFIG = {
   MOB_RETARGET_INTERVAL: 30,
   // Wave scaling per alive party member
   MOB_COUNT_SCALE_PER_MEMBER: 0.5,  // duo 1.5x, trio 2x, quad 2.5x
-  MOB_HP_SCALE_PER_MEMBER: 0.15,    // modest HP bump
+  MOB_HP_SCALE_PER_MEMBER: 0.25,    // duo 1.25x, trio 1.5x, quad 1.75x
 };
 
 // Bot cosmetic presets (distinct visual identity per slot)

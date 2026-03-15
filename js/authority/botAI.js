@@ -287,7 +287,7 @@ const BotAI = {
     return false;
   },
 
-  // SHOP: between waves, walk to shop station and buy buffs with own gold
+  // SHOP: between waves, walk to shop station and buy equipment + buffs with own gold
   doShop(member) {
     const e = member.entity;
     const ai = member.ai;
@@ -299,7 +299,7 @@ const BotAI = {
       // Walk to the shop
       this.moveToward(e, this.SHOP_X, this.SHOP_Y, dist);
     } else {
-      // At the shop — evaluate purchases from SHOP_ITEMS.Buffs
+      // At the shop — evaluate purchases
       e.moving = false;
       if (!ai._shopCD) ai._shopCD = 0;
       if (ai._shopCD > 0) { ai._shopCD--; return; }
@@ -307,7 +307,7 @@ const BotAI = {
       // Initialize per-bot purchase tracking
       if (!member._shopBought) member._shopBought = [0, 0, 0, 0, 0];
 
-      const bought = this._tryBuyBuff(member);
+      const bought = this._tryBuyEquipment(member) || this._tryBuyBuff(member);
       if (bought) {
         ai._shopCD = 45; // cooldown between purchases
       } else {
@@ -318,6 +318,122 @@ const BotAI = {
     }
 
     this.applySeparation(member);
+  },
+
+  // Try to buy the next equipment upgrade (gun, melee, boots, pants, chest, helmet).
+  // Bots buy equipment in tier order, respecting wave requirements.
+  // Returns true if purchased.
+  _tryBuyEquipment(member) {
+    const e = member.entity;
+    const currentWave = (typeof dungeonFloor !== 'undefined' ? (dungeonFloor - 1) * (typeof WAVES_PER_FLOOR !== 'undefined' ? WAVES_PER_FLOOR : 10) : 0) + (typeof wave !== 'undefined' ? wave : 0);
+
+    // Equipment categories to consider, in priority order
+    const categories = [
+      { key: 'Guns', tierList: typeof GUN_TIERS !== 'undefined' ? GUN_TIERS : [], equipSlot: 'gun' },
+      { key: 'Melees', tierList: typeof MELEE_TIERS !== 'undefined' ? MELEE_TIERS : [], equipSlot: 'melee' },
+      { key: 'Chest', tierList: typeof CHEST_TIERS !== 'undefined' ? CHEST_TIERS : [], equipSlot: 'chest' },
+      { key: 'Pants', tierList: typeof PANTS_TIERS !== 'undefined' ? PANTS_TIERS : [], equipSlot: 'pants' },
+      { key: 'Boots', tierList: typeof BOOTS_TIERS !== 'undefined' ? BOOTS_TIERS : [], equipSlot: 'boots' },
+      { key: 'Helmets', tierList: typeof HELMET_TIERS !== 'undefined' ? HELMET_TIERS : [], equipSlot: 'helmet' },
+    ];
+
+    for (const cat of categories) {
+      // Find the next tier this bot hasn't bought yet
+      const currentTier = this._getBotEquipTier(member, cat.equipSlot);
+      const nextItem = cat.tierList.find(t => t.tier === currentTier + 1);
+      if (!nextItem) continue; // already at max tier or no items
+
+      // Check wave requirement
+      if (!window._opMode && nextItem.waveReq && currentWave < nextItem.waveReq) continue;
+
+      // Check cost
+      if (member.gold < nextItem.cost) continue;
+
+      // Purchase!
+      member.gold -= nextItem.cost;
+      this._applyEquipment(member, cat.equipSlot, nextItem);
+
+      // Show purchase effect
+      hitEffects.push({ x: e.x, y: e.y - 30, life: 25, type: "heal", dmg: nextItem.name });
+      return true;
+    }
+
+    return false;
+  },
+
+  // Get the current tier of a bot's equipment slot (0 = default/none)
+  _getBotEquipTier(member, slot) {
+    switch (slot) {
+      case 'gun': return member.gun ? (member.gun.tier || 0) : 0;
+      case 'melee': return member.melee ? (member.melee.tier || 0) : 0;
+      case 'boots': return member.equip.boots ? (member.equip.boots.tier || 0) : 0;
+      case 'pants': return member.equip.pants ? (member.equip.pants.tier || 0) : 0;
+      case 'chest': return member.equip.chest ? (member.equip.chest.tier || 0) : 0;
+      case 'helmet': return member.equip.helmet ? (member.equip.helmet.tier || 0) : 0;
+      default: return 0;
+    }
+  },
+
+  // Apply an equipment item to a bot's loadout — actually updates their combat stats
+  _applyEquipment(member, slot, item) {
+    const e = member.entity;
+    switch (slot) {
+      case 'gun':
+        // Keep any existing damage buffs from buff purchases
+        const dmgBuff = member.gun ? (member.gun.damage - (member.gun._baseDamage || member.gun.damage)) : 0;
+        member.gun = {
+          id: item.id,
+          name: item.name,
+          tier: item.tier,
+          _baseDamage: item.damage,
+          damage: item.damage + Math.max(0, dmgBuff),
+          fireRate: item.fireRate,
+          magSize: item.magSize,
+          ammo: item.magSize, // full ammo on new gun
+          reloading: false,
+          reloadTimer: 0,
+          fireCooldown: 0,
+          special: item.special || null,
+          bulletColor: item.bulletColor || null,
+          color: item.color || '#4a4a4a',
+        };
+        break;
+      case 'melee':
+        const meleeDmgBuff = member.melee ? (member.melee.damage - (member.melee._baseDamage || member.melee.damage)) : 0;
+        member.melee = {
+          id: item.id,
+          name: item.name,
+          tier: item.tier,
+          _baseDamage: item.damage,
+          damage: item.damage + Math.max(0, meleeDmgBuff),
+          range: item.range,
+          cooldown: item.cooldown,
+          cooldownMax: item.cooldown,
+          critChance: item.critChance || 0.10,
+          special: item.special || null,
+        };
+        break;
+      case 'boots':
+        member.equip.boots = { ...item };
+        // Apply speed bonus to entity
+        e.speed = (e.baseSpeed || GAME_CONFIG.PLAYER_BASE_SPEED) + item.speedBonus;
+        break;
+      case 'pants':
+        member.equip.pants = { ...item };
+        break;
+      case 'chest':
+        member.equip.chest = { ...item };
+        // Apply HP bonus
+        const oldMaxHp = e.maxHp;
+        const prevBonus = member._chestHpBonus || 0;
+        member._chestHpBonus = item.hpBonus || 0;
+        e.maxHp = e.maxHp - prevBonus + member._chestHpBonus;
+        e.hp = Math.min(e.hp + (e.maxHp - oldMaxHp), e.maxHp);
+        break;
+      case 'helmet':
+        member.equip.helmet = { ...item };
+        break;
+    }
   },
 
   // Try to buy the best affordable buff. Returns true if purchased.
@@ -361,7 +477,9 @@ const BotAI = {
         // Apply the buff to the bot's own stats
         switch (idx) {
           case 0: // Gun Damage +3
-            if (member.gun) member.gun.damage += 3;
+            if (member.gun) {
+              member.gun.damage += 3;
+            }
             break;
           case 1: // Melee Damage +3
             if (member.melee) member.melee.damage += 3;
@@ -622,6 +740,7 @@ const BotAI = {
       special: g.special,
       ownerId: member.id,
       _botBullet: true,
+      bulletColor: g.bulletColor || null,
     });
 
     g.ammo--;

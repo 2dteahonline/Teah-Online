@@ -947,7 +947,7 @@ function draw() {
           ctx.rotate(_pe._deathRotation);
           ctx.translate(-(_pe.x - camera.x), -(_pe.y - camera.y));
           drawChar(_pe.x, _pe.y, _pe.dir, 0, false,
-            _pe.skin, _pe.hair, _pe.shirt, _pe.pants, _pe.name, -1, false);
+            _pe.skin, _pe.hair, _pe.shirt, _pe.pants, _pe.name, -1, false, 'partyBot');
           ctx.restore();
         }
       } else {
@@ -955,7 +955,7 @@ function draw() {
         const _botFlash = _pe._contactCD > 0 && Math.floor(renderTime / 80) % 2 === 0;
         if (_botFlash) ctx.globalAlpha = 0.5;
         drawChar(_pe.x, _pe.y, _pe.dir, _pe.frame, _pe.moving,
-          _pe.skin, _pe.hair, _pe.shirt, _pe.pants, _pe.name, _pe.hp, false, null, _pe.maxHp);
+          _pe.skin, _pe.hair, _pe.shirt, _pe.pants, _pe.name, _pe.hp, false, 'partyBot', _pe.maxHp);
         if (_botFlash) ctx.globalAlpha = 1.0;
       }
 

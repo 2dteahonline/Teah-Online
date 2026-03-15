@@ -52,16 +52,23 @@ function createPartyMember(slotIndex, controlType) {
     _isBot: true,
   };
 
-  // Bot gun state (copy player gun stats at init, multiplied for testing)
-  const dmgMult = PARTY_CONFIG.BOT_DMG_MULT || 1;
+  // Bot gun state — starts with DEFAULT_GUN (Sidearm), upgrades via shop purchases
+  const defGun = typeof DEFAULT_GUN !== 'undefined' ? DEFAULT_GUN : { damage: 28, fireRate: 5, magSize: 35, special: null, bulletColor: null };
+  const defMelee = typeof DEFAULT_MELEE !== 'undefined' ? DEFAULT_MELEE : { damage: 15, range: 90, cooldown: 28, special: null };
   const botGun = isLocal ? null : {
-    damage: Math.round(gun.damage * dmgMult),
-    magSize: gun.magSize * 2,
-    ammo: gun.magSize * 2,
+    id: defGun.id || 'sidearm',
+    name: defGun.name || 'Sidearm',
+    tier: defGun.tier || 0,
+    damage: defGun.damage,
+    fireRate: defGun.fireRate || 5,
+    magSize: defGun.magSize,
+    ammo: defGun.magSize,
     reloading: false,
     reloadTimer: 0,
     fireCooldown: 0,
-    special: gun.special,
+    special: defGun.special || null,
+    bulletColor: defGun.bulletColor || null,
+    color: defGun.color || '#5a7a8a',
   };
 
   return {
@@ -71,8 +78,15 @@ function createPartyMember(slotIndex, controlType) {
     controlType, // 'local' | 'bot' | 'remote' (future)
     entity,
     gun: botGun,
-    melee: isLocal ? null : { damage: Math.round(melee.damage * dmgMult), range: melee.range + 20 },
-    equip: isLocal ? playerEquip : { armor: null, boots: null, pants: null, chest: null, helmet: null },
+    melee: isLocal ? null : {
+      damage: defMelee.damage,
+      range: defMelee.range,
+      cooldown: defMelee.cooldown || 28,
+      cooldownMax: defMelee.cooldown || 28,
+      critChance: defMelee.critChance || 0.10,
+      special: defMelee.special || null,
+    },
+    equip: isLocal ? playerEquip : { armor: null, boots: null, pants: null, chest: null, helmet: null, gun: null, melee: null },
     gold: 0, // per-member gold wallet (player uses global `gold`, bots use this)
     lives: lives, // copy current lives count
     dead: false,
