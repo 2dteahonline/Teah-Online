@@ -243,7 +243,7 @@ function getFarmTileAtAction(fromClick) {
   const hoe = getEquippedHoe();
   const reach = hoe ? hoe.reach : 1;
   const plotPx = PLOT_SIZE * TILE; // size of one plot in pixels
-  const maxReachPx = plotPx * (reach + 1.2); // generous max distance from player
+  const maxReachPx = plotPx * reach + TILE; // reach in plots + 1 tile buffer
 
   if (fromClick && typeof InputIntent !== 'undefined') {
     // CLICK MODE: find closest tile to mouse world position, within reach of player
