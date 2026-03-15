@@ -134,13 +134,17 @@ function handleFarmAction(fromClick) {
   const plotCX = tile.tx * TILE + PLOT_SIZE * TILE / 2;
   const plotCY = tile.ty * TILE + PLOT_SIZE * TILE / 2;
 
-  // Face toward the targeted tile
-  const tdx = plotCX - player.x;
-  const tdy = plotCY - player.y;
-  if (Math.abs(tdx) > Math.abs(tdy)) {
-    player.dir = tdx > 0 ? 3 : 2; // right : left
-  } else {
-    player.dir = tdy > 0 ? 0 : 1; // down : up
+  // Face toward mouse cursor (click) or use aim direction (F key) — same as melee
+  if (fromClick && typeof InputIntent !== 'undefined') {
+    const dx = InputIntent.mouseWorldX - player.x;
+    const dy = InputIntent.mouseWorldY - (player.y - 30);
+    if (Math.abs(dx) > Math.abs(dy)) {
+      player.dir = dx > 0 ? 3 : 2;
+    } else {
+      player.dir = dy > 0 ? 0 : 1;
+    }
+  } else if (typeof getAimDir === 'function') {
+    player.dir = getAimDir();
   }
 
   // Trigger swing animation
