@@ -5,6 +5,14 @@
 // Called from authorityTick when PartyState.active.
 
 const BotAI = {
+  // Shop station position
+  SHOP_X: 20 * 48 + 24,
+  SHOP_Y: 16 * 48 + 24,
+
+  // Buff purchase priorities (indices into SHOP_ITEMS.Buffs)
+  // 0=Gun Damage +3, 1=Melee Damage +3, 2=Melee Speed+, 3=Health Potion, 4=Lifesteal +5
+  BUFF_PRIORITIES: [0, 1, 4, 3], // Gun Dmg, Melee Dmg, Lifesteal, Health Potion
+
   // Main tick — called once per frame for all bots
   tick() {
     if (!PartyState.active) return;
@@ -33,14 +41,24 @@ const BotAI = {
       }
     }
 
-    // Find nearest mob (any distance)
-    let nearestMob = null, nearestDist = Infinity;
-    for (const m of mobs) {
-      if (m.hp <= 0) continue;
-      const dx = m.x - e.x, dy = m.y - e.y;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d < nearestDist) { nearestDist = d; nearestMob = m; }
+    // --- Telegraph dodge check (highest priority) ---
+    if (this.checkTelegraphDanger(member)) {
+      // Dodging telegraph — skip normal FSM
+      this.applySeparation(member);
+      // Still shoot while dodging if possible
+      const nearMob = this._findTarget(member);
+      if (nearMob && member.gun && !member.gun.reloading && ai.shootCD <= 0 && member.gun.ammo > 0) {
+        this.faceTarget(e, nearMob.mob);
+        this.botShoot(member, nearMob.mob);
+      }
+      this._updateAnim(e);
+      return;
     }
+
+    // Find best target (smart target selection)
+    const target = this._findTarget(member);
+    const nearestMob = target ? target.mob : null;
+    const nearestDist = target ? target.dist : Infinity;
 
     // FSM transitions — bots are fully independent, never follow player
     const hpFrac = e.hp / e.maxHp;
@@ -72,6 +90,10 @@ const BotAI = {
     }
 
     // Update animation
+    this._updateAnim(e);
+  },
+
+  _updateAnim(e) {
     if (e.moving) {
       e.animTimer++;
       if (e.animTimer >= 8) { e.animTimer = 0; e.frame = (e.frame + 1) % 4; }
@@ -80,40 +102,263 @@ const BotAI = {
     }
   },
 
-  // SHOP: between waves, walk to shop station and buy potions with own gold
+  // ---- Smart Target Selection ----
+  // Prioritize low-HP mobs (< 25% HP) within 1.5x distance of nearest mob
+  _findTarget(member) {
+    const e = member.entity;
+    let nearestMob = null, nearestDist = Infinity;
+    let lowHpMob = null, lowHpDist = Infinity;
+
+    for (const m of mobs) {
+      if (m.hp <= 0) continue;
+      const dx = m.x - e.x, dy = m.y - e.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+
+      // Track absolute nearest
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestMob = m;
+      }
+
+      // Track nearest low-HP mob (< 25% HP)
+      if (m.hp / m.maxHp < 0.25 && d < lowHpDist) {
+        lowHpDist = d;
+        lowHpMob = m;
+      }
+    }
+
+    if (!nearestMob) return null;
+
+    // Prefer low-HP mob if it's within 1.5x the distance of the nearest mob
+    if (lowHpMob && lowHpDist <= nearestDist * 1.5) {
+      return { mob: lowHpMob, dist: lowHpDist };
+    }
+
+    return { mob: nearestMob, dist: nearestDist };
+  },
+
+  // ---- Telegraph Dodging ----
+  // Returns true if bot is dodging (overrides normal state)
+  checkTelegraphDanger(member) {
+    const e = member.entity;
+    if (!TelegraphSystem || !TelegraphSystem.active || TelegraphSystem.active.length === 0) return false;
+
+    let dangerX = 0, dangerY = 0;
+    let inDanger = false;
+
+    for (const t of TelegraphSystem.active) {
+      if (t.resolved) continue; // already popped, don't dodge
+      const p = t.params;
+      let cx, cy, isInside = false;
+
+      switch (t.shape) {
+        case 'circle': {
+          const dx = e.x - p.cx, dy = e.y - p.cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < p.radius + 20) { // 20px safety margin
+            isInside = true;
+            cx = p.cx; cy = p.cy;
+          }
+          break;
+        }
+        case 'line': {
+          // Point-to-line-segment distance
+          const lx = p.x2 - p.x1, ly = p.y2 - p.y1;
+          const len2 = lx * lx + ly * ly;
+          let t2 = len2 > 0 ? ((e.x - p.x1) * lx + (e.y - p.y1) * ly) / len2 : 0;
+          t2 = Math.max(0, Math.min(1, t2));
+          const projX = p.x1 + t2 * lx, projY = p.y1 + t2 * ly;
+          const dx = e.x - projX, dy = e.y - projY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const halfW = ((p.width || 20) / 2) + 20;
+          if (dist < halfW) {
+            isInside = true;
+            cx = projX; cy = projY;
+          }
+          break;
+        }
+        case 'cone': {
+          const dx = e.x - p.cx, dy = e.y - p.cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const range = (p.range || 96) + 20;
+          if (dist < range) {
+            const angle = Math.atan2(dy, dx);
+            const dir = p.direction || 0;
+            let diff = angle - dir;
+            // Normalize to [-PI, PI]
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            const halfAngle = ((p.angleDeg || 45) * Math.PI / 360) + 0.1; // small margin
+            if (Math.abs(diff) < halfAngle) {
+              isInside = true;
+              cx = p.cx; cy = p.cy;
+            }
+          }
+          break;
+        }
+        case 'ring': {
+          const dx = e.x - p.cx, dy = e.y - p.cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const inner = (p.innerRadius || 40) - 20;
+          const outer = (p.outerRadius || 100) + 20;
+          if (dist > inner && dist < outer) {
+            isInside = true;
+            cx = p.cx; cy = p.cy;
+            // For rings, dodge INWARD if closer to outer, OUTWARD if closer to inner
+            const midR = ((p.innerRadius || 40) + (p.outerRadius || 100)) / 2;
+            if (dist > midR) {
+              // Closer to outer edge — move outward (away from center)
+              // dangerX/Y will push away from center, which is correct
+            } else {
+              // Closer to inner edge — move inward (toward center)
+              cx = e.x + (e.x - p.cx); // invert: pretend danger is opposite
+              cy = e.y + (e.y - p.cy);
+            }
+          }
+          break;
+        }
+        case 'tiles': {
+          // Check if bot is on any danger tile
+          const botTX = Math.floor(e.x / TILE);
+          const botTY = Math.floor(e.y / TILE);
+          for (const tile of (p.tiles || [])) {
+            if (tile.tx === botTX && tile.ty === botTY) {
+              isInside = true;
+              cx = tile.tx * TILE + TILE / 2;
+              cy = tile.ty * TILE + TILE / 2;
+              break;
+            }
+          }
+          break;
+        }
+      }
+
+      if (isInside && cx !== undefined) {
+        inDanger = true;
+        // Accumulate dodge direction (away from danger center)
+        const dx = e.x - cx, dy = e.y - cy;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        dangerX += dx / d;
+        dangerY += dy / d;
+      }
+    }
+
+    if (inDanger) {
+      // Normalize and move away
+      const len = Math.sqrt(dangerX * dangerX + dangerY * dangerY) || 1;
+      const nx = dangerX / len, ny = dangerY / len;
+      const spd = (e.speed || GAME_CONFIG.PLAYER_BASE_SPEED) * 1.2; // slightly faster dodge
+      const newX = e.x + nx * spd;
+      const newY = e.y + ny * spd;
+      if (positionClear(newX, e.y, GAME_CONFIG.PLAYER_WALL_HW)) e.x = newX;
+      if (positionClear(e.x, newY, GAME_CONFIG.PLAYER_WALL_HW)) e.y = newY;
+      e.moving = true;
+      this.faceDirection(e, nx, ny);
+      return true;
+    }
+
+    return false;
+  },
+
+  // SHOP: between waves, walk to shop station and buy buffs with own gold
   doShop(member) {
     const e = member.entity;
     const ai = member.ai;
 
-    // Shop station position (same as station object in interactable.js)
-    const shopX = 20 * TILE + TILE / 2;
-    const shopY = 16 * TILE + TILE / 2;
-    const dx = shopX - e.x, dy = shopY - e.y;
+    const dx = this.SHOP_X - e.x, dy = this.SHOP_Y - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist > 60) {
       // Walk to the shop
-      this.moveToward(e, shopX, shopY, dist);
+      this.moveToward(e, this.SHOP_X, this.SHOP_Y, dist);
     } else {
-      // At the shop — try to buy a heal potion if HP not full and have gold
+      // At the shop — evaluate purchases from SHOP_ITEMS.Buffs
       e.moving = false;
       if (!ai._shopCD) ai._shopCD = 0;
       if (ai._shopCD > 0) { ai._shopCD--; return; }
 
-      if (member.gold >= 30 && e.hp < e.maxHp * 0.8) {
-        // Buy a heal (30g = restore 40% HP)
-        member.gold -= 30;
-        const healAmt = Math.round(e.maxHp * 0.4);
-        e.hp = Math.min(e.maxHp, e.hp + healAmt);
-        hitEffects.push({ x: e.x, y: e.y - 35, life: 20, type: "heal", dmg: "+" + healAmt + " HP" });
-        ai._shopCD = 60; // cooldown before next purchase
+      // Initialize per-bot purchase tracking
+      if (!member._shopBought) member._shopBought = [0, 0, 0, 0, 0];
+
+      const bought = this._tryBuyBuff(member);
+      if (bought) {
+        ai._shopCD = 45; // cooldown between purchases
       } else {
-        // Nothing to buy or can't afford — just idle at shop
-        ai._shopCD = 30;
+        // Can't afford anything useful — idle briefly then roam
+        ai._shopCD = 60;
+        ai.state = 'roam';
       }
     }
 
     this.applySeparation(member);
+  },
+
+  // Try to buy the best affordable buff. Returns true if purchased.
+  _tryBuyBuff(member) {
+    const e = member.entity;
+    const hpFrac = e.hp / e.maxHp;
+
+    // Build priority list based on situation
+    const priorities = [];
+
+    // Health Potion is top priority if HP < 70%
+    if (hpFrac < 0.7) {
+      priorities.push(3); // Health Potion
+    }
+
+    // Then damage buffs and lifesteal
+    priorities.push(0); // Gun Damage +3
+    priorities.push(1); // Melee Damage +3
+    priorities.push(4); // Lifesteal +5
+
+    // Health Potion as low priority even at high HP (stock up)
+    if (hpFrac >= 0.7) {
+      priorities.push(3);
+    }
+
+    for (const idx of priorities) {
+      const item = SHOP_ITEMS.Buffs[idx];
+      if (!item) continue;
+
+      // Check max purchases (lifesteal has maxBuy:10, melee speed has maxBuy:6)
+      if (item.maxBuy && member._shopBought[idx] >= item.maxBuy) continue;
+
+      // Calculate cost using bot's own purchase count
+      const cost = item.baseCost + member._shopBought[idx] * item.priceIncrease;
+
+      if (member.gold >= cost) {
+        // Purchase!
+        member.gold -= cost;
+        member._shopBought[idx]++;
+
+        // Apply the buff to the bot's own stats
+        switch (idx) {
+          case 0: // Gun Damage +3
+            if (member.gun) member.gun.damage += 3;
+            break;
+          case 1: // Melee Damage +3
+            if (member.melee) member.melee.damage += 3;
+            break;
+          case 2: // Melee Speed +
+            if (member.melee) member.melee.cooldownMax = Math.max(10, (member.melee.cooldownMax || 30) - 2);
+            break;
+          case 3: // Health Potion — heal 50% maxHP immediately
+            const healAmt = Math.round(e.maxHp * 0.5);
+            e.hp = Math.min(e.maxHp, e.hp + healAmt);
+            hitEffects.push({ x: e.x, y: e.y - 30, life: 20, type: "heal", dmg: "+" + healAmt + " HP" });
+            return true; // skip the generic hit effect below
+          case 4: // Lifesteal +5
+            member._lifestealPerKill = (member._lifestealPerKill || 25) + 5;
+            break;
+        }
+
+        // Show purchase effect
+        hitEffects.push({ x: e.x, y: e.y - 30, life: 20, type: "heal", dmg: item.name });
+        return true;
+      }
+    }
+
+    return false; // couldn't afford anything
   },
 
   // ROAM: wander independently when no mobs and not shopping
@@ -162,7 +407,7 @@ const BotAI = {
     this.applySeparation(member);
   },
 
-  // ENGAGE: in shooting range — shoot + position for combat
+  // ENGAGE: in shooting range — shoot + strafe for combat
   doEngage(member, mob, dist) {
     if (!mob || mob.hp <= 0) { member.ai.state = 'follow'; return; }
     const e = member.entity;
@@ -178,7 +423,8 @@ const BotAI = {
     } else if (dist < PARTY_CONFIG.BOT_EFFECTIVE_RANGE - 30) {
       this.moveAway(e, mob.x, mob.y, dist);
     } else {
-      e.moving = false;
+      // At effective range — strafe laterally instead of standing still
+      this._doStrafe(member, mob, dist);
     }
 
     this.applySeparation(member);
@@ -200,14 +446,59 @@ const BotAI = {
     }
   },
 
-  // FLEE: run away from nearest threat
+  // Strafe perpendicular to the mob (lateral movement while at effective range)
+  _doStrafe(member, mob, dist) {
+    const e = member.entity;
+    const ai = member.ai;
+
+    // Initialize strafe direction — flip every 60-120 frames
+    if (!ai._strafeDir) ai._strafeDir = Math.random() < 0.5 ? 1 : -1;
+    if (!ai._strafeTimer) ai._strafeTimer = 0;
+    ai._strafeTimer++;
+    if (ai._strafeTimer > 60 + Math.random() * 60) {
+      ai._strafeDir *= -1;
+      ai._strafeTimer = 0;
+    }
+
+    // Perpendicular direction to mob
+    const dx = mob.x - e.x, dy = mob.y - e.y;
+    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+    // Perpendicular: rotate 90 degrees
+    const perpX = -dy / d * ai._strafeDir;
+    const perpY = dx / d * ai._strafeDir;
+
+    const spd = (e.speed || GAME_CONFIG.PLAYER_BASE_SPEED) * 0.5; // half speed strafe
+    const newX = e.x + perpX * spd;
+    const newY = e.y + perpY * spd;
+    if (positionClear(newX, e.y, GAME_CONFIG.PLAYER_WALL_HW)) e.x = newX;
+    if (positionClear(e.x, newY, GAME_CONFIG.PLAYER_WALL_HW)) e.y = newY;
+    e.moving = true;
+    // Keep facing the mob, not the strafe direction
+  },
+
+  // FLEE: run toward the shop station (safety) while shooting
   doFlee(member, mob) {
     if (!mob) { member.ai.state = 'follow'; return; }
     const e = member.entity;
-    const dx = mob.x - e.x, dy = mob.y - e.y;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-    this.moveAway(e, mob.x, mob.y, dist);
+    // Flee toward shop station instead of just away from mob
+    const dx = this.SHOP_X - e.x, dy = this.SHOP_Y - e.y;
+    const distToShop = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    if (distToShop > 30) {
+      // Move toward shop
+      const spd = e.speed || GAME_CONFIG.PLAYER_BASE_SPEED;
+      const nx = dx / distToShop, ny = dy / distToShop;
+      const newX = e.x + nx * spd * 0.8;
+      const newY = e.y + ny * spd * 0.8;
+      if (positionClear(newX, e.y, GAME_CONFIG.PLAYER_WALL_HW)) e.x = newX;
+      if (positionClear(e.x, newY, GAME_CONFIG.PLAYER_WALL_HW)) e.y = newY;
+      e.moving = true;
+      this.faceDirection(e, nx, ny);
+    } else {
+      // At shop — just move away from the mob
+      this.moveAway(e, mob.x, mob.y, Math.sqrt((mob.x - e.x) ** 2 + (mob.y - e.y) ** 2) || 1);
+    }
 
     // Still shoot while fleeing if possible
     if (member.gun && !member.gun.reloading && member.ai.shootCD <= 0 && member.gun.ammo > 0) {
