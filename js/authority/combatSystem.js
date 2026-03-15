@@ -134,6 +134,8 @@ const StatusFX = {
       _tetherTimer: 0,
       _tetherMobId: null,
       _tetherSlow: 0.6,
+      _poisonTimer: 0,     // per-entity poison (arrow poison, etc.)
+      _poisonTickTimer: 0,
     };
   },
 
@@ -428,6 +430,18 @@ const StatusFX = {
       }
       if (pe._tetherTimer <= 0) { pe._tether = false; pe._tetherMobId = null; }
     }
+    // Per-entity poison tick (bots hit by poison arrows, etc.)
+    if (pe._poisonTimer > 0) {
+      pe._poisonTimer--;
+      pe._poisonTickTimer = (pe._poisonTickTimer || 0) + 1;
+      if (pe._poisonTickTimer >= 60) {
+        pe._poisonTickTimer = 0;
+        if (typeof dealDamageToPlayer === 'function') {
+          dealDamageToPlayer(1, 'dot', null, entity);
+          hitEffects.push({ x: entity.x + (Math.random()-0.5)*20, y: entity.y - 30 + (Math.random()-0.5)*10, life: 20, type: "poison_tick" });
+        }
+      }
+    }
     return { speedMult, rooted, marked: pe._mark, markBonus: pe._markBonus, silenced: pe._silence, confused: pe._confuse, disoriented: pe._disorient, bleeding: pe._bleed, feared: pe._fear, blind: pe._blind, armorBreak: pe._armorBreak, armorBreakMult: pe._armorBreakMult, tethered: pe._tether };
   },
 
@@ -471,8 +485,18 @@ const StatusFX = {
   // ---- PLAYER EFFECTS ----
   // Player poison (the main player debuff)
   applyPoison(duration) {
-    poisonTimer = duration;
-    poisonTickTimer = 0;
+    const target = (typeof _currentDamageTarget !== 'undefined' && _currentDamageTarget)
+      ? _currentDamageTarget : (typeof player !== 'undefined' ? player : null);
+    if (!target || target === player) {
+      // Player: use global timer (backward compat for draw.js green tint, snapshots)
+      poisonTimer = duration;
+      poisonTickTimer = 0;
+    } else {
+      // Bot/entity: use per-entity _statusFX
+      if (!target._statusFX) target._statusFX = this._createEffectState();
+      target._statusFX._poisonTimer = duration;
+      target._statusFX._poisonTickTimer = 0;
+    }
   },
   clearPoison() { poisonTimer = 0; poisonTickTimer = 0; },
   hasPoison() { return poisonTimer > 0; },
