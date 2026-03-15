@@ -2619,53 +2619,61 @@ function draw() {
 
   // === DEATH / RESPAWN OVERLAY ===
   if (playerDead) {
-    // Dark overlay
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    // Check if we're in spectator mode (party alive, player out of lives, past death anim)
+    const _isSpectating = typeof PartyState !== 'undefined' && PartyState.active
+      && !PartySystem.allDead() && lives <= 0 && deathTimer <= 0 && respawnTimer <= 0;
 
-    ctx.textAlign = 'center';
-    if (deathTimer > 0) {
-      // "YOU DIED" text with shake
-      const shake = Math.sin(deathTimer * 0.5) * 3;
-      ctx.font = 'bold 36px monospace';
-      ctx.fillStyle = '#cc2222';
-      ctx.fillText('YOU DIED', BASE_W / 2 + shake, BASE_H / 2 - 20);
-      ctx.fillStyle = '#ff4444';
-      ctx.font = 'bold 34px monospace';
-      ctx.fillText('YOU DIED', BASE_W / 2, BASE_H / 2 - 20);
+    if (_isSpectating) {
+      // Spectator mode — no dark overlay, just the spectator bar (drawn below in SPECTATOR OVERLAY section)
     } else {
-      // Respawn countdown
-      const secondsLeft = Math.ceil(respawnTimer / 60);
-      if (deathGameOver) {
-        ctx.font = 'bold 28px monospace';
+      // Normal death/respawn overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+      ctx.textAlign = 'center';
+      if (deathTimer > 0) {
+        // "YOU DIED" text with shake
+        const shake = Math.sin(deathTimer * 0.5) * 3;
+        ctx.font = 'bold 36px monospace';
         ctx.fillStyle = '#cc2222';
-        ctx.fillText('GAME OVER', BASE_W / 2, BASE_H / 2 - 40);
-        ctx.font = 'bold 16px monospace';
-        ctx.fillStyle = '#aaa';
-        ctx.fillText('Returning to lobby...', BASE_W / 2, BASE_H / 2);
+        ctx.fillText('YOU DIED', BASE_W / 2 + shake, BASE_H / 2 - 20);
+        ctx.fillStyle = '#ff4444';
+        ctx.font = 'bold 34px monospace';
+        ctx.fillText('YOU DIED', BASE_W / 2, BASE_H / 2 - 20);
       } else {
-        ctx.font = 'bold 16px monospace';
-        ctx.fillStyle = '#aaa';
-        ctx.fillText('Respawning in', BASE_W / 2, BASE_H / 2 - 40);
+        // Respawn countdown
+        const secondsLeft = Math.ceil(respawnTimer / 60);
+        if (deathGameOver) {
+          ctx.font = 'bold 28px monospace';
+          ctx.fillStyle = '#cc2222';
+          ctx.fillText('GAME OVER', BASE_W / 2, BASE_H / 2 - 40);
+          ctx.font = 'bold 16px monospace';
+          ctx.fillStyle = '#aaa';
+          ctx.fillText('Returning to lobby...', BASE_W / 2, BASE_H / 2);
+        } else {
+          ctx.font = 'bold 16px monospace';
+          ctx.fillStyle = '#aaa';
+          ctx.fillText('Respawning in', BASE_W / 2, BASE_H / 2 - 40);
+        }
+        // Big countdown number
+        const pulse = 1 + Math.sin(renderTime / 150) * 0.08;
+        ctx.save();
+        ctx.translate(BASE_W / 2, BASE_H / 2 + 20);
+        ctx.scale(pulse, pulse);
+        ctx.font = 'bold 64px monospace';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(secondsLeft, 0, 0);
+        ctx.restore();
+        // Lives remaining
+        if (!deathGameOver) {
+          ctx.font = 'bold 14px monospace';
+          ctx.fillStyle = '#e44';
+          const livesText = lives === 1 ? '♥  LAST LIFE' : '♥'.repeat(lives) + '  ' + lives + ' lives left';
+          ctx.fillText(livesText, BASE_W / 2, BASE_H / 2 + 70);
+        }
       }
-      // Big countdown number
-      const pulse = 1 + Math.sin(renderTime / 150) * 0.08;
-      ctx.save();
-      ctx.translate(BASE_W / 2, BASE_H / 2 + 20);
-      ctx.scale(pulse, pulse);
-      ctx.font = 'bold 64px monospace';
-      ctx.fillStyle = '#fff';
-      ctx.fillText(secondsLeft, 0, 0);
-      ctx.restore();
-      // Lives remaining
-      if (!deathGameOver) {
-        ctx.font = 'bold 14px monospace';
-        ctx.fillStyle = '#e44';
-        const livesText = lives === 1 ? '♥  LAST LIFE' : '♥'.repeat(lives) + '  ' + lives + ' lives left';
-        ctx.fillText(livesText, BASE_W / 2, BASE_H / 2 + 70);
-      }
+      ctx.textAlign = 'left';
     }
-    ctx.textAlign = 'left';
   }
 
   // Draw customize screen LAST so it covers all HUD

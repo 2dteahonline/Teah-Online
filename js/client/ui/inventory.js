@@ -2353,11 +2353,23 @@ function update() {
       player.moving = false;
       if (respawnTimer <= 0) {
         // Actually respawn
-        if (_partyAlive) {
-          // Party mode: player stays dead until revived in shop or run ends
-          // Don't auto-respawn — just keep spectating
-          respawnTimer = 0; // prevent re-triggering
+        if (_partyAlive && lives > 0) {
+          // Party mode + has lives: normal respawn — come back alive
+          playerDead = false;
+          StatusFX.clearPoison();
+          player.hp = player.maxHp || 100;
+          player.x = 20 * TILE + TILE / 2;
+          player.y = 20 * TILE + TILE / 2;
+          // Update local member state
+          const _lm = PartySystem.getLocalMember();
+          if (_lm) { _lm.dead = false; _lm.entity.hp = player.maxHp || 100; }
+          hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "heal", dmg: "RESPAWN!" });
+        } else if (_partyAlive && lives <= 0) {
+          // Party mode + out of lives: spectate bots, stay dead
+          // Camera will follow bots (handled in updateCamera below)
+          respawnTimer = 0;
         } else {
+          // Solo mode
           playerDead = false;
           StatusFX.clearPoison();
           if (deathGameOver) {
@@ -2373,6 +2385,17 @@ function update() {
         }
       }
       if (!_partyAlive) return; // freeze world only in solo mode
+    }
+    // Party mode: player is dead with no lives, spectating bots
+    else if (_partyAlive && lives <= 0) {
+      // Camera follows nearest alive bot
+      const _specTarget = PartySystem.getSpectateTarget();
+      if (_specTarget) {
+        player.x = _specTarget.x;
+        player.y = _specTarget.y;
+      }
+      player.vx = 0; player.vy = 0;
+      player.moving = false;
     }
     // Party mode with alive bots: block player input but continue update
     if (_partyAlive) {
