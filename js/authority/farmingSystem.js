@@ -214,34 +214,46 @@ function getEquippedHoe() {
   return HOE_TIERS.find(h => h.id === farmingState.equippedHoe) || null;
 }
 
-// Find the farm tile the player is facing
+// Find the farm tile the player is facing — uses distance-based targeting
+// instead of strict grid alignment for forgiving, intuitive feel.
 function getFarmTileAtAction() {
   const hoe = getEquippedHoe();
   const reach = hoe ? hoe.reach : 1;
 
   const dir = player.dir; // 0=down, 1=up, 2=left, 3=right
-  const standTX = Math.floor(player.x / TILE);
-  const standTY = Math.floor(player.y / TILE);
+  // Direction vector
+  let ddx = 0, ddy = 0;
+  if (dir === 0) ddy = 1;
+  else if (dir === 1) ddy = -1;
+  else if (dir === 2) ddx = -1;
+  else if (dir === 3) ddx = 1;
 
-  // Direction offsets
-  let dx = 0, dy = 0;
-  if (dir === 0) dy = 1;
-  else if (dir === 1) dy = -1;
-  else if (dir === 2) dx = -1;
-  else if (dir === 3) dx = 1;
+  // Target point = player center + one tile ahead in facing direction
+  const targetX = player.x + ddx * TILE * reach;
+  const targetY = player.y + ddy * TILE * reach;
 
-  // Check tiles along facing direction (1 to reach), then standing tile
-  for (let r = 1; r <= reach; r++) {
-    const checkTX = standTX + dx * r;
-    const checkTY = standTY + dy * r;
-    for (const tile of farmingState.tiles) {
-      if (tile.tx === checkTX && tile.ty === checkTY) return tile;
+  // Find the closest tile within range (generous radius)
+  const maxDist = TILE * (reach + 0.8); // forgiving range
+  let bestTile = null;
+  let bestDist = Infinity;
+
+  for (const tile of farmingState.tiles) {
+    const tileCX = tile.tx * TILE + TILE / 2;
+    const tileCY = tile.ty * TILE + TILE / 2;
+    const dist = Math.sqrt((tileCX - targetX) ** 2 + (tileCY - targetY) ** 2);
+    if (dist < maxDist && dist < bestDist) {
+      bestDist = dist;
+      bestTile = tile;
     }
   }
+  if (bestTile) return bestTile;
 
-  // Check tile the player is standing on
+  // Fallback: tile the player is standing on
   for (const tile of farmingState.tiles) {
-    if (tile.tx === standTX && tile.ty === standTY) return tile;
+    const tileCX = tile.tx * TILE + TILE / 2;
+    const tileCY = tile.ty * TILE + TILE / 2;
+    const dist = Math.sqrt((tileCX - player.x) ** 2 + (tileCY - player.y) ** 2);
+    if (dist < TILE) return tile;
   }
 
   return null;
