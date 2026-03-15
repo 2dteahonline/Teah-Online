@@ -1494,6 +1494,7 @@ if (typeof window._discoveredOres === 'undefined') {
   window._discoveredOres = new Set();
 }
 function _isPickaxeUnlocked(pickId) {
+  if (window._opMode) return true;
   const def = PROG_ITEMS[pickId];
   if (!def || !def.unlockGate) return true;
   return window._discoveredOres.has(def.unlockGate);

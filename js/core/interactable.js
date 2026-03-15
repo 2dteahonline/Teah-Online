@@ -63,8 +63,8 @@ function isNearStation() {
 // Register fish vendor interactable (lobby only, near the dock)
 registerInteractable({
   id: 'fish_vendor',
-  get x() { return 23 * TILE + TILE; },   // center of 2x2 entity at tx:23
-  get y() { return 40 * TILE + TILE; },   // center of 2x2 entity at ty:40
+  get x() { return 33 * TILE + TILE; },   // center of 2x2 entity at tx:33
+  get y() { return 56 * TILE + TILE; },   // center of 2x2 entity at ty:56
   range: 120,
   get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Fish Vendor'; },
   type: 'fishVendor',
