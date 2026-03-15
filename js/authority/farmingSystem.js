@@ -119,7 +119,11 @@ function handleFarmAction() {
   }
 
   const tile = getFarmTileAtAction();
-  if (!tile) return;
+  if (!tile) {
+    hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Walk to the garden plot!', color: '#a08060' });
+    farmingState.actionCooldown = 15; // prevent spam
+    return;
+  }
 
   const cfg = FARMING_CONFIG;
 
@@ -297,10 +301,19 @@ function drawFarmTiles() {
     const y = tile.ty * TILE;
 
     if (tile.state === FARM_TILE_STATES.EMPTY) {
-      // Faint grid outline to show tillable area
-      ctx.strokeStyle = 'rgba(180,150,100,0.15)';
+      // Visible grid outline to show tillable area
+      ctx.fillStyle = 'rgba(90,70,40,0.25)';
+      ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+      ctx.strokeStyle = 'rgba(180,150,100,0.4)';
       ctx.lineWidth = 1;
       ctx.strokeRect(x + 2, y + 2, TILE - 4, TILE - 4);
+      // Corner dots for visibility
+      const dotR = 2;
+      ctx.fillStyle = 'rgba(200,170,110,0.5)';
+      ctx.beginPath(); ctx.arc(x + 6, y + 6, dotR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + TILE - 6, y + 6, dotR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 6, y + TILE - 6, dotR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + TILE - 6, y + TILE - 6, dotR, 0, Math.PI * 2); ctx.fill();
       continue;
     }
 
@@ -485,10 +498,10 @@ function drawFarmingHUD() {
 
   // === FARMING INFO (top-left) ===
   ctx.fillStyle = '#0a0e08';
-  ctx.fillRect(12, 10, 280, 52);
+  ctx.fillRect(12, 10, 280, 68);
   ctx.strokeStyle = '#5a9a40';
   ctx.lineWidth = 1;
-  ctx.strokeRect(12, 10, 280, 52);
+  ctx.strokeRect(12, 10, 280, 68);
 
   // Farming level
   ctx.font = 'bold 16px monospace';
@@ -499,6 +512,11 @@ function drawFarmingHUD() {
   ctx.font = '12px monospace';
   ctx.fillStyle = '#999';
   ctx.fillText('Harvested: ' + farmingState.stats.totalHarvested + '  |  Earned: ' + farmingState.stats.totalEarned + 'g', 22, 52);
+
+  // Instructions
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#607050';
+  ctx.fillText('[F] Till/Plant/Water/Harvest  [E] Shop', 22, 68);
 }
 
 // ===================== SEED SELECTION (keyboard) =====================
