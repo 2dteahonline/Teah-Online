@@ -1149,7 +1149,7 @@ const ENTITY_RENDERERS = {
       }
       for (let ci = 0; ci < 4; ci++) {
         const sx2 = positions[ci].x, sy2 = positions[ci].y;
-        const isFilled = queueActive && ci < queuePlayers;
+        const isFilled = queueActive && (typeof PartyState !== 'undefined' ? PartyState.queueSlots[ci] : ci < queuePlayers);
         const pulse = Math.sin(t * 2.5 + ci * 1.2);
         const pulse2 = Math.sin(t * 4 + ci * 0.9);
         const glowR2 = sigilR + 14 + pulse * 4;
@@ -1207,18 +1207,41 @@ const ENTITY_RENDERERS = {
         ctx.fillText(nearQueue ? "\u2694 PRESS Q TO QUEUE" : "\u2694 WALK HERE TO QUEUE", qcx, btnY + 23);
         ctx.textAlign = "left";
       } else {
-        const sec = Math.ceil(queueTimer / 60);
-        const pct = 1 - (queueTimer / QUEUE_DURATION);
-        const cdY = qcy - 30;
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 6;
-        ctx.beginPath(); ctx.arc(qcx, cdY, 26, 0, Math.PI * 2); ctx.stroke();
-        ctx.strokeStyle = sec <= 3 ? '#ff4444' : '#44ff66'; ctx.lineCap = 'round'; ctx.lineWidth = 5;
-        ctx.beginPath(); ctx.arc(qcx, cdY, 26, -Math.PI/2, -Math.PI/2 + pct * Math.PI * 2); ctx.stroke();
-        ctx.lineCap = 'butt';
-        ctx.font = "bold 24px monospace"; ctx.fillStyle = sec <= 3 ? '#ff4444' : '#fff'; ctx.textAlign = "center";
-        ctx.fillText(sec.toString(), qcx, cdY + 8);
-        ctx.font = "bold 11px monospace"; ctx.fillStyle = '#aaa';
-        ctx.fillText("MOVE TO CANCEL", qcx, cdY + 28);
+        // Party setup mode — show slot labels + Start button
+        // Slot labels (player / bot toggles)
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        for (let si = 0; si < 4; si++) {
+          const sp = positions[si];
+          const slotFilled = typeof PartyState !== 'undefined' && PartyState.queueSlots[si];
+          if (si === 0) {
+            ctx.fillStyle = '#88ddff';
+            ctx.fillText('YOU', sp.x, sp.y - sigilR - 6);
+          } else if (slotFilled) {
+            ctx.fillStyle = '#88ff88';
+            ctx.fillText(BOT_PRESETS[si] ? BOT_PRESETS[si].name : 'Bot ' + si, sp.x, sp.y - sigilR - 6);
+            ctx.font = "10px monospace";
+            ctx.fillStyle = '#aaa';
+            ctx.fillText('CLICK TO REMOVE', sp.x, sp.y + sigilR + 12);
+            ctx.font = "bold 11px monospace";
+          } else {
+            ctx.fillStyle = '#888';
+            ctx.fillText('CLICK TO ADD', sp.x, sp.y - sigilR - 6);
+          }
+        }
+        // Start button
+        const startW = 140, startH = 32;
+        const startX = qcx - startW / 2, startY = qcy - 46;
+        const _partyCount = typeof PartyState !== 'undefined' ? PartyState.queueSlots.filter(Boolean).length : 1;
+        ctx.fillStyle = `rgba(60,200,60,${0.8 + Math.sin(t * 3) * 0.1})`;
+        ctx.beginPath(); ctx.roundRect(startX, startY, startW, startH, 8); ctx.fill();
+        ctx.strokeStyle = '#88ff88'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(startX, startY, startW, startH, 8); ctx.stroke();
+        ctx.font = "bold 14px monospace"; ctx.fillStyle = '#fff';
+        ctx.fillText('START (' + _partyCount + 'P)', qcx, startY + 21);
+        // Move to cancel hint
+        ctx.font = "10px monospace"; ctx.fillStyle = '#aaa';
+        ctx.fillText('MOVE TO CANCEL', qcx, startY + startH + 14);
         ctx.textAlign = "left";
       }
   },

@@ -307,7 +307,20 @@ function checkPlayerDeath() {
     deathX = player.x;
     deathY = player.y;
     deathRotation = 0;
-    deathGameOver = (lives <= 0);
+    // In party mode, game over only when ALL members are dead
+    if (typeof PartyState !== 'undefined' && PartyState.active) {
+      // Update local player member
+      const localMember = PartySystem.getLocalMember();
+      if (localMember) {
+        localMember.dead = true;
+        localMember.lives = lives;
+        localMember.deathTimer = DEATH_ANIM_FRAMES;
+        localMember.respawnTimer = RESPAWN_COUNTDOWN;
+      }
+      deathGameOver = PartySystem.allDead();
+    } else {
+      deathGameOver = (lives <= 0);
+    }
     Events.emit('player_died', { lives, gameOver: deathGameOver, x: deathX, y: deathY });
   }
 }

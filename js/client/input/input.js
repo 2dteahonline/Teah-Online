@@ -1197,6 +1197,26 @@ canvas.addEventListener("mousedown", e => {
     if (handleMiningShopClick(mx, my)) return;
   }
 
+  // Revive shop clicks (party mode)
+  if (typeof PartyState !== 'undefined' && PartyState.active && waveState === 'revive_shop') {
+    const _rsW = 300, _rsH = 200;
+    const _rsX = (BASE_W - _rsW) / 2, _rsY = (BASE_H - _rsH) / 2 - 30;
+    if (mx >= _rsX && mx <= _rsX + _rsW && my >= _rsY && my <= _rsY + _rsH) {
+      // Check each dead member's revive button
+      let _rsRow = 0;
+      for (const _pm of PartyState.members) {
+        if (!_pm.dead || _pm.lives <= 0) continue;
+        const _ry = _rsY + 50 + _rsRow * 40;
+        if (my >= _ry && my <= _ry + 30) {
+          PartySystem.reviveMember(_pm);
+          return;
+        }
+        _rsRow++;
+      }
+      return; // consume click inside panel
+    }
+  }
+
   // Shop panel clicks
   if (UI.isOpen('shop')) {
     const items = getShopItems();
@@ -1253,7 +1273,7 @@ canvas.addEventListener("mousedown", e => {
     if (mx >= px && mx <= px + pw && my >= py && my <= py + ph) return;
   }
 
-  // Tap to queue
+  // Tap to queue / party slot clicks / start button
   if (nearQueue && e.button === 0) {
     const qe = levelEntities.find(en => en.type === 'queue_zone');
     if (qe) {
@@ -1261,7 +1281,38 @@ canvas.addEventListener("mousedown", e => {
       const qWorldX = qe.tx * TILE, qWorldY = qe.ty * TILE;
       const qew = (qe.w || 1) * TILE, qeh = (qe.h || 1) * TILE;
       if (qwx >= qWorldX && qwx <= qWorldX + qew && qwy >= qWorldY && qwy <= qWorldY + qeh) {
-        joinQueue(); return;
+        if (queueActive && typeof PartyState !== 'undefined') {
+          // Check slot clicks and start button using screen coordinates relative to queue zone
+          const qcx = qWorldX + qew / 2, qcy = qWorldY + qeh / 2;
+          const spread = qew * 0.38;
+          const sigilR = 28;
+          const slotPositions = [
+            { x: qcx - spread, y: qcy + 10 },
+            { x: qcx - spread * 0.33, y: qcy + 10 },
+            { x: qcx + spread * 0.33, y: qcy + 10 },
+            { x: qcx + spread, y: qcy + 10 },
+          ];
+          // Check slot clicks (slots 1-3 only, slot 0 is player)
+          let _slotClicked = false;
+          for (let _si = 1; _si < 4; _si++) {
+            const sdx = qwx - slotPositions[_si].x, sdy = qwy - slotPositions[_si].y;
+            if (sdx * sdx + sdy * sdy < sigilR * sigilR) {
+              PartyState.queueSlots[_si] = !PartyState.queueSlots[_si];
+              _slotClicked = true;
+              break;
+            }
+          }
+          if (_slotClicked) return;
+          // Check start button click (centered above slots)
+          const startW = 140, startH = 32;
+          const startX = qcx - startW / 2, startY = qcy - 46;
+          if (qwx >= startX && qwx <= startX + startW && qwy >= startY && qwy <= startY + startH) {
+            startDungeon();
+            return;
+          }
+        } else {
+          joinQueue(); return;
+        }
       }
     }
   }

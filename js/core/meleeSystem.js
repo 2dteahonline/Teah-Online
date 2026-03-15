@@ -949,14 +949,17 @@ function updateBullets() {
       if (b.isBoulder) {
         // Boulder explodes on wall
         hitEffects.push({ x: b.x, y: b.y, life: 30, type: "explosion" });
-        // Blast damage if player nearby
-        const dxP = b.x - player.x;
-        const dyP = b.y - (player.y - 20);
-        const distP = Math.sqrt(dxP * dxP + dyP * dyP);
-        if (distP < 100 && !playerDead) {
-          const blastDmg = Math.round((distP < 50 ? 20 : 12) * getMobDamageMultiplier());
-          const dmgDealt = dealDamageToPlayer(blastDmg, "aoe", null);
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dmgDealt });
+        // Blast damage if party members nearby
+        const _boulderTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+        for (const _bt of _boulderTargets) {
+          const dxP = b.x - _bt.x;
+          const dyP = b.y - (_bt.y - 20);
+          const distP = Math.sqrt(dxP * dxP + dyP * dyP);
+          if (distP < 100 && !(_bt === player && playerDead) && !_bt._isDead) {
+            const blastDmg = Math.round((distP < 50 ? 20 : 12) * getMobDamageMultiplier());
+            const dmgDealt = dealDamageToPlayer(blastDmg, "aoe", null, _bt);
+            hitEffects.push({ x: _bt.x, y: _bt.y - 10, life: 19, type: "hit", dmg: dmgDealt });
+          }
         }
       } else {
         // Mob bullet onWallHit callback (e.g., bouncing projectiles)
@@ -995,24 +998,32 @@ function updateBullets() {
         const mobHitR = m.hitboxR ?? ENTITY_R;
         const mobHitDist = BULLET_R + mobHitR;
         if (dx * dx + dy * dy < mobHitDist * mobHitDist) {
+          // Per-bullet stats (bot bullets carry their own, player bullets fall through to global)
+          const _bDmg = b.damage || gun.damage;
+          const _bSpecial = b.special !== undefined ? b.special : gun.special;
+          const _bOwner = b.ownerId || 'player';
+          const _bAttacker = (_bOwner !== 'player' && typeof PartySystem !== 'undefined')
+            ? (PartySystem.getMemberById(_bOwner) || {}).entity || player
+            : player;
+
           // Projectile reflect — reverse bullet and make it a mob bullet
           if (m._reflectActive || m._reflecting) {
             b.vx = -b.vx; b.vy = -b.vy;
             b.fromPlayer = false; b.mobBullet = true;
-            b.damage = Math.round(gun.damage * 0.6);
+            b.damage = Math.round(_bDmg * 0.6);
             b.ownerId = m.id;
             hitEffects.push({ x: b.x, y: b.y, life: 12, type: 'reflect_spark' });
             break; // don't destroy or damage — reflected
           }
-          hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: gun.damage });
+          hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: _bDmg });
 
           // Gun special on-hit effects (dispatched via registry)
-          const gunBehavior = gun.special && GUN_BEHAVIORS[gun.special];
+          const gunBehavior = _bSpecial && GUN_BEHAVIORS[_bSpecial];
           if (gunBehavior && gunBehavior.onHit) {
             gunBehavior.onHit(m, b.x, b.y);
           }
 
-          dealDamageToMob(m, gun.damage, "gun");
+          dealDamageToMob(m, _bDmg, "gun", _bAttacker);
 
           // Pierce mechanic: don't destroy bullet, decrement pierceCount
           if (b.pierce) {
@@ -1036,47 +1047,66 @@ function updateBullets() {
       if (hit) continue;
     }
 
-    // Non-player bullets vs player (mob shooter bullets)
+    // Non-player bullets vs player/party (mob shooter bullets)
     if (!b.fromPlayer) {
       // Arrow: poison on hit, arrow is destroyed
       if (b.isArrow) {
-        const dxA = b.x - player.x;
-        const dyA = b.y - (player.y - 20);
-        if (dxA * dxA + dyA * dyA < HIT_DIST_SQ && !playerDead) {
-          dealDamageToPlayer(b.damage, "projectile", null);
-          // Apply/reset poison — 20 seconds (1200 frames)
-          StatusFX.applyPoison(Math.round(1200 * (1 - getEffectReduction())));
-          hitEffects.push({ x: b.x, y: b.y, life: 20, type: "poison_hit" });
-          bullets.splice(i, 1);
-          continue;
+        const _arrowTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+        let _arrowHit = false;
+        for (const _at of _arrowTargets) {
+          const dxA = b.x - _at.x;
+          const dyA = b.y - (_at.y - 20);
+          if (dxA * dxA + dyA * dyA < HIT_DIST_SQ && !(_at === player && playerDead) && !_at._isDead) {
+            dealDamageToPlayer(b.damage, "projectile", null, _at);
+            // Apply/reset poison — 20 seconds (player only, bots skip status)
+            if (_at === player) StatusFX.applyPoison(Math.round(1200 * (1 - getEffectReduction())));
+            hitEffects.push({ x: b.x, y: b.y, life: 20, type: "poison_hit" });
+            bullets.splice(i, 1);
+            _arrowHit = true;
+            break;
+          }
         }
+        if (_arrowHit) continue;
         continue; // arrows skip normal bullet collision
       }
-      // Boulder: only explodes on direct player hit (walls handled above)
+      // Boulder: only explodes on direct party member hit (walls handled above)
       if (b.isBoulder) {
-        const dxB = b.x - player.x;
-        const dyB = b.y - (player.y - 20);
-        const boulderHitR = b.boulderHitRadius || 40;
-        if (dxB * dxB + dyB * dyB < boulderHitR * boulderHitR) {
-          hitEffects.push({ x: b.x, y: b.y, life: 30, type: "explosion" });
-          const boulderDmg = b.damage || Math.round(20 * getMobDamageMultiplier());
-          const dmgDealt = dealDamageToPlayer(boulderDmg, "aoe", null);
-          hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dmgDealt });
-          bullets.splice(i, 1);
-          continue;
+        const _bdrTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+        let _bdrHit = false;
+        for (const _bdt of _bdrTargets) {
+          const dxB = b.x - _bdt.x;
+          const dyB = b.y - (_bdt.y - 20);
+          const boulderHitR = b.boulderHitRadius || 40;
+          if (dxB * dxB + dyB * dyB < boulderHitR * boulderHitR && !(_bdt === player && playerDead) && !_bdt._isDead) {
+            hitEffects.push({ x: b.x, y: b.y, life: 30, type: "explosion" });
+            const boulderDmg = b.damage || Math.round(20 * getMobDamageMultiplier());
+            const dmgDealt = dealDamageToPlayer(boulderDmg, "aoe", null, _bdt);
+            hitEffects.push({ x: _bdt.x, y: _bdt.y - 10, life: 19, type: "hit", dmg: dmgDealt });
+            bullets.splice(i, 1);
+            _bdrHit = true;
+            break;
+          }
         }
+        if (_bdrHit) continue;
         continue; // boulders don't use normal bullet collision
       }
-      const dx = b.x - player.x;
-      const dy = b.y - (player.y - 20);
-      if (dx * dx + dy * dy < HIT_DIST_SQ) {
-        const bDmg = b.damage || gun.damage;
-        const dmgDealt = dealDamageToPlayer(bDmg, "projectile", null);
-        hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: dmgDealt });
-        if (b.onHitPlayer) b.onHitPlayer(b);
-        bullets.splice(i, 1);
-        continue;
+      // Generic mob bullet vs party members
+      const _genTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+      let _genHit = false;
+      for (const _gt of _genTargets) {
+        const dx = b.x - _gt.x;
+        const dy = b.y - (_gt.y - 20);
+        if (dx * dx + dy * dy < HIT_DIST_SQ && !(_gt === player && playerDead) && !_gt._isDead) {
+          const bDmg = b.damage || gun.damage;
+          const dmgDealt = dealDamageToPlayer(bDmg, "projectile", null, _gt);
+          hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: dmgDealt });
+          if (b.onHitPlayer) b.onHitPlayer(b);
+          bullets.splice(i, 1);
+          _genHit = true;
+          break;
+        }
       }
+      if (_genHit) continue;
     }
 
     // Bullet only removed by wall hit or entity hit

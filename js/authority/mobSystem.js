@@ -110,9 +110,13 @@ function updateMobs() {
     // Test dummy — skip movement but still allow contact damage
     if (!m._testDummy) {
 
-    // Chase player with flanking AI
-    const dx = player.x - m.x;
-    const dy = player.y - m.y;
+    // Party-aware targeting: mob chases its assigned party target
+    const _mobTarget = typeof PartySystem !== 'undefined' && PartyState.active ? PartySystem.getMobTarget(m) : player;
+    _currentDamageTarget = _mobTarget; // set for dealDamageToPlayer/StatusFX calls in specials
+
+    // Chase target with flanking AI
+    const dx = _mobTarget.x - m.x;
+    const dy = _mobTarget.y - m.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist > 5) {
@@ -121,8 +125,8 @@ function updateMobs() {
 
       if (!inShootRange) {
         // Smart targeting — each mob type has unique trapping behavior
-        let targetX = player.x;
-        let targetY = player.y;
+        let targetX = _mobTarget.x;
+        let targetY = _mobTarget.y;
         const mapCenterX = (level.widthTiles * TILE) / 2;
         const mapCenterY = (level.heightTiles * TILE) / 2;
         const playerToCenterDist = Math.sqrt((player.x - mapCenterX) ** 2 + (player.y - mapCenterY) ** 2);
@@ -141,7 +145,7 @@ function updateMobs() {
 
         // MOB AI dispatch — registry-based movement targeting
         // Look up AI by mob type first, then by the 'ai' field from MOB_TYPES (for Floor mobs that reuse existing AI)
-        const aiCtx = { player, dist, dx, dy, targetX, targetY, playerVelX, playerVelY, mapCenterX, mapCenterY, amBetween, isCrowded, mobs };
+        const aiCtx = { player: _mobTarget, dist, dx, dy, targetX, targetY, playerVelX, playerVelY, mapCenterX, mapCenterY, amBetween, isCrowded, mobs };
         const aiKey = MOB_AI[m.type] ? m.type : (m.ai || null);
         if (isCrowded && !CROWD_EXEMPT_TYPES.has(m.type) && dist > 60) {
           ({ targetX, targetY } = MOB_AI.crowded(m, aiCtx));
@@ -459,12 +463,12 @@ function updateMobs() {
     if (window._mobsNoFire) { /* skip all specials */ }
     else if (MOB_SPECIALS[m.type]) {
       // Legacy mob types (witch, golem, etc.) keyed by type name
-      const specCtx = { dist, dx, dy, player, mobs, hitEffects, bullets, wave, playerDead };
+      const specCtx = { dist, dx, dy, player: _mobTarget, mobs, hitEffects, bullets, wave, playerDead };
       const specResult = MOB_SPECIALS[m.type](m, specCtx);
       if (specResult.skip) continue;
     } else if (m._specials && m._specials.length > 0) {
       // Floor 1+ mobs: specials keyed by ability name in _specials array
-      const specCtx = { dist, dx, dy, player, mobs, hitEffects, bullets, wave, playerDead };
+      const specCtx = { dist, dx, dy, player: _mobTarget, mobs, hitEffects, bullets, wave, playerDead };
       let skipMovement = false;
 
       // Floor 1+ archer-type mobs: fire arrows alongside their specials
@@ -496,15 +500,23 @@ function updateMobs() {
               if (mine.armTimer <= 0) mine.armed = true;
               continue;
             }
-            const mdx = player.x - mine.x, mdy = player.y - mine.y;
-            if (mdx * mdx + mdy * mdy <= mine.radius * mine.radius) {
-              StatusFX.applyToPlayer('root', { duration: 42 });
-              const dmg = Math.round(m.damage * getMobDamageMultiplier());
-              const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-              hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
-              hitEffects.push({ x: mine.x, y: mine.y, life: 20, type: "explosion" });
-              m._mines.splice(mi, 1);
+            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            let _mineHit = false;
+            for (const _pet of _peTargets) {
+              const mdx = _pet.x - mine.x, mdy = _pet.y - mine.y;
+              if (mdx * mdx + mdy * mdy <= mine.radius * mine.radius) {
+                _currentDamageTarget = _pet;
+                StatusFX.applyToPlayer('root', { duration: 42 });
+                const dmg = Math.round(m.damage * getMobDamageMultiplier());
+                const dealt = dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 19, type: "hit", dmg: dealt });
+                hitEffects.push({ x: mine.x, y: mine.y, life: 20, type: "explosion" });
+                _currentDamageTarget = null;
+                _mineHit = true;
+                break;
+              }
             }
+            if (_mineHit) m._mines.splice(mi, 1);
           }
         }
         // Tick persistent pillars (Voltmaster)
@@ -522,10 +534,15 @@ function updateMobs() {
               const partner = m._pillars.find(p => p.id === pillar.pairedWith);
               if (partner && partner.life > 0) {
                 if (typeof AttackShapes !== 'undefined') {
-                  if (AttackShapes.playerInLine(pillar.x, pillar.y, partner.x, partner.y, 24)) {
-                    const dmg = Math.round(m.damage * 0.8 * getMobDamageMultiplier());
-                    const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-                    hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
+                  const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+                  for (const _pet of _peTargets) {
+                    if (AttackShapes._pointInLine(_pet.x, _pet.y, pillar.x, pillar.y, partner.x, partner.y, 24)) {
+                      _currentDamageTarget = _pet;
+                      const dmg = Math.round(m.damage * 0.8 * getMobDamageMultiplier());
+                      const dealt = dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                      hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 19, type: "hit", dmg: dealt });
+                      _currentDamageTarget = null;
+                    }
                   }
                 }
                 hitEffects.push({
@@ -550,7 +567,14 @@ function updateMobs() {
             }
             turret.fireTimer = (turret.fireTimer || 0) - 1;
             if (turret.fireTimer <= 0) {
-              const tdx = player.x - turret.x, tdy = player.y - turret.y;
+              // Target nearest party member
+              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              let _nearest = _peTargets[0], _nearDist = Infinity;
+              for (const _pet of _peTargets) {
+                const _d = (_pet.x - turret.x) * (_pet.x - turret.x) + (_pet.y - turret.y) * (_pet.y - turret.y);
+                if (_d < _nearDist) { _nearDist = _d; _nearest = _pet; }
+              }
+              const tdx = _nearest.x - turret.x, tdy = _nearest.y - turret.y;
               const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
               bullets.push({
                 id: nextBulletId++,
@@ -570,14 +594,32 @@ function updateMobs() {
             const drone = m._drones[di];
             drone.life--;
             if (drone.diving) {
-              const ddx = player.x - drone.x, ddy = player.y - drone.y;
+              // Target nearest party member
+              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              let _nearest = _peTargets[0], _nearDist = Infinity;
+              for (const _pet of _peTargets) {
+                const _d = (_pet.x - drone.x) * (_pet.x - drone.x) + (_pet.y - drone.y) * (_pet.y - drone.y);
+                if (_d < _nearDist) { _nearDist = _d; _nearest = _pet; }
+              }
+              const ddx = _nearest.x - drone.x, ddy = _nearest.y - drone.y;
               const dDist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
               drone.x += (ddx / dDist) * 8;
               drone.y += (ddy / dDist) * 8;
-              if (dDist < 20) {
-                const dmg = Math.round(m.damage * 0.4 * getMobDamageMultiplier());
-                const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+              // Check hit against all party members
+              let _droneHit = false;
+              for (const _pet of _peTargets) {
+                const _pdx = _pet.x - drone.x, _pdy = _pet.y - drone.y;
+                if (_pdx * _pdx + _pdy * _pdy < 20 * 20) {
+                  _currentDamageTarget = _pet;
+                  const dmg = Math.round(m.damage * 0.4 * getMobDamageMultiplier());
+                  const dealt = dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                  hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 15, type: "hit", dmg: dealt });
+                  _currentDamageTarget = null;
+                  _droneHit = true;
+                  break;
+                }
+              }
+              if (_droneHit) {
                 m._drones.splice(di, 1);
               } else if (drone.life <= 0) {
                 m._drones.splice(di, 1);
@@ -599,8 +641,14 @@ function updateMobs() {
             const laser = m._lasers[li];
             laser.life--;
             if (laser.life <= 0) { m._lasers.splice(li, 1); continue; }
-            // Track toward player — fast enough to keep up with movement
-            const targetAngle = Math.atan2(player.y - laser.cy, player.x - laser.cx);
+            // Track toward nearest party member
+            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            let _nearest = _peTargets[0], _nearDist = Infinity;
+            for (const _pet of _peTargets) {
+              const _d = (_pet.x - laser.cx) * (_pet.x - laser.cx) + (_pet.y - laser.cy) * (_pet.y - laser.cy);
+              if (_d < _nearDist) { _nearDist = _d; _nearest = _pet; }
+            }
+            const targetAngle = Math.atan2(_nearest.y - laser.cy, _nearest.x - laser.cx);
             let diff = targetAngle - laser.angle;
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
@@ -608,14 +656,18 @@ function updateMobs() {
             // Follow mob position
             laser.cx = m.x;
             laser.cy = m.y;
-            // Check player in beam every 10 frames
+            // Check all party members in beam every 10 frames
             if (laser.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
               const endX = laser.cx + Math.cos(laser.angle) * laser.length;
               const endY = laser.cy + Math.sin(laser.angle) * laser.length;
-              if (AttackShapes.playerInLine(laser.cx, laser.cy, endX, endY, 24)) {
-                const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
-                dealDamageToPlayer(dmg, 'mob_special', m);
-                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
+              for (const _pet of _peTargets) {
+                if (AttackShapes._pointInLine(_pet.x, _pet.y, laser.cx, laser.cy, endX, endY, 24)) {
+                  _currentDamageTarget = _pet;
+                  const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
+                  dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                  hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 15, type: "hit", dmg: dmg });
+                  _currentDamageTarget = null;
+                }
               }
             }
           }
@@ -626,15 +678,23 @@ function updateMobs() {
             const bait = m._baits[bi];
             bait.life--;
             if (bait.life <= 0) { m._baits.splice(bi, 1); continue; }
-            const bdx = player.x - bait.x, bdy = player.y - bait.y;
-            if (bdx * bdx + bdy * bdy <= 60 * 60) {
-              const dmg = Math.round(m.damage * getMobDamageMultiplier());
-              dealDamageToPlayer(dmg, 'mob_special', m);
-              StatusFX.applyToPlayer('root', { duration: 48 });
-              hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dmg });
-              hitEffects.push({ x: bait.x, y: bait.y, life: 20, type: "explosion" });
-              m._baits.splice(bi, 1);
+            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            let _baitHit = false;
+            for (const _pet of _peTargets) {
+              const bdx = _pet.x - bait.x, bdy = _pet.y - bait.y;
+              if (bdx * bdx + bdy * bdy <= 60 * 60) {
+                _currentDamageTarget = _pet;
+                const dmg = Math.round(m.damage * getMobDamageMultiplier());
+                dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                StatusFX.applyToPlayer('root', { duration: 48 });
+                hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 19, type: "hit", dmg: dmg });
+                hitEffects.push({ x: bait.x, y: bait.y, life: 20, type: "explosion" });
+                _currentDamageTarget = null;
+                _baitHit = true;
+                break;
+              }
             }
+            if (_baitHit) m._baits.splice(bi, 1);
           }
         }
 
@@ -657,7 +717,14 @@ function updateMobs() {
             // Fire bullets
             drone.fireTimer = (drone.fireTimer || 0) - 1;
             if (drone.fireTimer <= 0) {
-              const ddx = player.x - drone.x, ddy = player.y - drone.y;
+              // Target nearest party member
+              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              let _nearest = _peTargets[0], _nearDist = Infinity;
+              for (const _pet of _peTargets) {
+                const _d = (_pet.x - drone.x) * (_pet.x - drone.x) + (_pet.y - drone.y) * (_pet.y - drone.y);
+                if (_d < _nearDist) { _nearDist = _d; _nearest = _pet; }
+              }
+              const ddx = _nearest.x - drone.x, ddy = _nearest.y - drone.y;
               const dDist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
               const gunAngle = Math.atan2(ddy, ddx);
               const bulletX = drone.x + Math.cos(gunAngle) * 12;
@@ -677,23 +744,33 @@ function updateMobs() {
         // Tick persistent Junz beam (repulsor_beam) — continues tracking while boss uses other abilities
         if (m._junzBeam && m._junzBeam.life > 0 && m._activeAbility !== 'repulsor_beam') {
           m._junzBeam.life--;
-          // Track toward player
-          const targetAngle = Math.atan2(player.y - m._junzBeam.cy, player.x - m._junzBeam.cx);
+          // Track toward nearest party member
+          const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+          let _nearest = _peTargets[0], _nearDist = Infinity;
+          for (const _pet of _peTargets) {
+            const _d = (_pet.x - m._junzBeam.cx) * (_pet.x - m._junzBeam.cx) + (_pet.y - m._junzBeam.cy) * (_pet.y - m._junzBeam.cy);
+            if (_d < _nearDist) { _nearDist = _d; _nearest = _pet; }
+          }
+          const targetAngle = Math.atan2(_nearest.y - m._junzBeam.cy, _nearest.x - m._junzBeam.cx);
           let diff = targetAngle - m._junzBeam.angle;
           while (diff > Math.PI) diff -= Math.PI * 2;
           while (diff < -Math.PI) diff += Math.PI * 2;
-          m._junzBeam.angle += diff * 0.18; // fast tracking — keeps up with player
+          m._junzBeam.angle += diff * 0.18; // fast tracking
           // Follow mob position
           m._junzBeam.cx = m.x;
           m._junzBeam.cy = m.y;
-          // Damage check every 10 frames
+          // Damage check every 10 frames — all party members
           if (m._junzBeam.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
             const endX = m._junzBeam.cx + Math.cos(m._junzBeam.angle) * m._junzBeam.length;
             const endY = m._junzBeam.cy + Math.sin(m._junzBeam.angle) * m._junzBeam.length;
-            if (AttackShapes.playerInLine(m._junzBeam.cx, m._junzBeam.cy, endX, endY, 28)) {
-              const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
-              dealDamageToPlayer(dmg, 'mob_special', m);
-              hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
+            for (const _pet of _peTargets) {
+              if (AttackShapes._pointInLine(_pet.x, _pet.y, m._junzBeam.cx, m._junzBeam.cy, endX, endY, 28)) {
+                _currentDamageTarget = _pet;
+                const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
+                dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 15, type: "hit", dmg: dmg });
+                _currentDamageTarget = null;
+              }
             }
           }
           if (m._junzBeam.life <= 0) m._junzBeam = null;
@@ -704,7 +781,14 @@ function updateMobs() {
             const clone = m._holoClones[ci];
             clone.life--;
             clone.frame = (clone.frame || 0) + 0.08;
-            const cdx = player.x - clone.x, cdy = player.y - clone.y;
+            // Chase nearest party member
+            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            let _nearest = _peTargets[0], _nearDist = Infinity;
+            for (const _pet of _peTargets) {
+              const _d = (_pet.x - clone.x) * (_pet.x - clone.x) + (_pet.y - clone.y) * (_pet.y - clone.y);
+              if (_d < _nearDist) { _nearDist = _d; _nearest = _pet; }
+            }
+            const cdx = _nearest.x - clone.x, cdy = _nearest.y - clone.y;
             const cDist = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
             clone.x += (cdx / cDist) * 1.5;
             clone.y += (cdy / cDist) * 1.5;
@@ -713,12 +797,23 @@ function updateMobs() {
             } else {
               clone.dir = cdy > 0 ? 'down' : 'up';
             }
-            if (cDist < 32) {
-              const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
-              dealDamageToPlayer(dmg, 'mob_special', m);
-              StatusFX.applyToPlayer('confuse', { duration: 60 });
-              hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dmg });
-              hitEffects.push({ x: clone.x, y: clone.y, life: 20, type: "explosion" });
+            // Check hit against all party members
+            let _cloneHit = false;
+            for (const _pet of _peTargets) {
+              const _pdx = _pet.x - clone.x, _pdy = _pet.y - clone.y;
+              if (Math.sqrt(_pdx * _pdx + _pdy * _pdy) < 32) {
+                _currentDamageTarget = _pet;
+                const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
+                dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                StatusFX.applyToPlayer('confuse', { duration: 60 });
+                hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 19, type: "hit", dmg: dmg });
+                hitEffects.push({ x: clone.x, y: clone.y, life: 20, type: "explosion" });
+                _currentDamageTarget = null;
+                _cloneHit = true;
+                break;
+              }
+            }
+            if (_cloneHit) {
               m._holoClones.splice(ci, 1);
             } else if (clone.life <= 0) {
               hitEffects.push({ x: clone.x, y: clone.y, life: 15, type: "fizzle" });
@@ -739,8 +834,15 @@ function updateMobs() {
               orb.y = m.y + Math.sin(orb.angle) * orb.orbitRadius;
               if (orb.orbitTimer <= 0) {
                 orb.diving = true;
-                orb.targetX = player.x;
-                orb.targetY = player.y;
+                // Target nearest party member
+                const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+                let _nearest = _peTargets[0], _nearDist = Infinity;
+                for (const _pet of _peTargets) {
+                  const _d = (_pet.x - orb.x) * (_pet.x - orb.x) + (_pet.y - orb.y) * (_pet.y - orb.y);
+                  if (_d < _nearDist) { _nearDist = _d; _nearest = _pet; }
+                }
+                orb.targetX = _nearest.x;
+                orb.targetY = _nearest.y;
               }
             } else {
               const odx = orb.targetX - orb.x, ody = orb.targetY - orb.y;
@@ -748,12 +850,23 @@ function updateMobs() {
               const spd = 5;
               orb.x += (odx / oDist) * spd;
               orb.y += (ody / oDist) * spd;
-              const pdx = player.x - orb.x, pdy = player.y - orb.y;
-              if (pdx * pdx + pdy * pdy <= 40 * 40) {
-                const dmg = Math.round(m.damage * 0.35 * getMobDamageMultiplier());
-                dealDamageToPlayer(dmg, 'mob_special', m);
-                StatusFX.applyToPlayer('stun', { duration: 18 });
-                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dmg });
+              // Check hit against all party members
+              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              let _orbHit = false;
+              for (const _pet of _peTargets) {
+                const pdx = _pet.x - orb.x, pdy = _pet.y - orb.y;
+                if (pdx * pdx + pdy * pdy <= 40 * 40) {
+                  _currentDamageTarget = _pet;
+                  const dmg = Math.round(m.damage * 0.35 * getMobDamageMultiplier());
+                  dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                  StatusFX.applyToPlayer('stun', { duration: 18 });
+                  hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 15, type: "hit", dmg: dmg });
+                  _currentDamageTarget = null;
+                  _orbHit = true;
+                  break;
+                }
+              }
+              if (_orbHit) {
                 m._staticOrbs.splice(oi, 1);
               } else if (oDist < 10) {
                 m._staticOrbs.splice(oi, 1);
@@ -786,13 +899,21 @@ function updateMobs() {
             const c = m._caltrops[ci];
             c.life--;
             if (c.life <= 0) { m._caltrops.splice(ci, 1); continue; }
-            const cdx = player.x - c.x, cdy = player.y - c.y;
-            if (Math.sqrt(cdx * cdx + cdy * cdy) < 20 && !c._hit) {
-              const dmg = Math.round(10 * getMobDamageMultiplier());
-              dealDamageToPlayer(dmg, 'mob_special', m);
-              StatusFX.applyToPlayer('slow', { duration: 120, amount: 0.4 });
-              hitEffects.push({ x: c.x, y: c.y, life: 15, type: "smoke" });
-              c._hit = true;
+            if (!c._hit) {
+              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              for (const _pet of _peTargets) {
+                const cdx = _pet.x - c.x, cdy = _pet.y - c.y;
+                if (Math.sqrt(cdx * cdx + cdy * cdy) < 20) {
+                  _currentDamageTarget = _pet;
+                  const dmg = Math.round(10 * getMobDamageMultiplier());
+                  dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                  StatusFX.applyToPlayer('slow', { duration: 120, amount: 0.4 });
+                  hitEffects.push({ x: c.x, y: c.y, life: 15, type: "smoke" });
+                  _currentDamageTarget = null;
+                  c._hit = true;
+                  break;
+                }
+              }
             }
           }
         }
@@ -834,13 +955,19 @@ function updateMobs() {
           for (const snare of m._silkSnares) {
             snare.life--;
             if (!snare._hit) {
-              const sdx = player.x - snare.x, sdy = player.y - snare.y;
-              if (Math.sqrt(sdx * sdx + sdy * sdy) < 50) {
-                const dmg = Math.round(30 * getMobDamageMultiplier());
-                const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-                StatusFX.applyToPlayer('root', { duration: 45 });
-                hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "stun", dmg: dealt });
-                snare._hit = true;
+              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              for (const _pet of _peTargets) {
+                const sdx = _pet.x - snare.x, sdy = _pet.y - snare.y;
+                if (Math.sqrt(sdx * sdx + sdy * sdy) < 50) {
+                  _currentDamageTarget = _pet;
+                  const dmg = Math.round(30 * getMobDamageMultiplier());
+                  const dealt = dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                  StatusFX.applyToPlayer('root', { duration: 45 });
+                  hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 19, type: "stun", dmg: dealt });
+                  _currentDamageTarget = null;
+                  snare._hit = true;
+                  break;
+                }
               }
             }
           }
@@ -851,11 +978,16 @@ function updateMobs() {
             const zone = m._blazeTrail[bi];
             zone.timer--;
             if (zone.timer > 0 && zone.timer % 30 === 0) {
-              const zdx = player.x - zone.x, zdy = player.y - zone.y;
-              if (Math.sqrt(zdx * zdx + zdy * zdy) < 50) {
-                const dmg = Math.round(10 * getMobDamageMultiplier());
-                const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              for (const _pet of _peTargets) {
+                const zdx = _pet.x - zone.x, zdy = _pet.y - zone.y;
+                if (Math.sqrt(zdx * zdx + zdy * zdy) < 50) {
+                  _currentDamageTarget = _pet;
+                  const dmg = Math.round(10 * getMobDamageMultiplier());
+                  const dealt = dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                  hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 15, type: "hit", dmg: dealt });
+                  _currentDamageTarget = null;
+                }
               }
             }
             if (zone.timer <= 0) m._blazeTrail.splice(bi, 1);
@@ -871,11 +1003,16 @@ function updateMobs() {
             pool._tick = (pool._tick || 0) + 1;
             if (pool._tick >= 30) {
               pool._tick = 0;
-              const pdx = player.x - pool.x, pdy = player.y - pool.y;
-              if (Math.sqrt(pdx * pdx + pdy * pdy) < 50) {
-                const dmg = Math.round(10 * getMobDamageMultiplier());
-                const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-                hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+              const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+              for (const _pet of _peTargets) {
+                const pdx = _pet.x - pool.x, pdy = _pet.y - pool.y;
+                if (Math.sqrt(pdx * pdx + pdy * pdy) < 50) {
+                  _currentDamageTarget = _pet;
+                  const dmg = Math.round(10 * getMobDamageMultiplier());
+                  const dealt = dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                  hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 15, type: "hit", dmg: dealt });
+                  _currentDamageTarget = null;
+                }
               }
             }
           }
@@ -883,18 +1020,23 @@ function updateMobs() {
         // Gravity well (Moon Rabbit boss)
         if (m._gravWell && m._gravWell.timer > 0 && m._activeAbility !== 'gravity_well') {
           m._gravWell.timer--;
-          const gdx = player.x - m._gravWell.x, gdy = player.y - m._gravWell.y;
-          const gDist = Math.sqrt(gdx * gdx + gdy * gdy);
-          if (gDist < 100 && gDist > 5) {
-            const pullDir = Math.atan2(m._gravWell.y - player.y, m._gravWell.x - player.x);
-            const nx = player.x + Math.cos(pullDir) * 2;
-            const ny = player.y + Math.sin(pullDir) * 2;
-            if (positionClear(nx, ny)) { player.x = nx; player.y = ny; }
-          }
-          if (m._gravWell.timer % 30 === 0 && gDist < 100) {
-            const dmg = Math.round(5 * getMobDamageMultiplier());
-            dealDamageToPlayer(dmg, 'mob_special', m);
-            hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "cast", dmg });
+          const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+          for (const _pet of _peTargets) {
+            const gdx = _pet.x - m._gravWell.x, gdy = _pet.y - m._gravWell.y;
+            const gDist = Math.sqrt(gdx * gdx + gdy * gdy);
+            if (gDist < 100 && gDist > 5) {
+              const pullDir = Math.atan2(m._gravWell.y - _pet.y, m._gravWell.x - _pet.x);
+              const nx = _pet.x + Math.cos(pullDir) * 2;
+              const ny = _pet.y + Math.sin(pullDir) * 2;
+              if (positionClear(nx, ny)) { _pet.x = nx; _pet.y = ny; }
+            }
+            if (m._gravWell.timer % 30 === 0 && gDist < 100) {
+              _currentDamageTarget = _pet;
+              const dmg = Math.round(5 * getMobDamageMultiplier());
+              dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+              hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 15, type: "cast", dmg });
+              _currentDamageTarget = null;
+            }
           }
           if (m._gravWell.timer <= 0) m._gravWell = null;
         }
@@ -902,11 +1044,16 @@ function updateMobs() {
         if (m._cinderZone && m._cinderZone.timer > 0 && m._activeAbility !== 'cinder_step') {
           m._cinderZone.timer--;
           if (m._cinderZone.timer > 0 && m._cinderZone.timer % 30 === 0) {
-            const cdx = player.x - m._cinderZone.x, cdy = player.y - m._cinderZone.y;
-            if (Math.sqrt(cdx * cdx + cdy * cdy) < 50) {
-              const dmg = Math.round(8 * getMobDamageMultiplier());
-              const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
-              hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
+            const _peTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+            for (const _pet of _peTargets) {
+              const cdx = _pet.x - m._cinderZone.x, cdy = _pet.y - m._cinderZone.y;
+              if (Math.sqrt(cdx * cdx + cdy * cdy) < 50) {
+                _currentDamageTarget = _pet;
+                const dmg = Math.round(8 * getMobDamageMultiplier());
+                const dealt = dealDamageToPlayer(dmg, 'mob_special', m, _pet);
+                hitEffects.push({ x: _pet.x, y: _pet.y - 10, life: 15, type: "hit", dmg: dealt });
+                _currentDamageTarget = null;
+              }
             }
           }
           if (m._cinderZone.timer <= 0) m._cinderZone = null;
@@ -1165,36 +1312,56 @@ function updateMobs() {
 
     } // end if (!m._testDummy) movement block
 
-    // Contact damage to player
-    if (m.attackCooldown > 0) { m.attackCooldown--; continue; }
-    const hitDx = player.x - m.x;
-    const hitDy = (player.y - 20) - (m.y - 20);
-    const hitDist = Math.sqrt(hitDx * hitDx + hitDy * hitDy);
+    _currentDamageTarget = null; // clear after specials dispatch
 
-    if (hitDist < m.contactRange && contactCooldown <= 0) {
-      try {
-      // Dodge check (boots)
-      const dodgeCh = getDodgeChance();
-      if (dodgeCh > 0 && Math.random() < dodgeCh) {
-        contactCooldown = 30;
-        m.attackCooldown = 60;
-        // Shadow step — next melee is guaranteed crit (T3+ boots)
-        if (playerEquip.boots && (playerEquip.boots.special === 'shadowstep' || playerEquip.boots.special === 'phase')) {
-          shadowStepActive = true;
+    // Contact damage to player/party members
+    if (m.attackCooldown > 0) { m.attackCooldown--; continue; }
+
+    // Check contact with all alive party members (or just player in solo)
+    const _contactTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+    for (const _ct of _contactTargets) {
+      const _isCtBot = _ct !== player && _ct._isBot;
+      const _ctDead = _isCtBot ? _ct._isDead : playerDead;
+      if (_ctDead) continue;
+
+      // Per-entity contact cooldown for bots, global contactCooldown for player
+      if (_isCtBot && _ct._contactCD > 0) continue;
+      if (!_isCtBot && contactCooldown > 0) continue;
+
+      const hitDx = _ct.x - m.x;
+      const hitDy = (_ct.y - 20) - (m.y - 20);
+      const hitDist = Math.sqrt(hitDx * hitDx + hitDy * hitDy);
+
+      if (hitDist < m.contactRange) {
+        try {
+        if (!_isCtBot) {
+          // Player: dodge check (boots)
+          const dodgeCh = getDodgeChance();
+          if (dodgeCh > 0 && Math.random() < dodgeCh) {
+            contactCooldown = 30;
+            m.attackCooldown = 60;
+            if (playerEquip.boots && (playerEquip.boots.special === 'shadowstep' || playerEquip.boots.special === 'phase')) {
+              shadowStepActive = true;
+            }
+            if (playerEquip.boots && playerEquip.boots.special === 'phase') {
+              phaseTimer = 45;
+            }
+            continue;
+          }
         }
-        // Phase — pass through mobs briefly (T4 boots)
-        if (playerEquip.boots && playerEquip.boots.special === 'phase') {
-          phaseTimer = 45;
-        }
-      } else {
-          // Normal damage
-          const dmgTaken = dealDamageToPlayer(m.damage, "contact", m);
+        // Normal damage to target
+        const dmgTaken = dealDamageToPlayer(m.damage, "contact", m, _ct);
+        if (_isCtBot) {
+          _ct._contactCD = 30;
+        } else {
           contactCooldown = 30;
-          m.attackCooldown = 60;
-          if (m.type === "skeleton") m.boneSwing = 20;
-          hitEffects.push({ x: player.x, y: player.y - 20, life: 25, type: "hit", dmg: dmgTaken });
+        }
+        m.attackCooldown = 60;
+        if (m.type === "skeleton") m.boneSwing = 20;
+        hitEffects.push({ x: _ct.x, y: _ct.y - 20, life: 25, type: "hit", dmg: dmgTaken });
+        break; // one hit per mob per frame
+        } catch(e) { console.error("ARMOR DODGE ERROR:", e); }
       }
-      } catch(e) { console.error("ARMOR DODGE ERROR:", e); }
     }
   }
 
@@ -1365,7 +1532,10 @@ function updateMobs() {
     hitEffects.length = 0;
     deathEffects.length = 0;
     mobParticles.length = 0;
-    // Full heal on wave clear
+    // Full heal on wave clear (all party members)
+    if (typeof PartySystem !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+      PartySystem.healAll();
+    }
     const healAmt = player.maxHp - player.hp;
     if (healAmt > 0) {
       player.hp = player.maxHp;
@@ -1388,6 +1558,19 @@ function updateMobs() {
       }
     }
     Events.emit('wave_cleared', { wave, floor: dungeonFloor, stairsOpen, dungeonComplete });
+
+    // Party: check if we need revive shop before next wave
+    if (typeof PartyState !== 'undefined' && PartyState.active && PartySystem.hasRevivable() && !stairsOpen) {
+      waveState = "revive_shop";
+      waveTimer = PARTY_CONFIG.REVIVE_SHOP_DURATION;
+    }
+  }
+  if (waveState === "revive_shop") {
+    waveTimer--;
+    if (waveTimer <= 0) {
+      waveState = "cleared";
+      waveTimer = 60; // brief transition before next wave
+    }
   }
   if (waveState === "cleared") {
     waveTimer--;

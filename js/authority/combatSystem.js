@@ -132,6 +132,8 @@ const StatusFX = {
   },
 
   applyToPlayer(effectId, params = {}) {
+    // V1: bots don't get status effects (too many call sites to refactor)
+    if (typeof _currentDamageTarget !== 'undefined' && _currentDamageTarget && _currentDamageTarget._isBot) return;
     const pe = this.playerEffects;
     switch (effectId) {
       case 'slow':

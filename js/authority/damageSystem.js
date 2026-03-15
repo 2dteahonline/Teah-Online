@@ -27,7 +27,7 @@
 //   hitEffects.push({ x: m.x, y: m.y - 20, life: 19, type: "hit", dmg: 50 });
 //   if (dealDamageToMob(m, 50, "gun")) { /* on-kill effects like frost nova */ }
 //
-function dealDamageToMob(mob, amount, source) {
+function dealDamageToMob(mob, amount, source, attackerEntity) {
   // Poison Immune: blocks poison/bleed damage (currently no player-to-mob poison exists,
   // but this guards against future DoT sources)
   if (mob._poisonImmune && (source === 'poison' || source === 'bleed')) return false;
@@ -45,7 +45,8 @@ function dealDamageToMob(mob, amount, source) {
 
   // Frontal shield check — negate damage from mob's facing direction
   if (mob._frontalShield && source !== 'dot' && source !== 'burn_dot' && source !== 'thorns') {
-    const aDx = player.x - mob.x, aDy = player.y - mob.y;
+    const _atkEntity = attackerEntity || _currentDamageTarget || player;
+    const aDx = _atkEntity.x - mob.x, aDy = _atkEntity.y - mob.y;
     const aDist = Math.sqrt(aDx * aDx + aDy * aDy) || 1;
     // Mob facing direction (0=down,1=up,2=left,3=right)
     const facingAngles = [Math.PI / 2, -Math.PI / 2, Math.PI, 0];
@@ -64,9 +65,10 @@ function dealDamageToMob(mob, amount, source) {
   // Counter stance — melee attacks are reflected back at player
   if (mob._counterStance && source === 'melee') {
     if (typeof dealDamageToPlayer === 'function') {
-      dealDamageToPlayer(mob.damage, 'contact', mob);
+      const _atkEntity = attackerEntity || _currentDamageTarget || player;
+      dealDamageToPlayer(mob.damage, 'contact', mob, _atkEntity);
       if (typeof hitEffects !== 'undefined') {
-        hitEffects.push({ x: player.x, y: player.y - 20, life: 15, type: "hit", dmg: mob.damage });
+        hitEffects.push({ x: _atkEntity.x, y: _atkEntity.y - 20, life: 15, type: "hit", dmg: mob.damage });
       }
     }
     return false;
@@ -152,51 +154,56 @@ function dealDamageToMob(mob, amount, source) {
 //   attacker: optional mob reference for thorns/stagger response
 //   Returns: final damage dealt after reductions
 //
-function dealDamageToPlayer(rawDamage, source, attacker) {
-  if (playerDead) return 0;
-  if (window._godMode) return 0; // /god — player invincibility
+function dealDamageToPlayer(rawDamage, source, attacker, targetEntity) {
+  // Resolve target: explicit param > _currentDamageTarget > global player
+  const target = targetEntity || _currentDamageTarget || player;
+  const isBot = target !== player && target._isBot;
 
-  // Lethal Efficiency: 15% bonus damage when player is below 40% HP
+  if (!isBot && playerDead) return 0;
+  if (isBot && target._isDead) return 0;
+  if (!isBot && window._godMode) return 0; // /god — player invincibility
+
+  // Lethal Efficiency: 15% bonus damage when target is below 40% HP
   if (attacker && attacker._lethalEfficiency) {
-    if (player.hp < player.maxHp * 0.4) {
+    if (target.hp < target.maxHp * 0.4) {
       rawDamage = Math.round(rawDamage * 1.15);
     }
   }
 
-  // Backstabber: 30% bonus damage if mob is behind the player
+  // Backstabber: 30% bonus damage if mob is behind the target
   if (attacker && attacker._backstabber) {
-    const toMobAngle = Math.atan2(attacker.y - player.y, attacker.x - player.x);
+    const toMobAngle = Math.atan2(attacker.y - target.y, attacker.x - target.x);
     const facingAngles = [Math.PI / 2, Math.PI, -Math.PI / 2, 0]; // down=0, left=1, up=2, right=3
-    const playerFacing = facingAngles[player.dir || 0];
-    let angleDiff = Math.abs(toMobAngle - playerFacing);
+    const targetFacing = facingAngles[target.dir || 0];
+    let angleDiff = Math.abs(toMobAngle - targetFacing);
     if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
     if (angleDiff > Math.PI / 2) {
       rawDamage = Math.round(rawDamage * 1.3);
     }
   }
 
-  // 1. Apply armor reduction
+  // 1. Apply armor reduction (bots skip armor — they don't have equipment)
   let reduced = rawDamage;
-  if (source !== "dot") {
+  if (!isBot && source !== "dot") {
     reduced *= (1 - getArmorReduction());
   }
 
-  // 2. Apply projectile/AOE reduction
-  if (source === "projectile" || source === "aoe") {
+  // 2. Apply projectile/AOE reduction (bots skip)
+  if (!isBot && (source === "projectile" || source === "aoe")) {
     reduced *= (1 - getProjReduction());
   }
 
-  // 2b. Armor Break multiplier (Vortalis status effect)
-  if (typeof StatusFX !== 'undefined' && StatusFX.playerEffects._armorBreak) {
+  // 2b. Armor Break multiplier (Vortalis status effect) — player only
+  if (!isBot && typeof StatusFX !== 'undefined' && StatusFX.playerEffects._armorBreak) {
     reduced *= StatusFX.playerEffects._armorBreakMult;
   }
 
   // 3. Round and subtract
   const finalDmg = Math.round(reduced);
-  player.hp -= finalDmg;
+  target.hp -= finalDmg;
 
-  // 4. Thorns — reflect damage to attacker on contact hits
-  if (source === "contact" && attacker && attacker.hp > 0) {
+  // 4. Thorns — reflect damage to attacker on contact hits (player only)
+  if (!isBot && source === "contact" && attacker && attacker.hp > 0) {
     const thornsRate = getThorns();
     if (thornsRate > 0) {
       const thornsDmg = Math.round(finalDmg * thornsRate);
@@ -211,9 +218,17 @@ function dealDamageToPlayer(rawDamage, source, attacker) {
   }
 
   // 5. Death check
-  checkPlayerDeath();
+  if (isBot) {
+    // Bot death handling
+    if (target.hp <= 0 && !target._isDead) {
+      const member = typeof PartySystem !== 'undefined' ? PartySystem.getMemberByEntity(target) : null;
+      if (member) PartySystem.handleMemberDeath(member);
+    }
+  } else {
+    checkPlayerDeath();
+  }
 
-  Events.emit('player_damaged', { amount: finalDmg, raw: rawDamage, source, attacker });
+  Events.emit('player_damaged', { amount: finalDmg, raw: rawDamage, source, attacker, target });
   return finalDmg;
 }
 
@@ -321,8 +336,21 @@ function getKillHealMult(source) {
   return 1.0;
 }
 
-function processKill(mob, source) {
-  // 1. Kill count + XP
+function processKill(mob, source, killerId) {
+  // Determine killer: explicit param, or from _currentDamageTarget, or 'player'
+  if (!killerId) {
+    if (_currentDamageTarget && _currentDamageTarget._isBot) {
+      const _km = typeof PartySystem !== 'undefined' ? PartySystem.getMemberByEntity(_currentDamageTarget) : null;
+      killerId = _km ? _km.id : 'player';
+    } else {
+      killerId = 'player';
+    }
+  }
+  const isBotKill = killerId !== 'player';
+  const killerMember = isBotKill && typeof PartySystem !== 'undefined' ? PartySystem.getMemberById(killerId) : null;
+  const killerEntity = killerMember ? killerMember.entity : player;
+
+  // 1. Kill count + XP (always goes to player — progression is local)
   kills++;
   addPlayerXP(5);
   addSkillXP("Total Kills", 5);
@@ -330,7 +358,7 @@ function processKill(mob, source) {
   // 2. Quick-kill bonus
   const qkb = getQuickKillBonus(mob);
 
-  // 3. Gold reward
+  // 3. Gold reward (always goes to shared pool)
   const goldEarned = Math.round(getGoldReward(mob.type, wave) * qkb);
   gold += goldEarned;
 
@@ -339,28 +367,29 @@ function processKill(mob, source) {
 
   // Witch skeleton early return — flat 1 HP, no normal rewards
   if (source === "witch_skeleton") {
-    player.hp = Math.min(player.maxHp, player.hp + 1);
+    killerEntity.hp = Math.min(killerEntity.maxHp, killerEntity.hp + 1);
     hitEffects.push({ x: mob.x, y: mob.y - 20, life: 20, type: "kill", gold: 0 });
-    Events.emit('mob_killed', { mob, source, goldEarned: 0, heal: 1 });
+    Events.emit('mob_killed', { mob, source, goldEarned: 0, heal: 1, killerId });
     return;
   }
 
   // Source-specific heal multiplier (from MELEE_HEAL_MULTS registry)
   const healMult = getKillHealMult(source);
 
-  // Apply chest armor heal boost
-  const chestHealBoost = playerEquip.chest && playerEquip.chest.healBoost ? playerEquip.chest.healBoost : 0;
+  // Apply chest armor heal boost (player only — bots have no equipment)
+  const chestHealBoost = !isBotKill && playerEquip.chest && playerEquip.chest.healBoost ? playerEquip.chest.healBoost : 0;
   let finalHeal = Math.round(baseHeal * qkb * healMult * (1 + chestHealBoost));
-  // Lifesteal floor — guarantees minimum heal per kill
-  if (typeof lifestealPerKill !== 'undefined') finalHeal = Math.max(finalHeal, lifestealPerKill);
+  // Lifesteal floor — guarantees minimum heal per kill (player only)
+  if (!isBotKill && typeof lifestealPerKill !== 'undefined') finalHeal = Math.max(finalHeal, lifestealPerKill);
   if (finalHeal > 0) {
-    player.hp = Math.min(player.maxHp, player.hp + finalHeal);
+    // Heal goes to the killer entity (bot or player)
+    killerEntity.hp = Math.min(killerEntity.maxHp, killerEntity.hp + finalHeal);
   }
 
   // 5. Visual effects
   hitEffects.push({ x: mob.x, y: mob.y - 20, life: 25, type: "kill", gold: goldEarned });
   if (source === "ninja_dash_kill" || source === "ninja_splash" || (finalHeal >= 15)) {
-    hitEffects.push({ x: player.x, y: player.y - 35, life: 18, type: "heal", dmg: "+" + finalHeal + " HP" });
+    hitEffects.push({ x: killerEntity.x, y: killerEntity.y - 35, life: 18, type: "heal", dmg: "+" + finalHeal + " HP" });
   }
 
   // 6. Witch death → kill all her skeletons
@@ -368,7 +397,7 @@ function processKill(mob, source) {
     for (const s of mobs) {
       if (s.witchId === mob.id && s.hp > 0) {
         s.hp = 0;
-        processKill(s, "witch_skeleton");
+        processKill(s, "witch_skeleton", killerId);
       }
     }
   }
@@ -377,40 +406,55 @@ function processKill(mob, source) {
     for (const s of mobs) {
       if (s.golemOwnerId === mob.id && s.hp > 0) {
         s.hp = 0;
-        processKill(s, "witch_skeleton"); // reuse same low-reward source
+        processKill(s, "witch_skeleton", killerId); // reuse same low-reward source
       }
     }
   }
 
-  // 6b. Death explosion — AoE damage around dead mob
+  // 6b. Death explosion — AoE damage around dead mob (hits all party members)
   if (mob._deathExplosion) {
     const expR = mob._deathExplosion.radius || 80;
     const expDmg = mob._deathExplosion.damage || mob.damage;
-    const ddx = player.x - mob.x, ddy = player.y - mob.y;
-    if (Math.sqrt(ddx * ddx + ddy * ddy) <= expR) {
-      dealDamageToPlayer(expDmg, 'explosion', mob);
+    const _deTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+    for (const _det of _deTargets) {
+      const ddx = _det.x - mob.x, ddy = _det.y - mob.y;
+      if (Math.sqrt(ddx * ddx + ddy * ddy) <= expR) {
+        dealDamageToPlayer(expDmg, 'explosion', mob, _det);
+      }
     }
     hitEffects.push({ x: mob.x, y: mob.y, life: 20, type: "explosion" });
   }
 
   // 7. Emit event — all other kill reactions are subscribers
-  Events.emit('mob_killed', { mob, source, goldEarned, heal: finalHeal, qkb });
+  Events.emit('mob_killed', { mob, source, goldEarned, heal: finalHeal, qkb, killerId });
 }
 
 // === EVENT SUBSCRIBERS: mob_killed ===
 // Ammo refill on kill (not skeletons)
-Events.on('mob_killed', ({ mob, source }) => {
+Events.on('mob_killed', ({ mob, source, killerId }) => {
   if (source === "witch_skeleton") return;
   if (mob.type !== 'skeleton') {
-    gun.ammo = gun.magSize;
-    gun.reloading = false;
-    gun.reloadTimer = 0;
+    if (!killerId || killerId === 'player') {
+      // Player kill — refill player gun
+      gun.ammo = gun.magSize;
+      gun.reloading = false;
+      gun.reloadTimer = 0;
+    } else {
+      // Bot kill — refill bot's gun
+      const _km = typeof PartySystem !== 'undefined' ? PartySystem.getMemberById(killerId) : null;
+      if (_km && _km.gun) {
+        _km.gun.ammo = _km.gun.magSize;
+        _km.gun.reloading = false;
+        _km.gun.reloadTimer = 0;
+      }
+    }
   }
 });
 
-// Ultimate charge on kill
-Events.on('mob_killed', ({ mob, source }) => {
+// Ultimate charge on kill (player kills only — bots don't charge ultimates)
+Events.on('mob_killed', ({ mob, source, killerId }) => {
   if (source === "witch_skeleton") return;
+  if (killerId && killerId !== 'player') return; // bot kills skip ultimate charge
   if (typeof shrine !== 'undefined' && melee.special === 'cleave' && !shrine.active) {
     shrine.charges = Math.min((shrine.charges || 0) + 1, shrine.chargesMax || 10);
   }

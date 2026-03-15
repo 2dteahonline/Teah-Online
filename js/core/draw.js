@@ -258,6 +258,14 @@ function draw() {
 
   sortedChars.push({ y: player.y, type: "player" });
   for (const m of mobs) if (m.hp > 0) sortedChars.push({ y: m.y, type: "mob", mob: m });
+  // Party bots — render as characters with Y-sorting
+  if (typeof PartyState !== 'undefined' && PartyState.active) {
+    for (const pm of PartyState.members) {
+      if (pm.controlType !== 'bot' || !pm.active) continue;
+      if (pm.dead && pm.deathTimer <= 0) continue; // fully dead, don't render
+      sortedChars.push({ y: pm.entity.y, type: "partyBot", member: pm });
+    }
+  }
   // Hide & Seek participants — standalone entities, not in mobs[]
   if (typeof HideSeekState !== 'undefined' && Scene.inHideSeek && HideSeekState.participants) {
     for (const p of HideSeekState.participants) {
@@ -923,7 +931,35 @@ function draw() {
         }
       }
 
-    } else {
+    } else if (e.type === "partyBot") {
+      // Party bot rendering
+      const _pm = e.member;
+      const _pe = _pm.entity;
+      if (_pm.dead) {
+        // Death animation
+        if (_pm.deathTimer > 0) {
+          _pm.deathTimer--;
+          _pe._deathRotation = (1 - _pm.deathTimer / DEATH_ANIM_FRAMES) * (Math.PI / 2);
+          const _progress = 1 - _pm.deathTimer / DEATH_ANIM_FRAMES;
+          ctx.save();
+          ctx.globalAlpha = 1 - _progress * 0.6;
+          ctx.translate(_pe.x - camera.x, _pe.y - camera.y);
+          ctx.rotate(_pe._deathRotation);
+          ctx.translate(-(_pe.x - camera.x), -(_pe.y - camera.y));
+          drawChar(_pe.x, _pe.y, _pe.dir, 0, false,
+            _pe.skin, _pe.hair, _pe.shirt, _pe.pants, _pe.name, -1, false);
+          ctx.restore();
+        }
+      } else {
+        // Alive bot — draw with damage flash
+        const _botFlash = _pe._contactCD > 0 && Math.floor(renderTime / 80) % 2 === 0;
+        if (_botFlash) ctx.globalAlpha = 0.5;
+        drawChar(_pe.x, _pe.y, _pe.dir, _pe.frame, _pe.moving,
+          _pe.skin, _pe.hair, _pe.shirt, _pe.pants, _pe.name, _pe.hp, false, null, _pe.maxHp);
+        if (_botFlash) ctx.globalAlpha = 1.0;
+      }
+
+    } else if (e.mob) {
       const m = e.mob;
       // Hide & Seek: skip rendering mob entirely if outside seeker's FOV
       if (typeof HideSeekState !== 'undefined' && Scene.inHideSeek &&
@@ -2349,6 +2385,13 @@ function draw() {
     ctx.font = "bold 13px monospace";
     ctx.fillStyle = "#aaa";
     ctx.fillText("Find the staircase", BASE_W / 2, waveY + 50);
+  } else if (waveState === "revive_shop") {
+    const sec = Math.ceil(waveTimer / 60);
+    ctx.fillStyle = "#fa0";
+    ctx.fillText("REVIVE SHOP — " + sec + "s", BASE_W / 2, waveY + 30);
+    ctx.font = "bold 13px monospace";
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("[G] Skip  •  Click panel to revive", BASE_W / 2, waveY + 50);
   } else if (waveState === "cleared") {
     const sec = Math.ceil(waveTimer / 60);
     ctx.fillStyle = "#fa0";
@@ -2386,6 +2429,100 @@ function draw() {
   ctx.fillText(kills.toString(), BASE_W - 24, 62);
 
   ctx.textAlign = "left";
+
+  // ===== PARTY HUD — member status panel =====
+  if (typeof PartyState !== 'undefined' && PartyState.active && Scene.inDungeon) {
+    const _phX = 10, _phY = 140;
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "left";
+    for (let _pi = 0; _pi < PartyState.members.length; _pi++) {
+      const _pm = PartyState.members[_pi];
+      const _py = _phY + _pi * 28;
+      // Background
+      ctx.fillStyle = _pm.dead ? 'rgba(80,20,20,0.6)' : 'rgba(0,0,0,0.5)';
+      ctx.fillRect(_phX, _py, 130, 24);
+      // Name
+      ctx.fillStyle = _pm.dead ? '#ff4444' : '#fff';
+      ctx.fillText(_pm.name, _phX + 4, _py + 11);
+      // HP bar
+      if (!_pm.dead) {
+        const _hpFrac = Math.max(0, _pm.entity.hp / _pm.entity.maxHp);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(_phX + 4, _py + 14, 100, 6);
+        ctx.fillStyle = _hpFrac > 0.5 ? '#4a4' : _hpFrac > 0.25 ? '#aa4' : '#a44';
+        ctx.fillRect(_phX + 4, _py + 14, Math.round(100 * _hpFrac), 6);
+      } else {
+        ctx.fillStyle = '#666';
+        ctx.font = "9px monospace";
+        ctx.fillText(_pm.lives > 0 ? 'DEAD (lives: ' + _pm.lives + ')' : 'ELIMINATED', _phX + 4, _py + 20);
+        ctx.font = "bold 11px monospace";
+      }
+      // Lives indicators
+      ctx.fillStyle = '#aaa';
+      ctx.fillText('x' + _pm.lives, _phX + 110, _py + 11);
+    }
+  }
+
+  // ===== SPECTATOR OVERLAY =====
+  if (typeof PartyState !== 'undefined' && PartyState.active && playerDead && !PartySystem.allDead() && Scene.inDungeon) {
+    // Dim screen edges
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, 0, BASE_W, 40);
+    ctx.fillRect(0, BASE_H - 30, BASE_W, 30);
+    // Spectating text
+    ctx.font = "bold 16px monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    const _specName = PartyState.spectateTarget ? (PartyState.spectateTarget.name || 'Bot') : 'Bot';
+    ctx.fillText('Spectating ' + _specName, BASE_W / 2, BASE_H - 10);
+    ctx.textAlign = "left";
+  }
+
+  // ===== REVIVE SHOP OVERLAY =====
+  if (typeof PartyState !== 'undefined' && PartyState.active && waveState === 'revive_shop' && Scene.inDungeon) {
+    const _rsW = 300, _rsH = 200;
+    const _rsX = (BASE_W - _rsW) / 2, _rsY = (BASE_H - _rsH) / 2 - 30;
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillRect(_rsX, _rsY, _rsW, _rsH);
+    ctx.strokeStyle = '#fa0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(_rsX, _rsY, _rsW, _rsH);
+    // Title
+    ctx.font = "bold 16px monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = '#fa0';
+    ctx.fillText('REVIVE SHOP', BASE_W / 2, _rsY + 24);
+    // List dead members
+    ctx.font = "bold 13px monospace";
+    let _rsRow = 0;
+    for (const _pm of PartyState.members) {
+      if (!_pm.dead || _pm.lives <= 0) continue;
+      const _ry = _rsY + 50 + _rsRow * 40;
+      const _cost = PARTY_CONFIG.REVIVE_BASE_COST * dungeonFloor;
+      const _canAfford = gold >= _cost;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = "left";
+      ctx.fillText(_pm.name, _rsX + 20, _ry + 12);
+      ctx.fillStyle = _canAfford ? '#4f4' : '#f44';
+      ctx.textAlign = "right";
+      ctx.fillText('Revive - ' + _cost + 'g', _rsX + _rsW - 20, _ry + 12);
+      _rsRow++;
+    }
+    if (_rsRow === 0) {
+      ctx.fillStyle = '#888';
+      ctx.textAlign = "center";
+      ctx.fillText('No one to revive', BASE_W / 2, _rsY + 70);
+    }
+    // Timer
+    const _shopSec = Math.ceil(waveTimer / 60);
+    ctx.fillStyle = '#aaa';
+    ctx.textAlign = "center";
+    ctx.font = "12px monospace";
+    ctx.fillText('Auto-continue in ' + _shopSec + 's  |  [G] Skip', BASE_W / 2, _rsY + _rsH - 12);
+    ctx.textAlign = "left";
+  }
+
   } // end dungeon HUD
 
   // ===== DEBUG FLAGS HUD — shows active dev tool indicators =====

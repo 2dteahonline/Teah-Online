@@ -32,21 +32,29 @@ const HazardSystem = {
       z.life--;
       if (z.life <= 0) { this.zones.splice(i, 1); continue; }
 
-      // Check if player is inside
-      const dx = player.x - z.cx, dy = player.y - z.cy;
-      if (dx * dx + dy * dy <= z.radius * z.radius) {
-        // Apply slow
-        if (z.slow > 0) {
-          // Slow is applied as a temporary speed reduction (handled externally)
+      // Check if party members are inside
+      const _hzTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+      let _hzAnyInside = false;
+      for (const _ht of _hzTargets) {
+        const dx = _ht.x - z.cx, dy = _ht.y - z.cy;
+        if (dx * dx + dy * dy <= z.radius * z.radius) {
+          _hzAnyInside = true;
         }
+      }
+      if (_hzAnyInside) {
         // Tick damage
         z.tickCounter++;
         if (z.tickCounter >= z.tickRate) {
           z.tickCounter = 0;
           if (z.tickDamage > 0) {
-            dealDamageToPlayer(z.tickDamage, 'hazard_zone', null);
-            if (z.tickEffect) {
-              hitEffects.push({ x: player.x, y: player.y - 20, life: 15, type: z.tickEffect });
+            for (const _ht of _hzTargets) {
+              const dx2 = _ht.x - z.cx, dy2 = _ht.y - z.cy;
+              if (dx2 * dx2 + dy2 * dy2 <= z.radius * z.radius) {
+                dealDamageToPlayer(z.tickDamage, 'hazard_zone', null, _ht);
+                if (z.tickEffect) {
+                  hitEffects.push({ x: _ht.x, y: _ht.y - 20, life: 15, type: z.tickEffect });
+                }
+              }
             }
           }
         }

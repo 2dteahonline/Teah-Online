@@ -464,6 +464,10 @@ function goToNextFloor() {
   transitionPhase = 2;
   transitionAlpha = 1;
   hitEffects.push({ x: player.x, y: player.y - 30, life: 30, maxLife: 30, type: "heal", dmg: "FLOOR " + dungeonFloor });
+  // Party: respawn dead members with lives, reposition bots
+  if (typeof PartySystem !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+    PartySystem.onFloorAdvance();
+  }
   Events.emit('floor_changed', { floor: dungeonFloor });
 }
 
@@ -481,12 +485,21 @@ function joinQueue() {
   if (queueActive) {
     queueActive = false;
     queuePlayers = Math.max(0, queuePlayers - 1);
+    // Reset queue slots
+    if (typeof PartyState !== 'undefined') {
+      PartyState.queueSlots = [true, false, false, false];
+    }
     return;
   }
   if (queuePlayers >= QUEUE_MAX) return;
   queueActive = true;
   queuePlayers = 1;
-  queueTimer = QUEUE_DURATION;
+  // Party mode: no countdown timer — player picks slots then clicks Start
+  queueTimer = 999999; // stays open until Start clicked or player moves
+  // Reset queue slots
+  if (typeof PartyState !== 'undefined') {
+    PartyState.queueSlots = [true, false, false, false];
+  }
   // Snap to first circle position
   if (queueCirclePositions.length > 0) {
     queueLockX = queueCirclePositions[0].x;
@@ -495,6 +508,20 @@ function joinQueue() {
     queueLockX = player.x;
     queueLockY = player.y;
   }
+}
+
+// Start dungeon from queue (called by Start button click)
+function startDungeon() {
+  if (!queueActive) return;
+  // Count filled slots
+  const slotCount = typeof PartyState !== 'undefined' ? PartyState.queueSlots.filter(Boolean).length : 1;
+  // Initialize party system
+  if (typeof PartySystem !== 'undefined') {
+    PartySystem.init(slotCount);
+  }
+  queueActive = false;
+  queuePlayers = 0;
+  enterLevel(queueDungeonId, queueSpawnTX, queueSpawnTY);
 }
 
 function updateQueue() {
@@ -506,12 +533,7 @@ function updateQueue() {
   player.vy = 0;
   player.moving = false;
   player.dir = 1; // face up toward dungeon (back facing camera)
-  queueTimer--;
-  if (queueTimer <= 0) {
-    queueActive = false;
-    queuePlayers = 0;
-    enterLevel(queueDungeonId, queueSpawnTX, queueSpawnTY);
-  }
+  // No auto-countdown in party mode — wait for Start click
 }
 
 // ---- COLLISION ----

@@ -158,6 +158,11 @@ window.authorityTick = function() {
   update();
   _authorityDriven = false;
 
+  // ---- 3b. Bot AI tick (after update, before snapshot) ----
+  if (typeof BotAI !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+    BotAI.tick();
+  }
+
   // Note: clearOneFrameIntents() is already called at the end of update().
 
   // ---- 4. Produce snapshot ----

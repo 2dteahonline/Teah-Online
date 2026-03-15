@@ -576,7 +576,7 @@ window.addEventListener("keydown", e => {
           if (fl > 0) { dungeonFloor = fl; resetCombatState('floor'); }
           chatMessages.push({ name: "SYSTEM", text: "Set to floor " + dungeonFloor, time: Date.now() });
         } else if (cmdLower === "/help") {
-          chatMessages.push({ name: "SYSTEM", text: "/testmob | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung <type> | /leave | /op | /stairs | /floor [n] | /freeze | /god | /nofire | /speed <n> | /hp <n|max> | /skipw | /info | /gun <id> [lvl] | /sprites | /export | /save | /resetsave | /mg", time: Date.now() });
+          chatMessages.push({ name: "SYSTEM", text: "/testmob | /test <type> [live] | /spawn <type> | /killall | /gold [amt] | /wave [n] | /heal | /dung <type> | /leave | /op | /stairs | /floor [n] | /freeze | /god | /nofire | /speed <n> | /hp <n|max> | /skipw | /info | /gun <id> [lvl] | /sprites | /export | /save | /resetsave | /mg | /party <1-4>", time: Date.now() });
         } else if (cmdLower === "/save") {
           SaveLoad.save();
           chatMessages.push({ name: "SYSTEM", text: "Game saved!", time: Date.now() });
@@ -840,6 +840,23 @@ window.addEventListener("keydown", e => {
             chatMessages.push({ name: "SYSTEM", text: "Fixed: " + label, time: Date.now() });
           } else {
             chatMessages.push({ name: "SYSTEM", text: "No active sabotage to fix.", time: Date.now() });
+          }
+        } else if (cmdLower.startsWith("/party")) {
+          // /party <1-4> — set party size and spawn bots mid-game
+          const parts = cmd.split(" ");
+          if (parts[1] === 'reset' || parts[1] === '0' || parts[1] === '1') {
+            if (typeof PartySystem !== 'undefined') PartySystem.reset();
+            chatMessages.push({ name: "SYSTEM", text: "Party reset — solo mode.", time: Date.now() });
+          } else if (parts[1] && parseInt(parts[1]) >= 2 && parseInt(parts[1]) <= 4) {
+            const sz = parseInt(parts[1]);
+            if (typeof PartySystem !== 'undefined') {
+              PartySystem.init(sz);
+              chatMessages.push({ name: "SYSTEM", text: "Party set to " + sz + " members (" + (sz - 1) + " bots).", time: Date.now() });
+            }
+          } else {
+            const _partyActive = typeof PartyState !== 'undefined' && PartyState.active;
+            const _partySize = _partyActive ? PartyState.members.length : 0;
+            chatMessages.push({ name: "SYSTEM", text: "Party: " + (_partyActive ? _partySize + "P active" : "inactive") + ". Usage: /party <1-4> | /party reset", time: Date.now() });
           }
         } else {
           chatMessages.push({ name: player.name, text: cmd, time: Date.now() });

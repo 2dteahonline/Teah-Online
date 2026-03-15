@@ -211,16 +211,23 @@ function updateMedpacks() {
   for (let i = medpacks.length - 1; i >= 0; i--) {
     const mp = medpacks[i];
     mp.bobFrame++;
-    const dx = player.x - mp.x;
-    const dy = (player.y - 20) - mp.y;
-    if (dx * dx + dy * dy < MEDPACK_PICKUP_RANGE * MEDPACK_PICKUP_RANGE) {
-      const heal = Math.min(MEDPACK_HEAL, player.maxHp - player.hp);
-      if (heal > 0) {
-        player.hp += heal;
-        hitEffects.push({ x: mp.x, y: mp.y - 10, life: 20, type: "heal", dmg: heal });
+    // Check all party members (or just player in solo)
+    const _mpTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+    let _mpPickedUp = false;
+    for (const _mpt of _mpTargets) {
+      const dx = _mpt.x - mp.x;
+      const dy = (_mpt.y - 20) - mp.y;
+      if (dx * dx + dy * dy < MEDPACK_PICKUP_RANGE * MEDPACK_PICKUP_RANGE) {
+        const heal = Math.min(MEDPACK_HEAL, _mpt.maxHp - _mpt.hp);
+        if (heal > 0) {
+          _mpt.hp += heal;
+          hitEffects.push({ x: mp.x, y: mp.y - 10, life: 20, type: "heal", dmg: heal });
+        }
+        _mpPickedUp = true;
+        break;
       }
-      medpacks.splice(i, 1);
     }
+    if (_mpPickedUp) medpacks.splice(i, 1);
   }
 }
 
@@ -297,13 +304,23 @@ function getMobCountForWave(w) {
   // More mobs on higher floors
   const base = Math.min(5 + Math.floor(w * 1.0), 14);
   const floorBonus = Math.floor((dungeonFloor - 1) * 2); // +2 mobs per floor
-  return Math.min(base + floorBonus, 22); // cap at 22
+  let count = Math.min(base + floorBonus, 22); // cap at 22
+  // Party scaling: more mobs for larger parties
+  if (typeof PartySystem !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+    count = Math.round(count * PartySystem.getMobCountScale());
+  }
+  return count;
 }
 function getWaveHPMultiplier(w) {
   // Exponential floor scaling: floor 1=1x, 2=2.2x, 3=5x, 4=11x, 5=25x
   const floorMult = Math.pow(2.2, dungeonFloor - 1);
   // +12% HP per wave within each floor
-  return (1 + (w - 1) * 0.12) * floorMult;
+  let mult = (1 + (w - 1) * 0.12) * floorMult;
+  // Party scaling: modest HP bump
+  if (typeof PartySystem !== 'undefined' && typeof PartyState !== 'undefined' && PartyState.active) {
+    mult *= PartySystem.getMobHPScale();
+  }
+  return mult;
 }
 function getWaveSpeedMultiplier(w) {
   // Speed also scales with floor (but capped by capMobSpeed)

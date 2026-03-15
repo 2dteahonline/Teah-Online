@@ -2287,8 +2287,14 @@ function drawGunIcon(cx, cy) {
 
 const camera = { x: 0, y: 0 };
 function updateCamera() {
-  camera.x = Math.max(0, Math.min(player.x - VIEW_W / 2, MAP_W - VIEW_W));
-  camera.y = Math.max(0, Math.min(player.y - VIEW_H / 2, MAP_H - VIEW_H));
+  // Party spectator camera: follow nearest alive bot when player is dead
+  let camTarget = player;
+  if (typeof PartyState !== 'undefined' && PartyState.active && playerDead) {
+    const specTarget = PartySystem.getSpectateTarget();
+    if (specTarget) camTarget = specTarget;
+  }
+  camera.x = Math.max(0, Math.min(camTarget.x - VIEW_W / 2, MAP_W - VIEW_W));
+  camera.y = Math.max(0, Math.min(camTarget.y - VIEW_H / 2, MAP_H - VIEW_H));
 }
 
 // Track shoot-facing state
@@ -2324,6 +2330,9 @@ function update() {
 
   // === DEATH ANIMATION & RESPAWN ===
   if (playerDead) {
+    // Check if party is active and has alive members — world keeps running
+    const _partyAlive = typeof PartyState !== 'undefined' && PartyState.active && !PartySystem.allDead();
+
     // Death animation phase
     if (deathTimer > 0) {
       deathTimer--;
@@ -2332,10 +2341,11 @@ function update() {
       player.y = deathY;
       player.vx = 0; player.vy = 0;
       player.moving = false;
-      return; // freeze everything during death anim
+      if (!_partyAlive) return; // freeze world only in solo mode
+      // Party mode: skip rest of death anim logic but let update() continue
     }
     // Respawn countdown phase
-    if (respawnTimer > 0) {
+    else if (respawnTimer > 0) {
       respawnTimer--;
       player.x = deathX;
       player.y = deathY;
@@ -2343,19 +2353,31 @@ function update() {
       player.moving = false;
       if (respawnTimer <= 0) {
         // Actually respawn
-        playerDead = false;
-        StatusFX.clearPoison();
-        if (deathGameOver) {
-          // Full reset — lost all lives, return to lobby
-          resetCombatState('death');
-          enterLevel('lobby_01', 28, 30);
+        if (_partyAlive) {
+          // Party mode: player stays dead until revived in shop or run ends
+          // Don't auto-respawn — just keep spectating
+          respawnTimer = 0; // prevent re-triggering
         } else {
-          player.hp = player.maxHp || 100;
-          player.x = 20 * TILE + TILE / 2;
-          player.y = 20 * TILE + TILE / 2;
+          playerDead = false;
+          StatusFX.clearPoison();
+          if (deathGameOver) {
+            // Full reset — lost all lives, return to lobby
+            if (typeof PartySystem !== 'undefined') PartySystem.reset();
+            resetCombatState('death');
+            enterLevel('lobby_01', 28, 30);
+          } else {
+            player.hp = player.maxHp || 100;
+            player.x = 20 * TILE + TILE / 2;
+            player.y = 20 * TILE + TILE / 2;
+          }
         }
       }
-      return; // freeze everything during countdown
+      if (!_partyAlive) return; // freeze world only in solo mode
+    }
+    // Party mode with alive bots: block player input but continue update
+    if (_partyAlive) {
+      player.vx = 0; player.vy = 0;
+      player.moving = false;
     }
   }
 
@@ -2499,7 +2521,8 @@ function update() {
     // Wave ready (G key)
     if (InputIntent.readyWavePressed && Scene.inDungeon) {
       if (!stairsOpen) {
-        if (waveState === "cleared" || waveState === "waiting") {
+        if (waveState === "cleared" || waveState === "waiting" || waveState === "revive_shop") {
+          if (waveState === "revive_shop") waveState = "cleared"; // skip shop
           spawnWave();
         }
       }

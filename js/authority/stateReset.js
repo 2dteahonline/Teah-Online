@@ -32,6 +32,9 @@ function resetCombatState(mode) {
   // --- Clear telegraph + hazard systems ---
   if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
   if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+  // --- Reset party state on lobby/death returns ---
+  if ((mode === 'lobby' || mode === 'death') && typeof PartySystem !== 'undefined') PartySystem.reset();
+  _currentDamageTarget = null;
 
   // --- Reset cooking state ---
   if (typeof resetCookingState === 'function') resetCookingState();

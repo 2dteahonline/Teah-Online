@@ -219,6 +219,22 @@ function serializeGameState() {
     // ---- ID counters (for resuming spawns) ----
     nextMobId: nextMobId,
     nextBulletId: nextBulletId,
+
+    // ---- Party state ----
+    partyActive: typeof PartyState !== 'undefined' ? PartyState.active : false,
+    partyMembers: typeof PartyState !== 'undefined' && PartyState.active
+      ? PartyState.members.map(m => ({
+          id: m.id, name: m.name, controlType: m.controlType, slotIndex: m.slotIndex,
+          dead: m.dead, lives: m.lives, active: m.active,
+          entity: m.entity !== player ? {
+            x: m.entity.x, y: m.entity.y, hp: m.entity.hp, maxHp: m.entity.maxHp,
+            dir: m.entity.dir, frame: m.entity.frame, moving: m.entity.moving,
+            skin: m.entity.skin, hair: m.entity.hair, shirt: m.entity.shirt, pants: m.entity.pants,
+            name: m.entity.name,
+          } : null,
+          gun: m.gun ? { damage: m.gun.damage, ammo: m.gun.ammo, magSize: m.gun.magSize } : null,
+        }))
+      : [],
   };
 
   return snap;
