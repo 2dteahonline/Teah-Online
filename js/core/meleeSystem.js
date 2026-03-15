@@ -1060,7 +1060,9 @@ function updateBullets() {
             dealDamageToPlayer(b.damage, "projectile", null, _at);
             // Apply/reset poison — 20 seconds (all entities via _currentDamageTarget)
             _currentDamageTarget = _at;
-            StatusFX.applyPoison(Math.round(1200 * (1 - getEffectReduction())));
+            const _atMember = PartySystem.getMemberByEntity(_at);
+            const _atEquip = _atMember ? _atMember.equip : playerEquip;
+            StatusFX.applyPoison(Math.round(1200 * (1 - getEffectReduction(_atEquip))));
             _currentDamageTarget = null;
             hitEffects.push({ x: b.x, y: b.y, life: 20, type: "poison_hit" });
             bullets.splice(i, 1);
