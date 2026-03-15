@@ -77,33 +77,22 @@ const BotAI = {
     }
   },
 
-  // FOLLOW: loosely stay near player when no mobs exist (between waves)
+  // FOLLOW: loosely stay near player between waves, or roam if player is dead
   doFollow(member) {
     const e = member.entity;
-    let leader = null;
+    const ai = member.ai;
 
-    if (!playerDead) {
-      leader = player;
-    } else {
-      const alive = PartySystem.getAlive().filter(m => m !== member && !m.dead);
-      if (alive.length > 0) {
-        let best = alive[0], bestD = Infinity;
-        for (const a of alive) {
-          const dx = a.entity.x - e.x, dy = a.entity.y - e.y;
-          const d = dx * dx + dy * dy;
-          if (d < bestD) { bestD = d; best = a; }
-        }
-        leader = best.entity;
-      }
+    // If player is dead, don't just stand there — roam around independently
+    if (playerDead) {
+      this.doRoam(member);
+      return;
     }
 
-    if (!leader) { e.moving = false; return; }
-
-    // Each bot slot gets a unique spread angle around the leader
+    // Player alive, between waves — spread out near player
     const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2 + Math.PI * 0.5;
     const spreadR = PARTY_CONFIG.BOT_SPREAD_RADIUS;
-    const goalX = leader.x + Math.cos(spreadAngle) * spreadR;
-    const goalY = leader.y + Math.sin(spreadAngle) * spreadR;
+    const goalX = player.x + Math.cos(spreadAngle) * spreadR;
+    const goalY = player.y + Math.sin(spreadAngle) * spreadR;
 
     const dx = goalX - e.x, dy = goalY - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -112,6 +101,35 @@ const BotAI = {
       this.moveToward(e, goalX, goalY, dist);
     } else {
       e.moving = false;
+    }
+
+    this.applySeparation(member);
+  },
+
+  // ROAM: wander independently when player is dead and no mobs exist
+  doRoam(member) {
+    const e = member.entity;
+    const ai = member.ai;
+
+    // Pick a random roam target, refresh every ~120 frames or when reached
+    if (!ai._roamX || !ai._roamY || ai._roamAge >= 120) {
+      // Pick a random walkable point within ~200px
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 80 + Math.random() * 150;
+      ai._roamX = e.x + Math.cos(angle) * radius;
+      ai._roamY = e.y + Math.sin(angle) * radius;
+      ai._roamAge = 0;
+    }
+    ai._roamAge = (ai._roamAge || 0) + 1;
+
+    const dx = ai._roamX - e.x, dy = ai._roamY - e.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 15) {
+      this.moveToward(e, ai._roamX, ai._roamY, dist);
+    } else {
+      e.moving = false;
+      ai._roamAge = 120; // pick a new point next frame
     }
 
     this.applySeparation(member);
