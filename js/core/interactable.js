@@ -202,8 +202,8 @@ const HELMET_TIERS = [
   { id: 'void_crown',      name: 'Void Crown',      tier: 4, poisonReduce: 1.00, statusReduce: 0.80, absorb: 0.10, color: '#4a2a6a', desc: 'Poison immune · -80% status · absorb 10%', waveReq: 30, cost: 700, special: 'absorb' },
 ];
 const GUN_TIERS = [
-  { id: 'smg',            name: 'SMG',             tier: 1, damage: 38,  fireRate: 3,  magSize: 45, color: '#4a4a4a', desc: '38 dmg · 45 mag · bullet hose', waveReq: 1, cost: 40 },
-  { id: 'rifle',          name: 'Rifle',           tier: 2, damage: 92, fireRate: 6, magSize: 36, color: '#4a3a2a', desc: '92 dmg · 36 mag · hard hitter', waveReq: 10, cost: 120 },
+  { id: 'smg',            name: 'SMG',             tier: 1, damage: 38,  fireRate: 3,  magSize: 45, color: '#4a4a4a', desc: '38 dmg · 45 mag · bullet hose', waveReq: 1, cost: 40, bulletColor: { main: '#80ff80', core: '#c0ffc0', glow: 'rgba(80,255,80,0.2)' } },
+  { id: 'rifle',          name: 'Rifle',           tier: 2, damage: 92, fireRate: 6, magSize: 36, color: '#4a3a2a', desc: '92 dmg · 36 mag · hard hitter', waveReq: 10, cost: 120, bulletColor: { main: '#ff80c0', core: '#ffc0e0', glow: 'rgba(255,80,180,0.2)' } },
   { id: 'frost_rifle',    name: 'Frost Rifle',     tier: 3, damage: 122, fireRate: 4,  magSize: 50, color: '#44aacc', desc: '122 dmg · 50 mag · Frost Slow + Frost Nova on Kill', waveReq: 20, cost: 480, special: 'frost', bulletColor: { main: '#66ddff', core: '#aaeeff', glow: 'rgba(102,221,255,0.25)' } },
   { id: 'inferno_cannon', name: 'Inferno Cannon',  tier: 4, damage: 169, fireRate: 3,  magSize: 63, color: '#cc4422', desc: '169 dmg · 63 mag · Burn DOT + Chain Explosions', waveReq: 30, cost: 900, special: 'burn', bulletColor: { main: '#ff6633', core: '#ffaa66', glow: 'rgba(255,102,51,0.25)' } },
 ];
