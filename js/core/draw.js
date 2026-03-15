@@ -2457,9 +2457,12 @@ function draw() {
         ctx.fillText(_pm.lives > 0 ? 'DEAD (lives: ' + _pm.lives + ')' : 'ELIMINATED', _phX + 4, _py + 20);
         ctx.font = "bold 11px monospace";
       }
-      // Lives indicators
+      // Gold + Lives
+      const _pmGold = _pm.controlType === 'local' ? gold : _pm.gold;
+      ctx.fillStyle = PALETTE.gold;
+      ctx.fillText(_pmGold + 'g', _phX + 70, _py + 11);
       ctx.fillStyle = '#aaa';
-      ctx.fillText('x' + _pm.lives, _phX + 110, _py + 11);
+      ctx.fillText('x' + _pm.lives, _phX + 115, _py + 11);
     }
   }
 
@@ -2500,7 +2503,8 @@ function draw() {
       if (!_pm.dead || _pm.lives <= 0) continue;
       const _ry = _rsY + 50 + _rsRow * 40;
       const _cost = PARTY_CONFIG.REVIVE_BASE_COST * dungeonFloor;
-      const _canAfford = gold >= _cost;
+      const _pmGold2 = _pm.controlType === 'local' ? gold : _pm.gold;
+      const _canAfford = _pmGold2 >= _cost;
       ctx.fillStyle = '#fff';
       ctx.textAlign = "left";
       ctx.fillText(_pm.name, _rsX + 20, _ry + 12);

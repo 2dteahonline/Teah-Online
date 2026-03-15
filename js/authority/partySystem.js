@@ -73,12 +73,13 @@ function createPartyMember(slotIndex, controlType) {
     gun: botGun,
     melee: isLocal ? null : { damage: Math.round(melee.damage * dmgMult), range: melee.range + 20 },
     equip: isLocal ? playerEquip : { armor: null, boots: null, pants: null, chest: null, helmet: null },
+    gold: 0, // per-member gold wallet (player uses global `gold`, bots use this)
     lives: lives, // copy current lives count
     dead: false,
     deathTimer: 0,
     respawnTimer: 0,
     active: true,
-    ai: controlType === 'bot' ? { state: 'follow', target: null, targetAge: 0, shootCD: 0, meleeCD: 0 } : null,
+    ai: controlType === 'bot' ? { state: 'hunt', target: null, targetAge: 0, shootCD: 0, meleeCD: 0 } : null,
   };
 }
 
@@ -184,6 +185,24 @@ const PartySystem = {
     return PartyState.members.find(m => m.entity === entity) || null;
   },
 
+  // Add gold to the correct member's wallet
+  addGold(memberId, amount) {
+    if (!PartyState.active) { gold += amount; return; }
+    if (!memberId || memberId === 'player') {
+      gold += amount; // player uses global gold
+    } else {
+      const m = this.getMemberById(memberId);
+      if (m) m.gold += amount;
+    }
+  },
+
+  // Get gold for a member
+  getGold(memberId) {
+    if (!memberId || memberId === 'player') return gold;
+    const m = this.getMemberById(memberId);
+    return m ? m.gold : 0;
+  },
+
   // Handle a member taking lethal damage
   handleMemberDeath(member) {
     if (member.dead) return;
@@ -204,14 +223,17 @@ const PartySystem = {
     }
   },
 
-  // Revive a dead member (between-waves shop)
+  // Revive a dead member (between-waves shop) — costs from their own wallet
   reviveMember(member) {
     if (!member.dead) return false;
     if (member.lives <= 0) return false;
     const cost = PARTY_CONFIG.REVIVE_BASE_COST * dungeonFloor;
-    if (gold < cost) return false;
+    // Check the dead member's own gold
+    const memberGold = member.controlType === 'local' ? gold : member.gold;
+    if (memberGold < cost) return false;
 
-    gold -= cost;
+    if (member.controlType === 'local') { gold -= cost; }
+    else { member.gold -= cost; }
     member.dead = false;
     member.entity.hp = member.entity.maxHp;
     member.entity._isDead = false;

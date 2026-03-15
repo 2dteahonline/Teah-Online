@@ -42,30 +42,33 @@ const BotAI = {
       if (d < nearestDist) { nearestDist = d; nearestMob = m; }
     }
 
-    // FSM transitions
+    // FSM transitions — bots are fully independent, never follow player
     const hpFrac = e.hp / e.maxHp;
     if (hpFrac < PARTY_CONFIG.BOT_FLEE_THRESHOLD && nearestMob && nearestDist < 150) {
       ai.state = 'flee';
     } else if (nearestMob && nearestDist <= PARTY_CONFIG.BOT_ENGAGE_RANGE) {
-      // Close enough to shoot — engage
       ai.state = 'engage';
       ai.target = nearestMob;
     } else if (nearestMob) {
-      // Mob exists but far away — hunt it down
       ai.state = 'hunt';
       ai.target = nearestMob;
+    } else if (waveState === 'cleared' || waveState === 'waiting' || waveState === 'revive_shop') {
+      // Between waves — go shop if have gold, otherwise roam
+      ai.state = 'shop';
+      ai.target = null;
     } else {
-      // No mobs alive — chill near player
-      ai.state = 'follow';
+      // No mobs, wave active (all killed but wave not ended yet?) — roam
+      ai.state = 'roam';
       ai.target = null;
     }
 
     // Execute state
     switch (ai.state) {
-      case 'follow': this.doFollow(member); break;
       case 'hunt':   this.doHunt(member, nearestMob, nearestDist); break;
       case 'engage': this.doEngage(member, nearestMob, nearestDist); break;
       case 'flee':   this.doFlee(member, nearestMob); break;
+      case 'shop':   this.doShop(member); break;
+      case 'roam':   this.doRoam(member); break;
     }
 
     // Update animation
@@ -77,36 +80,43 @@ const BotAI = {
     }
   },
 
-  // FOLLOW: loosely stay near player between waves, or roam if player is dead
-  doFollow(member) {
+  // SHOP: between waves, walk to shop station and buy potions with own gold
+  doShop(member) {
     const e = member.entity;
     const ai = member.ai;
 
-    // If player is dead, don't just stand there — roam around independently
-    if (playerDead) {
-      this.doRoam(member);
-      return;
-    }
-
-    // Player alive, between waves — spread out near player
-    const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2 + Math.PI * 0.5;
-    const spreadR = PARTY_CONFIG.BOT_SPREAD_RADIUS;
-    const goalX = player.x + Math.cos(spreadAngle) * spreadR;
-    const goalY = player.y + Math.sin(spreadAngle) * spreadR;
-
-    const dx = goalX - e.x, dy = goalY - e.y;
+    // Shop station position (same as station object in interactable.js)
+    const shopX = 20 * TILE + TILE / 2;
+    const shopY = 16 * TILE + TILE / 2;
+    const dx = shopX - e.x, dy = shopY - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > 30) {
-      this.moveToward(e, goalX, goalY, dist);
+    if (dist > 60) {
+      // Walk to the shop
+      this.moveToward(e, shopX, shopY, dist);
     } else {
+      // At the shop — try to buy a heal potion if HP not full and have gold
       e.moving = false;
+      if (!ai._shopCD) ai._shopCD = 0;
+      if (ai._shopCD > 0) { ai._shopCD--; return; }
+
+      if (member.gold >= 30 && e.hp < e.maxHp * 0.8) {
+        // Buy a heal (30g = restore 40% HP)
+        member.gold -= 30;
+        const healAmt = Math.round(e.maxHp * 0.4);
+        e.hp = Math.min(e.maxHp, e.hp + healAmt);
+        hitEffects.push({ x: e.x, y: e.y - 35, life: 20, type: "heal", dmg: "+" + healAmt + " HP" });
+        ai._shopCD = 60; // cooldown before next purchase
+      } else {
+        // Nothing to buy or can't afford — just idle at shop
+        ai._shopCD = 30;
+      }
     }
 
     this.applySeparation(member);
   },
 
-  // ROAM: wander independently when player is dead and no mobs exist
+  // ROAM: wander independently when no mobs and not shopping
   doRoam(member) {
     const e = member.entity;
     const ai = member.ai;

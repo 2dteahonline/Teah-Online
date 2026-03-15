@@ -358,9 +358,13 @@ function processKill(mob, source, killerId) {
   // 2. Quick-kill bonus
   const qkb = getQuickKillBonus(mob);
 
-  // 3. Gold reward (always goes to shared pool)
+  // 3. Gold reward — goes to killer's own wallet
   const goldEarned = Math.round(getGoldReward(mob.type, wave) * qkb);
-  gold += goldEarned;
+  if (typeof PartySystem !== 'undefined' && PartyState.active) {
+    PartySystem.addGold(killerId, goldEarned);
+  } else {
+    gold += goldEarned;
+  }
 
   // 4. Kill heal
   const baseHeal = (MOB_TYPES[mob.type] && MOB_TYPES[mob.type].killHeal) || 5;
