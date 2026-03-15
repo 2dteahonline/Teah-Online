@@ -141,11 +141,11 @@ for (const s of _CASINO_STATIONS) {
 }
 
 let fireRateBonus = 0;
-const GUN_DEFAULTS = { damage: 20 };
+const GUN_DEFAULTS = { damage: 28 };
 const MELEE_DEFAULTS = { damage: 15, critChance: 0.10 };
 
 // Default starter weapons (tier 0 — weaker than T1 shop items)
-const DEFAULT_GUN = { id: 'pistol', name: 'Pistol', tier: 0, damage: 20, fireRate: 10, magSize: 30, color: '#6a6a6a', desc: '20 dmg · 30 mag · starter weapon', waveReq: 0, cost: 0 };
+const DEFAULT_GUN = { id: 'sidearm', name: 'Sidearm', tier: 0, damage: 28, fireRate: 5, magSize: 35, color: '#5a7a8a', desc: '28 dmg · 35 mag · rapid sidearm', waveReq: 0, cost: 0, bulletColor: { main: '#60ccff', core: '#b0e8ff', glow: 'rgba(96,204,255,0.2)' } };
 const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 5.4, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.45, freezeDuration: 15 };
 const DEFAULT_MELEE = { id: 'knife', name: 'Knife', tier: 0, damage: 15, range: 90, cooldown: 28, critChance: 0.10, color: '#7a7a7a', desc: '15 dmg · short range · starter blade', waveReq: 0, cost: 0, special: null };
 const DEFAULT_PICKAXE = { id: 'pickaxe', name: 'Pickaxe', tier: 0, damage: 10, range: 70, cooldown: 32, critChance: 0, color: '#8a6a3a', desc: '10 dmg · mining tool · equip to mine ores', waveReq: 0, cost: 0, special: 'pickaxe' };
