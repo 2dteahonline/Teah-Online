@@ -2178,10 +2178,35 @@ function _drawKeno(px, py, pw, ph) {
     }
   }
 
-  // Payout multiplier strip (below grid)
+  // Risk selector (right side of grid)
+  const riskX = gridX + gridW + 12;
+  const riskBtnW = 70, riskBtnH = 28, riskGap = 4;
+  const risks = KENO_CONFIG.RISK_LEVELS;
+  const riskColors = { low: '#2a8a4a', medium: '#cc8800', high: '#cc2222' };
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#556';
+  ctx.fillText('RISK', riskX + riskBtnW / 2, gridY - 2);
+  for (let i = 0; i < risks.length; i++) {
+    const ry = gridY + 4 + i * (riskBtnH + riskGap);
+    const isActive = kn.risk === risks[i];
+    ctx.fillStyle = isActive ? riskColors[risks[i]] : '#111e2e';
+    ctx.beginPath(); ctx.roundRect(riskX, ry, riskBtnW, riskBtnH, 4); ctx.fill();
+    if (isActive) {
+      ctx.strokeStyle = riskColors[risks[i]];
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(riskX, ry, riskBtnW, riskBtnH, 4); ctx.stroke();
+    }
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = isActive ? '#fff' : '#667';
+    ctx.fillText(risks[i].charAt(0).toUpperCase() + risks[i].slice(1), riskX + riskBtnW / 2, ry + riskBtnH / 2 + 4);
+  }
+
+  // Payout multiplier strip (below grid) — uses risk-based table
   const stripY = gridY + gridH + 6;
+  const riskTable = KENO_CONFIG.PAYOUTS[kn.risk] || KENO_CONFIG.PAYOUTS.medium;
   if (kn.picks.length > 0) {
-    const payoutTable = KENO_CONFIG.PAYOUTS[kn.picks.length];
+    const payoutTable = riskTable[kn.picks.length];
     if (payoutTable) {
       const keys = Object.keys(payoutTable).map(Number).sort((a, b) => a - b);
       const stripW = Math.min(80, (gridW - 8) / Math.max(keys.length, 1));
@@ -2200,7 +2225,8 @@ function _drawKeno(px, py, pw, ph) {
         ctx.font = '10px monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = isCurrentMatch ? '#00e701' : '#667';
-        ctx.fillText(payoutTable[keys[i]].toFixed(1) + 'x', sx + stripW / 2, stripY + 15);
+        const dispMult = payoutTable[keys[i]];
+        ctx.fillText(dispMult >= 100 ? Math.floor(dispMult) + 'x' : dispMult.toFixed(1) + 'x', sx + stripW / 2, stripY + 15);
       }
     }
   }
@@ -2263,13 +2289,24 @@ function _clickKeno(mx, my, px, py, pw, ph) {
   if (kn.phase === 'picking') {
     if (_casinoHandleBetClick(mx, my, px, py, pw)) return true;
 
-    // Number grid clicks
+    // Risk selector clicks
     const cols = KENO_CONFIG.BOARD_COLS, rows = KENO_CONFIG.BOARD_ROWS;
     const cellW = 72, cellH = 52;
     const gridW = cols * cellW;
     const gridX = cx - gridW / 2;
     const gridY = py + 56;
+    const riskX = gridX + gridW + 12;
+    const riskBtnW = 70, riskBtnH = 28, riskGap = 4;
+    const risks = KENO_CONFIG.RISK_LEVELS;
+    for (let i = 0; i < risks.length; i++) {
+      const ry = gridY + 4 + i * (riskBtnH + riskGap);
+      if (_casinoHitBtn(mx, my, riskX, ry, riskBtnW, riskBtnH)) {
+        kn.risk = risks[i];
+        return true;
+      }
+    }
 
+    // Number grid clicks
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const num = r * cols + c + 1;

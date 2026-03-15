@@ -108,6 +108,7 @@ const casinoState = {
     drawIndex: 0,               // how many drawn
     drawTimer: 0,               // timestamp of last draw
     matches: 0,
+    risk: 'medium',             // 'low'|'medium'|'high' — changes payout table only
     phase: 'picking',           // 'picking'|'drawing'|'result'
   },
 };
@@ -1220,7 +1221,8 @@ function casinoKN_resolve() {
   kn.phase = 'result';
   const picks = kn.picks.length;
   const matches = kn.matches;
-  const payoutTable = KENO_CONFIG.PAYOUTS[picks];
+  const riskTable = KENO_CONFIG.PAYOUTS[kn.risk] || KENO_CONFIG.PAYOUTS.medium;
+  const payoutTable = riskTable[picks];
   const mult = payoutTable && payoutTable[matches] ? payoutTable[matches] : 0;
   if (mult > 0) {
     const payout = Math.floor(casinoState.bet * mult) + casinoState.bet;
