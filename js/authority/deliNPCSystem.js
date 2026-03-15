@@ -79,17 +79,11 @@ const DELI_NPC_CONFIG = {
 
 // ===================== STATE =====================
 const deliNPCs = [];
-let _deliNPCId = 0;
-let _deliSpawnTimer = 0;
-let _nextSpawnInterval = 400; // randomized after each spawn
+const _deliIdCounter = { value: 0 };
+const _deliSpawnState = { timer: 0, nextInterval: 600 };
 
 // ===================== HELPERS =====================
-function _randRange(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
-function _randFromArray(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-function _tilePx(tx, ty) {
-  return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 };
-}
+// _cRandRange, _cRandFromArray, _cTilePx provided by cookingNPCBase.js
 
 // Kitchen zone check — NPCs must not enter kitchen interior or door
 function _isKitchenZone(px, py) {
@@ -121,7 +115,7 @@ function _pickFreeAisle() {
   for (let i = 0; i < DELI_AISLES.length; i++) {
     if (!occupied.has(i)) free.push(i);
   }
-  if (free.length === 0) return _randFromArray(DELI_AISLES); // all taken, fallback
+  if (free.length === 0) return _cRandFromArray(DELI_AISLES); // all taken, fallback
   return DELI_AISLES[free[Math.floor(Math.random() * free.length)]];
 }
 
@@ -294,137 +288,27 @@ function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
 // NPC walks toward route[0]. When close, shifts to next waypoint.
 // When route is empty, movement is done.
 
-function _npcStartRoute(npc, route, nextState, nextTimer) {
-  npc.route = route;
-  npc._nextState = nextState;
-  npc._nextTimer = nextTimer || 0;
-  npc.state = 'walking';
-  npc.moving = true;
-  npc._idleTime = 0;
-}
+// Movement config for _cMoveNPC
+const _deliMoveSkipStates = new Set(['eating', 'at_condiments', 'spawn_wait', '_despawn']);
+const _deliMoveLaneDisable = new Set(['in_queue', 'ordering', 'waiting_food']);
 
 function moveDeliNPC(npc) {
-  if (!npc.route || npc.route.length === 0) {
-    npc.moving = false;
-    return;
-  }
-
-  const wp = npc.route[0];
-  // Per-NPC lane offset prevents perfect overlap on shared routes.
-  // Disable offsets when: in queue (must hit exact spots), OR the offset
-  // target would land inside a solid tile (counter wall at ty:21 is only
-  // 10px north of ty:22 center — a -16px Y offset clips right into it).
-  const inQueueState = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
-  let offX = inQueueState ? 0 : (npc._laneOffX || 0);
-  let offY = inQueueState ? 0 : (npc._laneOffY || 0);
-  const rawX = wp.tx * TILE + TILE / 2;
-  const rawY = wp.ty * TILE + TILE / 2;
-  let targetX = rawX + offX;
-  let targetY = rawY + offY;
-  // If the offset target is inside a wall, drop the offset
-  if (typeof positionClear === 'function' && !positionClear(targetX, targetY, 14)) {
-    targetX = rawX;
-    targetY = rawY;
-  }
-  let dx = targetX - npc.x;
-  let dy = targetY - npc.y;
-  let dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (dist < 6) {
-    // Snap to waypoint and advance
-    npc.x = targetX;
-    npc.y = targetY;
-    npc.route.shift();
-    if (npc.route.length === 0) {
-      npc.moving = false;
-    }
-    return;
-  }
-
-  npc.moving = true;
-  let spd = npc.speed;
-
-  // NPC-NPC avoidance — lower-ID NPCs have priority, higher-ID yields
-  const npcInQueue = (npc.state === 'in_queue' || npc.state === 'ordering' || npc.state === 'waiting_food');
-  const npcStationary = npcInQueue;
-  for (const other of deliNPCs) {
-    if (other === npc) continue;
-    // Skip seated/despawning NPCs — they're snapped to fixed positions
-    if (other.state === 'eating' || other.state === 'at_condiments' ||
-        other.state === 'spawn_wait' || other.state === '_despawn') continue;
-    const otherInQueue = (other.state === 'in_queue' || other.state === 'ordering' || other.state === 'waiting_food');
-    const otherStationary = otherInQueue;
-    // If BOTH are stationary (queue), skip avoidance entirely
-    if (npcStationary && otherStationary) continue;
-    const sx = npc.x - other.x;
-    const sy = npc.y - other.y;
-    const sd = Math.sqrt(sx * sx + sy * sy);
-    if (sd > 0 && sd < 50) {
-      // If the other NPC is stationary (queue), just slow down — don't nudge
-      // (nudging near the counter wall at ty:21 pushes NPCs into solid tiles)
-      if (otherStationary) {
-        spd *= 0.15;
-      } else if (npc.id > other.id) {
-        // Higher-ID yields: slow down and nudge away from the other NPC
-        spd *= 0.3;
-        const pushStr = (50 - sd) * 0.2;
-        const nx = sx / sd, ny = sy / sd;
-        const testX = npc.x + nx * pushStr;
-        const testY = npc.y + ny * pushStr;
-        // Only apply nudge if it doesn't push into a wall or kitchen
-        if (!_isKitchenZone(testX, testY) &&
-            (typeof positionClear !== 'function' || positionClear(testX, testY, 14))) {
-          npc.x = testX;
-          npc.y = testY;
-        }
-      }
-    }
-  }
-
-  // Recalculate direction after any nudge
-  dx = targetX - npc.x;
-  dy = targetY - npc.y;
-  dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < 1) return;
-
-  // Calculate next position
-  const nextX = npc.x + (dx / dist) * spd;
-  const nextY = npc.y + (dy / dist) * spd;
-
-  // Kitchen zone restriction — NPCs must not enter kitchen
-  if (_isKitchenZone(nextX, nextY)) {
-    // If NPC is already INSIDE the kitchen zone, teleport to safe corridor immediately
-    if (_isKitchenZone(npc.x, npc.y)) {
-      npc.x = 26 * TILE + TILE / 2;
-      npc.y = 22 * TILE + TILE / 2;
-      npc._stuckFrames = 0;
-      // Replace route with direct path to exit so they don't walk back in
-      npc.route = [{ tx: 13, ty: 23 }, { tx: 13, ty: 30 }];
-      return;
-    }
-    npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-    return;
-  }
-
-  // Wall/solid entity collision check
-  if (typeof positionClear === 'function' && !positionClear(nextX, nextY, 14)) {
-    npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-    return;
-  }
-
-  // Movement succeeded — reset stuck counter
-  npc._stuckFrames = 0;
-  npc.x = nextX;
-  npc.y = nextY;
-
-  // Facing direction
-  if (Math.abs(dx) > Math.abs(dy)) {
-    npc.dir = dx > 0 ? 3 : 2;
-  } else {
-    npc.dir = dy > 0 ? 0 : 1;
-  }
-
-  npc.frame = (npc.frame + 0.1) % 4;
+  _cMoveNPC(npc, {
+    npcList: deliNPCs,
+    skipStates: _deliMoveSkipStates,
+    kitchenCheck: _isKitchenZone,
+    kitchenSafe: { tx: 26, ty: 22 },
+    kitchenFallback: [{ tx: 13, ty: 23 }, { tx: 13, ty: 30 }],
+    laneMode: 'checked',
+    laneDisableStates: _deliMoveLaneDisable,
+    pairBehavior: (npc, other) => {
+      const npcInQueue = _deliMoveLaneDisable.has(npc.state);
+      const otherInQueue = _deliMoveLaneDisable.has(other.state);
+      if (npcInQueue && otherInQueue) return 'skip';
+      if (otherInQueue) return 'slow';
+      return 'yield';
+    },
+  });
 }
 
 // ===================== QUEUE MANAGEMENT =====================
@@ -462,49 +346,29 @@ function _advanceQueue(fromIdx) {
 
 // ===================== SPAWN =====================
 function spawnDeliNPC() {
-  const app = _randFromArray(DELI_NPC_APPEARANCES);
-  const sp = DELI_SPOTS.exit;
-  const npc = {
-    id: ++_deliNPCId,
-    x: sp.tx * TILE + TILE / 2,
-    y: sp.ty * TILE + TILE / 2,
-    dir: 1, frame: 0, moving: false,
-    skin: app.skin, hair: app.hair, shirt: app.shirt, pants: app.pants,
-    name: _randFromArray(DELI_NPC_NAMES),
-    state: 'entering',
-    stateTimer: 0,
-    route: null,
-    _nextState: null,
-    _nextTimer: 0,
+  const npc = _cCreateNPC(_deliIdCounter, DELI_SPOTS.exit, DELI_NPC_APPEARANCES, DELI_NPC_NAMES, DELI_NPC_CONFIG, {
     _queueIdx: -1,
-    hasOrdered: false, hasFood: false,
     purchasedExtras: [],
     claimedChair: null,
-    linkedOrderId: null,
     _pendingPurchase: null,
     _lastChairIdx: -1,
-    _browseFirst: false,       // true if browsing aisles before joining queue
-    _browsedPreQueue: false,   // true after completing pre-queue browse
-    _aisleVisits: 0,           // track aisle visit count
-    _recipeIngredients: null,  // set when food is picked up (for food visual colors)
-    // Per-NPC lane offset — prevents perfect overlap on shared routes
-    _laneOffX: (Math.random() - 0.5) * 32,  // ±16px
-    _laneOffY: (Math.random() - 0.5) * 32,  // ±16px
-    _stuckFrames: 0,  // counts frames where movement was blocked
-    _idleTime: 0,     // frames spent idle in current state (for timeout detection)
-    speed: DELI_NPC_CONFIG.baseSpeed + (Math.random() - 0.5) * DELI_NPC_CONFIG.speedVariance * 2,
+    _browseFirst: false,
+    _browsedPreQueue: false,
+    _aisleVisits: 0,
+    _recipeIngredients: null,
+    _laneOffX: (Math.random() - 0.5) * 32,
+    _laneOffY: (Math.random() - 0.5) * 32,
     isDeliNPC: true,
-  };
+  });
   deliNPCs.push(npc);
   return npc;
 }
 
 function initDeliNPCs() {
   deliNPCs.length = 0;
-  _deliNPCId = 0;
-  _deliSpawnTimer = 0;
-  // First customer walks in after 1-3 seconds, then 10-60s between each after that
-  _nextSpawnInterval = _randRange(60, 180);
+  _deliIdCounter.value = 0;
+  _deliSpawnState.timer = 0;
+  _deliSpawnState.nextInterval = _cRandRange(60, 180);
 }
 
 // ===================== AI STATE HANDLERS =====================
@@ -526,8 +390,8 @@ const DELI_NPC_AI = {
       npc._browseFirst = true;
       const aisle = _pickFreeAisle();
       npc._pendingPurchase = Math.random() < 0.6 ? aisle : null;
-      _npcStartRoute(npc, _routeExitToAisle(aisle),
-        'pre_queue_browse', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
+      _cStartRoute(npc, _routeExitToAisle(aisle),
+        'pre_queue_browse', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
       );
       return;
     }
@@ -537,8 +401,8 @@ const DELI_NPC_AI = {
       // Queue full — browse aisles instead
       const aisle = _pickFreeAisle();
       const route = _routeCounterToAisle(aisle);
-      _npcStartRoute(npc, route,
-        'shopping_aisle', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
+      _cStartRoute(npc, route,
+        'shopping_aisle', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
       );
       npc._pendingPurchase = Math.random() < 0.6 ? aisle : null;
       return;
@@ -547,7 +411,7 @@ const DELI_NPC_AI = {
     const spot = QUEUE_SPOTS[qIdx];
     // Walk north along tx:13 to the spot's Y level, then west into line
     // This prevents walking through customers already ahead in line
-    _npcStartRoute(npc,
+    _cStartRoute(npc,
       [{ tx: 13, ty: spot.ty }, { tx: spot.tx, ty: spot.ty }],
       'in_queue', 0
     );
@@ -584,12 +448,12 @@ const DELI_NPC_AI = {
         npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
         const curTX = Math.floor(npc.x / TILE);
         const curTY = Math.floor(npc.y / TILE);
-        _npcStartRoute(npc, _routeAisleToAisle(curTX, curTY, aisle),
-          'pre_queue_browse', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+        _cStartRoute(npc, _routeAisleToAisle(curTX, curTY, aisle),
+          'pre_queue_browse', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
       } else {
         const aTX = Math.floor(npc.x / TILE);
         const aTY = Math.floor(npc.y / TILE);
-        _npcStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
+        _cStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
       }
       return;
     }
@@ -599,7 +463,7 @@ const DELI_NPC_AI = {
     const spot = QUEUE_SPOTS[qIdx];
     const curTX = Math.floor(npc.x / TILE);
     const curTY = Math.floor(npc.y / TILE);
-    _npcStartRoute(npc, _routeAisleToQueue(curTX, curTY, spot), 'in_queue', 0);
+    _cStartRoute(npc, _routeAisleToQueue(curTX, curTY, spot), 'in_queue', 0);
   },
 
   // ─── WALKING: Follow route, then transition ────────────
@@ -659,7 +523,7 @@ const DELI_NPC_AI = {
       const leftIdx = npc._queueIdx;
       npc._queueIdx = -1;
       _advanceQueue(leftIdx);
-      _npcStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
       return;
     }
 
@@ -676,8 +540,8 @@ const DELI_NPC_AI = {
       npc._aisleVisits = 0;
       const aisle = _pickFreeAisle();
       npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
-      _npcStartRoute(npc, _routeCounterToAisle(aisle),
-        'mid_queue_browse', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+      _cStartRoute(npc, _routeCounterToAisle(aisle),
+        'mid_queue_browse', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
     }
   },
 
@@ -707,7 +571,7 @@ const DELI_NPC_AI = {
       // Queue full — give up and leave
       const aTX = Math.floor(npc.x / TILE);
       const aTY = Math.floor(npc.y / TILE);
-      _npcStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
+      _cStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
       return;
     }
 
@@ -715,7 +579,7 @@ const DELI_NPC_AI = {
     const spot = QUEUE_SPOTS[qIdx];
     const curTX = Math.floor(npc.x / TILE);
     const curTY = Math.floor(npc.y / TILE);
-    _npcStartRoute(npc, _routeAisleToQueue(curTX, curTY, spot), 'in_queue', 0);
+    _cStartRoute(npc, _routeAisleToQueue(curTX, curTY, spot), 'in_queue', 0);
   },
 
   // ─── ORDERING: At counter, waiting for spawnOrder() to link us ──
@@ -733,8 +597,8 @@ const DELI_NPC_AI = {
       npc._queueIdx = -1;
       _advanceQueue(0);
       const aisle = _pickFreeAisle();
-      _npcStartRoute(npc, _routeCounterToAisle(aisle),
-        'shopping_aisle', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
+      _cStartRoute(npc, _routeCounterToAisle(aisle),
+        'shopping_aisle', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1])
       );
       npc._pendingPurchase = Math.random() < 0.5 ? aisle : null;
       return;
@@ -744,7 +608,7 @@ const DELI_NPC_AI = {
       npc.hasOrdered = true;
       npc._queueIdx = -1;
       _advanceQueue(0);
-      _npcStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
     }
   },
 
@@ -761,7 +625,7 @@ const DELI_NPC_AI = {
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
       _advanceQueue(0);
-      _npcStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
       return;
     }
     // Patience timeout — leave angry after 30 sec if food never comes
@@ -769,7 +633,7 @@ const DELI_NPC_AI = {
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
       _advanceQueue(0);
-      _npcStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
     }
   },
 
@@ -786,17 +650,17 @@ const DELI_NPC_AI = {
     for (const n of deliNPCs) if (n.claimedChair !== null) claimed.add(n.claimedChair);
     const avail = [];
     for (let i = 0; i < DELI_CHAIRS.length; i++) if (!claimed.has(i)) avail.push(i);
-    const chairIdx = avail.length > 0 ? _randFromArray(avail) : 0;
+    const chairIdx = avail.length > 0 ? _cRandFromArray(avail) : 0;
     npc.claimedChair = chairIdx;
     npc._lastChairIdx = chairIdx;
 
     // 50% visit condiments first
     if (Math.random() < DELI_NPC_CONFIG.condimentChance) {
-      _npcStartRoute(npc, _routeCounterToCondiments(), 'at_condiments',
-        _randRange(DELI_NPC_CONFIG.condimentTime[0], DELI_NPC_CONFIG.condimentTime[1]));
+      _cStartRoute(npc, _routeCounterToCondiments(), 'at_condiments',
+        _cRandRange(DELI_NPC_CONFIG.condimentTime[0], DELI_NPC_CONFIG.condimentTime[1]));
     } else {
-      _npcStartRoute(npc, _routeCounterToChair(chairIdx), 'eating',
-        _randRange(DELI_NPC_CONFIG.eatDuration[0], DELI_NPC_CONFIG.eatDuration[1]));
+      _cStartRoute(npc, _routeCounterToChair(chairIdx), 'eating',
+        _cRandRange(DELI_NPC_CONFIG.eatDuration[0], DELI_NPC_CONFIG.eatDuration[1]));
     }
   },
 
@@ -806,8 +670,8 @@ const DELI_NPC_AI = {
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
     // Head to chair
     const chairIdx = npc.claimedChair !== null ? npc.claimedChair : 0;
-    _npcStartRoute(npc, _routeCondimentsToChair(chairIdx), 'eating',
-      _randRange(DELI_NPC_CONFIG.eatDuration[0], DELI_NPC_CONFIG.eatDuration[1]));
+    _cStartRoute(npc, _routeCondimentsToChair(chairIdx), 'eating',
+      _cRandRange(DELI_NPC_CONFIG.eatDuration[0], DELI_NPC_CONFIG.eatDuration[1]));
   },
 
   // ─── EATING: Sitting in chair, eating food ─────────────
@@ -832,12 +696,12 @@ const DELI_NPC_AI = {
     if (Math.random() < DELI_NPC_CONFIG.aisleChance) {
       const aisle = _pickFreeAisle();
       npc._pendingPurchase = Math.random() < 0.6 ? aisle : null;
-      _npcStartRoute(npc, _routeChairToAisle(lastChair, aisle), 'shopping_aisle',
-        _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+      _cStartRoute(npc, _routeChairToAisle(lastChair, aisle), 'shopping_aisle',
+        _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
     } else {
       // Leave
       const ch = DELI_CHAIRS[lastChair];
-      _npcStartRoute(npc, _routeToExit(ch.tx, ch.ty), '_despawn', 0);
+      _cStartRoute(npc, _routeToExit(ch.tx, ch.ty), '_despawn', 0);
     }
   },
 
@@ -870,9 +734,9 @@ const DELI_NPC_AI = {
       const curTX = Math.floor(npc.x / TILE);
       const curTY = Math.floor(npc.y / TILE);
       // Route through nearest shelf gap — natural aisle movement
-      _npcStartRoute(npc,
+      _cStartRoute(npc,
         _routeAisleToAisle(curTX, curTY, aisle),
-        'shopping_aisle', _randRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+        'shopping_aisle', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
       return;
     }
 
@@ -884,12 +748,12 @@ const DELI_NPC_AI = {
       if (qIdx >= 0) {
         npc._queueIdx = qIdx;
         const spot = QUEUE_SPOTS[qIdx];
-        _npcStartRoute(npc, _routeAisleToQueue(aTX, aTY, spot), 'in_queue', 0);
+        _cStartRoute(npc, _routeAisleToQueue(aTX, aTY, spot), 'in_queue', 0);
         return;
       }
     }
     // Already ordered or queue full — leave
-    _npcStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
+    _cStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
   },
 
   // ─── DESPAWN WALK: Walking to exit then despawn ────────
@@ -905,19 +769,9 @@ const DELI_NPC_AI = {
 // ===================== MAIN UPDATE =====================
 function updateDeliNPCs() {
   if (typeof Scene === 'undefined' || !Scene.inCooking) return;
+  if (typeof cookingState === 'undefined' || cookingState.activeRestaurantId !== 'street_deli') return;
 
-  // Spawn management — one customer at a time, 10-60s apart
-  _deliSpawnTimer++;
-  if (_deliSpawnTimer >= _nextSpawnInterval) {
-    _deliSpawnTimer = 0;
-    _nextSpawnInterval = _randRange(DELI_NPC_CONFIG.spawnInterval[0], DELI_NPC_CONFIG.spawnInterval[1]);
-    if (deliNPCs.length < DELI_NPC_CONFIG.maxNPCs) {
-      spawnDeliNPC(); // enters in 'entering' state — walks in one by one
-    }
-  }
-
-  // Safety: deduplicate queue indices — if two NPCs share the same _queueIdx,
-  // bump the later-spawned one to the next available slot (or eject from queue)
+  // Queue deduplication — detect multiple NPCs claiming same queue slot
   const _queueSlots = new Map(); // idx → npc
   for (const npc of deliNPCs) {
     if (npc._queueIdx < 0) continue;
@@ -944,38 +798,25 @@ function updateDeliNPCs() {
         yielder._queueIdx = -1;
         const curTX = Math.floor(yielder.x / TILE);
         const curTY = Math.floor(yielder.y / TILE);
-        _npcStartRoute(yielder, _routeToExit(curTX, curTY), '_despawn', 0);
+        _cStartRoute(yielder, _routeToExit(curTX, curTY), '_despawn', 0);
       }
     } else {
       _queueSlots.set(npc._queueIdx, npc);
     }
   }
 
-  // Update each NPC
-  for (let i = deliNPCs.length - 1; i >= 0; i--) {
-    const npc = deliNPCs[i];
-
-    // Track state changes — reset idle timer when state changes
-    const prevState = npc.state;
-
-    // Run state handler
-    const handler = DELI_NPC_AI[npc.state];
-    if (handler) handler(npc);
-
-    // Reset idle timer on state change
-    if (npc.state !== prevState) npc._idleTime = 0;
-
-    // Move along route (walking state — other states that move call moveDeliNPC internally)
-    if (npc.state === 'walking') {
-      moveDeliNPC(npc);
-    }
-
-    // Universal idle safety net — any NPC idle 60+ sec in non-eating/non-queue states → force exit
-    // (eating and in_queue have their own timeouts above)
-    if (npc.state !== '_despawn' && npc.state !== '_despawn_walk' &&
-        npc.state !== 'walking' && npc.state !== 'eating' && npc.state !== 'in_queue' &&
-        npc.state !== 'ordering' && npc.state !== 'waiting_food' &&
-        (npc._idleTime || 0) >= 3600) {
+  // Shared update loop
+  _cUpdateNPCLoop({
+    restaurantId: 'street_deli',
+    spawnState: _deliSpawnState,
+    spawnInterval: DELI_NPC_CONFIG.spawnInterval,
+    canSpawn: () => deliNPCs.length < DELI_NPC_CONFIG.maxNPCs,
+    doSpawn: spawnDeliNPC,
+    npcList: deliNPCs,
+    stateHandlers: DELI_NPC_AI,
+    moveFn: moveDeliNPC,
+    exemptIdleStates: new Set(['eating', 'in_queue', 'ordering', 'waiting_food']),
+    onIdleTimeout: (npc) => {
       npc._idleTime = 0;
       npc.hasFood = false;
       npc._recipeIngredients = null;
@@ -987,11 +828,9 @@ function updateDeliNPCs() {
       }
       const curTX = Math.floor(npc.x / TILE);
       const curTY = Math.floor(npc.y / TILE);
-      _npcStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
-    }
-
-    // Stuck detection — if blocked for 1+ second, abandon route and head to exit
-    if ((npc._stuckFrames || 0) >= 60 && npc.state !== '_despawn' && npc.state !== '_despawn_walk') {
+      _cStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
+    },
+    onStuckTimeout: (npc) => {
       npc._stuckFrames = 0;
       npc.hasFood = false;
       npc._recipeIngredients = null;
@@ -1001,19 +840,15 @@ function updateDeliNPCs() {
         npc._queueIdx = -1;
         _advanceQueue(leftIdx);
       }
-      // If stuck in kitchen zone, teleport to safe corridor first
       if (_isKitchenZone(npc.x, npc.y)) {
         npc.x = 26 * TILE + TILE / 2;
         npc.y = 22 * TILE + TILE / 2;
       }
-      // Route to exit from current position
       const curTX = Math.floor(npc.x / TILE);
       const curTY = Math.floor(npc.y / TILE);
-      _npcStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
-    }
-
-    // Despawn
-    if (npc.state === '_despawn') {
+      _cStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
+    },
+    onDespawn: (npc, i) => {
       if (npc.claimedChair !== null) npc.claimedChair = null;
       if (npc._queueIdx >= 0) {
         const leftIdx = npc._queueIdx;
@@ -1023,6 +858,6 @@ function updateDeliNPCs() {
       npc.hasFood = false;
       npc._recipeIngredients = null;
       deliNPCs.splice(i, 1);
-    }
-  }
+    },
+  });
 }

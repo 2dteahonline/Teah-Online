@@ -44,44 +44,13 @@ const FD_NPC_CONFIG = {
 // ===================== STATE =====================
 let fineDiningNPCs = [];
 let fineDiningParties = [];
-let _fdNPCId = 0;
+const _fdIdCounter = { value: 0 };
 let _fdPartyId = 0;
-let _fdSpawnTimer = 0;
-let _fdNextSpawnInterval = 600;
+const _fdSpawnState = { timer: 0, nextInterval: 600 };
 
 // ===================== HELPERS =====================
-function _fdRandRange(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
-function _fdRandFromArray(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-function _fdTilePx(tx, ty) {
-  return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 };
-}
-
-function _fdWP(tx, ty) {
-  return { tx: tx, ty: ty };
-}
-
-function _cloneFDRoute(route) {
-  if (!route) return null;
-  return route.map(wp => ({ tx: wp.tx, ty: wp.ty }));
-}
-
-function _pushFDRoute(route, wp) {
-  if (!wp) return;
-  const prev = route[route.length - 1];
-  if (prev && prev.tx === wp.tx && prev.ty === wp.ty) return;
-  route.push({ tx: wp.tx, ty: wp.ty });
-}
-
-function _concatFDRoutes() {
-  const route = [];
-  for (let i = 0; i < arguments.length; i++) {
-    const segment = arguments[i];
-    if (!segment) continue;
-    for (const wp of segment) _pushFDRoute(route, wp);
-  }
-  return route;
-}
+// Utility functions (_cRandRange, _cRandFromArray, _cTilePx, _cWP, _cCloneRoute, _cConcatRoutes)
+// are provided by cookingNPCBase.js (loaded before this script).
 
 // Kitchen zone check — NPCs must NOT enter kitchen interior
 function _isFDKitchenZone(px, py) {
@@ -99,39 +68,14 @@ function _findFreeTable(partySize) {
       candidates.push(i);
     }
   }
-  return candidates.length ? _fdRandFromArray(candidates) : -1;
+  return candidates.length ? _cRandFromArray(candidates) : -1;
 }
 
-// Get party object by id
-function _getFDParty(partyId) {
-  for (const p of fineDiningParties) {
-    if (p.id === partyId) return p;
-  }
-  return null;
-}
-
-// Get NPC by id
-function _getFDNPC(npcId) {
-  for (const n of fineDiningNPCs) {
-    if (n.id === npcId) return n;
-  }
-  return null;
-}
-
-// Get party leader NPC
-function _getFDPartyLeader(party) {
-  return _getFDNPC(party.leaderId);
-}
-
-// Get all party members
-function _getFDPartyMembers(party) {
-  const members = [];
-  for (const id of party.members) {
-    const n = _getFDNPC(id);
-    if (n) members.push(n);
-  }
-  return members;
-}
+// Party/NPC lookup — thin wrappers over cookingNPCBase.js
+function _getFDParty(partyId) { return _cFindParty(fineDiningParties, partyId); }
+function _getFDNPC(id) { return _cFindNPCById(fineDiningNPCs, id); }
+function _getFDPartyLeader(party) { return _cGetPartyLeader(fineDiningParties, fineDiningNPCs, party); }
+function _getFDPartyMembers(party) { return _cGetPartyMembers(fineDiningNPCs, party); }
 
 // Pick a customer type for fine dining (use FINE_DINING_CUSTOMER_TYPES if available, else fallback)
 function _pickFDCustomerType() {
@@ -175,10 +119,10 @@ function _pickFDCustomerType() {
 // Exit(45,35) → Host Stand(42,22)
 function _routeFDExitToHost(corridorTX) {
   const cx = corridorTX || 40;
-  return _concatFDRoutes(
-    [_fdWP(cx, 23)],
-    [_fdWP(40, 23)],
-    [_fdWP(40, 20)]
+  return _cConcatRoutes(
+    [_cWP(cx, 23)],
+    [_cWP(40, 23)],
+    [_cWP(40, 20)]
   );
 }
 
@@ -191,7 +135,7 @@ function _routeFDHostToTable(tableId, seatIdx) {
 
   const route = [];
   // Host stand to main walkway
-  route.push(_fdWP(40, 20));
+  route.push(_cWP(40, 20));
 
   // Determine which column the table is in
   const isRightCol = (table.grillTX >= 30);
@@ -199,26 +143,26 @@ function _routeFDHostToTable(tableId, seatIdx) {
 
   if (isRightCol) {
     // Right column tables (1, 3) — go to tx:31 gap, then approach
-    route.push(_fdWP(31, 20));
+    route.push(_cWP(31, 20));
     if (isBottomRow) {
       // Table 3: seats at ty:13-15
-      route.push(_fdWP(31, seat.ty));
+      route.push(_cWP(31, seat.ty));
     } else {
       // Table 1: seats at ty:4-6, go north
-      route.push(_fdWP(31, seat.ty));
+      route.push(_cWP(31, seat.ty));
     }
-    route.push(_fdWP(seat.tx, seat.ty));
+    route.push(_cWP(seat.tx, seat.ty));
   } else {
     // Left column tables (0, 2) — go to tx:20 corridor
-    route.push(_fdWP(20, 20));
+    route.push(_cWP(20, 20));
     if (isBottomRow) {
       // Table 2: seats at ty:13-15
-      route.push(_fdWP(20, seat.ty));
+      route.push(_cWP(20, seat.ty));
     } else {
       // Table 0: seats at ty:4-6, go north
-      route.push(_fdWP(20, seat.ty));
+      route.push(_cWP(20, seat.ty));
     }
-    route.push(_fdWP(seat.tx, seat.ty));
+    route.push(_cWP(seat.tx, seat.ty));
   }
 
   return route;
@@ -237,34 +181,34 @@ function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
 
   // Seat → vertical corridor
   if (isRightCol) {
-    route.push(_fdWP(31, seat.ty));
-    route.push(_fdWP(31, 20));
+    route.push(_cWP(31, seat.ty));
+    route.push(_cWP(31, 20));
   } else {
-    route.push(_fdWP(20, seat.ty));
-    route.push(_fdWP(20, 20));
+    route.push(_cWP(20, seat.ty));
+    route.push(_cWP(20, 20));
   }
 
   // Main walkway east to exit corridor
-  route.push(_fdWP(40, 20));
-  route.push(_fdWP(cx, 20));
-  route.push(_fdWP(cx, 23));
+  route.push(_cWP(40, 20));
+  route.push(_cWP(cx, 20));
+  route.push(_cWP(cx, 23));
 
   return route;
 }
 
 // Generic: from any tile position → Exit
 function _routeFDToExit(fromTX, fromTY, corridorTX) {
-  const cx = corridorTX || _fdRandRange(39, 41);
+  const cx = corridorTX || _cRandRange(39, 41);
   const route = [];
 
   // If in kitchen zone, get out through the service wall door
   if (fromTX <= 19 && fromTY <= 18) {
-    route.push(_fdWP(fromTX, 15));
-    route.push(_fdWP(18, 15));
-    route.push(_fdWP(20, 15));
-    route.push(_fdWP(20, 20));
-    route.push(_fdWP(40, 20));
-    route.push(_fdWP(cx, 23));
+    route.push(_cWP(fromTX, 15));
+    route.push(_cWP(18, 15));
+    route.push(_cWP(20, 15));
+    route.push(_cWP(20, 20));
+    route.push(_cWP(40, 20));
+    route.push(_cWP(cx, 23));
     return route;
   }
 
@@ -272,20 +216,20 @@ function _routeFDToExit(fromTX, fromTY, corridorTX) {
   if (fromTY < 20) {
     // Above walkway: go to nearest vertical corridor first
     if (fromTX >= 30) {
-      route.push(_fdWP(31, fromTY));
-      route.push(_fdWP(31, 20));
+      route.push(_cWP(31, fromTY));
+      route.push(_cWP(31, 20));
     } else if (fromTX >= 20) {
-      route.push(_fdWP(20, fromTY));
-      route.push(_fdWP(20, 20));
+      route.push(_cWP(20, fromTY));
+      route.push(_cWP(20, 20));
     } else {
-      route.push(_fdWP(fromTX, 20));
+      route.push(_cWP(fromTX, 20));
     }
   }
 
   // On or below walkway — head east to exit corridor
-  route.push(_fdWP(40, 20));
-  route.push(_fdWP(cx, 20));
-  route.push(_fdWP(cx, 23));
+  route.push(_cWP(40, 20));
+  route.push(_cWP(cx, 20));
+  route.push(_cWP(cx, 23));
 
   return route;
 }
@@ -322,180 +266,50 @@ function _getFDIntentAnchor(intent, npc) {
 }
 
 function _recoverFDNPC(npc) {
-  if (npc._recoveryTried) return false;
-
-  npc._recoveryTried = true;
-
-  const intent = npc._routeIntent;
-  const party = _getFDParty(npc.partyId);
-  const cx = party ? party.corridorTX : undefined;
-  let route = _buildFDRouteFromIntent(intent, cx);
-  let anchor = _getFDIntentAnchor(intent, npc);
-
-  if ((!route || route.length === 0) && _isFDKitchenZone(npc.x, npc.y)) {
-    anchor = { tx: 20, ty: 20 };
-    route = _routeFDToExit(anchor.tx, anchor.ty, cx);
-    npc._routeIntent = { kind: 'tile_to_exit', tx: anchor.tx, ty: anchor.ty };
-  }
-
-  if (!anchor || !route || route.length === 0) return false;
-
-  const pos = _fdTilePx(anchor.tx, anchor.ty);
-  npc.x = pos.x;
-  npc.y = pos.y;
-  npc.route = _cloneFDRoute(route);
-  npc.state = 'walking';
-  npc.moving = true;
-  npc._idleTime = 0;
-  npc._stuckFrames = 0;
-  return true;
+  return _cRecoverNPC(npc, {
+    buildRouteFromIntent: (intent, cx) => _buildFDRouteFromIntent(intent, cx),
+    getIntentAnchor: (intent, npc) => _getFDIntentAnchor(intent, npc),
+    kitchenCheck: _isFDKitchenZone,
+    kitchenSafe: { tx: 20, ty: 20 },
+    routeToExit: (tx, ty, cx) => _routeFDToExit(tx, ty, cx),
+    getPartyCX: (npc) => { const p = _getFDParty(npc.partyId); return p ? p.corridorTX : undefined; },
+  });
 }
 
 // ===================== MOVEMENT =====================
+const _fdMoveSkipStates = new Set(['eating', 'seated', 'waiting_cook', 'watching_cook', 'at_host', '_despawn']);
+
 function moveFDNPC(npc) {
-  if (!npc.route || npc.route.length === 0) {
-    npc.moving = false;
-    return;
-  }
-
-  const wp = npc.route[0];
-  const targetX = wp.tx * TILE + TILE / 2;
-  const targetY = wp.ty * TILE + TILE / 2;
-  let dx = targetX - npc.x;
-  let dy = targetY - npc.y;
-  let dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (dist < 6) {
-    npc.x = targetX;
-    npc.y = targetY;
-    npc.route.shift();
-    if (npc.route.length === 0) {
-      npc.moving = false;
-    }
-    return;
-  }
-
-  npc.moving = true;
-  let spd = npc.speed;
-
-  // NPC-NPC avoidance — lower-ID NPCs have priority
-  for (const other of fineDiningNPCs) {
-    if (other === npc) continue;
-    // Skip seated/despawning NPCs
-    if (other.state === 'eating' || other.state === 'seated' ||
-        other.state === 'waiting_cook' || other.state === 'watching_cook' ||
-        other.state === 'at_host' || other.state === '_despawn') continue;
-    // Same-party members don't block each other — they walk as a group
-    if (other.partyId === npc.partyId) continue;
-    const sx = npc.x - other.x;
-    const sy = npc.y - other.y;
-    const sd = Math.sqrt(sx * sx + sy * sy);
-    if (sd > 0 && sd < 50) {
-      if (npc.id > other.id) {
-        spd *= 0.3;
-        const pushStr = (50 - sd) * 0.2;
-        const nx = sx / sd, ny = sy / sd;
-        const testX = npc.x + nx * pushStr;
-        const testY = npc.y + ny * pushStr;
-        if (!_isFDKitchenZone(testX, testY) &&
-            (typeof positionClear !== 'function' || positionClear(testX, testY, 14))) {
-          npc.x = testX;
-          npc.y = testY;
-        }
-      }
-    }
-  }
-
-  // Recalculate direction after nudge
-  dx = targetX - npc.x;
-  dy = targetY - npc.y;
-  dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < 1) return;
-
-  const nextX = npc.x + (dx / dist) * spd;
-  const nextY = npc.y + (dy / dist) * spd;
-
-  // Kitchen zone restriction
-  if (_isFDKitchenZone(nextX, nextY)) {
-    if (_isFDKitchenZone(npc.x, npc.y)) {
-      // Already in kitchen — teleport out
-      npc.x = 20 * TILE + TILE / 2;
-      npc.y = 20 * TILE + TILE / 2;
-      npc._stuckFrames = 0;
-      npc.route = [_fdWP(40, 20), _fdWP(40, 23)];
-      return;
-    }
-    npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-    return;
-  }
-
-  // Wall/solid entity collision check
-  if (typeof positionClear === 'function' && !positionClear(nextX, nextY, 14)) {
-    npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-    return;
-  }
-
-  npc._stuckFrames = 0;
-  npc.x = nextX;
-  npc.y = nextY;
-
-  // Facing direction
-  if (Math.abs(dx) > Math.abs(dy)) {
-    npc.dir = dx > 0 ? 3 : 2;
-  } else {
-    npc.dir = dy > 0 ? 0 : 1;
-  }
-
-  npc.frame = (npc.frame + 0.1) % 4;
+  _cMoveNPC(npc, {
+    npcList: fineDiningNPCs,
+    skipStates: _fdMoveSkipStates,
+    kitchenCheck: _isFDKitchenZone,
+    kitchenSafe: { tx: 20, ty: 20 },
+    kitchenFallback: [{ tx: 40, ty: 20 }, { tx: 40, ty: 23 }],
+    laneMode: 'none',
+    pairSkip: (npc, other) => other.partyId === npc.partyId,
+  });
 }
 
 // ===================== SPAWN =====================
 function _spawnFDNPC(partyId, isLeader, corridorTX) {
-  const app = _fdRandFromArray(FD_NPC_APPEARANCES);
   const spawnTX = corridorTX || FD_SPOTS.exit.tx;
-  const npc = {
-    id: ++_fdNPCId,
-    x: spawnTX * TILE + TILE / 2,
-    y: FD_SPOTS.exit.ty * TILE + TILE / 2,
-    dir: 1, frame: 0, moving: false,
-    skin: app.skin, hair: app.hair, shirt: app.shirt, pants: app.pants,
-    name: _fdRandFromArray(FD_NPC_NAMES),
-    state: 'entering',
-    stateTimer: 0,
-    route: null,
-    _nextState: null,
-    _nextTimer: 0,
+  const npc = _cCreateNPC(_fdIdCounter, { tx: spawnTX, ty: FD_SPOTS.exit.ty }, FD_NPC_APPEARANCES, FD_NPC_NAMES, FD_NPC_CONFIG, {
     partyId: partyId,
     isLeader: isLeader,
-    hasOrdered: false, hasFood: false,
     claimedSeatIdx: -1,
-    linkedOrderId: null,
-    _stuckFrames: 0,
-    _idleTime: 0,
     _recoveryTried: false,
     _routeIntent: null,
-    speed: FD_NPC_CONFIG.baseSpeed + (Math.random() - 0.5) * FD_NPC_CONFIG.speedVariance * 2,
     isFineDiningNPC: true,
-  };
+  });
   fineDiningNPCs.push(npc);
   return npc;
-}
-
-function _fdNPCStartRoute(npc, route, nextState, nextTimer, intent) {
-  npc.route = _cloneFDRoute(route);
-  npc._nextState = nextState;
-  npc._nextTimer = nextTimer || 0;
-  npc._routeIntent = intent || null;
-  npc._recoveryTried = false;
-  npc.state = 'walking';
-  npc.moving = true;
-  npc._idleTime = 0;
 }
 
 function spawnFineDiningParty() {
   const customerType = _pickFDCustomerType();
   const sizeRange = customerType.partySize || [1, 4];
-  const partySize = _fdRandRange(sizeRange[0], sizeRange[1]);
+  const partySize = _cRandRange(sizeRange[0], sizeRange[1]);
   const tableIdx = _findFreeTable(partySize);
   if (tableIdx < 0) return null; // no free table
 
@@ -505,7 +319,7 @@ function spawnFineDiningParty() {
   table.state = 'claimed';
 
   // Each party gets a random corridor column (42-44) so they don't all walk single-file
-  const corridorTX = _fdRandRange(39, 41);
+  const corridorTX = _cRandRange(39, 41);
 
   const party = {
     id: partyId,
@@ -544,15 +358,11 @@ function spawnFineDiningParty() {
 function initFineDiningNPCs() {
   fineDiningNPCs.length = 0;
   fineDiningParties.length = 0;
-  _fdNPCId = 0;
+  _fdIdCounter.value = 0;
   _fdPartyId = 0;
-  _fdSpawnTimer = 0;
-  _fdNextSpawnInterval = 600;
-  // Reset tables
-  for (const t of FD_TABLES) {
-    t.claimedBy = null;
-    t.state = 'empty';
-  }
+  _fdSpawnState.timer = 0;
+  _fdSpawnState.nextInterval = _cRandRange(120, 300);
+  for (const t of FD_TABLES) { t.claimedBy = null; t.state = 'empty'; }
 }
 
 // ===================== EXIT PLAN BUILDERS =====================
@@ -601,7 +411,7 @@ function _triggerFDPartyLeave(party) {
     m.linkedOrderId = null;
 
     const exitPlan = _buildFDExitPlan(m);
-    _fdNPCStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
+    _cStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Release table
@@ -620,7 +430,7 @@ function _triggerFDPartyPostMealExit(party) {
   // Leader exits
   if (leader) {
     const exitPlan = _buildFDExitPlan(leader);
-    _fdNPCStartRoute(leader, exitPlan.route, '_despawn', 0, exitPlan.intent);
+    _cStartRoute(leader, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Non-leaders leave directly
@@ -629,7 +439,7 @@ function _triggerFDPartyPostMealExit(party) {
     if (m.state === '_despawn' || m.state === '_despawn_walk') continue;
     m.hasFood = false;
     const exitPlan = _buildFDExitPlan(m);
-    _fdNPCStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
+    _cStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Release table
@@ -677,7 +487,7 @@ const FD_NPC_AI = {
     if (npc.isLeader) {
       // Leader goes to host stand first
       const route = _routeFDExitToHost(party.corridorTX);
-      _fdNPCStartRoute(npc, route, 'at_host', _fdRandRange(FD_NPC_CONFIG.hostPauseDuration[0], FD_NPC_CONFIG.hostPauseDuration[1]), { kind: 'exit_to_host' });
+      _cStartRoute(npc, route, 'at_host', _cRandRange(FD_NPC_CONFIG.hostPauseDuration[0], FD_NPC_CONFIG.hostPauseDuration[1]), { kind: 'exit_to_host' });
     } else {
       // Followers go directly to their table seat (leader handles cover fee)
       npc.state = 'walking_to_table';
@@ -742,16 +552,16 @@ const FD_NPC_AI = {
       // Followers: exit → main walkway → table
       const cx = party.corridorTX || 40;
       const hostToTable = _routeFDHostToTable(party.tableId, npc.claimedSeatIdx);
-      route = _concatFDRoutes(
-        [_fdWP(cx, 23)],
-        [_fdWP(40, 23)],
-        [_fdWP(40, 20)],
+      route = _cConcatRoutes(
+        [_cWP(cx, 23)],
+        [_cWP(40, 23)],
+        [_cWP(40, 20)],
         hostToTable.length > 1 ? hostToTable.slice(1) : hostToTable  // skip host stand waypoint
       );
     }
     if (!route || !route.length) { npc.state = '_despawn'; return; }
 
-    _fdNPCStartRoute(
+    _cStartRoute(
       npc,
       route,
       'seated',
@@ -882,7 +692,7 @@ const FD_NPC_AI = {
     if (!party) {
       const curTX = Math.floor(npc.x / TILE);
       const curTY = Math.floor(npc.y / TILE);
-      _fdNPCStartRoute(npc, _routeFDToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
+      _cStartRoute(npc, _routeFDToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
       return;
     }
 
@@ -951,7 +761,7 @@ function notifyFDTableCookingComplete(tableId) {
     if (m.state === 'watching_cook' || m.state === 'waiting_cook') {
       m.state = 'eating';
       m.hasFood = true;
-      m.stateTimer = _fdRandRange(FD_NPC_CONFIG.eatDuration[0], FD_NPC_CONFIG.eatDuration[1]);
+      m.stateTimer = _cRandRange(FD_NPC_CONFIG.eatDuration[0], FD_NPC_CONFIG.eatDuration[1]);
       // Store recipe ingredients for food visual
       if (typeof cookingState !== 'undefined' && cookingState.currentOrder && cookingState.currentOrder.recipe) {
         m._recipeIngredients = cookingState.currentOrder.recipe.ingredients.slice();
@@ -964,56 +774,28 @@ function notifyFDTableCookingComplete(tableId) {
 
 // ===================== MAIN UPDATE =====================
 function updateFineDiningNPCs() {
-  if (typeof Scene === 'undefined' || !Scene.inCooking) return;
-  if (typeof cookingState === 'undefined' || cookingState.activeRestaurantId !== 'fine_dining') return;
-
-  // Spawn parties on timer
-  _fdSpawnTimer++;
-  if (_fdSpawnTimer >= _fdNextSpawnInterval) {
-    _fdSpawnTimer = 0;
-    _fdNextSpawnInterval = _fdRandRange(FD_NPC_CONFIG.spawnInterval[0], FD_NPC_CONFIG.spawnInterval[1]);
-
-    // Count active parties (not fully despawned)
-    const activeParties = fineDiningParties.filter(p => p.state !== 'done').length;
-    if (activeParties < FD_NPC_CONFIG.maxParties && fineDiningNPCs.length < 16) {
-      spawnFineDiningParty();
-    }
-  }
-
-  // Update each NPC
-  for (let i = fineDiningNPCs.length - 1; i >= 0; i--) {
-    const npc = fineDiningNPCs[i];
-    const prevState = npc.state;
-
-    // Run state handler
-    const handler = FD_NPC_AI[npc.state];
-    if (handler) handler(npc);
-
-    // Reset idle timer on state change
-    if (npc.state !== prevState) npc._idleTime = 0;
-
-    // Move along route (walking state)
-    if (npc.state === 'walking') {
-      moveFDNPC(npc);
-    }
-
-    // Universal idle safety net — 60+ sec in non-seated/non-eating states → force exit
-    if (npc.state !== '_despawn' && npc.state !== '_despawn_walk' &&
-        npc.state !== 'walking' && npc.state !== 'eating' &&
-        npc.state !== 'seated' && npc.state !== 'waiting_cook' &&
-        npc.state !== 'watching_cook' && npc.state !== 'at_host' &&
-        npc.state !== 'spawn_wait' &&
-        (npc._idleTime || 0) >= 3600) {
+  _cUpdateNPCLoop({
+    restaurantId: 'fine_dining',
+    spawnState: _fdSpawnState,
+    spawnInterval: FD_NPC_CONFIG.spawnInterval,
+    canSpawn: () => {
+      const activeParties = fineDiningParties.filter(p => p.state !== 'done').length;
+      return activeParties < FD_NPC_CONFIG.maxParties && fineDiningNPCs.length < 16;
+    },
+    doSpawn: spawnFineDiningParty,
+    npcList: fineDiningNPCs,
+    stateHandlers: FD_NPC_AI,
+    moveFn: moveFDNPC,
+    exemptIdleStates: new Set(['eating', 'seated', 'waiting_cook', 'watching_cook', 'at_host', 'spawn_wait']),
+    onIdleTimeout: (npc) => {
       npc._idleTime = 0;
       npc.hasFood = false;
       npc.linkedOrderId = null;
       const curTX = Math.floor(npc.x / TILE);
       const curTY = Math.floor(npc.y / TILE);
-      _fdNPCStartRoute(npc, _routeFDToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
-    }
-
-    // Stuck detection — blocked 1+ second → abandon route, head to exit
-    if ((npc._stuckFrames || 0) >= 60 && npc.state !== '_despawn' && npc.state !== '_despawn_walk') {
+      _cStartRoute(npc, _routeFDToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
+    },
+    onStuckTimeout: (npc) => {
       npc._stuckFrames = 0;
       npc.hasFood = false;
       npc.linkedOrderId = null;
@@ -1024,31 +806,22 @@ function updateFineDiningNPCs() {
         }
         const curTX = Math.floor(npc.x / TILE);
         const curTY = Math.floor(npc.y / TILE);
-        _fdNPCStartRoute(npc, _routeFDToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
+        _cStartRoute(npc, _routeFDToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
       }
-    }
-
-    // Despawn
-    if (npc.state === '_despawn') {
+    },
+    onDespawn: (npc, i) => {
       npc.hasFood = false;
       npc.linkedOrderId = null;
       fineDiningNPCs.splice(i, 1);
-    }
-  }
-
-  // Clean up fully-despawned parties
-  for (let i = fineDiningParties.length - 1; i >= 0; i--) {
-    const party = fineDiningParties[i];
-    const anyAlive = party.members.some(id => _getFDNPC(id) !== null);
-    if (!anyAlive) {
-      // Release table if still claimed
-      const table = FD_TABLES[party.tableId];
-      if (table && table.claimedBy === party.id) {
-        table.claimedBy = null;
-        table.state = 'empty';
-      }
-      party.state = 'done';
-      fineDiningParties.splice(i, 1);
-    }
-  }
+    },
+    postLoop: () => {
+      _cCleanupParties(fineDiningParties, fineDiningNPCs, (party) => {
+        const table = FD_TABLES[party.tableId];
+        if (table && table.claimedBy === party.id) {
+          table.claimedBy = null;
+          table.state = 'empty';
+        }
+      });
+    },
+  });
 }

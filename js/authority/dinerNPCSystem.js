@@ -58,48 +58,17 @@ const DINER_NPC_CONFIG = {
 // ===================== STATE =====================
 const dinerNPCs = [];
 const dinerParties = [];
-let _dinerNPCId = 0;
+const _dinerIdCounter = { value: 0 };
 let _dinerPartyId = 0;
-let _dinerSpawnTimer = 0;
-let _dinerNextSpawnInterval = 600;
+const _dinerSpawnState = { timer: 0, nextInterval: 600 };
 
 // Counter queue — only one leader at the counter at a time
 const _dinerCounterQueue = [];  // array of partyIds in order
 let _dinerCounterActiveParty = null;  // partyId currently at counter
 
 // ===================== HELPERS =====================
-function _dinerRandRange(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
-function _dinerRandFromArray(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-function _dinerTilePx(tx, ty) {
-  return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 };
-}
-
-function _dinerWP(tx, ty, lane) {
-  return lane ? { tx: tx, ty: ty, lane: true } : { tx: tx, ty: ty };
-}
-
-function _cloneDinerRoute(route) {
-  if (!route) return null;
-  return route.map(wp => wp.lane ? { tx: wp.tx, ty: wp.ty, lane: true } : { tx: wp.tx, ty: wp.ty });
-}
-
-function _pushDinerRoute(route, wp) {
-  if (!wp) return;
-  const prev = route[route.length - 1];
-  if (prev && prev.tx === wp.tx && prev.ty === wp.ty && !!prev.lane === !!wp.lane) return;
-  route.push(wp.lane ? { tx: wp.tx, ty: wp.ty, lane: true } : { tx: wp.tx, ty: wp.ty });
-}
-
-function _concatDinerRoutes() {
-  const route = [];
-  for (let i = 0; i < arguments.length; i++) {
-    const segment = arguments[i];
-    if (!segment) continue;
-    for (const wp of segment) _pushDinerRoute(route, wp);
-  }
-  return route;
-}
+// Utility functions (_cRandRange, _cRandFromArray, _cTilePx, _cWP, _cCloneRoute, _cConcatRoutes)
+// are provided by cookingNPCBase.js
 
 // Kitchen zone check — NPCs must not enter kitchen interior
 function _isDinerKitchenZone(px, py) {
@@ -118,7 +87,7 @@ function _findFreeBooth(partySize) {
       candidates.push(i);
     }
   }
-  return candidates.length ? _dinerRandFromArray(candidates) : -1;
+  return candidates.length ? _cRandFromArray(candidates) : -1;
 }
 
 // Find a free arcade spot
@@ -129,36 +98,11 @@ function _findFreeArcadeSpot() {
   return -1;
 }
 
-// Get party object by id
-function _getDinerParty(partyId) {
-  for (const p of dinerParties) {
-    if (p.id === partyId) return p;
-  }
-  return null;
-}
-
-// Get NPC by id
-function _getDinerNPC(npcId) {
-  for (const n of dinerNPCs) {
-    if (n.id === npcId) return n;
-  }
-  return null;
-}
-
-// Get party leader NPC
-function _getPartyLeader(party) {
-  return _getDinerNPC(party.leaderId);
-}
-
-// Get all party members
-function _getPartyMembers(party) {
-  const members = [];
-  for (const id of party.members) {
-    const n = _getDinerNPC(id);
-    if (n) members.push(n);
-  }
-  return members;
-}
+// Party/NPC lookups — thin wrappers around cookingNPCBase
+function _getDinerParty(partyId) { return _cFindParty(dinerParties, partyId); }
+function _getDinerNPC(npcId) { return _cFindNPCById(dinerNPCs, npcId); }
+function _getPartyLeader(party) { return _cGetPartyLeader(dinerParties, dinerNPCs, party); }
+function _getPartyMembers(party) { return _cGetPartyMembers(dinerNPCs, party); }
 
 // ===================== COUNTER QUEUE =====================
 function _dinerEnqueueCounter(partyId) {
@@ -224,9 +168,9 @@ function _routeDinerBoothToSeat(boothId, seatIdx) {
   const booth = DINER_BOOTHS[boothId];
   const access = _getDinerSeatAccess(booth, seatIdx);
   if (!access) return [];
-  return _concatDinerRoutes(
-    [_dinerWP(access.rowAccess.tx, access.rowAccess.ty)],
-    [_dinerWP(access.seat.tx, access.seat.ty)]
+  return _cConcatRoutes(
+    [_cWP(access.rowAccess.tx, access.rowAccess.ty)],
+    [_cWP(access.seat.tx, access.seat.ty)]
   );
 }
 
@@ -234,34 +178,34 @@ function _routeDinerSeatToBoothEntry(boothId, seatIdx) {
   const booth = DINER_BOOTHS[boothId];
   const access = _getDinerSeatAccess(booth, seatIdx);
   if (!access) return [];
-  return _concatDinerRoutes(
-    [_dinerWP(access.rowAccess.tx, access.rowAccess.ty)],
-    [_dinerWP(access.entry.tx, access.entry.ty)]
+  return _cConcatRoutes(
+    [_cWP(access.rowAccess.tx, access.rowAccess.ty)],
+    [_cWP(access.entry.tx, access.entry.ty)]
   );
 }
 
 function _routeDinerBoothEntryToCounter(booth) {
   if (!booth) return [];
-  return _concatDinerRoutes(
-    booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : [_dinerWP(26, 14)],
-    [_dinerWP(26, 16)],
-    [_dinerWP(13, 16)]
+  return _cConcatRoutes(
+    booth.entry.tx >= 36 ? [_cWP(36, 14)] : [_cWP(26, 14)],
+    [_cWP(26, 16)],
+    [_cWP(13, 16)]
   );
 }
 
 function _routeDinerCounterToBoothEntry(booth) {
   if (!booth) return [];
-  return _concatDinerRoutes(
-    [_dinerWP(26, 16)],
-    [_dinerWP(26, 14)],
-    booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : null,
-    [_dinerWP(booth.entry.tx, booth.entry.ty)]
+  return _cConcatRoutes(
+    [_cWP(26, 16)],
+    [_cWP(26, 14)],
+    booth.entry.tx >= 36 ? [_cWP(36, 14)] : null,
+    [_cWP(booth.entry.tx, booth.entry.ty)]
   );
 }
 
 function _routeDinerSeatToCounter(boothId, seatIdx) {
   const booth = DINER_BOOTHS[boothId];
-  return _concatDinerRoutes(
+  return _cConcatRoutes(
     _routeDinerSeatToBoothEntry(boothId, seatIdx),
     _routeDinerBoothEntryToCounter(booth)
   );
@@ -269,7 +213,7 @@ function _routeDinerSeatToCounter(boothId, seatIdx) {
 
 function _routeDinerCounterToSeat(boothId, seatIdx) {
   const booth = DINER_BOOTHS[boothId];
-  return _concatDinerRoutes(
+  return _cConcatRoutes(
     _routeDinerCounterToBoothEntry(booth),
     _routeDinerBoothToSeat(boothId, seatIdx)
   );
@@ -279,12 +223,12 @@ function _routeDinerSeatToArcade(boothId, seatIdx, arcadeIdx) {
   const booth = DINER_BOOTHS[boothId];
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!booth || !spot) return [];
-  return _concatDinerRoutes(
+  return _cConcatRoutes(
     _routeDinerSeatToBoothEntry(boothId, seatIdx),
-    booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : [_dinerWP(26, 14)],
-    booth.entry.tx >= 36 ? null : [_dinerWP(36, 14, true)],
-    [_dinerWP(36, spot.ty)],
-    [_dinerWP(spot.tx, spot.ty)]
+    booth.entry.tx >= 36 ? [_cWP(36, 14)] : [_cWP(26, 14)],
+    booth.entry.tx >= 36 ? null : [_cWP(36, 14)],
+    [_cWP(36, spot.ty)],
+    [_cWP(spot.tx, spot.ty)]
   );
 }
 
@@ -292,11 +236,11 @@ function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
   const cx = corridorTX || 27;
-  return _concatDinerRoutes(
+  return _cConcatRoutes(
     _routeDinerSeatToBoothEntry(boothId, seatIdx),
-    booth.entry.tx >= 36 ? [_dinerWP(36, 14, true)] : [_dinerWP(26, 14)],
-    [_dinerWP(cx, 14, true)],
-    [_dinerWP(cx, DINER_SPOTS.exit.ty)]
+    booth.entry.tx >= 36 ? [_cWP(36, 14)] : [_cWP(26, 14)],
+    [_cWP(cx, 14)],
+    [_cWP(cx, DINER_SPOTS.exit.ty)]
   );
 }
 
@@ -342,35 +286,14 @@ function _getDinerIntentAnchor(intent, npc) {
 }
 
 function _recoverDinerNPC(npc) {
-  if (npc._recoveryTried) return false;
-
-  npc._recoveryTried = true;
-  npc._laneOffX = 0;
-  npc._laneOffY = 0;
-
-  const intent = npc._routeIntent;
-  const party = _getDinerParty(npc.partyId);
-  const cx = party ? party.corridorTX : undefined;
-  let route = _buildDinerRouteFromIntent(intent, cx);
-  let anchor = _getDinerIntentAnchor(intent, npc);
-
-  if ((!route || route.length === 0) && _isDinerKitchenZone(npc.x, npc.y)) {
-    anchor = { tx: 26, ty: 16 };
-    route = _routeDinerToExit(anchor.tx, anchor.ty, cx);
-    npc._routeIntent = { kind: 'tile_to_exit', tx: anchor.tx, ty: anchor.ty };
-  }
-
-  if (!anchor || !route || route.length === 0) return false;
-
-  const pos = _dinerTilePx(anchor.tx, anchor.ty);
-  npc.x = pos.x;
-  npc.y = pos.y;
-  npc.route = _cloneDinerRoute(route);
-  npc.state = 'walking';
-  npc.moving = true;
-  npc._idleTime = 0;
-  npc._stuckFrames = 0;
-  return true;
+  return _cRecoverNPC(npc, {
+    buildRouteFromIntent: (intent, cx) => _buildDinerRouteFromIntent(intent, cx),
+    getIntentAnchor: (intent, npc) => _getDinerIntentAnchor(intent, npc),
+    kitchenCheck: _isDinerKitchenZone,
+    kitchenSafe: { tx: 26, ty: 16 },
+    routeToExit: (tx, ty, cx) => _routeDinerToExit(tx, ty, cx),
+    getPartyCX: (npc) => { const p = _getDinerParty(npc.partyId); return p ? p.corridorTX : undefined; },
+  });
 }
 
 // ===================== ROUTE BUILDERS =====================
@@ -401,7 +324,7 @@ function _routeDinerExitToBooth(boothId, corridorTX) {
 }
 
 function _routeDinerToExit(fromTX, fromTY, corridorTX) {
-  const cx = corridorTX || _dinerRandRange(26, 29);
+  const cx = corridorTX || _cRandRange(26, 29);
   const route = [];
   // Get to main corridor first
   if (fromTY < 14) {
@@ -426,150 +349,43 @@ function _routeDinerToExit(fromTX, fromTY, corridorTX) {
   return route;
 }
 
+const _dinerMoveSkipStates = new Set(['eating', 'menu_reading', 'waiting_at_booth', 'arcade_playing', '_despawn', 'ordering', 'waiting_food', 'waiting_for_counter']);
+
 function moveDinerNPC(npc) {
-  if (!npc.route || npc.route.length === 0) {
-    npc.moving = false;
-    return;
-  }
-
-  const wp = npc.route[0];
-  const targetX = wp.tx * TILE + TILE / 2 + (npc._laneOffX || 0);
-  const targetY = wp.ty * TILE + TILE / 2 + (npc._laneOffY || 0);
-  let dx = targetX - npc.x;
-  let dy = targetY - npc.y;
-  let dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (dist < 6) {
-    npc.x = targetX;
-    npc.y = targetY;
-    npc.route.shift();
-    if (npc.route.length === 0) {
-      npc.moving = false;
-    }
-    return;
-  }
-
-  npc.moving = true;
-  let spd = npc.speed;
-
-  // NPC-NPC avoidance — lower-ID NPCs have priority
-  for (const other of dinerNPCs) {
-    if (other === npc) continue;
-    // Skip seated/despawning NPCs
-    if (other.state === 'eating' || other.state === 'menu_reading' ||
-        other.state === 'waiting_at_booth' || other.state === 'arcade_playing' ||
-        other.state === '_despawn' || other.state === 'ordering' ||
-        other.state === 'waiting_food' || other.state === 'waiting_for_counter') continue;
-    // Skip avoidance if we are ordering
-    if (npc.state === 'ordering' || npc.state === 'waiting_food') continue;
-    const sx = npc.x - other.x;
-    const sy = npc.y - other.y;
-    const sd = Math.sqrt(sx * sx + sy * sy);
-    if (sd > 0 && sd < 50) {
-      if (npc.id > other.id) {
-        spd *= 0.3;
-        const pushStr = (50 - sd) * 0.2;
-        const nx = sx / sd, ny = sy / sd;
-        const testX = npc.x + nx * pushStr;
-        const testY = npc.y + ny * pushStr;
-        if (!_isDinerKitchenZone(testX, testY) &&
-            (typeof positionClear !== 'function' || positionClear(testX, testY, 14))) {
-          npc.x = testX;
-          npc.y = testY;
-        }
-      }
-    }
-  }
-
-  // Recalculate direction after nudge
-  dx = targetX - npc.x;
-  dy = targetY - npc.y;
-  dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < 1) return;
-
-  const nextX = npc.x + (dx / dist) * spd;
-  const nextY = npc.y + (dy / dist) * spd;
-
-  // Kitchen zone restriction
-  if (_isDinerKitchenZone(nextX, nextY)) {
-    if (_isDinerKitchenZone(npc.x, npc.y)) {
-      npc.x = 26 * TILE + TILE / 2;
-      npc.y = 16 * TILE + TILE / 2;
-      npc._stuckFrames = 0;
-      npc.route = [{ tx: 27, ty: 16 }, { tx: 27, ty: DINER_SPOTS.exit.ty }];
-      return;
-    }
-    npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-    return;
-  }
-
-  // Wall/solid entity collision check
-  if (typeof positionClear === 'function' && !positionClear(nextX, nextY, 14)) {
-    npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-    return;
-  }
-
-  npc._stuckFrames = 0;
-  npc.x = nextX;
-  npc.y = nextY;
-
-  // Facing direction
-  if (Math.abs(dx) > Math.abs(dy)) {
-    npc.dir = dx > 0 ? 3 : 2;
-  } else {
-    npc.dir = dy > 0 ? 0 : 1;
-  }
-
-  npc.frame = (npc.frame + 0.1) % 4;
+  _cMoveNPC(npc, {
+    npcList: dinerNPCs,
+    skipStates: _dinerMoveSkipStates,
+    kitchenCheck: _isDinerKitchenZone,
+    kitchenSafe: { tx: 26, ty: 16 },
+    kitchenFallback: [{ tx: 27, ty: 16 }, { tx: 27, ty: 21 }],
+    laneMode: 'always',
+    selfAvoidSkip: (npc) => npc.state === 'ordering' || npc.state === 'waiting_food',
+  });
 }
 
 // ===================== SPAWN =====================
 function _spawnDinerNPC(partyId, isLeader, corridorTX) {
-  const app = _dinerRandFromArray(DINER_NPC_APPEARANCES);
   const spawnTX = corridorTX || DINER_SPOTS.exit.tx;
-  const npc = {
-    id: ++_dinerNPCId,
-    x: spawnTX * TILE + TILE / 2,
-    y: DINER_SPOTS.exit.ty * TILE + TILE / 2,
-    dir: 1, frame: 0, moving: false,
-    skin: app.skin, hair: app.hair, shirt: app.shirt, pants: app.pants,
-    name: _dinerRandFromArray(DINER_NPC_NAMES),
-    state: 'entering',
-    stateTimer: 0,
-    route: null,
-    _nextState: null,
-    _nextTimer: 0,
+  const npc = _cCreateNPC(_dinerIdCounter, { tx: spawnTX, ty: DINER_SPOTS.exit.ty }, DINER_NPC_APPEARANCES, DINER_NPC_NAMES, DINER_NPC_CONFIG, {
     partyId: partyId,
     isLeader: isLeader,
-    hasOrdered: false, hasFood: false,
     claimedSeatIdx: -1,
-    linkedOrderId: null,
     _claimedArcadeIdx: -1,
+    _recipeIngredients: null,
     _laneOffX: (Math.random() - 0.5) * 32,
     _laneOffY: (Math.random() - 0.5) * 32,
-    _stuckFrames: 0,
-    _idleTime: 0,
-    _recipeIngredients: null,
-    speed: DINER_NPC_CONFIG.baseSpeed + (Math.random() - 0.5) * DINER_NPC_CONFIG.speedVariance * 2,
+    _recoveryTried: false,
+    _routeIntent: null,
     isDinerNPC: true,
-  };
+  });
   dinerNPCs.push(npc);
   return npc;
 }
 
-function _dinerNPCStartRoute(npc, route, nextState, nextTimer, intent) {
-  npc.route = _cloneDinerRoute(route);
-  npc._nextState = nextState;
-  npc._nextTimer = nextTimer || 0;
-  npc._routeIntent = intent || null;
-  npc._recoveryTried = false;
-  npc.state = 'walking';
-  npc.moving = true;
-  npc._idleTime = 0;
-}
+// _cStartRoute provided by cookingNPCBase.js
 
 function spawnDinerParty() {
-  const partySize = _dinerRandRange(1, 3);
+  const partySize = _cRandRange(1, 3);
   const boothIdx = _findFreeBooth(partySize);
   if (boothIdx < 0) return null; // no free booth
 
@@ -578,7 +394,7 @@ function spawnDinerParty() {
   booth.claimedBy = partyId;
 
   // Each party gets a random corridor column (26-29) so they don't all walk single-file
-  const corridorTX = _dinerRandRange(26, 29);
+  const corridorTX = _cRandRange(26, 29);
 
   const party = {
     id: partyId,
@@ -612,10 +428,10 @@ function spawnDinerParty() {
 function initDinerNPCs() {
   dinerNPCs.length = 0;
   dinerParties.length = 0;
-  _dinerNPCId = 0;
+  _dinerIdCounter.value = 0;
   _dinerPartyId = 0;
-  _dinerSpawnTimer = 0;
-  _dinerNextSpawnInterval = 600;
+  _dinerSpawnState.timer = 0;
+  _dinerSpawnState.nextInterval = _cRandRange(120, 300);
   // Reset counter queue
   _dinerCounterQueue.length = 0;
   _dinerCounterActiveParty = null;
@@ -643,7 +459,7 @@ const DINER_NPC_AI = {
 
     const route = _routeDinerExitToBooth(party.boothId, party.corridorTX);
 
-    _dinerNPCStartRoute(npc, route, 'seating', 0, { kind: 'exit_to_booth', boothId: party.boothId });
+    _cStartRoute(npc, route, 'seating', 0, { kind: 'exit_to_booth', boothId: party.boothId });
   },
 
   // ─── SEATING: Walk to individual seat in booth ─────────
@@ -654,11 +470,11 @@ const DINER_NPC_AI = {
     const route = _routeDinerBoothToSeat(party.boothId, npc.claimedSeatIdx);
     if (!route.length) { npc.state = '_despawn'; return; }
 
-    _dinerNPCStartRoute(
+    _cStartRoute(
       npc,
       route,
       'menu_reading',
-      _dinerRandRange(DINER_NPC_CONFIG.menuReadDuration[0], DINER_NPC_CONFIG.menuReadDuration[1]),
+      _cRandRange(DINER_NPC_CONFIG.menuReadDuration[0], DINER_NPC_CONFIG.menuReadDuration[1]),
       { kind: 'booth_to_seat', boothId: party.boothId, seatIdx: npc.claimedSeatIdx }
     );
   },
@@ -724,7 +540,7 @@ const DINER_NPC_AI = {
     if (!party) { npc.state = '_despawn'; return; }
 
     const route = _routeDinerSeatToCounter(party.boothId, npc.claimedSeatIdx);
-    _dinerNPCStartRoute(npc, route, 'ordering', 0, { kind: 'seat_to_counter', boothId: party.boothId, seatIdx: npc.claimedSeatIdx });
+    _cStartRoute(npc, route, 'ordering', 0, { kind: 'seat_to_counter', boothId: party.boothId, seatIdx: npc.claimedSeatIdx });
   },
 
   // ─── ORDERING: Leader at counter, waiting for cookingSystem to link order ─
@@ -747,7 +563,7 @@ const DINER_NPC_AI = {
       if (party && party.state !== 'leaving') {
         _triggerPartyLeave(party);
       } else if (!party) {
-        _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
+        _cStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       }
       return;
     }
@@ -762,7 +578,7 @@ const DINER_NPC_AI = {
       if (party && party.state !== 'leaving') {
         _triggerPartyLeave(party);
       } else if (!party) {
-        _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
+        _cStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       }
     }
   },
@@ -784,7 +600,7 @@ const DINER_NPC_AI = {
       }
       const party = _getDinerParty(npc.partyId);
       if (party && party.state !== 'leaving') _triggerPartyLeave(party);
-      else if (!party) _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
+      else if (!party) _cStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       return;
     }
 
@@ -796,7 +612,7 @@ const DINER_NPC_AI = {
       }
       const party = _getDinerParty(npc.partyId);
       if (party && party.state !== 'leaving') _triggerPartyLeave(party);
-      else if (!party) _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
+      else if (!party) _cStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
     }
   },
 
@@ -819,7 +635,7 @@ const DINER_NPC_AI = {
     // Patience timeout — 60 sec max waiting at booth
     if (npc._idleTime >= 3600) {
       if (party) _triggerPartyLeave(party);
-      else _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
+      else _cStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
     }
   },
 
@@ -833,12 +649,12 @@ const DINER_NPC_AI = {
 
     const party = _getDinerParty(npc.partyId);
     if (!party) {
-      _dinerNPCStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
+      _cStartRoute(npc, _routeDinerToExit(13, 16), '_despawn', 0, { kind: 'counter_to_exit' });
       return;
     }
 
     const route = _routeDinerCounterToSeat(party.boothId, npc.claimedSeatIdx);
-    _dinerNPCStartRoute(npc, route, 'return_to_booth', 0, { kind: 'counter_to_seat', boothId: party.boothId, seatIdx: npc.claimedSeatIdx });
+    _cStartRoute(npc, route, 'return_to_booth', 0, { kind: 'counter_to_seat', boothId: party.boothId, seatIdx: npc.claimedSeatIdx });
   },
 
   // ─── RETURN_TO_BOOTH: Leader walking back with food ────
@@ -851,7 +667,7 @@ const DINER_NPC_AI = {
     if (!seat) { npc.state = '_despawn'; return; }
 
     npc.state = 'eating';
-    npc.stateTimer = _dinerRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
+    npc.stateTimer = _cRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
     npc.x = seat.tx * TILE + TILE / 2;
     npc.y = seat.ty * TILE + TILE / 2;
     npc.dir = seat.sitDir;
@@ -861,7 +677,7 @@ const DINER_NPC_AI = {
     for (const m of members) {
       if (m.id !== npc.id && m.state === 'waiting_at_booth') {
         m.state = 'eating';
-        m.stateTimer = _dinerRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
+        m.stateTimer = _cRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
         m.hasFood = true;
       }
     }
@@ -894,7 +710,7 @@ const DINER_NPC_AI = {
     npc.moving = false;
     const party = _getDinerParty(npc.partyId);
     if (!party) {
-      _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
+      _cStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
       return;
     }
 
@@ -910,7 +726,7 @@ const DINER_NPC_AI = {
     // 20% chance 1-2 members go to arcade
     if (Math.random() < DINER_NPC_CONFIG.arcadeChance) {
       // Pick 1-2 random members (could include leader)
-      const arcadeCount = Math.min(_dinerRandRange(1, 2), members.length);
+      const arcadeCount = Math.min(_cRandRange(1, 2), members.length);
       const shuffled = members.slice().sort(() => Math.random() - 0.5);
       let sent = 0;
       for (const m of shuffled) {
@@ -968,11 +784,11 @@ const DINER_NPC_AI = {
       return;
     }
     const route = _routeDinerSeatToArcade(party.boothId, npc.claimedSeatIdx, npc._claimedArcadeIdx);
-    _dinerNPCStartRoute(
+    _cStartRoute(
       npc,
       route,
       'arcade_playing',
-      _dinerRandRange(DINER_NPC_CONFIG.arcadeDuration[0], DINER_NPC_CONFIG.arcadeDuration[1]),
+      _cRandRange(DINER_NPC_CONFIG.arcadeDuration[0], DINER_NPC_CONFIG.arcadeDuration[1]),
       { kind: 'seat_to_arcade', boothId: party.boothId, seatIdx: npc.claimedSeatIdx, arcadeIdx: npc._claimedArcadeIdx }
     );
   },
@@ -997,7 +813,7 @@ const DINER_NPC_AI = {
     // Return to booth area, then trigger leaving check
     const party = _getDinerParty(npc.partyId);
     if (!party) {
-      _dinerNPCStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
+      _cStartRoute(npc, _routeDinerToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0, { kind: 'tile_to_exit', tx: Math.floor(npc.x / TILE), ty: Math.floor(npc.y / TILE) });
       return;
     }
 
@@ -1092,7 +908,7 @@ function _triggerPartyLeave(party) {
     m.linkedOrderId = null;
 
     const exitPlan = _buildDinerExitPlan(m);
-    _dinerNPCStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
+    _cStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Release booth
@@ -1109,7 +925,7 @@ function _triggerPartyPostMealExit(party) {
   // Leader exits
   if (leader) {
     const exitPlan = _buildDinerExitPlan(leader);
-    _dinerNPCStartRoute(leader, exitPlan.route, '_despawn', 0, exitPlan.intent);
+    _cStartRoute(leader, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Non-leaders leave directly
@@ -1123,7 +939,7 @@ function _triggerPartyPostMealExit(party) {
     m.hasFood = false;
     m._recipeIngredients = null;
     const exitPlan = _buildDinerExitPlan(m);
-    _dinerNPCStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
+    _cStartRoute(m, exitPlan.route, '_despawn', 0, exitPlan.intent);
   }
 
   // Release booth
@@ -1134,47 +950,20 @@ function _triggerPartyPostMealExit(party) {
 
 // ===================== MAIN UPDATE =====================
 function updateDinerNPCs() {
-  if (typeof Scene === 'undefined' || !Scene.inCooking) return;
-  if (typeof cookingState === 'undefined' || cookingState.activeRestaurantId !== 'diner') return;
-
-  // Spawn parties on timer
-  _dinerSpawnTimer++;
-  if (_dinerSpawnTimer >= _dinerNextSpawnInterval) {
-    _dinerSpawnTimer = 0;
-    _dinerNextSpawnInterval = _dinerRandRange(DINER_NPC_CONFIG.spawnInterval[0], DINER_NPC_CONFIG.spawnInterval[1]);
-
-    // Count active parties and total NPCs (not fully despawned)
-    const activeParties = dinerParties.filter(p => p.state !== 'done').length;
-    if (activeParties < DINER_NPC_CONFIG.maxParties && dinerNPCs.length < 8) {
-      spawnDinerParty();
-    }
-  }
-
-  // Update each NPC
-  for (let i = dinerNPCs.length - 1; i >= 0; i--) {
-    const npc = dinerNPCs[i];
-    const prevState = npc.state;
-
-    // Run state handler
-    const handler = DINER_NPC_AI[npc.state];
-    if (handler) handler(npc);
-
-    // Reset idle timer on state change
-    if (npc.state !== prevState) npc._idleTime = 0;
-
-    // Move along route (walking state)
-    if (npc.state === 'walking') {
-      moveDinerNPC(npc);
-    }
-
-    // Universal idle safety net — 60+ sec in non-eating/non-waiting states → force exit
-    if (npc.state !== '_despawn' && npc.state !== '_despawn_walk' &&
-        npc.state !== 'walking' && npc.state !== 'eating' &&
-        npc.state !== 'waiting_at_booth' && npc.state !== 'post_meal_wait' &&
-        npc.state !== 'ordering' && npc.state !== 'waiting_food' &&
-        npc.state !== 'menu_reading' && npc.state !== 'arcade_playing' &&
-        npc.state !== 'waiting_for_counter' &&
-        (npc._idleTime || 0) >= 3600) {
+  _cUpdateNPCLoop({
+    restaurantId: 'diner',
+    spawnState: _dinerSpawnState,
+    spawnInterval: DINER_NPC_CONFIG.spawnInterval,
+    canSpawn: () => {
+      const activeParties = dinerParties.filter(p => p.state !== 'done').length;
+      return activeParties < DINER_NPC_CONFIG.maxParties && dinerNPCs.length < 8;
+    },
+    doSpawn: spawnDinerParty,
+    npcList: dinerNPCs,
+    stateHandlers: DINER_NPC_AI,
+    moveFn: moveDinerNPC,
+    exemptIdleStates: new Set(['eating', 'waiting_at_booth', 'post_meal_wait', 'ordering', 'waiting_food', 'menu_reading', 'arcade_playing', 'waiting_for_counter']),
+    onIdleTimeout: (npc) => {
       npc._idleTime = 0;
       npc.hasFood = false;
       npc._recipeIngredients = null;
@@ -1185,11 +974,9 @@ function updateDinerNPCs() {
       }
       const curTX = Math.floor(npc.x / TILE);
       const curTY = Math.floor(npc.y / TILE);
-      _dinerNPCStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
-    }
-
-    // Stuck detection — blocked 1+ second → abandon route, head to exit
-    if ((npc._stuckFrames || 0) >= 60 && npc.state !== '_despawn' && npc.state !== '_despawn_walk') {
+      _cStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
+    },
+    onStuckTimeout: (npc) => {
       npc._stuckFrames = 0;
       npc.hasFood = false;
       npc._recipeIngredients = null;
@@ -1205,12 +992,10 @@ function updateDinerNPCs() {
         }
         const curTX = Math.floor(npc.x / TILE);
         const curTY = Math.floor(npc.y / TILE);
-        _dinerNPCStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
+        _cStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
       }
-    }
-
-    // Despawn
-    if (npc.state === '_despawn') {
+    },
+    onDespawn: (npc, i) => {
       if (npc._claimedArcadeIdx >= 0) {
         DINER_ARCADE_SPOTS[npc._claimedArcadeIdx].claimedBy = null;
         npc._claimedArcadeIdx = -1;
@@ -1218,19 +1003,12 @@ function updateDinerNPCs() {
       npc.hasFood = false;
       npc._recipeIngredients = null;
       dinerNPCs.splice(i, 1);
-    }
-  }
-
-  // Clean up fully-despawned parties
-  for (let i = dinerParties.length - 1; i >= 0; i--) {
-    const party = dinerParties[i];
-    const anyAlive = party.members.some(id => _getDinerNPC(id) !== null);
-    if (!anyAlive) {
-      // Release booth if still claimed
-      const booth = DINER_BOOTHS[party.boothId];
-      if (booth && booth.claimedBy === party.id) booth.claimedBy = null;
-      party.state = 'done';
-      dinerParties.splice(i, 1);
-    }
-  }
+    },
+    postLoop: () => {
+      _cCleanupParties(dinerParties, dinerNPCs, (party) => {
+        const booth = DINER_BOOTHS[party.boothId];
+        if (booth && booth.claimedBy === party.id) booth.claimedBy = null;
+      });
+    },
+  });
 }
