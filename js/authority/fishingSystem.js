@@ -540,7 +540,7 @@ function getFishVendorBuyItems() {
       id: rod.id, name: rod.name,
       desc: 'Durability: ' + rod.durability + ' | Str: ' + rod.strength + ' | Dmg: ' + rod.damage,
       cost: price,
-      isLocked: fishingLevel < rod.levelReq,
+      isLocked: !window._opMode && fishingLevel < rod.levelReq,
       lockReason: 'Fishing Lv.' + rod.levelReq,
       isOwned: owned,
       action() {

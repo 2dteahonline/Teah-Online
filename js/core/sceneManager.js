@@ -405,7 +405,7 @@ function checkPortals() {
         const shop = typeof COOKING_SHOPS !== 'undefined' ? COOKING_SHOPS[shopId] : null;
         if (shop) {
           const cookingLvl = typeof skillData !== 'undefined' && skillData.Cooking ? skillData.Cooking.level : 1;
-          if (cookingLvl < shop.levelReq) {
+          if (!window._opMode && cookingLvl < shop.levelReq) {
             if (typeof hitEffects !== 'undefined') {
               hitEffects.push({
                 x: player.x, y: player.y - 40, life: 50, maxLife: 50,
@@ -471,7 +471,7 @@ function joinQueue() {
   if (!nearQueue || transitioning) return;
   // Entry gating — check dungeon level requirement
   const _gateEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[queueDungeonType];
-  if (_gateEntry && _gateEntry.requiredLevel > 0) {
+  if (!window._opMode && _gateEntry && _gateEntry.requiredLevel > 0) {
     const _myDungLvl = typeof getDungeonLevel === 'function' ? getDungeonLevel() : 0;
     if (_myDungLvl < _gateEntry.requiredLevel) {
       chatMessages.push({ name: 'SYSTEM', text: 'Dungeon Level ' + _gateEntry.requiredLevel + ' required (yours: ' + _myDungLvl + ')', time: Date.now() });

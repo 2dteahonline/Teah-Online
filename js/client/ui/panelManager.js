@@ -539,7 +539,7 @@ window.addEventListener("keydown", e => {
             } else {
               const _dEntry = DUNGEON_REGISTRY[_dType];
               // Entry gating
-              if (_dEntry.requiredLevel > 0) {
+              if (!window._opMode && _dEntry.requiredLevel > 0) {
                 const _myLvl = typeof getDungeonLevel === 'function' ? getDungeonLevel() : 0;
                 if (_myLvl < _dEntry.requiredLevel) {
                   chatMessages.push({ name: 'SYSTEM', text: 'Dungeon Level ' + _dEntry.requiredLevel + ' required (yours: ' + _myLvl + ')', time: Date.now() });

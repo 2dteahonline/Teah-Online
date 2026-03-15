@@ -273,7 +273,7 @@ function updateMining() {
   // --- Mining level gate ---
   const oreType = ORE_TYPES[nearest.oreId];
   const miningLevel = (typeof skillData !== 'undefined' && skillData['Mining']) ? skillData['Mining'].level : 1;
-  if (miningLevel < oreType.miningLevelReq) {
+  if (!window._opMode && miningLevel < oreType.miningLevelReq) {
     miningTarget = null;
     miningTimer = 0;
     miningProgress = 0;
@@ -528,14 +528,14 @@ function drawOreNodes() {
     if (dist < MINE_RANGE && melee.special === 'pickaxe' && activeSlot === 1 && !UI.anyOpen()) {
       // Check if level-locked — only show when player is ATTEMPTING to mine (shootHeld)
       const miningLevel = (typeof skillData !== 'undefined' && skillData['Mining']) ? skillData['Mining'].level : 1;
-      if (miningLevel < ore.miningLevelReq && InputIntent.shootHeld) {
+      if (!window._opMode && miningLevel < ore.miningLevelReq && InputIntent.shootHeld) {
         // Level too low — show locked indicator
         ctx.font = "bold 11px monospace";
         ctx.fillStyle = "#ff4444";
         ctx.textAlign = "center";
         ctx.fillText("\uD83D\uDD12 Mining Lv." + ore.miningLevelReq, node.x, node.y - s * 0.85);
         ctx.textAlign = "left";
-      } else if (miningLevel >= ore.miningLevelReq) {
+      } else if (window._opMode || miningLevel >= ore.miningLevelReq) {
         // "⛏" mine prompt
         ctx.font = "bold 10px monospace";
         ctx.fillStyle = "#fff";

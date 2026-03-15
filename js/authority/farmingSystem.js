@@ -154,12 +154,12 @@ function handleFarmAction(fromClick) {
       if (!crop) return;
       // Check farming level
       const farmLevel = typeof skillData !== 'undefined' && skillData['Farming'] ? skillData['Farming'].level : 1;
-      if (farmLevel < crop.levelReq) {
+      if (!window._opMode && farmLevel < crop.levelReq) {
         hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Level ' + crop.levelReq + ' required!', color: '#ff6060' });
         return;
       }
       // Check garden level requirement
-      if (crop.gardenReq > farmingState.landLevel) {
+      if (!window._opMode && crop.gardenReq > farmingState.landLevel) {
         const reqExp = LAND_EXPANSIONS[crop.gardenReq];
         hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Requires ' + (reqExp ? reqExp.name : 'Garden Lv.' + crop.gardenReq) + '!', color: '#ff6060' });
         return;
@@ -230,7 +230,7 @@ function getFarmTileAtAction(fromClick) {
   const hoe = getEquippedHoe();
   const reach = hoe ? hoe.reach : 1;
   const plotPx = PLOT_SIZE * TILE; // size of one plot in pixels
-  const maxReachPx = plotPx * reach + plotPx / 2; // reach + half tile buffer
+  const maxReachPx = plotPx * reach + plotPx / 4; // reach + quarter tile buffer
 
   if (fromClick && typeof InputIntent !== 'undefined') {
     // CLICK MODE: find closest tile to mouse world position, within reach of player
@@ -570,8 +570,8 @@ function getFarmVendorSeedItems() {
   const items = [];
   for (const id in CROP_TYPES) {
     const crop = CROP_TYPES[id];
-    const locked = farmLevel < crop.levelReq;
-    const gardenLocked = crop.gardenReq > farmingState.landLevel;
+    const locked = !window._opMode && farmLevel < crop.levelReq;
+    const gardenLocked = !window._opMode && crop.gardenReq > farmingState.landLevel;
     items.push({
       type: 'seed',
       id: crop.id,
@@ -592,7 +592,7 @@ function getFarmVendorEquipItems() {
   // Hoe tiers
   for (const hoe of HOE_TIERS) {
     const owned = farmingState.equippedHoe === hoe.id;
-    const locked = farmLevel < hoe.levelReq;
+    const locked = !window._opMode && farmLevel < hoe.levelReq;
     items.push({
       type: 'hoe',
       id: hoe.id,
@@ -610,7 +610,7 @@ function getFarmVendorEquipItems() {
   for (let i = 1; i < LAND_EXPANSIONS.length; i++) {
     const exp = LAND_EXPANSIONS[i];
     const owned = farmingState.landLevel >= i;
-    const locked = farmLevel < exp.levelReq;
+    const locked = !window._opMode && farmLevel < exp.levelReq;
     items.push({
       type: 'land',
       id: 'land_' + i,
