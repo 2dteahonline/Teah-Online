@@ -2474,6 +2474,11 @@ function update() {
   const dx = InputIntent.moveX;
   const dy = InputIntent.moveY;
 
+  // --- Close inventory with E even when panel blocks movement ---
+  if (!isTyping && InputIntent.interactPressed && UI.isOpen('inventory')) {
+    UI.close();
+  }
+
   // --- One-frame intent dispatch (consumed once, cleared at end of frame) ---
   if (!isTyping && !panelBlocksMovement && !fishingActive && !ventBlocks) {
     // Reload (disabled in Skeld)
