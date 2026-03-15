@@ -2202,43 +2202,43 @@ function _drawKeno(px, py, pw, ph) {
     ctx.fillText(risks[i].charAt(0).toUpperCase() + risks[i].slice(1), riskX + riskBtnW / 2, ry + riskBtnH / 2 + 4);
   }
 
-  // Payout multiplier strip (below grid) — uses risk-based table
+  // Payout multiplier strip (below grid) — shows ALL match counts 0 through picks
   const stripY = gridY + gridH + 6;
   const riskTable = KENO_CONFIG.PAYOUTS[kn.risk] || KENO_CONFIG.PAYOUTS.medium;
   if (kn.picks.length > 0) {
-    const payoutTable = riskTable[kn.picks.length];
-    if (payoutTable) {
-      const keys = Object.keys(payoutTable).map(Number).sort((a, b) => a - b);
-      const stripW = Math.min(80, (gridW - 8) / Math.max(keys.length, 1));
-      const totalStripW = keys.length * stripW;
-      const stripStartX = cx - totalStripW / 2;
-      for (let i = 0; i < keys.length; i++) {
-        const sx = stripStartX + i * stripW;
-        const isCurrentMatch = kn.matches === keys[i] && drawingDone;
-        ctx.fillStyle = isCurrentMatch ? '#0a2a0a' : '#111e2e';
-        ctx.beginPath(); ctx.roundRect(sx + 1, stripY, stripW - 2, 22, 3); ctx.fill();
-        if (isCurrentMatch) {
-          ctx.strokeStyle = '#00e701';
-          ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.roundRect(sx + 1, stripY, stripW - 2, 22, 3); ctx.stroke();
-        }
-        ctx.font = '10px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = isCurrentMatch ? '#00e701' : '#667';
-        const dispMult = payoutTable[keys[i]];
-        ctx.fillText(dispMult >= 100 ? Math.floor(dispMult) + 'x' : dispMult.toFixed(1) + 'x', sx + stripW / 2, stripY + 15);
+    const payoutTable = riskTable[kn.picks.length] || {};
+    const totalSlots = kn.picks.length + 1; // 0 through picks
+    const stripW = Math.min(70, (gridW - 8) / totalSlots);
+    const totalStripW = totalSlots * stripW;
+    const stripStartX = cx - totalStripW / 2;
+    for (let m = 0; m < totalSlots; m++) {
+      const sx = stripStartX + m * stripW;
+      const mult = payoutTable[m] || 0;
+      const isCurrentMatch = kn.matches === m && drawingDone;
+      const hasValue = mult > 0;
+      ctx.fillStyle = isCurrentMatch ? (hasValue ? '#0a2a0a' : '#1a1010') : '#111e2e';
+      ctx.beginPath(); ctx.roundRect(sx + 1, stripY, stripW - 2, 22, 3); ctx.fill();
+      if (isCurrentMatch) {
+        ctx.strokeStyle = hasValue ? '#00e701' : '#aa3333';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(sx + 1, stripY, stripW - 2, 22, 3); ctx.stroke();
       }
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      if (isCurrentMatch) {
+        ctx.fillStyle = hasValue ? '#00e701' : '#aa3333';
+      } else {
+        ctx.fillStyle = hasValue ? '#889' : '#445';
+      }
+      const dispText = mult === 0 ? '0.00x' : mult >= 100 ? Math.floor(mult) + 'x' : mult.toFixed(2) + 'x';
+      ctx.fillText(dispText, sx + stripW / 2, stripY + 15);
     }
-  }
 
-  // Match counter bar (below strip)
-  const barY = stripY + 28;
-  if (kn.picks.length > 0) {
-    const maxMatch = Math.min(kn.picks.length, KENO_CONFIG.DRAW_COUNT);
-    const barCellW = Math.min(60, (gridW - 8) / (maxMatch + 1));
-    const totalBarW = (maxMatch + 1) * barCellW;
-    const barStartX = cx - totalBarW / 2;
-    for (let m = 0; m <= maxMatch; m++) {
+    // Match counter bar (below strip)
+    const barY = stripY + 28;
+    const barCellW = stripW; // same width as payout strip
+    const barStartX = stripStartX;
+    for (let m = 0; m < totalSlots; m++) {
       const bx = barStartX + m * barCellW;
       const isCurrent = kn.matches === m && drawingDone;
       const isPast = kn.matches > m && kn.phase !== 'picking';
@@ -2252,7 +2252,7 @@ function _drawKeno(px, py, pw, ph) {
   }
 
   // Info text
-  const infoY = barY + 32;
+  const infoY = stripY + 28 + 22 + 10;
   ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'center';
 
@@ -2322,8 +2322,7 @@ function _clickKeno(mx, my, px, py, pw, ph) {
     // Clear + Bet buttons (match _drawKeno layout)
     const gridH = rows * cellH;
     const stripY = gridY + gridH + 6;
-    const barY = stripY + 28;
-    const infoY = barY + 32;
+    const infoY = stripY + 28 + 22 + 10;
     const btnY = infoY + 8;
     if (_casinoHitBtn(mx, my, cx - 160, btnY, 100, 34)) {
       casinoKN_clearPicks();
