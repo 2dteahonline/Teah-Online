@@ -34,6 +34,7 @@ window.MafiaState = {
     shiftedAs: null,          // participant id being disguised as (or null)
     shiftTimer: 0,            // frames remaining for shift
     shiftCooldown: 0,         // frames until can shift again
+    shiftAnim: null,          // { timer, maxTimer, fromColor, toColor, targetId } during shift animation
     // Phantom
     invisible: false,         // currently invisible
     invisTimer: 0,            // frames remaining for invisibility
@@ -209,7 +210,7 @@ window.MafiaSystem = {
     mk._roleState = {
       trackedTarget: null, trackTimer: 0, trackCooldown: 0,
       vitalsOpen: false, vitalsTimer: 0, vitalsCooldown: 0,
-      shiftedAs: null, shiftTimer: 0, shiftCooldown: 0,
+      shiftedAs: null, shiftTimer: 0, shiftCooldown: 0, shiftAnim: null,
       invisible: false, invisTimer: 0, invisCooldown: 0,
       deathAlert: null,
     };
@@ -254,7 +255,7 @@ window.MafiaSystem = {
       mk._roleState = {
         trackedTarget: null, trackTimer: 0, trackCooldown: 0,
         vitalsOpen: false, vitalsTimer: 0, vitalsCooldown: 0,
-        shiftedAs: null, shiftTimer: 0, shiftCooldown: 0,
+        shiftedAs: null, shiftTimer: 0, shiftCooldown: 0, shiftAnim: null,
         invisible: false, invisTimer: 0, invisCooldown: 0,
         deathAlert: null,
       };
@@ -427,33 +428,72 @@ window.MafiaSystem = {
     return true;
   },
 
-  // Shapeshifter: open shift menu or shift into target
+  // Shapeshifter: shift into target or unshift back
   tryShapeshift(targetId) {
     const mk = MafiaState;
     if (mk.playerSubrole !== 'shapeshifter' || mk.playerIsGhost) return false;
     if (mk.phase !== 'playing') return false;
 
     const rs = mk._roleState;
-    // If already shifted, unshift
+    const SHIFT_ANIM_FRAMES = 45; // ~0.75 sec animation
+
+    // Block during animation
+    if (rs.shiftAnim) return false;
+
+    // If already shifted, unshift (back to own color)
     if (rs.shiftedAs) {
-      rs.shiftedAs = null;
-      rs.shiftTimer = 0;
-      const cd = (mk._roleSettings ? mk._roleSettings.shiftCooldown : 30) * 60;
-      rs.shiftCooldown = cd;
+      const shiftTarget = mk.participants.find(p => p.id === rs.shiftedAs);
+      const localP = this.getLocalPlayer();
+      rs.shiftAnim = {
+        timer: SHIFT_ANIM_FRAMES,
+        maxTimer: SHIFT_ANIM_FRAMES,
+        fromColor: shiftTarget && shiftTarget.color ? shiftTarget.color : { body: '#888', dark: '#555' },
+        toColor: localP && localP.color ? localP.color : { body: '#c51111', dark: '#7a0838' },
+        targetId: null, // null = unshifting
+      };
       return true;
     }
+
     if (rs.shiftCooldown > 0) return false;
     if (!targetId) return false;
 
     const target = mk.participants.find(p => p.id === targetId && p.alive && !p.isLocal);
     if (!target) return false;
 
-    const dur = (mk._roleSettings ? mk._roleSettings.shiftDuration : 20) * 60;
-    const cd = (mk._roleSettings ? mk._roleSettings.shiftCooldown : 30) * 60;
-    rs.shiftedAs = targetId;
-    rs.shiftTimer = dur;
-    rs.shiftCooldown = dur + cd;
+    // Start shift animation (player -> target color)
+    const localP = this.getLocalPlayer();
+    rs.shiftAnim = {
+      timer: SHIFT_ANIM_FRAMES,
+      maxTimer: SHIFT_ANIM_FRAMES,
+      fromColor: localP && localP.color ? localP.color : { body: '#c51111', dark: '#7a0838' },
+      toColor: target.color || { body: '#888', dark: '#555' },
+      targetId: targetId,
+    };
     return true;
+  },
+
+  // Called when shift animation completes
+  _completeShapeshift() {
+    const mk = MafiaState;
+    const rs = mk._roleState;
+    const anim = rs.shiftAnim;
+    if (!anim) return;
+
+    if (anim.targetId) {
+      // Shifting into target
+      const dur = (mk._roleSettings ? mk._roleSettings.shiftDuration : 20) * 60;
+      const cd = (mk._roleSettings ? mk._roleSettings.shiftCooldown : 30) * 60;
+      rs.shiftedAs = anim.targetId;
+      rs.shiftTimer = dur;
+      rs.shiftCooldown = dur + cd;
+    } else {
+      // Unshifting back
+      rs.shiftedAs = null;
+      rs.shiftTimer = 0;
+      const cd = (mk._roleSettings ? mk._roleSettings.shiftCooldown : 30) * 60;
+      rs.shiftCooldown = cd;
+    }
+    rs.shiftAnim = null;
   },
 
   // Phantom: toggle invisibility
@@ -1105,12 +1145,18 @@ window.MafiaSystem = {
     }
     if (rs.vitalsCooldown > 0) rs.vitalsCooldown--;
 
+    // Shapeshifter: tick shift animation
+    if (rs.shiftAnim) {
+      rs.shiftAnim.timer--;
+      if (rs.shiftAnim.timer <= 0) {
+        this._completeShapeshift();
+      }
+    }
     // Shapeshifter: count down shift duration and cooldown
     if (rs.shiftTimer > 0) {
       rs.shiftTimer--;
       if (rs.shiftTimer <= 0) {
         rs.shiftedAs = null;
-        // Restore player appearance
       }
     }
     if (rs.shiftCooldown > 0) rs.shiftCooldown--;
@@ -1481,7 +1527,7 @@ window.MafiaSystem = {
     mk._roleState = {
       trackedTarget: null, trackTimer: 0, trackCooldown: 0,
       vitalsOpen: false, vitalsTimer: 0, vitalsCooldown: 0,
-      shiftedAs: null, shiftTimer: 0, shiftCooldown: 0,
+      shiftedAs: null, shiftTimer: 0, shiftCooldown: 0, shiftAnim: null,
       invisible: false, invisTimer: 0, invisCooldown: 0,
       deathAlert: null,
     };

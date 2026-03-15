@@ -231,6 +231,16 @@ const DEFAULT_HITBOX_RADIUS = GAME_CONFIG.DEFAULT_HITBOX_RADIUS;
 // ===================== AMONG US CREWMATE (game world) =====================
 // Draws a full-size crewmate sprite at world position (sx, sy).
 // Supports 4 directions, walk animation, and ghost transparency.
+// Lerp between two hex colors (e.g. '#c51111' → '#132ed1')
+function _lerpHexColor(a, b, t) {
+  const ar = parseInt(a.slice(1,3),16), ag = parseInt(a.slice(3,5),16), ab = parseInt(a.slice(5,7),16);
+  const br = parseInt(b.slice(1,3),16), bg = parseInt(b.slice(3,5),16), bb = parseInt(b.slice(5,7),16);
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+}
+
 function _drawCrewmateWorld(sx, sy, dir, frame, moving, bodyColor, darkColor, scale, isGhost) {
   const s = (scale || 1) * 1.6; // scale up from mini crewmate proportions
   ctx.save();
@@ -314,9 +324,16 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   if (typeof Scene !== 'undefined' && (Scene.inSkeld || Scene.inMafiaLobby)) {
     let bodyCol, darkCol;
     if (isPlayer) {
-      // Shapeshifter: if shifted, use the target's color (passed via skin/hair params)
+      // Shapeshifter animation: interpolate colors during shift/unshift
+      const _shiftAnim = typeof MafiaState !== 'undefined' && MafiaState._roleState && MafiaState._roleState.shiftAnim;
+      // Shapeshifter: if shifted, use the target's color
       const _shifted = typeof MafiaState !== 'undefined' && MafiaState._roleState && MafiaState._roleState.shiftedAs;
-      if (_shifted) {
+      if (_shiftAnim) {
+        // Color morph animation — lerp between from and to colors
+        const t = 1 - (_shiftAnim.timer / _shiftAnim.maxTimer); // 0 → 1
+        bodyCol = _lerpHexColor(_shiftAnim.fromColor.body, _shiftAnim.toColor.body, t);
+        darkCol = _lerpHexColor(_shiftAnim.fromColor.dark, _shiftAnim.toColor.dark, t);
+      } else if (_shifted) {
         const _shiftP = MafiaState.participants.find(p => p.id === MafiaState._roleState.shiftedAs);
         bodyCol = _shiftP && _shiftP.color ? _shiftP.color.body : (skin || '#c51111');
         darkCol = _shiftP && _shiftP.color ? _shiftP.color.dark : (hair || '#7a0838');

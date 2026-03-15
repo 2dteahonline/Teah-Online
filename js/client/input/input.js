@@ -368,7 +368,15 @@ canvas.addEventListener("mousedown", e => {
   if (window._mafiaShiftBtn) {
     const sb = window._mafiaShiftBtn;
     if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
-      window._mafiaShiftPanelOpen = true;
+      const _rs = MafiaState._roleState;
+      if (_rs.shiftAnim) return; // animation playing, block input
+      if (_rs.shiftedAs) {
+        // Already shifted — unshift back
+        MafiaSystem.tryShapeshift(null);
+      } else if (_rs.shiftCooldown <= 0) {
+        // Not shifted — open target picker
+        window._mafiaShiftPanelOpen = true;
+      }
       return;
     }
   }

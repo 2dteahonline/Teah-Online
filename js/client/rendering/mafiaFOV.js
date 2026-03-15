@@ -1586,22 +1586,29 @@ function _drawRoleAbilityButtons(isImpostor) {
   // ---- Shapeshifter "SHIFT" button (impostor with shapeshifter subrole) ----
   if (isImpostor && mk.playerSubrole === 'shapeshifter') {
     const btnY = ctx.canvas.height - btnH - 100 - btnIdx * 60;
-    const canShift = rs.shiftCooldown <= 0 && !rs.shiftedAs;
+    const isAnimating = !!rs.shiftAnim;
+    const canShift = rs.shiftCooldown <= 0 && !rs.shiftedAs && !isAnimating;
     const cooldownSec = Math.ceil(rs.shiftCooldown / 60);
     const isShifted = !!rs.shiftedAs;
 
     ctx.save();
-    ctx.fillStyle = isShifted ? 'rgba(189,16,224,0.85)' : (canShift ? 'rgba(140,10,180,0.85)' : 'rgba(60,10,80,0.6)');
+    if (isAnimating) {
+      ctx.fillStyle = 'rgba(189,16,224,0.65)';
+    } else {
+      ctx.fillStyle = isShifted ? 'rgba(189,16,224,0.85)' : (canShift ? 'rgba(140,10,180,0.85)' : 'rgba(60,10,80,0.6)');
+    }
     ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 10); ctx.fill();
-    ctx.strokeStyle = isShifted ? '#e040ff' : (canShift ? '#bd10e0' : '#442266');
+    ctx.strokeStyle = isAnimating ? '#e040ff' : (isShifted ? '#e040ff' : (canShift ? '#bd10e0' : '#442266'));
     ctx.lineWidth = 2; ctx.stroke();
 
-    ctx.font = 'bold 18px monospace';
+    ctx.font = 'bold 16px monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = (canShift || isShifted) ? '#ffffff' : '#775599';
+    ctx.fillStyle = (canShift || isShifted || isAnimating) ? '#ffffff' : '#775599';
 
-    if (isShifted) {
-      ctx.fillText('SHIFT', btnX + btnW / 2, btnY + btnH / 2 - 8);
+    if (isAnimating) {
+      ctx.fillText('SHIFTING', btnX + btnW / 2, btnY + btnH / 2);
+    } else if (isShifted) {
+      ctx.fillText('UNSHIFT', btnX + btnW / 2, btnY + btnH / 2 - 8);
       ctx.font = 'bold 14px monospace';
       ctx.fillText(Math.ceil(rs.shiftTimer / 60) + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
     } else if (rs.shiftCooldown > 0) {

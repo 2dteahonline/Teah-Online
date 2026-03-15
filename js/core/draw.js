@@ -333,6 +333,39 @@ function draw() {
         drawChar(player.x, player.y, player.dir, 0, false,
           player.skin, player.hair, player.shirt, player.pants, player.name, 0, true);
         ctx.restore();
+      } else if (typeof MafiaState !== 'undefined' && MafiaState._roleState && MafiaState._roleState.shiftAnim) {
+        // Shapeshifter transform animation — player frozen, color morphing with particles
+        const _sa = MafiaState._roleState.shiftAnim;
+        const _prog = 1 - (_sa.timer / _sa.maxTimer); // 0 → 1
+        // Slight scale pulse during shift
+        const _pulse = 1 + Math.sin(_prog * Math.PI) * 0.15;
+        ctx.save();
+        const _px = player.x - camera.x;
+        const _py = player.y - camera.y;
+        ctx.translate(_px, _py);
+        ctx.scale(_pulse, _pulse);
+        ctx.translate(-_px, -_py);
+        // Draw character (color lerp handled inside drawChar)
+        drawChar(player.x, player.y, player.dir, 0, false,
+          player.skin, player.hair, player.shirt, player.pants, player.name, player.hp, true, null, player.maxHp);
+        ctx.restore();
+        // Particle sparkle effect around player
+        ctx.save();
+        const _cx = player.x - camera.x;
+        const _cy = player.y - camera.y - 20;
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + renderTime * 0.02;
+          const dist = 20 + Math.sin(renderTime * 0.015 + i) * 10;
+          const px = _cx + Math.cos(angle) * dist;
+          const py = _cy + Math.sin(angle) * dist;
+          const alpha = 0.3 + 0.4 * Math.sin(_prog * Math.PI);
+          ctx.fillStyle = `rgba(200,120,255,${alpha})`;
+          ctx.beginPath(); ctx.arc(px, py, 2 + Math.sin(renderTime * 0.01 + i) * 1, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        // Stop player movement during animation
+        player.vx = 0;
+        player.vy = 0;
       } else {
         const flashAlpha = contactCooldown > 0 && Math.floor(renderTime / 80) % 2 === 0;
         if (flashAlpha) ctx.globalAlpha = 0.5;

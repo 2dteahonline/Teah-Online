@@ -1022,7 +1022,13 @@ window.addEventListener("keydown", e => {
       return;
     }
     if (key === 'f' && MafiaState.playerSubrole === 'shapeshifter') {
-      window._mafiaShiftPanelOpen = !window._mafiaShiftPanelOpen;
+      const _rs = MafiaState._roleState;
+      if (_rs.shiftAnim) return; // animation playing
+      if (_rs.shiftedAs) {
+        MafiaSystem.tryShapeshift(null); // unshift
+      } else if (_rs.shiftCooldown <= 0) {
+        window._mafiaShiftPanelOpen = !window._mafiaShiftPanelOpen;
+      }
       return;
     }
     if (key === 'f' && MafiaState.playerSubrole === 'phantom') {
