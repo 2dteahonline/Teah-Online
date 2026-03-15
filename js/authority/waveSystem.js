@@ -609,15 +609,16 @@ function spawnPhase(comp, phase, isBossWave) {
   // === FLOOR-CONFIG BOSS WAVES (The Don, Velocity, etc.) ===
   if (comp.forceBoss) {
     const bossKey = comp.forceBoss;
-    // Spawn the boss via createMob()
+    // Boss HP ignores party scaling — always 1 boss at base HP (party scaling only affects mob adds)
+    const bossHpMult = getWaveHPMultiplier(wave) * farmHPMult * phaseHPMult; // no party HP scale
     const bossPos = getSpawnPos();
-    const boss = createMob(bossKey, bossPos.x, bossPos.y, hpMult, spdMult, { bossHPMult: 1.5, phase });
+    const boss = createMob(bossKey, bossPos.x, bossPos.y, bossHpMult, spdMult, { bossHPMult: 1.5, phase });
     if (boss) { mobs.push(boss); typeCounts[bossKey] = 1; }
 
     // Duo boss: spawn second boss alongside (Floor 5 Lehvius+Jackman, Malric+Vale)
     if (comp.duoBoss) {
       const duoPos = getSpawnPos();
-      const duoBoss = createMob(comp.duoBoss, duoPos.x, duoPos.y, hpMult, spdMult, { bossHPMult: 1.5, phase });
+      const duoBoss = createMob(comp.duoBoss, duoPos.x, duoPos.y, bossHpMult, spdMult, { bossHPMult: 1.5, phase });
       if (duoBoss) { mobs.push(duoBoss); typeCounts[comp.duoBoss] = 1; }
     }
 
@@ -637,9 +638,10 @@ function spawnPhase(comp, phase, isBossWave) {
 
   // === LEGACY BOSS WAVES (golem) ===
   if (comp.forceGolem) {
-    // Spawn the golem via createMob()
+    // Boss HP ignores party scaling — always 1 boss at base HP
+    const golemHpMult = getWaveHPMultiplier(wave) * farmHPMult * phaseHPMult;
     const golemPos = getSpawnPos();
-    const golem = createMob('golem', golemPos.x, golemPos.y, hpMult, spdMult, phaseOpts);
+    const golem = createMob('golem', golemPos.x, golemPos.y, golemHpMult, spdMult, phaseOpts);
     if (golem) { mobs.push(golem); typeCounts["golem"] = 1; }
 
     // Guarantee spawns: tank, witch, grunt, runner, archer, healer, mummy
