@@ -252,6 +252,14 @@ const PartySystem = {
   // Handle a member taking lethal damage
   handleMemberDeath(member) {
     if (member.dead) return;
+    // Auto-revive from chest armor (once per dungeon run)
+    if (hasRevive(member.equip) && !member.entity._reviveUsed) {
+      member.entity._reviveUsed = true;
+      member.entity.hp = Math.round(member.entity.maxHp * 0.30);
+      hitEffects.push({ x: member.entity.x, y: member.entity.y - 35, life: 35, maxLife: 35, type: "heal", dmg: "REVIVE!" });
+      hitEffects.push({ x: member.entity.x, y: member.entity.y, life: 25, type: "shockwave" });
+      return; // survived — don't proceed to death
+    }
     member.dead = true;
     member.lives--;
     member.deathTimer = DEATH_ANIM_FRAMES;

@@ -7,9 +7,10 @@ const AttackShapes = {
 
   // ---- Circle AoE ----
   // Returns true if the player is inside a circle centered at (cx, cy)
-  hitsPlayer(cx, cy, radius) {
-    const dx = player.x - cx;
-    const dy = player.y - cy;
+  hitsPlayer(cx, cy, radius, entity) {
+    const t = entity || player;
+    const dx = t.x - cx;
+    const dy = t.y - cy;
     return dx * dx + dy * dy <= radius * radius;
   },
 
@@ -27,8 +28,9 @@ const AttackShapes = {
 
   // ---- Line / Beam ----
   // Returns true if player is within a line (beam) from (x1,y1) to (x2,y2) with given width
-  playerInLine(x1, y1, x2, y2, width) {
-    return this._pointInLine(player.x, player.y, x1, y1, x2, y2, width);
+  playerInLine(x1, y1, x2, y2, width, entity) {
+    const t = entity || player;
+    return this._pointInLine(t.x, t.y, x1, y1, x2, y2, width);
   },
 
   // Returns mobs hit by a line
@@ -56,8 +58,9 @@ const AttackShapes = {
 
   // ---- Cone ----
   // Returns true if player is in a cone from (cx,cy) facing direction (radians) with angle spread and range
-  playerInCone(cx, cy, direction, halfAngleRad, range) {
-    return this._pointInCone(player.x, player.y, cx, cy, direction, halfAngleRad, range);
+  playerInCone(cx, cy, direction, halfAngleRad, range, entity) {
+    const t = entity || player;
+    return this._pointInCone(t.x, t.y, cx, cy, direction, halfAngleRad, range);
   },
 
   mobsInCone(cx, cy, direction, halfAngleRad, range, excludeId) {
@@ -82,8 +85,9 @@ const AttackShapes = {
   },
 
   // ---- Ring (donut) ----
-  playerInRing(cx, cy, innerRadius, outerRadius) {
-    const dx = player.x - cx, dy = player.y - cy;
+  playerInRing(cx, cy, innerRadius, outerRadius, entity) {
+    const t = entity || player;
+    const dx = t.x - cx, dy = t.y - cy;
     const d2 = dx * dx + dy * dy;
     return d2 >= innerRadius * innerRadius && d2 <= outerRadius * outerRadius;
   },
@@ -104,9 +108,10 @@ const AttackShapes = {
 
   // ---- Player tile check ----
   // Returns true if player is standing on one of the given tiles
-  playerOnTiles(tiles) {
-    const ptx = Math.floor(player.x / TILE);
-    const pty = Math.floor(player.y / TILE);
+  playerOnTiles(tiles, entity) {
+    const tgt = entity || player;
+    const ptx = Math.floor(tgt.x / TILE);
+    const pty = Math.floor(tgt.y / TILE);
     for (const t of tiles) {
       if (t.tx === ptx && t.ty === pty) return true;
     }
@@ -115,13 +120,15 @@ const AttackShapes = {
 
   // ---- Direction helpers ----
   // Get direction (radians) from mob to player
-  dirToPlayer(mob) {
-    return Math.atan2(player.y - mob.y, player.x - mob.x);
+  dirToPlayer(mob, entity) {
+    const t = entity || player;
+    return Math.atan2(t.y - mob.y, t.x - mob.x);
   },
 
   // Get distance from mob to player
-  distToPlayer(mob) {
-    const dx = player.x - mob.x, dy = player.y - mob.y;
+  distToPlayer(mob, entity) {
+    const t = entity || player;
+    const dx = t.x - mob.x, dy = t.y - mob.y;
     return Math.sqrt(dx * dx + dy * dy);
   },
 

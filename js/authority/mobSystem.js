@@ -1582,9 +1582,16 @@ function updateMobs() {
   if (waveState === "cleared") {
     waveTimer--;
     // Chest armor regen during cleared phase (1 HP/s = every 60 frames)
-    const regenRate = getChestRegen();
-    if (regenRate > 0 && waveTimer % 60 === 0 && player.hp < player.maxHp) {
-      player.hp = Math.min(player.maxHp, player.hp + regenRate);
+    if (waveTimer % 60 === 0) {
+      const _regenTargets = (typeof PartyState !== 'undefined' && PartyState.active) ? PartySystem.getAliveEntities() : [player];
+      for (const _rt of _regenTargets) {
+        const _rtMember = (typeof PartyState !== 'undefined' && PartyState.active) ? PartySystem.getMemberByEntity(_rt) : null;
+        const _rtEquip = _rtMember ? _rtMember.equip : playerEquip;
+        const _rtRegen = getChestRegen(_rtEquip);
+        if (_rtRegen > 0 && _rt.hp < _rt.maxHp) {
+          _rt.hp = Math.min(_rt.maxHp, _rt.hp + _rtRegen);
+        }
+      }
     }
     // Only spawn next wave if floor not complete
     if (waveTimer <= 0 && !stairsOpen) { spawnWave(); }

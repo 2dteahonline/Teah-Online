@@ -172,6 +172,7 @@ function dealDamageToPlayer(rawDamage, source, attacker, targetEntity) {
   // Resolve target: explicit param > _currentDamageTarget > global player
   const target = targetEntity || _currentDamageTarget || player;
   const isBot = target !== player && target._isBot;
+  const targetEquip = isBot ? (typeof PartySystem !== 'undefined' && PartySystem.getMemberByEntity(target)?.equip || playerEquip) : playerEquip;
 
   if (!isBot && playerDead) return 0;
   if (isBot && target._isDead) return 0;
@@ -196,15 +197,15 @@ function dealDamageToPlayer(rawDamage, source, attacker, targetEntity) {
     }
   }
 
-  // 1. Apply armor reduction (bots skip armor — they don't have equipment)
+  // 1. Apply armor reduction (uses target's equipment)
   let reduced = rawDamage;
-  if (!isBot && source !== "dot") {
-    reduced *= (1 - getArmorReduction());
+  if (source !== "dot") {
+    reduced *= (1 - getArmorReduction(targetEquip));
   }
 
-  // 2. Apply projectile/AOE reduction (bots skip)
-  if (!isBot && (source === "projectile" || source === "aoe")) {
-    reduced *= (1 - getProjReduction());
+  // 2. Apply projectile/AOE reduction
+  if (source === "projectile" || source === "aoe") {
+    reduced *= (1 - getProjReduction(targetEquip));
   }
 
   // 2b. Armor Break multiplier (Vortalis status effect) — player only
@@ -216,15 +217,15 @@ function dealDamageToPlayer(rawDamage, source, attacker, targetEntity) {
   const finalDmg = Math.round(reduced);
   target.hp -= finalDmg;
 
-  // 4. Thorns — reflect damage to attacker on contact hits (player only)
-  if (!isBot && source === "contact" && attacker && attacker.hp > 0) {
-    const thornsRate = getThorns();
+  // 4. Thorns — reflect damage to attacker on contact hits
+  if (source === "contact" && attacker && attacker.hp > 0) {
+    const thornsRate = getThorns(targetEquip);
     if (thornsRate > 0) {
       const thornsDmg = Math.round(finalDmg * thornsRate);
       hitEffects.push({ x: attacker.x, y: attacker.y - 15, life: 15, type: "hit", dmg: thornsDmg });
       hitEffects.push({ x: attacker.x, y: attacker.y, life: 12, type: "thorns" });
       dealDamageToMob(attacker, thornsDmg, "thorns");
-      const staggerTime = getStagger();
+      const staggerTime = getStagger(targetEquip);
       if (staggerTime > 0) {
         StatusFX.applyToMob(attacker, 'stagger', { duration: Math.round(staggerTime * 60) });
       }
@@ -260,7 +261,7 @@ const GUN_BEHAVIORS = {
       hitEffects.push({ x: bx, y: by, life: 20, type: "frost_hit" });
     },
     // On-kill: AOE frost nova freezes nearby enemies
-    onKill: function(mob) {
+    onKill: function(mob, killerGun) {
       const frostNovaRadius = 120;
       hitEffects.push({ x: mob.x, y: mob.y, life: 22, type: "frost_nova" });
       for (const s of mobs) {
@@ -281,10 +282,10 @@ const GUN_BEHAVIORS = {
       hitEffects.push({ x: bx, y: by, life: 20, type: "burn_hit" });
     },
     // On-kill: burning enemies explode, chain reaction
-    onKill: function(mob) {
+    onKill: function(mob, killerGun) {
       if (mob.burnTimer <= 0) return; // only burning mobs explode
       const explosionRadius = 100;
-      const explosionDmg = Math.round(gun.damage * 0.8);
+      const explosionDmg = Math.round((killerGun || gun).damage * 0.8);
       hitEffects.push({ x: mob.x, y: mob.y, life: 20, type: "inferno_explode" });
       for (const s of mobs) {
         if (s === mob || s.hp <= 0) continue;
@@ -514,7 +515,7 @@ Events.on('mob_killed', ({ mob, source, killerMember }) => {
   if (_kGun.special && GUN_BEHAVIORS[_kGun.special]) {
     const behavior = GUN_BEHAVIORS[_kGun.special];
     if (behavior.onKill && behavior.killSources && behavior.killSources.includes(source)) {
-      behavior.onKill(mob);
+      behavior.onKill(mob, _kGun);
     }
   }
 });

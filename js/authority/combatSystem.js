@@ -1113,7 +1113,7 @@ const MOB_SPECIALS = {
         hitEffects.push({ x: m.x, y: m.y - 20, life: 20, type: "heal", dmg: "+" + healAmt });
         // Check if player is in the dash line — damage if so
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._blinkStartX, m._blinkStartY, m._blinkTargetX, m._blinkTargetY, 32)) {
+          if (AttackShapes.playerInLine(m._blinkStartX, m._blinkStartY, m._blinkTargetX, m._blinkTargetY, 32, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1184,7 +1184,7 @@ const MOB_SPECIALS = {
         if (typeof AttackShapes !== 'undefined') {
           const dir = Math.atan2(player.y - m.y, player.x - m.x);
           const halfAngle = Math.PI / 4; // 90° / 2
-          if (AttackShapes.playerInCone(m.x, m.y, dir, halfAngle, 96)) {
+          if (AttackShapes.playerInCone(m.x, m.y, dir, halfAngle, 96, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1353,7 +1353,7 @@ const MOB_SPECIALS = {
         // Resolve: damage + knockback + slow (at the telegraphed position, not mob center)
         const pcx = m._poundCX || m.x, pcy = m._poundCY || m.y;
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(pcx, pcy, 96)) {
+          if (AttackShapes.hitsPlayer(pcx, pcy, 96, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1461,7 +1461,7 @@ const MOB_SPECIALS = {
       if (bomb.timer <= 0) {
         // Explode
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(bomb.x, bomb.y, bomb.radius)) {
+          if (AttackShapes.hitsPlayer(bomb.x, bomb.y, bomb.radius, player)) {
             const dmg = Math.round(m.damage * 1.5 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1508,7 +1508,7 @@ const MOB_SPECIALS = {
       if (m._laserTelegraph <= 0) {
         // Resolve: heavy damage if player in line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._laserX1, m._laserY1, m._laserX2, m._laserY2, 24)) {
+          if (AttackShapes.playerInLine(m._laserX1, m._laserY1, m._laserX2, m._laserY2, 24, player)) {
             const dmg = Math.round(m.damage * 3 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1672,7 +1672,7 @@ const MOB_SPECIALS = {
       if (m._phaseDashTimer <= 0) {
         // Check damage along path
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._phaseDashStartX, m._phaseDashStartY, m._phaseDashTargetX, m._phaseDashTargetY, 32)) {
+          if (AttackShapes.playerInLine(m._phaseDashStartX, m._phaseDashStartY, m._phaseDashTargetX, m._phaseDashTargetY, 32, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1777,7 +1777,7 @@ const MOB_SPECIALS = {
           delayFrames: 36,
           onResolve: () => {
             if (typeof AttackShapes !== 'undefined') {
-              if (AttackShapes.playerInLine(capturedStartX, capturedStartY, capturedTargetX, capturedTargetY, 28)) {
+              if (AttackShapes.playerInLine(capturedStartX, capturedStartY, capturedTargetX, capturedTargetY, 28, player)) {
                 const dmg = Math.round(capturedMob.damage * getMobDamageMultiplier());
                 const dealt = dealDamageToPlayer(dmg, 'mob_special', capturedMob);
                 hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1887,7 +1887,7 @@ const MOB_SPECIALS = {
       if (m._drainTelegraph <= 0) {
         // Resolve: damage if player in line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._drainX1, m._drainY1, m._drainX2, m._drainY2, 28)) {
+          if (AttackShapes.playerInLine(m._drainX1, m._drainY1, m._drainX2, m._drainY2, 28, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -1951,7 +1951,7 @@ const MOB_SPECIALS = {
       if (m._weldTelegraph <= 0) {
         // Resolve: damage if player in line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._weldX1, m._weldY1, m._weldX2, m._weldY2, 32)) {
+          if (AttackShapes.playerInLine(m._weldX1, m._weldY1, m._weldX2, m._weldY2, 32, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -2031,7 +2031,7 @@ const MOB_SPECIALS = {
         // Circle AoE explosion
         hitEffects.push({ x: m.x, y: m.y - 10, life: 30, type: "explosion" });
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 96)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 96, player)) {
             const dmg = Math.round(m.damage * 1.5 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -2183,7 +2183,7 @@ const MOB_SPECIALS = {
         // Resolve: damage player if in line
         let hitPlayer = false;
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._chainX1, m._chainY1, m._chainX2, m._chainY2, 32)) {
+          if (AttackShapes.playerInLine(m._chainX1, m._chainY1, m._chainX2, m._chainY2, 32, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -2263,7 +2263,7 @@ const MOB_SPECIALS = {
       if (m._empTelegraph <= 0) {
         // Resolve: silence if player inside ring
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 192)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 192, player)) {
             StatusFX.applyToPlayer('silence', { duration: 90 }); // 1.5s
             hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "silence" });
             const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
@@ -2325,7 +2325,7 @@ const MOB_SPECIALS = {
         if (partner && partner.life > 0) {
           // Line damage check between pillars
           if (typeof AttackShapes !== 'undefined') {
-            if (AttackShapes.playerInLine(pillar.x, pillar.y, partner.x, partner.y, 24)) {
+            if (AttackShapes.playerInLine(pillar.x, pillar.y, partner.x, partner.y, 24, player)) {
               const dmg = Math.round(m.damage * 0.8 * getMobDamageMultiplier());
               const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
               hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -2514,8 +2514,8 @@ const MOB_SPECIALS = {
         // Resolve: check both lines
         let hit = false;
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._tape1X1, m._tape1Y1, m._tape1X2, m._tape1Y2, 24) ||
-              AttackShapes.playerInLine(m._tape2X1, m._tape2Y1, m._tape2X2, m._tape2Y2, 24)) {
+          if (AttackShapes.playerInLine(m._tape1X1, m._tape1Y1, m._tape1X2, m._tape1Y2, 24, player) ||
+              AttackShapes.playerInLine(m._tape2X1, m._tape2Y1, m._tape2X2, m._tape2Y2, 24, player)) {
             hit = true;
           }
         }
@@ -2587,7 +2587,7 @@ const MOB_SPECIALS = {
       if (m._penaltyTelegraph <= 0) {
         // Resolve: apply mark at telegraphed position
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m._penaltyX, m._penaltyY, 72)) {
+          if (AttackShapes.hitsPlayer(m._penaltyX, m._penaltyY, 72, player)) {
             StatusFX.applyToPlayer('mark', { duration: 240, bonus: 0.25 }); // 4s, +25% = 2x with base
             hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "mark" });
           }
@@ -2811,7 +2811,7 @@ const MOB_SPECIALS = {
       if (m._takeoverTelegraph <= 0) {
         // Resolve: always pull if player in range (large radius)
         const radius = 400;
-        if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, radius)) {
+        if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, radius, player)) {
           const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
           const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -3189,7 +3189,7 @@ const MOB_SPECIALS = {
         // Resolve: damage + knockback at telegraphed position
         const pcx = m._pileDriverCX || m.x, pcy = m._pileDriverCY || m.y;
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(pcx, pcy, 96)) {
+          if (AttackShapes.hitsPlayer(pcx, pcy, 96, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -3522,7 +3522,7 @@ const MOB_SPECIALS = {
         m.y = player.y;
         // Circle AoE damage
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 80)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 80, player)) {
             const dmg = Math.round(m.damage * 1.3 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -3625,7 +3625,7 @@ const MOB_SPECIALS = {
       if (m._siphonTelegraph <= 0) {
         // Resolve: damage + poison if player still in line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m.x, m.y, m._siphonEndX, m._siphonEndY, 24)) {
+          if (AttackShapes.playerInLine(m.x, m.y, m._siphonEndX, m._siphonEndY, 24, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -3732,7 +3732,7 @@ const MOB_SPECIALS = {
         m.y = m._burrowTargetY || player.y;
         // Circle AoE damage + knockback
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 120)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 120, player)) {
             const dmg = Math.round(m.damage * 1.5 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -3883,7 +3883,7 @@ const MOB_SPECIALS = {
       if (trap.triggered) continue;
       // Check if player crosses the line
       if (typeof AttackShapes !== 'undefined') {
-        if (AttackShapes.playerInLine(trap.x1, trap.y1, trap.x2, trap.y2, trap.width)) {
+        if (AttackShapes.playerInLine(trap.x1, trap.y1, trap.x2, trap.y2, trap.width, player)) {
           trap.triggered = true;
           const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
           const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
@@ -3940,7 +3940,7 @@ const MOB_SPECIALS = {
       }
       if (m._lungeDashTimer <= 0) {
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 48)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 48, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -4166,7 +4166,7 @@ const MOB_SPECIALS = {
             const tcx = tile.x * TILE + TILE / 2;
             const tcy = tile.y * TILE + TILE / 2;
             if (typeof AttackShapes !== 'undefined') {
-              if (AttackShapes.hitsPlayer(tcx, tcy, TILE)) {
+              if (AttackShapes.hitsPlayer(tcx, tcy, TILE, player)) {
                 const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
                 hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
                 break; // only hit once
@@ -4237,7 +4237,7 @@ const MOB_SPECIALS = {
       // Check player hit every 10 frames
       if (laser.life % 10 === 0) {
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(laser.cx, laser.cy, lx2, ly2, 24)) {
+          if (AttackShapes.playerInLine(laser.cx, laser.cy, lx2, ly2, 24, player)) {
             const dmg = Math.round(m.damage * 0.5 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
@@ -4320,7 +4320,7 @@ const MOB_SPECIALS = {
       if (m._hackTelegraph <= 0) {
         // Resolve: apply confuse
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m._hackX, m._hackY, 72)) {
+          if (AttackShapes.hitsPlayer(m._hackX, m._hackY, 72, player)) {
             StatusFX.applyToPlayer('confuse', { duration: 120 }); // 2s
             hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "confuse" });
           }
@@ -4512,7 +4512,7 @@ const MOB_SPECIALS = {
         }
         // Immediate AoE damage on creation
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m._empTargetX, m._empTargetY, 120)) {
+          if (AttackShapes.hitsPlayer(m._empTargetX, m._empTargetY, 120, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -4568,7 +4568,7 @@ const MOB_SPECIALS = {
       if (m._empDomeTelegraph <= 0) {
         // Resolve: long silence + damage if player inside circle
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 180)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 180, player)) {
             StatusFX.applyToPlayer('silence', { duration: 240 }); // 4s suppression
             hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "silence" });
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
@@ -4619,7 +4619,7 @@ const MOB_SPECIALS = {
       if (m._pulseTelegraph <= 0) {
         // Resolve: damage + stun if player in circle
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m._pulseX, m._pulseY, 120)) {
+          if (AttackShapes.hitsPlayer(m._pulseX, m._pulseY, 120, player)) {
             const dmg = Math.round(m.damage * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -4671,7 +4671,7 @@ const MOB_SPECIALS = {
       if (m._junzBeam.life % 10 === 0 && typeof AttackShapes !== 'undefined') {
         const endX = m._junzBeam.cx + Math.cos(m._junzBeam.angle) * m._junzBeam.length;
         const endY = m._junzBeam.cy + Math.sin(m._junzBeam.angle) * m._junzBeam.length;
-        if (AttackShapes.playerInLine(m._junzBeam.cx, m._junzBeam.cy, endX, endY, 28)) {
+        if (AttackShapes.playerInLine(m._junzBeam.cx, m._junzBeam.cy, endX, endY, 28, player)) {
           const dmg = Math.round(m.damage * 0.6 * getMobDamageMultiplier());
           const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
@@ -4811,7 +4811,7 @@ const MOB_SPECIALS = {
         m.y = m._dashTargetY;
         // Check if player is in the dash line — damage + bleed if so
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._dashStartX, m._dashStartY, m._dashTargetX, m._dashTargetY, 48)) {
+          if (AttackShapes.playerInLine(m._dashStartX, m._dashStartY, m._dashTargetX, m._dashTargetY, 48, player)) {
             const dmg = Math.round(m.damage * 1.2 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -4892,7 +4892,7 @@ const MOB_SPECIALS = {
         m.y = m._goreTargetY;
         // Damage check along dash line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._goreStartX, m._goreStartY, m._goreTargetX, m._goreTargetY, 48)) {
+          if (AttackShapes.playerInLine(m._goreStartX, m._goreStartY, m._goreTargetX, m._goreTargetY, 48, player)) {
             const dmg = Math.round(m.damage * 1.2 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -4985,7 +4985,7 @@ const MOB_SPECIALS = {
         m.y = m._pounceTargetY;
         // Check if player is at the impact zone
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m._pounceTargetX, m._pounceTargetY, 55)) {
+          if (AttackShapes.hitsPlayer(m._pounceTargetX, m._pounceTargetY, 55, player)) {
             const dmg = Math.round(m.damage * 1.3 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -5044,7 +5044,7 @@ const MOB_SPECIALS = {
       if (m._screechTelegraph <= 0) {
         // Resolve: damage + disorient if player in ring
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInRing(m.x, m.y, 30, 190)) {
+          if (AttackShapes.playerInRing(m.x, m.y, 30, 190, player)) {
             const dmg = Math.round(m.damage * 1.3 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -5097,7 +5097,7 @@ const MOB_SPECIALS = {
       if (m._slimeTelegraph <= 0) {
         // Resolve: damage + slow if player in line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._slimeX1, m._slimeY1, m._slimeX2, m._slimeY2, 75)) {
+          if (AttackShapes.playerInLine(m._slimeX1, m._slimeY1, m._slimeX2, m._slimeY2, 75, player)) {
             const dmg = Math.round(m.damage * 1.2 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -5230,7 +5230,7 @@ const MOB_SPECIALS = {
       if (m._glowTelegraph <= 0) {
         // Resolve: damage + mark if player in circle
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m._glowTargetX, m._glowTargetY, 50)) {
+          if (AttackShapes.hitsPlayer(m._glowTargetX, m._glowTargetY, 50, player)) {
             const dmg = Math.round(m.damage * 0.7 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -5288,7 +5288,7 @@ const MOB_SPECIALS = {
       if (m._lashTelegraph <= 0) {
         // Resolve: damage + bleed if player in line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._lashX1, m._lashY1, m._lashX2, m._lashY2, 44)) {
+          if (AttackShapes.playerInLine(m._lashX1, m._lashY1, m._lashX2, m._lashY2, 44, player)) {
             const dmg = Math.round(m.damage * 1.2 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -5561,7 +5561,7 @@ const MOB_SPECIALS = {
       if (m._overchargeTelegraph <= 0) {
         // Resolve: damage + stun if player in circle
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m.x, m.y, 190)) {
+          if (AttackShapes.hitsPlayer(m.x, m.y, 190, player)) {
             const dmg = Math.round(m.damage * 1.8 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -5614,7 +5614,7 @@ const MOB_SPECIALS = {
         let playerHit = false;
         if (typeof AttackShapes !== 'undefined' && m._oozeLines) {
           for (const line of m._oozeLines) {
-            if (AttackShapes.playerInLine(line.x1, line.y1, line.x2, line.y2, 52)) {
+            if (AttackShapes.playerInLine(line.x1, line.y1, line.x2, line.y2, 52, player)) {
               playerHit = true;
               break;
             }
@@ -5981,7 +5981,7 @@ const MOB_SPECIALS = {
       if (m._puppetTelegraph <= 0) {
         // Resolve: damage + confuse if player in line
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.playerInLine(m._puppetX1, m._puppetY1, m._puppetX2, m._puppetY2, 55)) {
+          if (AttackShapes.playerInLine(m._puppetX1, m._puppetY1, m._puppetX2, m._puppetY2, 55, player)) {
             const dmg = Math.round(m.damage * 1.4 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });
@@ -6036,7 +6036,7 @@ const MOB_SPECIALS = {
       if (m._abyssTelegraph <= 0) {
         // Resolve: damage + root if player in circle
         if (typeof AttackShapes !== 'undefined') {
-          if (AttackShapes.hitsPlayer(m._abyssTargetX, m._abyssTargetY, 140)) {
+          if (AttackShapes.hitsPlayer(m._abyssTargetX, m._abyssTargetY, 140, player)) {
             const dmg = Math.round(m.damage * 1.3 * getMobDamageMultiplier());
             const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
             hitEffects.push({ x: player.x, y: player.y - 10, life: 24, type: "hit", dmg: dealt });

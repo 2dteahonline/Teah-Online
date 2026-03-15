@@ -217,74 +217,87 @@ const MELEE_TIERS = [
 // playerEquip → js/authority/gameState.js
 
 // Combined damage reduction from all armor
-function getArmorReduction() {
+function getArmorReduction(equip) {
+  const eq = equip || playerEquip;
   let r = 0;
-  if (playerEquip.pants) r += playerEquip.pants.dmgReduce;
-  if (playerEquip.chest) r += playerEquip.chest.dmgReduce;
+  if (eq.pants) r += eq.pants.dmgReduce;
+  if (eq.chest) r += eq.chest.dmgReduce;
   return Math.min(0.50, r); // cap at 50%
 }
 
 // Combined HP bonus from armor
-function getArmorHPBonus() {
-  return playerEquip.chest ? playerEquip.chest.hpBonus : 0;
+function getArmorHPBonus(equip) {
+  const eq = equip || playerEquip;
+  return eq.chest ? eq.chest.hpBonus : 0;
 }
 
 // Speed bonus from boots
-function getBootsSpeedBonus() {
-  return playerEquip.boots ? playerEquip.boots.speedBonus : 0;
+function getBootsSpeedBonus(equip) {
+  const eq = equip || playerEquip;
+  return eq.boots ? eq.boots.speedBonus : 0;
 }
 
 // Effect duration reduction from helmet
-function getEffectReduction() {
+function getEffectReduction(equip) {
   // Legacy — now uses poison/status reduce
-  return getPoisonReduction();
+  return getPoisonReduction(equip);
 }
 
-function getPoisonReduction() {
-  return playerEquip.helmet && playerEquip.helmet.poisonReduce ? playerEquip.helmet.poisonReduce : 0;
+function getPoisonReduction(equip) {
+  const eq = equip || playerEquip;
+  return eq.helmet && eq.helmet.poisonReduce ? eq.helmet.poisonReduce : 0;
 }
 
-function getStatusReduction() {
-  return playerEquip.helmet && playerEquip.helmet.statusReduce ? playerEquip.helmet.statusReduce : 0;
+function getStatusReduction(equip) {
+  const eq = equip || playerEquip;
+  return eq.helmet && eq.helmet.statusReduce ? eq.helmet.statusReduce : 0;
 }
 
-function getAbsorb() {
-  return playerEquip.helmet && playerEquip.helmet.absorb ? playerEquip.helmet.absorb : 0;
+function getAbsorb(equip) {
+  const eq = equip || playerEquip;
+  return eq.helmet && eq.helmet.absorb ? eq.helmet.absorb : 0;
 }
 
 // Dodge chance from boots
-function getDodgeChance() {
-  return playerEquip.boots && playerEquip.boots.dodgeChance ? playerEquip.boots.dodgeChance : 0;
+function getDodgeChance(equip) {
+  const eq = equip || playerEquip;
+  return eq.boots && eq.boots.dodgeChance ? eq.boots.dodgeChance : 0;
 }
 
 // Knockback reduction from pants
-function getProjReduction() {
-  return playerEquip.pants && playerEquip.pants.projReduce ? playerEquip.pants.projReduce : 0;
+function getProjReduction(equip) {
+  const eq = equip || playerEquip;
+  return eq.pants && eq.pants.projReduce ? eq.pants.projReduce : 0;
 }
 
 // Thorns damage multiplier from pants
-function getThorns() {
-  return playerEquip.pants && playerEquip.pants.thorns ? playerEquip.pants.thorns : 0;
+function getThorns(equip) {
+  const eq = equip || playerEquip;
+  return eq.pants && eq.pants.thorns ? eq.pants.thorns : 0;
 }
 
 // Stagger duration from pants (seconds)
-function getStagger() {
-  return playerEquip.pants && playerEquip.pants.stagger ? playerEquip.pants.stagger : 0;
+function getStagger(equip) {
+  const eq = equip || playerEquip;
+  return eq.pants && eq.pants.stagger ? eq.pants.stagger : 0;
 }
 
 // Heal effectiveness boost from chest
-function getHealBoost() {
-  return playerEquip.chest && playerEquip.chest.healBoost ? playerEquip.chest.healBoost : 0;
+function getHealBoost(equip) {
+  const eq = equip || playerEquip;
+  return eq.chest && eq.chest.healBoost ? eq.chest.healBoost : 0;
 }
 
 // HP regen per second from chest (during cleared phase)
-function getChestRegen() {
-  return playerEquip.chest && playerEquip.chest.regen ? playerEquip.chest.regen : 0;
+function getChestRegen(equip) {
+  const eq = equip || playerEquip;
+  return eq.chest && eq.chest.regen ? eq.chest.regen : 0;
 }
 
 // Has auto-revive
-function hasRevive() {
-  return playerEquip.chest && playerEquip.chest.revive ? true : false;
+function hasRevive(equip) {
+  const eq = equip || playerEquip;
+  return eq.chest && eq.chest.revive ? true : false;
 }
 let reviveUsed = false; // once per dungeon run
 let shadowStepActive = false; // next melee = guaranteed crit after dodge
@@ -293,8 +306,9 @@ let phaseTimer = 0; // frames of phase-through-mobs after dodge (T4 boots)
 // Centralized death check — handles auto-revive from chest armor
 function checkPlayerDeath() {
   if (player.hp > 0 || playerDead) return;
-  if (hasRevive() && !reviveUsed) {
-    reviveUsed = true;
+  if (hasRevive() && !player._reviveUsed) {
+    player._reviveUsed = true;
+    reviveUsed = true; // keep global in sync for UI reads
     player.hp = Math.round(player.maxHp * 0.30);
     hitEffects.push({ x: player.x, y: player.y - 35, life: 35, maxLife: 35, type: "heal", dmg: "REVIVE!" });
     hitEffects.push({ x: player.x, y: player.y, life: 25, type: "shockwave" });

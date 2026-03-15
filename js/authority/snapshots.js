@@ -63,7 +63,7 @@ function serializeGameState() {
     // ---- Dungeon progress ----
     stairsOpen: stairsOpen,
     dungeonComplete: dungeonComplete,
-    reviveUsed: reviveUsed,
+    reviveUsed: reviveUsed || player._reviveUsed,
     currentDungeon: currentDungeon,
     dungeonReturnLevel: dungeonReturnLevel,
     fireRateBonus: fireRateBonus,
@@ -291,6 +291,7 @@ function applyGameStateSnapshot(snap) {
   stairsOpen = snap.stairsOpen;
   dungeonComplete = snap.dungeonComplete;
   reviveUsed = snap.reviveUsed;
+  player._reviveUsed = snap.reviveUsed;
   if (snap.currentDungeon != null) currentDungeon = snap.currentDungeon;
   if (snap.dungeonReturnLevel != null) dungeonReturnLevel = snap.dungeonReturnLevel;
   fireRateBonus = snap.fireRateBonus;

@@ -46,7 +46,7 @@ MOB_SPECIALS.dread_belch = (m, ctx) => {
     m._dreadBelchTele--;
     if (m._dreadBelchTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 6, 140)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 6, 140, player)) {
         const dmg = Math.round(52 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -72,7 +72,7 @@ MOB_SPECIALS.maw_hymn = (m, ctx) => {
   if (m._mawHymnTele) {
     m._mawHymnTele--;
     if (m._mawHymnTele <= 0) {
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 200)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 200, player)) {
         const dmg = Math.round(15 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: dealt });
@@ -101,7 +101,7 @@ MOB_SPECIALS.dark_gulp = (m, ctx) => {
     m._darkGulpTele--;
     if (m._darkGulpTele <= 0) {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 9, 200)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 9, 200, player)) {
         const dmg = Math.round(50 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -169,7 +169,7 @@ MOB_SPECIALS.minor_orb_pulse = (m, ctx) => {
   if (m._orbPulseTele) {
     m._orbPulseTele--;
     if (m._orbPulseTele <= 0) {
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 120)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 120, player)) {
         const dmg = Math.round(38 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -237,7 +237,7 @@ MOB_SPECIALS.seal_rupture = (m, ctx) => {
   if (m._sealRuptureTele) {
     m._sealRuptureTele--;
     if (m._sealRuptureTele <= 0) {
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 150)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 150, player)) {
         const dmg = Math.round(55 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -269,7 +269,7 @@ MOB_SPECIALS.devouring_pull = (m, ctx) => {
     m._devourPullTimer--;
     const dir = Math.atan2(player.y - m.y, player.x - m.x);
     // Pull player 3px toward mob if within cone
-    if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 7.2, 250)) {
+    if (typeof AttackShapes !== 'undefined' && AttackShapes.playerInCone(m.x, m.y, dir, Math.PI / 7.2, 250, player)) {
       const pullDir = Math.atan2(m.y - player.y, m.x - player.x);
       const nx = player.x + Math.cos(pullDir) * 3;
       const ny = player.y + Math.sin(pullDir) * 3;
@@ -486,7 +486,7 @@ MOB_SPECIALS.orb_bomb_command = (m, ctx) => {
       }
       // Explosion when timer hits 0
       if (bomb.timer <= 0) {
-        if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(bomb.targetX, bomb.targetY, 70)) {
+        if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(bomb.targetX, bomb.targetY, 70, player)) {
           const dmg = Math.round(55 * getMobDamageMultiplier());
           const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
@@ -555,7 +555,7 @@ MOB_SPECIALS.divine_form_shift = (m, ctx) => {
     if (m._statuePhase <= 0) {
       m._invulnerable = false;
       // Shockwave on phase end
-      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 200)) {
+      if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 200, player)) {
         const dmg = Math.round(70 * getMobDamageMultiplier());
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 25, type: "hit", dmg: dealt });
@@ -580,7 +580,7 @@ MOB_SPECIALS.divine_form_shift = (m, ctx) => {
     m.speed = m._origSpeed * 0.8;
     hitEffects.push({ x: m.x, y: m.y - 20, life: 30, type: "cast" });
     // Small shockwave on transformation
-    if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 150)) {
+    if (typeof AttackShapes !== 'undefined' && AttackShapes.hitsPlayer(m.x, m.y, 150, player)) {
       const dmg = Math.round(40 * getMobDamageMultiplier());
       const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
       hitEffects.push({ x: player.x, y: player.y - 10, life: 20, type: "hit", dmg: dealt });
