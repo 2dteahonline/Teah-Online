@@ -142,12 +142,12 @@ for (const s of _CASINO_STATIONS) {
 
 let fireRateBonus = 0;
 const GUN_DEFAULTS = { damage: 28 };
-const MELEE_DEFAULTS = { damage: 15, critChance: 0.10 };
+const MELEE_DEFAULTS = { damage: 24, critChance: 0.15 };
 
 // Default starter weapons (tier 0 — weaker than T1 shop items)
 const DEFAULT_GUN = { id: 'sidearm', name: 'Sidearm', tier: 0, damage: 28, fireRate: 5, magSize: 35, color: '#5a7a8a', desc: '28 dmg · 35 mag · rapid sidearm', waveReq: 0, cost: 0, bulletColor: { main: '#60ccff', core: '#b0e8ff', glow: 'rgba(96,204,255,0.2)' } };
 const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 5.4, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.45, freezeDuration: 15 };
-const DEFAULT_MELEE = { id: 'knife', name: 'Knife', tier: 0, damage: 15, range: 90, cooldown: 28, critChance: 0.10, color: '#7a7a7a', desc: '15 dmg · short range · starter blade', waveReq: 0, cost: 0, special: null };
+const DEFAULT_MELEE = { id: 'combat_blade', name: 'Combat Blade', tier: 0, damage: 24, range: 110, cooldown: 24, critChance: 0.15, color: '#6a8a9a', desc: '24 dmg · 110 range · 15% crit · starter blade', waveReq: 0, cost: 0, special: null };
 const DEFAULT_PICKAXE = { id: 'pickaxe', name: 'Pickaxe', tier: 0, damage: 10, range: 70, cooldown: 32, critChance: 0, color: '#8a6a3a', desc: '10 dmg · mining tool · equip to mine ores', waveReq: 0, cost: 0, special: 'pickaxe' };
 const SEEKING_BATON = { id: 'seeking_baton', name: 'Seeking Baton', tier: 0, damage: 0, range: 90, cooldown: 18, critChance: 0, color: '#ff9a40', desc: 'Tag hiders with this baton', waveReq: 0, cost: 0, special: 'seeking' };
 window.SEEKING_BATON = SEEKING_BATON; // expose globally for hideSeekSystem.js
@@ -449,10 +449,11 @@ const ROLL_SPIN_TIME = 90; // legacy, unused
 // Separated from static SHOP_ITEMS definitions so resets are robust.
 // Tracks per-buff purchase counts; reset on dungeon re-entry via _resetShopPrices().
 const shopState = {
-  buffsBought: [0, 0, 0, 0, 0], // one counter per Buffs item (indexed 0-4)
+  buffsBought: [0, 0, 0, 0, 0, 0], // one counter per Buffs item (indexed 0-5)
 };
 
 let lifestealPerKill = 25;
+let partyLifesteal = 0; // shared lifesteal: ALL party members heal this much on ANY kill
 let shopCategory = 0;
 const SHOP_CATEGORIES = ["Buffs", "Guns", "Melees", "Boots", "Pants", "Chest", "Helmets"];
 
@@ -482,6 +483,11 @@ const SHOP_ITEMS = {
       get bought() { return shopState.buffsBought[4]; }, set bought(v) { shopState.buffsBought[4] = v; },
       get cost() { return this.baseCost + shopState.buffsBought[4] * this.priceIncrease; },
       action() { if (shopState.buffsBought[4] >= this.maxBuy) return false; lifestealPerKill += 5; return true; }
+    },
+    { name: "Party Lifesteal +3", desc: "All allies heal on any kill", baseCost: 20, priceIncrease: 10, maxBuy: 5,
+      get bought() { return shopState.buffsBought[5]; }, set bought(v) { shopState.buffsBought[5] = v; },
+      get cost() { return this.baseCost + shopState.buffsBought[5] * this.priceIncrease; },
+      action() { if (shopState.buffsBought[5] >= this.maxBuy) return false; partyLifesteal += 3; return true; }
     },
   ],
   Guns: GUN_TIERS.map((g, idx) => ({
@@ -608,6 +614,7 @@ function getShopItems() { return SHOP_ITEMS[SHOP_CATEGORIES[shopCategory]] || []
 window._resetShopPrices = () => {
   shopState.buffsBought.fill(0);
   lifestealPerKill = 25;
+  partyLifesteal = 0;
 };
 
 // ===================== SKELD TASK / SABOTAGE INTERACTABLES =====================

@@ -10,8 +10,8 @@ const BotAI = {
   SHOP_Y: 16 * 48 + 24,
 
   // Buff purchase priorities (indices into SHOP_ITEMS.Buffs)
-  // 0=Gun Damage +3, 1=Melee Damage +3, 2=Melee Speed+, 3=Health Potion, 4=Lifesteal +5
-  BUFF_PRIORITIES: [0, 1, 4, 3], // Gun Dmg, Melee Dmg, Lifesteal, Health Potion
+  // 0=Gun Damage +3, 1=Melee Damage +3, 2=Melee Speed+, 3=Health Potion, 4=Lifesteal +5, 5=Party Lifesteal +3
+  BUFF_PRIORITIES: [0, 1, 4, 5, 3], // Gun Dmg, Melee Dmg, Lifesteal, Party Lifesteal, Health Potion
 
   // Main tick — called once per frame for all bots
   tick() {
@@ -453,6 +453,7 @@ const BotAI = {
     priorities.push(0); // Gun Damage +3
     priorities.push(1); // Melee Damage +3
     priorities.push(4); // Lifesteal +5
+    priorities.push(5); // Party Lifesteal +3
 
     // Health Potion as low priority even at high HP (stock up)
     if (hpFrac >= 0.7) {
@@ -494,6 +495,9 @@ const BotAI = {
             return true; // skip the generic hit effect below
           case 4: // Lifesteal +5
             member._lifestealPerKill = (member._lifestealPerKill || 25) + 5;
+            break;
+          case 5: // Party Lifesteal +3 — shared global, benefits everyone
+            if (typeof partyLifesteal !== 'undefined') partyLifesteal += 3;
             break;
         }
 
@@ -552,41 +556,62 @@ const BotAI = {
     this.applySeparation(member);
   },
 
-  // ENGAGE: in shooting range — shoot + strafe for combat
+  // ENGAGE: in shooting range — shoot + strafe, actively use melee
   doEngage(member, mob, dist) {
     if (!mob || mob.hp <= 0) { member.ai.state = 'follow'; return; }
     const e = member.entity;
+    const ml = member.melee;
+    const g = member.gun;
 
     this.faceTarget(e, mob);
 
-    if (dist > PARTY_CONFIG.BOT_EFFECTIVE_RANGE + 20) {
-      // Move closer but at a spread angle
-      const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2;
-      const offsetX = Math.cos(spreadAngle) * 40;
-      const offsetY = Math.sin(spreadAngle) * 40;
-      this.moveToward(e, mob.x + offsetX, mob.y + offsetY, dist);
-    } else if (dist < PARTY_CONFIG.BOT_EFFECTIVE_RANGE - 30) {
-      this.moveAway(e, mob.x, mob.y, dist);
+    // Decide combat style: melee-focused if melee DPS > gun DPS or gun is empty/reloading
+    const meleeDPS = ml ? (ml.damage / (ml.cooldown || 24)) : 0;
+    const gunDPS = g ? (g.damage / Math.max(1, (g.fireRate || 5) * 4)) : 0;
+    const gunEmpty = !g || g.reloading || g.ammo <= 0;
+    const preferMelee = ml && (meleeDPS >= gunDPS * 0.8 || gunEmpty);
+    const meleeRange = ml ? ml.range : 70;
+
+    if (preferMelee) {
+      // Melee-focused: rush toward mob to get in melee range
+      if (dist > meleeRange - 10) {
+        const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2;
+        const offsetX = Math.cos(spreadAngle) * 20;
+        const offsetY = Math.sin(spreadAngle) * 20;
+        this.moveToward(e, mob.x + offsetX, mob.y + offsetY, dist);
+      } else {
+        // In melee range — strafe around the mob
+        this._doStrafe(member, mob, dist);
+      }
     } else {
-      // At effective range — strafe laterally instead of standing still
-      this._doStrafe(member, mob, dist);
+      // Gun-focused: maintain effective range
+      if (dist > PARTY_CONFIG.BOT_EFFECTIVE_RANGE + 20) {
+        const spreadAngle = ((member.slotIndex - 1) / 3) * Math.PI * 2;
+        const offsetX = Math.cos(spreadAngle) * 40;
+        const offsetY = Math.sin(spreadAngle) * 40;
+        this.moveToward(e, mob.x + offsetX, mob.y + offsetY, dist);
+      } else if (dist < PARTY_CONFIG.BOT_EFFECTIVE_RANGE - 30) {
+        this.moveAway(e, mob.x, mob.y, dist);
+      } else {
+        this._doStrafe(member, mob, dist);
+      }
     }
 
     this.applySeparation(member);
 
-    // Shoot
-    if (member.gun && !member.gun.reloading && member.ai.shootCD <= 0 && member.gun.ammo > 0) {
+    // Shoot (even melee-focused bots shoot while closing in)
+    if (g && !g.reloading && member.ai.shootCD <= 0 && g.ammo > 0) {
       this.botShoot(member, mob);
     }
 
     // Reload if empty
-    if (member.gun && member.gun.ammo <= 0 && !member.gun.reloading) {
-      member.gun.reloading = true;
-      member.gun.reloadTimer = 90;
+    if (g && g.ammo <= 0 && !g.reloading) {
+      g.reloading = true;
+      g.reloadTimer = 90;
     }
 
-    // Melee if close
-    if (dist < 70 && member.ai.meleeCD <= 0 && member.melee) {
+    // Melee when in range
+    if (ml && dist < meleeRange && member.ai.meleeCD <= 0) {
       this.botMelee(member, mob);
     }
   },
@@ -759,7 +784,8 @@ const BotAI = {
       if (dealt !== false) {
         hitEffects.push({ x: mob.x, y: mob.y - 20, life: 19, type: "hit", dmg: ml.damage });
       }
-      member.ai.meleeCD = PARTY_CONFIG.BOT_MELEE_CD;
+      // Use the melee's actual cooldown (same as player)
+      member.ai.meleeCD = ml.cooldown || ml.cooldownMax || 24;
     }
   },
 };

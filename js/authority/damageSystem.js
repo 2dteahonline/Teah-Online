@@ -409,6 +409,20 @@ function processKill(mob, source, killerId) {
     killerEntity.hp = Math.min(killerEntity.maxHp, killerEntity.hp + finalHeal);
   }
 
+  // 4b. Party Lifesteal — heal ALL alive party members (stacks with personal lifesteal)
+  const _pLifesteal = typeof partyLifesteal !== 'undefined' ? partyLifesteal : 0;
+  if (_pLifesteal > 0 && _partyActive) {
+    const aliveEntities = PartySystem.getAliveEntities();
+    for (const _pe of aliveEntities) {
+      if (_pe === killerEntity) continue; // killer already healed above
+      const prevHp = _pe.hp;
+      _pe.hp = Math.min(_pe.maxHp, _pe.hp + _pLifesteal);
+      if (_pe.hp > prevHp) {
+        hitEffects.push({ x: _pe.x, y: _pe.y - 35, life: 15, type: "heal", dmg: "+" + (_pe.hp - prevHp) });
+      }
+    }
+  }
+
   // 5. Visual effects
   hitEffects.push({ x: mob.x, y: mob.y - 20, life: 25, type: "kill", gold: goldEarned });
   if (source === "ninja_dash_kill" || source === "ninja_splash" || (finalHeal >= 15)) {
