@@ -533,6 +533,7 @@ function _updateDinerWaitress() {
         party._waitressSubmitted = true;
         party._waitressTaking = false;
       }
+      // Safety: if party was deleted mid-service, clear targeting anyway
 
       // Reset and go idle
       w._targetBoothId = -1;
@@ -570,10 +571,11 @@ function _updateDinerWaitress() {
       // Waitress drops food, walks back to pass window
       w.hasFood = false;
       w._recipeIngredients = null;
-      const routeBack = _routeBoothToPass(w._targetBoothId);
+      const servedBoothId = w._targetBoothId;
+      const routeBack = _routeBoothToPass(servedBoothId);
       w._targetBoothId = -1;
       w._targetPartyId = -1;
-      _cStartRoute(w, routeBack, 'idle', 0, { kind: 'booth_to_pass', boothId: w._targetBoothId });
+      _cStartRoute(w, routeBack, 'idle', 0, { kind: 'booth_to_pass', boothId: servedBoothId });
       break;
     }
 
@@ -1180,6 +1182,24 @@ function updateDinerNPCs() {
       _cCleanupParties(dinerParties, dinerNPCs, (party) => {
         const booth = DINER_BOOTHS[party.boothId];
         if (booth && booth.claimedBy === party.id) booth.claimedBy = null;
+        // Clear _waitressTaking if party had it set
+        if (party._waitressTaking) party._waitressTaking = false;
+        // Remove pending serve entries for this party
+        if (typeof _dinerPendingServe !== 'undefined') {
+          for (let i = _dinerPendingServe.length - 1; i >= 0; i--) {
+            if (_dinerPendingServe[i].partyId === party.id) {
+              _dinerPendingServe.splice(i, 1);
+            }
+          }
+        }
+        // Reset waitress if she's serving this party
+        if (_dinerWaitress && (_dinerWaitress._targetPartyId === party.id)) {
+          _dinerWaitress.state = 'idle';
+          _dinerWaitress._targetBoothId = -1;
+          _dinerWaitress._targetPartyId = -1;
+          _dinerWaitress.hasFood = false;
+          _dinerWaitress._recipeIngredients = null;
+        }
       });
     },
   });

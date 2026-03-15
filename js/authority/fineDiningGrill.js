@@ -219,6 +219,12 @@ function updateGrill() {
           }
 
           applyOrderResult(result);
+        } else if (custType === 'critic') {
+          // Critic passed all hits — apply critic bonus
+          const result = gradeOrder();
+          result.tip = Math.round(result.tip * 2.0);  // 100% tip bonus
+          result.pay = Math.round(result.pay * 1.5);   // 50% pay bonus
+          applyOrderResult(result);
         } else {
           // Regular customer — normal grading
           const result = gradeOrder();

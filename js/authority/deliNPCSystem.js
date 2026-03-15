@@ -476,9 +476,9 @@ const DELI_NPC_AI = {
       if (npc._queueIdx > 0) {
         for (const other of deliNPCs) {
           if (other === npc || other._queueIdx !== npc._queueIdx - 1) continue;
-          const dy = npc.y - other.y;
-          // If the NPC ahead is within 30px (less than 1 tile gap), wait
-          if (dy > 0 && dy < 30) {
+          const dy = other.y - npc.y;
+          // If the NPC ahead (smaller queue idx = north/up = smaller Y) is within 30px, wait
+          if (dy < 0 && dy > -30) {
             npc.moving = false;
             npc._idleTime = 0;
             return;
@@ -572,6 +572,7 @@ const DELI_NPC_AI = {
       npc._queueIdx = -1;
       _advanceQueue(0);
       _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      return;
     }
   },
 
@@ -615,6 +616,7 @@ const DELI_NPC_AI = {
       npc._queueIdx = -1;
       _advanceQueue(0);
       _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      return;
     }
   },
 
@@ -681,8 +683,14 @@ const DELI_NPC_AI = {
         _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
     } else {
       // Leave
-      const ch = DELI_CHAIRS[lastChair];
-      _cStartRoute(npc, _routeToExit(ch.tx, ch.ty), '_despawn', 0);
+      if (lastChair !== null && lastChair >= 0) {
+        const ch = DELI_CHAIRS[lastChair];
+        _cStartRoute(npc, _routeToExit(ch.tx, ch.ty), '_despawn', 0);
+      } else {
+        const curTX = Math.floor(npc.x / TILE);
+        const curTY = Math.floor(npc.y / TILE);
+        _cStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
+      }
     }
   },
 

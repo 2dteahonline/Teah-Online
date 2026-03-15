@@ -1315,6 +1315,19 @@ function updateFineDiningNPCs() {
           table.state = 'empty';
           table._exclamationVisible = false;
         }
+        // Remove pending serve entries for this party
+        for (let i = _fdPendingServe.length - 1; i >= 0; i--) {
+          if (_fdPendingServe[i].partyId === party.id) {
+            _fdPendingServe.splice(i, 1);
+          }
+        }
+        // Reset waiter if currently serving this party
+        if (_fdWaiter && _fdWaiter._currentPartyId === party.id) {
+          _fdWaiter.state = 'idle';
+          _fdWaiter._currentPartyId = null;
+          _fdWaiter._currentTableId = null;
+          _fdWaiter.hasFood = false;
+        }
       });
     },
   });

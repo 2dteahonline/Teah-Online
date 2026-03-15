@@ -26,8 +26,7 @@ const cookingState = {
   // Ticket queue — orders auto-generate on timer, independent of NPCs
   ticketQueue: [],       // pre-generated order tickets waiting to activate
   ticketSpawnTimer: 0,   // frames until next ticket generation
-  // Plate staging for multi-item tickets
-  stagingPlates: [],     // { tableOrBooth: number, items: [{recipe, completed: bool}], totalItems }
+
   stats: {
     ordersCompleted: 0,
     perfectDishes: 0,
@@ -108,7 +107,7 @@ function startCookingShift(restaurantId) {
   cookingState.missedOrders = 0;
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.stagingPlates = [];
+
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
   cookingState.stats = {
@@ -127,7 +126,7 @@ function endCookingShift() {
   cookingState.assembly = [];
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.stagingPlates = [];
+
   // Fully reset grill state
   if (typeof resetGrillState === 'function') resetGrillState();
 }
@@ -180,7 +179,7 @@ function resetCookingState() {
   cookingState.missedOrders = 0;
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.stagingPlates = [];
+
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
   cookingState._swingHandled = false;
@@ -792,18 +791,18 @@ function drawCookingHUD() {
     // Background
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fillRect(sBarX, sBarY, sBarW, sBarH);
-    // Color interpolation: green→yellow→red
+    // Color interpolation: green→yellow→red as time runs out
     let barR, barG;
     if (sTimerPct > 0.5) {
-      // green to yellow (pct 1.0→0.5)
-      const t = (sTimerPct - 0.5) / 0.5;
-      barR = Math.round(255 * (1 - t));
-      barG = 200;
+      // green to yellow (pct 1.0→0.5): R ramps up, G stays high
+      const t = (sTimerPct - 0.5) / 0.5; // t: 1→0 as pct drops
+      barR = Math.round(255 * (1 - t));   // R: 0→255
+      barG = 200;                          // G: stays 200
     } else {
-      // yellow to red (pct 0.5→0.0)
-      const t = sTimerPct / 0.5;
-      barR = 230;
-      barG = Math.round(200 * t);
+      // yellow to red (pct 0.5→0.0): R stays high, G drops
+      const t = sTimerPct / 0.5;           // t: 1→0 as pct drops
+      barR = 255;                          // R: stays 255
+      barG = Math.round(200 * t);          // G: 200→0
     }
     ctx.fillStyle = 'rgb(' + barR + ',' + barG + ',40)';
     ctx.fillRect(sBarX, sBarY, sBarW * sTimerPct, sBarH);

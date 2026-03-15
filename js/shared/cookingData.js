@@ -202,11 +202,11 @@ const DINER_RECIPES = [
 
 // ===================== DINER CUSTOMER TYPES =====================
 const DINER_CUSTOMER_TYPES = {
-  regular:  { type: 'regular',  partySize: [1, 2], tipMult: 1.0, moodSpeed: 0.7, patience: 1.2, weight: 0.35 },
-  family:   { type: 'family',   partySize: [2, 3], tipMult: 1.2, moodSpeed: 0.5, patience: 1.5, weight: 0.25 },
-  couple:   { type: 'couple',   partySize: [2, 2], tipMult: 1.3, moodSpeed: 0.6, patience: 1.3, weight: 0.15 },
-  business: { type: 'business', partySize: [1, 1], tipMult: 1.5, moodSpeed: 0.9, patience: 1.0, weight: 0.15 },
-  kids:     { type: 'kids',     partySize: [2, 3], tipMult: 0.8, moodSpeed: 1.0, patience: 0.9, weight: 0.10 },
+  regular:  { type: 'regular',  name: 'Regular',  color: '#80a0c0', partySize: [1, 2], tipMult: 1.0, moodSpeed: 0.7, patience: 1.2, weight: 0.35 },
+  family:   { type: 'family',   name: 'Family',   color: '#60c060', partySize: [2, 3], tipMult: 1.2, moodSpeed: 0.5, patience: 1.5, weight: 0.25 },
+  couple:   { type: 'couple',   name: 'Couple',   color: '#e080a0', partySize: [2, 2], tipMult: 1.3, moodSpeed: 0.6, patience: 1.3, weight: 0.15 },
+  business: { type: 'business', name: 'Business', color: '#a0a0d0', partySize: [1, 1], tipMult: 1.5, moodSpeed: 0.9, patience: 1.0, weight: 0.15 },
+  kids:     { type: 'kids',     name: 'Kids',     color: '#e0c040', partySize: [2, 3], tipMult: 0.8, moodSpeed: 1.0, patience: 0.9, weight: 0.10 },
 };
 
 function pickDinerCustomerType() {
@@ -265,9 +265,9 @@ const FINE_DINING_RECIPES = [
 
 // ===================== FINE DINING CUSTOMER TYPES =====================
 const FINE_DINING_CUSTOMER_TYPES = {
-  regular:   { type: 'regular',   partySize: [1, 3], tipMult: 1.0, moodSpeed: 0.6, patience: 1.3, coverFee: 10, weight: 0.50 },
-  vip:       { type: 'vip',       partySize: [1, 3], tipMult: 1.8, moodSpeed: 0.5, patience: 1.3, coverFee: 25, weight: 0.35 },
-  critic:    { type: 'critic',    partySize: [1, 2], tipMult: 2.0, moodSpeed: 0.7, patience: 1.0, coverFee: 40, weight: 0.15 },
+  regular:   { type: 'regular',   name: 'Regular',  color: '#80a0c0', partySize: [1, 3], tipMult: 1.0, moodSpeed: 0.6, patience: 1.3, coverFee: 10, weight: 0.50 },
+  vip:       { type: 'vip',       name: 'VIP',      color: '#ffd700', partySize: [1, 3], tipMult: 1.8, moodSpeed: 0.5, patience: 1.3, coverFee: 25, weight: 0.35 },
+  critic:    { type: 'critic',    name: 'Critic',   color: '#e04040', partySize: [1, 2], tipMult: 2.0, moodSpeed: 0.7, patience: 1.0, coverFee: 40, weight: 0.15 },
 };
 
 function pickFineDiningCustomerType() {
