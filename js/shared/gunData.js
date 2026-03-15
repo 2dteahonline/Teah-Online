@@ -16,6 +16,7 @@ const MAIN_GUNS = {
     desc: 'Fast, reliable full-auto workhorse',
     buyPrice: 200,
     bulletColor: { main: '#66ccff', core: '#aaddff', glow: 'rgba(102,204,255,0.2)' },
+    upgradeMaterials: ['storm_capacitor', 'wind_crystal'],
     base: { damage: 25, fireRate: 6, magSize: 32, reloadSpeed: 50 },
     max:  { damage: 85, fireRate: 3, magSize: 55, reloadSpeed: 30 },
   },
@@ -28,6 +29,7 @@ const MAIN_GUNS = {
     desc: 'Slow but hits hard, chunky feel',
     buyPrice: 300,
     bulletColor: { main: '#ff9944', core: '#ffbb77', glow: 'rgba(255,153,68,0.2)' },
+    upgradeMaterials: ['heavy_barrel_liner', 'blast_powder'],
     base: { damage: 45, fireRate: 12, magSize: 24, reloadSpeed: 60 },
     max:  { damage: 140, fireRate: 7, magSize: 40, reloadSpeed: 35 },
   },
@@ -40,6 +42,7 @@ const MAIN_GUNS = {
     desc: 'Close-range devastator, tight pellet cluster',
     buyPrice: 350,
     bulletColor: { main: '#ffcc33', core: '#ffdd77', glow: 'rgba(255,204,51,0.25)' },
+    upgradeMaterials: ['scatter_core', 'gunpowder_charge', 'buckshot_mold'],
     base: { damage: 18, fireRate: 20, magSize: 6,  reloadSpeed: 70, pellets: 3, spread: 15, maxRange: 200 },
     max:  { damage: 45, fireRate: 14, magSize: 12, reloadSpeed: 45, pellets: 5, spread: 12, maxRange: 200 },
   },
@@ -52,6 +55,7 @@ const MAIN_GUNS = {
     desc: 'Hard-hitting arrows that pierce through mobs',
     buyPrice: 400,
     bulletColor: { main: '#8b5e3c', core: '#a07050', glow: 'rgba(139,94,60,0.2)' },
+    upgradeMaterials: ['ironwood_limb', 'sinew_string', 'fletching_kit'],
     base: { damage: 60, fireRate: 18, magSize: 12, reloadSpeed: 90, pierceCount: 1 },
     max:  { damage: 200, fireRate: 10, magSize: 20, reloadSpeed: 50, pierceCount: 3 },
     // Special flags — always present at all levels
@@ -66,6 +70,7 @@ const MAIN_GUNS = {
     desc: 'Bullet hose, very fast, slight random spread',
     buyPrice: 250,
     bulletColor: { main: '#aa66ff', core: '#cc99ff', glow: 'rgba(170,102,255,0.2)' },
+    upgradeMaterials: ['volt_coil', 'plasma_cell'],
     base: { damage: 12, fireRate: 3, magSize: 50, reloadSpeed: 55, spread: 8 },
     max:  { damage: 35, fireRate: 2, magSize: 80, reloadSpeed: 30, spread: 5 },
   },
@@ -109,13 +114,45 @@ function getGunStatsAtLevel(gunId, level) {
   return stats;
 }
 
-// ---- PLACEHOLDER WEAPON PARTS ----
-// These will eventually drop from dungeon mobs. For now they're just data definitions.
+// ---- WEAPON PARTS ----
+// Shared at Common/Uncommon tiers, category-specific at Rare+ tiers.
 const WEAPON_PARTS = {
-  common_weapon_parts:   { id: 'common_weapon_parts',   name: 'Common Weapon Parts',   tier: 1, color: '#888',    desc: 'Basic gun components. Drops from dungeon mobs.' },
-  uncommon_weapon_parts: { id: 'uncommon_weapon_parts', name: 'Uncommon Weapon Parts', tier: 2, color: '#5fca80', desc: 'Quality gun components. Drops from dungeon mobs.' },
-  rare_weapon_parts:     { id: 'rare_weapon_parts',     name: 'Rare Weapon Parts',     tier: 3, color: '#4a9eff', desc: 'Precision gun components. Drops from dungeon mobs.' },
-  epic_weapon_parts:     { id: 'epic_weapon_parts',     name: 'Epic Weapon Parts',     tier: 4, color: '#ff9a40', desc: 'Masterwork gun components. Drops from dungeon mobs.' },
+  // Shared (all categories use these at T0-T1)
+  common_weapon_parts:   { id: 'common_weapon_parts',   name: 'Common Weapon Parts',   tier: 1, color: '#888',    desc: 'Basic weapon components. Drops from dungeon mobs.' },
+  uncommon_weapon_parts: { id: 'uncommon_weapon_parts', name: 'Uncommon Weapon Parts', tier: 2, color: '#5fca80', desc: 'Quality weapon components. Drops from dungeon mobs.' },
+  // Legacy generic entries (backward compat for existing inventory items)
+  rare_weapon_parts:     { id: 'rare_weapon_parts',     name: 'Rare Weapon Parts',     tier: 3, color: '#4a9eff', desc: 'Precision weapon components. Drops from dungeon mobs.' },
+  epic_weapon_parts:     { id: 'epic_weapon_parts',     name: 'Epic Weapon Parts',     tier: 4, color: '#ff9a40', desc: 'Masterwork weapon components. Drops from dungeon mobs.' },
+  legendary_weapon_parts:{ id: 'legendary_weapon_parts',name: 'Legendary Weapon Parts', tier: 5, color: '#ff4a8a', desc: 'Supreme weapon components. Drops from the hardest dungeons.' },
+  // Gun-specific (T2+)
+  rare_gun_parts:        { id: 'rare_gun_parts',        name: 'Rare Gun Parts',        tier: 3, color: '#4a9eff', desc: 'Precision gun components. Drops from dungeon mobs.' },
+  epic_gun_parts:        { id: 'epic_gun_parts',        name: 'Epic Gun Parts',        tier: 4, color: '#ff9a40', desc: 'Masterwork gun components. Drops from dungeon mobs.' },
+  legendary_gun_parts:   { id: 'legendary_gun_parts',   name: 'Legendary Gun Parts',   tier: 5, color: '#ff4a8a', desc: 'Supreme gun components. Drops from the hardest dungeons.' },
+  // Rod-specific (T2+)
+  rare_rod_parts:        { id: 'rare_rod_parts',        name: 'Rare Rod Parts',        tier: 3, color: '#4a9eff', desc: 'Precision rod components. Drops from fishing challenges.' },
+  epic_rod_parts:        { id: 'epic_rod_parts',        name: 'Epic Rod Parts',        tier: 4, color: '#ff9a40', desc: 'Masterwork rod components. Drops from fishing challenges.' },
+  legendary_rod_parts:   { id: 'legendary_rod_parts',   name: 'Legendary Rod Parts',   tier: 5, color: '#ff4a8a', desc: 'Supreme rod components. Drops from the hardest fishing.' },
+  // Pick-specific (T2+)
+  rare_pick_parts:       { id: 'rare_pick_parts',       name: 'Rare Pick Parts',       tier: 3, color: '#4a9eff', desc: 'Precision pick components. Drops from deep mine veins.' },
+  epic_pick_parts:       { id: 'epic_pick_parts',       name: 'Epic Pick Parts',       tier: 4, color: '#ff9a40', desc: 'Masterwork pick components. Drops from deep mine veins.' },
+  legendary_pick_parts:  { id: 'legendary_pick_parts',  name: 'Legendary Pick Parts',  tier: 5, color: '#ff4a8a', desc: 'Supreme pick components. Drops from the deepest mines.' },
+};
+
+// ---- GUN-SPECIFIC UPGRADE MATERIALS ----
+// Unique crafting materials per gun — adds identity to upgrade paths.
+const GUN_MATERIALS = {
+  storm_capacitor:    { id: 'storm_capacitor',    name: 'Storm Capacitor',    gun: 'storm_ar',     color: '#66ccff', desc: 'Charged capacitor from lightning elementals.' },
+  wind_crystal:       { id: 'wind_crystal',       name: 'Wind Crystal',       gun: 'storm_ar',     color: '#aaddff', desc: 'Crystallized wind essence.' },
+  heavy_barrel_liner: { id: 'heavy_barrel_liner', name: 'Heavy Barrel Liner', gun: 'heavy_ar',     color: '#ff9944', desc: 'Reinforced barrel component for heavy weapons.' },
+  blast_powder:       { id: 'blast_powder',       name: 'Blast Powder',       gun: 'heavy_ar',     color: '#ffbb77', desc: 'Volatile propellant for high-caliber rounds.' },
+  scatter_core:       { id: 'scatter_core',       name: 'Scatter Core',       gun: 'boomstick',    color: '#ffcc33', desc: 'Pellet dispersion mechanism.' },
+  gunpowder_charge:   { id: 'gunpowder_charge',   name: 'Gunpowder Charge',   gun: 'boomstick',    color: '#ffdd77', desc: 'Concentrated explosive charge.' },
+  buckshot_mold:      { id: 'buckshot_mold',      name: 'Buckshot Mold',      gun: 'boomstick',    color: '#e6b800', desc: 'Precision mold for buckshot pellets.' },
+  ironwood_limb:      { id: 'ironwood_limb',      name: 'Ironwood Limb',      gun: 'ironwood_bow', color: '#8b5e3c', desc: 'Flexible ironwood bow limb.' },
+  sinew_string:       { id: 'sinew_string',       name: 'Sinew String',       gun: 'ironwood_bow', color: '#a07050', desc: 'Tough sinew bowstring.' },
+  fletching_kit:      { id: 'fletching_kit',      name: 'Fletching Kit',      gun: 'ironwood_bow', color: '#6b4e2c', desc: 'Arrow-crafting supplies.' },
+  volt_coil:          { id: 'volt_coil',          name: 'Volt Coil',          gun: 'volt_9',       color: '#aa66ff', desc: 'Electromagnetic coil from electric mobs.' },
+  plasma_cell:        { id: 'plasma_cell',        name: 'Plasma Cell',        gun: 'volt_9',       color: '#cc99ff', desc: 'Supercharged plasma energy cell.' },
 };
 
 // ---- UPGRADE RECIPES ----
@@ -133,7 +170,7 @@ const WEAPON_PARTS = {
 const _TIER_COST_MULT = [1, 2.5, 5, 10, 20]; // T0=1x, T1=2.5x, etc.
 const _TIER_PART_KEYS = [
   'common_weapon_parts', 'uncommon_weapon_parts',
-  'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'
+  'rare_gun_parts', 'epic_gun_parts', 'legendary_gun_parts'
 ];
 
 function _buildUpgradeRecipes() {

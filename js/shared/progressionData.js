@@ -510,9 +510,45 @@ function canEvolve(tier, level) {
   return tier < PROGRESSION_CONFIG.TIERS - 1 && level >= PROGRESSION_CONFIG.LEVELS_PER_TIER;
 }
 
-// Get the cost to evolve from current tier
-function getEvolutionCost(tier) {
-  return EVOLUTION_COSTS[tier] || null;
+// Get the cost to evolve from current tier.
+// If itemId is provided, swaps generic weapon_parts to category-specific keys
+// and adds gun-specific materials.
+function getEvolutionCost(tier, itemId) {
+  const baseCost = EVOLUTION_COSTS[tier];
+  if (!baseCost) return null;
+  if (!itemId) return baseCost;
+
+  const def = typeof PROG_ITEMS !== 'undefined' ? PROG_ITEMS[itemId] : null;
+  if (!def) return baseCost;
+
+  // Build category-specific part key mapping
+  const _partSwap = {
+    main_gun:    { rare_weapon_parts: 'rare_gun_parts', epic_weapon_parts: 'epic_gun_parts', legendary_weapon_parts: 'legendary_gun_parts' },
+    fishing_rod: { rare_weapon_parts: 'rare_rod_parts', epic_weapon_parts: 'epic_rod_parts', legendary_weapon_parts: 'legendary_rod_parts' },
+    pickaxe:     { rare_weapon_parts: 'rare_pick_parts', epic_weapon_parts: 'epic_pick_parts', legendary_weapon_parts: 'legendary_pick_parts' },
+  };
+  const swapMap = _partSwap[def.category] || {};
+
+  // Clone materials with category-specific keys
+  const newMats = {};
+  if (baseCost.materials) {
+    for (const matId in baseCost.materials) {
+      const swapped = swapMap[matId] || matId;
+      newMats[swapped] = baseCost.materials[matId];
+    }
+  }
+
+  // Add gun-specific materials for main_gun category
+  if (def.category === 'main_gun' && typeof GUN_MATERIALS !== 'undefined' && typeof MAIN_GUNS !== 'undefined') {
+    const gunDef = MAIN_GUNS[itemId];
+    if (gunDef && gunDef.upgradeMaterials) {
+      for (const matId of gunDef.upgradeMaterials) {
+        newMats[matId] = 3 * (tier + 1);
+      }
+    }
+  }
+
+  return { gold: baseCost.gold, materials: newMats };
 }
 
 
@@ -547,9 +583,9 @@ function getProgItemDef(itemId) {
 
 const _PROG_TIER_COST_MULT = [1, 2.5, 5, 10, 20];
 const _PROG_PART_KEYS = {
-  main_gun:    ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
-  fishing_rod: ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
-  pickaxe:     ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_weapon_parts', 'epic_weapon_parts', 'legendary_weapon_parts'],
+  main_gun:    ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_gun_parts',  'epic_gun_parts',  'legendary_gun_parts'],
+  fishing_rod: ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_rod_parts',  'epic_rod_parts',  'legendary_rod_parts'],
+  pickaxe:     ['common_weapon_parts', 'uncommon_weapon_parts', 'rare_pick_parts', 'epic_pick_parts', 'legendary_pick_parts'],
 };
 
 function getProgUpgradeRecipe(itemId, tier, toLevel) {
@@ -590,6 +626,16 @@ function getProgUpgradeRecipe(itemId, tier, toLevel) {
   const goldCost = Math.round(baseGold * mult);
   const parts = {};
   parts[partKey] = Math.ceil((toLevel - 1) / 2);
+
+  // Add gun-specific materials for main_gun category
+  if (def.category === 'main_gun' && typeof GUN_MATERIALS !== 'undefined' && typeof MAIN_GUNS !== 'undefined') {
+    const gunDef = MAIN_GUNS[itemId];
+    if (gunDef && gunDef.upgradeMaterials) {
+      for (const matId of gunDef.upgradeMaterials) {
+        parts[matId] = Math.max(1, Math.ceil((toLevel / 8) * Math.sqrt(mult)));
+      }
+    }
+  }
 
   return { gold: goldCost, ores, parts };
 }

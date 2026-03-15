@@ -1231,7 +1231,7 @@ function drawGunsmithPanel() {
           const need = recipe.parts[partId];
           const have = _countMaterial(partId);
           ctx.fillStyle = have >= need ? "#5fca80" : "#cc4444";
-          ctx.fillText(partId.replace(/_/g, ' ') + ": " + have + "/" + need, detailX + 20, reqY);
+          ctx.fillText(_getMatDisplayName(partId) + ": " + have + "/" + need, detailX + 20, reqY);
           reqY += 14;
         }
       }
@@ -1255,10 +1255,13 @@ function drawGunsmithPanel() {
 
   // ---- EVOLVE BUTTON (if at max level and not max tier) ----
   if (canEvolveNow && hasProg) {
-    const evoCost = getEvolutionCost(selTier);
+    const evoCost = getEvolutionCost(selTier, selId);
     const nextTierName = tierNames[selTier + 1] || '???';
     const nextTierCol = tierColors[selTier + 1] || '#fff';
-    let reqY = py + ph - 105;
+    const evoMats = evoCost ? evoCost.materials : null;
+    const evoMatCount = evoMats ? Object.keys(evoMats).length : 0;
+    // Dynamic layout: start higher to fit material lines
+    let reqY = py + ph - 105 - Math.max(0, evoMatCount - 1) * 14;
 
     ctx.font = "bold 12px monospace";
     ctx.fillStyle = nextTierCol;
@@ -1271,14 +1274,22 @@ function drawGunsmithPanel() {
     const hasEvoGold = gold >= evoGold;
     ctx.fillStyle = hasEvoGold ? "#5fca80" : "#cc4444";
     ctx.fillText("Gold: " + evoGold + "g", detailX + 20, reqY);
-    reqY += 16;
+    reqY += 14;
 
-    // Material hints
-    ctx.fillStyle = "#444"; ctx.font = "10px monospace";
-    ctx.fillText("(Material costs in future updates)", detailX + 20, reqY);
+    // Material costs
+    let canEvo = hasEvoGold;
+    if (evoMats) {
+      for (const matId in evoMats) {
+        const need = evoMats[matId];
+        const have = _countMaterial(matId);
+        if (have < need) canEvo = false;
+        ctx.fillStyle = have >= need ? "#5fca80" : "#cc4444";
+        ctx.fillText(_getMatDisplayName(matId) + ": " + have + "/" + need, detailX + 20, reqY);
+        reqY += 14;
+      }
+    }
 
     // Evolve button
-    const canEvo = hasEvoGold;
     const btnW = 200, btnH = 40;
     const btnX = detailX + detailW / 2 - btnW / 2;
     const btnY = py + ph - 55;
@@ -1412,7 +1423,7 @@ function handleGunsmithClick(mx, my) {
 
   // ---- EVOLVE ----
   if (canEvolveNow && hasProg) {
-    const evoCost = getEvolutionCost(selTier);
+    const evoCost = getEvolutionCost(selTier, selId);
     const evoGold = evoCost ? evoCost.gold : 0;
     const evoMats = evoCost ? evoCost.materials : null;
     const btnW = 200, btnH = 40;
@@ -1486,6 +1497,13 @@ function _isPickaxeUnlocked(pickId) {
   const def = PROG_ITEMS[pickId];
   if (!def || !def.unlockGate) return true;
   return window._discoveredOres.has(def.unlockGate);
+}
+
+// ---- Material display name helper ----
+function _getMatDisplayName(matId) {
+  if (typeof GUN_MATERIALS !== 'undefined' && GUN_MATERIALS[matId]) return GUN_MATERIALS[matId].name;
+  if (typeof WEAPON_PARTS !== 'undefined' && WEAPON_PARTS[matId]) return WEAPON_PARTS[matId].name;
+  return matId.replace(/_/g, ' ');
 }
 
 // ---- Shared material helpers (used by gunsmith + mining shop) ----
@@ -1804,7 +1822,7 @@ function drawMiningShopPanel() {
           const need = recipe.parts[partId];
           const have = _countMaterial(partId);
           ctx.fillStyle = have >= need ? "#5fca80" : "#cc4444";
-          ctx.fillText(partId.replace(/_/g, ' ') + ": " + have + "/" + need, detailX + 20, reqY);
+          ctx.fillText(_getMatDisplayName(partId) + ": " + have + "/" + need, detailX + 20, reqY);
           reqY += 14;
         }
       }
@@ -1828,10 +1846,12 @@ function drawMiningShopPanel() {
 
   // ---- EVOLVE BUTTON (if at max level and not max tier) ----
   if (canEvolveNow) {
-    const evoCost = getEvolutionCost(selTier);
+    const evoCost = getEvolutionCost(selTier, selId);
     const nextTierName = tierNames[selTier + 1] || '???';
     const nextTierCol = tierColors[selTier + 1] || '#fff';
-    let reqY = py + ph - 105;
+    const evoMats = evoCost ? evoCost.materials : null;
+    const evoMatCount = evoMats ? Object.keys(evoMats).length : 0;
+    let reqY = py + ph - 105 - Math.max(0, evoMatCount - 1) * 14;
 
     ctx.font = "bold 12px monospace";
     ctx.fillStyle = nextTierCol;
@@ -1842,13 +1862,22 @@ function drawMiningShopPanel() {
     ctx.font = "11px monospace";
     ctx.fillStyle = gold >= evoGold ? "#5fca80" : "#cc4444";
     ctx.fillText("Gold: " + evoGold + "g", detailX + 20, reqY);
-    reqY += 16;
+    reqY += 14;
 
-    ctx.fillStyle = "#444"; ctx.font = "10px monospace";
-    ctx.fillText("(Material costs in future updates)", detailX + 20, reqY);
+    // Material costs
+    let canEvo = gold >= evoGold;
+    if (evoMats) {
+      for (const matId in evoMats) {
+        const need = evoMats[matId];
+        const have = _countMaterial(matId);
+        if (have < need) canEvo = false;
+        ctx.fillStyle = have >= need ? "#5fca80" : "#cc4444";
+        ctx.fillText(_getMatDisplayName(matId) + ": " + have + "/" + need, detailX + 20, reqY);
+        reqY += 14;
+      }
+    }
 
     // Evolve button with glow
-    const canEvo = gold >= evoGold;
     const btnW = 200, btnH = 40;
     const btnX = detailX + detailW / 2 - btnW / 2;
     const btnY = py + ph - 55;
@@ -1985,7 +2014,7 @@ function handleMiningShopClick(mx, my) {
 
   // ---- EVOLVE ----
   if (canEvolveNow) {
-    const evoCost = getEvolutionCost(selTier);
+    const evoCost = getEvolutionCost(selTier, selId);
     const evoGold = evoCost ? evoCost.gold : 0;
     const evoMats = evoCost ? evoCost.materials : null;
     const btnW = 200, btnH = 40;
