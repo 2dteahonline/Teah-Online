@@ -373,6 +373,14 @@ function drawCasinoPanel() {
   ctx.beginPath(); ctx.roundRect(px + pw - 40, py + 6, 30, 30, 6); ctx.fill();
   ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#556';
   ctx.textAlign = 'center'; ctx.fillText('\u2715', px + pw - 25, py + 26);
+  // Auto-reset after loss pause (1.5s to see outcome, then back to betting)
+  if (casinoState._lossAutoReset && casinoState.phase === 'result') {
+    const elapsed = Date.now() - casinoState.resultTimer;
+    if (elapsed >= 1500) {
+      casinoState._lossAutoReset = false;
+      casinoResetGame();
+    }
+  }
   // Dispatch
   const g = casinoState.activeGame;
   if (g === 'blackjack') _drawBlackjack(px, py, pw, ph);
@@ -400,6 +408,15 @@ function handleCasinoClick(mx, my) {
   if (mx < px || mx > px + pw || my < py || my > py + ph) { UI.close(); return true; }
   if (_casinoHitBtn(mx, my, px + pw - 42, py + 8, 32, 32)) { UI.close(); return true; }
   if (_casinoHandleResultClick(mx, my, px, py, pw, ph)) return true;
+  // Tap during loss pause → skip to betting immediately
+  if (casinoState._lossAutoReset && casinoState.phase === 'result') {
+    if (Date.now() - casinoState.resultTimer > 300) {
+      casinoState._lossAutoReset = false;
+      casinoResetGame();
+      return true;
+    }
+    return true;
+  }
   const g = casinoState.activeGame;
   if (g === 'blackjack') return _clickBlackjack(mx, my, px, py, pw, ph);
   if (g === 'roulette') return _clickRoulette(mx, my, px, py, pw, ph);

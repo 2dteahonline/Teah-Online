@@ -134,9 +134,12 @@ function casinoWin(payout) {
 }
 
 function casinoLose(msg) {
-  // No loss screen — balance already went down when bet was placed.
-  // Just silently reset back to betting.
-  casinoResetGame();
+  // No loss overlay — but pause briefly so player can see the outcome
+  // (keno red/green numbers, final cards, roulette result, etc.)
+  casinoState.result = null;
+  casinoState.phase = 'result';
+  casinoState.resultTimer = Date.now();
+  casinoState._lossAutoReset = true;
 }
 
 function casinoReset() {
@@ -214,6 +217,7 @@ function casinoReset() {
 function casinoResetGame() {
   casinoState.result = null;
   casinoState.resultTimer = 0;
+  casinoState._lossAutoReset = false;
   casinoState.bet = 0;
   const g = casinoState.activeGame;
   if (g === 'blackjack') {
