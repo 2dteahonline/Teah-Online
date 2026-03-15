@@ -46,7 +46,7 @@ const DUNGEON_REGISTRY = {
     difficulty: 3,
     music: '',
   },
-  dungeon_4: {
+  earth205: {
     name: 'Earth-205: Marble City',
     combatLevelId: 'warehouse_01',
     maxFloors: 5,
@@ -60,7 +60,7 @@ const DUNGEON_REGISTRY = {
     difficulty: 4,
     music: '',
   },
-  dungeon_5: {
+  wagashi: {
     name: 'Wagashi: Heavenly Realm',
     combatLevelId: 'warehouse_01',
     maxFloors: 5,
@@ -74,7 +74,7 @@ const DUNGEON_REGISTRY = {
     difficulty: 5,
     music: '',
   },
-  dungeon_6: {
+  earth216: {
     name: 'Earth-216: Sin City',
     combatLevelId: 'warehouse_01',
     maxFloors: 5,

@@ -1977,7 +1977,7 @@ const LEVELS = {
     entities: [
       { type: 'earth205_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 33 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_4' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'earth205' },
       // Gas lamps (left wall)
       { type: 'gas_lamp', tx: 1, ty: 1, solid: false },
       { type: 'gas_lamp', tx: 1, ty: 4, solid: false },
@@ -2037,7 +2037,7 @@ const LEVELS = {
     entities: [
       { type: 'wagashi_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 45 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_5' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'wagashi' },
       // Paper lanterns (left wall)
       { type: 'paper_lantern', tx: 1, ty: 1, solid: false },
       { type: 'paper_lantern', tx: 1, ty: 4, solid: false },
@@ -2092,7 +2092,7 @@ const LEVELS = {
     entities: [
       { type: 'earth216_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 57 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_6' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'earth216' },
       // Neon signs (left wall)
       { type: 'neon_sign_e216', tx: 1, ty: 2, solid: false },
       { type: 'neon_sign_e216', tx: 1, ty: 6, solid: false },

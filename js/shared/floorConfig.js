@@ -1319,9 +1319,9 @@ const FLOOR_CONFIG = {
   cave: _caveConfig,
   azurine: _azurineConfig,
   vortalis: _vortalisConfig,
-  dungeon_4: _earth205Config,
-  dungeon_5: _wagashiConfig,
-  dungeon_6: _earth216Config,
+  earth205: _earth205Config,
+  wagashi: _wagashiConfig,
+  earth216: _earth216Config,
 };
 
 // Helper: get the wave composition for a floor-configured wave

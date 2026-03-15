@@ -3,7 +3,7 @@
 // and test them live or frozen without typing commands.
 
 // Panel state
-let testMobDungeon = 'azurine';  // 'cave' | 'azurine' | 'vortalis' | 'dungeon_4'
+let testMobDungeon = 'azurine';  // 'cave' | 'azurine' | 'vortalis' | 'earth205' | 'wagashi' | 'earth216'
 let testMobFloor = 1;
 let testMobScroll = 0;
 let testMobAbilityPopup = null;  // { typeKey, mobName, abilities[], x, y }
@@ -554,7 +554,7 @@ const TESTMOB_DUNGEONS = {
       5: { name: 'Floor 5 — Coral Throne / Ocean Temple', mobs: ['alabaster_sentinel', 'reef_weaver', 'gilded_manta', 'royal_shell_knight', 'queen_siralyth', 'sea_serpent_spawn', 'living_whirlpool', 'bone_tooth_zealot', 'tidal_avatar', 'mami_wata'] },
     }
   },
-  dungeon_4: {
+  earth205: {
     name: 'Earth-205',
     floors: {
       1: { name: 'Floor 1 — Scrapyard District', mobs: ['scrap_metal_scrounger', 'alleyway_lookout', 'junkyard_hound', 'aerosol_pyro', 'willis', 'patchwork_thug', 'nail_gunner', 'adrenaline_fiend', 'sledgehammer_brute', 'puppedrill'] },
@@ -564,7 +564,7 @@ const TESTMOB_DUNGEONS = {
       5: { name: 'Floor 5 — Meltdown Labs', mobs: ['hazmat_grunt', 'sprayer_drone', 'mad_assistant', 'chem_brute', 'lady_elixir', 'sludge_crawler', 'irradiated_walker', 'lockdown_sentinel', 'failed_specimen', 'nofaux'] },
     }
   },
-  dungeon_5: {
+  wagashi: {
     name: 'Wagashi',
     floors: {
       1: { name: 'Floor 1 — Silk Nest / Boar Territory', mobs: ['silk_skitterer', 'needleback_weaver', 'brood_lantern_mite', 'silk_coffin_widow', 'sichou', 'copperhide_hoglet', 'tusk_raider', 'bronzeback_crusher', 'warboar_drummer', 'tongya'] },
@@ -574,7 +574,7 @@ const TESTMOB_DUNGEONS = {
       5: { name: 'Floor 5 — Devouring Maw / Unsealed Heaven', mobs: ['miregulp_tadpole', 'gulchspine_bloater', 'hymn_eater_toadlet', 'abyssal_swallower', 'celestial_toad', 'shrine_shard_monkey', 'seal_fragment_sprite', 'thundertail_ape', 'heavens_gate_breaker', 'lord_sarugami'] },
     }
   },
-  dungeon_6: {
+  earth216: {
     name: 'Earth-216',
     floors: {
       1: { name: 'Floor 1 — Crime & Casino', mobs: ['chip_runner', 'pit_bruiser', 'velvet_knifer', 'vault_hound_e216', 'victor_graves', 'gilded_maid', 'cashmere_viper', 'jewel_wraith', 'bullion_knight', 'madame_midas'] },
