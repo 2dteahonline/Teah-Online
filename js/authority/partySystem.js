@@ -340,16 +340,18 @@ const PartySystem = {
   },
 
   // Get wave scaling multiplier for mob count
+  // Uses total party size, not alive — rates don't change when someone dies
   getMobCountScale() {
     if (!PartyState.active) return 1;
-    const alive = this.getAliveCount();
-    return 1 + (alive - 1) * PARTY_CONFIG.MOB_COUNT_SCALE_PER_MEMBER;
+    const total = PartyState.members.length;
+    return 1 + (total - 1) * PARTY_CONFIG.MOB_COUNT_SCALE_PER_MEMBER;
   },
 
   // Get wave scaling multiplier for mob HP
+  // Uses total party size, not alive — rates don't change when someone dies
   getMobHPScale() {
     if (!PartyState.active) return 1;
-    const alive = this.getAliveCount();
-    return 1 + (alive - 1) * PARTY_CONFIG.MOB_HP_SCALE_PER_MEMBER;
+    const total = PartyState.members.length;
+    return 1 + (total - 1) * PARTY_CONFIG.MOB_HP_SCALE_PER_MEMBER;
   },
 };
