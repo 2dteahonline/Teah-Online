@@ -575,14 +575,11 @@ function updateGun() {
   // Continuous shooting — authority reads InputIntent.shootHeld (set by mouse/arrow keys)
   if (InputIntent.shootHeld && !InputIntent.chatActive && !nameEditActive && !statusEditActive
       && !Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino) {
-    if (activeSlot === 0) shoot();
-    else if (activeSlot === 1) {
-      if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && typeof handleFarmAction === 'function') {
-        handleFarmAction(true);
-      } else {
-        meleeSwing();
-      }
-    }
+    // Farm: any click/tap uses hoe when equipped (mobile-friendly)
+    if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && typeof handleFarmAction === 'function') {
+      handleFarmAction(true);
+    } else if (activeSlot === 0) shoot();
+    else if (activeSlot === 1) meleeSwing();
     else if (activeSlot === 2) usePotion();
   }
 }
