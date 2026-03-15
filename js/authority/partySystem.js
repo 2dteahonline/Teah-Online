@@ -203,6 +203,37 @@ const PartySystem = {
     return m ? m.gold : 0;
   },
 
+  // Spend gold from a member's wallet — returns true if successful
+  spendGold(memberId, amount) {
+    if (!memberId || memberId === 'player') {
+      if (gold < amount) return false;
+      gold -= amount;
+      return true;
+    }
+    const m = this.getMemberById(memberId);
+    if (!m || m.gold < amount) return false;
+    m.gold -= amount;
+    return true;
+  },
+
+  // Resolve a killerId to { member, entity, gun, melee, equip }
+  // Works uniformly for any participant — player, bot, or future remote user
+  resolveKiller(killerId) {
+    if (!PartyState.active || !killerId) {
+      return { member: null, entity: player, gun, melee, equip: playerEquip, id: 'player' };
+    }
+    const m = this.getMemberById(killerId);
+    if (!m) return { member: null, entity: player, gun, melee, equip: playerEquip, id: 'player' };
+    return {
+      member: m,
+      entity: m.entity,
+      gun: m.gun || gun,
+      melee: m.melee || melee,
+      equip: m.equip || playerEquip,
+      id: m.id,
+    };
+  },
+
   // Handle a member taking lethal damage
   handleMemberDeath(member) {
     if (member.dead) return;

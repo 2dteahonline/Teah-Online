@@ -343,30 +343,38 @@ function getKillHealMult(source) {
 }
 
 function processKill(mob, source, killerId) {
-  // Determine killer: explicit param, or from _currentDamageTarget, or 'player'
+  // ---- Resolve killer to a member (multiplayer-ready: all players are members) ----
+  // Priority: explicit killerId → _currentDamageTarget → fallback 'player'
   if (!killerId) {
-    if (_currentDamageTarget && _currentDamageTarget._isBot) {
+    if (_currentDamageTarget) {
       const _km = typeof PartySystem !== 'undefined' ? PartySystem.getMemberByEntity(_currentDamageTarget) : null;
       killerId = _km ? _km.id : 'player';
     } else {
       killerId = 'player';
     }
   }
-  const isBotKill = killerId !== 'player';
-  const killerMember = isBotKill && typeof PartySystem !== 'undefined' ? PartySystem.getMemberById(killerId) : null;
-  const killerEntity = killerMember ? killerMember.entity : player;
 
-  // 1. Kill count + XP (always goes to player — progression is local)
+  // Resolve member + entity — works identically for player or any remote user
+  const _partyActive = typeof PartySystem !== 'undefined' && PartyState.active;
+  const killerMember = _partyActive ? PartySystem.getMemberById(killerId) : null;
+  const killerEntity = killerMember ? killerMember.entity : player;
+  const killerEquip = killerMember ? killerMember.equip : playerEquip;
+  const killerGun = killerMember ? (killerMember.gun || gun) : gun;
+  const killerMelee = killerMember ? (killerMember.melee || melee) : melee;
+
+  // 1. Kill count + XP — each member earns their own (for now, local-only progression)
   kills++;
-  addPlayerXP(5);
-  addSkillXP("Total Kills", 5);
+  if (!killerMember || killerMember.controlType === 'local') {
+    addPlayerXP(5);
+    addSkillXP("Total Kills", 5);
+  }
 
   // 2. Quick-kill bonus
   const qkb = getQuickKillBonus(mob);
 
   // 3. Gold reward — goes to killer's own wallet
   const goldEarned = Math.round(getGoldReward(mob.type, wave) * qkb);
-  if (typeof PartySystem !== 'undefined' && PartyState.active) {
+  if (_partyActive) {
     PartySystem.addGold(killerId, goldEarned);
   } else {
     gold += goldEarned;
@@ -379,20 +387,22 @@ function processKill(mob, source, killerId) {
   if (source === "witch_skeleton") {
     killerEntity.hp = Math.min(killerEntity.maxHp, killerEntity.hp + 1);
     hitEffects.push({ x: mob.x, y: mob.y - 20, life: 20, type: "kill", gold: 0 });
-    Events.emit('mob_killed', { mob, source, goldEarned: 0, heal: 1, killerId });
+    Events.emit('mob_killed', { mob, source, goldEarned: 0, heal: 1, killerId, killerMember });
     return;
   }
 
   // Source-specific heal multiplier (from MELEE_HEAL_MULTS registry)
   const healMult = getKillHealMult(source);
 
-  // Apply chest armor heal boost (player only — bots have no equipment)
-  const chestHealBoost = !isBotKill && playerEquip.chest && playerEquip.chest.healBoost ? playerEquip.chest.healBoost : 0;
+  // Apply chest armor heal boost — uses killer's own equipment
+  const chestHealBoost = killerEquip.chest && killerEquip.chest.healBoost ? killerEquip.chest.healBoost : 0;
   let finalHeal = Math.round(baseHeal * qkb * healMult * (1 + chestHealBoost));
-  // Lifesteal floor — guarantees minimum heal per kill (player only)
-  if (!isBotKill && typeof lifestealPerKill !== 'undefined') finalHeal = Math.max(finalHeal, lifestealPerKill);
+  // Lifesteal floor — uses killer's own lifesteal stat (if they have one)
+  const killerLifesteal = killerMember && killerMember._lifestealPerKill != null
+    ? killerMember._lifestealPerKill
+    : (typeof lifestealPerKill !== 'undefined' ? lifestealPerKill : 0);
+  if (killerLifesteal > 0) finalHeal = Math.max(finalHeal, killerLifesteal);
   if (finalHeal > 0) {
-    // Heal goes to the killer entity (bot or player)
     killerEntity.hp = Math.min(killerEntity.maxHp, killerEntity.hp + finalHeal);
   }
 
@@ -416,7 +426,7 @@ function processKill(mob, source, killerId) {
     for (const s of mobs) {
       if (s.golemOwnerId === mob.id && s.hp > 0) {
         s.hp = 0;
-        processKill(s, "witch_skeleton", killerId); // reuse same low-reward source
+        processKill(s, "witch_skeleton", killerId);
       }
     }
   }
@@ -425,7 +435,7 @@ function processKill(mob, source, killerId) {
   if (mob._deathExplosion) {
     const expR = mob._deathExplosion.radius || 80;
     const expDmg = mob._deathExplosion.damage || mob.damage;
-    const _deTargets = typeof PartyState !== 'undefined' && PartyState.active ? PartySystem.getAliveEntities() : [player];
+    const _deTargets = _partyActive ? PartySystem.getAliveEntities() : [player];
     for (const _det of _deTargets) {
       const ddx = _det.x - mob.x, ddy = _det.y - mob.y;
       if (Math.sqrt(ddx * ddx + ddy * ddy) <= expR) {
@@ -435,48 +445,43 @@ function processKill(mob, source, killerId) {
     hitEffects.push({ x: mob.x, y: mob.y, life: 20, type: "explosion" });
   }
 
-  // 7. Emit event — all other kill reactions are subscribers
-  Events.emit('mob_killed', { mob, source, goldEarned, heal: finalHeal, qkb, killerId });
+  // 7. Emit event — subscribers use killerMember for all per-member routing
+  Events.emit('mob_killed', { mob, source, goldEarned, heal: finalHeal, qkb, killerId, killerMember });
 }
 
 // === EVENT SUBSCRIBERS: mob_killed ===
-// Ammo refill on kill (not skeletons)
-Events.on('mob_killed', ({ mob, source, killerId }) => {
+// Ammo refill on kill — refills the killer's gun (whoever they are)
+Events.on('mob_killed', ({ mob, source, killerId, killerMember }) => {
   if (source === "witch_skeleton") return;
-  if (mob.type !== 'skeleton') {
-    if (!killerId || killerId === 'player') {
-      // Player kill — refill player gun
-      gun.ammo = gun.magSize;
-      gun.reloading = false;
-      gun.reloadTimer = 0;
-    } else {
-      // Bot kill — refill bot's gun
-      const _km = typeof PartySystem !== 'undefined' ? PartySystem.getMemberById(killerId) : null;
-      if (_km && _km.gun) {
-        _km.gun.ammo = _km.gun.magSize;
-        _km.gun.reloading = false;
-        _km.gun.reloadTimer = 0;
-      }
-    }
-  }
+  if (mob.type === 'skeleton') return;
+  // Resolve the killer's gun state
+  const _kGun = killerMember ? (killerMember.gun || gun) : gun;
+  _kGun.ammo = _kGun.magSize;
+  _kGun.reloading = false;
+  _kGun.reloadTimer = 0;
 });
 
-// Ultimate charge on kill (player kills only — bots don't charge ultimates)
-Events.on('mob_killed', ({ mob, source, killerId }) => {
+// Ultimate charge on kill — uses killer's melee special to determine which ultimate
+Events.on('mob_killed', ({ mob, source, killerId, killerMember }) => {
   if (source === "witch_skeleton") return;
-  if (killerId && killerId !== 'player') return; // bot kills skip ultimate charge
-  if (typeof shrine !== 'undefined' && melee.special === 'cleave' && !shrine.active) {
+  // Each member charges their own ultimate (when ultimates become per-member)
+  // For now, only the local player has ultimate state (shrine/godspeed are globals)
+  if (killerMember && killerMember.controlType !== 'local') return;
+  const _kMelee = killerMember ? (killerMember.melee || melee) : melee;
+  if (typeof shrine !== 'undefined' && _kMelee.special === 'cleave' && !shrine.active) {
     shrine.charges = Math.min((shrine.charges || 0) + 1, shrine.chargesMax || 10);
   }
-  if (typeof godspeed !== 'undefined' && melee.special === 'storm' && !godspeed.active) {
+  if (typeof godspeed !== 'undefined' && _kMelee.special === 'storm' && !godspeed.active) {
     godspeed.charges = Math.min((godspeed.charges || 0) + 1, godspeed.chargesMax || 10);
   }
 });
 
 // Gun on-kill special effects (frost nova, inferno explosion, etc.)
-Events.on('mob_killed', ({ mob, source }) => {
-  if (typeof gun !== 'undefined' && gun.special && GUN_BEHAVIORS[gun.special]) {
-    const behavior = GUN_BEHAVIORS[gun.special];
+// TODO(multiplayer): each member's gun special should trigger from their position
+Events.on('mob_killed', ({ mob, source, killerMember }) => {
+  const _kGun = killerMember ? (killerMember.gun || gun) : gun;
+  if (_kGun.special && GUN_BEHAVIORS[_kGun.special]) {
+    const behavior = GUN_BEHAVIORS[_kGun.special];
     if (behavior.onKill && behavior.killSources && behavior.killSources.includes(source)) {
       behavior.onKill(mob);
     }
