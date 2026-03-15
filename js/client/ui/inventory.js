@@ -2438,7 +2438,7 @@ function update() {
     }
     // Farm action dispatch — intercept melee AND click in farm scene when hoe equipped
     if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && (InputIntent.meleePressed || InputIntent.shootPressed) && typeof handleFarmAction === 'function') {
-      handleFarmAction();
+      handleFarmAction(InputIntent.shootPressed);
       InputIntent.shootPressed = false; // consume so gun system doesn't fire
       InputIntent.shootHeld = false;
     }

@@ -109,7 +109,7 @@ function updateFarming() {
 }
 
 // ===================== FARM ACTION HANDLER =====================
-function handleFarmAction() {
+function handleFarmAction(fromClick) {
   if (farmingState.actionCooldown > 0) return;
 
   const hoe = getEquippedHoe();
@@ -118,11 +118,20 @@ function handleFarmAction() {
     return;
   }
 
-  const tile = getFarmTileAtAction();
+  const tile = getFarmTileAtAction(fromClick);
   if (!tile) {
     hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Walk to the garden plot!', color: '#a08060' });
     farmingState.actionCooldown = 15; // prevent spam
     return;
+  }
+
+  // Face toward the targeted tile
+  const tdx = (tile.tx * TILE + TILE / 2) - player.x;
+  const tdy = (tile.ty * TILE + TILE / 2) - player.y;
+  if (Math.abs(tdx) > Math.abs(tdy)) {
+    player.dir = tdx > 0 ? 3 : 2; // right : left
+  } else {
+    player.dir = tdy > 0 ? 0 : 1; // down : up
   }
 
   const cfg = FARMING_CONFIG;
@@ -214,49 +223,65 @@ function getEquippedHoe() {
   return HOE_TIERS.find(h => h.id === farmingState.equippedHoe) || null;
 }
 
-// Find the farm tile the player is facing — uses distance-based targeting
-// instead of strict grid alignment for forgiving, intuitive feel.
-function getFarmTileAtAction() {
+// Find the farm tile to act on.
+// Click: target the tile under/nearest the mouse cursor (within reach).
+// F key: target the closest tile in the player's facing direction (generous).
+function getFarmTileAtAction(fromClick) {
   const hoe = getEquippedHoe();
   const reach = hoe ? hoe.reach : 1;
+  const maxReachPx = TILE * (reach + 1.5); // generous max distance from player
 
+  if (fromClick && typeof InputIntent !== 'undefined') {
+    // CLICK MODE: find closest tile to mouse world position, within reach of player
+    const mwx = InputIntent.mouseWorldX;
+    const mwy = InputIntent.mouseWorldY;
+    let bestTile = null;
+    let bestDist = Infinity;
+
+    for (const tile of farmingState.tiles) {
+      const tileCX = tile.tx * TILE + TILE / 2;
+      const tileCY = tile.ty * TILE + TILE / 2;
+      // Must be within reach of player
+      const playerDist = Math.sqrt((tileCX - player.x) ** 2 + (tileCY - player.y) ** 2);
+      if (playerDist > maxReachPx) continue;
+      // Pick closest to mouse
+      const mouseDist = Math.sqrt((tileCX - mwx) ** 2 + (tileCY - mwy) ** 2);
+      if (mouseDist < bestDist) {
+        bestDist = mouseDist;
+        bestTile = tile;
+      }
+    }
+    return bestTile;
+  }
+
+  // F KEY MODE: find closest tile in facing direction
   const dir = player.dir; // 0=down, 1=up, 2=left, 3=right
-  // Direction vector
   let ddx = 0, ddy = 0;
   if (dir === 0) ddy = 1;
   else if (dir === 1) ddy = -1;
   else if (dir === 2) ddx = -1;
   else if (dir === 3) ddx = 1;
 
-  // Target point = player center + one tile ahead in facing direction
+  // Target point ahead of player
   const targetX = player.x + ddx * TILE * reach;
   const targetY = player.y + ddy * TILE * reach;
 
-  // Find the closest tile within range (generous radius)
-  const maxDist = TILE * (reach + 0.8); // forgiving range
   let bestTile = null;
   let bestDist = Infinity;
 
   for (const tile of farmingState.tiles) {
     const tileCX = tile.tx * TILE + TILE / 2;
     const tileCY = tile.ty * TILE + TILE / 2;
+    const playerDist = Math.sqrt((tileCX - player.x) ** 2 + (tileCY - player.y) ** 2);
+    if (playerDist > maxReachPx) continue;
     const dist = Math.sqrt((tileCX - targetX) ** 2 + (tileCY - targetY) ** 2);
-    if (dist < maxDist && dist < bestDist) {
+    if (dist < bestDist) {
       bestDist = dist;
       bestTile = tile;
     }
   }
-  if (bestTile) return bestTile;
 
-  // Fallback: tile the player is standing on
-  for (const tile of farmingState.tiles) {
-    const tileCX = tile.tx * TILE + TILE / 2;
-    const tileCY = tile.ty * TILE + TILE / 2;
-    const dist = Math.sqrt((tileCX - player.x) ** 2 + (tileCY - player.y) ** 2);
-    if (dist < TILE) return tile;
-  }
-
-  return null;
+  return bestTile;
 }
 
 // ===================== EXPAND FARM GRID =====================
