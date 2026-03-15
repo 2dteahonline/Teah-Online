@@ -284,6 +284,13 @@ const PartySystem = {
     member.dead = false;
     member.entity.hp = member.entity.maxHp;
     member.entity._isDead = false;
+    // Clear all status effects on revive
+    if (member.controlType === 'local') {
+      StatusFX.clearPlayer();
+      StatusFX.clearPoison();
+    } else {
+      StatusFX.clearEntity(member.entity);
+    }
     member.entity.x = player.x + (member.slotIndex - 1) * 40;
     member.entity.y = player.y + 30;
     hitEffects.push({ x: member.entity.x, y: member.entity.y - 30, life: 25, type: "heal", dmg: "REVIVED!" });

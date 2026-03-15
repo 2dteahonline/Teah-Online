@@ -2356,6 +2356,7 @@ function update() {
         if (_partyAlive && lives > 0) {
           // Party mode + has lives: normal respawn — come back alive
           playerDead = false;
+          StatusFX.clearPlayer();
           StatusFX.clearPoison();
           player.hp = player.maxHp || 100;
           player.x = 20 * TILE + TILE / 2;
@@ -2371,6 +2372,7 @@ function update() {
         } else {
           // Solo mode
           playerDead = false;
+          StatusFX.clearPlayer();
           StatusFX.clearPoison();
           if (deathGameOver) {
             // Full reset — lost all lives, return to lobby

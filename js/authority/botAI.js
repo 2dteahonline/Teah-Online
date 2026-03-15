@@ -464,6 +464,8 @@ const BotAI = {
           bulletColor: item.bulletColor || null,
           color: item.color || '#4a4a4a',
         };
+        // Sync equip.gun so renderer draws the correct gun model
+        member.equip.gun = member.gun;
         break;
       case 'melee':
         const meleeDmgBuff = member.melee ? (member.melee.damage - (member.melee._baseDamage || member.melee.damage)) : 0;
@@ -479,6 +481,8 @@ const BotAI = {
           critChance: item.critChance || 0.10,
           special: item.special || null,
         };
+        // Sync equip.melee so renderer draws the correct melee weapon
+        member.equip.melee = member.melee;
         break;
       case 'boots':
         member.equip.boots = { ...item };

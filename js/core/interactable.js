@@ -321,6 +321,9 @@ function checkPlayerDeath() {
     deathX = player.x;
     deathY = player.y;
     deathRotation = 0;
+    // Clear all status effects immediately on death (poison, bleed, etc.)
+    StatusFX.clearPlayer();
+    StatusFX.clearPoison();
     // In party mode, game over only when ALL members are dead
     if (PartyState.members.length > 0) {
       // Update local player member
