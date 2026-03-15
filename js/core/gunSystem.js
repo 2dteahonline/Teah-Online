@@ -577,7 +577,11 @@ function updateGun() {
       && !Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino) {
     if (activeSlot === 0) shoot();
     else if (activeSlot === 1) {
-      meleeSwing();
+      if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && typeof handleFarmAction === 'function') {
+        handleFarmAction(true);
+      } else {
+        meleeSwing();
+      }
     }
     else if (activeSlot === 2) usePotion();
   }
