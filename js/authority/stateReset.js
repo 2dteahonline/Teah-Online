@@ -858,7 +858,8 @@ function drawShopPanel() {
     const isOwned = isEquip && item.isOwned;
     const isMaxed = item.maxBuy !== undefined && item.bought >= item.maxBuy;
     const isLocked = item.isLocked;
-    const canAfford = !isOwned && !isMaxed && !isLocked && gold >= item.cost;
+    const _itemCostForPlayer = item.isPartyCost && item.splitCost ? item.splitCost : item.cost;
+    const canAfford = !isOwned && !isMaxed && !isLocked && gold >= _itemCostForPlayer;
 
     // Card bg
     if (isLocked) {
@@ -984,10 +985,14 @@ function drawShopPanel() {
         ctx.fillText("🔒 LOCKED", ix + itemW/2, iy + 94);
       }
     } else {
-      // Cost
+      // Cost (show split cost for party items)
       ctx.font = "bold 16px monospace";
       ctx.fillStyle = canAfford ? PALETTE.gold : "#663322";
-      ctx.fillText(item.cost + "g", ix + itemW/2, iy + 94);
+      if (item.isPartyCost && item.splitCost && item.splitCost !== item.cost) {
+        ctx.fillText(item.splitCost + "g each (" + item.cost + "g)", ix + itemW/2, iy + 94);
+      } else {
+        ctx.fillText(item.cost + "g", ix + itemW/2, iy + 94);
+      }
 
       // Buy button
       if (canAfford) {

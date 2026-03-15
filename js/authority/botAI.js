@@ -511,6 +511,25 @@ const BotAI = {
       const item = SHOP_ITEMS.Buffs[idx];
       if (!item) continue;
 
+      // Party Lifesteal (index 5) — special: shared purchase, split cost, uses global bought count
+      if (idx === 5 && item.isPartyCost) {
+        if (item.maxBuy && item.bought >= item.maxBuy) continue;
+        // Use the shop item's action — it checks everyone's gold and deducts split shares
+        if (item.action()) {
+          item.bought++;
+          // Show effect on ALL members
+          if (typeof PartyState !== 'undefined' && PartyState.active) {
+            for (const _pm of PartyState.members) {
+              if (!_pm.dead && _pm.entity) {
+                hitEffects.push({ x: _pm.entity.x, y: _pm.entity.y - 30, life: 20, type: "heal", dmg: "Party Lifesteal +5" });
+              }
+            }
+          }
+          return true;
+        }
+        continue;
+      }
+
       // Check max purchases (lifesteal has maxBuy:10, melee speed has maxBuy:6)
       if (item.maxBuy && member._shopBought[idx] >= item.maxBuy) continue;
 
@@ -542,9 +561,6 @@ const BotAI = {
             break;
           case 4: // Lifesteal +5
             member._lifestealPerKill = (member._lifestealPerKill || 25) + 5;
-            break;
-          case 5: // Party Lifesteal +3 — shared global, benefits everyone
-            if (typeof partyLifesteal !== 'undefined') partyLifesteal += 3;
             break;
         }
 

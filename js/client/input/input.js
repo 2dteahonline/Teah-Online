@@ -1255,12 +1255,16 @@ canvas.addEventListener("mousedown", e => {
         const isOwned = isEquip && item.isOwned;
         const isMaxed = item.maxBuy !== undefined && item.bought >= item.maxBuy;
         const isLocked = item.isLocked;
-        if (!isOwned && !isMaxed && !isLocked && gold >= item.cost) {
+        const _shopCostCheck = item.isPartyCost && item.splitCost ? item.splitCost : item.cost;
+        if (!isOwned && !isMaxed && !isLocked && gold >= _shopCostCheck) {
           // item.action() handles stat application via centralized helpers
           // (applyGunStats/applyMeleeStats for equipment, direct for buffs)
           const success = item.action();
           if (success) {
-            gold -= item.cost; // TODO(multiplayer): server-authoritative gold deduction
+            // Party-cost items handle gold deduction inside action() (split across members)
+            if (!item.isPartyCost) {
+              gold -= item.cost; // TODO(multiplayer): server-authoritative gold deduction
+            }
             if (window._opMode) gold = 999999; // keep infinite in OP mode
             if (item.bought !== undefined) item.bought++;
             hitEffects.push({ x: player.x, y: player.y - 30, life: 20, type: "heal", dmg: item.name });

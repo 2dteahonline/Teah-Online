@@ -484,10 +484,40 @@ const SHOP_ITEMS = {
       get cost() { return this.baseCost + shopState.buffsBought[4] * this.priceIncrease; },
       action() { if (shopState.buffsBought[4] >= this.maxBuy) return false; lifestealPerKill += 5; return true; }
     },
-    { name: "Party Lifesteal +3", desc: "All allies heal on any kill", baseCost: 20, priceIncrease: 10, maxBuy: 5,
+    { name: "Party Lifesteal +5", desc: "All allies heal on any kill (cost split by party)", baseCost: 80, priceIncrease: 60, maxBuy: 4,
+      isPartyCost: true, // flag: cost is split evenly across all party members
       get bought() { return shopState.buffsBought[5]; }, set bought(v) { shopState.buffsBought[5] = v; },
       get cost() { return this.baseCost + shopState.buffsBought[5] * this.priceIncrease; },
-      action() { if (shopState.buffsBought[5] >= this.maxBuy) return false; partyLifesteal += 3; return true; }
+      // Per-member share of the cost
+      get splitCost() {
+        const total = this.cost;
+        const size = (typeof PartyState !== 'undefined' && PartyState.active) ? PartyState.members.length : 1;
+        return Math.ceil(total / size);
+      },
+      action() {
+        if (shopState.buffsBought[5] >= this.maxBuy) return false;
+        const total = this.cost;
+        const members = (typeof PartyState !== 'undefined' && PartyState.active) ? PartyState.members : [];
+        if (members.length === 0) {
+          // Solo fallback — full cost from player
+          if (gold < total) return false;
+          gold -= total;
+        } else {
+          // Split cost evenly — check ALL members can afford their share first
+          const share = Math.ceil(total / members.length);
+          for (const m of members) {
+            const mGold = m.controlType === 'local' ? gold : m.gold;
+            if (mGold < share) return false; // someone can't afford it
+          }
+          // Deduct from everyone
+          for (const m of members) {
+            if (m.controlType === 'local') { gold -= share; }
+            else { m.gold -= share; }
+          }
+        }
+        partyLifesteal += 5;
+        return true;
+      }
     },
   ],
   Guns: GUN_TIERS.map((g, idx) => ({
