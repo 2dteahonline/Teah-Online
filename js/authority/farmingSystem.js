@@ -17,8 +17,6 @@ const farmingState = {
   equippedHoe: 'bronze_hoe',   // hoe ID string, e.g. 'iron_hoe' (persisted)
   selectedSeed: null,  // crop id currently selected for planting
   actionCooldown: 0,   // frames until next action allowed
-  swingTimer: 0,       // frames remaining on hoe swing animation
-  swingDir: 0,         // direction of swing (0=down,1=up,2=left,3=right)
   stats: {
     totalHarvested: 0,
     totalEarned: 0,
@@ -97,9 +95,8 @@ function resetFarmingState() {
 function updateFarming() {
   if (!farmingState.active || !Scene.inFarm) return;
 
-  // Tick action cooldown + swing animation
+  // Tick action cooldown
   if (farmingState.actionCooldown > 0) farmingState.actionCooldown--;
-  if (farmingState.swingTimer > 0) farmingState.swingTimer--;
 
   // Tick growth — watered crops grow continuously, no re-watering needed
   for (const tile of farmingState.tiles) {
@@ -134,22 +131,8 @@ function handleFarmAction(fromClick) {
   const plotCX = tile.tx * TILE + PLOT_SIZE * TILE / 2;
   const plotCY = tile.ty * TILE + PLOT_SIZE * TILE / 2;
 
-  // Face toward mouse cursor (click) or use aim direction (F key) — same as melee
-  if (fromClick && typeof InputIntent !== 'undefined') {
-    const dx = InputIntent.mouseWorldX - player.x;
-    const dy = InputIntent.mouseWorldY - (player.y - 30);
-    if (Math.abs(dx) > Math.abs(dy)) {
-      player.dir = dx > 0 ? 3 : 2;
-    } else {
-      player.dir = dy > 0 ? 0 : 1;
-    }
-  } else if (typeof getAimDir === 'function') {
-    player.dir = getAimDir();
-  }
-
-  // Trigger swing animation
-  farmingState.swingTimer = 12;
-  farmingState.swingDir = player.dir;
+  // Use the real melee swing — handles facing, arrow keys, animation
+  if (typeof meleeSwing === 'function') meleeSwing();
 
   const cfg = FARMING_CONFIG;
 
@@ -436,51 +419,7 @@ function drawFarmTiles() {
     }
   }
 
-  // === HOE SWING ARC ===
-  if (farmingState.swingTimer > 0) {
-    const st = farmingState.swingTimer;
-    const sd = farmingState.swingDir;
-    const progress = 1 - st / 12; // 0→1
-    const hoe = getEquippedHoe();
-    const hoeColor = hoe ? hoe.color : '#8a6a3a';
-
-    // Swing arc origin at player, sweeps in facing direction
-    const px = player.x, py = player.y - 8;
-    const handleLen = 28;
-    const headLen = 16;
-
-    // Base angle for each direction (pointing outward)
-    const baseAngle = sd === 0 ? Math.PI / 2 : sd === 1 ? -Math.PI / 2 : sd === 2 ? Math.PI : 0;
-    // Sweep from -45° to +45° around base angle
-    const sweep = (progress - 0.5) * Math.PI * 0.8;
-    const angle = baseAngle + sweep;
-
-    // Handle
-    const hx = px + Math.cos(angle) * handleLen;
-    const hy = py + Math.sin(angle) * handleLen;
-    ctx.strokeStyle = '#6a4a20';
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(hx, hy); ctx.stroke();
-
-    // Hoe head (perpendicular bar at end)
-    const perpAngle = angle + Math.PI / 2;
-    ctx.strokeStyle = hoeColor;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(hx + Math.cos(perpAngle) * headLen / 2, hy + Math.sin(perpAngle) * headLen / 2);
-    ctx.lineTo(hx - Math.cos(perpAngle) * headLen / 2, hy - Math.sin(perpAngle) * headLen / 2);
-    ctx.stroke();
-
-    // Motion trail
-    if (progress < 0.7) {
-      ctx.strokeStyle = `rgba(200,180,140,${0.3 * (1 - progress)})`;
-      ctx.lineWidth = 2;
-      const trailAngle = baseAngle + (progress - 0.6) * Math.PI * 0.8;
-      const tx2 = px + Math.cos(trailAngle) * handleLen;
-      const ty2 = py + Math.sin(trailAngle) * handleLen;
-      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(tx2, ty2); ctx.stroke();
-    }
-  }
+  // Hoe swing uses the standard melee swing animation (no custom arc)
 }
 
 // ===================== DRAW: COUNTDOWN BUBBLE =====================
