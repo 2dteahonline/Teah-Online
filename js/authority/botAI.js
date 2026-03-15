@@ -744,7 +744,8 @@ const BotAI = {
     });
 
     g.ammo--;
-    member.ai.shootCD = PARTY_CONFIG.BOT_SHOOT_CD;
+    // Use the gun's actual fireRate (same formula as player: fireRate * 4 frames)
+    member.ai.shootCD = (g.fireRate || 5) * 4;
   },
 
   botMelee(member, mob) {
