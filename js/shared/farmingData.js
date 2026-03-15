@@ -32,7 +32,7 @@ const CROP_TYPES = {
 };
 
 // --- FARMING CONFIG ---
-const PLOT_SIZE = 2; // each farm plot spans 2x2 world tiles (96x96px)
+const PLOT_SIZE = 1; // each farm plot spans 1x1 world tile (48x48px)
 const FARMING_CONFIG = {
   // Cooldowns (frames at 60fps)
   tillCooldown: 15,        // 0.25s — cooldown after tilling
@@ -45,7 +45,7 @@ const FARMING_CONFIG = {
 };
 
 // --- LAND EXPANSIONS ---
-// 4 tiers. gridW/gridH = plot count (each plot is PLOT_SIZE x PLOT_SIZE tiles).
+// 4 tiers. gridW/gridH = plot count (each plot is 1 tile = 48x48px).
 const LAND_EXPANSIONS = [
   { level: 0, name: 'Starter Garden', gridW: 3,  gridH: 3,  cost: 0,    levelReq: 1  },
   { level: 1, name: 'Small Garden',   gridW: 4,  gridH: 4,  cost: 250,  levelReq: 10 },
