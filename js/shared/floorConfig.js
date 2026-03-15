@@ -127,7 +127,7 @@ function _buildCaveFloor(floorNum) {
         },
       },
     ],
-    palette: {},
+    palette: { floor1: '#3a3840', floor2: '#383638', wall: '#2a2a32', wallAccent: '#454552', accent2: '#8a2020', gridLine: '#32303a' },
     hazards: [],
   });
 }

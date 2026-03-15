@@ -2312,6 +2312,15 @@ function draw() {
 
   } // end HP bar skip for Skeld
 
+  // Dungeon Level indicator in hub areas
+  if ((Scene.inCave || Scene.inAzurine || Scene.inVortalis || Scene.inEarth205 || Scene.inWagashi || Scene.inEarth216) && typeof getDungeonLevel === 'function') {
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Dungeon Lv.' + getDungeonLevel(), BASE_W - 16, 32);
+    ctx.textAlign = 'left';
+  }
+
   // ===== WAVE HUD (below HP bar) — dungeon only =====
   if (Scene.inDungeon) {
   ctx.textAlign = "center";

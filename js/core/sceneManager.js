@@ -421,9 +421,10 @@ function checkPortals() {
     }
     if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine || Scene.inVortalis || Scene.inEarth205 || Scene.inWagashi || Scene.inEarth216) && inZone) {
       nearQueue = true;
-      queueDungeonId = e.dungeonId;
-      queueSpawnTX = e.spawnTX;
-      queueSpawnTY = e.spawnTY;
+      const _regEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[e.dungeonType || 'cave'];
+      queueDungeonId = _regEntry ? (_regEntry.combatLevelId || 'warehouse_01') : 'warehouse_01';
+      queueSpawnTX = _regEntry ? (_regEntry.spawnTX || 20) : 20;
+      queueSpawnTY = _regEntry ? (_regEntry.spawnTY || 20) : 20;
       queueFloorStart = e.floorStart || 0;
       queueDungeonType = e.dungeonType || 'cave';
       const _qEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[queueDungeonType];
@@ -452,8 +453,11 @@ function goToNextFloor() {
   dungeonFloor++;
   resetCombatState('floor');
   // Re-enter same level layout, spawn at center
-  player.x = 20 * TILE + TILE / 2;
-  player.y = 20 * TILE + TILE / 2;
+  const _floorEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[currentDungeon];
+  const _floorSpawnTX = _floorEntry ? (_floorEntry.spawnTX || 20) : 20;
+  const _floorSpawnTY = _floorEntry ? (_floorEntry.spawnTY || 20) : 20;
+  player.x = _floorSpawnTX * TILE + TILE / 2;
+  player.y = _floorSpawnTY * TILE + TILE / 2;
   player.vx = 0; player.vy = 0;
   // Transition effect
   transitioning = true;
@@ -465,6 +469,15 @@ function goToNextFloor() {
 
 function joinQueue() {
   if (!nearQueue || transitioning) return;
+  // Entry gating — check dungeon level requirement
+  const _gateEntry = typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[queueDungeonType];
+  if (_gateEntry && _gateEntry.requiredLevel > 0) {
+    const _myDungLvl = typeof getDungeonLevel === 'function' ? getDungeonLevel() : 0;
+    if (_myDungLvl < _gateEntry.requiredLevel) {
+      chatMessages.push({ name: 'SYSTEM', text: 'Dungeon Level ' + _gateEntry.requiredLevel + ' required (yours: ' + _myDungLvl + ')', time: Date.now() });
+      return;
+    }
+  }
   if (queueActive) {
     queueActive = false;
     queuePlayers = Math.max(0, queuePlayers - 1);

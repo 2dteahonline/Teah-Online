@@ -103,6 +103,27 @@ function xpToNextLevel(lvl) { return xpForLevel(lvl); }
 const skillData = {};
 for (const s of ALL_SKILLS) { skillData[s] = { level: 1, xp: 0 }; }
 
+// Dungeon Level — derived stat for entry gating. Never stored, always computed.
+function getDungeonLevel() {
+  // Gun progression score: sum of (tier * 25 + level) across all guns
+  let gunScore = 0;
+  if (typeof window._gunLevels !== 'undefined') {
+    for (const gunId in window._gunLevels) {
+      const v = window._gunLevels[gunId];
+      if (v && typeof v === 'object') {
+        gunScore += v.tier * 25 + v.level;
+      } else if (typeof v === 'number' && v > 0) {
+        gunScore += v; // old integer format
+      }
+    }
+  }
+  // Kill skill level
+  const killsLevel = skillData['Total Kills'] ? skillData['Total Kills'].level : 1;
+  // Weighted formula
+  const raw = gunScore * 0.4 + killsLevel * 0.35 + playerLevel * 0.25;
+  return Math.max(1, Math.min(100, Math.floor(raw)));
+}
+
 // XP needed for a skill level (same curve per skill)
 function skillXpForLevel(lvl) { return Math.floor(80 * Math.pow(1.12, lvl - 1)); }
 
@@ -243,7 +264,8 @@ function getGoldReward(type, waveNum) {
   const globalWave = (dungeonFloor - 1) * WAVES_PER_FLOOR + waveNum;
   // Floor 1: 1.8x, Floor 2: 1.3x, Floor 3: 1.1x, Floor 4-5: 1.0x
   const floorBonus = dungeonFloor === 1 ? 1.8 : dungeonFloor === 2 ? 1.3 : dungeonFloor === 3 ? 1.1 : 1.0;
-  return Math.round(base * (1 + (globalWave - 1) * 0.07) * floorBonus * 0.5);
+  const dungeonMult = (typeof DUNGEON_REGISTRY !== 'undefined' && DUNGEON_REGISTRY[currentDungeon] && DUNGEON_REGISTRY[currentDungeon].rewardMult) || 1.0;
+  return Math.round(base * (1 + (globalWave - 1) * 0.07) * floorBonus * 0.5 * dungeonMult);
 }
 let contactCooldown = 0; // frames of invulnerability after contact hit
 let lives = 3;

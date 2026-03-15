@@ -538,10 +538,19 @@ window.addEventListener("keydown", e => {
               chatMessages.push({ name: "SYSTEM", text: "Unknown dungeon: " + _dArg, time: Date.now() });
             } else {
               const _dEntry = DUNGEON_REGISTRY[_dType];
+              // Entry gating
+              if (_dEntry.requiredLevel > 0) {
+                const _myLvl = typeof getDungeonLevel === 'function' ? getDungeonLevel() : 0;
+                if (_myLvl < _dEntry.requiredLevel) {
+                  chatMessages.push({ name: 'SYSTEM', text: 'Dungeon Level ' + _dEntry.requiredLevel + ' required (yours: ' + _myLvl + ')', time: Date.now() });
+                  return;
+                }
+              }
               queueFloorStart = 1;
               queueDungeonType = _dType;
               queueReturnLevel = _dEntry.returnLevel;
-              enterLevel('warehouse_01', 20, 20);
+              const _combatLevel = _dEntry.combatLevelId || 'warehouse_01';
+              enterLevel(_combatLevel, _dEntry.spawnTX || 20, _dEntry.spawnTY || 20);
               chatMessages.push({ name: "SYSTEM", text: "Teleported to " + _dEntry.name + " (Floor 1)", time: Date.now() });
             }
           }

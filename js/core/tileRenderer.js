@@ -540,22 +540,38 @@ function drawLevelBackground(camX, camY) {
         continue;
       }
 
-      // === DUNGEON TILES ===
+      // === DUNGEON TILES (palette-driven) ===
+      // Read palette from FLOOR_CONFIG if available
+      const _pal = (typeof FLOOR_CONFIG !== 'undefined' && FLOOR_CONFIG[currentDungeon] && FLOOR_CONFIG[currentDungeon][dungeonFloor])
+        ? FLOOR_CONFIG[currentDungeon][dungeonFloor].palette || {}
+        : {};
+      const _pFloor1 = _pal.floor1 || '#3a3840';
+      const _pFloor2 = _pal.floor2 || '#383638';
+      const _pWall = _pal.wall || '#2a2a32';
+      const _pWallAccent = _pal.wallAccent || '#454552';
+      const _pAccent2 = _pal.accent2 || '#8a2020';
+      const _pGridLine = _pal.gridLine || '#32303a';
 
       if (collisionGrid[ty][tx] === 1) {
         if (isBorder) {
-          // Outer wall — dark concrete
-          ctx.fillStyle = '#2a2a32';
+          // Outer wall
+          ctx.fillStyle = _pWall;
           ctx.fillRect(x, y, TILE, TILE);
-          ctx.strokeStyle = '#222230';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x, y, TILE, TILE);
+          ctx.fillStyle = _pWallAccent;
+          ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          // Accent detail on some border tiles
+          if ((tx + ty * 3) % 5 === 0) {
+            ctx.fillStyle = _pWallAccent;
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath(); ctx.arc(x + TILE/2, y + TILE/2, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+          }
         } else {
-          // Interior cover block — dark stone bricks
-          ctx.fillStyle = '#3a3a44';
+          // Interior cover block — brick pattern with palette colors
+          const _wallBase = _pal.wall ? _pFloor1 : '#3a3a44';
+          ctx.fillStyle = _wallBase;
           ctx.fillRect(x, y, TILE, TILE);
-          // Brick pattern
-          ctx.strokeStyle = '#2e2e38';
+          ctx.strokeStyle = _pWall;
           ctx.lineWidth = 1;
           const bh = TILE / 2;
           const off = ty % 2 === 0 ? 0 : TILE / 3;
@@ -564,35 +580,40 @@ function drawLevelBackground(camX, camY) {
           ctx.strokeRect(x, y + bh, TILE/2, bh);
           ctx.strokeRect(x + TILE/2, y + bh, TILE/2, bh);
           // Top highlight
-          ctx.fillStyle = '#454552';
+          ctx.fillStyle = _pWallAccent;
           ctx.fillRect(x, y, TILE, 2);
           // Bottom shadow
-          ctx.fillStyle = '#28283a';
+          ctx.fillStyle = _pWall;
           ctx.fillRect(x, y + TILE - 2, TILE, 2);
         }
       } else {
-        // Floor tile — lighter toward center
-        const cx = level.widthTiles / 2, cy = level.heightTiles / 2;
-        const distFromCenter = Math.sqrt((tx - cx) ** 2 + (ty - cy) ** 2);
-        const maxDist = 20;
-        const centerFade = Math.max(0, 1 - distFromCenter / maxDist);
-        const baseR = 58 + Math.round(centerFade * 25);
-        const baseG = 55 + Math.round(centerFade * 20);
-        const baseB = 55 + Math.round(centerFade * 15);
-        const gv = ((tx + ty) % 2 === 0) ? 0 : 2;
-        ctx.fillStyle = `rgb(${baseR+gv},${baseG+gv},${baseB+gv})`;
+        // Floor tile — subtle two-tone variation
+        ctx.fillStyle = (tx + ty) % 2 === 0 ? _pFloor1 : _pFloor2;
         ctx.fillRect(x, y, TILE, TILE);
-        // Subtle grid lines
-        ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+        // Grid lines
+        ctx.strokeStyle = _pGridLine;
+        ctx.globalAlpha = 0.15;
         ctx.lineWidth = 1;
         ctx.strokeRect(x, y, TILE, TILE);
-
-        // Blood splatters near center
-        if (centerFade > 0.5 && (tx * 13 + ty * 7) % 19 === 0) {
-          ctx.fillStyle = `rgba(120,20,20,${0.15 + centerFade * 0.15})`;
+        ctx.globalAlpha = 1;
+        // Accent splatters near center
+        const cx2 = level.widthTiles / 2, cy2 = level.heightTiles / 2;
+        const distFC = Math.sqrt((tx - cx2) ** 2 + (ty - cy2) ** 2);
+        if (distFC < 12 && (tx * 13 + ty * 7) % 19 === 0) {
+          ctx.fillStyle = _pAccent2;
+          ctx.globalAlpha = 0.2;
           ctx.beginPath();
           ctx.arc(x + TILE*0.4, y + TILE*0.5, 5 + (tx%3)*2, 0, Math.PI*2);
           ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        // Occasional wall-accent floor crack
+        if ((tx + ty * 3) % 11 === 0) {
+          ctx.strokeStyle = _pWallAccent;
+          ctx.globalAlpha = 0.06;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(x + 8, y + 12); ctx.lineTo(x + 32, y + 36); ctx.stroke();
+          ctx.globalAlpha = 1;
         }
       }
     }

@@ -725,6 +725,13 @@ function drawStatsPanel() {
   ctx.textAlign = "left";
   ctx.fillText("Lv. " + playerLevel, contentX, contentY + 4);
 
+  // Dungeon Level (derived stat)
+  if (typeof getDungeonLevel === 'function') {
+    ctx.font = "bold 15px monospace";
+    ctx.fillStyle = "#aab";
+    ctx.fillText("Dungeon Lv." + getDungeonLevel(), contentX + 160, contentY + 4);
+  }
+
   ctx.font = "bold 17px monospace";
   ctx.textAlign = "right";
   if (playerLevel >= PLAYER_MAX_LEVEL) {

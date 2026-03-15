@@ -295,7 +295,7 @@ const LEVELS = {
     entities: [
       { type: 'cave_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 10 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'cave' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'cave' },
       // Left torches
       { type: 'torch', tx: 1, ty: 1, solid: false },
       { type: 'torch', tx: 1, ty: 4, solid: false },
@@ -362,7 +362,7 @@ const LEVELS = {
     entities: [
       { type: 'azurine_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 72, spawnTY: 9 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'azurine' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'azurine' },
       // Neon lights (left wall)
       { type: 'neon_light', tx: 1, ty: 1, solid: false },
       { type: 'neon_light', tx: 1, ty: 4, solid: false },
@@ -448,6 +448,59 @@ const LEVELS = {
       { type: 'barrierV', tx: 38, ty: 35, w: 1, h: 4, solid: true },
       { type: 'barrierH', tx: 35, ty: 38, w: 4, h: 1, solid: true },
       { type: 'zone', id: 'center', tx: 14, ty: 14, w: 12, h: 12, solid: false }
+    ]
+  },
+  azurine_dungeon_01: {
+    id: 'azurine_dungeon_01',
+    widthTiles: 36,
+    heightTiles: 36,
+    spawns: {
+      p1: { tx: 3, ty: 18 },
+      p2: { tx: 32, ty: 18 }
+    },
+    collisionAscii: [
+      "####################################",
+      "#..................................#",
+      "#..................................#",
+      "#..##............##............##..#",
+      "#..##............##............##..#",
+      "#..................................#",
+      "#..................................#",
+      "#........##..............##........#",
+      "#........##..............##........#",
+      "#..................................#",
+      "#..................................#",
+      "#....##......................##....#",
+      "#....##......................##....#",
+      "#..................................#",
+      "#..................................#",
+      "#...........####....####...........#",
+      "#..................................#",
+      "#..................................#",
+      "#..................................#",
+      "#..................................#",
+      "#...........####....####...........#",
+      "#..................................#",
+      "#..................................#",
+      "#....##......................##....#",
+      "#....##......................##....#",
+      "#..................................#",
+      "#..................................#",
+      "#........##..............##........#",
+      "#........##..............##........#",
+      "#..................................#",
+      "#..................................#",
+      "#..##............##............##..#",
+      "#..##............##............##..#",
+      "#..................................#",
+      "#...............#..#...............#",
+      "####################################"
+    ],
+    entities: [
+      { type: 'spawnPad', tx: 3, ty: 18, solid: false },
+      { type: 'spawnPad', tx: 32, ty: 18, solid: false },
+      { type: 'zone', id: 'center', tx: 14, ty: 14, w: 8, h: 8, solid: false },
+      { type: 'shop_alcove', tx: 16, ty: 34, w: 4, h: 2, solid: false }
     ]
   },
   mine_01: {
@@ -1863,7 +1916,7 @@ const LEVELS = {
     entities: [
       { type: 'vortalis_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 21 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'vortalis' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'vortalis' },
       // Ocean lanterns (left wall)
       { type: 'ocean_lantern', tx: 1, ty: 1, solid: false },
       { type: 'ocean_lantern', tx: 1, ty: 4, solid: false },
@@ -1924,7 +1977,7 @@ const LEVELS = {
     entities: [
       { type: 'earth205_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 33 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'warehouse_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_4' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_4' },
       // Gas lamps (left wall)
       { type: 'gas_lamp', tx: 1, ty: 1, solid: false },
       { type: 'gas_lamp', tx: 1, ty: 4, solid: false },
@@ -1984,7 +2037,7 @@ const LEVELS = {
     entities: [
       { type: 'wagashi_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 45 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'wagashi_dungeon_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_5' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_5' },
       // Paper lanterns (left wall)
       { type: 'paper_lantern', tx: 1, ty: 1, solid: false },
       { type: 'paper_lantern', tx: 1, ty: 4, solid: false },
@@ -2039,7 +2092,7 @@ const LEVELS = {
     entities: [
       { type: 'earth216_exit', tx: 17, ty: 21, w: 6, h: 3, solid: false, target: 'lobby_01', spawnTX: 53, spawnTY: 57 },
       { type: 'dungeon_door', tx: 17, ty: 1, w: 6, h: 3, solid: true },
-      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, dungeonId: 'earth216_dungeon_01', spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_6' },
+      { type: 'queue_zone', tx: 15, ty: 4, w: 10, h: 5, solid: false, spawnTX: 20, spawnTY: 20, maxPlayers: 4, floorStart: 1, dungeonType: 'dungeon_6' },
       // Neon signs (left wall)
       { type: 'neon_sign_e216', tx: 1, ty: 2, solid: false },
       { type: 'neon_sign_e216', tx: 1, ty: 6, solid: false },
