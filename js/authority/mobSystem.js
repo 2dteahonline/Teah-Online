@@ -1541,9 +1541,16 @@ function updateMobs() {
       player.hp = player.maxHp;
       hitEffects.push({ x: player.x, y: player.y - 30, life: 20, type: "heal", dmg: "FULL HEAL" });
     }
-    // +2 potions on wave clear
+    // +2 potions on wave clear (player + all bots)
     potion.count += 2;
     hitEffects.push({ x: player.x, y: player.y - 50, life: 25, maxLife: 25, type: "heal", dmg: "+2 Potions" });
+    if (typeof PartyState !== 'undefined' && PartyState.active) {
+      for (const _pm of PartyState.members) {
+        if (_pm.controlType === 'bot' && _pm.potion) {
+          _pm.potion.count += 2;
+        }
+      }
+    }
     // Check if floor is complete
     if (wave >= WAVES_PER_FLOOR && !stairsOpen) {
       if (dungeonFloor < getDungeonMaxFloors()) {

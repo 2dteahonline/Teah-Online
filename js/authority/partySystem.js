@@ -88,6 +88,7 @@ function createPartyMember(slotIndex, controlType) {
     },
     equip: isLocal ? playerEquip : { armor: null, boots: null, pants: null, chest: null, helmet: null, gun: null, melee: null },
     gold: 0, // per-member gold wallet (player uses global `gold`, bots use this)
+    potion: isLocal ? null : { count: 3, cooldown: 0, cooldownMax: 120, healAmount: 25 }, // bots get their own potions
     lives: lives, // copy current lives count
     dead: false,
     deathTimer: 0,

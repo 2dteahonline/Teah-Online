@@ -17,8 +17,47 @@ const BotAI = {
   tick() {
     if (!PartyState.active) return;
     for (const member of PartyState.members) {
-      if (member.controlType !== 'bot' || member.dead || !member.active) continue;
+      if (member.controlType !== 'bot' || !member.active) continue;
+      if (member.dead) {
+        // Tick death/respawn timers — bots auto-respawn just like the player
+        this.tickDeadBot(member);
+        continue;
+      }
       this.tickBot(member);
+    }
+  },
+
+  // Tick a dead bot's timers — auto-respawn when countdown finishes (if lives > 0)
+  tickDeadBot(member) {
+    const e = member.entity;
+    // Death animation phase
+    if (member.deathTimer > 0) {
+      member.deathTimer--;
+      e._deathRotation = (1 - member.deathTimer / DEATH_ANIM_FRAMES) * (Math.PI / 2);
+      if (member.deathTimer <= 0 && member.lives > 0) {
+        // Start respawn countdown (same as player: 3 seconds)
+        member.respawnTimer = RESPAWN_COUNTDOWN;
+      }
+      return;
+    }
+    // Respawn countdown phase
+    if (member.respawnTimer > 0) {
+      member.respawnTimer--;
+      if (member.respawnTimer <= 0 && member.lives > 0) {
+        // Auto-respawn!
+        member.dead = false;
+        e.hp = e.maxHp;
+        e._isDead = false;
+        e._deathRotation = 0;
+        // Spawn near a random alive member
+        const alive = PartySystem.getAliveEntities();
+        const ref = alive.length > 0 ? alive[Math.floor(Math.random() * alive.length)] : player;
+        e.x = ref.x + (Math.random() - 0.5) * 80;
+        e.y = ref.y + (Math.random() - 0.5) * 80;
+        // Clear status effects
+        if (typeof StatusFX !== 'undefined') StatusFX.clearEntity(e);
+        hitEffects.push({ x: e.x, y: e.y - 30, life: 25, type: "heal", dmg: "RESPAWN!" });
+      }
     }
   },
 
@@ -38,6 +77,14 @@ const BotAI = {
       if (member.gun.reloadTimer <= 0) {
         member.gun.reloading = false;
         member.gun.ammo = member.gun.magSize;
+      }
+    }
+
+    // Tick potion cooldown + auto-use when HP < 40%
+    if (member.potion) {
+      if (member.potion.cooldown > 0) member.potion.cooldown--;
+      if (e.hp / e.maxHp < 0.4 && member.potion.count > 0 && member.potion.cooldown <= 0) {
+        this.botUsePotion(member);
       }
     }
 
@@ -488,11 +535,11 @@ const BotAI = {
           case 2: // Melee Speed +
             if (member.melee) member.melee.cooldownMax = Math.max(10, (member.melee.cooldownMax || 30) - 2);
             break;
-          case 3: // Health Potion — heal 50% maxHP immediately
-            const healAmt = Math.round(e.maxHp * 0.5);
-            e.hp = Math.min(e.maxHp, e.hp + healAmt);
-            hitEffects.push({ x: e.x, y: e.y - 30, life: 20, type: "heal", dmg: "+" + healAmt + " HP" });
-            return true; // skip the generic hit effect below
+          case 3: // Health Potion — adds to bot's potion inventory (used automatically when low HP)
+            if (member.potion) {
+              member.potion.count++;
+            }
+            break;
           case 4: // Lifesteal +5
             member._lifestealPerKill = (member._lifestealPerKill || 25) + 5;
             break;
@@ -787,5 +834,19 @@ const BotAI = {
       // Use the melee's actual cooldown (same as player)
       member.ai.meleeCD = ml.cooldown || ml.cooldownMax || 24;
     }
+  },
+
+  // Use a potion — same heal logic as player (healAmount + heal boost from chest)
+  botUsePotion(member) {
+    const e = member.entity;
+    const p = member.potion;
+    if (!p || p.count <= 0 || p.cooldown > 0 || e.hp >= e.maxHp) return;
+    p.count--;
+    p.cooldown = p.cooldownMax;
+    const chestHealBoost = member.equip.chest && member.equip.chest.healBoost ? member.equip.chest.healBoost : 0;
+    const boostedHeal = Math.round(p.healAmount * (1 + chestHealBoost));
+    const healed = Math.min(boostedHeal, e.maxHp - e.hp);
+    e.hp = Math.min(e.maxHp, e.hp + boostedHeal);
+    hitEffects.push({ x: e.x, y: e.y - 30, life: 20, type: "heal", dmg: "+" + healed + " HP" });
   },
 };
