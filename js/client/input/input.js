@@ -355,6 +355,15 @@ canvas.addEventListener("mousedown", e => {
     }
   }
 
+  // Mafia VITALS button click (Scientist role)
+  if (window._mafiaVitalsBtn) {
+    const vb = window._mafiaVitalsBtn;
+    if (mx >= vb.x && mx <= vb.x + vb.w && my >= vb.y && my <= vb.y + vb.h) {
+      MafiaSystem.toggleVitals();
+      return;
+    }
+  }
+
   // Mafia SHIFT button click (Shapeshifter role)
   if (window._mafiaShiftBtn) {
     const sb = window._mafiaShiftBtn;

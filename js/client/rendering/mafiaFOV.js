@@ -349,6 +349,17 @@ function drawMafiaBodies() {
     ctx.save();
     ctx.translate(sx, sy);
 
+    // Viper dissolve stage: 4 visual stages based on remaining timer
+    // 100% (>75%), 75% (>50%), 50% (>25%), 25% (>0%), then removed by mafiaSystem
+    let dissolvePct = 1.0; // fraction remaining (1.0 = fully intact)
+    if (body.dissolveTimer != null && body.dissolveMax > 0) {
+      dissolvePct = body.dissolveTimer / body.dissolveMax;
+    }
+    // Apply global alpha for dissolve fade
+    if (dissolvePct < 1.0) {
+      ctx.globalAlpha = Math.max(0.15, dissolvePct * 0.85 + 0.15);
+    }
+
     // Fallen body — horizontal oval with color
     const bodyColor = body.color ? body.color.body : '#c51111';
     const darkColor = body.color ? body.color.dark : '#7a0838';
@@ -371,30 +382,48 @@ function drawMafiaBodies() {
     ctx.ellipse(-2, -3, 14, 9, 0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Visor (cracked)
-    ctx.fillStyle = '#a8d8ea';
-    ctx.beginPath();
-    ctx.ellipse(6, -5, 6, 5, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    // Crack line
-    ctx.strokeStyle = '#556';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(4, -8);
-    ctx.lineTo(8, -3);
-    ctx.lineTo(6, -1);
-    ctx.stroke();
+    // Visor (cracked) — hidden at <50% dissolve
+    if (dissolvePct > 0.5) {
+      ctx.fillStyle = '#a8d8ea';
+      ctx.beginPath();
+      ctx.ellipse(6, -5, 6, 5, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Crack line
+      ctx.strokeStyle = '#556';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(4, -8);
+      ctx.lineTo(8, -3);
+      ctx.lineTo(6, -1);
+      ctx.stroke();
+    }
 
-    // Bone (sticking out)
-    ctx.fillStyle = '#e8e0d0';
-    ctx.fillRect(-14, -2, 8, 3);
+    // Bone (sticking out) — hidden at <25% dissolve
+    if (dissolvePct > 0.25) {
+      ctx.fillStyle = '#e8e0d0';
+      ctx.fillRect(-14, -2, 8, 3);
+    }
+
+    // Dissolve acid/green particles effect when actively dissolving
+    if (dissolvePct < 1.0 && dissolvePct > 0) {
+      const t = Date.now() / 1000;
+      for (let i = 0; i < 5; i++) {
+        const px = Math.sin(t * 2 + i * 1.3) * 14;
+        const py = Math.cos(t * 1.7 + i * 0.9) * 8 - 2;
+        const sz = 1.5 + Math.sin(t * 3 + i) * 0.5;
+        ctx.fillStyle = `rgba(80,255,40,${0.3 * (1 - dissolvePct)})`;
+        ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    ctx.globalAlpha = 1.0;
 
     // Name below body
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.fillRect(-ctx.measureText(body.name).width / 2 - 4, 14, ctx.measureText(body.name).width + 8, 14);
-    ctx.fillStyle = '#ff6666';
+    ctx.fillStyle = dissolvePct < 0.5 ? '#aa6644' : '#ff6666';
     ctx.fillText(body.name, 0, 25);
     ctx.textAlign = 'left';
 
@@ -1512,6 +1541,48 @@ function _drawRoleAbilityButtons(isImpostor) {
     window._mafiaTrackBtn = null;
   }
 
+  // ---- Scientist "VITALS" button (crewmate with scientist subrole) ----
+  if (!isImpostor && mk.playerSubrole === 'scientist') {
+    const btnY = ctx.canvas.height - btnH - 100 - btnIdx * 60;
+    const canVitals = rs.vitalsCooldown <= 0 && !rs.vitalsOpen;
+    const cooldownSec = Math.ceil(rs.vitalsCooldown / 60);
+
+    ctx.save();
+    ctx.fillStyle = rs.vitalsOpen ? 'rgba(126,211,33,0.85)' : (canVitals ? 'rgba(80,170,20,0.85)' : 'rgba(30,70,10,0.6)');
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 10); ctx.fill();
+    ctx.strokeStyle = rs.vitalsOpen ? '#7ed321' : (canVitals ? '#5faa15' : '#334422');
+    ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = (canVitals || rs.vitalsOpen) ? '#ffffff' : '#557733';
+
+    if (rs.vitalsOpen) {
+      ctx.fillText('VITALS', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(Math.ceil(rs.vitalsTimer / 60) + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
+    } else if (rs.vitalsCooldown > 0) {
+      ctx.fillText('VITALS', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(cooldownSec + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
+    } else {
+      ctx.fillText('VITALS', btnX + btnW / 2, btnY + btnH / 2);
+    }
+
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+
+    ctx.save(); ctx.font = '12px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillText('[V]', btnX + btnW / 2, btnY - 8);
+    ctx.textAlign = 'left'; ctx.restore();
+
+    window._mafiaVitalsBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+    btnIdx++;
+  } else {
+    window._mafiaVitalsBtn = null;
+  }
+
   // ---- Shapeshifter "SHIFT" button (impostor with shapeshifter subrole) ----
   if (isImpostor && mk.playerSubrole === 'shapeshifter') {
     const btnY = ctx.canvas.height - btnH - 100 - btnIdx * 60;
@@ -1573,9 +1644,9 @@ function _drawRoleAbilityButtons(isImpostor) {
     ctx.fillStyle = (canVanish || isInvis) ? '#ffffff' : '#664488';
 
     if (isInvis) {
-      ctx.fillText('VANISH', btnX + btnW / 2, btnY + btnH / 2 - 8);
-      ctx.font = 'bold 12px monospace';
-      ctx.fillText('VISIBLE', btnX + btnW / 2, btnY + btnH / 2 + 12);
+      ctx.fillText('VISIBLE', btnX + btnW / 2, btnY + btnH / 2 - 8);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(Math.ceil(rs.invisTimer / 60) + 's', btnX + btnW / 2, btnY + btnH / 2 + 12);
     } else if (rs.invisCooldown > 0) {
       ctx.fillText('VANISH', btnX + btnW / 2, btnY + btnH / 2 - 8);
       ctx.font = 'bold 14px monospace';

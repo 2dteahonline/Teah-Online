@@ -174,6 +174,9 @@ const VentSystem = {
   animTimer: 0,
   animType: null, // 'enter' | 'exit'
   ANIM_DURATION: 20,
+  ventTimer: 0,    // frames remaining inside vent (engineer max time)
+  ventMaxTime: 0,  // max vent time in frames (for progress bar)
+  ventCooldown: 0, // frames until can re-enter vent
   // Arrow buttons stored in window._ventArrowButtons for click detection
 
   getVentEntity(ventId) {
@@ -192,9 +195,20 @@ const VentSystem = {
 
   enter(ventId) {
     if (this.active || this.animTimer > 0) return;
+    if (this.ventCooldown > 0) return; // on cooldown
     this.currentVentId = ventId;
     this.animType = 'enter';
     this.animTimer = this.ANIM_DURATION;
+    // Set max vent time for engineers (impostor = unlimited = 0)
+    if (typeof MafiaState !== 'undefined' && MafiaState.playerSubrole === 'engineer') {
+      const dur = (typeof MAFIA_ROLE_SETTINGS !== 'undefined' && MAFIA_ROLE_SETTINGS.ventDuration != null)
+        ? MAFIA_ROLE_SETTINGS.ventDuration : 30;
+      this.ventMaxTime = dur * 60;
+      this.ventTimer = this.ventMaxTime;
+    } else {
+      this.ventTimer = 0;
+      this.ventMaxTime = 0;
+    }
     // Snap player to vent center
     const e = this.getVentEntity(ventId);
     if (e) {
@@ -217,6 +231,13 @@ const VentSystem = {
     player.vy = 0;
     this.animType = 'exit';
     this.animTimer = this.ANIM_DURATION;
+    this.ventTimer = 0;
+    // Start cooldown for engineers
+    if (typeof MafiaState !== 'undefined' && MafiaState.playerSubrole === 'engineer') {
+      const cd = (typeof MAFIA_ROLE_SETTINGS !== 'undefined' && MAFIA_ROLE_SETTINGS.ventCooldown != null)
+        ? MAFIA_ROLE_SETTINGS.ventCooldown : 15;
+      this.ventCooldown = cd * 60;
+    }
   },
 
   cycleVent(targetId) {
@@ -245,6 +266,15 @@ const VentSystem = {
         this.animType = null;
       }
     }
+    // Engineer vent timer — auto-eject when time runs out
+    if (this.active && this.ventTimer > 0) {
+      this.ventTimer--;
+      if (this.ventTimer <= 0) {
+        this.exit(); // force eject
+      }
+    }
+    // Vent cooldown countdown
+    if (this.ventCooldown > 0) this.ventCooldown--;
   },
 
   reset() {
@@ -252,6 +282,9 @@ const VentSystem = {
     this.currentVentId = null;
     this.animTimer = 0;
     this.animType = null;
+    this.ventTimer = 0;
+    this.ventMaxTime = 0;
+    this.ventCooldown = 0;
     window._ventArrowButtons = null;
   },
 };
@@ -345,6 +378,28 @@ function drawVentHUD() {
   ctx.fillStyle = 'rgba(200,200,200,0.6)';
   const keyName = typeof getKeyDisplayName === 'function' ? getKeyDisplayName(keybinds.interact) : 'E';
   ctx.fillText('[' + keyName + '] Exit Vent', ventSX, ventSY + 80 * wz);
+
+  // Engineer vent timer bar (shows remaining time in vent)
+  if (VentSystem.ventTimer > 0 && VentSystem.ventMaxTime > 0) {
+    const barW = 120, barH = 10;
+    const barX = ventSX - barW / 2;
+    const barY = ventSY + 88 * wz;
+    const pct = VentSystem.ventTimer / VentSystem.ventMaxTime;
+    const secLeft = Math.ceil(VentSystem.ventTimer / 60);
+
+    // Bar background
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 4); ctx.fill();
+    // Bar fill — green > yellow > red
+    const col = pct > 0.5 ? '#40ff80' : (pct > 0.25 ? '#ffcc00' : '#ff4444');
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.roundRect(barX, barY, barW * pct, barH, 4); ctx.fill();
+    // Timer text
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(secLeft + 's', ventSX, barY + barH + 14);
+  }
+
   ctx.textAlign = 'left';
 }
 

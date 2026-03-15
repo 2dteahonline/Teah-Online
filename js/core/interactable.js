@@ -623,10 +623,16 @@ window._resetShopPrices = () => {
       get x() { return e.tx * TILE + TILE; },   // center of 2x2 entity
       get y() { return e.ty * TILE + TILE; },
       range: 80,
-      get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Vent'; },
+      get label() {
+        if (typeof VentSystem !== 'undefined' && VentSystem.ventCooldown > 0) {
+          return 'Vent (' + Math.ceil(VentSystem.ventCooldown / 60) + 's)';
+        }
+        return '[' + getKeyDisplayName(keybinds.interact) + '] Vent';
+      },
       type: 'skeld_vent',
       canInteract() {
         if (!Scene.inSkeld || typeof VentSystem === 'undefined' || VentSystem.active || VentSystem.animTimer) return false;
+        if (VentSystem.ventCooldown > 0) return false; // engineer cooldown
         // Only impostors and engineers can use vents
         if (typeof MafiaState !== 'undefined') {
           const isImpostor = MafiaState.playerRole === 'impostor';

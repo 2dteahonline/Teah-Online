@@ -155,18 +155,22 @@ function drawMinimap() {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Tracked player dot (Tracker role ability)
+  // Tracked player dot (Tracker role ability) — uses tracked player's Among Us color
   if (typeof MafiaState !== 'undefined' && MafiaState._roleState && MafiaState._roleState.trackedTarget) {
     const tracked = MafiaState.participants.find(p => p.id === MafiaState._roleState.trackedTarget && p.alive);
     if (tracked && tracked.entity) {
       const tx = ox + (tracked.entity.x / TILE) * S;
       const ty = oy + (tracked.entity.y / TILE) * S;
       const tPulse = 0.6 + 0.4 * Math.sin(renderTime * 0.01);
-      ctx.fillStyle = `rgba(255,60,60,${tPulse})`;
+      // Use tracked player's color so the dot matches their crewmate color
+      const tCol = tracked.color ? tracked.color.body : '#ff4444';
+      // Parse hex to rgb for rgba alpha blending
+      const _r = parseInt(tCol.slice(1,3),16), _g = parseInt(tCol.slice(3,5),16), _b = parseInt(tCol.slice(5,7),16);
+      ctx.fillStyle = `rgba(${_r},${_g},${_b},${tPulse})`;
       ctx.beginPath();
       ctx.arc(tx, ty, Math.max(4, S * 0.6), 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#ff4444';
+      ctx.strokeStyle = tCol;
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }

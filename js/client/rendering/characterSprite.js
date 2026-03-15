@@ -314,8 +314,13 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   if (typeof Scene !== 'undefined' && (Scene.inSkeld || Scene.inMafiaLobby)) {
     let bodyCol, darkCol;
     if (isPlayer) {
-      // In-game: get from MafiaState participant; in lobby: use chosen color index
-      if (typeof MafiaState !== 'undefined' && MafiaState.participants) {
+      // Shapeshifter: if shifted, use the target's color (passed via skin/hair params)
+      const _shifted = typeof MafiaState !== 'undefined' && MafiaState._roleState && MafiaState._roleState.shiftedAs;
+      if (_shifted) {
+        const _shiftP = MafiaState.participants.find(p => p.id === MafiaState._roleState.shiftedAs);
+        bodyCol = _shiftP && _shiftP.color ? _shiftP.color.body : (skin || '#c51111');
+        darkCol = _shiftP && _shiftP.color ? _shiftP.color.dark : (hair || '#7a0838');
+      } else if (typeof MafiaState !== 'undefined' && MafiaState.participants) {
         const localP = MafiaState.participants.find(p => p.isLocal);
         bodyCol = localP && localP.color ? localP.color.body : '#c51111';
         darkCol = localP && localP.color ? localP.color.dark : '#7a0838';
