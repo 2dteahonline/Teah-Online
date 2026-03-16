@@ -299,7 +299,7 @@ function draw() {
   // Spar bots (member objects — entity is member.entity)
   if (typeof SparState !== 'undefined' && Scene.inSpar && SparState._sparBots) {
     for (const member of SparState._sparBots) {
-      if (!member.dead && member.entity.hp > 0) sortedChars.push({ y: member.entity.y, type: "sparBot", bot: member.entity });
+      if (!member.dead && member.entity.hp > 0) sortedChars.push({ y: member.entity.y, type: "sparBot", member: member });
     }
   }
   sortedChars.sort((a, b) => a.y - b.y);
@@ -384,8 +384,9 @@ function draw() {
       } else {
         // Spar team indicator under player (green = your team)
         if (typeof SparState !== 'undefined' && Scene.inSpar && SparState.phase === 'fighting') {
-          ctx.fillStyle = 'rgba(50,200,80,0.4)';
-          ctx.beginPath(); ctx.arc(player.x - camera.x, player.y - camera.y, 14, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(50,200,80,0.55)';
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(player.x - camera.x, player.y - camera.y + 4, 16, 0, Math.PI * 2); ctx.stroke();
         }
         const flashAlpha = contactCooldown > 0 && Math.floor(renderTime / 80) % 2 === 0;
         if (flashAlpha) ctx.globalAlpha = 0.5;
@@ -991,15 +992,31 @@ function draw() {
       gun.recoilTimer = _savedRecoil; // restore player's recoil
 
     } else if (e.type === "sparBot") {
-      // Spar bot rendering — simple character with team color indicator
-      const sb = e.bot;
-      const sbx = sb.x - camera.x, sby = sb.y - camera.y;
-      // Team indicator circle: green = ally, red = enemy
-      ctx.fillStyle = sb._sparTeam === 'teamA' ? 'rgba(50,200,80,0.4)' : 'rgba(220,50,50,0.4)';
-      ctx.beginPath(); ctx.arc(sbx, sby, 14, 0, Math.PI * 2); ctx.fill();
-      // Draw character — empty name so no name tag clutter, HP bar still shows
-      drawChar(sb.x, sb.y, sb.dir, 0, sb.moving,
-        sb.skin, sb.hair, sb.shirt, sb.pants, "", sb.hp, false, null, sb.maxHp);
+      // Spar bot rendering — full member pattern (same as partyBot) with team indicator
+      const _sm = e.member;
+      const _se = _sm.entity;
+      const _sex = _se.x - camera.x, _sey = _se.y - camera.y;
+      // Team indicator ring: green = ally, red = enemy
+      ctx.strokeStyle = _sm._sparTeam === 'teamA' ? 'rgba(50,200,80,0.55)' : 'rgba(220,50,50,0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(_sex, _sey + 4, 16, 0, Math.PI * 2); ctx.stroke();
+      // Set equip/color overrides so drawChar renders the bot's gun
+      _charEquipOverride = _sm.equip;
+      _charColorOverride = { skin: _se.skin, hair: _se.hair, shirt: _se.shirt, pants: _se.pants };
+      const _savedSlot2 = activeSlot;
+      const _savedRecoil2 = gun.recoilTimer;
+      activeSlot = 0; // bots always show gun
+      gun.recoilTimer = _sm.gun ? (_sm.gun.recoilTimer || 0) : 0;
+      // Damage flash
+      const _sparFlash = _se._contactCD > 0 && Math.floor(renderTime / 80) % 2 === 0;
+      if (_sparFlash) ctx.globalAlpha = 0.5;
+      drawChar(_se.x, _se.y, _se.dir, _se.frame, _se.moving,
+        _se.skin, _se.hair, _se.shirt, _se.pants, _se.name, _se.hp, false, null, _se.maxHp);
+      if (_sparFlash) ctx.globalAlpha = 1.0;
+      _charEquipOverride = null;
+      _charColorOverride = null;
+      activeSlot = _savedSlot2;
+      gun.recoilTimer = _savedRecoil2;
 
     } else if (e.mob) {
       const m = e.mob;
