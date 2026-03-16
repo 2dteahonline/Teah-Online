@@ -354,6 +354,53 @@ const SparSystem = {
     return member;
   },
 
+  // Called from game loop BEFORE translateIntentsToCommands() so the training
+  // archetype's input flows through the entire real pipeline: keysDown →
+  // translateIntentsToCommands → CommandQueue → authorityTick → update()
+  // including freeze, knockback, wall collision, corner nudge, etc.
+  _injectTrainingInput() {
+    if (SparState.phase !== 'fighting') return;
+    if (typeof _getSparTrainingBotOverride !== 'function') return;
+    const trainBot = _getSparTrainingBotOverride();
+    if (!trainBot) return;
+    const enemyMember = SparState.teamB.find(p => p.alive);
+    if (!enemyMember) return;
+
+    const te = enemyMember.entity;
+    const tdx = te.x - player.x, tdy = te.y - player.y;
+    const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
+    const fakeMember = { entity: player, _trainMoveX: 0, _trainMoveY: 0 };
+    const fakeAi = SparState._trainPlayerAi || { strafeDir: 1, strafeTimer: 0, _cornerTarget: null };
+    fakeAi.strafeTimer = (fakeAi.strafeTimer || 0) - 1;
+    if (fakeAi.strafeTimer <= 0) {
+      fakeAi.strafeDir = Math.random() < 0.5 ? -1 : 1;
+      fakeAi.strafeTimer = 30 + Math.floor(Math.random() * 60);
+    }
+    SparState._trainPlayerAi = fakeAi;
+    const shouldShoot = trainBot.tick(fakeMember, te, tdist, tdx, tdy, GAME_CONFIG.PLAYER_BASE_SPEED, fakeAi);
+
+    // Override keysDown so translateIntentsToCommands picks up training movement
+    const mx = fakeMember._trainMoveX, my = fakeMember._trainMoveY;
+    keysDown[keybinds.moveLeft] = mx < -0.1;
+    keysDown[keybinds.moveRight] = mx > 0.1;
+    keysDown[keybinds.moveUp] = my < -0.1;
+    keysDown[keybinds.moveDown] = my > 0.1;
+
+    // Override shooting state so translateIntentsToCommands enqueues correct shoot command
+    InputIntent.shootHeld = !!shouldShoot;
+    if (shouldShoot) {
+      // Aim toward enemy using arrow-key style
+      if (Math.abs(tdx) > Math.abs(tdy)) {
+        InputIntent.arrowAimDir = tdx > 0 ? 3 : 2;
+      } else {
+        InputIntent.arrowAimDir = tdy > 0 ? 0 : 1;
+      }
+      InputIntent.arrowShooting = true;
+    } else {
+      InputIntent.arrowShooting = false;
+    }
+  },
+
   tick() {
     if (SparState.phase === 'idle' || SparState.phase === 'hub') return;
 
@@ -371,63 +418,6 @@ const SparSystem = {
 
     if (SparState.phase === 'fighting') {
       SparState.matchTimer++;
-      // Training harness: directly move PLAYER with scripted archetype.
-      // Runs AFTER update() already processed real input, so we override
-      // player position/velocity directly (same approach as bot movement).
-      // Enemy bot keeps its real duel style so style results are meaningful.
-      if (typeof _getSparTrainingBotOverride === 'function') {
-        const trainBot = _getSparTrainingBotOverride();
-        if (trainBot) {
-          const enemyMember = SparState.teamB.find(p => p.alive);
-          if (enemyMember) {
-            const te = enemyMember.entity;
-            const tdx = te.x - player.x, tdy = te.y - player.y;
-            const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
-            const fakeMember = { entity: player, _trainMoveX: 0, _trainMoveY: 0 };
-            const fakeAi = SparState._trainPlayerAi || { strafeDir: 1, strafeTimer: 0, _cornerTarget: null };
-            fakeAi.strafeTimer = (fakeAi.strafeTimer || 0) - 1;
-            if (fakeAi.strafeTimer <= 0) {
-              fakeAi.strafeDir = Math.random() < 0.5 ? -1 : 1;
-              fakeAi.strafeTimer = 30 + Math.floor(Math.random() * 60);
-            }
-            SparState._trainPlayerAi = fakeAi;
-            const shouldShoot = trainBot.tick(fakeMember, te, tdist, tdx, tdy, GAME_CONFIG.PLAYER_BASE_SPEED, fakeAi);
-            // Direct position override (bypasses input pipeline entirely)
-            player.vx = fakeMember._trainMoveX;
-            player.vy = fakeMember._trainMoveY;
-            player.moving = Math.abs(player.vx) > 0.1 || Math.abs(player.vy) > 0.1;
-            // Wall collision with sliding (same as main movement code)
-            const hw = GAME_CONFIG.PLAYER_WALL_HW;
-            const nx = player.x + player.vx, ny = player.y + player.vy;
-            let canX = true, canY = true;
-            if (typeof isSolid === 'function') {
-              const cL = Math.floor((nx - hw) / TILE), cR = Math.floor((nx + hw) / TILE);
-              const rT = Math.floor((player.y - hw) / TILE), rB = Math.floor((player.y + hw) / TILE);
-              if (isSolid(cL, rT) || isSolid(cR, rT) || isSolid(cL, rB) || isSolid(cR, rB)) canX = false;
-              const cL2 = Math.floor((player.x - hw) / TILE), cR2 = Math.floor((player.x + hw) / TILE);
-              const rT2 = Math.floor((ny - hw) / TILE), rB2 = Math.floor((ny + hw) / TILE);
-              if (isSolid(cL2, rT2) || isSolid(cR2, rT2) || isSolid(cL2, rB2) || isSolid(cR2, rB2)) canY = false;
-            }
-            if (canX) player.x = nx;
-            if (canY) player.y = ny;
-            // Clamp to arena bounds
-            const aLvl = LEVELS[SparState.activeRoom.arenaLevel];
-            player.x = Math.max(TILE, Math.min(aLvl.widthTiles * TILE - TILE, player.x));
-            player.y = Math.max(TILE, Math.min(aLvl.heightTiles * TILE - TILE, player.y));
-            // Face enemy
-            if (Math.abs(tdx) > Math.abs(tdy)) player.dir = tdx > 0 ? 3 : 2;
-            else player.dir = tdy > 0 ? 0 : 1;
-            // Direct shooting (bypass input — call shoot() with correct aim)
-            if (shouldShoot && typeof shoot === 'function') {
-              // Set arrow aim so getAimDir() returns the right direction
-              InputIntent.arrowAimDir = player.dir;
-              InputIntent.arrowShooting = true;
-              InputIntent.shootHeld = true;
-              shoot();
-            }
-          }
-        }
-      }
       this._collectPlayerData();
       this._tickSparBots();
       this._bodyBlockSpar();
