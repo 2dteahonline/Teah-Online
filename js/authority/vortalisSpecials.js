@@ -1075,7 +1075,7 @@ MOB_SPECIALS.call_to_arms = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'pirate_grunt', id: nextMobId++,
       hp: Math.round(m.maxHp * 0.15), maxHp: Math.round(m.maxHp * 0.15),
-      speed: 2, damage: Math.round(m.damage * 0.4),
+      speed: 1.8, damage: Math.round(m.damage * 0.4),
       contactRange: 30, skin: '#c4a882', hair: '#333', shirt: '#884422', pants: '#553311',
       name: 'Deckhand', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -1349,7 +1349,7 @@ MOB_SPECIALS.tribal_summon = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'tribal_warrior', id: nextMobId++,
       hp: Math.round(m.maxHp * 0.12), maxHp: Math.round(m.maxHp * 0.12),
-      speed: 2.4, damage: Math.round(m.damage * 0.35),
+      speed: 2.1, damage: Math.round(m.damage * 0.35),
       contactRange: 30, skin: '#8b6914', hair: '#222', shirt: '#556b2f', pants: '#3a2a0a',
       name: 'Tribal Warrior', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -1778,7 +1778,7 @@ MOB_SPECIALS.spectral_crew = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'ghost_pirate', id: nextMobId++,
       hp: Math.round(m.maxHp * 0.1), maxHp: Math.round(m.maxHp * 0.1),
-      speed: 2.4, damage: Math.round(m.damage * 0.3),
+      speed: 2.1, damage: Math.round(m.damage * 0.3),
       contactRange: 28, skin: '#aabbcc', hair: '#667788', shirt: '#556677', pants: '#445566',
       name: 'Ghost Pirate', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -2030,7 +2030,7 @@ MOB_SPECIALS.kraken_call = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'kraken_tentacle', id: nextMobId++,
       hp: Math.round(m.maxHp * 0.08), maxHp: Math.round(m.maxHp * 0.08),
-      speed: 1.2, damage: Math.round(m.damage * 0.3),
+      speed: 1.1, damage: Math.round(m.damage * 0.3),
       contactRange: 36, skin: '#446644', hair: '#335533', shirt: '#224422', pants: '#113311',
       name: 'Tentacle', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,

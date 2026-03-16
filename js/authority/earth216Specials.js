@@ -165,7 +165,7 @@ MOB_SPECIALS.gilded_sweep = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 4.8, Math.sin(kbDir) * 4.8);
+        applyKnockback(Math.cos(kbDir) * 4.2, Math.sin(kbDir) * 4.2);
       }
       m._specialTimer = m._specialCD || 190;
     }
@@ -289,7 +289,7 @@ MOB_SPECIALS.bullion_charge = (m, ctx) => {
         StatusFX.applyToPlayer('stun', { duration: 60 });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 3.2, Math.sin(kbDir) * 3.2);
+        applyKnockback(Math.cos(kbDir) * 2.8, Math.sin(kbDir) * 2.8);
       }
       m._bullionDash = 0;
       m._specialTimer = m._specialCD || 220;
@@ -340,7 +340,7 @@ MOB_SPECIALS.tribute_taken = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback away from boss
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 6.4, Math.sin(kbDir) * 6.4);
+        applyKnockback(Math.cos(kbDir) * 5.6, Math.sin(kbDir) * 5.6);
       }
       hitEffects.push({ x: m.x, y: m.y - 15, life: 20, type: "cast" });
       m._specialTimer = m._specialCD || 210;
@@ -383,7 +383,7 @@ MOB_SPECIALS.call_collection = (m, ctx) => {
           mobs.push({
             x: sx, y: sy, type: 'grunt', ai: 'grunt', id: minionId,
             hp: Math.round(m.maxHp * 0.1), maxHp: Math.round(m.maxHp * 0.1),
-            speed: 1.8, damage: Math.round(m.damage * 0.35),
+            speed: 1.6, damage: Math.round(m.damage * 0.35),
             contactRange: 30, skin: '#887766', hair: '#554433', shirt: '#443322', pants: '#332211',
             name: 'Thug', dir: 0, frame: 0, attackCooldown: 0,
             shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,

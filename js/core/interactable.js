@@ -178,10 +178,10 @@ const ARMOR_TIERS = [
 
 // === 4-SLOT ARMOR SYSTEM (4 tiers, wave-gated by GLOBAL wave) ===
 const BOOTS_TIERS = [
-  { id: 'leather_boots',  name: 'Leather Boots',  tier: 1, speedBonus: 0.56, color: '#8a6a40', desc: '+0.56 speed', waveReq: 1, cost: 15 },
-  { id: 'swift_boots',    name: 'Swift Boots',    tier: 2, speedBonus: 1.52, dodgeChance: 0.15, color: '#4a7a5a', desc: '+1.52 speed · 15% dodge', waveReq: 10, cost: 60 },
-  { id: 'shadow_boots',   name: 'Shadow Boots',   tier: 3, speedBonus: 1.84, dodgeChance: 0.20, color: '#3a3a6a', desc: '+1.84 speed · 20% dodge · Shadow Step', waveReq: 20, cost: 280, special: 'shadowstep' },
-  { id: 'phantom_boots',  name: 'Phantom Boots',  tier: 4, speedBonus: 2.08, dodgeChance: 0.25, color: '#2a7a8a', desc: '+2.08 speed · 25% dodge + phase', waveReq: 30, cost: 550, special: 'phase' },
+  { id: 'leather_boots',  name: 'Leather Boots',  tier: 1, speedBonus: 0.49, color: '#8a6a40', desc: '+0.49 speed', waveReq: 1, cost: 15 },
+  { id: 'swift_boots',    name: 'Swift Boots',    tier: 2, speedBonus: 1.33, dodgeChance: 0.15, color: '#4a7a5a', desc: '+1.33 speed · 15% dodge', waveReq: 10, cost: 60 },
+  { id: 'shadow_boots',   name: 'Shadow Boots',   tier: 3, speedBonus: 1.61, dodgeChance: 0.20, color: '#3a3a6a', desc: '+1.61 speed · 20% dodge · Shadow Step', waveReq: 20, cost: 280, special: 'shadowstep' },
+  { id: 'phantom_boots',  name: 'Phantom Boots',  tier: 4, speedBonus: 1.82, dodgeChance: 0.25, color: '#2a7a8a', desc: '+1.82 speed · 25% dodge + phase', waveReq: 30, cost: 550, special: 'phase' },
 ];
 const PANTS_TIERS = [
   { id: 'padded_pants',    name: 'Padded Pants',    tier: 1, dmgReduce: 0.10, projReduce: 0, color: '#7a6a50', desc: '-10% damage', waveReq: 1, cost: 20 },

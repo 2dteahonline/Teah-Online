@@ -904,7 +904,7 @@ const MOB_SPECIALS = {
           const stompReduced = dealDamageToPlayer(stompDmg, "aoe", null);
           hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: stompReduced });
           if (stompDist > 0) {
-            applyKnockback((stompDx / stompDist) * 14.4, (stompDy / stompDist) * 14.4);
+            applyKnockback((stompDx / stompDist) * 12.6, (stompDy / stompDist) * 12.6);
           }
         }
         hitEffects.push({ x: m.x, y: m.y, life: 20, type: "stomp" });
@@ -999,7 +999,7 @@ const MOB_SPECIALS = {
         const stompReduced = dealDamageToPlayer(stompDmg, "aoe", null);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 15, type: "hit", dmg: stompReduced });
         if (stompDist > 0) {
-          applyKnockback((stompDx / stompDist) * 8, (stompDy / stompDist) * 8);
+          applyKnockback((stompDx / stompDist) * 7, (stompDy / stompDist) * 7);
         }
       }
       hitEffects.push({ x: m.x, y: m.y, life: 15, type: "stomp" });
@@ -1384,7 +1384,7 @@ const MOB_SPECIALS = {
             // Knockback away from pound center
             const kDx = player.x - pcx, kDy = player.y - pcy;
             const kDist = Math.sqrt(kDx * kDx + kDy * kDy) || 1;
-            applyKnockback((kDx / kDist) * 9.6, (kDy / kDist) * 9.6);
+            applyKnockback((kDx / kDist) * 8.4, (kDy / kDist) * 8.4);
             // Slow
             StatusFX.applyToPlayer('slow', { amount: 0.4, duration: 150 });
           }
@@ -3220,7 +3220,7 @@ const MOB_SPECIALS = {
             // Knockback away from impact center
             const kDx = player.x - pcx, kDy = player.y - pcy;
             const kDist = Math.sqrt(kDx * kDx + kDy * kDy) || 1;
-            applyKnockback((kDx / kDist) * 11.2, (kDy / kDist) * 11.2);
+            applyKnockback((kDx / kDist) * 9.8, (kDy / kDist) * 9.8);
           }
         }
         hitEffects.push({ x: pcx, y: pcy, life: 20, type: "stomp" });
@@ -3763,7 +3763,7 @@ const MOB_SPECIALS = {
             // Knockback away from emerge center
             const kDx = player.x - m.x, kDy = player.y - m.y;
             const kDist = Math.sqrt(kDx * kDx + kDy * kDy) || 1;
-            applyKnockback((kDx / kDist) * 12.8, (kDy / kDist) * 12.8);
+            applyKnockback((kDx / kDist) * 11.2, (kDy / kDist) * 11.2);
           }
         }
         hitEffects.push({ x: m.x, y: m.y, life: 25, type: "stomp" });

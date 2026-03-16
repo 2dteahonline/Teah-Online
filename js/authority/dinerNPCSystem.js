@@ -49,8 +49,8 @@ const DINER_ARCADE_SPOTS = [
 const DINER_NPC_CONFIG = {
   maxParties: 5,
   spawnInterval: [300, 720],
-  baseSpeed: 0.88,
-  speedVariance: 0.16,
+  baseSpeed: 0.77,
+  speedVariance: 0.14,
   eatDuration: [900, 1200],
   arcadeChance: 0.2,
   arcadeDuration: [300, 600],
@@ -415,7 +415,7 @@ function _spawnDinerWaitress() {
     pants: '#3a3a50',
     name: 'Waitress',
   });
-  npc.speed = 1.76; // faster than customers
+  npc.speed = 1.54; // faster than customers
   npc.state = 'idle';
   npc.moving = false;
   // Waitress state tracking

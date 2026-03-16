@@ -233,7 +233,7 @@ MOB_SPECIALS.earthquake_slam_e205 = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 9.6, Math.sin(kbDir) * 9.6);
+        applyKnockback(Math.cos(kbDir) * 8.4, Math.sin(kbDir) * 8.4);
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "sledgehammer_shockwave" });
       m._specialTimer = m._specialCD || 300;
@@ -624,7 +624,7 @@ MOB_SPECIALS.decoy_device = (m, ctx) => {
   mobs.push({
     x: sx, y: sy, type: 'decoy_willis', id: nextMobId++,
     hp: 1, maxHp: 1,
-    speed: 4, damage: 0,
+    speed: 3.5, damage: 0,
     contactRange: 0, skin: m.skin || '#c4a882', hair: m.hair || '#444', shirt: m.shirt || '#667788', pants: m.pants || '#445566',
     name: 'Decoy', dir: 0, frame: 0, attackCooldown: 0,
     shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -717,7 +717,7 @@ MOB_SPECIALS.master_plan = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'decoy_willis', id: nextMobId++,
       hp: 1, maxHp: 1,
-      speed: 4, damage: 0,
+      speed: 3.5, damage: 0,
       contactRange: 0, skin: m.skin || '#c4a882', hair: m.hair || '#444', shirt: m.shirt || '#667788', pants: m.pants || '#445566',
       name: 'Decoy', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -769,7 +769,7 @@ MOB_SPECIALS.shattering_swing = (m, ctx) => {
     hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
     // Knockback
     const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-    applyKnockback(Math.cos(kbDir) * 11.2, Math.sin(kbDir) * 11.2);
+    applyKnockback(Math.cos(kbDir) * 9.8, Math.sin(kbDir) * 9.8);
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 15, type: "cast" });
   m._abilityCDs.shattering_swing = 240;
@@ -847,7 +847,7 @@ MOB_SPECIALS.brutal_beatdown = (m, ctx) => {
         // Final hit knockback
         if (m._beatdownHits >= 5) {
           const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-          applyKnockback(Math.cos(kbDir) * 12.8, Math.sin(kbDir) * 12.8);
+          applyKnockback(Math.cos(kbDir) * 11.2, Math.sin(kbDir) * 11.2);
         }
       }
     }
@@ -926,7 +926,7 @@ MOB_SPECIALS.bull_charge = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 12.8, Math.sin(kbDir) * 12.8);
+        applyKnockback(Math.cos(kbDir) * 11.2, Math.sin(kbDir) * 11.2);
       }
       m._chargeDashing = false;
       m._abilityCDs.bull_charge = 420;
@@ -986,7 +986,7 @@ MOB_SPECIALS.batter_up = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 16, Math.sin(kbDir) * 16);
+        applyKnockback(Math.cos(kbDir) * 14, Math.sin(kbDir) * 14);
         StatusFX.applyToPlayer('stun', { duration: 90 });
         hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "stun" });
       }
@@ -2122,7 +2122,7 @@ MOB_SPECIALS.red_herring = (m, ctx) => {
   // Spawn decoy at old position — walks toward player, 1hp
   mobs.push({
     x: oldX, y: oldY, type: 'lady_red_decoy', id: nextMobId++,
-    hp: 1, maxHp: 1, speed: 1.6, damage: 0,
+    hp: 1, maxHp: 1, speed: 1.4, damage: 0,
     contactRange: 0, skin: m.skin || '#ffccaa', hair: m.hair || '#880000', shirt: m.shirt || '#cc0000', pants: m.pants || '#880000',
     name: 'Lady Red?', dir: 0, frame: 0, attackCooldown: 0,
     shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -2263,7 +2263,7 @@ MOB_SPECIALS.call_the_goons = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'tracksuit_goon', id: nextMobId++,
       hp: Math.round(m.maxHp * 0.1), maxHp: Math.round(m.maxHp * 0.1),
-      speed: 2.2, damage: Math.round(m.damage * 0.35),
+      speed: 1.9, damage: Math.round(m.damage * 0.35),
       contactRange: 30, skin: '#ddb88c', hair: '#222', shirt: '#444455', pants: '#333344',
       name: 'Goon', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -3016,7 +3016,7 @@ MOB_SPECIALS.reactor_slam = (m, ctx) => {
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 11.2, Math.sin(kbDir) * 11.2);
+        applyKnockback(Math.cos(kbDir) * 9.8, Math.sin(kbDir) * 9.8);
         StatusFX.applyToPlayer('root', { duration: 45 });
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "sledgehammer_shockwave" });
