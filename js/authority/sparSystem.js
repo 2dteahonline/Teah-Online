@@ -610,6 +610,8 @@ const SparSystem = {
 
       // Tick fire cooldown
       if (member.ai.shootCD > 0) member.ai.shootCD--;
+      // Tick recoil (visual — same as player updateGun())
+      if (member.gun.recoilTimer > 0) member.gun.recoilTimer--;
 
       // Tick juke timer
       if (member.ai.jukeTimer > 0) member.ai.jukeTimer--;
@@ -653,17 +655,39 @@ const SparSystem = {
     // Pick best cardinal direction
     // dir: 0=down, 1=up, 2=left, 3=right
     let bvx = 0, bvy = 0;
+    let aimDir;
     if (Math.abs(aimDx) > Math.abs(aimDy)) {
       bvx = aimDx > 0 ? bspd : -bspd;
-      e.dir = aimDx > 0 ? 3 : 2;
+      aimDir = aimDx > 0 ? 3 : 2;
     } else {
       bvy = aimDy > 0 ? bspd : -bspd;
-      e.dir = aimDy > 0 ? 0 : 1;
+      aimDir = aimDy > 0 ? 0 : 1;
     }
+    e.dir = aimDir;
 
-    // Muzzle offset
-    const mx = e.x + (bvx !== 0 ? Math.sign(bvx) * 20 : 0);
-    const my = e.y - 10 + (bvy !== 0 ? Math.sign(bvy) * 20 : 0);
+    // Muzzle position — same body-relative formula as player getMuzzlePos()
+    // Bots always use left gun side (default)
+    const bx = e.x - 20;
+    const by = e.y - 68;
+    const bodyL = bx + 2;
+    const bodyR = bx + 36;
+    const armY = by + 35;
+    let mx, my;
+    if (aimDir === 0) { mx = bodyR + 1; my = armY + 6 + 49; }
+    else if (aimDir === 1) { mx = bodyL - 1; my = by + 28 - 49; }
+    else if (aimDir === 2) { mx = bodyL + 2 - 49; my = armY + 22; }
+    else { mx = bodyR + 9 + 49; my = armY - 22; }
+
+    // Apply spread (same as player shoot() — random angular offset)
+    const spreadDeg = g.spread || 0;
+    if (spreadDeg > 0) {
+      const spreadRad = spreadDeg * Math.PI / 180;
+      const randOffset = (Math.random() - 0.5) * spreadRad;
+      const baseAngle = Math.atan2(bvy, bvx);
+      const newAngle = baseAngle + randOffset;
+      bvx = Math.cos(newAngle) * bspd;
+      bvy = Math.sin(newAngle) * bspd;
+    }
 
     bullets.push({
       id: typeof nextBulletId !== 'undefined' ? nextBulletId++ : Date.now() + Math.random(),
@@ -691,9 +715,14 @@ const SparSystem = {
     member.ai._freezeTimer = g.freezeDuration || 15;
     member.ai._freezePenalty = g.freezePenalty != null ? g.freezePenalty : 0.54;
 
+    // Recoil visual — same as player (gun.recoilTimer = 6)
+    g.recoilTimer = 6;
+
     if (g.ammo <= 0) {
       g.reloading = true;
-      g.reloadTimer = 60;
+      // Same reload formula as player: getReloadTime() = Math.round(40 + firerate * 0.5)
+      // Bot's firerate stat is derived from rof points, use same calculation
+      g.reloadTimer = g.reloadSpeed || Math.round(40 + (g._sparRof || 50) * 0.5);
     }
   },
 
