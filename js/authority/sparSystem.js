@@ -630,8 +630,8 @@ const SparSystem = {
     });
 
     g.ammo--;
-    // Fire rate: match the gun's actual fire rate (not 4x slower)
-    member.ai.shootCD = Math.round(g.fireRate || 5);
+    // Fire rate: match player's actual cooldown (fireRate * 4, same as gunSystem.js)
+    member.ai.shootCD = Math.round((g.fireRate || 5) * 4);
 
     if (g.ammo <= 0) {
       g.reloading = true;
@@ -947,7 +947,7 @@ const SparSystem = {
     if (!c || c.samples < 3) { SparState._matchCollector = null; return; }
     if (typeof sparLearning === 'undefined') { SparState._matchCollector = null; return; }
 
-    const alpha = 0.3; // EMA weight for new data
+    const alpha = 0.5; // EMA weight for new data — fast adaptation
     const ema = (oldVal, newVal) => alpha * newVal + (1 - alpha) * oldVal;
     const sl = sparLearning;
 
@@ -1233,7 +1233,7 @@ const SparSystem = {
 
   // ---- LEARNING: compute bot behavior modifiers from player profile ----
   _getProfileModifiers() {
-    if (typeof sparLearning === 'undefined' || sparLearning.matchCount < 2) {
+    if (typeof sparLearning === 'undefined' || sparLearning.matchCount < 1) {
       return null; // not enough data yet
     }
     const sl = sparLearning;
@@ -1369,7 +1369,7 @@ const SparSystem = {
     const routes = ['bottomCenter', 'bottomLeft', 'bottomRight', 'topHold', 'midFlank', 'mirrorPlayer'];
 
     // Not enough data — pick randomly from bottom routes (bottom is meta)
-    if (!sl || sl.matchCount < 3) {
+    if (!sl || sl.matchCount < 1) {
       const starters = ['bottomCenter', 'bottomLeft', 'bottomRight'];
       return starters[Math.floor(Math.random() * starters.length)];
     }
