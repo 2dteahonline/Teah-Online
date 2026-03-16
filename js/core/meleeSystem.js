@@ -1214,20 +1214,20 @@ function drawBullets() {
   for (const b of bullets) {
     // === Floor 1 custom projectile styles ===
     if (b.projectileStyle === 'neon_bolt' && b.isArrow) {
-      // Cyan energy bolt — drone_lookout
+      // Cyan energy bolt — drone_lookout (wide elliptical)
       const angle = Math.atan2(b.vy, b.vx);
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(angle);
-      // Outer glow
+      // Outer glow — wide ellipse
       ctx.fillStyle = "rgba(0,204,255,0.2)";
-      ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
-      // Energy core
+      ctx.beginPath(); ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2); ctx.fill();
+      // Energy core — wide ellipse
       ctx.fillStyle = "#00ccff";
-      ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
       // Bright center
       ctx.fillStyle = "#aaeeff";
-      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
       // Electric crackle lines
       ctx.strokeStyle = "#00ccff";
       ctx.lineWidth = 1.5;
@@ -1235,188 +1235,188 @@ function drawBullets() {
       for (let i = 0; i < 3; i++) {
         const a = (i * Math.PI * 2 / 3) + t;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 4, Math.sin(a) * 4);
-        ctx.lineTo(Math.cos(a + 0.5) * 10, Math.sin(a + 0.3) * 10);
+        ctx.moveTo(Math.cos(a) * 5, Math.sin(a) * 3);
+        ctx.lineTo(Math.cos(a + 0.5) * 12, Math.sin(a + 0.3) * 7);
         ctx.stroke();
       }
       ctx.restore();
-      // Cyan trail
+      // Cyan trail — wide
       ctx.fillStyle = "rgba(0,204,255,0.3)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 3, b.y - b.vy * 3, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 3, b.y - b.vy * 3, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "rgba(0,180,255,0.15)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 6, b.y - b.vy * 6, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 6, b.y - b.vy * 6, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
       continue;
     }
     if (b.projectileStyle === 'tracer' && b.isArrow) {
-      // Red laser tracer — renegade_sniper
+      // Red laser tracer — renegade_sniper (wide flat streak)
       const angle = Math.atan2(b.vy, b.vx);
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(angle);
-      // Red glow trail
+      // Red glow trail — wider, flatter
       ctx.fillStyle = "rgba(255,30,30,0.15)";
-      ctx.fillRect(-24, -4, 32, 8);
-      // Tracer line
+      ctx.fillRect(-28, -3, 38, 6);
+      // Tracer line — wider, thinner
       ctx.fillStyle = "#ff2020";
-      ctx.fillRect(-18, -1.5, 24, 3);
+      ctx.fillRect(-22, -1.5, 30, 3);
       // Bright core
       ctx.fillStyle = "#ff8080";
-      ctx.fillRect(-12, -0.5, 18, 1);
-      // Red tip glow
+      ctx.fillRect(-16, -0.5, 24, 1);
+      // Red tip glow — elliptical
       ctx.fillStyle = "rgba(255,60,60,0.4)";
-      ctx.beginPath(); ctx.arc(8, 0, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(10, 0, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
       // Bright tip
       ctx.fillStyle = "#ff4040";
-      ctx.beginPath(); ctx.arc(8, 0, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(10, 0, 3, 1.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
-      // Red trail particles
+      // Red trail particles — wide
       ctx.fillStyle = "rgba(255,40,40,0.25)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 4, b.y - b.vy * 4, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 4, b.y - b.vy * 4, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "rgba(255,20,20,0.1)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 8, b.y - b.vy * 8, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 8, b.y - b.vy * 8, 3, 1.5, 0, 0, Math.PI * 2); ctx.fill();
       continue;
     }
     if (b.projectileStyle === 'golden' && b.isArrow) {
-      // Golden bullet — the_don
+      // Golden bullet — the_don (wide flat slug)
       const angle = Math.atan2(b.vy, b.vx);
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(angle);
-      // Gold glow
+      // Gold glow — wide ellipse
       ctx.fillStyle = "rgba(255,215,0,0.2)";
-      ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
-      // Bullet casing
+      ctx.beginPath(); ctx.ellipse(0, 0, 13, 7, 0, 0, Math.PI * 2); ctx.fill();
+      // Bullet casing — wider, flatter
       ctx.fillStyle = "#b8960a";
-      ctx.fillRect(-10, -3, 18, 6);
+      ctx.fillRect(-12, -2.5, 22, 5);
       // Gold body
       ctx.fillStyle = "#ffd700";
-      ctx.fillRect(-8, -2, 16, 4);
+      ctx.fillRect(-10, -1.5, 20, 3);
       // Bright highlight
       ctx.fillStyle = "#fff8dc";
-      ctx.fillRect(-6, -1, 12, 2);
-      // Tip
+      ctx.fillRect(-8, -0.5, 16, 1);
+      // Tip — flatter
       ctx.fillStyle = "#ffd700";
       ctx.beginPath();
-      ctx.moveTo(10, 0);
-      ctx.lineTo(6, -3);
-      ctx.lineTo(6, 3);
+      ctx.moveTo(12, 0);
+      ctx.lineTo(8, -2.5);
+      ctx.lineTo(8, 2.5);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
-      // Gold sparkle trail
+      // Gold sparkle trail — wide
       ctx.fillStyle = "rgba(255,215,0,0.3)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 3, b.y - b.vy * 3, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 3, b.y - b.vy * 3, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "rgba(255,200,0,0.15)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 6, b.y - b.vy * 6, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 6, b.y - b.vy * 6, 3, 1.5, 0, 0, Math.PI * 2); ctx.fill();
       continue;
     }
 
     if (b.projectileStyle === 'saw_blade') {
-      // Spinning saw blade — rust_sawman
+      // Spinning saw blade — rust_sawman (wide elliptical disc)
       const spin = renderTime * 0.02;
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(spin);
-      // Blade disc
+      // Blade disc — wide ellipse
       ctx.fillStyle = '#6a6a6a';
-      ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
       // Inner ring
       ctx.fillStyle = '#8a8a8a';
-      ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
       // Teeth notches
       ctx.fillStyle = '#4a4a4a';
       for (let t = 0; t < 8; t++) {
         const ta = (t / 8) * Math.PI * 2;
-        ctx.fillRect(Math.cos(ta) * 10 - 2, Math.sin(ta) * 10 - 2, 4, 4);
+        ctx.fillRect(Math.cos(ta) * 12 - 2, Math.sin(ta) * 7 - 2, 4, 3);
       }
       // Center hole
       ctx.fillStyle = '#3a3a3a';
-      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
-      // Spark trail
+      // Spark trail — wide
       ctx.fillStyle = 'rgba(255,200,100,0.3)';
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 2, b.y - b.vy * 2, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 2, b.y - b.vy * 2, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
       continue;
     }
 
     if (b.isArrow) {
-      // Poison arrow — greenish-black, long and thin, rotated to velocity
+      // Poison arrow — wide flat shaft, rotated to velocity
       const angle = Math.atan2(b.vy, b.vx);
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(angle);
-      // Arrow shaft
+      // Arrow shaft — wider, flatter
       ctx.fillStyle = "#3a3020";
-      ctx.fillRect(-14, -1.5, 28, 3);
-      // Poison-green arrowhead
+      ctx.fillRect(-16, -1, 32, 2);
+      // Poison-green arrowhead — flatter
       ctx.fillStyle = "#6aff40";
       ctx.beginPath();
-      ctx.moveTo(16, 0);
-      ctx.lineTo(10, -4);
-      ctx.lineTo(10, 4);
+      ctx.moveTo(18, 0);
+      ctx.lineTo(12, -3);
+      ctx.lineTo(12, 3);
       ctx.closePath();
       ctx.fill();
-      // Arrowhead glow
+      // Arrowhead glow — wide ellipse
       ctx.fillStyle = "rgba(100,255,60,0.4)";
-      ctx.beginPath(); ctx.arc(14, 0, 6, 0, Math.PI * 2); ctx.fill();
-      // Fletching (feathers at back)
+      ctx.beginPath(); ctx.ellipse(16, 0, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+      // Fletching (feathers at back) — flatter
       ctx.fillStyle = "#2a4a20";
       ctx.beginPath();
-      ctx.moveTo(-14, 0);
-      ctx.lineTo(-10, -4);
-      ctx.lineTo(-8, 0);
+      ctx.moveTo(-16, 0);
+      ctx.lineTo(-12, -3);
+      ctx.lineTo(-10, 0);
       ctx.closePath();
       ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(-14, 0);
-      ctx.lineTo(-10, 4);
-      ctx.lineTo(-8, 0);
+      ctx.moveTo(-16, 0);
+      ctx.lineTo(-12, 3);
+      ctx.lineTo(-10, 0);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
-      // Green poison trail
+      // Green poison trail — wide
       ctx.fillStyle = "rgba(80,200,40,0.3)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 3, b.y - b.vy * 3, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 3, b.y - b.vy * 3, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "rgba(60,160,30,0.15)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 6, b.y - b.vy * 6, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 6, b.y - b.vy * 6, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
       continue;
     }
     if (b.isBoulder) {
-      // Boulder — MASSIVE spinning rock
+      // Boulder — MASSIVE wide rock (elliptical, wider than tall)
       const spin = renderTime * 0.006;
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(spin);
-      // Shadow
+      // Shadow — wider
       ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.beginPath(); ctx.ellipse(4, 26, 28, 10, 0, 0, Math.PI * 2); ctx.fill();
-      // Rock body — massive
+      ctx.beginPath(); ctx.ellipse(4, 20, 34, 10, 0, 0, Math.PI * 2); ctx.fill();
+      // Rock body — wide ellipse
       ctx.fillStyle = "#5a5448";
-      ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 34, 22, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#6a6458";
-      ctx.beginPath(); ctx.arc(-4, -5, 23, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-4, -3, 26, 16, 0, 0, Math.PI * 2); ctx.fill();
       // Highlight
       ctx.fillStyle = "#7a7468";
-      ctx.beginPath(); ctx.arc(-8, -10, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-8, -7, 16, 10, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#8a8478";
-      ctx.beginPath(); ctx.arc(-6, -12, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-6, -9, 8, 5, 0, 0, Math.PI * 2); ctx.fill();
       // Deep cracks
       ctx.strokeStyle = "#3a3428";
       ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(-14, -10); ctx.lineTo(8, 14); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(4, -18); ctx.lineTo(16, 4); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-10, 6); ctx.lineTo(-20, 16); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-16, -8); ctx.lineTo(10, 12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6, -14); ctx.lineTo(20, 4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-12, 5); ctx.lineTo(-24, 13); ctx.stroke();
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(10, -12); ctx.lineTo(22, -4); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-18, -6); ctx.lineTo(-8, 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(12, -10); ctx.lineTo(26, -3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-22, -4); ctx.lineTo(-10, 8); ctx.stroke();
       ctx.restore();
-      // Dust trail — big
+      // Dust trail — wide ellipses
       ctx.fillStyle = "rgba(160,140,120,0.4)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 5, b.y - b.vy * 5, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 5, b.y - b.vy * 5, 20, 12, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "rgba(140,120,100,0.25)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 10, b.y - b.vy * 10, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 10, b.y - b.vy * 10, 15, 9, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "rgba(120,100,80,0.12)";
-      ctx.beginPath(); ctx.arc(b.x - b.vx * 16, b.y - b.vy * 16, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x - b.vx * 16, b.y - b.vy * 16, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
       continue;
     }
     const isH = Math.abs(b.vx) > Math.abs(b.vy);
@@ -1426,22 +1426,22 @@ function drawBullets() {
     const coreColor = isMob ? "#ffaa80" : (bc ? bc.core : "#fff");
     const glowColor = isMob ? "rgba(255,80,40,0.25)" : (bc ? bc.glow : "rgba(255,230,80,0.2)");
 
-    // Bullet body
+    // Bullet body — wide and flat (Graal-style)
     ctx.fillStyle = mainColor;
     if (isH) {
-      ctx.fillRect(b.x - 10, b.y - 5, 20, 10);
+      ctx.fillRect(b.x - 12, b.y - 3, 24, 6);
       ctx.fillStyle = coreColor;
-      ctx.fillRect(b.x - 7, b.y - 3, 14, 6);
+      ctx.fillRect(b.x - 9, b.y - 1.5, 18, 3);
     } else {
-      ctx.fillRect(b.x - 5, b.y - 10, 10, 20);
+      ctx.fillRect(b.x - 3, b.y - 12, 6, 24);
       ctx.fillStyle = coreColor;
-      ctx.fillRect(b.x - 3, b.y - 7, 6, 14);
+      ctx.fillRect(b.x - 1.5, b.y - 9, 3, 18);
     }
 
-    // Glow
+    // Glow — wide ellipse
     ctx.fillStyle = glowColor;
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 12, 0, Math.PI * 2);
+    ctx.ellipse(b.x, b.y, 14, 8, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
