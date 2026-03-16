@@ -1445,44 +1445,22 @@ function updateMobs() {
         }
       }
     }
-    // Mob-to-player: push both apart but NEVER push player into walls
+    // Mob-to-player: hard stop — equal separation, no pushing
     if (phaseTimer > 0) continue; // phasing — skip mob-player collision
     const pdx = mobs[i].x - player.x;
     const pdy = mobs[i].y - player.y;
     const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
     const PLAYER_MOB_MIN = PLAYER_RADIUS + (mobs[i].radius ?? GAME_CONFIG.MOB_RADIUS);
     if (pdist < PLAYER_MOB_MIN && pdist > 0.1) {
-      const overlap = PLAYER_MOB_MIN - pdist;
+      const overlap = (PLAYER_MOB_MIN - pdist) / 2;
       const nx2 = pdx / pdist;
       const ny2 = pdy / pdist;
-      // Try pushing player
-      const newPX = player.x - nx2 * overlap * 0.3;
-      const newPY = player.y - ny2 * overlap * 0.3;
-      // Push mob more (70% mob, 30% player)
-      const newMX = mobs[i].x + nx2 * overlap * 0.7;
-      const newMY = mobs[i].y + ny2 * overlap * 0.7;
-      if (positionClear(newPX, newPY)) {
-        player.x = newPX;
-        player.y = newPY;
-      }
-      if (positionClear(newMX, newMY)) {
-        mobs[i].x = newMX;
-        mobs[i].y = newMY;
-      } else {
-        // Wall behind mob — try pushing along wall instead
-        // Try perpendicular directions to slide along the wall
-        const perpX = mobs[i].x + ny2 * overlap;
-        const perpY = mobs[i].y - nx2 * overlap;
-        if (positionClear(perpX, perpY)) {
-          mobs[i].x = perpX; mobs[i].y = perpY;
-        } else {
-          const perpX2 = mobs[i].x - ny2 * overlap;
-          const perpY2 = mobs[i].y + nx2 * overlap;
-          if (positionClear(perpX2, perpY2)) {
-            mobs[i].x = perpX2; mobs[i].y = perpY2;
-          }
-        }
-      }
+      const newPX = player.x - nx2 * overlap;
+      const newPY = player.y - ny2 * overlap;
+      const newMX = mobs[i].x + nx2 * overlap;
+      const newMY = mobs[i].y + ny2 * overlap;
+      if (positionClear(newPX, newPY)) { player.x = newPX; player.y = newPY; }
+      if (positionClear(newMX, newMY)) { mobs[i].x = newMX; mobs[i].y = newMY; }
     }
   }
 
