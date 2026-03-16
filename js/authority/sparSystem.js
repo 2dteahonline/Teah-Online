@@ -1218,6 +1218,13 @@ const SparSystem = {
     if (!c || c.samples < 3) { SparState._matchCollector = null; return; }
     if (typeof sparLearning === 'undefined') { SparState._matchCollector = null; return; }
 
+    // Skip player profile learning during automated training — training bots
+    // have scripted behavior that would pollute human-player telemetry
+    if (typeof _isSparTraining === 'function' && _isSparTraining()) {
+      SparState._matchCollector = null;
+      return;
+    }
+
     const alpha = 0.65; // EMA weight for new data — aggressive adaptation
     const ema = (oldVal, newVal) => alpha * newVal + (1 - alpha) * oldVal;
     const sl = sparLearning;
@@ -1579,7 +1586,7 @@ const SparSystem = {
       const dmgDelta = (enemyBot1v1.ai._matchDmgDealt || 0) - (enemyBot1v1.ai._matchDmgTaken || 0);
       sr.avgDmgDelta = sr.total > 1 ? ema(sr.avgDmgDelta, dmgDelta) : dmgDelta;
 
-      // Jeff-specific style results (always update for live matches)
+      // Player-specific style results (training is already early-returned above)
       if (!sl.player1v1) sl.player1v1 = { styleResults: {} };
       if (!sl.player1v1.styleResults) sl.player1v1.styleResults = {};
       if (!sl.player1v1.styleResults[style]) {
@@ -1949,6 +1956,10 @@ const SparSystem = {
           member._trainMoveX = 0;
           member._trainMoveY = 0;
           const shouldShoot = trainBot.tick(member, te, tdist, tdx, tdy, SPAR_CONFIG.BOT_SPEED, ai);
+          // Update velocity state so analytics correctly classify bot movement
+          bot.vx = member._trainMoveX;
+          bot.vy = member._trainMoveY;
+          bot.moving = Math.abs(bot.vx) > 0.1 || Math.abs(bot.vy) > 0.1;
           bot.x += member._trainMoveX;
           bot.y += member._trainMoveY;
           // Clamp to arena
