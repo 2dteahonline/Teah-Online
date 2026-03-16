@@ -354,6 +354,9 @@ function moveDeliNPC(npc) {
       const npcInQueue = _deliMoveLaneDisable.has(npc.state);
       const otherInQueue = _deliMoveLaneDisable.has(other.state);
       if (npcInQueue && otherInQueue) return 'skip';
+      // NPCs that have food or already ordered skip queue avoidance entirely
+      // — they're heading away to chairs/condiments/exit, no need to crawl
+      if (otherInQueue && (npc.hasFood || npc.hasOrdered)) return 'skip';
       if (otherInQueue) return 'slow';
       return 'yield';
     },
