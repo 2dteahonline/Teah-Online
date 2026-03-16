@@ -308,6 +308,8 @@ const SparSystem = {
         _styleSwitchEvaluated: false,
         _matchDmgDealt: 0,
         _matchDmgTaken: 0,
+        _cornerFrames: 0,         // consecutive frames stuck in a corner
+        _topStuckFrames: 0,       // consecutive frames in top half without bottom
       },
     };
 
@@ -799,6 +801,13 @@ const SparSystem = {
         chase_giveUpFrames: 0,
         nearWall_frames: 0,
         nearWall_cornerStuckFrames: 0,
+        // Position value tracking
+        botHasBottom_frames: 0,
+        botHasBottom_dmgDealt: 0,
+        botHasBottom_dmgTaken: 0,
+        botInTop_frames: 0,
+        botInTop_dmgDealt: 0,
+        botInTop_dmgTaken: 0,
       };
     }
 
@@ -1047,6 +1056,19 @@ const SparSystem = {
       // Give-up detection: was chasing but stopped
       if (c.chase_frames > 30 && Math.abs(pVx) < 1 && Math.abs(pVy) < 1) {
         c.chase_giveUpFrames++;
+      }
+    }
+
+    // Position value tracking (for bot's position, not player's)
+    // This tracks damage dealt/taken while bot is in bottom vs top
+    if (SparState._duelBots && SparState._duelBots.length > 0) {
+      const dBot = SparState._duelBots[0];
+      if (dBot && dBot.entity && dBot.entity.alive) {
+        const bMidY = arenaLevel ? arenaLevel.heightTiles * TILE / 2 : 480;
+        const botIsBottom = dBot.entity.y > player.y + 30;
+        const botIsTop = dBot.entity.y < bMidY;
+        if (botIsBottom) c.botHasBottom_frames++;
+        if (botIsTop) c.botInTop_frames++;
       }
     }
 
@@ -1360,6 +1382,20 @@ const SparSystem = {
       sl.nearWall.cornerStuckPct = ema(sl.nearWall.cornerStuckPct, c.nearWall_cornerStuckFrames / c.nearWall_frames);
     }
 
+    // --- Position value: how well does the bot perform from bottom vs top? ---
+    if (!sl.positionValue) sl.positionValue = { bottomWinCorrelation: 0.6, topPenalty: 0.3 };
+    const totalSampleFrames = c.botHasBottom_frames + c.botInTop_frames;
+    if (totalSampleFrames > 10) {
+      // bottomWinCorrelation: how much having bottom correlates with winning
+      const bottomPct = c.botHasBottom_frames / (c.samples || 1);
+      sl.positionValue.bottomWinCorrelation = ema(sl.positionValue.bottomWinCorrelation,
+        won ? bottomPct : 1 - bottomPct);
+      // topPenalty: how often being in top leads to losing
+      const topPct = c.botInTop_frames / (c.samples || 1);
+      sl.positionValue.topPenalty = ema(sl.positionValue.topPenalty,
+        won ? 0 : topPct);
+    }
+
     // --- Win rate ---
     sl.winRate = ema(sl.winRate, won ? 1 : 0);
 
@@ -1540,6 +1576,9 @@ const SparSystem = {
       playerRetreatsOnDamage: sl.afterHit ? sl.afterHit.retreatsOnDamage : 0.5,
       playerFleesLowHp: sl.lowHpExpanded ? sl.lowHpExpanded.fleesPct : 0.5,
       playerChaseEndurance: sl.chasePatterns ? sl.chasePatterns.giveUpFrames : 90,
+      // Position value — how important is bottom?
+      bottomWinCorrelation: sl.positionValue ? sl.positionValue.bottomWinCorrelation : 0.6,
+      topPenalty: sl.positionValue ? sl.positionValue.topPenalty : 0.3,
     };
   },
 
@@ -1899,26 +1938,21 @@ const SparSystem = {
          pm.botMoveEffectiveness.strafe < pm.botMoveEffectiveness.still);
 
       if (playerHitsStrafe) {
-        // Player destroys horizontal strafing — use retreat-kite + stop-start
-        // Mix retreating (player misses retreat 99%) with brief pauses and burst strafes
+        // Player destroys horizontal strafing — use stop-start + vertical jukes
+        // We HAVE bottom, so don't retreat away — hold position but be unpredictable
         if (!ai._pauseTimer) ai._pauseTimer = 0;
         ai._pauseTimer--;
         if (ai._pauseTimer > 0) {
-          // Pausing — minimal movement
+          // Brief pause — hard to predict
           moveX = 0;
           moveY = 0;
         } else {
-          // Active phase: retreat-kite pattern with lateral bursts
-          // Pull away from enemy while strafing — hardest to hit
-          if (dist < 300 && dist > 1) {
-            moveX = -(dx / dist) * speed * 0.3; // retreat component
-            moveY = -(dy / dist) * speed * 0.3;
-          }
-          moveX += ai.strafeDir * speed * 0.6; // lateral burst
-          moveY += (Math.random() < 0.4 ? -1 : 1) * speed * 0.3; // vertical juke
+          // Burst strafe with vertical jukes — NOT retreating (we want bottom)
+          moveX = ai.strafeDir * speed * 0.7;
+          moveY = (Math.random() < 0.5 ? -1 : 1) * speed * 0.35; // vertical juke
           if (ai._pauseTimer <= -18) {
-            ai._pauseTimer = 6 + Math.floor(Math.random() * 10); // pause for 6-16 frames
-            ai.strafeDir *= -1; // always change direction after burst
+            ai._pauseTimer = 5 + Math.floor(Math.random() * 8); // pause 5-13 frames
+            ai.strafeDir *= -1;
           }
         }
       } else {
@@ -2126,21 +2160,57 @@ const SparSystem = {
       }
     }
 
-    // Wall/corner logic: if near wall and enemy is collapsing, dodge perpendicular
+    // === CORNER ESCAPE + POSITION VALUE SYSTEM ===
     const nearLeftWall = bot.x < TILE * 3;
     const nearRightWall = bot.x > arenaW - TILE * 3;
     const nearTopWall = bot.y < TILE * 3;
     const nearBottomWall = bot.y > arenaH - TILE * 3;
     const nearAnyWall = nearLeftWall || nearRightWall || nearTopWall || nearBottomWall;
-    if (nearAnyWall && dist < 250 && !isOpening) {
-      // Enemy closing in while we're near wall — dodge perpendicular
-      const closing = dist > 1 ? ((tgt.vx || 0) * -dx + (tgt.vy || 0) * -dy) / dist : 0;
-      if (closing > 2) {
-        if (nearLeftWall || nearRightWall) {
-          moveY += (bot.y < midY ? 1 : -1) * speed * 0.4;
+    const inCorner = (nearLeftWall || nearRightWall) && (nearTopWall || nearBottomWall);
+    const inTopHalf = bot.y < midY;
+
+    // Track corner/top stuck time
+    if (inCorner) {
+      ai._cornerFrames++;
+    } else {
+      ai._cornerFrames = Math.max(0, ai._cornerFrames - 3);
+    }
+    if (inTopHalf && !hasBottom) {
+      ai._topStuckFrames++;
+    } else {
+      ai._topStuckFrames = Math.max(0, ai._topStuckFrames - 2);
+    }
+
+    if (!isOpening) {
+      // CORNER ESCAPE: increasingly urgent the longer we're stuck
+      if (inCorner) {
+        const urgency = Math.min(0.7, ai._cornerFrames / 60); // ramps to 0.7 over 1 second
+        // Push toward center — always
+        moveX += Math.sign(midX - bot.x) * speed * urgency;
+        moveY += Math.sign(midY - bot.y) * speed * urgency;
+      } else if (nearAnyWall) {
+        // Near wall but not corner — dodge perpendicular if enemy closing
+        const closing = dist > 1 ? ((tgt.vx || 0) * -dx + (tgt.vy || 0) * -dy) / dist : 0;
+        if (closing > 2) {
+          if (nearLeftWall || nearRightWall) {
+            moveY += (bot.y < midY ? 1 : -1) * speed * 0.4;
+          }
+          if (nearTopWall || nearBottomWall) {
+            moveX += (bot.x < midX ? 1 : -1) * speed * 0.4;
+          }
         }
-        if (nearTopWall || nearBottomWall) {
-          moveX += (bot.x < midX ? 1 : -1) * speed * 0.4;
+      }
+
+      // POSITION VALUE: top half without bottom is BAD — push to retake
+      // Scales with stuck duration AND learned bottom-win correlation
+      if (inTopHalf && !hasBottom && !member.gun.reloading) {
+        const posValueMult = pm ? pm.bottomWinCorrelation : 0.6; // 0-1, higher = bottom matters more
+        const topUrgency = Math.min(0.55, ai._topStuckFrames / 90) * posValueMult; // ramps over 1.5s
+        // Push downward toward bottom position
+        moveY += speed * (0.2 + topUrgency);
+        // Push toward enemy X to not drift into a corner
+        if (Math.abs(dx) > 30) {
+          moveX += Math.sign(dx) * speed * 0.15;
         }
       }
     }
@@ -2249,14 +2319,13 @@ const SparSystem = {
       } else if (pm.bestEvasion === 'strafe') {
         moveX += ai.strafeDir * speed * 0.15;
       } else if (pm.bestEvasion === 'retreat') {
-        // Player can't hit a retreating bot — maintain distance and kite
-        if (dist < 350 && dist > 1) {
-          const retreatStr = Math.min(0.4, (350 - dist) / 500);
-          moveX -= (dx / dist) * speed * retreatStr;
-          moveY -= (dy / dist) * speed * retreatStr;
+        // Player can't hit a retreating bot — use spacing, but don't run forever
+        // Only retreat when enemy is pushing in close; otherwise hold position
+        if (dist < 200 && dist > 1) {
+          moveX -= (dx / dist) * speed * 0.25;
+          moveY -= (dy / dist) * speed * 0.25;
         }
-        // Add lateral movement while retreating — harder to predict
-        moveX += ai.strafeDir * speed * 0.2;
+        moveX += ai.strafeDir * speed * 0.15;
       } else if (pm.bestEvasion === 'approach' && dist > 120) {
         if (dist > 1) {
           moveX += (dx / dist) * speed * 0.25;
