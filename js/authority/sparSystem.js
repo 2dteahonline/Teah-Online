@@ -660,7 +660,7 @@ const SparSystem = {
         };
         bullets.push(bulletObj);
 
-        bot._fireCooldown = bot._gunFireRate;
+        bot._fireCooldown = Math.round(bot._gunFireRate * 4);
         bot._gunAmmo--;
 
         if (bot._gunAmmo <= 0) {

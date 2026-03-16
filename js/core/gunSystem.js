@@ -542,9 +542,10 @@ function shoot() {
       if (playerEquip.gun && playerEquip.gun.isArrow) {
         bulletObj.isMainArrow = true; // different from mob archer arrows
       }
-      // Spar: tag player bullets with team
+      // Spar: tag player bullets with team + damage
       if (typeof SparState !== 'undefined' && SparState.phase === 'fighting') {
         bulletObj.sparTeam = 'teamA';
+        bulletObj.damage = (typeof CT_X_GUN !== 'undefined') ? CT_X_GUN.damage : 20;
       }
 
       bullets.push(bulletObj);
@@ -731,6 +732,14 @@ function drawModifyGunPanel() {
     sy += 110;
   }
 
+  // Points budget display
+  const totalPts = _ctxFreeze + _ctxRof + _ctxSpread;
+  const remaining = 100 - totalPts;
+  ctx.font = "bold 16px monospace";
+  ctx.textAlign = "center";
+  ctx.fillStyle = remaining > 0 ? "#3aaa55" : "#ff6644";
+  ctx.fillText("Points: " + totalPts + " / 100  (" + remaining + " remaining)", px + pw / 2, sy + 4);
+
   // Save button
   const btnW = 120, btnH = 40;
   const btnX = px + pw / 2 - btnW / 2, btnY = py + ph - 58;
@@ -809,5 +818,10 @@ function _mgApplySliderValue(key, mx, sliderX, sliderW) {
   const cur = s.get();
   if (val > cur + s.step) val = cur + s.step;
   else if (val < cur - s.step) val = cur - s.step;
+  // Enforce 100-point budget: total of all 3 sliders <= 100
+  const others = ['freeze', 'rof', 'spread'].filter(k => k !== key);
+  const othersTotal = others.reduce((sum, k) => sum + _mgSliders[k].get(), 0);
+  val = Math.min(val, 100 - othersTotal);
+  val = Math.max(s.min, val);
   s.set(val);
 }

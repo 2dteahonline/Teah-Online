@@ -112,7 +112,7 @@ const PORTAL_SCENES = {
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
-const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi', 'earth216', 'casino', 'spar']);
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi', 'earth216', 'casino']);
 
 // ---- /LEAVE SYSTEM ----
 // Registry for enclosed scenes that require /leave to exit (no walkable door).
@@ -345,6 +345,14 @@ function enterLevel(targetLevelId, spawnTX, spawnTY) {
     } else if (Scene.is('hideseek')) {
       resetCombatState('hideseek');
       if (typeof HideSeekState !== 'undefined') HideSeekState.phase = 'role_select';
+    } else if (Scene.inSpar) {
+      // Spar: clear combat entities but keep spar loadout (gun/equip set by joinRoom)
+      mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
+      deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
+      waveState = "idle"; waveTimer = 0;
+      if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+      if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+      if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
     } else {
       pendingDungeonFloor = queueFloorStart;
       pendingDungeonType = queueDungeonType;
