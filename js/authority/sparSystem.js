@@ -373,6 +373,7 @@ const SparSystem = {
       SparState.matchTimer++;
       this._collectPlayerData();
       this._tickSparBots();
+      this._bodyBlockSpar();
 
       // Check alive counts
       const aAlive = SparState.teamA.filter(p => p.alive).length;
@@ -618,6 +619,47 @@ const SparSystem = {
       if (member.ai.jukeTimer > 0) member.ai.jukeTimer--;
 
       this._tickOneBot(member);
+    }
+  },
+
+  // Body blocking — hard stop, no pushing. All spar entities can't overlap.
+  _bodyBlockSpar() {
+    // Gather all alive spar entities (player + bots)
+    const entities = [];
+    for (const p of SparState.teamA) {
+      if (p.alive) entities.push(p.entity);
+    }
+    for (const p of SparState.teamB) {
+      if (p.alive) entities.push(p.entity);
+    }
+    const R = GAME_CONFIG.PLAYER_RADIUS;
+    const minDist = R * 2;
+    // Resolve overlaps — push apart equally (hard stop, no momentum)
+    for (let i = 0; i < entities.length; i++) {
+      for (let j = i + 1; j < entities.length; j++) {
+        const a = entities[i], b = entities[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist && dist > 0.1) {
+          const overlap = (minDist - dist) / 2;
+          const nx = dx / dist, ny = dy / dist;
+          // Push each entity half the overlap — hard stop, equal
+          const axNew = a.x + nx * overlap;
+          const ayNew = a.y + ny * overlap;
+          const bxNew = b.x - nx * overlap;
+          const byNew = b.y - ny * overlap;
+          if (typeof positionClear === 'function') {
+            if (positionClear(axNew, ayNew)) { a.x = axNew; a.y = ayNew; }
+            if (positionClear(bxNew, byNew)) { b.x = bxNew; b.y = byNew; }
+          } else {
+            a.x = axNew; a.y = ayNew;
+            b.x = bxNew; b.y = byNew;
+          }
+        } else if (dist <= 0.1) {
+          // Exact overlap — nudge apart
+          a.x += R; b.x -= R;
+        }
+      }
     }
   },
 
