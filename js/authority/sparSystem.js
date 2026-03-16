@@ -1166,9 +1166,9 @@ const SparSystem = {
 
     // Position value tracking (for bot's position, not player's)
     // This tracks damage dealt/taken while bot is in bottom vs top
-    if (SparState._duelBots && SparState._duelBots.length > 0) {
-      const dBot = SparState._duelBots[0];
-      if (dBot && dBot.entity && dBot.entity.alive) {
+    if (SparState.teamB && SparState.teamB.length > 0) {
+      const dBot = SparState.teamB[0];
+      if (dBot && dBot.alive && dBot.entity) {
         const bMidY = arenaLevel ? arenaLevel.heightTiles * TILE / 2 : 480;
         const botIsBottom = dBot.entity.y > player.y + 30;
         const botIsTop = dBot.entity.y < bMidY;
