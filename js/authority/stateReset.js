@@ -189,6 +189,25 @@ function resetCombatState(mode) {
     // Clean up gun transient state (mid-reload, fire cooldown)
     gun.reloading = false; gun.reloadTimer = 0; gun.fireCooldown = 0; gun.recoilTimer = 0;
     gun.ammo = gun.magSize; // full mag on new floor
+    // Reset bot melee/gun transient state on floor transition
+    if (typeof PartyState !== 'undefined') {
+      for (const m of PartyState.members) {
+        if (m.controlType === 'bot') {
+          if (m.melee) {
+            m.melee.cooldown = 0;
+            m.melee.swinging = false;
+            m.melee.dashing = false;
+          }
+          if (m.ai) m.ai.meleeCD = 0;
+          if (m.gun) {
+            m.gun.ammo = m.gun.magSize;
+            m.gun.reloading = false;
+            m.gun.reloadTimer = 0;
+            m.gun.fireCooldown = 0;
+          }
+        }
+      }
+    }
     // Defensive re-apply: restore equipped weapon specials in case they were lost
     if (playerEquip.melee && playerEquip.melee.special) {
       melee.special = playerEquip.melee.special;

@@ -1657,10 +1657,11 @@ function draw() {
   // Grab effect removed — mechanic still works, just no visual overlay
 
   // Godspeed while active — DRAMATIC Killua lightning aura + Kashimo ground strikes
-  if (godspeed.active && !playerDead) {
+  const _gsCenterDraw = godspeed._activator || player;
+  if (godspeed.active && !_gsCenterDraw._isDead) {
     const gsp = godspeed.timer / godspeed.duration;
     const gt = renderTime;
-    const gpx = player.x, gpy = player.y - 15;
+    const gpx = _gsCenterDraw.x, gpy = _gsCenterDraw.y - 15;
     const gr = godspeed.range;
     const gPulse = 0.6 + 0.4 * Math.sin(gt * 0.01);
     
@@ -1849,10 +1850,11 @@ function draw() {
   }
 
   // Malevolent Shrine while active — domain seal + slashes
-  if (shrine.active && !playerDead) {
+  const _shrineCenterDraw = shrine._activator || player;
+  if (shrine.active && !_shrineCenterDraw._isDead) {
     const sp = shrine.timer / shrine.duration; // 1 → 0
     const sr = shrine.range;
-    const cx3 = player.x, cy3 = player.y - 15;
+    const cx3 = _shrineCenterDraw.x, cy3 = _shrineCenterDraw.y - 15;
     const pulse = 0.6 + 0.3 * Math.sin(renderTime * 0.006);
     const rot = renderTime * 0.0008; // slow rotation
     

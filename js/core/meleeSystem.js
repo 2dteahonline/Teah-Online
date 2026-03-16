@@ -351,18 +351,20 @@ function updateMelee() {
     }
   }
   
-  // Malevolent Shrine — rapid slashing everything in range
+  // Malevolent Shrine — rapid slashing everything in range (centers on activator)
   if (shrine.active) {
     shrine.timer--;
+    const _shrineCenter = shrine._activator || player;
     if (shrine.timer <= 0) {
       shrine.active = false;
+      shrine._activator = null;
     } else if (shrine.timer % shrine.slashInterval === 0) {
-      // Slash all mobs in range
+      // Slash all mobs in range of the activator
       const slashAngle = Math.random() * Math.PI * 2;
       for (const m of mobs) {
         if (m.hp <= 0) continue;
-        const dx = m.x - player.x;
-        const dy = m.y - player.y;
+        const dx = m.x - _shrineCenter.x;
+        const dy = m.y - _shrineCenter.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < shrine.range) {
           // Guaranteed hit — mobs below 15% HP are instantly killed
@@ -388,17 +390,19 @@ function updateMelee() {
       }
     }
   }
-  // Godspeed — Killua lightning mode with Kashimo ground strikes
+  // Godspeed — Killua lightning mode with Kashimo ground strikes (centers on activator)
   if (godspeed.active) {
     godspeed.timer--;
+    const _godspeedCenter = godspeed._activator || player;
     if (godspeed.timer <= 0) {
       godspeed.active = false;
+      godspeed._activator = null;
     } else if (godspeed.timer % godspeed.strikeInterval === 0) {
-      // Ground lightning strikes on all mobs in range
+      // Ground lightning strikes on all mobs in range of the activator
       for (const m of mobs) {
         if (m.hp <= 0) continue;
-        const dx = m.x - player.x;
-        const dy = m.y - player.y;
+        const dx = m.x - _godspeedCenter.x;
+        const dy = m.y - _godspeedCenter.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < godspeed.range) {
           const isExecute = m.hp <= m.maxHp * 0.15;

@@ -496,9 +496,7 @@ Events.on('mob_killed', ({ mob, source, killerId, killerMember }) => {
 // Ultimate charge on kill — uses killer's melee special to determine which ultimate
 Events.on('mob_killed', ({ mob, source, killerId, killerMember }) => {
   if (source === "witch_skeleton") return;
-  // Each member charges their own ultimate (when ultimates become per-member)
-  // For now, only the local player has ultimate state (shrine/godspeed are globals)
-  if (killerMember && killerMember.controlType !== 'local') return;
+  // Any party member's kills charge the shared ultimate (shrine/godspeed are party singletons)
   const _kMelee = killerMember ? (killerMember.melee || melee) : melee;
   if (typeof shrine !== 'undefined' && _kMelee.special === 'cleave' && !shrine.active) {
     shrine.charges = Math.min((shrine.charges || 0) + 1, shrine.chargesMax || 10);

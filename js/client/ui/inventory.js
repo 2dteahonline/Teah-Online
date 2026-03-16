@@ -2532,6 +2532,7 @@ function update() {
         shrine.timer = shrine.duration;
         shrine.damagePerSlash = Math.round(melee.damage * 0.6);
         shrine.charges = 0;
+        shrine._activator = player; // track activator for range centering
         hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: "shrine_activate" });
       }
       if (melee.special === 'storm' && godspeed.charges >= godspeed.chargesMax && !godspeed.active) {
@@ -2539,6 +2540,7 @@ function update() {
         godspeed.timer = godspeed.duration;
         godspeed.damagePerStrike = Math.round(melee.damage * 0.5);
         godspeed.charges = 0;
+        godspeed._activator = player; // track activator for range centering
         hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "godspeed_activate" });
       }
     }

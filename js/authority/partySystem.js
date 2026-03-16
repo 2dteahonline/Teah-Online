@@ -26,7 +26,7 @@ function createPartyMember(slotIndex, controlType) {
 
   // Create entity object (bots get their own position/HP entity)
   const entity = isLocal ? player : {
-    x: player.x + (slotIndex - 1) * 40 - 40,
+    x: player.x + slotIndex * 50,
     y: player.y + 30,
     vx: 0, vy: 0,
     knockVx: 0, knockVy: 0,
@@ -291,7 +291,7 @@ const PartySystem = {
     } else {
       StatusFX.clearEntity(member.entity);
     }
-    member.entity.x = player.x + (member.slotIndex - 1) * 40;
+    member.entity.x = player.x + member.slotIndex * 50;
     member.entity.y = player.y + 30;
     hitEffects.push({ x: member.entity.x, y: member.entity.y - 30, life: 25, type: "heal", dmg: "REVIVED!" });
     return true;
@@ -312,7 +312,7 @@ const PartySystem = {
       }
       // Reposition bots near player
       if (m.controlType === 'bot' && !m.dead) {
-        m.entity.x = player.x + (m.slotIndex - 1) * 40 - 40;
+        m.entity.x = player.x + m.slotIndex * 50;
         m.entity.y = player.y + 30;
       }
     }
