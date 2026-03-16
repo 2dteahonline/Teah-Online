@@ -2293,8 +2293,17 @@ function updateCamera() {
     const specTarget = PartySystem.getSpectateTarget();
     if (specTarget) camTarget = specTarget;
   }
-  camera.x = Math.max(0, Math.min(camTarget.x - VIEW_W / 2, MAP_W - VIEW_W));
-  camera.y = Math.max(0, Math.min(camTarget.y - VIEW_H / 2, MAP_H - VIEW_H));
+  // Center the map when it's smaller than the viewport (e.g. spar arenas)
+  if (MAP_W <= VIEW_W) {
+    camera.x = (MAP_W - VIEW_W) / 2;
+  } else {
+    camera.x = Math.max(0, Math.min(camTarget.x - VIEW_W / 2, MAP_W - VIEW_W));
+  }
+  if (MAP_H <= VIEW_H) {
+    camera.y = (MAP_H - VIEW_H) / 2;
+  } else {
+    camera.y = Math.max(0, Math.min(camTarget.y - VIEW_H / 2, MAP_H - VIEW_H));
+  }
 }
 
 // Track shoot-facing state

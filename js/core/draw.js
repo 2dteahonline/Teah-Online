@@ -997,9 +997,9 @@ function draw() {
       // Team indicator circle under feet
       ctx.fillStyle = sb._sparTeam === 'teamA' ? 'rgba(50,120,220,0.4)' : 'rgba(220,50,50,0.4)';
       ctx.beginPath(); ctx.arc(sbx, sby, 14, 0, Math.PI * 2); ctx.fill();
-      // Draw character (drawChar → drawNameTag already draws HP bar)
+      // Draw character — empty name so no name tag clutter, HP bar still shows
       drawChar(sb.x, sb.y, sb.dir, 0, sb.moving,
-        sb.skin, sb.hair, sb.shirt, sb.pants, sb.name, sb.hp, false, null, sb.maxHp);
+        sb.skin, sb.hair, sb.shirt, sb.pants, "", sb.hp, false, null, sb.maxHp);
 
     } else if (e.mob) {
       const m = e.mob;

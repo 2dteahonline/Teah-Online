@@ -278,11 +278,12 @@ const SparSystem = {
         // Spar-specific tactical state
         aggression: 0.3 + Math.random() * 0.7,
         strafeDir: Math.random() > 0.5 ? 1 : -1,
-        strafeTimer: Math.floor(60 + Math.random() * 90),
+        strafeTimer: Math.floor(40 + Math.random() * 60),
         targetId: null,
         targetTimer: 0,
         laneY: null,
         laneShiftTimer: 0,
+        jukeTimer: 0,            // cooldown for juke direction flips
       },
     };
   },
@@ -524,12 +525,12 @@ const SparSystem = {
   },
 
   // ===================== SPAR BOT AI =====================
-  // Follows the same pattern as BotAI.tick() — each member ticks independently
+  // Follows BotAI.tick() pattern — each member ticks independently
   _tickSparBots() {
     for (const member of SparState._sparBots) {
       if (member.dead || member.entity.hp <= 0) continue;
 
-      // Tick reload (same as BotAI reload tick)
+      // Tick reload (same as BotAI)
       if (member.gun.reloading) {
         member.gun.reloadTimer--;
         if (member.gun.reloadTimer <= 0) {
@@ -541,12 +542,14 @@ const SparSystem = {
       // Tick fire cooldown
       if (member.ai.shootCD > 0) member.ai.shootCD--;
 
+      // Tick juke timer
+      if (member.ai.jukeTimer > 0) member.ai.jukeTimer--;
+
       this._tickOneBot(member);
     }
   },
 
   // Shoot — follows botShoot() pattern from BotAI
-  // Creates bullet with ownerId, damage from member.gun, uses same fire rate formula
   _sparBotShoot(member, target) {
     const e = member.entity;
     const g = member.gun;
@@ -570,13 +573,38 @@ const SparSystem = {
     });
 
     g.ammo--;
-    // Same fire rate formula as BotAI: fireRate * 4
     member.ai.shootCD = Math.round((g.fireRate || 5) * 4);
 
     if (g.ammo <= 0) {
       g.reloading = true;
       g.reloadTimer = 60;
     }
+  },
+
+  // Check if any enemy bullet is heading toward this bot
+  _getIncomingBulletDodge(bot, team) {
+    let dodgeX = 0, dodgeY = 0;
+    for (const b of bullets) {
+      if (!b.sparTeam || b.sparTeam === team) continue; // skip own team's bullets
+      // Check if bullet is heading toward bot (within threat cone)
+      const bToBotX = bot.x - b.x, bToBotY = (bot.y - 10) - b.y;
+      const bDist = Math.sqrt(bToBotX * bToBotX + bToBotY * bToBotY);
+      if (bDist > 300 || bDist < 10) continue; // too far or already past
+
+      // Dot product: is bullet moving toward bot?
+      const bLen = Math.sqrt(b.vx * b.vx + b.vy * b.vy) || 1;
+      const dot = (b.vx / bLen) * (bToBotX / bDist) + (b.vy / bLen) * (bToBotY / bDist);
+      if (dot < 0.7) continue; // not heading our way
+
+      // Perpendicular dodge direction (away from bullet path)
+      const perpX = -b.vy / bLen, perpY = b.vx / bLen;
+      // Dodge away from whichever side is closer to the bullet
+      const side = perpX * bToBotX + perpY * bToBotY;
+      const urgency = 1 - (bDist / 300); // stronger dodge when bullet is closer
+      dodgeX += (side >= 0 ? perpX : -perpX) * urgency * 3;
+      dodgeY += (side >= 0 ? perpY : -perpY) * urgency * 3;
+    }
+    return { x: dodgeX, y: dodgeY };
   },
 
   _tickOneBot(member) {
@@ -594,7 +622,7 @@ const SparSystem = {
     const midY = arenaH / 2;
     const homeSideX = team === 'teamA' ? arenaW * 0.3 : arenaW * 0.7;
 
-    // --- Target selection ---
+    // --- Target selection (prefer invaders, switch when current dies) ---
     ai.targetTimer--;
     let target = null;
     if (ai.targetId) {
@@ -605,15 +633,17 @@ const SparSystem = {
       let bestScore = -Infinity;
       for (const p of enemies) {
         if (!p.alive) continue;
-        const dx = bot.x - p.entity.x, dy = bot.y - p.entity.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const pdx = bot.x - p.entity.x, pdy = bot.y - p.entity.y;
+        const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
         const onOurSide = team === 'teamA' ? (p.entity.x < midX) : (p.entity.x > midX);
-        const score = -dist + (onOurSide ? 400 : 0);
+        // Prioritize: invaders > close > low HP
+        const hpBonus = (1 - p.entity.hp / p.entity.maxHp) * 150;
+        const score = -pdist + (onOurSide ? 400 : 0) + hpBonus;
         if (score > bestScore) { bestScore = score; target = p; }
       }
       if (target) {
         ai.targetId = target.id;
-        ai.targetTimer = 90 + Math.floor(Math.random() * 60);
+        ai.targetTimer = 60 + Math.floor(Math.random() * 60);
       }
     }
     if (!target) return;
@@ -622,6 +652,10 @@ const SparSystem = {
     const dx = tgt.x - bot.x, dy = tgt.y - bot.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
+    // --- Detect enemy state ---
+    const enemyMember = target.member;
+    const enemyReloading = enemyMember ? enemyMember.gun.reloading : false;
+
     // --- Decide behavior ---
     const hpPct = bot.hp / bot.maxHp;
     const hasAmmo = !member.gun.reloading && member.gun.ammo > 0;
@@ -629,18 +663,22 @@ const SparSystem = {
     const enemyOnOurSide = team === 'teamA' ? (tgt.x < midX) : (tgt.x > midX);
 
     let behavior;
-    if (hpPct < 0.3 || (member.gun.reloading && dist < 250)) {
-      behavior = 'retreat';
+    if (hpPct < 0.25 && !enemyReloading) {
+      behavior = 'retreat';              // low HP, enemy has ammo — back off
     } else if (isDeepEnemy) {
-      behavior = 'retreat';
+      behavior = 'retreat';              // overextended
+    } else if (member.gun.reloading) {
+      behavior = 'kite';                 // reloading — dodge and stay mobile
+    } else if (enemyReloading && dist < 400) {
+      behavior = 'push';                 // enemy reloading — punish window
     } else if (enemyOnOurSide && dist < 350) {
-      behavior = 'push';
-    } else if (hasAmmo && dist < 450 && dist > 150) {
-      behavior = 'strafe';
+      behavior = 'push';                 // invader on our side
+    } else if (hasAmmo && dist < 450 && dist > 120) {
+      behavior = 'strafe';               // good range — strafe combat
     } else if (dist > 450) {
-      behavior = 'hold_lane';
-    } else if (dist < 150 && hasAmmo) {
-      behavior = 'strafe';
+      behavior = 'hold_lane';            // too far — hold position
+    } else if (dist < 120 && hasAmmo) {
+      behavior = 'strafe';               // close range — strafe fight
     } else {
       behavior = 'hold_lane';
     }
@@ -659,74 +697,124 @@ const SparSystem = {
         const margin = arenaH * 0.2;
         ai.laneY = margin + ((arenaH - margin * 2) * allyIndex / (allyCount - 1));
       }
-      ai.laneShiftTimer = 180 + Math.floor(Math.random() * 180);
+      ai.laneShiftTimer = 120 + Math.floor(Math.random() * 120);
     }
     ai.laneShiftTimer--;
     if (ai.laneShiftTimer <= 0) {
-      ai.laneY += (Math.random() - 0.5) * arenaH * 0.15;
+      ai.laneY += (Math.random() - 0.5) * arenaH * 0.2;
       ai.laneY = Math.max(arenaH * 0.15, Math.min(arenaH * 0.85, ai.laneY));
-      ai.laneShiftTimer = 180 + Math.floor(Math.random() * 180);
+      ai.laneShiftTimer = 120 + Math.floor(Math.random() * 120);
     }
 
     if (behavior === 'retreat') {
+      // Retreat toward home side but ALWAYS strafe — never stand still
       const rdx = homeSideX - bot.x, rdy = ai.laneY - bot.y;
       const rDist = Math.sqrt(rdx * rdx + rdy * rdy);
       if (rDist > 20) {
-        moveX = (rdx / rDist) * speed;
-        moveY = (rdy / rDist) * speed;
+        moveX = (rdx / rDist) * speed * 0.6;
+        moveY = (rdy / rDist) * speed * 0.6;
       }
+      // Add perpendicular movement even while retreating
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 30 + Math.floor(Math.random() * 40);
+      }
+      const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
+      moveX += perpX * speed * ai.strafeDir * 0.5;
+      moveY += perpY * speed * ai.strafeDir * 0.5;
+
+    } else if (behavior === 'kite') {
+      // Reloading — juke and dodge, stay mobile, maintain distance
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 25 + Math.floor(Math.random() * 35);
+      }
+      const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
+      moveX = perpX * speed * ai.strafeDir * 0.8;
+      moveY = perpY * speed * ai.strafeDir * 0.8;
+      // Back away if too close
+      if (dist < 200 && dist > 1) {
+        moveX -= (dx / dist) * speed * 0.4;
+        moveY -= (dy / dist) * speed * 0.4;
+      }
+
     } else if (behavior === 'hold_lane') {
       const holdX = team === 'teamA' ? midX - arenaW * 0.05 : midX + arenaW * 0.05;
       const hdx = holdX - bot.x, hdy = ai.laneY - bot.y;
       const hDist = Math.sqrt(hdx * hdx + hdy * hdy);
       if (hDist > 30) {
-        moveX = (hdx / hDist) * speed * 0.5;
-        moveY = (hdy / hDist) * speed * 0.5;
+        moveX = (hdx / hDist) * speed * 0.45;
+        moveY = (hdy / hDist) * speed * 0.45;
       }
+      // Gentle sway at hold position
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 50 + Math.floor(Math.random() * 60);
+      }
+      const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
+      moveX += perpX * speed * ai.strafeDir * 0.3;
+      moveY += perpY * speed * ai.strafeDir * 0.3;
+
     } else if (behavior === 'push') {
-      const maxPushX = team === 'teamA' ? midX + arenaW * 0.1 : midX - arenaW * 0.1;
+      const maxPushX = team === 'teamA' ? midX + arenaW * 0.15 : midX - arenaW * 0.15;
       const pushPastMid = team === 'teamA' ? (bot.x > maxPushX) : (bot.x < maxPushX);
       if (pushPastMid) {
         ai.strafeTimer--;
         if (ai.strafeTimer <= 0) {
           ai.strafeDir *= -1;
-          ai.strafeTimer = 60 + Math.floor(Math.random() * 90);
+          ai.strafeTimer = 40 + Math.floor(Math.random() * 60);
         }
         const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
         moveX = perpX * speed * ai.strafeDir * 0.6;
         moveY = perpY * speed * ai.strafeDir * 0.6;
-      } else {
-        if (dist > 1) {
-          moveX = (dx / dist) * speed * 0.6;
-          moveY = (dy / dist) * speed * 0.6;
-        }
+      } else if (dist > 1) {
+        moveX = (dx / dist) * speed * 0.65;
+        moveY = (dy / dist) * speed * 0.65;
       }
+
     } else if (behavior === 'strafe') {
       ai.strafeTimer--;
       if (ai.strafeTimer <= 0) {
         ai.strafeDir *= -1;
-        ai.strafeTimer = 60 + Math.floor(Math.random() * 90);
+        ai.strafeTimer = 40 + Math.floor(Math.random() * 60);
       }
+
+      // Juke: occasional quick direction flip mid-strafe (throws off enemy aim)
+      if (ai.jukeTimer <= 0 && Math.random() < 0.008) {
+        ai.strafeDir *= -1;
+        ai.jukeTimer = 20; // brief juke, then resume normal rhythm
+      }
+
       const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
-      moveX = perpX * speed * ai.strafeDir * 0.65;
-      moveY = perpY * speed * ai.strafeDir * 0.65;
+      moveX = perpX * speed * ai.strafeDir * 0.7;
+      moveY = perpY * speed * ai.strafeDir * 0.7;
 
-      const idealRange = 250 + (1 - ai.aggression) * 100;
-      if (dist > idealRange + 30 && dist > 1) {
-        moveX += (dx / dist) * speed * 0.25;
-        moveY += (dy / dist) * speed * 0.25;
-      } else if (dist < idealRange - 30 && dist > 1) {
-        moveX -= (dx / dist) * speed * 0.25;
-        moveY -= (dy / dist) * speed * 0.25;
+      // Range maintenance
+      const idealRange = 220 + (1 - ai.aggression) * 120;
+      if (dist > idealRange + 40 && dist > 1) {
+        moveX += (dx / dist) * speed * 0.3;
+        moveY += (dy / dist) * speed * 0.3;
+      } else if (dist < idealRange - 40 && dist > 1) {
+        moveX -= (dx / dist) * speed * 0.3;
+        moveY -= (dy / dist) * speed * 0.3;
       }
 
+      // Drift toward assigned lane
       const laneDrift = ai.laneY - bot.y;
-      if (Math.abs(laneDrift) > 40) {
+      if (Math.abs(laneDrift) > 50) {
         moveY += Math.sign(laneDrift) * speed * 0.15;
       }
     }
 
-    // Separation
+    // --- Bullet dodging (reactive, all behaviors) ---
+    const dodge = this._getIncomingBulletDodge(bot, team);
+    moveX += dodge.x * speed;
+    moveY += dodge.y * speed;
+
+    // Separation from allies
     for (const a of allies) {
       if (!a.alive || a.entity === bot) continue;
       const adx = bot.x - a.entity.x, ady = bot.y - a.entity.y;
@@ -739,10 +827,10 @@ const SparSystem = {
 
     // Wall avoidance
     const wallMargin = TILE * 2;
-    if (bot.x < wallMargin) moveX += speed * 0.4;
-    else if (bot.x > arenaW - wallMargin) moveX -= speed * 0.4;
-    if (bot.y < wallMargin) moveY += speed * 0.4;
-    else if (bot.y > arenaH - wallMargin) moveY -= speed * 0.4;
+    if (bot.x < wallMargin) moveX += speed * 0.5;
+    else if (bot.x > arenaW - wallMargin) moveX -= speed * 0.5;
+    if (bot.y < wallMargin) moveY += speed * 0.5;
+    else if (bot.y > arenaH - wallMargin) moveY -= speed * 0.5;
 
     // Normalize
     const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
@@ -759,7 +847,7 @@ const SparSystem = {
     bot.vx = moveX; bot.vy = moveY;
     bot.moving = Math.abs(moveX) > 0.5 || Math.abs(moveY) > 0.5;
 
-    // Facing
+    // Facing — always face target
     if (dist < 500) {
       if (Math.abs(dx) > Math.abs(dy)) {
         bot.dir = dx > 0 ? 0 : 2;
@@ -772,7 +860,7 @@ const SparSystem = {
       bot.dir = moveY > 0 ? 3 : 1;
     }
 
-    // --- Shooting (same as BotAI.botShoot pattern) ---
+    // --- Shooting ---
     const canShoot = behavior !== 'retreat' || (hpPct > 0.15 && dist < 200);
     if (canShoot && !member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0 && dist < 450) {
       if (this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
