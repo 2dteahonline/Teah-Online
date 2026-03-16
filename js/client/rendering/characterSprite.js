@@ -2278,27 +2278,52 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     }
   };
 
-  if (dir === 0) { // facing DOWN — character's left hand is on SCREEN RIGHT
-    drawFreeArm(bodyL - 4, y + 29 + bobY + armSwing); // right hand = screen left
-    // Gun arm on screen-right (character's left)
-    ctx.fillStyle = black; ctx.fillRect(bodyR - 2, y + 30 + bobY, 7, 8);
-    drawGunArm(bodyR - 1, armY, bodyR + 1, armY + 6, 0);
-  } else if (dir === 1) { // facing UP — character's left hand is on SCREEN LEFT
-    drawFreeArm(bodyR - 2, y + 29 + bobY - armSwing); // right hand = screen right
-    // Gun arm on screen-left (character's left)
-    ctx.fillStyle = black; ctx.fillRect(bodyL - 4, y + 30 + bobY, 7, 8);
-    drawGunArm(bodyL - 3, y + 29 + bobY, bodyL - 1, y + 28 + bobY, 1);
-  } else if (dir === 2) { // facing LEFT — character's left hand is lower/front
-    drawFreeArm(bodyL + 12, y + 29 + bobY - armSwing); // right hand behind (center-ish)
-    // Gun arm on lower front, extends left
-    ctx.fillStyle = black; ctx.fillRect(bodyL + 8, armY - 2, 10, 7);
-    ctx.fillStyle = skin; ctx.fillRect(bodyL + 4, armY - 1, 5, 5);
-    drawGunArm(bodyL + 4, armY, bodyL + 2, armY, 2);
-  } else { // facing RIGHT — character's left hand is BACK
-    drawFreeArm(bodyL - 2, y + 29 + bobY + armSwing); // right hand in front
-    // Gun arm extends right (back arm crosses over)
-    ctx.fillStyle = black; ctx.fillRect(bodyR - 2, armY - 4, 10, 7);
-    drawGunArm(bodyR + 6, armY - 3, bodyR + 9, armY, 3);
+  // Gun side: 'right' mirrors which arm holds the gun
+  const _gunId = (_eq.gun && _eq.gun.id) || '';
+  const _gunRight = (typeof getGunSide === 'function') ? getGunSide(_gunId) === 'right' : false;
+
+  if (dir === 0) { // facing DOWN
+    if (_gunRight) {
+      drawFreeArm(bodyR - 2, y + 29 + bobY - armSwing); // free arm screen-right
+      ctx.fillStyle = black; ctx.fillRect(bodyL - 4, y + 30 + bobY, 7, 8);
+      drawGunArm(bodyL - 3, armY, bodyL - 1, armY + 6, 0);
+    } else {
+      drawFreeArm(bodyL - 4, y + 29 + bobY + armSwing); // free arm screen-left
+      ctx.fillStyle = black; ctx.fillRect(bodyR - 2, y + 30 + bobY, 7, 8);
+      drawGunArm(bodyR - 1, armY, bodyR + 1, armY + 6, 0);
+    }
+  } else if (dir === 1) { // facing UP
+    if (_gunRight) {
+      drawFreeArm(bodyL + 2, y + 29 + bobY + armSwing); // free arm screen-left
+      ctx.fillStyle = black; ctx.fillRect(bodyR - 2, y + 30 + bobY, 7, 8);
+      drawGunArm(bodyR - 1, y + 29 + bobY, bodyR + 1, y + 28 + bobY, 1);
+    } else {
+      drawFreeArm(bodyR - 2, y + 29 + bobY - armSwing); // free arm screen-right
+      ctx.fillStyle = black; ctx.fillRect(bodyL - 4, y + 30 + bobY, 7, 8);
+      drawGunArm(bodyL - 3, y + 29 + bobY, bodyL - 1, y + 28 + bobY, 1);
+    }
+  } else if (dir === 2) { // facing LEFT
+    if (_gunRight) {
+      drawFreeArm(bodyL + 4, y + 29 + bobY + armSwing); // free arm front-lower
+      ctx.fillStyle = black; ctx.fillRect(bodyL + 8, armY - 5, 10, 7);
+      ctx.fillStyle = skin; ctx.fillRect(bodyL + 4, armY - 4, 5, 5);
+      drawGunArm(bodyL + 4, armY - 3, bodyL + 2, armY - 3, 2);
+    } else {
+      drawFreeArm(bodyL + 12, y + 29 + bobY - armSwing); // free arm behind
+      ctx.fillStyle = black; ctx.fillRect(bodyL + 8, armY - 2, 10, 7);
+      ctx.fillStyle = skin; ctx.fillRect(bodyL + 4, armY - 1, 5, 5);
+      drawGunArm(bodyL + 4, armY, bodyL + 2, armY, 2);
+    }
+  } else { // facing RIGHT
+    if (_gunRight) {
+      drawFreeArm(bodyR - 2, y + 29 + bobY - armSwing); // free arm back
+      ctx.fillStyle = black; ctx.fillRect(bodyR - 2, armY - 1, 10, 7);
+      drawGunArm(bodyR + 6, armY, bodyR + 9, armY + 3, 3);
+    } else {
+      drawFreeArm(bodyL - 2, y + 29 + bobY + armSwing); // free arm in front
+      ctx.fillStyle = black; ctx.fillRect(bodyR - 2, armY - 4, 10, 7);
+      drawGunArm(bodyR + 6, armY - 3, bodyR + 9, armY, 3);
+    }
   }
 
   // === HEAD ===

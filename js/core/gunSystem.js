@@ -421,20 +421,30 @@ function getAimDir() {
 }
 
 // Get gun muzzle world position — consistent with drawRifle
+// Mirrors X offset when gun side is 'right'
 function getMuzzlePos(aimDir) {
   const x = player.x - 20;
   const y = player.y - 68;
   const bodyL = x + 2;
   const bodyR = x + 36;
   const armY = y + 35;
-  if (aimDir === 0) { // down
-    return { x: bodyR + 1, y: armY + 6 + 49 };
-  } else if (aimDir === 1) { // up
-    return { x: bodyL - 1, y: y + 28 - 49 };
-  } else if (aimDir === 2) { // left
-    return { x: bodyL + 2 - 49, y: armY };
-  } else { // right
-    return { x: bodyR + 9 + 49, y: armY };
+  const isRight = getCurrentGunSide() === 'right';
+  if (aimDir === 0) { // down — default: gun on screen-right (bodyR). Mirror: screen-left (bodyL)
+    return isRight
+      ? { x: bodyL - 1, y: armY + 6 + 49 }
+      : { x: bodyR + 1, y: armY + 6 + 49 };
+  } else if (aimDir === 1) { // up — default: gun on screen-left (bodyL). Mirror: screen-right (bodyR)
+    return isRight
+      ? { x: bodyR + 1, y: y + 28 - 49 }
+      : { x: bodyL - 1, y: y + 28 - 49 };
+  } else if (aimDir === 2) { // left — gun still points left, arm offset shifts
+    return isRight
+      ? { x: bodyL + 2 - 49, y: armY - 3 }
+      : { x: bodyL + 2 - 49, y: armY };
+  } else { // right — gun still points right, arm offset shifts
+    return isRight
+      ? { x: bodyR + 9 + 49, y: armY - 3 }
+      : { x: bodyR + 9 + 49, y: armY };
   }
 }
 
@@ -611,6 +621,23 @@ let _ctxFreeze = 50;   // slider value 0-100 (default: 50)
 let _ctxRof = 50;      // slider value 0-100 (default: 50)
 let _ctxSpread = 0;    // slider value 0-30 (default: 0, step 10)
 
+// Per-gun settings (persisted via saveLoad.js)
+let _gunSettings = {};  // { 'ct_x': { side: 'left' }, ... }
+
+function getGunSide(gunId) {
+  return (_gunSettings[gunId] && _gunSettings[gunId].side) || 'left';
+}
+
+function setGunSide(gunId, side) {
+  if (!_gunSettings[gunId]) _gunSettings[gunId] = {};
+  _gunSettings[gunId].side = side;
+}
+
+function getCurrentGunSide() {
+  const gun = playerEquip.gun;
+  return gun ? getGunSide(gun.id) : 'left';
+}
+
 // Slider config: min, max, step, and how to read/write the value
 const _mgSliders = {
   freeze: {
@@ -671,7 +698,7 @@ window.addEventListener('DOMContentLoaded', () => {
 function drawModifyGunPanel() {
   if (!UI.isOpen('modifygun')) return;
 
-  const pw = 500, ph = 440;
+  const pw = 500, ph = 500;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
 
   // Dimmed backdrop
@@ -753,6 +780,42 @@ function drawModifyGunPanel() {
   ctx.fillStyle = remaining > 0 ? "#3aaa55" : "#ff6644";
   ctx.fillText("Points: " + totalPts + " / 100  (" + remaining + " remaining)", px + pw / 2, sy + 4);
 
+  // Gun Side toggle
+  const toggleY = sy + 22;
+  const currentSide = getGunSide('ct_x');
+  const toggleW = 180, toggleH = 36;
+  const toggleX = px + pw / 2 - toggleW / 2;
+
+  // Label above
+  ctx.font = "bold 14px monospace";
+  ctx.fillStyle = "#aaa";
+  ctx.textAlign = "center";
+  ctx.fillText("Gun Side", px + pw / 2, toggleY - 6);
+
+  // Toggle background
+  ctx.fillStyle = "#1a2a22";
+  ctx.strokeStyle = "#3a6a4a";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(toggleX, toggleY, toggleW, toggleH, 6); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(toggleX, toggleY, toggleW, toggleH, 6); ctx.stroke();
+
+  // Active half highlight
+  const halfW = toggleW / 2;
+  if (currentSide === 'left') {
+    ctx.fillStyle = "#3aaa55";
+    ctx.beginPath(); ctx.roundRect(toggleX, toggleY, halfW, toggleH, [6,0,0,6]); ctx.fill();
+  } else {
+    ctx.fillStyle = "#3aaa55";
+    ctx.beginPath(); ctx.roundRect(toggleX + halfW, toggleY, halfW, toggleH, [0,6,6,0]); ctx.fill();
+  }
+
+  ctx.font = "bold 14px monospace";
+  ctx.textAlign = "center";
+  ctx.fillStyle = currentSide === 'left' ? "#fff" : "#888";
+  ctx.fillText("LEFT", toggleX + halfW / 2, toggleY + 23);
+  ctx.fillStyle = currentSide === 'right' ? "#fff" : "#888";
+  ctx.fillText("RIGHT", toggleX + halfW + halfW / 2, toggleY + 23);
+
   // Save button
   const btnW = 120, btnH = 40;
   const btnX = px + pw / 2 - btnW / 2, btnY = py + ph - 58;
@@ -770,7 +833,7 @@ function drawModifyGunPanel() {
 function handleModifyGunClick(mx, my) {
   if (!UI.isOpen('modifygun')) return false;
 
-  const pw = 500, ph = 440;
+  const pw = 500, ph = 500;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
 
   // Close button
@@ -793,12 +856,24 @@ function handleModifyGunClick(mx, my) {
     sy += 110;
   }
 
+  // Gun Side toggle click
+  const toggleW = 180, toggleH = 36;
+  const toggleX = px + pw / 2 - toggleW / 2;
+  // toggleY: after 3 sliders (sy starts py+70, each 110px) + points row + offset
+  const toggleY = py + 70 + 3 * 110 + 22;
+  if (mx >= toggleX && mx <= toggleX + toggleW && my >= toggleY && my <= toggleY + toggleH) {
+    const clickedRight = mx > toggleX + toggleW / 2;
+    setGunSide('ct_x', clickedRight ? 'right' : 'left');
+    return true;
+  }
+
   // Save button
   const btnW = 120, btnH = 40;
   const btnX = px + pw / 2 - btnW / 2, btnY = py + ph - 58;
   if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
     UI.close(); _mgDragging = null;
-    chatMessages.push({ name: "SYSTEM", text: "CT-X saved — Freeze: " + _mgSliders.freeze.get().toFixed(0) + " | RoF: " + _mgSliders.rof.get().toFixed(0) + " | Spread: " + _mgSliders.spread.get().toFixed(0) + "°", time: Date.now() });
+    const sideLabel = getGunSide('ct_x') === 'right' ? 'Right' : 'Left';
+    chatMessages.push({ name: "SYSTEM", text: "CT-X saved — Freeze: " + _mgSliders.freeze.get().toFixed(0) + " | RoF: " + _mgSliders.rof.get().toFixed(0) + " | Spread: " + _mgSliders.spread.get().toFixed(0) + "\u00B0 | Side: " + sideLabel, time: Date.now() });
     return true;
   }
 

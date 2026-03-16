@@ -75,6 +75,14 @@ const SaveLoad = {
       if (typeof sparLearning !== 'undefined') {
         data.sparLearning = JSON.parse(JSON.stringify(sparLearning));
       }
+      // Gun settings (per-gun side, etc.)
+      if (typeof _gunSettings !== 'undefined') {
+        data.gunSettings = JSON.parse(JSON.stringify(_gunSettings));
+      }
+      // CT-X slider values
+      if (typeof _ctxFreeze !== 'undefined') {
+        data.ctxSliders = { freeze: _ctxFreeze, rof: _ctxRof, spread: _ctxSpread };
+      }
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('Save failed:', e);
@@ -310,6 +318,17 @@ const SaveLoad = {
         if (!sparLearning.botShots) sparLearning.botShots = { hitRate: 0.5, dodgedRate: 0.5, hitWhenPlayerStrafing: 0.5, hitWhenPlayerStill: 0.5, hitWhenPlayerApproach: 0.5 };
         if (!sparLearning.combatPatterns) sparLearning.combatPatterns = { playerHitDist: 250, botHitDist: 250, playerDmgWhenHasBottom: 0.5, botDmgWhenHasBottom: 0.5, tradeRatio: 0.5 };
         if (sparLearning.history && sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
+      }
+
+      // Gun settings (per-gun side, etc.)
+      if (data.gunSettings && typeof _gunSettings !== 'undefined') {
+        Object.assign(_gunSettings, data.gunSettings);
+      }
+      // CT-X slider values
+      if (data.ctxSliders && typeof _mgSliders !== 'undefined') {
+        if (typeof data.ctxSliders.freeze === 'number') _mgSliders.freeze.set(data.ctxSliders.freeze);
+        if (typeof data.ctxSliders.rof === 'number') _mgSliders.rof.set(data.ctxSliders.rof);
+        if (typeof data.ctxSliders.spread === 'number') _mgSliders.spread.set(data.ctxSliders.spread);
       }
 
       // Farming state (v5+)
