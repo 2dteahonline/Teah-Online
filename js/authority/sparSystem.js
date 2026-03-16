@@ -231,9 +231,6 @@ const SparSystem = {
     const alloc = is1v1Enemy ? { freeze: 50, rof: 50, spread: 0 } : this._randomBotAlloc();
     const botGun = this._buildCtxGun(alloc.freeze, alloc.rof, alloc.spread);
 
-    // Match player's gun side so bot shoots from same position
-    const botGunSide = (typeof getCurrentGunSide === 'function') ? getCurrentGunSide() : 'left';
-
     // Entity — same structure as party bot entities
     const entity = {
       x: spawnTX * TILE + TILE / 2,
@@ -251,7 +248,7 @@ const SparSystem = {
       _isBot: true,
       _isSparBot: true,
       _sparTeam: team,
-      _gunSide: botGunSide,
+      _gunSide: 'left',
       _contactCD: 0,
       // Cosmetics
       skin: team === 'teamA' ? '#4488cc' : '#cc4444',
@@ -670,7 +667,7 @@ const SparSystem = {
     e.dir = aimDir;
 
     // Muzzle position — same body-relative formula as player getMuzzlePos()
-    // Uses entity's gun side to match player parity
+    // Uses entity._gunSide (left for now) — matches player getMuzzlePos exactly
     const bx = e.x - 20;
     const by = e.y - 68;
     const bodyL = bx + 2;
