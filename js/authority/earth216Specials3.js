@@ -316,7 +316,7 @@ MOB_SPECIALS.stacked_deck = (m, ctx) => {
       const status = statuses[shotIndex];
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
+        vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
         fromPlayer: false, mobBullet: true, damage: Math.round(35 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: colors[shotIndex],
         onHitPlayer: status ? (b, hitTarget) => {
@@ -471,7 +471,7 @@ MOB_SPECIALS.corrupt_vessel = (m, ctx) => {
       const fanSpread = (30 * Math.PI) / 180; // ±30° for 5 projectiles
       for (let i = -2; i <= 2; i++) {
         const angle = dir + i * (fanSpread / 2);
-        const spd = 7;
+        const spd = 6;
         bullets.push({
           id: nextBulletId++, x: m.x, y: m.y - 10,
           vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,

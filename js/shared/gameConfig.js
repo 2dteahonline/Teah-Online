@@ -5,7 +5,7 @@
 
 const GAME_CONFIG = {
   // --- Player ---
-  PLAYER_BASE_SPEED: 8.33,      // base movement speed (no boots) → 500 px/sec
+  PLAYER_BASE_SPEED: 6.66,      // base movement speed (no boots) → 400 px/sec
   PLAYER_WALL_HW: 18,           // player wall collision half-width (AABB)
   PLAYER_RADIUS: 30,            // body-blocking circle radius
 
@@ -16,7 +16,7 @@ const GAME_CONFIG = {
   MOB_CROWD_RADIUS: 61,         // crowding detection radius
 
   // --- Projectiles ---
-  BULLET_SPEED: 10,             // default bullet speed (px/frame)
+  BULLET_SPEED: 9,             // default bullet speed (px/frame)
   BULLET_R: 7,                  // projectile collision radius
   ENTITY_R: 19,                 // entity hit detection radius (bullet-vs-entity) [+10% from 17]
 
@@ -32,5 +32,5 @@ const GAME_CONFIG = {
   DEFAULT_HITBOX_RADIUS: 33,    // green circle radius (scaled with ENTITY_R +10%)
 
   // --- Version ---
-  GAME_UPDATE: 218,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 219,             // increment each deploy — shown on lobby version sign
 };

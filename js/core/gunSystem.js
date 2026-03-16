@@ -617,11 +617,11 @@ const _mgSliders = {
     label: 'Freeze',
     desc: 'Higher = less slowdown after shooting.',
     min: 0, max: 100, step: 5,
-    // Linear: 0→0.90, 50→0.45, 100→0.00. 0.09 per 10. Duration flat 15f.
+    // Linear: 0→0.99, 50→0.54, 100→0.09. 0.09 per 10. Duration flat 15f.
     get: () => (typeof _ctxFreeze !== 'undefined') ? _ctxFreeze : 50,
     set: (v) => {
       _ctxFreeze = v;
-      const penalty = 0.90 - v * 0.009; // 0.09 per step of 10, no cap
+      const penalty = 0.99 - v * 0.009; // 0.09 per step of 10
       CT_X_GUN.freezePenalty = penalty;
       if (playerEquip.gun && playerEquip.gun.id === 'ct_x') {
         playerEquip.gun.freezePenalty = penalty;

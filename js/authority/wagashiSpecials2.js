@@ -79,7 +79,7 @@ MOB_SPECIALS.charged_burst_arrow = (m, ctx) => {
       const targetY = player.y;
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
+        vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
         fromPlayer: false, mobBullet: true, damage: Math.round(35 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#66aaff',
       });
@@ -384,7 +384,7 @@ MOB_SPECIALS.tidal_wave = (m, ctx) => {
       const dir = m._tidalDir;
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
+        vx: Math.cos(dir) * 6, vy: Math.sin(dir) * 6,
         fromPlayer: false, mobBullet: true, damage: Math.round(50 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#2288cc',
         onHitPlayer: (b, hitTarget) => {
@@ -709,7 +709,7 @@ MOB_SPECIALS.blood_seal_shot = (m, ctx) => {
   m._bloodSealY = player.y;
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
+    vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
     fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#cc2244',
   });
@@ -969,7 +969,7 @@ MOB_SPECIALS.blood_crescent = (m, ctx) => {
       const dir = m._crescentDir;
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 11, vy: Math.sin(dir) * 11,
+        vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
         fromPlayer: false, mobBullet: true, damage: Math.round(55 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#cc2244',
       });
@@ -1080,7 +1080,7 @@ MOB_SPECIALS.moon_rift_orb = (m, ctx) => {
   const targetY = player.y;
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 4, vy: Math.sin(dir) * 4,
+    vx: Math.cos(dir) * 3.6, vy: Math.sin(dir) * 3.6,
     fromPlayer: false, mobBullet: true, damage: Math.round(15 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#8844cc', life: 90,
     onExpire: function() {

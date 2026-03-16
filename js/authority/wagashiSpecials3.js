@@ -141,7 +141,7 @@ MOB_SPECIALS.shard_toss = (m, ctx) => {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 11, vy: Math.sin(dir) * 11,
+        vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
         fromPlayer: false, mobBullet: true, damage: Math.round(42 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#ccaa22',
       });
@@ -322,7 +322,7 @@ MOB_SPECIALS.void_spit = (m, ctx) => {
         const angle = dir - spreadRad + (i / 4) * (spreadRad * 2);
         bullets.push({
           id: nextBulletId++, x: m.x, y: m.y - 8,
-          vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
+          vx: Math.cos(angle) * 6, vy: Math.sin(angle) * 6,
           fromPlayer: false, mobBullet: true, damage: Math.round(40 * getMobDamageMultiplier()),
           ownerId: m.id, bulletColor: '#4a2a6a',
         });

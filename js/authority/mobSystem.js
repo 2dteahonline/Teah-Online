@@ -856,7 +856,7 @@ function updateMobs() {
             } else {
               const odx = orb.targetX - orb.x, ody = orb.targetY - orb.y;
               const oDist = Math.sqrt(odx * odx + ody * ody) || 1;
-              const spd = 5;
+              const spd = 4.5;
               orb.x += (odx / oDist) * spd;
               orb.y += (ody / oDist) * spd;
               // Check hit against all party members

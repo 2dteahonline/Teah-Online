@@ -37,8 +37,8 @@ const FD_TABLES = [
 const FD_NPC_CONFIG = {
   maxParties: 4,
   spawnInterval: [300, 600],  // 5-10s
-  baseSpeed: 1.0,
-  speedVariance: 0.15,
+  baseSpeed: 0.8,
+  speedVariance: 0.12,
   eatDuration: [600, 900],    // 10-15s
   hostPauseDuration: [90, 150],  // 1.5-2.5s at host stand
   waiterOrderDuration: 900,      // 15s order taking
@@ -534,7 +534,7 @@ function initFineDiningNPCs() {
     x: FD_SPOTS.hostStand.tx * TILE + TILE / 2,
     y: FD_SPOTS.hostStand.ty * TILE + TILE / 2,
     dir: 2, // face left
-    speed: 1.4,
+    speed: 1.12,
     moving: false,
     state: 'idle',
     stateTimer: 0,

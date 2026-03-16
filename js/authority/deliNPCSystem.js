@@ -70,8 +70,8 @@ const DELI_NPC_CONFIG = {
   minNPCs: 0,
   maxNPCs: 4,
   spawnInterval: [180, 540],   // 3-9 sec randomized range (frames at 60fps)
-  baseSpeed: 1.1,              // slow relaxed stroll
-  speedVariance: 0.2,
+  baseSpeed: 0.88,             // slow relaxed stroll
+  speedVariance: 0.16,
   eatDuration:    [900, 900],  // 15 sec at 60fps
   browseDuration: [480, 900],   // 8-15 sec browsing at an aisle
   condimentTime:  [300, 480],   // 5-8 sec at condiments

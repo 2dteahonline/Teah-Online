@@ -14,7 +14,7 @@ MOB_SPECIALS.snap_web = (m, ctx) => {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
+        vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
         fromPlayer: false, mobBullet: true, damage: Math.round(25 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#ccccdd',
         onHitPlayer: (b, hitTarget) => {
@@ -52,7 +52,7 @@ MOB_SPECIALS.silk_needle_fan = (m, ctx) => {
         const angle = dir + i * spreadAngle;
         bullets.push({
           id: nextBulletId++, x: m.x, y: m.y - 8,
-          vx: Math.cos(angle) * 8, vy: Math.sin(angle) * 8,
+          vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
           fromPlayer: false, mobBullet: true, damage: Math.round(18 * getMobDamageMultiplier()),
           ownerId: m.id, bulletColor: '#ddddcc',
         });
@@ -162,7 +162,7 @@ MOB_SPECIALS.metal_skull_bash = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 5, Math.sin(kbDir) * 5);
+        applyKnockback(Math.cos(kbDir) * 4, Math.sin(kbDir) * 4);
       }
       m._skullDashing = false;
       m._specialTimer = m._specialCD || 200;
@@ -358,7 +358,7 @@ MOB_SPECIALS.thread_shot = (m, ctx) => {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 11, vy: Math.sin(dir) * 11,
+        vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
         fromPlayer: false, mobBullet: true, damage: Math.round(35 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#eeeedd',
         onHitPlayer: (b, hitTarget) => {
@@ -401,7 +401,7 @@ MOB_SPECIALS.brood_call = (m, ctx) => {
           mobs.push({
             x: sx, y: sy, type: 'silk_skitterer', id: nextMobId++,
             hp: Math.round(m.maxHp * 0.08), maxHp: Math.round(m.maxHp * 0.08),
-            speed: 2.5, damage: Math.round(m.damage * 0.3),
+            speed: 2, damage: Math.round(m.damage * 0.3),
             contactRange: 30, skin: '#888899', hair: '#666677', shirt: '#777788', pants: '#666677',
             name: 'Spiderling', dir: 0, frame: 0, attackCooldown: 0,
             shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -444,7 +444,7 @@ MOB_SPECIALS.titan_charge = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 10, Math.sin(kbDir) * 10);
+        applyKnockback(Math.cos(kbDir) * 8, Math.sin(kbDir) * 8);
       }
       m._titanDashing = false;
       m._specialTimer = m._specialCD || 240;
@@ -613,7 +613,7 @@ MOB_SPECIALS.snake_call = (m, ctx) => {
         mobs.push({
           x: sx, y: sy, type: 'temple_fang_acolyte', id: nextMobId++,
           hp: Math.round(m.maxHp * 0.15), maxHp: Math.round(m.maxHp * 0.15),
-          speed: 2.5, damage: Math.round(m.damage * 0.4),
+          speed: 2, damage: Math.round(m.damage * 0.4),
           contactRange: 30, skin: '#668866', hair: '#446644', shirt: '#557755', pants: '#446644',
           name: 'Serpent', dir: 0, frame: 0, attackCooldown: 0,
           shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -880,7 +880,7 @@ MOB_SPECIALS.serpent_swarm = (m, ctx) => {
           mobs.push({
             x: sx, y: sy, type: 'temple_fang_acolyte', id: nextMobId++,
             hp: Math.round(m.maxHp * 0.06), maxHp: Math.round(m.maxHp * 0.06),
-            speed: 2.8, damage: Math.round(m.damage * 0.3),
+            speed: 2.2, damage: Math.round(m.damage * 0.3),
             contactRange: 30, skin: '#668866', hair: '#446644', shirt: '#557755', pants: '#446644',
             name: 'Serpent', dir: 0, frame: 0, attackCooldown: 0,
             shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -961,7 +961,7 @@ MOB_SPECIALS.earthbreaker_slam = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 8, Math.sin(kbDir) * 8);
+        applyKnockback(Math.cos(kbDir) * 6.4, Math.sin(kbDir) * 6.4);
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "hit" });
       m._specialTimer = m._specialCD || 240;
@@ -988,7 +988,7 @@ MOB_SPECIALS.boulder_hurl = (m, ctx) => {
       const dir = m._boulderHurlDir;
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
+        vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
         fromPlayer: false, mobBullet: true, damage: Math.round(55 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#887766',
       });

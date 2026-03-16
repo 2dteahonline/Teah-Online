@@ -146,7 +146,7 @@ const MELEE_DEFAULTS = { damage: 24, critChance: 0.15 };
 
 // Default starter weapons (tier 0 — weaker than T1 shop items)
 const DEFAULT_GUN = { id: 'sidearm', name: 'Sidearm', tier: 0, damage: 28, fireRate: 5, magSize: 35, color: '#5a7a8a', desc: '28 dmg · 35 mag · rapid sidearm', waveReq: 0, cost: 0, bulletColor: { main: '#60ccff', core: '#b0e8ff', glow: 'rgba(96,204,255,0.2)' } };
-const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 4.650, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.45, freezeDuration: 15 };
+const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 4.650, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.54, freezeDuration: 15 };
 const DEFAULT_MELEE = { id: 'combat_blade', name: 'Combat Blade', tier: 0, damage: 24, range: 110, cooldown: 24, critChance: 0.15, color: '#6a8a9a', desc: '24 dmg · 110 range · 15% crit · starter blade', waveReq: 0, cost: 0, special: null };
 const DEFAULT_PICKAXE = { id: 'pickaxe', name: 'Pickaxe', tier: 0, damage: 10, range: 70, cooldown: 32, critChance: 0, color: '#8a6a3a', desc: '10 dmg · mining tool · equip to mine ores', waveReq: 0, cost: 0, special: 'pickaxe' };
 const SEEKING_BATON = { id: 'seeking_baton', name: 'Seeking Baton', tier: 0, damage: 0, range: 90, cooldown: 18, critChance: 0, color: '#ff9a40', desc: 'Tag hiders with this baton', waveReq: 0, cost: 0, special: 'seeking' };
@@ -178,10 +178,10 @@ const ARMOR_TIERS = [
 
 // === 4-SLOT ARMOR SYSTEM (4 tiers, wave-gated by GLOBAL wave) ===
 const BOOTS_TIERS = [
-  { id: 'leather_boots',  name: 'Leather Boots',  tier: 1, speedBonus: 0.7, color: '#8a6a40', desc: '+0.7 speed', waveReq: 1, cost: 15 },
-  { id: 'swift_boots',    name: 'Swift Boots',    tier: 2, speedBonus: 1.9, dodgeChance: 0.15, color: '#4a7a5a', desc: '+1.9 speed · 15% dodge', waveReq: 10, cost: 60 },
-  { id: 'shadow_boots',   name: 'Shadow Boots',   tier: 3, speedBonus: 2.3, dodgeChance: 0.20, color: '#3a3a6a', desc: '+2.3 speed · 20% dodge · Shadow Step', waveReq: 20, cost: 280, special: 'shadowstep' },
-  { id: 'phantom_boots',  name: 'Phantom Boots',  tier: 4, speedBonus: 2.6, dodgeChance: 0.25, color: '#2a7a8a', desc: '+2.6 speed · 25% dodge + phase', waveReq: 30, cost: 550, special: 'phase' },
+  { id: 'leather_boots',  name: 'Leather Boots',  tier: 1, speedBonus: 0.56, color: '#8a6a40', desc: '+0.56 speed', waveReq: 1, cost: 15 },
+  { id: 'swift_boots',    name: 'Swift Boots',    tier: 2, speedBonus: 1.52, dodgeChance: 0.15, color: '#4a7a5a', desc: '+1.52 speed · 15% dodge', waveReq: 10, cost: 60 },
+  { id: 'shadow_boots',   name: 'Shadow Boots',   tier: 3, speedBonus: 1.84, dodgeChance: 0.20, color: '#3a3a6a', desc: '+1.84 speed · 20% dodge · Shadow Step', waveReq: 20, cost: 280, special: 'shadowstep' },
+  { id: 'phantom_boots',  name: 'Phantom Boots',  tier: 4, speedBonus: 2.08, dodgeChance: 0.25, color: '#2a7a8a', desc: '+2.08 speed · 25% dodge + phase', waveReq: 30, cost: 550, special: 'phase' },
 ];
 const PANTS_TIERS = [
   { id: 'padded_pants',    name: 'Padded Pants',    tier: 1, dmgReduce: 0.10, projReduce: 0, color: '#7a6a50', desc: '-10% damage', waveReq: 1, cost: 20 },

@@ -41,7 +41,7 @@ MOB_SPECIALS.slingshot_snipe = (m, ctx) => {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 12, vy: Math.sin(dir) * 12,
+        vx: Math.cos(dir) * 11, vy: Math.sin(dir) * 11,
         fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#aa8855',
       });
@@ -168,7 +168,7 @@ MOB_SPECIALS.pneumatic_shot = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
+    vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
     fromPlayer: false, mobBullet: true, damage: Math.round(22 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#8899aa',
     onHitPlayer: (b, hitTarget) => {
@@ -233,7 +233,7 @@ MOB_SPECIALS.earthquake_slam_e205 = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 12, Math.sin(kbDir) * 12);
+        applyKnockback(Math.cos(kbDir) * 9.6, Math.sin(kbDir) * 9.6);
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "sledgehammer_shockwave" });
       m._specialTimer = m._specialCD || 300;
@@ -263,7 +263,7 @@ MOB_SPECIALS.boomerang_cleave = (m, ctx) => {
       const returnDir = Math.atan2(m.y - m._boomTargetY, m.x - m._boomTargetX);
       bullets.push({
         id: nextBulletId++, x: m._boomTargetX, y: m._boomTargetY - 8,
-        vx: Math.cos(returnDir) * 8, vy: Math.sin(returnDir) * 8,
+        vx: Math.cos(returnDir) * 7, vy: Math.sin(returnDir) * 7,
         fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#996644',
       });
@@ -280,7 +280,7 @@ MOB_SPECIALS.boomerang_cleave = (m, ctx) => {
   m._boomTargetY = m.y + Math.sin(dir) * Math.min(dist, 200);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
+    vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
     fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#996644',
   });
@@ -390,7 +390,7 @@ MOB_SPECIALS.suppressive_burst = (m, ctx) => {
     const angle = dir + i * spreadAngle;
     bullets.push({
       id: nextBulletId++, x: m.x, y: m.y - 8,
-      vx: Math.cos(angle) * 8, vy: Math.sin(angle) * 8,
+      vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
       fromPlayer: false, mobBullet: true, damage: Math.round(15 * getMobDamageMultiplier()),
       ownerId: m.id, bulletColor: '#778899',
       onHitPlayer: (b, hitTarget) => {
@@ -499,7 +499,7 @@ MOB_SPECIALS.bouncing_blast = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 6, vy: Math.sin(dir) * 6,
+    vx: Math.cos(dir) * 5, vy: Math.sin(dir) * 5,
     fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#aa6633', life: 180,
     _bounces: 2,
@@ -539,7 +539,7 @@ MOB_SPECIALS.jury_rigged_taser = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
+    vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
     fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#44ddff',
     onHitPlayer: (b, hitTarget) => {
@@ -561,7 +561,7 @@ MOB_SPECIALS.chemical_flask = (m, ctx) => {
   const targetY = m.y + Math.sin(dir) * targetDist;
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 5, vy: Math.sin(dir) * 5,
+    vx: Math.cos(dir) * 4.5, vy: Math.sin(dir) * 4.5,
     fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#66ff44', life: 60,
     onExpire: function() {
@@ -624,7 +624,7 @@ MOB_SPECIALS.decoy_device = (m, ctx) => {
   mobs.push({
     x: sx, y: sy, type: 'decoy_willis', id: nextMobId++,
     hp: 1, maxHp: 1,
-    speed: 5, damage: 0,
+    speed: 4, damage: 0,
     contactRange: 0, skin: m.skin || '#c4a882', hair: m.hair || '#444', shirt: m.shirt || '#667788', pants: m.pants || '#445566',
     name: 'Decoy', dir: 0, frame: 0, attackCooldown: 0,
     shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -690,7 +690,7 @@ MOB_SPECIALS.master_plan = (m, ctx) => {
   const targetDist = Math.min(Math.sqrt((player.x - m.x) ** 2 + (player.y - m.y) ** 2), 280);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 5, vy: Math.sin(dir) * 5,
+    vx: Math.cos(dir) * 4.5, vy: Math.sin(dir) * 4.5,
     fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#66ff44', life: 60,
     onExpire: function() {
@@ -717,7 +717,7 @@ MOB_SPECIALS.master_plan = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'decoy_willis', id: nextMobId++,
       hp: 1, maxHp: 1,
-      speed: 5, damage: 0,
+      speed: 4, damage: 0,
       contactRange: 0, skin: m.skin || '#c4a882', hair: m.hair || '#444', shirt: m.shirt || '#667788', pants: m.pants || '#445566',
       name: 'Decoy', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -769,7 +769,7 @@ MOB_SPECIALS.shattering_swing = (m, ctx) => {
     hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
     // Knockback
     const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-    applyKnockback(Math.cos(kbDir) * 14, Math.sin(kbDir) * 14);
+    applyKnockback(Math.cos(kbDir) * 11.2, Math.sin(kbDir) * 11.2);
   }
   hitEffects.push({ x: m.x, y: m.y - 15, life: 15, type: "cast" });
   m._abilityCDs.shattering_swing = 240;
@@ -785,7 +785,7 @@ MOB_SPECIALS.scrap_metal_toss = (m, ctx) => {
     const angle = dir + i * spreadAngle;
     bullets.push({
       id: nextBulletId++, x: m.x, y: m.y - 8,
-      vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
+      vx: Math.cos(angle) * 6, vy: Math.sin(angle) * 6,
       fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
       ownerId: m.id, bulletColor: '#887766',
     });
@@ -847,7 +847,7 @@ MOB_SPECIALS.brutal_beatdown = (m, ctx) => {
         // Final hit knockback
         if (m._beatdownHits >= 5) {
           const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-          applyKnockback(Math.cos(kbDir) * 16, Math.sin(kbDir) * 16);
+          applyKnockback(Math.cos(kbDir) * 12.8, Math.sin(kbDir) * 12.8);
         }
       }
     }
@@ -926,7 +926,7 @@ MOB_SPECIALS.bull_charge = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 16, Math.sin(kbDir) * 16);
+        applyKnockback(Math.cos(kbDir) * 12.8, Math.sin(kbDir) * 12.8);
       }
       m._chargeDashing = false;
       m._abilityCDs.bull_charge = 420;
@@ -986,7 +986,7 @@ MOB_SPECIALS.batter_up = (m, ctx) => {
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         // Knockback
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 20, Math.sin(kbDir) * 20);
+        applyKnockback(Math.cos(kbDir) * 16, Math.sin(kbDir) * 16);
         StatusFX.applyToPlayer('stun', { duration: 90 });
         hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: "stun" });
       }
@@ -1014,7 +1014,7 @@ MOB_SPECIALS.cigar_flick = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
+    vx: Math.cos(dir) * 6, vy: Math.sin(dir) * 6,
     fromPlayer: false, mobBullet: true, damage: Math.round(15 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#ff8844',
     onHitPlayer: (b, hitTarget) => {
@@ -1124,7 +1124,7 @@ MOB_SPECIALS.flashbang_breach = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
+    vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
     fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#ffffaa',
     onHitPlayer: (b, hitTarget) => {
@@ -1184,7 +1184,7 @@ MOB_SPECIALS.one_man_army = (m, ctx) => {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
+        vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
         fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#ffffaa',
         onHitPlayer: (b, hitTarget) => {
@@ -1223,7 +1223,7 @@ MOB_SPECIALS.pin_cascade = (m, ctx) => {
     const angle = dir + (i - 1) * spread;
     bullets.push({
       id: nextBulletId++, x: m.x, y: m.y - 8,
-      vx: Math.cos(angle) * 6, vy: Math.sin(angle) * 6,
+      vx: Math.cos(angle) * 5, vy: Math.sin(angle) * 5,
       fromPlayer: false, mobBullet: true,
       damage: Math.round(12 * getMobDamageMultiplier()),
       ownerId: m.id, bulletColor: '#ee4488',
@@ -1557,7 +1557,7 @@ MOB_SPECIALS.auto_turret = (m, ctx) => {
     hp: 80, maxHp: 80, speed: 0, damage: Math.round(m.damage * 0.5),
     contactRange: 0, skin: '#888888', hair: '#666', shirt: '#555555', pants: '#444444',
     name: 'Turret', dir: 0, frame: 0, attackCooldown: 0,
-    shootRange: 300, shootRate: 90, shootTimer: 0, bulletSpeed: 8,
+    shootRange: 300, shootRate: 90, shootTimer: 0, bulletSpeed: 7,
     summonRate: 0, summonMax: 0, summonTimer: 0,
     arrowRate: 0, arrowSpeed: 0, arrowRange: 0, arrowBounces: 0, arrowLife: 0, bowDrawAnim: 0, arrowTimer: 0,
     _specials: null, _specialTimer: 0, _specialCD: 0, _abilityCDs: {},
@@ -1669,7 +1669,7 @@ MOB_SPECIALS.spray_and_pray = (m, ctx) => {
       const angle = baseDir + (Math.random() - 0.5) * 2 * coneHalf;
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(angle) * 10, vy: Math.sin(angle) * 10,
+        vx: Math.cos(angle) * 9, vy: Math.sin(angle) * 9,
         fromPlayer: false, mobBullet: true,
         damage: Math.round(8 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#ccaa44',
@@ -1699,7 +1699,7 @@ MOB_SPECIALS.execution_shot = (m, ctx) => {
       const angle = m._execDir;
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(angle) * 14, vy: Math.sin(angle) * 14,
+        vx: Math.cos(angle) * 13, vy: Math.sin(angle) * 13,
         fromPlayer: false, mobBullet: true,
         damage: Math.round(55 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#ff2222',
@@ -1734,7 +1734,7 @@ MOB_SPECIALS.finger_gun = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 11, vy: Math.sin(dir) * 11,
+    vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
     fromPlayer: false, mobBullet: true,
     damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#ffffff11',
@@ -2039,7 +2039,7 @@ MOB_SPECIALS.suppressed_fire = (m, ctx) => {
       const angle = dir + (Math.random() - 0.5) * spread;
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(angle) * 10, vy: Math.sin(angle) * 10,
+        vx: Math.cos(angle) * 9, vy: Math.sin(angle) * 9,
         fromPlayer: false, mobBullet: true,
         damage: Math.round(20 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#444444',
@@ -2059,7 +2059,7 @@ MOB_SPECIALS.suppressed_fire = (m, ctx) => {
   const angle = dir + (Math.random() - 0.5) * spread;
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(angle) * 10, vy: Math.sin(angle) * 10,
+    vx: Math.cos(angle) * 9, vy: Math.sin(angle) * 9,
     fromPlayer: false, mobBullet: true,
     damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#444444',
@@ -2122,7 +2122,7 @@ MOB_SPECIALS.red_herring = (m, ctx) => {
   // Spawn decoy at old position — walks toward player, 1hp
   mobs.push({
     x: oldX, y: oldY, type: 'lady_red_decoy', id: nextMobId++,
-    hp: 1, maxHp: 1, speed: 2, damage: 0,
+    hp: 1, maxHp: 1, speed: 1.6, damage: 0,
     contactRange: 0, skin: m.skin || '#ffccaa', hair: m.hair || '#880000', shirt: m.shirt || '#cc0000', pants: m.pants || '#880000',
     name: 'Lady Red?', dir: 0, frame: 0, attackCooldown: 0,
     shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -2188,7 +2188,7 @@ MOB_SPECIALS.gold_ring_hook = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 10, vy: Math.sin(dir) * 10,
+    vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
     fromPlayer: false, mobBullet: true,
     damage: Math.round(25 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#ffd700',
@@ -2263,7 +2263,7 @@ MOB_SPECIALS.call_the_goons = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'tracksuit_goon', id: nextMobId++,
       hp: Math.round(m.maxHp * 0.1), maxHp: Math.round(m.maxHp * 0.1),
-      speed: 2.8, damage: Math.round(m.damage * 0.35),
+      speed: 2.2, damage: Math.round(m.damage * 0.35),
       contactRange: 30, skin: '#ddb88c', hair: '#222', shirt: '#444455', pants: '#333344',
       name: 'Goon', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -2378,7 +2378,7 @@ MOB_SPECIALS.acid_splash = (m, ctx) => {
   if (m._specialTimer > 0) { m._specialTimer--; return {}; }
   if (dist > 250) { m._specialTimer = 30; return {}; }
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
-  const spd = 5;
+  const spd = 4.5;
   const targetX = player.x;
   const targetY = player.y;
   bullets.push({
@@ -2453,7 +2453,7 @@ MOB_SPECIALS.volatile_reaction = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 6, vy: Math.sin(dir) * 6,
+    vx: Math.cos(dir) * 5, vy: Math.sin(dir) * 5,
     fromPlayer: false, mobBullet: true,
     damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#66ff44',
@@ -2652,7 +2652,7 @@ MOB_SPECIALS.toxic_stream = (m, ctx) => {
   let trailCounter = { count: 0 };
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 8, vy: Math.sin(dir) * 8,
+    vx: Math.cos(dir) * 7, vy: Math.sin(dir) * 7,
     fromPlayer: false, mobBullet: true,
     damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#44ff44',
@@ -2706,7 +2706,7 @@ MOB_SPECIALS.volatile_flask_boss = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 6, vy: Math.sin(dir) * 6,
+    vx: Math.cos(dir) * 5, vy: Math.sin(dir) * 5,
     fromPlayer: false, mobBullet: true,
     damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#aaff44',
@@ -2823,7 +2823,7 @@ MOB_SPECIALS.viscous_sludge = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 6, vy: Math.sin(dir) * 6,
+    vx: Math.cos(dir) * 5, vy: Math.sin(dir) * 5,
     fromPlayer: false, mobBullet: true,
     damage: Math.round(20 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#668844',
@@ -2971,7 +2971,7 @@ MOB_SPECIALS.plasma_bolt = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 14, vy: Math.sin(dir) * 14,
+    vx: Math.cos(dir) * 13, vy: Math.sin(dir) * 13,
     fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#44ddff', pierce: true,
     onHitPlayer: (b, hitTarget) => {
@@ -3016,7 +3016,7 @@ MOB_SPECIALS.reactor_slam = (m, ctx) => {
         const dealt = dealDamageToPlayer(dmg, 'mob_special', m);
         hitEffects.push({ x: player.x, y: player.y - 10, life: 19, type: "hit", dmg: dealt });
         const kbDir = Math.atan2(player.y - m.y, player.x - m.x);
-        applyKnockback(Math.cos(kbDir) * 14, Math.sin(kbDir) * 14);
+        applyKnockback(Math.cos(kbDir) * 11.2, Math.sin(kbDir) * 11.2);
         StatusFX.applyToPlayer('root', { duration: 45 });
       }
       hitEffects.push({ x: m.x, y: m.y, life: 25, type: "sledgehammer_shockwave" });
