@@ -39,11 +39,11 @@ function getFreezePenalty() {
   if (playerEquip.gun && playerEquip.gun.freezePenalty != null) return playerEquip.gun.freezePenalty;
   return Math.min(0.25, gunStats.freeze * 0.0025);
 }
-// Reload: faster base, still scales with firerate
-// firerate 0 = 40 frames (0.67sec), firerate 100 = 90 frames (~1.5sec). At 50: ~65 frames (~1.1sec)
+// Reload: halved — fast base, scales with firerate
+// firerate 0 = 20 frames (0.33sec), firerate 100 = 45 frames (~0.75sec). At 50: ~33 frames (~0.55sec)
 function getReloadTime() {
   if (playerEquip.gun && playerEquip.gun.reloadSpeed) return playerEquip.gun.reloadSpeed;
-  return Math.round(40 + gunStats.firerate * 0.5);
+  return Math.round(20 + gunStats.firerate * 0.25);
 }
 
 // gun → js/authority/gameState.js
