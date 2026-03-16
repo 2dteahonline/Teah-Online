@@ -725,10 +725,10 @@ const SparSystem = {
       my = by + 28 - 49;
     } else if (aimDir === 2) { // left
       mx = bodyL + 2 - 49;
-      my = isRight ? (armY - 22) : (armY + 22);
+      my = isRight ? (armY - 20) : (armY + 20);
     } else { // right
       mx = bodyR + 9 + 49;
-      my = isRight ? (armY + 22) : (armY - 22);
+      my = isRight ? (armY + 20) : (armY - 20);
     }
 
     // Apply spread (same as player shoot() — random angular offset)
@@ -2502,9 +2502,9 @@ const SparSystem = {
           // Too close to horizontal shot axis — push perpendicular urgently
           moveY += (vertOffset >= 0 ? 1 : -1) * speed * 0.25;
         }
-        // Gun side muzzle offset: bullet spawns ±22px from body center
-        // Left gun shooting right = muzzle high (-22), left gun shooting left = muzzle low (+22)
-        // Right gun shooting right = muzzle low (+22), right gun shooting left = muzzle high (-22)
+        // Gun side muzzle offset: bullet spawns ±20px from body center
+        // Left gun shooting right = muzzle high (-20), left gun shooting left = muzzle low (+20)
+        // Right gun shooting right = muzzle low (+20), right gun shooting left = muzzle high (-20)
         const enemyIsRight = enemyGunSide === 'right';
         const shootingRight = tgt.dir === 3;
         const muzzleHigh = (enemyIsRight && !shootingRight) || (!enemyIsRight && shootingRight);

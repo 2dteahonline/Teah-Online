@@ -439,12 +439,12 @@ function getMuzzlePos(aimDir) {
       : { x: bodyL - 1, y: y + 28 - 49 };
   } else if (aimDir === 2) { // left — mirrored side shifts gun to opposite Y
     return isRight
-      ? { x: bodyL + 2 - 49, y: armY - 22 }
-      : { x: bodyL + 2 - 49, y: armY + 22 };
+      ? { x: bodyL + 2 - 49, y: armY - 20 }
+      : { x: bodyL + 2 - 49, y: armY + 20 };
   } else { // right — mirrored side shifts gun to opposite Y
     return isRight
-      ? { x: bodyR + 9 + 49, y: armY + 22 }
-      : { x: bodyR + 9 + 49, y: armY - 22 };
+      ? { x: bodyR + 9 + 49, y: armY + 20 }
+      : { x: bodyR + 9 + 49, y: armY - 20 };
   }
 }
 
