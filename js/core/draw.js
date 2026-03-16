@@ -1003,7 +1003,7 @@ function draw() {
       const _sparFlash = _se._contactCD > 0 && Math.floor(renderTime / 80) % 2 === 0;
       if (_sparFlash) ctx.globalAlpha = 0.5;
       drawChar(_se.x, _se.y, _se.dir, _se.frame, _se.moving,
-        _se.skin, _se.hair, _se.shirt, _se.pants, _se.name, _se.hp, false, null, _se.maxHp);
+        _se.skin, _se.hair, _se.shirt, _se.pants, _se.name, _se.hp, false, 'partyBot', _se.maxHp);
       if (_sparFlash) ctx.globalAlpha = 1.0;
       _charEquipOverride = null;
       _charColorOverride = null;
