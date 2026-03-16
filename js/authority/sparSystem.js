@@ -371,6 +371,44 @@ const SparSystem = {
 
     if (SparState.phase === 'fighting') {
       SparState.matchTimer++;
+      // Training harness: override PLAYER with scripted archetype so the
+      // enemy bot plays its real duel style and style results are meaningful
+      if (typeof _getSparTrainingBotOverride === 'function') {
+        const trainBot = _getSparTrainingBotOverride();
+        if (trainBot) {
+          const enemyMember = SparState.teamB.find(p => p.alive);
+          if (enemyMember) {
+            const te = enemyMember.entity;
+            const tdx = te.x - player.x, tdy = te.y - player.y;
+            const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
+            // Use a temporary member-like object for the training tick
+            const fakeMember = { entity: player, _trainMoveX: 0, _trainMoveY: 0 };
+            const fakeAi = SparState._trainPlayerAi || { strafeDir: 1, strafeTimer: 0, _cornerTarget: null };
+            // Strafe timer (same as bot AI)
+            fakeAi.strafeTimer = (fakeAi.strafeTimer || 0) - 1;
+            if (fakeAi.strafeTimer <= 0) {
+              fakeAi.strafeDir = Math.random() < 0.5 ? -1 : 1;
+              fakeAi.strafeTimer = 30 + Math.floor(Math.random() * 60);
+            }
+            SparState._trainPlayerAi = fakeAi;
+            const shouldShoot = trainBot.tick(fakeMember, te, tdist, tdx, tdy, GAME_CONFIG.PLAYER_BASE_SPEED, fakeAi);
+            // Inject movement via InputIntent
+            const mx = fakeMember._trainMoveX, my = fakeMember._trainMoveY;
+            const spd = GAME_CONFIG.PLAYER_BASE_SPEED;
+            InputIntent.moveX = Math.abs(mx) > 0.1 ? (mx > 0 ? 1 : -1) : 0;
+            InputIntent.moveY = Math.abs(my) > 0.1 ? (my > 0 ? 1 : -1) : 0;
+            // Inject shooting
+            InputIntent.shootHeld = !!shouldShoot;
+            // Aim toward enemy (arrow-style aiming)
+            if (Math.abs(tdx) > Math.abs(tdy)) {
+              InputIntent.arrowAimDir = tdx > 0 ? 3 : 2;
+            } else {
+              InputIntent.arrowAimDir = tdy > 0 ? 0 : 1;
+            }
+            InputIntent.arrowShooting = !!shouldShoot;
+          }
+        }
+      }
       this._collectPlayerData();
       this._tickSparBots();
       this._bodyBlockSpar();
@@ -1947,41 +1985,6 @@ const SparSystem = {
     const enemies = team === 'teamA' ? SparState.teamB : SparState.teamA;
     const allies = team === 'teamA' ? SparState.teamA : SparState.teamB;
     const ai = member.ai;
-
-    // --- Training harness override: replace bot AI with scripted behavior ---
-    if (team === 'teamB' && typeof _getSparTrainingBotOverride === 'function') {
-      const trainBot = _getSparTrainingBotOverride();
-      if (trainBot) {
-        const enemies2 = SparState.teamA;
-        let tgt2 = enemies2.find(p => p.alive);
-        if (tgt2) {
-          const te = tgt2.entity;
-          const tdx = te.x - bot.x, tdy = te.y - bot.y;
-          const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
-          member._trainMoveX = 0;
-          member._trainMoveY = 0;
-          const shouldShoot = trainBot.tick(member, te, tdist, tdx, tdy, SPAR_CONFIG.BOT_SPEED, ai);
-          // Update velocity state so analytics correctly classify bot movement
-          bot.vx = member._trainMoveX;
-          bot.vy = member._trainMoveY;
-          bot.moving = Math.abs(bot.vx) > 0.1 || Math.abs(bot.vy) > 0.1;
-          bot.x += member._trainMoveX;
-          bot.y += member._trainMoveY;
-          // Clamp to arena
-          const aLvl = LEVELS[SparState.activeRoom.arenaLevel];
-          bot.x = Math.max(TILE, Math.min(aLvl.widthTiles * TILE - TILE, bot.x));
-          bot.y = Math.max(TILE, Math.min(aLvl.heightTiles * TILE - TILE, bot.y));
-          // Face target
-          if (Math.abs(tdx) > Math.abs(tdy)) bot.dir = tdx > 0 ? 3 : 2;
-          else bot.dir = tdy > 0 ? 0 : 1;
-          // Shoot
-          if (shouldShoot && !member.gun.reloading && ai.shootCD <= 0 && member.gun.ammo > 0) {
-            this._sparBotShoot(member, te);
-          }
-        }
-        return; // skip normal AI
-      }
-    }
 
     // --- Cache learning profile modifiers (once per match) ---
     if (!ai._profileMods && team === 'teamB') {
