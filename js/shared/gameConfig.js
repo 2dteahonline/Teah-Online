@@ -17,7 +17,7 @@ const GAME_CONFIG = {
 
   // --- Projectiles ---
   BULLET_SPEED: 9,             // default bullet speed (px/frame)
-  BULLET_R: 5,                  // projectile collision radius
+  BULLET_R: 7,                  // projectile collision radius (~30% bigger to match visual)
   ENTITY_RX: 38,                // entity hitbox horizontal half-width
   ENTITY_RY: 13,                // entity hitbox vertical half-height (flat — Graal-style ground ellipse)
 
@@ -30,9 +30,9 @@ const GAME_CONFIG = {
   KNOCKBACK_THRESHOLD: 0.5,     // min velocity before clearing
 
   // --- Hitbox Indicator ---
-  DEFAULT_HITBOX_RX: 43,        // hitbox visual horizontal (BULLET_R + ENTITY_RX = 43)
-  DEFAULT_HITBOX_RY: 18,        // hitbox visual vertical (BULLET_R + ENTITY_RY = 18)
+  DEFAULT_HITBOX_RX: 45,        // hitbox visual horizontal (BULLET_R + ENTITY_RX = 45)
+  DEFAULT_HITBOX_RY: 20,        // hitbox visual vertical (BULLET_R + ENTITY_RY = 20)
 
   // --- Version ---
-  GAME_UPDATE: 261,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 262,             // increment each deploy — shown on lobby version sign
 };
