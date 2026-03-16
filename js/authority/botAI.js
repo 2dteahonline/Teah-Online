@@ -70,6 +70,68 @@ const BotAI = {
     if (ai.meleeCD > 0) ai.meleeCD--;
     if (e._contactCD > 0) e._contactCD--;
 
+    // Tick ninja dash state (same logic as player in updateMelee)
+    const ml = member.melee;
+    if (ml) {
+      if (ml.dashCooldown > 0) ml.dashCooldown--;
+      if (ml.dashGap > 0) ml.dashGap--;
+      if (ml.dashActive && !ml.dashing) {
+        ml.dashChainWindow--;
+        if (ml.dashChainWindow <= 0 || ml.dashesLeft <= 0) {
+          ml.dashesLeft = 0;
+          ml.dashActive = false;
+          ml.dashCooldown = ml.dashCooldownMax || 240;
+        }
+      }
+      // Dash movement — bot dashes toward target mob
+      if (ml.dashing) {
+        ml.dashTimer--;
+        if (ml.dashTrail) ml.dashTrail.push({ x: e.x, y: e.y, life: 14 });
+        if (ml.dashTrail && ml.dashTrail.length > 8) ml.dashTrail.shift();
+        const nx = e.x + ml.dashDirX * ml.dashSpeed;
+        const ny = e.y + ml.dashDirY * ml.dashSpeed;
+        const col = Math.floor(nx / TILE), row = Math.floor(ny / TILE);
+        if (!isSolid(col, row)) { e.x = nx; e.y = ny; }
+        else { ml.dashTimer = 0; }
+        // Damage mobs passed through (2x * 1.5 crit = 3x)
+        for (const m of mobs) {
+          if (m.hp <= 0 || m._botDashHit) continue;
+          const ddx = m.x - e.x, ddy = m.y - e.y;
+          if (ddx * ddx + ddy * ddy < 50 * 50) {
+            m._botDashHit = true;
+            const dmg = Math.round(ml.damage * 2.0 * 1.5);
+            hitEffects.push({ x: m.x, y: m.y - 30, life: 28, type: "crit", dmg: dmg });
+            const sa = Math.atan2(m.y - e.y, m.x - e.x);
+            hitEffects.push({ x: m.x, y: m.y - 10, life: 16, type: "ninja_slash", angle: sa });
+            hitEffects.push({ x: m.x, y: m.y - 10, life: 18, type: "ninja_slash", angle: sa + Math.PI / 3 });
+            dealDamageToMob(m, dmg, "ninja_dash_kill", e);
+            const dashHeal = calcLifesteal(dmg);
+            if (dashHeal > 0) e.hp = Math.min(e.maxHp, e.hp + dashHeal);
+          }
+        }
+        if (ml.dashTimer <= 0) {
+          ml.dashing = false;
+          ml.dashGap = 12;
+          for (const m of mobs) delete m._botDashHit;
+          hitEffects.push({ x: e.x, y: e.y - 15, life: 12, type: "ninja_dash_end" });
+          if (ml.dashesLeft <= 0) {
+            ml.dashActive = false;
+            ml.dashCooldown = ml.dashCooldownMax || 240;
+          }
+        }
+        // Tick dash trail lifetime
+        if (ml.dashTrail) {
+          for (let ti = ml.dashTrail.length - 1; ti >= 0; ti--) {
+            ml.dashTrail[ti].life--;
+            if (ml.dashTrail[ti].life <= 0) ml.dashTrail.splice(ti, 1);
+          }
+        }
+        e.moving = true;
+        this._updateAnim(e);
+        return; // dashing overrides all other AI
+      }
+    }
+
     // Process knockback (same physics as player in inventory.js)
     if (e.knockVx !== 0 || e.knockVy !== 0) {
       const knx = e.x + e.knockVx;
@@ -500,6 +562,11 @@ const BotAI = {
           cooldownMax: item.cooldown,
           critChance: item.critChance || 0.10,
           special: item.special || null,
+          // Dash fields (ninja katanas) — same defaults as gameState.js
+          dashing: false, dashTimer: 0, dashDuration: 14, dashSpeed: 26,
+          dashDirX: 0, dashDirY: 0, dashTrail: [],
+          dashesLeft: 0, dashChainWindow: 0,
+          dashCooldown: 0, dashCooldownMax: 240, dashActive: false, dashGap: 0,
         };
         // Sync equip.melee so renderer draws the correct melee weapon
         member.equip.melee = member.melee;
@@ -717,9 +784,37 @@ const BotAI = {
       g.reloadTimer = 90;
     }
 
+    // Ninja dash activation — bot triggers dash toward mob when close enough
+    if (ml && ml.special === 'ninja' && !ml.dashActive && !ml.dashing && ml.dashCooldown <= 0 && dist < meleeRange * 1.5) {
+      ml.dashActive = true;
+      ml.dashesLeft = 3;
+      ml.dashChainWindow = 180;
+      hitEffects.push({ x: e.x, y: e.y - 20, life: 20, type: "ninja_dash" });
+    }
+    // During active dash window, trigger individual dashes toward mob
+    if (ml && ml.special === 'ninja' && ml.dashActive && ml.dashesLeft > 0 && !ml.dashing && ml.dashGap <= 0) {
+      const ddx = mob.x - e.x, ddy = mob.y - e.y;
+      const dd = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+      ml.dashing = true;
+      ml.dashTimer = ml.dashDuration || 14;
+      ml.dashTrail = [];
+      ml.dashesLeft--;
+      ml.dashChainWindow = 180;
+      ml.dashDirX = ddx / dd;
+      ml.dashDirY = ddy / dd;
+      hitEffects.push({ x: e.x, y: e.y - 15, life: 15, type: "ninja_dash" });
+    }
+
     // Melee when in range
     if (ml && dist < meleeRange && member.ai.meleeCD <= 0) {
       this.botMelee(member, mob);
+    }
+
+    // Grab when in range, off cooldown, and mob is high-value (boss or > 50% HP)
+    if (member.grab && !member.grab.active && member.grab.cooldown <= 0 && dist < 60) {
+      if (mob.maxHp > 200 || mob.hp / mob.maxHp > 0.5) {
+        if (typeof tryGrabEntity === 'function') tryGrabEntity(e, ml);
+      }
     }
   },
 
@@ -898,8 +993,10 @@ const BotAI = {
 
     if (dist >= ml.range) return;
 
-    // Crit check: 10% base chance, 1.5x multiplier
-    const isCrit = Math.random() < (ml.critChance || 0.10);
+    // Crit check: 10% base, shadow step guarantees crit, 1.5x multiplier
+    const hasShadowStep = !!e._shadowStep;
+    const isCrit = hasShadowStep || Math.random() < (ml.critChance || 0.10);
+    if (hasShadowStep) e._shadowStep = false; // consume on use
     const critMult = isCrit ? 1.5 : 1.0;
     const meleeDmg = Math.round(ml.damage * critMult);
     const isCleave = ml.special === 'cleave';

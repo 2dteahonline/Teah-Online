@@ -446,60 +446,100 @@ function updatePotion() {
   if (potion.cooldown > 0) potion.cooldown--;
 }
 
-// === GRAB SYSTEM ===
-function tryGrab() {
-  if (grabCooldown > 0 || isGrabbing) return;
+// === GRAB SYSTEM (entity-agnostic) ===
+// All grab state lives on member.grab { active, timer, target, cooldown }
+// tryGrab/updateGrab accept entity + member so any participant can grab.
+
+function _resolveGrabState(entity) {
+  // Returns the grab state object for this entity (member.grab or legacy globals for backward compat)
+  if (typeof PartySystem !== 'undefined') {
+    const m = PartySystem.getMemberByEntity(entity);
+    if (m) return m.grab;
+  }
+  // Fallback: write to legacy globals (shouldn't happen if party is active)
+  return { active: isGrabbing, timer: grabTimer, target: grabTarget, cooldown: grabCooldown };
+}
+
+function tryGrabEntity(entity, memberMelee) {
+  const m = typeof PartySystem !== 'undefined' ? PartySystem.getMemberByEntity(entity) : null;
+  const gs = m ? m.grab : null;
+  if (!gs) return;
+  if (gs.cooldown > 0 || gs.active) return;
   // Find nearest mob in range
   let nearest = null, nearDist = GRAB_RANGE;
-  for (const m of mobs) {
-    if (m.hp <= 0) continue;
-    const dx = m.x - player.x, dy = m.y - player.y;
+  for (const mob of mobs) {
+    if (mob.hp <= 0) continue;
+    const dx = mob.x - entity.x, dy = mob.y - entity.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < nearDist) { nearest = m; nearDist = dist; }
+    if (dist < nearDist) { nearest = mob; nearDist = dist; }
   }
-  isGrabbing = true;
-  grabTimer = GRAB_DURATION;
-  grabTarget = nearest;
+  gs.active = true;
+  gs.timer = GRAB_DURATION;
+  gs.target = nearest;
   if (nearest) {
-    // Stun the grabbed mob
     StatusFX.applyToMob(nearest, 'stun', { duration: GRAB_DURATION });
-    // Deal some grab damage
-    const grabDmg = Math.round(melee.damage * 0.3);
-    dealDamageToMob(nearest, grabDmg);
+    const grabDmg = Math.round((memberMelee || melee).damage * 0.3);
+    dealDamageToMob(nearest, grabDmg, 'melee', entity);
     hitEffects.push({ x: nearest.x, y: nearest.y - 30, life: 20, type: "grab", dmg: grabDmg });
+  }
+  // Sync legacy globals for player (UI reads isGrabbing)
+  if (entity === player) { isGrabbing = true; grabTimer = gs.timer; grabTarget = gs.target; }
+}
+
+// Player-facing wrapper (called from input handler — unchanged signature)
+function tryGrab() { tryGrabEntity(player, melee); }
+
+function updateGrabAll() {
+  // Tick grab for ALL party members (including player)
+  if (typeof PartyState === 'undefined' || PartyState.members.length === 0) {
+    // Legacy fallback: tick player globals
+    if (grabCooldown > 0) grabCooldown--;
+    if (!isGrabbing) return;
+    _updateGrabForEntity(player, melee, { active: isGrabbing, timer: grabTimer, target: grabTarget, cooldown: grabCooldown }, true);
+    return;
+  }
+  for (const member of PartyState.members) {
+    if (member.dead || !member.active) continue;
+    const gs = member.grab;
+    if (!gs) continue;
+    if (gs.cooldown > 0) gs.cooldown--;
+    if (!gs.active) continue;
+    _updateGrabForEntity(member.entity, member.melee || melee, gs, member.controlType === 'local');
   }
 }
 
-function updateGrab() {
-  if (grabCooldown > 0) grabCooldown--;
-  if (!isGrabbing) return;
-  grabTimer--;
-  if (grabTarget && grabTarget.hp > 0) {
-    // Hold mob in place near player
-    const angle = Math.atan2(grabTarget.y - player.y, grabTarget.x - player.x);
-    grabTarget.x = player.x + Math.cos(angle) * 40;
-    grabTarget.y = player.y + Math.sin(angle) * 40;
-    StatusFX.applyToMob(grabTarget, 'stun', { duration: 2 }); // keep stunned
+function _updateGrabForEntity(entity, memberMelee, gs, isLocal) {
+  gs.timer--;
+  if (gs.target && gs.target.hp > 0) {
+    const angle = Math.atan2(gs.target.y - entity.y, gs.target.x - entity.x);
+    gs.target.x = entity.x + Math.cos(angle) * 40;
+    gs.target.y = entity.y + Math.sin(angle) * 40;
+    StatusFX.applyToMob(gs.target, 'stun', { duration: 2 });
   }
-  if (grabTimer <= 0) {
-    // Release — throw the mob away
-    if (grabTarget && grabTarget.hp > 0) {
-      const angle = Math.atan2(grabTarget.y - player.y, grabTarget.x - player.x);
-      // Push mob away on release
+  if (gs.timer <= 0) {
+    if (gs.target && gs.target.hp > 0) {
+      const angle = Math.atan2(gs.target.y - entity.y, gs.target.x - entity.x);
       const throwDist = 80;
-      const newX = grabTarget.x + Math.cos(angle) * throwDist;
-      const newY = grabTarget.y + Math.sin(angle) * throwDist;
-      if (positionClear(newX, newY)) { grabTarget.x = newX; grabTarget.y = newY; }
-      // Throw damage
-      const throwDmg = Math.round(melee.damage * 0.5);
-      dealDamageToMob(grabTarget, throwDmg);
-      hitEffects.push({ x: grabTarget.x, y: grabTarget.y - 30, life: 20, type: "crit", dmg: throwDmg });
+      const newX = gs.target.x + Math.cos(angle) * throwDist;
+      const newY = gs.target.y + Math.sin(angle) * throwDist;
+      if (positionClear(newX, newY)) { gs.target.x = newX; gs.target.y = newY; }
+      const throwDmg = Math.round(memberMelee.damage * 0.5);
+      dealDamageToMob(gs.target, throwDmg, 'melee', entity);
+      hitEffects.push({ x: gs.target.x, y: gs.target.y - 30, life: 20, type: "crit", dmg: throwDmg });
     }
-    isGrabbing = false;
-    grabTarget = null;
-    grabCooldown = GRAB_COOLDOWN;
+    gs.active = false;
+    gs.target = null;
+    gs.cooldown = GRAB_COOLDOWN;
+    // Sync legacy globals for player UI
+    if (isLocal) { isGrabbing = false; grabTarget = null; grabCooldown = GRAB_COOLDOWN; }
+  } else if (isLocal) {
+    // Keep legacy globals in sync while active
+    isGrabbing = gs.active; grabTimer = gs.timer; grabTarget = gs.target;
   }
 }
+
+// Legacy wrapper — called from the old updateGrab() call site
+function updateGrab() { updateGrabAll(); }
 
 // === EXTRA ITEM SLOT ===
 function useExtraSlotItem() {

@@ -152,8 +152,16 @@ function resetCombatState(mode) {
     dungeonComplete = false; victoryTimer = 0;
     reviveUsed = false;
     player._reviveUsed = false;
-    // Reset revive for party bots too
-    for (const m of PartyState.members) { if (m.entity) m.entity._reviveUsed = false; }
+    player._shadowStep = false;
+    player._phaseTimer = 0;
+    // Reset revive + per-entity flags for party bots too
+    for (const m of PartyState.members) {
+      if (m.entity) {
+        m.entity._reviveUsed = false;
+        m.entity._shadowStep = false;
+        m.entity._phaseTimer = 0;
+      }
+    }
     recalcMaxHp(); player.hp = player.maxHp;
     contactCooldown = 60;
     // Shop runtime state lives in shopState; _resetShopPrices handles all of it
@@ -189,7 +197,7 @@ function resetCombatState(mode) {
     // Clean up gun transient state (mid-reload, fire cooldown)
     gun.reloading = false; gun.reloadTimer = 0; gun.fireCooldown = 0; gun.recoilTimer = 0;
     gun.ammo = gun.magSize; // full mag on new floor
-    // Reset bot melee/gun transient state on floor transition
+    // Reset bot melee/gun/grab/dash transient state on floor transition
     if (typeof PartyState !== 'undefined') {
       for (const m of PartyState.members) {
         if (m.controlType === 'bot') {
@@ -197,6 +205,13 @@ function resetCombatState(mode) {
             m.melee.cooldown = 0;
             m.melee.swinging = false;
             m.melee.dashing = false;
+            m.melee.dashTimer = 0;
+            m.melee.dashActive = false;
+            m.melee.dashesLeft = 0;
+            m.melee.dashChainWindow = 0;
+            m.melee.dashCooldown = 0;
+            m.melee.dashGap = 0;
+            if (m.melee.dashTrail) m.melee.dashTrail.length = 0;
           }
           if (m.ai) m.ai.meleeCD = 0;
           if (m.gun) {
@@ -205,6 +220,9 @@ function resetCombatState(mode) {
             m.gun.reloadTimer = 0;
             m.gun.fireCooldown = 0;
           }
+          if (m.grab) { m.grab.active = false; m.grab.timer = 0; m.grab.target = null; m.grab.cooldown = 0; }
+          // Clear per-entity combat flags
+          if (m.entity) { m.entity._shadowStep = false; m.entity._phaseTimer = 0; }
         }
       }
     }

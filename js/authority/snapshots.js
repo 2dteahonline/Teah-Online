@@ -413,6 +413,15 @@ function applyGameStateSnapshot(snap) {
   } else {
     grabTarget = null;
   }
+  // Sync player member.grab from legacy globals (entity-agnostic grab state)
+  if (typeof PartySystem !== 'undefined') {
+    const _localM = PartySystem.getLocalMember();
+    if (_localM && _localM.grab) {
+      _localM.grab.active = isGrabbing;
+      _localM.grab.timer = grabTimer;
+      _localM.grab.target = grabTarget;
+    }
+  }
 
   // ---- Bullets (replace entire array) ----
   GameState.bullets = snap.bullets.map(sb => ({

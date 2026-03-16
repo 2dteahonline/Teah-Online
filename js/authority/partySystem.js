@@ -85,6 +85,11 @@ function createPartyMember(slotIndex, controlType) {
       cooldownMax: defMelee.cooldown || 28,
       critChance: defMelee.critChance || 0.10,
       special: defMelee.special || null,
+      // Dash fields (ninja katanas) — per-entity, same defaults as gameState.js
+      dashing: false, dashTimer: 0, dashDuration: 14, dashSpeed: 26,
+      dashDirX: 0, dashDirY: 0, dashTrail: [],
+      dashesLeft: 0, dashChainWindow: 0,
+      dashCooldown: 0, dashCooldownMax: 240, dashActive: false, dashGap: 0,
     },
     equip: isLocal ? playerEquip : { armor: null, boots: null, pants: null, chest: null, helmet: null, gun: null, melee: null },
     gold: isLocal ? gold : 0, // local reads current gold; bots start at 0
@@ -94,6 +99,7 @@ function createPartyMember(slotIndex, controlType) {
     deathTimer: 0,
     respawnTimer: 0,
     active: true,
+    grab: { active: false, timer: 0, target: null, cooldown: 0 },
     ai: controlType === 'bot' ? { state: 'hunt', target: null, targetAge: 0, shootCD: 0, meleeCD: 0 } : null,
   };
 }

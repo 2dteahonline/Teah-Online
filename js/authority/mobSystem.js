@@ -53,7 +53,16 @@ function bfsPath(sx, sy, ex, ey, maxExplore) {
 
 function updateMobs() {
   if (contactCooldown > 0) contactCooldown--;
-  if (phaseTimer > 0) phaseTimer--;
+  // Tick per-entity phaseTimer for all party members (player + bots)
+  // phaseTimer getter/setter aliases player._phaseTimer, so this covers player too
+  if (typeof PartyState !== 'undefined' && PartyState.members.length > 0) {
+    for (const _pm of PartyState.members) {
+      if (_pm.entity && _pm.entity._phaseTimer > 0) _pm.entity._phaseTimer--;
+    }
+  } else {
+    // Legacy fallback when party not active
+    if (phaseTimer > 0) phaseTimer--;
+  }
 
   // Mob separation — push mobs apart so they don't stack
   for (let i = 0; i < mobs.length; i++) {
@@ -1346,11 +1355,12 @@ function updateMobs() {
               contactCooldown = 30;
             }
             m.attackCooldown = 60;
-            if (!_isCtBot && ctEquip.boots && (ctEquip.boots.special === 'shadowstep' || ctEquip.boots.special === 'phase')) {
-              shadowStepActive = true;
+            // Shadow step + phase — set on the entity itself (entity-agnostic)
+            if (ctEquip.boots && (ctEquip.boots.special === 'shadowstep' || ctEquip.boots.special === 'phase')) {
+              _ct._shadowStep = true;
             }
-            if (!_isCtBot && ctEquip.boots && ctEquip.boots.special === 'phase') {
-              phaseTimer = 45;
+            if (ctEquip.boots && ctEquip.boots.special === 'phase') {
+              _ct._phaseTimer = 45;
             }
             continue;
           }

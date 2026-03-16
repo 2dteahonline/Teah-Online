@@ -300,8 +300,18 @@ function hasRevive(equip) {
   return eq.chest && eq.chest.revive ? true : false;
 }
 let reviveUsed = false; // once per dungeon run
-let shadowStepActive = false; // next melee = guaranteed crit after dodge
-let phaseTimer = 0; // frames of phase-through-mobs after dodge (T4 boots)
+// Shadow step & phase are per-entity (stored on entity._shadowStep / entity._phaseTimer)
+// Legacy globals alias the player's values for backward compat with UI/rendering code
+Object.defineProperty(window, 'shadowStepActive', {
+  get() { return !!player._shadowStep; },
+  set(v) { player._shadowStep = v; },
+  configurable: true,
+});
+Object.defineProperty(window, 'phaseTimer', {
+  get() { return player._phaseTimer || 0; },
+  set(v) { player._phaseTimer = v; },
+  configurable: true,
+});
 
 // Centralized death check — handles auto-revive from chest armor
 function checkPlayerDeath() {
