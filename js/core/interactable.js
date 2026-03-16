@@ -146,7 +146,7 @@ const MELEE_DEFAULTS = { damage: 24, critChance: 0.15 };
 
 // Default starter weapons (tier 0 — weaker than T1 shop items)
 const DEFAULT_GUN = { id: 'sidearm', name: 'Sidearm', tier: 0, damage: 28, fireRate: 5, magSize: 35, color: '#5a7a8a', desc: '28 dmg · 35 mag · rapid sidearm', waveReq: 0, cost: 0, bulletColor: { main: '#60ccff', core: '#b0e8ff', glow: 'rgba(96,204,255,0.2)' } };
-const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 5.4, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.45, freezeDuration: 15 };
+const CT_X_GUN = { id: 'ct_x', name: 'CT-X', tier: 0, damage: 20, fireRate: 4.650, magSize: 30, color: '#3a5a3a', desc: '20 dmg · 30 mag · freeze on shoot', waveReq: 0, cost: 0, freezePenalty: 0.36, freezeDuration: 15 };
 const DEFAULT_MELEE = { id: 'combat_blade', name: 'Combat Blade', tier: 0, damage: 24, range: 110, cooldown: 24, critChance: 0.15, color: '#6a8a9a', desc: '24 dmg · 110 range · 15% crit · starter blade', waveReq: 0, cost: 0, special: null };
 const DEFAULT_PICKAXE = { id: 'pickaxe', name: 'Pickaxe', tier: 0, damage: 10, range: 70, cooldown: 32, critChance: 0, color: '#8a6a3a', desc: '10 dmg · mining tool · equip to mine ores', waveReq: 0, cost: 0, special: 'pickaxe' };
 const SEEKING_BATON = { id: 'seeking_baton', name: 'Seeking Baton', tier: 0, damage: 0, range: 90, cooldown: 18, critChance: 0, color: '#ff9a40', desc: 'Tag hiders with this baton', waveReq: 0, cost: 0, special: 'seeking' };
