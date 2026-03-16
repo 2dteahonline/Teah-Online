@@ -99,15 +99,19 @@ All 3 locations synced: gameState.js, partySystem.js, botAI.js
 
 ---
 
-## 5. Hitbox Changes
+## 5. Hitbox & Collision Changes — Graal-Style Elliptical
 
-### Progression: multiple +10% increases then -25%
+### Elliptical Hitbox Overhaul
+Replaced circular hitboxes with Graal Online Era-style elliptical hitboxes. Wider horizontally, narrow vertically — vertical positioning matters for dodging (peeking from below doesn't get you hit).
 
 | Value | Original | Current |
 |-------|----------|---------|
-| ENTITY_R | 15 | **25** |
-| BULLET_R | 6 | **5** |
-| Hit distance (BULLET_R + ENTITY_R) | 21 | **30** |
+| ENTITY_R (circular) | 25 | **REMOVED** — replaced by RX/RY |
+| ENTITY_RX | — | **38** (horizontal half-width) |
+| ENTITY_RY | — | **13** (vertical half-height) |
+| BULLET_R | 5 | **7** (~30% bigger to match larger bullet visuals) |
+| Hit zone horizontal (BULLET_R + ENTITY_RX) | 30 | **45** |
+| Hit zone vertical (BULLET_R + ENTITY_RY) | 30 | **20** |
 | PLAYER_RADIUS | 27 | **23** |
 | MOB_RADIUS | 27 | **23** |
 | PLAYER_WALL_HW | 16 | **14** |
@@ -116,7 +120,28 @@ All 3 locations synced: gameState.js, partySystem.js, botAI.js
 | MOB_CROWD_RADIUS | 55 | **46** |
 | ORE_COLLISION_RADIUS | 20 | **17** |
 | MINING_PLAYER_R | 12 | **10** |
-| DEFAULT_HITBOX_RADIUS | 27 | **30** |
+| DEFAULT_HITBOX_RX | — | **45** (visual matches collision) |
+| DEFAULT_HITBOX_RY | — | **20** (visual matches collision) |
+
+### Hitbox Positioning
+- **Players/bots**: hitbox centered at `entity.y + 5` (below feet, Graal-style biased down)
+- **Mobs**: hitbox at `entity.y - 20` (body center) — to be moved to feet level later
+
+### Collision Math
+Ellipse-vs-point: `dx²·ry² + dy²·rx² < rx²·ry²` (Minkowski sum of bullet circle + entity ellipse)
+
+### Body Blocking — Hard Stop (No Push)
+- **Mob-player**: 50/50 equal separation, no momentum transfer (was 70/30 push)
+- **Spar entities**: Hard stop between all spar participants
+- Uses `positionClear()` to prevent pushing into walls
+
+### Bullet Visuals — Wide/Flat Elliptical
+All 7 projectile types changed to wide/flat Graal-style elliptical visuals:
+- Default bullet: 30×8 body, 22×4 core, 18×10 glow (was 24×6, 18×3, 14×8)
+- Neon bolt, tracer, golden, saw blade, poison arrow, boulder — all elliptical
+
+### Per-Mob Ellipse Support
+Mobs can override hitbox with `hitboxRX`/`hitboxRY` or legacy `hitboxR` (auto-scales Y proportionally)
 
 ### Mob Contact Ranges
 - **265 contactRange values** scaled (74→56, 76→57, 78→58, 80→60, 82→62)
@@ -137,7 +162,21 @@ All 3 locations synced: gameState.js, partySystem.js, botAI.js
 
 ---
 
-## Current GAME_CONFIG (Update #238)
+## 7. CT-X Reload Speed Halved — Update #263
+
+Reload was way too slow. Formula changed:
+- **Old**: `40 + firerate * 0.5` → 40-90 frames (0.67s-1.50s)
+- **New**: `20 + firerate * 0.25` → 20-45 frames (0.33s-0.75s)
+
+| ROF Slider | Old (frames/sec) | New (frames/sec) |
+|-----------|------------------|------------------|
+| 0 | 40 / 0.67s | 20 / 0.33s |
+| 50 | 65 / 1.08s | 33 / 0.55s |
+| 100 | 90 / 1.50s | 45 / 0.75s |
+
+---
+
+## Current GAME_CONFIG (Update #263)
 
 ```
 PLAYER_BASE_SPEED: 5.83    // 350 px/sec
@@ -148,20 +187,22 @@ MOB_RADIUS: 23
 POS_HW: 10
 MOB_CROWD_RADIUS: 46
 BULLET_SPEED: 9
-BULLET_R: 5
-ENTITY_R: 25
+BULLET_R: 7
+ENTITY_RX: 38
+ENTITY_RY: 13
 ORE_COLLISION_RADIUS: 17
 MINING_PLAYER_R: 10
 KNOCKBACK_DECAY: 0.8
 KNOCKBACK_THRESHOLD: 0.5
-DEFAULT_HITBOX_RADIUS: 30
+DEFAULT_HITBOX_RX: 45
+DEFAULT_HITBOX_RY: 20
 ```
 
 ---
 
 ## Key Files Modified
 
-- `js/shared/gameConfig.js` — all physics constants
+- `js/shared/gameConfig.js` — all physics constants (elliptical RX/RY, BULLET_R=7, hitbox indicator)
 - `js/shared/mobTypes.js` — 262 mob speeds, 265 contactRanges, projectile speeds
 - `js/shared/sparData.js` — bot speed reference, learning checkpoint
 - `js/shared/hideSeekData.js` — bot speed
@@ -177,10 +218,14 @@ DEFAULT_HITBOX_RADIUS: 30
 - `js/authority/wagashiSpecials.js` — knockback + projectile speeds
 - `js/authority/wagashiSpecials2.js` — projectile speeds
 - `js/authority/wagashiSpecials3.js` — projectile speeds
-- `js/authority/mobSystem.js` — orb speed
+- `js/authority/mobSystem.js` — orb speed, body blocking (50/50 hard stop)
+- `js/authority/sparSystem.js` — spar body blocking, bot gun side + muzzle parity
+- `js/authority/waveSystem.js` — ENTITY_RX reference update
 - `js/authority/fineDiningNPCSystem.js` — NPC speeds
 - `js/authority/deliNPCSystem.js` — NPC speeds
 - `js/authority/dinerNPCSystem.js` — NPC speeds
-- `js/core/gunSystem.js` — CT-X freeze + RoF curves
+- `js/core/gunSystem.js` — CT-X freeze + RoF curves, reload speed halved
 - `js/core/interactable.js` — CT_X_GUN defaults, boot bonuses
-- `js/core/meleeSystem.js` — shared melee/dash/potion functions
+- `js/core/meleeSystem.js` — elliptical collision, feet-level hitbox, elliptical bullet visuals
+- `js/client/rendering/characterSprite.js` — elliptical hitbox indicator, bot gun side rendering
+- `js/core/draw.js` — bot entity reference for gun side rendering
