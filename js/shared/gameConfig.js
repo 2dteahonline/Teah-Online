@@ -19,7 +19,7 @@ const GAME_CONFIG = {
   BULLET_SPEED: 9,             // default bullet speed (px/frame)
   BULLET_R: 5,                  // projectile collision radius
   ENTITY_RX: 25,                // entity hitbox horizontal half-width (wider — matches body width)
-  ENTITY_RY: 15,                // entity hitbox vertical half-height (narrower — Graal-style, positioning matters)
+  ENTITY_RY: 8,                 // entity hitbox vertical half-height (tight — Graal-style, vertical positioning matters)
 
   // --- Mining ---
   ORE_COLLISION_RADIUS: 17,     // ore node collision circle
@@ -31,8 +31,8 @@ const GAME_CONFIG = {
 
   // --- Hitbox Indicator ---
   DEFAULT_HITBOX_RX: 30,        // hitbox visual horizontal (BULLET_R + ENTITY_RX = 30)
-  DEFAULT_HITBOX_RY: 20,        // hitbox visual vertical (BULLET_R + ENTITY_RY = 20)
+  DEFAULT_HITBOX_RY: 13,        // hitbox visual vertical (BULLET_R + ENTITY_RY = 13)
 
   // --- Version ---
-  GAME_UPDATE: 244,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 245,             // increment each deploy — shown on lobby version sign
 };
