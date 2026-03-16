@@ -1,7 +1,8 @@
 // ===================== SPAR SYSTEM =====================
 // Authority: spar arena combat, bot AI, match flow
 // Phase B — loaded after casinoSystem.js
-// Depends on: SPAR_CONFIG, SPAR_ROOMS, sparProgress (sparData.js)
+// Depends on: SPAR_CONFIG, SPAR_ROOMS, SPAR_CTX_STATS, sparProgress (sparData.js)
+//             CT_X_GUN (interactable.js)
 //             player, bullets, hitEffects (gameState.js)
 //             enterLevel, Scene, LEVELS (sceneManager.js)
 //             positionClear (mobSystem.js)
@@ -33,6 +34,36 @@ const SparSystem = {
     SparState.teamB.length = 0;
   },
 
+  // Build CT-X stats from 100-point allocation {freeze, rof, spread}
+  _buildCtxGun(freezePts, rofPts, spreadPts) {
+    const frzStat = SPAR_CTX_STATS.freezeToStat(freezePts);
+    const fireRate = SPAR_CTX_STATS.rofToStat(rofPts);
+    const spread = SPAR_CTX_STATS.spreadToStat(spreadPts);
+    return {
+      id: 'ct_x',
+      name: 'CT-X',
+      damage: CT_X_GUN.damage,          // 20
+      fireRate: fireRate,
+      magSize: CT_X_GUN.magSize,         // 30
+      freezePenalty: frzStat.freezePenalty,
+      freezeDuration: frzStat.freezeDuration,
+      spread: spread,
+      // Store point allocation for HUD display
+      _sparFreeze: freezePts,
+      _sparRof: rofPts,
+      _sparSpread: spreadPts,
+    };
+  },
+
+  // Generate random 100-point bot allocation
+  _randomBotAlloc() {
+    // Pick 2 random split points in 0-100, create 3 segments
+    const a = Math.floor(Math.random() * 101);
+    const b = Math.floor(Math.random() * 101);
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    return { freeze: lo, rof: hi - lo, spread: 100 - hi };
+  },
+
   joinRoom(roomId) {
     const room = SPAR_ROOMS.find(r => r.id === roomId);
     if (!room) return;
@@ -47,6 +78,9 @@ const SparSystem = {
       gunReloading: gun.reloading,
       gunReloadTimer: gun.reloadTimer,
       gunSpecial: gun.special,
+      gunFreezePenalty: gun.freezePenalty,
+      gunFreezeDuration: gun.freezeDuration,
+      gunSpread: gun.spread,
       meleeDamage: melee.damage,
       meleeRange: melee.range,
       meleeSpeed: melee.speed,
@@ -56,7 +90,6 @@ const SparSystem = {
       activeSlot: activeSlot,
       lives: lives,
       playerDead: playerDead,
-      // Deep copy equip
       playerEquipGun: playerEquip.gun ? JSON.parse(JSON.stringify(playerEquip.gun)) : null,
       playerEquipBoots: playerEquip.boots ? JSON.parse(JSON.stringify(playerEquip.boots)) : null,
       playerEquipPants: playerEquip.pants ? JSON.parse(JSON.stringify(playerEquip.pants)) : null,
@@ -64,28 +97,36 @@ const SparSystem = {
       playerEquipHelmet: playerEquip.helmet ? JSON.parse(JSON.stringify(playerEquip.helmet)) : null,
     };
 
-    // 2. Apply spar loadout
-    // Check if player has a main gun equipped
-    let sparGunStats;
-    if (playerEquip.gun && playerEquip.gun.progItemId) {
-      // Keep equipped main gun stats
-      sparGunStats = {
-        damage: gun.damage,
-        fireRate: gun.fireRate,
-        magSize: gun.magSize,
-      };
-    } else {
-      // Fallback to default Sidearm
-      sparGunStats = { ...SPAR_CONFIG.DEFAULT_GUN };
-      gun.damage = sparGunStats.damage;
-      gun.fireRate = sparGunStats.fireRate;
-      gun.magSize = sparGunStats.magSize;
+    // 2. Apply CT-X spar loadout
+    // Read player's current CT-X slider values, clamp total to 100
+    let pFreeze = typeof _ctxFreeze !== 'undefined' ? _ctxFreeze : 50;
+    let pRof = typeof _ctxRof !== 'undefined' ? _ctxRof : 50;
+    let pSpread = typeof _ctxSpread !== 'undefined' ? _ctxSpread : 0;
+    const total = pFreeze + pRof + pSpread;
+    if (total > SPAR_CONFIG.POINT_BUDGET) {
+      // Scale down proportionally
+      const scale = SPAR_CONFIG.POINT_BUDGET / total;
+      pFreeze = Math.floor(pFreeze * scale);
+      pRof = Math.floor(pRof * scale);
+      pSpread = SPAR_CONFIG.POINT_BUDGET - pFreeze - pRof; // remainder goes to spread
     }
-    player.hp = SPAR_CONFIG.HP_BASELINE;
-    player.maxHp = SPAR_CONFIG.HP_BASELINE;
-    gun.ammo = gun.magSize;
+    const playerGun = this._buildCtxGun(pFreeze, pRof, pSpread);
+
+    // Apply to player's gun state
+    gun.damage = playerGun.damage;
+    gun.fireRate = playerGun.fireRate;
+    gun.magSize = playerGun.magSize;
+    gun.freezePenalty = playerGun.freezePenalty;
+    gun.freezeDuration = playerGun.freezeDuration;
+    gun.spread = playerGun.spread;
+    gun.ammo = playerGun.magSize;
     gun.reloading = false;
     gun.reloadTimer = 0;
+    // Also set playerEquip.gun to CT-X so rendering/HUD works
+    playerEquip.gun = { ...CT_X_GUN, ...playerGun };
+
+    player.hp = SPAR_CONFIG.HP_BASELINE;
+    player.maxHp = SPAR_CONFIG.HP_BASELINE;
     activeSlot = 0;
     lives = 1;
     playerDead = false;
@@ -110,14 +151,14 @@ const SparSystem = {
       isLocal: true,
       isBot: false,
       alive: true,
-      gun: sparGunStats,
+      gun: playerGun,
     });
 
-    // Ally bots (teamA, teamSize - 1)
+    // Ally bots (teamA, teamSize - 1) — each gets own random allocation
     for (let i = 1; i < room.teamSize; i++) {
       const spawnKey = 'teamA' + (i > 0 ? (i + 1) : '');
       const spawnPt = spawns[spawnKey] || spawns.teamA;
-      const bot = this._createBot('ally_' + i, spawnPt.tx, spawnPt.ty, sparGunStats, 'teamA');
+      const bot = this._createBot('ally_' + i, spawnPt.tx, spawnPt.ty, 'teamA');
       SparState._sparBots.push(bot);
       SparState.teamA.push({
         id: bot._sparId,
@@ -125,15 +166,15 @@ const SparSystem = {
         isLocal: false,
         isBot: true,
         alive: true,
-        gun: { ...sparGunStats },
+        gun: bot._ctxGun,
       });
     }
 
-    // Enemy bots (teamB, full teamSize)
+    // Enemy bots (teamB, full teamSize) — each gets own random allocation
     for (let i = 0; i < room.teamSize; i++) {
       const spawnKey = i === 0 ? 'teamB' : ('teamB' + (i + 1));
       const spawnPt = spawns[spawnKey] || spawns.teamB;
-      const bot = this._createBot('enemy_' + i, spawnPt.tx, spawnPt.ty, sparGunStats, 'teamB');
+      const bot = this._createBot('enemy_' + i, spawnPt.tx, spawnPt.ty, 'teamB');
       SparState._sparBots.push(bot);
       SparState.teamB.push({
         id: bot._sparId,
@@ -141,7 +182,7 @@ const SparSystem = {
         isLocal: false,
         isBot: true,
         alive: true,
-        gun: { ...sparGunStats },
+        gun: bot._ctxGun,
       });
     }
 
@@ -162,8 +203,12 @@ const SparSystem = {
     SparState.postMatchTimer = 0;
   },
 
-  _createBot(nameId, spawnTX, spawnTY, gunStats, team) {
+  _createBot(nameId, spawnTX, spawnTY, team) {
     const id = 'spar_bot_' + SparState._nextBotId++;
+    // Random 100-point CT-X allocation
+    const alloc = this._randomBotAlloc();
+    const ctxGun = this._buildCtxGun(alloc.freeze, alloc.rof, alloc.spread);
+
     return {
       _sparId: id,
       _isBot: true,
@@ -176,14 +221,17 @@ const SparSystem = {
       vx: 0, vy: 0,
       hp: SPAR_CONFIG.HP_BASELINE,
       maxHp: SPAR_CONFIG.HP_BASELINE,
-      dir: team === 'teamA' ? 0 : 2, // face right (A) / left (B)
+      dir: team === 'teamA' ? 0 : 2,
       name: nameId.startsWith('ally') ? 'Ally Bot' : 'Spar Bot',
       moving: false,
-      // Gun state
-      _gunDamage: gunStats.damage,
-      _gunFireRate: gunStats.fireRate,
-      _gunMagSize: gunStats.magSize,
-      _gunAmmo: gunStats.magSize,
+      // CT-X gun stats from random allocation
+      _ctxGun: ctxGun,
+      _gunDamage: ctxGun.damage,
+      _gunFireRate: ctxGun.fireRate,
+      _gunMagSize: ctxGun.magSize,
+      _gunFreezePenalty: ctxGun.freezePenalty,
+      _gunSpread: ctxGun.spread,
+      _gunAmmo: ctxGun.magSize,
       _gunReloading: false,
       _gunReloadTimer: 0,
       _fireCooldown: 0,
@@ -304,16 +352,15 @@ const SparSystem = {
       }
     }
 
-    // Spawn fresh enemy bots
+    // Spawn fresh enemy bots with new random allocations
     const room = SparState.activeRoom;
     const arenaLevel = LEVELS[room.arenaLevel];
     const spawns = arenaLevel.spawns;
-    const sparGunStats = SparState.teamA[0].gun;
 
     for (let i = 0; i < room.teamSize; i++) {
       const spawnKey = i === 0 ? 'teamB' : ('teamB' + (i + 1));
       const spawnPt = spawns[spawnKey] || spawns.teamB;
-      const bot = this._createBot('enemy_' + i, spawnPt.tx, spawnPt.ty, sparGunStats, 'teamB');
+      const bot = this._createBot('enemy_' + i, spawnPt.tx, spawnPt.ty, 'teamB');
       bot.x = spawnPt.tx * TILE + TILE / 2;
       bot.y = spawnPt.ty * TILE + TILE / 2;
       SparState._sparBots.push(bot);
@@ -323,7 +370,7 @@ const SparSystem = {
         isLocal: false,
         isBot: true,
         alive: true,
-        gun: { ...sparGunStats },
+        gun: bot._ctxGun,
       });
     }
 
@@ -352,7 +399,7 @@ const SparSystem = {
       deathX = player.x;
       deathY = player.y;
       deathRotation = 0;
-      deathGameOver = false; // don't trigger normal game over
+      deathGameOver = false;
     }
 
     // Death effect
@@ -378,7 +425,6 @@ const SparSystem = {
     SparState.activeRoom = null;
     SparState.lastResult = null;
     SparState.streakCount = 0;
-    // Only transition if not already heading to lobby
     if (!transitioning) {
       enterLevel(SPAR_CONFIG.RETURN_LEVEL, SPAR_CONFIG.RETURN_TX, SPAR_CONFIG.RETURN_TY);
     }
@@ -394,6 +440,9 @@ const SparSystem = {
     gun.reloading = snap.gunReloading;
     gun.reloadTimer = snap.gunReloadTimer;
     gun.special = snap.gunSpecial;
+    gun.freezePenalty = snap.gunFreezePenalty;
+    gun.freezeDuration = snap.gunFreezeDuration;
+    gun.spread = snap.gunSpread;
     melee.damage = snap.meleeDamage;
     melee.range = snap.meleeRange;
     melee.speed = snap.meleeSpeed;
@@ -455,7 +504,6 @@ const SparSystem = {
       if (prev) target = prev;
     }
     if (!target || ai.targetTimer <= 0) {
-      // Pick closest alive enemy
       let bestDist = Infinity;
       for (const p of enemies) {
         if (!p.alive) continue;
@@ -468,7 +516,7 @@ const SparSystem = {
         ai.targetTimer = 120;
       }
     }
-    if (!target) return; // no enemies alive
+    if (!target) return;
 
     const tgt = target.entity;
     const dx = tgt.x - bot.x, dy = tgt.y - bot.y;
@@ -489,38 +537,31 @@ const SparSystem = {
     // --- Movement (tactical) ---
     const speed = SPAR_CONFIG.BOT_SPEED;
     let moveX = 0, moveY = 0;
-    const preferredRange = 120 + (1 - ai.aggression) * 200; // 120-320px
+    const preferredRange = 120 + (1 - ai.aggression) * 200;
 
-    // Cover seeking when low HP or reloading
     if ((bot.hp < bot.maxHp * 0.5 || bot._gunReloading) && dist < 300) {
-      // Move away from target
       if (dist > 1) {
         moveX = -(dx / dist) * speed;
         moveY = -(dy / dist) * speed;
       }
-    }
-    // Approach or maintain distance
-    else if (dist > preferredRange + 40) {
+    } else if (dist > preferredRange + 40) {
       moveX = (dx / dist) * speed;
       moveY = (dy / dist) * speed;
     } else if (dist < preferredRange - 40) {
       moveX = -(dx / dist) * speed;
       moveY = -(dy / dist) * speed;
-    }
-    // Strafe when in range
-    else {
+    } else {
       ai.strafeTimer--;
       if (ai.strafeTimer <= 0) {
         ai.strafeDir *= -1;
         ai.strafeTimer = 90 + Math.floor(Math.random() * 60);
       }
-      // Perpendicular to target
       const perpX = -dy / dist, perpY = dx / dist;
       moveX = perpX * speed * ai.strafeDir * 0.7;
       moveY = perpY * speed * ai.strafeDir * 0.7;
     }
 
-    // Separation from allies (prevent clustering)
+    // Separation from allies
     for (const a of allies) {
       if (!a.alive || a.entity === bot) continue;
       const adx = bot.x - a.entity.x, ady = bot.y - a.entity.y;
@@ -531,13 +572,12 @@ const SparSystem = {
       }
     }
 
-    // Flanking: if ally is close to same target, offset approach
+    // Flanking
     if (allies.length > 1) {
       for (const a of allies) {
         if (!a.alive || a.entity === bot) continue;
         const aDist = Math.sqrt((tgt.x - a.entity.x) ** 2 + (tgt.y - a.entity.y) ** 2);
         if (aDist < 120) {
-          // Add perpendicular offset
           const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
           moveX += perpX * speed * 0.3;
           moveY += perpY * speed * 0.3;
@@ -562,18 +602,16 @@ const SparSystem = {
     bot.vx = moveX; bot.vy = moveY;
     bot.moving = Math.abs(moveX) > 0.5 || Math.abs(moveY) > 0.5;
 
-    // Facing direction (toward target)
+    // Facing direction
     if (Math.abs(dx) > Math.abs(dy)) {
-      bot.dir = dx > 0 ? 0 : 2; // right : left
+      bot.dir = dx > 0 ? 0 : 2;
     } else {
-      bot.dir = dy > 0 ? 3 : 1; // down : up
+      bot.dir = dy > 0 ? 3 : 1;
     }
 
     // --- Shooting ---
     if (!bot._gunReloading && bot._gunAmmo > 0 && bot._fireCooldown <= 0 && dist < 400) {
-      // Line of sight check (simple raycast)
       if (this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
-        // Predict target position (lead by ~8 frames)
         const leadFrames = 8;
         const predX = tgt.x + (tgt.vx || 0) * leadFrames;
         const predY = tgt.y + (tgt.vy || 0) * leadFrames;
@@ -582,11 +620,11 @@ const SparSystem = {
         const angle = Math.atan2(aimDy, aimDx);
         ai.shootAngle = angle;
 
-        // Add slight inaccuracy
-        const inaccuracy = (Math.random() - 0.5) * 0.15;
+        // Bot's CT-X spread + slight inaccuracy
+        const spreadRad = (bot._gunSpread || 0) * Math.PI / 180;
+        const inaccuracy = (Math.random() - 0.5) * (0.15 + spreadRad);
         const finalAngle = angle + inaccuracy;
 
-        // Create bullet
         const bSpeed = GAME_CONFIG.BULLET_SPEED;
         const bulletObj = {
           id: Date.now() + Math.random(),
@@ -594,7 +632,7 @@ const SparSystem = {
           y: bot.y - 20 + Math.sin(finalAngle) * 20,
           vx: Math.cos(finalAngle) * bSpeed,
           vy: Math.sin(finalAngle) * bSpeed,
-          fromPlayer: true, // needed so bullet rendering works
+          fromPlayer: true,
           sparTeam: team,
           damage: bot._gunDamage,
           bulletColor: team === 'teamA' ? '#55aaff' : '#ff5544',
@@ -607,14 +645,13 @@ const SparSystem = {
 
         if (bot._gunAmmo <= 0) {
           bot._gunReloading = true;
-          bot._gunReloadTimer = 60; // 1 second reload
+          bot._gunReloadTimer = 60;
         }
       }
     }
   },
 
   _hasLOS(x1, y1, x2, y2) {
-    // Simple raycast along line, check wall tiles every 24px
     const dx = x2 - x1, dy = y2 - y1;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const steps = Math.ceil(dist / 24);
@@ -631,16 +668,13 @@ const SparSystem = {
 };
 
 // ---- SPAR DOOR INTERACTABLE REGISTRATION ----
-// Register interactables dynamically when hub is entered
 Events.on('scene_changed', (data) => {
   if (data.to === 'spar') {
-    // Remove old spar interactables
     for (let i = interactables.length - 1; i >= 0; i--) {
       if (interactables[i].id && interactables[i].id.startsWith('spar_door_')) {
         interactables.splice(i, 1);
       }
     }
-    // Register door interactables from level entities
     if (level && level.isSpar && !level.isSparArena) {
       SparSystem.enterHub();
       for (const e of levelEntities) {
@@ -660,7 +694,6 @@ Events.on('scene_changed', (data) => {
       }
     }
   } else {
-    // Clean up spar interactables on scene exit
     for (let i = interactables.length - 1; i >= 0; i--) {
       if (interactables[i].id && interactables[i].id.startsWith('spar_door_')) {
         interactables.splice(i, 1);

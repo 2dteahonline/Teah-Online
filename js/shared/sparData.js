@@ -9,10 +9,33 @@ const SPAR_CONFIG = {
   HP_BASELINE: 100,
   COUNTDOWN_FRAMES: 180,       // 3 seconds at 60fps
   POST_MATCH_FRAMES: 300,      // 5 seconds results
-  DEFAULT_GUN: { damage: 28, fireRate: 5, magSize: 35 },
+  POINT_BUDGET: 100,           // total points to allocate across CT-X stats
   BOT_SPEED: 6.25,
   ARENA_SMALL: { w: 24, h: 20 },
   ARENA_LARGE: { w: 36, h: 28 },
+};
+
+// CT-X stat conversion functions (from 0-100 slider value to gun stat)
+// These mirror the existing _mgSliders logic in gunSystem.js
+const SPAR_CTX_STATS = {
+  // Freeze: slider → penalty. 0→0.90, 50→0.45, 100→0.00
+  freezeToStat(pts) {
+    return { freezePenalty: 0.90 - pts * 0.009, freezeDuration: 15 };
+  },
+  // RoF: slider → fireRate frames. Piecewise: below 50 slower, above 50 faster
+  rofToStat(pts) {
+    let frames;
+    if (pts <= 50) {
+      frames = 11.025 - pts * 0.1125; // 0→11, 50→5.4
+    } else {
+      frames = 5.4 - (pts - 50) * 0.0375; // 50→5.4, 100→3.5
+    }
+    return frames;
+  },
+  // Spread: slider → degrees. 0→0°, 100→50°
+  spreadToStat(pts) {
+    return pts * 0.5;
+  },
 };
 
 const SPAR_ROOMS = [

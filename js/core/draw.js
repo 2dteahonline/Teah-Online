@@ -2843,6 +2843,28 @@ function drawSparHUD() {
       ctx.fillText('STREAK: ' + SparState.streakCount, BASE_W / 2, barY + barH + 16);
       ctx.textAlign = 'left';
     }
+
+    // CT-X build display (bottom-left)
+    const playerGun = SparState.teamA.length > 0 ? SparState.teamA[0].gun : null;
+    if (playerGun && playerGun._sparFreeze !== undefined) {
+      const bx = 10, by = BASE_H - 80;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(bx, by, 180, 60);
+      ctx.strokeStyle = 'rgba(85,204,255,0.3)';
+      ctx.strokeRect(bx, by, 180, 60);
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#55ccff';
+      ctx.fillText('CT-X Build (' + SPAR_CONFIG.POINT_BUDGET + 'pts)', bx + 8, by + 14);
+      ctx.font = '10px monospace';
+      ctx.fillStyle = '#8cf';
+      ctx.fillText('FRZ: ' + playerGun._sparFreeze, bx + 8, by + 30);
+      ctx.fillText('ROF: ' + playerGun._sparRof, bx + 68, by + 30);
+      ctx.fillText('SPR: ' + playerGun._sparSpread, bx + 128, by + 30);
+      // Total
+      const total = playerGun._sparFreeze + playerGun._sparRof + playerGun._sparSpread;
+      ctx.fillStyle = total <= SPAR_CONFIG.POINT_BUDGET ? '#5f5' : '#f55';
+      ctx.fillText('Total: ' + total + '/' + SPAR_CONFIG.POINT_BUDGET, bx + 8, by + 48);
+    }
   }
 
   if (phase === 'post_match') {
