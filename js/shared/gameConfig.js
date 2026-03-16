@@ -30,9 +30,9 @@ const GAME_CONFIG = {
   KNOCKBACK_THRESHOLD: 0.5,     // min velocity before clearing
 
   // --- Hitbox Indicator ---
-  DEFAULT_HITBOX_RX: 30,        // hitbox visual horizontal (BULLET_R + ENTITY_RX = 30)
-  DEFAULT_HITBOX_RY: 13,        // hitbox visual vertical (BULLET_R + ENTITY_RY = 13)
+  DEFAULT_HITBOX_RX: 22,        // hitbox visual horizontal (wraps around character body ~32px wide)
+  DEFAULT_HITBOX_RY: 22,        // hitbox visual vertical (wraps around character body ~40px tall)
 
   // --- Version ---
-  GAME_UPDATE: 245,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 246,             // increment each deploy — shown on lobby version sign
 };

@@ -385,8 +385,8 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   const showHitbox = isPlayer ? gameSettings.showOwnHitbox : gameSettings.showOtherHitbox;
   if (showHitbox && mobType !== 'deliNPC') {
     const mobR = (!isPlayer && mobType && mobType !== 'partyBot' && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || 0;
-    const hitboxRX = mobR ? (GAME_CONFIG.BULLET_R + mobR) : DEFAULT_HITBOX_RX;
-    const hitboxRY = mobR ? (GAME_CONFIG.BULLET_R + Math.round(mobR * GAME_CONFIG.ENTITY_RY / GAME_CONFIG.ENTITY_RX)) : DEFAULT_HITBOX_RY;
+    const hitboxRX = mobR || DEFAULT_HITBOX_RX;
+    const hitboxRY = mobR || DEFAULT_HITBOX_RY;
     if (_inSpar) {
       // Spar: green = ally, red = enemy
       if (isAlly) {
