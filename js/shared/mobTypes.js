@@ -9,38 +9,38 @@
 //   boulderHitRadius — boulder direct-hit radius in px (default: 40)
 
 const MOB_TYPES = {
-  grunt:   { name: "Grunt",   hp: 106, speed: 4.4, damage: 18, killHeal: 10, goldReward: 2, skin: "#7a6050", hair: "#3a2a1a", shirt: "#556644", pants: "#3a3a2a", contactRange: 76, deathColors: ["#aa4444","#884444","#cc6666","#663333"] },
-  runner:  { name: "Runner",  hp: 50,  speed: 5.1, damage: 10, killHeal: 3,  goldReward: 3, skin: "#8a7060", hair: "#1a1a1a", shirt: "#884444", pants: "#4a2a2a", contactRange: 74, deathColors: ["#cc6644","#aa4422","#ee8866","#883322"] },
-  tank:    { name: "Tank",    hp: 375, speed: 3.8,  damage: 20, killHeal: 20, goldReward: 6, skin: "#6a5a50", hair: "#2a2a2a", shirt: "#445566", pants: "#2a3a4a", contactRange: 78, deathColors: ["#4466aa","#335588","#6688cc","#224466"] },
-  witch:   { name: "Witch",   hp: 188, speed: 2, damage: 6,  killHeal: 25, goldReward: 7, skin: "#8a9a7a", hair: "#2a1a3a", shirt: "#3a2a4a", pants: "#2a1a2a", contactRange: 76, summonRate: 540, summonMax: 4, deathColors: ["#a060e0","#8040c0","#c080ff","#6020a0"] },
-  skeleton:{ name: "Skeleton",hp: 38,  speed: 4.4, damage: 8,  killHeal: 1,  goldReward: 0, skin: "#d8d0c0", hair: "#d0c8b8", shirt: "#c8c0b0", pants: "#b8b0a0", contactRange: 74, deathColors: ["#d8d0c0","#c8c0b0","#e0d8c8","#b8b0a0"] },
-  golem:   { name: "Golem",   hp: 1000,speed: 1.7, damage: 13, killHeal: 40, goldReward: 30, skin: "#6a6a6a", hair: "#555555", shirt: "#5a5a5a", pants: "#4a4a4a", contactRange: 82, boulderRate: 88, boulderSpeed: 9, boulderRange: 1000, summonRate: 300, summonMax: 3, deathColors: ["#8a8580","#6a6560","#a09a90","#585450"] },
-  mini_golem: { name: "Mini Golem", hp: 120, speed: 2.1, damage: 6, killHeal: 10, goldReward: 5, skin: "#7a7a7a", hair: "#666666", shirt: "#6a6a6a", pants: "#5a5a5a", contactRange: 50, boulderRate: 140, boulderSpeed: 9, boulderRange: 500, deathColors: ["#9a9590","#7a7570","#b0aaa0","#686460"] },
-  mummy:   { name: "Mummy",   hp: 56,  speed: 3.8,  damage: 0,  killHeal: 5,  goldReward: 3, skin: "#8a8580", hair: "#7a7570", shirt: "#6a6560", pants: "#5a5550", contactRange: 76, explodeRange: 140, explodeDamage: 28, fuseMin: 32, fuseMax: 96, deathColors: ["#c8b878","#a89858","#e0d098","#887838"] },
-  archer:  { name: "Archer",  hp: 75,  speed: 3.2, damage: 6,  killHeal: 8,  goldReward: 4, skin: "#3a3530", hair: "#0e0e0e", shirt: "#111111", pants: "#1a1a1a", contactRange: 74, arrowRate: 80, arrowSpeed: 9, arrowRange: 400, arrowBounces: 4, arrowLife: 600, deathColors: ["#30ff20","#1a1a1a","#0e0e0e","#20cc10"] },
-  healer:  { name: "Healer",  hp: 81,  speed: 2.5, damage: 5,  killHeal: 15, goldReward: 5, skin: "#e8d8c8", hair: "#f0e0c0", shirt: "#eee8dd", pants: "#d8d0c0", contactRange: 74, healRadius: 220, healRate: 72, healAmount: 10, deathColors: ["#ffdd30","#ffe870","#ffc800","#ffee90"] },
+  grunt:   { name: "Grunt",   hp: 106, speed: 4.6, damage: 18, killHeal: 10, goldReward: 2, skin: "#7a6050", hair: "#3a2a1a", shirt: "#556644", pants: "#3a3a2a", contactRange: 76, deathColors: ["#aa4444","#884444","#cc6666","#663333"] },
+  runner:  { name: "Runner",  hp: 50,  speed: 5.4, damage: 10, killHeal: 3,  goldReward: 3, skin: "#8a7060", hair: "#1a1a1a", shirt: "#884444", pants: "#4a2a2a", contactRange: 74, deathColors: ["#cc6644","#aa4422","#ee8866","#883322"] },
+  tank:    { name: "Tank",    hp: 375, speed: 4,  damage: 20, killHeal: 20, goldReward: 6, skin: "#6a5a50", hair: "#2a2a2a", shirt: "#445566", pants: "#2a3a4a", contactRange: 78, deathColors: ["#4466aa","#335588","#6688cc","#224466"] },
+  witch:   { name: "Witch",   hp: 188, speed: 2.1, damage: 6,  killHeal: 25, goldReward: 7, skin: "#8a9a7a", hair: "#2a1a3a", shirt: "#3a2a4a", pants: "#2a1a2a", contactRange: 76, summonRate: 540, summonMax: 4, deathColors: ["#a060e0","#8040c0","#c080ff","#6020a0"] },
+  skeleton:{ name: "Skeleton",hp: 38,  speed: 4.6, damage: 8,  killHeal: 1,  goldReward: 0, skin: "#d8d0c0", hair: "#d0c8b8", shirt: "#c8c0b0", pants: "#b8b0a0", contactRange: 74, deathColors: ["#d8d0c0","#c8c0b0","#e0d8c8","#b8b0a0"] },
+  golem:   { name: "Golem",   hp: 1000,speed: 1.8, damage: 13, killHeal: 40, goldReward: 30, skin: "#6a6a6a", hair: "#555555", shirt: "#5a5a5a", pants: "#4a4a4a", contactRange: 82, boulderRate: 88, boulderSpeed: 9, boulderRange: 1000, summonRate: 300, summonMax: 3, deathColors: ["#8a8580","#6a6560","#a09a90","#585450"] },
+  mini_golem: { name: "Mini Golem", hp: 120, speed: 2.2, damage: 6, killHeal: 10, goldReward: 5, skin: "#7a7a7a", hair: "#666666", shirt: "#6a6a6a", pants: "#5a5a5a", contactRange: 50, boulderRate: 140, boulderSpeed: 9, boulderRange: 500, deathColors: ["#9a9590","#7a7570","#b0aaa0","#686460"] },
+  mummy:   { name: "Mummy",   hp: 56,  speed: 4,  damage: 0,  killHeal: 5,  goldReward: 3, skin: "#8a8580", hair: "#7a7570", shirt: "#6a6560", pants: "#5a5550", contactRange: 76, explodeRange: 140, explodeDamage: 28, fuseMin: 32, fuseMax: 96, deathColors: ["#c8b878","#a89858","#e0d098","#887838"] },
+  archer:  { name: "Archer",  hp: 75,  speed: 3.4, damage: 6,  killHeal: 8,  goldReward: 4, skin: "#3a3530", hair: "#0e0e0e", shirt: "#111111", pants: "#1a1a1a", contactRange: 74, arrowRate: 80, arrowSpeed: 9, arrowRange: 400, arrowBounces: 4, arrowLife: 600, deathColors: ["#30ff20","#1a1a1a","#0e0e0e","#20cc10"] },
+  healer:  { name: "Healer",  hp: 81,  speed: 2.6, damage: 5,  killHeal: 15, goldReward: 5, skin: "#e8d8c8", hair: "#f0e0c0", shirt: "#eee8dd", pants: "#d8d0c0", contactRange: 74, healRadius: 220, healRate: 72, healAmount: 10, deathColors: ["#ffdd30","#ffe870","#ffc800","#ffee90"] },
 
   // ===================== FLOOR 1: AZURINE CITY =====================
   // Levels 1-4: Gangsters & Goons
   neon_pickpocket: {
-    name: "Neon Pickpocket", hp: 60, speed: 4.9, damage: 12, killHeal: 5, goldReward: 3,
+    name: "Neon Pickpocket", hp: 60, speed: 5.2, damage: 12, killHeal: 5, goldReward: 3,
     skin: "#8a7a6a", hair: "#1a1a2a", shirt: "#2a2a4a", pants: "#1a1a3a", contactRange: 74,
     ai: 'runner', _specials: ['swipe_blink'], specialCD: 420, // 7s
   },
   cyber_mugger: {
-    name: "Cyber Mugger", hp: 90, speed: 4.1, damage: 16, killHeal: 8, goldReward: 4,
+    name: "Cyber Mugger", hp: 90, speed: 4.3, damage: 16, killHeal: 8, goldReward: 4,
     skin: "#7a6a5a", hair: "#0a0a1a", shirt: "#3a3a5a", pants: "#2a2a3a", contactRange: 76,
     ai: 'grunt', _specials: ['stun_baton'], specialCD: 480, // 8s
   },
   drone_lookout: {
-    name: "Drone Lookout", hp: 70, speed: 3.5, damage: 8, killHeal: 10, goldReward: 4,
+    name: "Drone Lookout", hp: 70, speed: 3.7, damage: 8, killHeal: 10, goldReward: 4,
     skin: "#6a6a7a", hair: "#2a2a3a", shirt: "#4a4a5a", pants: "#3a3a4a", contactRange: 74,
     ai: 'archer', _specials: ['spot_mark'], specialCD: 600, // 10s
     arrowRate: 100, arrowSpeed: 9, arrowRange: 350, arrowBounces: 0, arrowLife: 400,
     projectileStyle: 'neon_bolt',
   },
   street_chemist: {
-    name: "Street Chemist", hp: 65, speed: 3, damage: 6, killHeal: 12, goldReward: 5,
+    name: "Street Chemist", hp: 65, speed: 3.2, damage: 6, killHeal: 12, goldReward: 5,
     skin: "#8a8a7a", hair: "#3a3a2a", shirt: "#5a6a4a", pants: "#3a4a2a", contactRange: 76,
     ai: 'witch', _specials: ['gas_canister'], specialCD: 540, // 9s
     kiteRange: 320, // keeps far distance — throws canisters from safety
@@ -48,22 +48,22 @@ const MOB_TYPES = {
 
   // Levels 6-9: Renegade Members
   renegade_bruiser: {
-    name: "Renegade Bruiser", hp: 200, speed: 3.8, damage: 22, killHeal: 15, goldReward: 6,
+    name: "Renegade Bruiser", hp: 200, speed: 4, damage: 22, killHeal: 15, goldReward: 6,
     skin: "#6a5a4a", hair: "#1a1a1a", shirt: "#4a3a3a", pants: "#3a2a2a", contactRange: 78,
     ai: 'tank', _specials: ['ground_pound'], specialCD: 540, // 9s
   },
   renegade_shadowknife: {
-    name: "Renegade Shadowknife", hp: 55, speed: 5.4, damage: 18, killHeal: 6, goldReward: 4,
+    name: "Renegade Shadowknife", hp: 55, speed: 5.7, damage: 18, killHeal: 6, goldReward: 4,
     skin: "#5a5a5a", hair: "#0a0a0a", shirt: "#1a1a2a", pants: "#0a0a1a", contactRange: 74,
     ai: 'runner', _specials: ['cloak_backstab'], specialCD: 900, // 15s — less frequent cloak
   },
   renegade_demo: {
-    name: "Renegade Demo", hp: 80, speed: 3.8, damage: 14, killHeal: 8, goldReward: 5,
+    name: "Renegade Demo", hp: 80, speed: 4, damage: 14, killHeal: 8, goldReward: 5,
     skin: "#7a6a5a", hair: "#2a1a1a", shirt: "#5a4a3a", pants: "#4a3a2a", contactRange: 76,
     ai: 'grunt', _specials: ['sticky_bomb'], specialCD: 720, // 12s
   },
   renegade_sniper: {
-    name: "Renegade Sniper", hp: 70, speed: 3.2, damage: 10, killHeal: 10, goldReward: 5,
+    name: "Renegade Sniper", hp: 70, speed: 3.4, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#6a6a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#2a2a3a", contactRange: 74,
     ai: 'archer', _specials: ['ricochet_round'], specialCD: 480, // 8s
     arrowRate: 90, arrowSpeed: 9, arrowRange: 650, arrowBounces: 1, arrowLife: 500,
@@ -72,7 +72,7 @@ const MOB_TYPES = {
 
   // Level 5 Mini-Boss: The Don
   the_don: {
-    name: "The Don", hp: 800, speed: 2.2, damage: 28, killHeal: 40, goldReward: 25,
+    name: "The Don", hp: 800, speed: 2.3, damage: 28, killHeal: 40, goldReward: 25,
     skin: "#8a7a6a", hair: "#2a2a2a", shirt: "#3a2a1a", pants: "#2a1a0a", contactRange: 80,
     ai: 'archer', _specials: ['laser_snipe', 'tommy_burst', 'smart_mine', 'smoke_screen'],
     isBoss: true, bossScale: 1.4, specialCD: 720, // 12s — Floor 1 mini-boss
@@ -84,7 +84,7 @@ const MOB_TYPES = {
 
   // Level 10 Boss: Velocity
   velocity: {
-    name: "Velocity", hp: 1500, speed: 4.8, damage: 30, killHeal: 50, goldReward: 40,
+    name: "Velocity", hp: 1500, speed: 5.1, damage: 30, killHeal: 50, goldReward: 40,
     skin: "#7a7a8a", hair: "#0a0a2a", shirt: "#2a2a5a", pants: "#1a1a4a", contactRange: 78,
     ai: 'runner', _specials: ['phase_dash', 'bullet_time_field', 'afterimage_barrage', 'summon_renegades'],
     isBoss: true, bossScale: 1.5, specialCD: 480, // 8s between abilities (slower rotation = less summon spam)
@@ -93,30 +93,30 @@ const MOB_TYPES = {
   // ===================== FLOOR 2: TECH DISTRICT → CORPORATE CORE =====================
   // Levels 11-14: Tech District
   circuit_thief: {
-    name: "Circuit Thief", hp: 75, speed: 4.6, damage: 10, killHeal: 5, goldReward: 4,
+    name: "Circuit Thief", hp: 75, speed: 4.8, damage: 10, killHeal: 5, goldReward: 4,
     skin: "#6a8a8a", hair: "#1a2a3a", shirt: "#2a4a5a", pants: "#1a3a4a", contactRange: 74,
     ai: 'runner', _specials: ['overload_drain'], specialCD: 540, // 9s
   },
   arc_welder: {
-    name: "Arc Welder", hp: 85, speed: 3.8, damage: 14, killHeal: 8, goldReward: 5,
+    name: "Arc Welder", hp: 85, speed: 4, damage: 14, killHeal: 8, goldReward: 5,
     skin: "#7a7060", hair: "#2a1a1a", shirt: "#5a4a2a", pants: "#4a3a1a", contactRange: 76,
     ai: 'grunt', _specials: ['weld_beam'], specialCD: 600, // 10s
   },
   battery_drone: {
-    name: "Battery Drone", hp: 60, speed: 4.9, damage: 12, killHeal: 5, goldReward: 3,
+    name: "Battery Drone", hp: 60, speed: 5.2, damage: 12, killHeal: 5, goldReward: 3,
     skin: "#8a8a9a", hair: "#3a3a4a", shirt: "#4a4a6a", pants: "#3a3a5a", contactRange: 74,
     ai: 'runner', _specials: ['charge_pop'], specialCD: 660, // 11s
     explodeRange: 120, explodeDamage: 20, // self-destructs like mummy
   },
   coil_runner: {
-    name: "Coil Runner", hp: 70, speed: 5.4, damage: 8, killHeal: 5, goldReward: 4,
+    name: "Coil Runner", hp: 70, speed: 5.7, damage: 8, killHeal: 5, goldReward: 4,
     skin: "#7a8a7a", hair: "#1a2a1a", shirt: "#3a5a4a", pants: "#2a4a3a", contactRange: 74,
     ai: 'runner', _specials: ['tesla_trail'], specialCD: 720, // 12s
   },
 
   // Level 15 Mini-Boss: Voltmaster
   voltmaster: {
-    name: "Voltmaster", hp: 1000, speed: 2.6, damage: 18, killHeal: 40, goldReward: 30,
+    name: "Voltmaster", hp: 1000, speed: 2.7, damage: 18, killHeal: 40, goldReward: 30,
     skin: "#5a6a8a", hair: "#1a1a3a", shirt: "#2a3a6a", pants: "#1a2a5a", contactRange: 80,
     ai: 'witch', _specials: ['chain_lightning', 'emp_pulse', 'tesla_pillars', 'magnet_snap'],
     isBoss: true, bossScale: 1.4, specialCD: 600, // 10s
@@ -125,24 +125,24 @@ const MOB_TYPES = {
 
   // Levels 16-19: Corporate Core
   suit_enforcer: {
-    name: "Suit Enforcer", hp: 120, speed: 3.5, damage: 16, killHeal: 10, goldReward: 6,
+    name: "Suit Enforcer", hp: 120, speed: 3.7, damage: 16, killHeal: 10, goldReward: 6,
     skin: "#8a7a6a", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#1a1a1a", contactRange: 78,
     ai: 'tank', _specials: ['briefcase_turret'], specialCD: 840, // 14s
     bulletSpeed: 9,
   },
   compliance_officer: {
-    name: "Compliance Officer", hp: 80, speed: 3, damage: 10, killHeal: 8, goldReward: 5,
+    name: "Compliance Officer", hp: 80, speed: 3.2, damage: 10, killHeal: 8, goldReward: 5,
     skin: "#9a8a7a", hair: "#2a2a2a", shirt: "#3a3a3a", pants: "#2a2a2a", contactRange: 76,
     ai: 'witch', _specials: ['red_tape_lines'], specialCD: 720, // 12s
     kiteRange: 280,
   },
   contract_assassin: {
-    name: "Contract Assassin", hp: 65, speed: 4.9, damage: 20, killHeal: 6, goldReward: 5,
+    name: "Contract Assassin", hp: 65, speed: 5.2, damage: 20, killHeal: 6, goldReward: 5,
     skin: "#5a5a5a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['penalty_mark'], specialCD: 600, // 10s
   },
   executive_handler: {
-    name: "Executive Handler", hp: 90, speed: 3.5, damage: 12, killHeal: 10, goldReward: 6,
+    name: "Executive Handler", hp: 90, speed: 3.7, damage: 12, killHeal: 10, goldReward: 6,
     skin: "#8a8a7a", hair: "#2a2a1a", shirt: "#3a3a2a", pants: "#2a2a1a", contactRange: 76,
     ai: 'archer', _specials: ['drone_swarm'], specialCD: 900, // 15s
     arrowRate: 100, arrowSpeed: 9, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
@@ -151,7 +151,7 @@ const MOB_TYPES = {
 
   // Level 20 Boss: E-Mortis
   e_mortis: {
-    name: "E-Mortis", hp: 1800, speed: 2.9, damage: 22, killHeal: 50, goldReward: 45,
+    name: "E-Mortis", hp: 1800, speed: 3.1, damage: 22, killHeal: 50, goldReward: 45,
     skin: "#9a8a6a", hair: "#1a1a1a", shirt: "#2a1a0a", pants: "#1a0a0a", contactRange: 80,
     ai: 'archer', _specials: ['dividend_barrage', 'hostile_takeover', 'nda_field', 'golden_parachute'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
@@ -164,23 +164,23 @@ const MOB_TYPES = {
   // ===================== FLOOR 3: JUNKYARD → SWAMP MUTATION =====================
   // Levels 21-24: Junkyard Scavengers
   scrap_rat: {
-    name: "Scrap Rat", hp: 80, speed: 4.1, damage: 10, killHeal: 5, goldReward: 4,
+    name: "Scrap Rat", hp: 80, speed: 4.3, damage: 10, killHeal: 5, goldReward: 4,
     skin: "#7a6a5a", hair: "#4a3a2a", shirt: "#5a4a3a", pants: "#4a3a2a", contactRange: 76,
     ai: 'grunt', _specials: ['scavenge_shield'], specialCD: 600, // 10s
   },
   magnet_scavenger: {
-    name: "Magnet Scavenger", hp: 90, speed: 3.8, damage: 14, killHeal: 8, goldReward: 5,
+    name: "Magnet Scavenger", hp: 90, speed: 4, damage: 14, killHeal: 8, goldReward: 5,
     skin: "#6a5a4a", hair: "#3a2a1a", shirt: "#4a4a3a", pants: "#3a3a2a", contactRange: 76,
     ai: 'grunt', _specials: ['mag_pull'], specialCD: 660, // 11s
   },
   rust_sawman: {
-    name: "Rust Sawman", hp: 85, speed: 4.6, damage: 16, killHeal: 6, goldReward: 5,
+    name: "Rust Sawman", hp: 85, speed: 4.8, damage: 16, killHeal: 6, goldReward: 5,
     skin: "#8a7a6a", hair: "#2a1a0a", shirt: "#6a5a3a", pants: "#5a4a2a", contactRange: 76,
     ai: 'runner', _specials: ['saw_line'], specialCD: 540, // 9s
     bulletSpeed: 9,
   },
   junkyard_pyro: {
-    name: "Junkyard Pyro", hp: 75, speed: 3.8, damage: 12, killHeal: 8, goldReward: 5,
+    name: "Junkyard Pyro", hp: 75, speed: 4, damage: 12, killHeal: 8, goldReward: 5,
     skin: "#7a7060", hair: "#2a2a1a", shirt: "#5a5030", pants: "#4a4020", contactRange: 76,
     ai: 'witch', _specials: ['oil_spill_ignite'], specialCD: 720, // 12s
     kiteRange: 300,
@@ -188,7 +188,7 @@ const MOB_TYPES = {
 
   // Level 25 Mini-Boss: Mourn
   mourn: {
-    name: "Mourn", hp: 1200, speed: 1.9, damage: 24, killHeal: 40, goldReward: 35,
+    name: "Mourn", hp: 1200, speed: 2, damage: 24, killHeal: 40, goldReward: 35,
     skin: "#5a5040", hair: "#3a2a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 82,
     ai: 'tank', _specials: ['pile_driver', 'grab_toss', 'rebuild', 'scrap_minions'],
     isBoss: true, bossScale: 1.5, specialCD: 600, // 10s
@@ -196,30 +196,30 @@ const MOB_TYPES = {
 
   // Levels 26-29: Swamp Mutants
   toxic_leechling: {
-    name: "Toxic Leechling", hp: 55, speed: 4.9, damage: 8, killHeal: 5, goldReward: 3,
+    name: "Toxic Leechling", hp: 55, speed: 5.2, damage: 8, killHeal: 5, goldReward: 3,
     skin: "#4a6a4a", hair: "#2a4a2a", shirt: "#3a5a3a", pants: "#2a4a2a", contactRange: 74,
     ai: 'runner', _specials: ['latch_drain'], specialCD: 600, // 10s
   },
   bog_stalker: {
-    name: "Bog Stalker", hp: 100, speed: 3.8, damage: 18, killHeal: 10, goldReward: 6,
+    name: "Bog Stalker", hp: 100, speed: 4, damage: 18, killHeal: 10, goldReward: 6,
     skin: "#4a5a4a", hair: "#1a2a1a", shirt: "#3a4a3a", pants: "#2a3a2a", contactRange: 76,
     ai: 'grunt', _specials: ['mud_dive'], specialCD: 720, // 12s
   },
   chem_frog: {
-    name: "Chem-Frog Mutant", hp: 70, speed: 3.5, damage: 10, killHeal: 8, goldReward: 5,
+    name: "Chem-Frog Mutant", hp: 70, speed: 3.7, damage: 10, killHeal: 8, goldReward: 5,
     skin: "#5a8a4a", hair: "#3a5a2a", shirt: "#4a7a3a", pants: "#3a6a2a", contactRange: 76,
     ai: 'witch', _specials: ['acid_spit_arc'], specialCD: 540, // 9s
     kiteRange: 300,
   },
   mosquito_drone: {
-    name: "Mosquito Drone", hp: 50, speed: 5.4, damage: 6, killHeal: 5, goldReward: 3,
+    name: "Mosquito Drone", hp: 50, speed: 5.7, damage: 6, killHeal: 5, goldReward: 3,
     skin: "#6a7a6a", hair: "#4a5a4a", shirt: "#5a6a5a", pants: "#4a5a4a", contactRange: 74,
     ai: 'runner', _specials: ['siphon_beam'], specialCD: 480, // 8s
   },
 
   // Level 30 Boss: Centipede
   centipede: {
-    name: "Centipede", hp: 2200, speed: 2.2, damage: 20, killHeal: 50, goldReward: 50,
+    name: "Centipede", hp: 2200, speed: 2.3, damage: 20, killHeal: 50, goldReward: 50,
     skin: "#3a5a3a", hair: "#1a3a1a", shirt: "#2a4a2a", pants: "#1a3a1a", contactRange: 82,
     ai: 'witch', _specials: ['spore_cloud', 'burrow_surge', 'toxic_nursery', 'regrowth'],
     isBoss: true, bossScale: 1.6, specialCD: 600, // 10s
@@ -229,30 +229,30 @@ const MOB_TYPES = {
   // ===================== FLOOR 4: TRAP HOUSE → R.E.G.I.M.E =====================
   // Levels 31-34: Trap House
   tripwire_tech: {
-    name: "Tripwire Tech", hp: 80, speed: 3.8, damage: 12, killHeal: 5, goldReward: 5,
+    name: "Tripwire Tech", hp: 80, speed: 4, damage: 12, killHeal: 5, goldReward: 5,
     skin: "#6a6a5a", hair: "#2a2a1a", shirt: "#4a4a3a", pants: "#3a3a2a", contactRange: 76,
     ai: 'grunt', _specials: ['tripwire'], specialCD: 600, // 10s
   },
   gizmo_hound: {
-    name: "Gizmo Hound", hp: 70, speed: 5.4, damage: 14, killHeal: 5, goldReward: 4,
+    name: "Gizmo Hound", hp: 70, speed: 5.7, damage: 14, killHeal: 5, goldReward: 4,
     skin: "#8a7a5a", hair: "#5a4a2a", shirt: "#6a5a3a", pants: "#5a4a2a", contactRange: 74,
     ai: 'runner', _specials: ['seek_mine'], specialCD: 720, // 12s
   },
   holo_jester: {
-    name: "Holo Jester", hp: 75, speed: 4.1, damage: 10, killHeal: 8, goldReward: 5,
+    name: "Holo Jester", hp: 75, speed: 4.3, damage: 10, killHeal: 8, goldReward: 5,
     skin: "#8a8a9a", hair: "#5a5a6a", shirt: "#7a4a8a", pants: "#5a3a6a", contactRange: 76,
     ai: 'witch', _specials: ['fake_wall'], specialCD: 840, // 14s
     kiteRange: 280,
   },
   time_prankster: {
-    name: "Time Prankster", hp: 65, speed: 4.6, damage: 12, killHeal: 6, goldReward: 5,
+    name: "Time Prankster", hp: 65, speed: 4.8, damage: 12, killHeal: 6, goldReward: 5,
     skin: "#7a7a8a", hair: "#3a3a5a", shirt: "#5a5a7a", pants: "#4a4a6a", contactRange: 74,
     ai: 'runner', _specials: ['rewind_tag'], specialCD: 780, // 13s
   },
 
   // Level 35 Mini-Boss: Game Master
   game_master: {
-    name: "Game Master", hp: 1400, speed: 2.2, damage: 18, killHeal: 40, goldReward: 40,
+    name: "Game Master", hp: 1400, speed: 2.3, damage: 18, killHeal: 40, goldReward: 40,
     skin: "#9a8a9a", hair: "#3a2a4a", shirt: "#5a3a6a", pants: "#4a2a5a", contactRange: 80,
     ai: 'witch', _specials: ['trap_roulette', 'puzzle_lasers', 'loot_bait', 'remote_hack'],
     isBoss: true, bossScale: 1.4, specialCD: 720, // 12s
@@ -261,22 +261,22 @@ const MOB_TYPES = {
 
   // Levels 36-39: R.E.G.I.M.E Bots
   enforcer_drone: {
-    name: "Enforcer Drone", hp: 100, speed: 4.1, damage: 14, killHeal: 8, goldReward: 6,
+    name: "Enforcer Drone", hp: 100, speed: 4.3, damage: 14, killHeal: 8, goldReward: 6,
     skin: "#6a6a7a", hair: "#3a3a4a", shirt: "#4a4a5a", pants: "#3a3a4a", contactRange: 76,
     ai: 'grunt', _specials: ['suppress_cone'], specialCD: 480, // 8s
   },
   synth_builder: {
-    name: "Synth Builder", hp: 110, speed: 3, damage: 10, killHeal: 10, goldReward: 6,
+    name: "Synth Builder", hp: 110, speed: 3.2, damage: 10, killHeal: 10, goldReward: 6,
     skin: "#7a7a7a", hair: "#4a4a4a", shirt: "#5a5a5a", pants: "#4a4a4a", contactRange: 78,
     ai: 'tank', _specials: ['barrier_build'], specialCD: 840, // 14s
   },
   shock_trooper: {
-    name: "Shock Trooper Bot", hp: 90, speed: 4.9, damage: 16, killHeal: 6, goldReward: 5,
+    name: "Shock Trooper Bot", hp: 90, speed: 5.2, damage: 16, killHeal: 6, goldReward: 5,
     skin: "#5a5a6a", hair: "#2a2a3a", shirt: "#3a3a5a", pants: "#2a2a4a", contactRange: 74,
     ai: 'runner', _specials: ['rocket_dash'], specialCD: 660, // 11s
   },
   signal_jammer: {
-    name: "Signal Jammer Bot", hp: 80, speed: 3.8, damage: 10, killHeal: 8, goldReward: 5,
+    name: "Signal Jammer Bot", hp: 80, speed: 4, damage: 10, killHeal: 8, goldReward: 5,
     skin: "#6a7a6a", hair: "#3a4a3a", shirt: "#4a5a4a", pants: "#3a4a3a", contactRange: 76,
     ai: 'witch', _specials: ['emp_dome'], specialCD: 300, // 5s — frequent suppression circles
     kiteRange: 300,
@@ -284,7 +284,7 @@ const MOB_TYPES = {
 
   // Level 40 Boss: J.U.N.Z
   junz: {
-    name: "J.U.N.Z", hp: 2500, speed: 2.7, damage: 25, killHeal: 50, goldReward: 55,
+    name: "J.U.N.Z", hp: 2500, speed: 2.8, damage: 25, killHeal: 50, goldReward: 55,
     skin: "#5a5a7a", hair: "#1a1a3a", shirt: "#2a2a5a", pants: "#1a1a4a", contactRange: 82,
     ai: 'archer', _specials: ['pulse_override', 'repulsor_beam', 'nano_armor', 'drone_court'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
@@ -296,22 +296,22 @@ const MOB_TYPES = {
   // ===================== FLOOR 5: WASTE PLANET → SLIME/DUSK =====================
   // Levels 41-44: Waste Planet Beasts
   rabid_hyenaoid: {
-    name: "Rabid Hyenaoid", hp: 105, speed: 5.1, damage: 18, killHeal: 6, goldReward: 5,
+    name: "Rabid Hyenaoid", hp: 105, speed: 5.4, damage: 18, killHeal: 6, goldReward: 5,
     skin: "#7a6a4a", hair: "#5a4a2a", shirt: "#6a5a3a", pants: "#5a4a2a", contactRange: 74,
     ai: 'runner', _specials: ['bleed_maul'], specialCD: 360, // 6s — aggressive dasher
   },
   spore_stag: {
-    name: "Spore Stag", hp: 120, speed: 4.5, damage: 20, killHeal: 8, goldReward: 6,
+    name: "Spore Stag", hp: 120, speed: 4.7, damage: 20, killHeal: 8, goldReward: 6,
     skin: "#5a7a5a", hair: "#3a5a3a", shirt: "#4a6a4a", pants: "#3a5a3a", contactRange: 78,
     ai: 'tank', _specials: ['gore_spore_burst'], specialCD: 480, // 8s — charge + spore zones
   },
   wasteland_raptor: {
-    name: "Wasteland Raptor", hp: 95, speed: 5.6, damage: 16, killHeal: 5, goldReward: 4,
+    name: "Wasteland Raptor", hp: 95, speed: 5.9, damage: 16, killHeal: 5, goldReward: 4,
     skin: "#6a5a3a", hair: "#4a3a1a", shirt: "#5a4a2a", pants: "#4a3a1a", contactRange: 74,
     ai: 'runner', _specials: ['pounce_pin'], specialCD: 420, // 7s — fast pouncer
   },
   plague_batwing: {
-    name: "Plague Batwing", hp: 70, speed: 4.8, damage: 12, killHeal: 8, goldReward: 5,
+    name: "Plague Batwing", hp: 70, speed: 5.1, damage: 12, killHeal: 8, goldReward: 5,
     skin: "#5a4a5a", hair: "#3a2a3a", shirt: "#4a3a4a", pants: "#3a2a3a", contactRange: 76,
     ai: 'witch', _specials: ['screech_ring'], specialCD: 480, // 8s — area denial screech
     kiteRange: 260,
@@ -319,13 +319,13 @@ const MOB_TYPES = {
 
   // Level 45 Duo Mini-Boss: Lehvius + Jackman
   lehvius: {
-    name: "Lehvius", hp: 1900, speed: 3.7, damage: 26, killHeal: 40, goldReward: 45,
+    name: "Lehvius", hp: 1900, speed: 3.9, damage: 26, killHeal: 40, goldReward: 45,
     skin: "#4a6a4a", hair: "#1a3a1a", shirt: "#2a5a2a", pants: "#1a4a1a", contactRange: 82,
     ai: 'tank', _specials: ['symbiote_lash', 'toxic_spikes', 'adrenal_surge'],
     isBoss: true, bossScale: 1.4, specialCD: 360, // 6s — aggressive boss
   },
   jackman: {
-    name: "Jackman", hp: 1500, speed: 2.9, damage: 19, killHeal: 40, goldReward: 40,
+    name: "Jackman", hp: 1500, speed: 3.1, damage: 19, killHeal: 40, goldReward: 40,
     skin: "#6a6a8a", hair: "#3a3a5a", shirt: "#4a4a6a", pants: "#3a3a5a", contactRange: 80,
     ai: 'witch', _specials: ['absorb_barrier', 'static_orbs', 'overcharge_dump'],
     isBoss: true, bossScale: 1.3, specialCD: 420, // 7s — electric boss
@@ -334,37 +334,37 @@ const MOB_TYPES = {
 
   // Levels 46-49: Slime/Dusk Creatures
   gel_swordsman: {
-    name: "Gel Swordsman", hp: 100, speed: 4.8, damage: 16, killHeal: 6, goldReward: 5,
+    name: "Gel Swordsman", hp: 100, speed: 5.1, damage: 16, killHeal: 6, goldReward: 5,
     skin: "#4a8a8a", hair: "#2a6a6a", shirt: "#3a7a7a", pants: "#2a6a6a", contactRange: 76,
     ai: 'grunt', _specials: ['slime_wave_slash'], specialCD: 320, // 5.3s — aggressive slasher
   },
   viscosity_mage: {
-    name: "Viscosity Mage", hp: 80, speed: 3.2, damage: 10, killHeal: 10, goldReward: 5,
+    name: "Viscosity Mage", hp: 80, speed: 3.4, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#5a7a9a", hair: "#3a5a7a", shirt: "#4a6a8a", pants: "#3a5a7a", contactRange: 76,
     ai: 'witch', _specials: ['sticky_field'], specialCD: 420, // 7s — zone control mage
     kiteRange: 300,
   },
   core_guardian: {
-    name: "Core Guardian Blob", hp: 175, speed: 3.7, damage: 14, killHeal: 10, goldReward: 7,
+    name: "Core Guardian Blob", hp: 175, speed: 3.9, damage: 14, killHeal: 10, goldReward: 7,
     skin: "#3a9a7a", hair: "#1a7a5a", shirt: "#2a8a6a", pants: "#1a7a5a", contactRange: 78,
     ai: 'tank', _specials: ['split_response'], specialCD: 9999, // passive — handled on damage
     _canSplit: true,
   },
   biolum_drone: {
-    name: "Bio-Lum Drone", hp: 65, speed: 5.1, damage: 12, killHeal: 5, goldReward: 4,
+    name: "Bio-Lum Drone", hp: 65, speed: 5.4, damage: 12, killHeal: 5, goldReward: 4,
     skin: "#5a8a5a", hair: "#3a6a3a", shirt: "#4a7a4a", pants: "#3a6a3a", contactRange: 74,
     ai: 'runner', _specials: ['glow_mark'], specialCD: 420, // 7s — fast marker
   },
 
   // Level 50 Duo Boss: World Malric + Vale
   malric: {
-    name: "World Malric", hp: 3600, speed: 3.2, damage: 32, killHeal: 50, goldReward: 60,
+    name: "World Malric", hp: 3600, speed: 3.4, damage: 32, killHeal: 50, goldReward: 60,
     skin: "#3a7a5a", hair: "#1a5a3a", shirt: "#2a6a4a", pants: "#1a5a3a", contactRange: 84,
     ai: 'tank', _specials: ['ooze_blade_arc', 'slime_rampart', 'melt_floor', 'summon_elite'],
     isBoss: true, bossScale: 1.6, specialCD: 360, // 6s — relentless final boss
   },
   vale: {
-    name: "Vale", hp: 2600, speed: 4, damage: 24, killHeal: 50, goldReward: 55,
+    name: "Vale", hp: 2600, speed: 4.2, damage: 24, killHeal: 50, goldReward: 55,
     skin: "#4a3a5a", hair: "#2a1a3a", shirt: "#3a2a4a", pants: "#2a1a3a", contactRange: 80,
     ai: 'witch', _specials: ['shadow_teleport', 'puppet_shot', 'abyss_grasp', 'regen_veil'],
     isBoss: true, bossScale: 1.5, specialCD: 360, // 6s — aggressive shadow boss
@@ -374,25 +374,25 @@ const MOB_TYPES = {
   // ===================== VORTALIS FLOOR 1: PIRATE / NAVAL =====================
   // Section A — Pirates (waves 1-4)
   bilge_rat: {
-    name: "Bilge Rat", hp: 60, speed: 4.9, damage: 10, killHeal: 5, goldReward: 3,
+    name: "Bilge Rat", hp: 60, speed: 5.2, damage: 10, killHeal: 5, goldReward: 3,
     skin: "#8a7060", hair: "#3a2a1a", shirt: "#5a4030", pants: "#4a3020", contactRange: 74,
     ai: 'runner', _specials: ['shiv_lunge'], specialCD: 420,
     deathColors: ["#8a7060","#5a4030","#aa9070","#3a2010"],
   },
   powder_keg: {
-    name: "Powder Keg", hp: 90, speed: 3.8, damage: 14, killHeal: 8, goldReward: 4,
+    name: "Powder Keg", hp: 90, speed: 4, damage: 14, killHeal: 8, goldReward: 4,
     skin: "#8a7060", hair: "#2a1a0a", shirt: "#6a5040", pants: "#4a3020", contactRange: 76,
     ai: 'grunt', _specials: ['barrel_drop'], specialCD: 600,
     deathColors: ["#8a7060","#6a5040","#aa9070","#4a3020"],
   },
   deckhand_shooter: {
-    name: "Deckhand Shooter", hp: 70, speed: 3.2, damage: 8, killHeal: 10, goldReward: 4,
+    name: "Deckhand Shooter", hp: 70, speed: 3.4, damage: 8, killHeal: 10, goldReward: 4,
     skin: "#8a7060", hair: "#1a1a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 74,
     ai: 'archer', _specials: ['scattershot'], specialCD: 540,
     deathColors: ["#8a7060","#4a3a2a","#aa9070","#3a2a1a"],
   },
   anchor_hauler: {
-    name: "Anchor Hauler", hp: 150, speed: 3, damage: 18, killHeal: 15, goldReward: 6,
+    name: "Anchor Hauler", hp: 150, speed: 3.2, damage: 18, killHeal: 15, goldReward: 6,
     skin: "#8a7060", hair: "#1a1a1a", shirt: "#3a3020", pants: "#2a2010", contactRange: 78,
     ai: 'tank', _specials: ['anchor_sweep'], specialCD: 660,
     deathColors: ["#8a7060","#3a3020","#aa9070","#2a2010"],
@@ -400,7 +400,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 1 — Boss: Captain Husa
   captain_husa: {
-    name: "Captain Husa", hp: 900, speed: 2.6, damage: 22, killHeal: 40, goldReward: 25,
+    name: "Captain Husa", hp: 900, speed: 2.7, damage: 22, killHeal: 40, goldReward: 25,
     skin: "#8a7060", hair: "#2a1a0a", shirt: "#5a3020", pants: "#3a2010", contactRange: 80,
     ai: 'tank', _specials: ['flintlock_volley', 'cutlass_cleave', 'call_to_arms', 'weathered_resolve', 'boarding_rush'],
     isBoss: true, bossScale: 1.4, specialCD: 600,
@@ -409,27 +409,27 @@ const MOB_TYPES = {
 
   // Section B — Naval (waves 6-9)
   ironclad_marine: {
-    name: "Ironclad Marine", hp: 180, speed: 3.5, damage: 20, killHeal: 15, goldReward: 6,
+    name: "Ironclad Marine", hp: 180, speed: 3.7, damage: 20, killHeal: 15, goldReward: 6,
     skin: "#7a8a8a", hair: "#1a1a2a", shirt: "#2a3a5a", pants: "#1a2a4a", contactRange: 78,
     ai: 'tank', _specials: ['tower_shield'], specialCD: 720,
     _frontalShield: true,
     deathColors: ["#7a8a8a","#2a3a5a","#9aaaba","#1a2a4a"],
   },
   tidecaller_mystic: {
-    name: "Tidecaller Mystic", hp: 80, speed: 3, damage: 10, killHeal: 12, goldReward: 5,
+    name: "Tidecaller Mystic", hp: 80, speed: 3.2, damage: 10, killHeal: 12, goldReward: 5,
     skin: "#7a8a8a", hair: "#2a2a3a", shirt: "#3a4a6a", pants: "#2a3a5a", contactRange: 76,
     ai: 'witch', _specials: ['water_geyser'], specialCD: 540,
     kiteRange: 300,
     deathColors: ["#7a8a8a","#3a4a6a","#9aaaba","#2a3a5a"],
   },
   galleon_sniper: {
-    name: "Galleon Sniper", hp: 70, speed: 3.2, damage: 10, killHeal: 10, goldReward: 5,
+    name: "Galleon Sniper", hp: 70, speed: 3.4, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#7a8a8a", hair: "#1a1a1a", shirt: "#2a2a4a", pants: "#1a1a3a", contactRange: 74,
     ai: 'archer', _specials: ['piercing_musket'], specialCD: 480,
     deathColors: ["#7a8a8a","#2a2a4a","#9aaaba","#1a1a3a"],
   },
   sunken_dreadnought: {
-    name: "Sunken Dreadnought", hp: 220, speed: 2.7, damage: 24, killHeal: 15, goldReward: 7,
+    name: "Sunken Dreadnought", hp: 220, speed: 2.8, damage: 24, killHeal: 15, goldReward: 7,
     skin: "#7a8a8a", hair: "#1a1a2a", shirt: "#1a2a3a", pants: "#0a1a2a", contactRange: 78,
     ai: 'tank', _specials: ['reckless_charge'], specialCD: 720,
     deathColors: ["#7a8a8a","#1a2a3a","#9aaaba","#0a1a2a"],
@@ -437,7 +437,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 1 — Boss: Admiral Von Kael
   admiral_von_kael: {
-    name: "Admiral Von Kael", hp: 1200, speed: 2.2, damage: 24, killHeal: 40, goldReward: 30,
+    name: "Admiral Von Kael", hp: 1200, speed: 2.3, damage: 24, killHeal: 40, goldReward: 30,
     skin: "#7a8a8a", hair: "#1a1a2a", shirt: "#1a2a4a", pants: "#0a1a3a", contactRange: 80,
     ai: 'tank', _specials: ['naval_artillery', 'spectral_chain_binding', 'tattered_tide', 'command_authority', 'admirals_resolve'],
     isBoss: true, bossScale: 1.5, specialCD: 540,
@@ -447,26 +447,26 @@ const MOB_TYPES = {
   // ===================== VORTALIS FLOOR 2: JUNGLE / BLOOD =====================
   // Section A — Jungle (waves 1-4)
   jungle_headhunter: {
-    name: "Jungle Headhunter", hp: 80, speed: 5, damage: 14, killHeal: 5, goldReward: 4,
+    name: "Jungle Headhunter", hp: 80, speed: 5.3, damage: 14, killHeal: 5, goldReward: 4,
     skin: "#5a4030", hair: "#1a1a0a", shirt: "#3a5a2a", pants: "#2a4a1a", contactRange: 74,
     ai: 'runner', _specials: ['spear_dash'], specialCD: 420,
     deathColors: ["#5a4030","#3a5a2a","#7a6050","#2a4a1a"],
   },
   voodoo_creeper: {
-    name: "Voodoo Creeper", hp: 70, speed: 3, damage: 8, killHeal: 12, goldReward: 5,
+    name: "Voodoo Creeper", hp: 70, speed: 3.2, damage: 8, killHeal: 12, goldReward: 5,
     skin: "#5a4030", hair: "#2a1a0a", shirt: "#4a3a1a", pants: "#3a2a0a", contactRange: 76,
     ai: 'witch', _specials: ['toxic_trail'], specialCD: 540,
     kiteRange: 320,
     deathColors: ["#5a4030","#4a3a1a","#7a6050","#3a2a0a"],
   },
   canopy_sniper: {
-    name: "Canopy Sniper", hp: 65, speed: 3.5, damage: 10, killHeal: 10, goldReward: 5,
+    name: "Canopy Sniper", hp: 65, speed: 3.7, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#5a4030", hair: "#1a1a0a", shirt: "#3a4a2a", pants: "#2a3a1a", contactRange: 74,
     ai: 'archer', _specials: ['paralysis_dart'], specialCD: 600,
     deathColors: ["#5a4030","#3a4a2a","#7a6050","#2a3a1a"],
   },
   temple_silverback: {
-    name: "Temple Silverback", hp: 200, speed: 3.6, damage: 22, killHeal: 15, goldReward: 6,
+    name: "Temple Silverback", hp: 200, speed: 3.8, damage: 22, killHeal: 15, goldReward: 6,
     skin: "#5a4030", hair: "#2a2a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 78,
     ai: 'tank', _specials: ['earthquake_slam'], specialCD: 600,
     deathColors: ["#5a4030","#4a3a2a","#7a6050","#3a2a1a"],
@@ -474,7 +474,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 2 — Boss: Zongo
   zongo: {
-    name: "Zongo", hp: 1100, speed: 2.8, damage: 26, killHeal: 40, goldReward: 30,
+    name: "Zongo", hp: 1100, speed: 2.9, damage: 26, killHeal: 40, goldReward: 30,
     skin: "#5a4030", hair: "#1a1a0a", shirt: "#3a4a1a", pants: "#2a3a0a", contactRange: 80,
     ai: 'tank', _specials: ['spear_barrage', 'vine_snare', 'primal_roar', 'tribal_summon', 'jungle_fury'],
     isBoss: true, bossScale: 1.4, specialCD: 540,
@@ -483,26 +483,26 @@ const MOB_TYPES = {
 
   // Section B — Blood (waves 6-9)
   crimson_corsair: {
-    name: "Crimson Corsair", hp: 85, speed: 4.8, damage: 16, killHeal: 5, goldReward: 4,
+    name: "Crimson Corsair", hp: 85, speed: 5.1, damage: 16, killHeal: 5, goldReward: 4,
     skin: "#9a7070", hair: "#2a0a0a", shirt: "#6a2020", pants: "#4a1010", contactRange: 74,
     ai: 'runner', _specials: ['blood_frenzy'], specialCD: 360,
     deathColors: ["#9a7070","#6a2020","#ba9090","#4a1010"],
   },
   crystal_cultist: {
-    name: "Crystal Cultist", hp: 75, speed: 3, damage: 10, killHeal: 12, goldReward: 5,
+    name: "Crystal Cultist", hp: 75, speed: 3.2, damage: 10, killHeal: 12, goldReward: 5,
     skin: "#9a7070", hair: "#1a0a0a", shirt: "#5a1a1a", pants: "#3a0a0a", contactRange: 76,
     ai: 'witch', _specials: ['shard_spread'], specialCD: 540,
     kiteRange: 300,
     deathColors: ["#9a7070","#5a1a1a","#ba9090","#3a0a0a"],
   },
   bone_clad_brute: {
-    name: "Bone-Clad Brute", hp: 190, speed: 3.2, damage: 20, killHeal: 15, goldReward: 6,
+    name: "Bone-Clad Brute", hp: 190, speed: 3.4, damage: 20, killHeal: 15, goldReward: 6,
     skin: "#9a7070", hair: "#1a0a0a", shirt: "#4a1a1a", pants: "#2a0a0a", contactRange: 78,
     ai: 'tank', _specials: ['blood_pool'], specialCD: 660,
     deathColors: ["#9a7070","#4a1a1a","#ba9090","#2a0a0a"],
   },
   sanguine_siren: {
-    name: "Sanguine Siren", hp: 70, speed: 3.5, damage: 12, killHeal: 10, goldReward: 5,
+    name: "Sanguine Siren", hp: 70, speed: 3.7, damage: 12, killHeal: 10, goldReward: 5,
     skin: "#9a7070", hair: "#2a0a0a", shirt: "#6a1a1a", pants: "#4a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['hamstring_bite'], specialCD: 480,
     deathColors: ["#9a7070","#6a1a1a","#ba9090","#4a0a0a"],
@@ -510,7 +510,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 2 — Boss: Bloodborne Marlon
   bloodborne_marlon: {
-    name: "Bloodborne Marlon", hp: 1500, speed: 2.6, damage: 28, killHeal: 40, goldReward: 35,
+    name: "Bloodborne Marlon", hp: 1500, speed: 2.7, damage: 28, killHeal: 40, goldReward: 35,
     skin: "#9a7070", hair: "#1a0a0a", shirt: "#5a0a0a", pants: "#3a0a0a", contactRange: 80,
     ai: 'tank', _specials: ['chain_grapple', 'crimson_cleave', 'shard_of_betrayal', 'blood_siphon', 'bone_guard', 'demonic_shift'],
     isBoss: true, bossScale: 1.5, specialCD: 480,
@@ -520,25 +520,25 @@ const MOB_TYPES = {
   // ===================== VORTALIS FLOOR 3: WEREWOLF / GHOST =====================
   // Section A — Werewolf (waves 1-4)
   feral_deckhand: {
-    name: "Feral Deckhand", hp: 90, speed: 5.4, damage: 16, killHeal: 5, goldReward: 4,
+    name: "Feral Deckhand", hp: 90, speed: 5.7, damage: 16, killHeal: 5, goldReward: 4,
     skin: "#6a5a4a", hair: "#3a2a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 74,
     ai: 'runner', _specials: ['rabid_pounce'], specialCD: 360,
     deathColors: ["#6a5a4a","#4a3a2a","#8a7a6a","#3a2a1a"],
   },
   howling_lookout: {
-    name: "Howling Lookout", hp: 75, speed: 3.5, damage: 10, killHeal: 10, goldReward: 5,
+    name: "Howling Lookout", hp: 75, speed: 3.7, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#6a5a4a", hair: "#2a1a0a", shirt: "#4a4a3a", pants: "#3a3a2a", contactRange: 74,
     ai: 'grunt', _specials: ['pack_howl'], specialCD: 600,
     deathColors: ["#6a5a4a","#4a4a3a","#8a7a6a","#3a3a2a"],
   },
   sea_dog_brute: {
-    name: "Sea Dog Brute", hp: 180, speed: 3.8, damage: 22, killHeal: 15, goldReward: 6,
+    name: "Sea Dog Brute", hp: 180, speed: 4, damage: 22, killHeal: 15, goldReward: 6,
     skin: "#6a5a4a", hair: "#2a2a1a", shirt: "#3a3a2a", pants: "#2a2a1a", contactRange: 78,
     ai: 'tank', _specials: ['reckless_charge'], specialCD: 540,
     deathColors: ["#6a5a4a","#3a3a2a","#8a7a6a","#2a2a1a"],
   },
   rabid_wharf_hound: {
-    name: "Rabid Wharf Hound", hp: 100, speed: 4.6, damage: 18, killHeal: 8, goldReward: 4,
+    name: "Rabid Wharf Hound", hp: 100, speed: 4.8, damage: 18, killHeal: 8, goldReward: 4,
     skin: "#6a5a4a", hair: "#3a3a2a", shirt: "#5a4a3a", pants: "#4a3a2a", contactRange: 76,
     ai: 'grunt', _specials: ['hamstring_bite'], specialCD: 420,
     deathColors: ["#6a5a4a","#5a4a3a","#8a7a6a","#4a3a2a"],
@@ -546,7 +546,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 3 — Boss: Wolfbeard
   wolfbeard: {
-    name: "Wolfbeard", hp: 1600, speed: 3.6, damage: 28, killHeal: 40, goldReward: 35,
+    name: "Wolfbeard", hp: 1600, speed: 3.8, damage: 28, killHeal: 40, goldReward: 35,
     skin: "#6a5a4a", hair: "#2a1a0a", shirt: "#3a2a1a", pants: "#2a1a0a", contactRange: 80,
     ai: 'tank', _specials: ['quick_draw', 'feral_slash', 'predator_dash', 'hunters_mark', 'howl_of_terror', 'pack_instinct', 'silver_fang_strike', 'alpha_rampage'],
     isBoss: true, bossScale: 1.5, specialCD: 420,
@@ -555,26 +555,26 @@ const MOB_TYPES = {
 
   // Section B — Ghost (waves 6-9)
   phantom_swashbuckler: {
-    name: "Phantom Swashbuckler", hp: 80, speed: 5, damage: 18, killHeal: 5, goldReward: 4,
+    name: "Phantom Swashbuckler", hp: 80, speed: 5.3, damage: 18, killHeal: 5, goldReward: 4,
     skin: "#8a8a9a", hair: "#5a5a6a", shirt: "#6a6a7a", pants: "#5a5a6a", contactRange: 74,
     ai: 'runner', _specials: ['phase_lunge'], specialCD: 480,
     deathColors: ["#8a8a9a","#6a6a7a","#aaaaba","#5a5a6a"],
   },
   poltergeist_gunner: {
-    name: "Poltergeist Gunner", hp: 70, speed: 3.2, damage: 12, killHeal: 10, goldReward: 5,
+    name: "Poltergeist Gunner", hp: 70, speed: 3.4, damage: 12, killHeal: 10, goldReward: 5,
     skin: "#8a8a9a", hair: "#4a4a5a", shirt: "#5a5a7a", pants: "#4a4a6a", contactRange: 74,
     ai: 'archer', _specials: ['soul_bullet'], specialCD: 420,
     deathColors: ["#8a8a9a","#5a5a7a","#aaaaba","#4a4a6a"],
   },
   drowned_banshee: {
-    name: "Drowned Banshee", hp: 75, speed: 3, damage: 10, killHeal: 12, goldReward: 5,
+    name: "Drowned Banshee", hp: 75, speed: 3.2, damage: 10, killHeal: 12, goldReward: 5,
     skin: "#8a8a9a", hair: "#5a5a7a", shirt: "#6a6a8a", pants: "#5a5a7a", contactRange: 76,
     ai: 'witch', _specials: ['wail_of_depths'], specialCD: 600,
     kiteRange: 300,
     deathColors: ["#8a8a9a","#6a6a8a","#aaaaba","#5a5a7a"],
   },
   cursed_shackler: {
-    name: "Cursed Shackler", hp: 120, speed: 3.8, damage: 16, killHeal: 8, goldReward: 5,
+    name: "Cursed Shackler", hp: 120, speed: 4, damage: 16, killHeal: 8, goldReward: 5,
     skin: "#8a8a9a", hair: "#4a4a5a", shirt: "#5a5a6a", pants: "#4a4a5a", contactRange: 76,
     ai: 'grunt', _specials: ['spectral_tether'], specialCD: 720,
     deathColors: ["#8a8a9a","#5a5a6a","#aaaaba","#4a4a5a"],
@@ -582,7 +582,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 3 — Boss: Ghostbeard
   ghostbeard: {
-    name: "Ghostbeard", hp: 1800, speed: 3, damage: 26, killHeal: 40, goldReward: 35,
+    name: "Ghostbeard", hp: 1800, speed: 3.2, damage: 26, killHeal: 40, goldReward: 35,
     skin: "#8a8a9a", hair: "#5a5a6a", shirt: "#4a4a6a", pants: "#3a3a5a", contactRange: 80,
     ai: 'witch', _specials: ['phantom_slash', 'ghost_dash', 'haunted_cutlass', 'spirit_shield', 'cursed_mark', 'spectral_crew', 'soul_drain', 'ghost_ship'],
     isBoss: true, bossScale: 1.5, specialCD: 420,
@@ -593,13 +593,13 @@ const MOB_TYPES = {
   // ===================== VORTALIS FLOOR 4: SEA CREATURES / DEEP-SEA =====================
   // Section A — Sea (waves 1-4)
   ink_spitter: {
-    name: "Ink Spitter", hp: 80, speed: 4.8, damage: 12, killHeal: 5, goldReward: 4,
+    name: "Ink Spitter", hp: 80, speed: 5.1, damage: 12, killHeal: 5, goldReward: 4,
     skin: "#4a8a7a", hair: "#2a6a5a", shirt: "#3a7a6a", pants: "#2a6a5a", contactRange: 74,
     ai: 'runner', _specials: ['blinding_ink'], specialCD: 480,
     deathColors: ["#4a8a7a","#3a7a6a","#6aaa9a","#2a6a5a"],
   },
   coral_crusher: {
-    name: "Coral Crusher", hp: 200, speed: 3, damage: 22, killHeal: 15, goldReward: 6,
+    name: "Coral Crusher", hp: 200, speed: 3.2, damage: 22, killHeal: 15, goldReward: 6,
     skin: "#4a8a7a", hair: "#2a5a4a", shirt: "#3a6a5a", pants: "#2a5a4a", contactRange: 78,
     ai: 'tank', _specials: ['coral_barricade'], specialCD: 660,
     _frontalShield: true,
@@ -612,7 +612,7 @@ const MOB_TYPES = {
     deathColors: ["#4a8a7a","#2a6a5a","#6aaa9a","#1a5a4a"],
   },
   barnacle_bomber: {
-    name: "Barnacle Bomber", hp: 90, speed: 4.1, damage: 16, killHeal: 8, goldReward: 4,
+    name: "Barnacle Bomber", hp: 90, speed: 4.3, damage: 16, killHeal: 8, goldReward: 4,
     skin: "#4a8a7a", hair: "#2a6a5a", shirt: "#4a7a6a", pants: "#3a6a5a", contactRange: 76,
     ai: 'grunt', _specials: ['sticky_trap'], specialCD: 540,
     deathColors: ["#4a8a7a","#4a7a6a","#6aaa9a","#3a6a5a"],
@@ -620,7 +620,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 4 — Boss: Kraken Jim
   kraken_jim: {
-    name: "Kraken Jim", hp: 2200, speed: 2, damage: 28, killHeal: 50, goldReward: 40,
+    name: "Kraken Jim", hp: 2200, speed: 2.1, damage: 28, killHeal: 50, goldReward: 40,
     skin: "#4a8a7a", hair: "#1a5a4a", shirt: "#2a5a4a", pants: "#1a4a3a", contactRange: 82,
     ai: 'witch', _specials: ['tentacle_grab', 'coral_armor', 'ink_blast', 'tidal_slam', 'barnacle_trap_boss', 'ocean_regen', 'deep_sea_strike', 'kraken_call'],
     isBoss: true, bossScale: 1.5, specialCD: 420,
@@ -630,25 +630,25 @@ const MOB_TYPES = {
 
   // Section B — Deep-Sea (waves 6-9)
   gilded_triton: {
-    name: "Gilded Triton", hp: 100, speed: 4.9, damage: 20, killHeal: 5, goldReward: 5,
+    name: "Gilded Triton", hp: 100, speed: 5.2, damage: 20, killHeal: 5, goldReward: 5,
     skin: "#3a5a7a", hair: "#1a3a5a", shirt: "#4a5a3a", pants: "#3a4a2a", contactRange: 74,
     ai: 'runner', _specials: ['tidal_lunge'], specialCD: 420,
     deathColors: ["#3a5a7a","#4a5a3a","#5a7a9a","#3a4a2a"],
   },
   coin_spitter_jelly: {
-    name: "Coin Spitter Jelly", hp: 75, speed: 3.2, damage: 12, killHeal: 10, goldReward: 5,
+    name: "Coin Spitter Jelly", hp: 75, speed: 3.4, damage: 12, killHeal: 10, goldReward: 5,
     skin: "#3a5a7a", hair: "#1a3a5a", shirt: "#5a6a4a", pants: "#4a5a3a", contactRange: 74,
     ai: 'archer', _specials: ['wealth_volley'], specialCD: 480,
     deathColors: ["#3a5a7a","#5a6a4a","#5a7a9a","#4a5a3a"],
   },
   deep_sea_dredger: {
-    name: "Deep-Sea Dredger", hp: 210, speed: 2.8, damage: 24, killHeal: 15, goldReward: 7,
+    name: "Deep-Sea Dredger", hp: 210, speed: 2.9, damage: 24, killHeal: 15, goldReward: 7,
     skin: "#3a5a7a", hair: "#1a2a4a", shirt: "#2a3a5a", pants: "#1a2a4a", contactRange: 78,
     ai: 'tank', _specials: ['abyssal_slam'], specialCD: 600,
     deathColors: ["#3a5a7a","#2a3a5a","#5a7a9a","#1a2a4a"],
   },
   royal_cephalopod: {
-    name: "Royal Cephalopod", hp: 85, speed: 3, damage: 12, killHeal: 12, goldReward: 5,
+    name: "Royal Cephalopod", hp: 85, speed: 3.2, damage: 12, killHeal: 12, goldReward: 5,
     skin: "#3a5a7a", hair: "#1a3a5a", shirt: "#3a4a6a", pants: "#2a3a5a", contactRange: 76,
     ai: 'witch', _specials: ['pressure_zone'], specialCD: 540,
     kiteRange: 280,
@@ -657,7 +657,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 4 — Boss: King Requill
   king_requill: {
-    name: "King Requill", hp: 2800, speed: 2.2, damage: 30, killHeal: 50, goldReward: 45,
+    name: "King Requill", hp: 2800, speed: 2.3, damage: 30, killHeal: 50, goldReward: 45,
     skin: "#3a5a7a", hair: "#1a2a4a", shirt: "#2a3a5a", pants: "#1a2a3a", contactRange: 82,
     ai: 'witch', _specials: ['deepsea_decapitation', 'coiling_constriction', 'gilded_maelstrom', 'pressure_zone_boss', 'silt_cloud', 'abyssal_roar', 'golden_retribution', 'reign_of_deep'],
     isBoss: true, bossScale: 1.5, specialCD: 360,
@@ -669,26 +669,26 @@ const MOB_TYPES = {
   // ===================== VORTALIS FLOOR 5: MERFOLK / OCEAN DEITY =====================
   // Section A — Merfolk (waves 1-4)
   alabaster_sentinel: {
-    name: "Alabaster Sentinel", hp: 180, speed: 3.8, damage: 22, killHeal: 15, goldReward: 6,
+    name: "Alabaster Sentinel", hp: 180, speed: 4, damage: 22, killHeal: 15, goldReward: 6,
     skin: "#7a9aaa", hair: "#4a6a7a", shirt: "#8a9a7a", pants: "#6a7a5a", contactRange: 78,
     ai: 'tank', _specials: ['royal_thrust'], specialCD: 540,
     deathColors: ["#7a9aaa","#8a9a7a","#9abaca","#6a7a5a"],
   },
   reef_weaver: {
-    name: "Reef Weaver", hp: 80, speed: 3, damage: 12, killHeal: 12, goldReward: 5,
+    name: "Reef Weaver", hp: 80, speed: 3.2, damage: 12, killHeal: 12, goldReward: 5,
     skin: "#7a9aaa", hair: "#4a6a8a", shirt: "#5a7a8a", pants: "#4a6a7a", contactRange: 76,
     ai: 'witch', _specials: ['crashing_surf'], specialCD: 480,
     kiteRange: 300,
     deathColors: ["#7a9aaa","#5a7a8a","#9abaca","#4a6a7a"],
   },
   gilded_manta: {
-    name: "Gilded Manta", hp: 100, speed: 5.4, damage: 18, killHeal: 5, goldReward: 5,
+    name: "Gilded Manta", hp: 100, speed: 5.7, damage: 18, killHeal: 5, goldReward: 5,
     skin: "#7a9aaa", hair: "#5a7a8a", shirt: "#6a8a9a", pants: "#5a7a8a", contactRange: 74,
     ai: 'runner', _specials: ['shard_glide'], specialCD: 360,
     deathColors: ["#7a9aaa","#6a8a9a","#9abaca","#5a7a8a"],
   },
   royal_shell_knight: {
-    name: "Royal Shell Knight", hp: 220, speed: 3, damage: 24, killHeal: 15, goldReward: 7,
+    name: "Royal Shell Knight", hp: 220, speed: 3.2, damage: 24, killHeal: 15, goldReward: 7,
     skin: "#7a9aaa", hair: "#4a6a7a", shirt: "#7a8a6a", pants: "#5a6a4a", contactRange: 78,
     ai: 'tank', _specials: ['aegis_reflect'], specialCD: 600,
     deathColors: ["#7a9aaa","#7a8a6a","#9abaca","#5a6a4a"],
@@ -696,7 +696,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 5 — Boss: Queen Siralyth
   queen_siralyth: {
-    name: "Queen Siralyth", hp: 3200, speed: 2.6, damage: 30, killHeal: 50, goldReward: 50,
+    name: "Queen Siralyth", hp: 3200, speed: 2.7, damage: 30, killHeal: 50, goldReward: 50,
     skin: "#7a9aaa", hair: "#4a6a8a", shirt: "#6a8a7a", pants: "#4a6a5a", contactRange: 82,
     ai: 'witch', _specials: ['golden_shard_volley', 'abyssal_maw', 'coral_aegis', 'royal_gilded_beam', 'tidal_surge', 'sovereigns_cage', 'blessing_of_deep', 'reign_gilded_reef'],
     isBoss: true, bossScale: 1.5, specialCD: 360,
@@ -706,26 +706,26 @@ const MOB_TYPES = {
 
   // Section B — Ocean Deity (waves 6-9)
   sea_serpent_spawn: {
-    name: "Sea Serpent Spawn", hp: 110, speed: 5.1, damage: 20, killHeal: 5, goldReward: 5,
+    name: "Sea Serpent Spawn", hp: 110, speed: 5.4, damage: 20, killHeal: 5, goldReward: 5,
     skin: "#2a4a5a", hair: "#1a2a3a", shirt: "#2a3a4a", pants: "#1a2a3a", contactRange: 74,
     ai: 'runner', _specials: ['leviathan_lunge'], specialCD: 360,
     deathColors: ["#2a4a5a","#2a3a4a","#4a6a7a","#1a2a3a"],
   },
   living_whirlpool: {
-    name: "Living Whirlpool", hp: 90, speed: 2.8, damage: 14, killHeal: 12, goldReward: 5,
+    name: "Living Whirlpool", hp: 90, speed: 2.9, damage: 14, killHeal: 12, goldReward: 5,
     skin: "#2a4a5a", hair: "#1a3a4a", shirt: "#2a4a5a", pants: "#1a3a4a", contactRange: 76,
     ai: 'witch', _specials: ['abyssal_undertow'], specialCD: 480,
     kiteRange: 280,
     deathColors: ["#2a4a5a","#2a4a5a","#4a6a7a","#1a3a4a"],
   },
   bone_tooth_zealot: {
-    name: "Bone Tooth Zealot", hp: 130, speed: 4.1, damage: 22, killHeal: 8, goldReward: 5,
+    name: "Bone Tooth Zealot", hp: 130, speed: 4.3, damage: 22, killHeal: 8, goldReward: 5,
     skin: "#2a4a5a", hair: "#1a2a3a", shirt: "#3a4a4a", pants: "#2a3a3a", contactRange: 76,
     ai: 'grunt', _specials: ['pincer_guillotine'], specialCD: 480,
     deathColors: ["#2a4a5a","#3a4a4a","#4a6a7a","#2a3a3a"],
   },
   tidal_avatar: {
-    name: "Tidal Avatar", hp: 240, speed: 3.2, damage: 26, killHeal: 15, goldReward: 7,
+    name: "Tidal Avatar", hp: 240, speed: 3.4, damage: 26, killHeal: 15, goldReward: 7,
     skin: "#2a4a5a", hair: "#1a2a3a", shirt: "#1a3a4a", pants: "#0a2a3a", contactRange: 78,
     ai: 'tank', _specials: ['crashing_surf'], specialCD: 540,
     deathColors: ["#2a4a5a","#1a3a4a","#4a6a7a","#0a2a3a"],
@@ -733,7 +733,7 @@ const MOB_TYPES = {
 
   // Vortalis Floor 5 — Boss: Mami Wata
   mami_wata: {
-    name: "Mami Wata", hp: 4000, speed: 2.8, damage: 34, killHeal: 50, goldReward: 60,
+    name: "Mami Wata", hp: 4000, speed: 2.9, damage: 34, killHeal: 50, goldReward: 60,
     skin: "#2a4a5a", hair: "#1a2a3a", shirt: "#1a2a4a", pants: "#0a1a3a", contactRange: 82,
     ai: 'witch', _specials: ['leviathans_fang', 'serpents_strike', 'tidal_trample', 'abyssal_undertow_mw', 'divine_deluge', 'oceanic_domain', 'wrath_of_sea'],
     isBoss: true, bossScale: 1.6, specialCD: 300,
@@ -744,25 +744,25 @@ const MOB_TYPES = {
   // ===================== EARTH-205 FLOOR 1: BACK ALLEYS =====================
   // Section A — Street Thugs (waves 1-4)
   scrap_metal_scrounger: {
-    name: "Scrap Metal Scrounger", hp: 140, speed: 4, damage: 20, killHeal: 8, goldReward: 5,
+    name: "Scrap Metal Scrounger", hp: 140, speed: 4.2, damage: 20, killHeal: 8, goldReward: 5,
     skin: "#6a5a4a", hair: "#3a2a1a", shirt: "#5a4a30", pants: "#4a3a20", contactRange: 76,
     ai: 'grunt', _specials: ['pipe_swipe'], specialCD: 600,
     deathColors: ["#6a5a4a","#5a4a30","#8a7a6a","#4a3a20"],
   },
   junkyard_hound: {
-    name: "Junkyard Hound", hp: 110, speed: 5.4, damage: 22, killHeal: 5, goldReward: 4,
+    name: "Junkyard Hound", hp: 110, speed: 5.7, damage: 22, killHeal: 5, goldReward: 4,
     skin: "#7a6a50", hair: "#4a3a20", shirt: "#5a5030", pants: "#4a4020", contactRange: 74,
     ai: 'runner', _specials: ['ankle_bite'], specialCD: 420,
     deathColors: ["#7a6a50","#5a5030","#9a8a70","#4a4020"],
   },
   alleyway_lookout: {
-    name: "Alleyway Lookout", hp: 120, speed: 3.2, damage: 20, killHeal: 10, goldReward: 5,
+    name: "Alleyway Lookout", hp: 120, speed: 3.4, damage: 20, killHeal: 10, goldReward: 5,
     skin: "#7a6a5a", hair: "#2a1a0a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 76,
     ai: 'archer', _specials: ['slingshot_snipe'], specialCD: 540,
     deathColors: ["#7a6a5a","#4a3a2a","#9a8a7a","#3a2a1a"],
   },
   patchwork_thug: {
-    name: "Patchwork Thug", hp: 160, speed: 4.4, damage: 24, killHeal: 8, goldReward: 5,
+    name: "Patchwork Thug", hp: 160, speed: 4.6, damage: 24, killHeal: 8, goldReward: 5,
     skin: "#6a5040", hair: "#2a1a0a", shirt: "#5a4030", pants: "#3a3020", contactRange: 76,
     ai: 'grunt', _specials: ['frenzied_slash'], specialCD: 540,
     deathColors: ["#6a5040","#5a4030","#8a7060","#3a3020"],
@@ -770,7 +770,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 1 — Boss: Willis
   willis: {
-    name: "Willis", hp: 2500, speed: 3.6, damage: 38, killHeal: 50, goldReward: 40,
+    name: "Willis", hp: 2500, speed: 3.8, damage: 38, killHeal: 50, goldReward: 40,
     skin: "#5a4a3a", hair: "#1a1a0a", shirt: "#4a3a20", pants: "#3a2a10", contactRange: 82,
     ai: 'tank', _specials: ['jury_rigged_taser', 'chemical_flask', 'caltrop_scatter', 'decoy_device', 'calculated_dodge', 'makeshift_emp', 'master_plan'],
     isBoss: true, bossScale: 1.4, specialCD: 540,
@@ -779,25 +779,25 @@ const MOB_TYPES = {
 
   // Section B — Underground Pit (waves 6-9)
   butcher_block_maniac: {
-    name: "Butcher Block Maniac", hp: 180, speed: 4.4, damage: 26, killHeal: 8, goldReward: 5,
+    name: "Butcher Block Maniac", hp: 180, speed: 4.6, damage: 26, killHeal: 8, goldReward: 5,
     skin: "#7a5a4a", hair: "#2a0a0a", shirt: "#5a2020", pants: "#3a1a1a", contactRange: 76,
     ai: 'grunt', _specials: ['boomerang_cleave'], specialCD: 480,
     deathColors: ["#7a5a4a","#5a2020","#9a7a6a","#3a1a1a"],
   },
   adrenaline_fiend: {
-    name: "Adrenaline Fiend", hp: 140, speed: 5.6, damage: 28, killHeal: 5, goldReward: 4,
+    name: "Adrenaline Fiend", hp: 140, speed: 5.9, damage: 28, killHeal: 5, goldReward: 4,
     skin: "#8a6a5a", hair: "#1a1a0a", shirt: "#6a4a30", pants: "#4a3020", contactRange: 74,
     ai: 'runner', _specials: ['glass_flurry'], specialCD: 360,
     deathColors: ["#8a6a5a","#6a4a30","#aa8a7a","#4a3020"],
   },
   nail_gunner: {
-    name: "Nail Gunner", hp: 150, speed: 3, damage: 22, killHeal: 10, goldReward: 6,
+    name: "Nail Gunner", hp: 150, speed: 3.2, damage: 22, killHeal: 10, goldReward: 6,
     skin: "#6a5a4a", hair: "#2a2a1a", shirt: "#4a4030", pants: "#3a3020", contactRange: 76,
     ai: 'archer', _specials: ['pneumatic_shot'], specialCD: 480,
     deathColors: ["#6a5a4a","#4a4030","#8a7a6a","#3a3020"],
   },
   aerosol_pyro: {
-    name: "Aerosol Pyro", hp: 200, speed: 3.8, damage: 30, killHeal: 12, goldReward: 6,
+    name: "Aerosol Pyro", hp: 200, speed: 4, damage: 30, killHeal: 12, goldReward: 6,
     skin: "#7a6050", hair: "#1a1a0a", shirt: "#5a4a2a", pants: "#4a3a1a", contactRange: 78,
     ai: 'tank', _specials: ['hairspray_flamethrower'], specialCD: 600,
     deathColors: ["#7a6050","#5a4a2a","#9a8070","#4a3a1a"],
@@ -805,7 +805,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 1 — Boss: Puppedrill
   puppedrill: {
-    name: "Puppedrill", hp: 3000, speed: 3.2, damage: 42, killHeal: 50, goldReward: 45,
+    name: "Puppedrill", hp: 3000, speed: 3.4, damage: 42, killHeal: 50, goldReward: 45,
     skin: "#5a4030", hair: "#1a0a0a", shirt: "#4a2a1a", pants: "#3a1a0a", contactRange: 82,
     ai: 'tank', _specials: ['crowbar_hook', 'shattering_swing', 'scrap_metal_toss', 'adrenaline_sprint', 'kneecap_sweep', 'brutal_beatdown'],
     isBoss: true, bossScale: 1.5, specialCD: 480,
@@ -816,31 +816,31 @@ const MOB_TYPES = {
   // ===================== EARTH-205 FLOOR 2: SYNDICATE DISTRICT =====================
   // Section A — Syndicate Enforcers (waves 1-4)
   chain_gang_brawler: {
-    name: "Chain Gang Brawler", hp: 190, speed: 4.4, damage: 26, killHeal: 8, goldReward: 6,
+    name: "Chain Gang Brawler", hp: 190, speed: 4.6, damage: 26, killHeal: 8, goldReward: 6,
     skin: "#5a5a5a", hair: "#1a1a1a", shirt: "#3a3a3a", pants: "#2a2a2a", contactRange: 76,
     ai: 'grunt', _specials: ['chain_whip'], specialCD: 540,
     deathColors: ["#5a5a5a","#3a3a3a","#7a7a7a","#2a2a2a"],
   },
   syndicate_enforcer: {
-    name: "Syndicate Enforcer", hp: 170, speed: 3.2, damage: 28, killHeal: 10, goldReward: 6,
+    name: "Syndicate Enforcer", hp: 170, speed: 3.4, damage: 28, killHeal: 10, goldReward: 6,
     skin: "#5a5050", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#1a1a1a", contactRange: 76,
     ai: 'archer', _specials: ['suppressive_burst'], specialCD: 540,
     deathColors: ["#5a5050","#2a2a2a","#7a7070","#1a1a1a"],
   },
   riot_juggernaut: {
-    name: "Riot Juggernaut", hp: 280, speed: 3.6, damage: 34, killHeal: 15, goldReward: 7,
+    name: "Riot Juggernaut", hp: 280, speed: 3.8, damage: 34, killHeal: 15, goldReward: 7,
     skin: "#4a4a4a", hair: "#1a1a1a", shirt: "#2a2a3a", pants: "#1a1a2a", contactRange: 78,
     ai: 'tank', _specials: ['bouncing_blast'], specialCD: 660,
     deathColors: ["#4a4a4a","#2a2a3a","#6a6a6a","#1a1a2a"],
   },
   macabre_dancer: {
-    name: "Macabre Dancer", hp: 150, speed: 5, damage: 24, killHeal: 5, goldReward: 5,
+    name: "Macabre Dancer", hp: 150, speed: 5.3, damage: 24, killHeal: 5, goldReward: 5,
     skin: "#6a5a5a", hair: "#0a0a0a", shirt: "#4a1a1a", pants: "#2a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['pirouette_dash'], specialCD: 420,
     deathColors: ["#6a5a5a","#4a1a1a","#8a7a7a","#2a0a0a"],
   },
   arsonist: {
-    name: "Arsonist", hp: 200, speed: 4.4, damage: 28, killHeal: 8, goldReward: 6,
+    name: "Arsonist", hp: 200, speed: 4.6, damage: 28, killHeal: 8, goldReward: 6,
     skin: "#7a5030", hair: "#1a0a0a", shirt: "#6a3020", pants: "#4a2010", contactRange: 76,
     ai: 'grunt', _specials: ['flare_trap'], specialCD: 540,
     deathColors: ["#7a5030","#6a3020","#9a7050","#4a2010"],
@@ -848,7 +848,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 2 — Boss: Sackhead
   sackhead: {
-    name: "Sackhead", hp: 3500, speed: 3.8, damage: 46, killHeal: 50, goldReward: 50,
+    name: "Sackhead", hp: 3500, speed: 4, damage: 46, killHeal: 50, goldReward: 50,
     skin: "#4a3a2a", hair: "#2a1a0a", shirt: "#3a2a1a", pants: "#2a1a0a", contactRange: 82,
     ai: 'tank', _specials: ['barbed_swing', 'skull_cracker', 'bull_charge', 'stranglehold', 'batter_up'],
     isBoss: true, bossScale: 1.5, specialCD: 480,
@@ -858,31 +858,31 @@ const MOB_TYPES = {
 
   // Section B — Hitmen (waves 6-9)
   executioner_bruiser: {
-    name: "Executioner Bruiser", hp: 220, speed: 4.6, damage: 30, killHeal: 8, goldReward: 6,
+    name: "Executioner Bruiser", hp: 220, speed: 4.8, damage: 30, killHeal: 8, goldReward: 6,
     skin: "#4a4a4a", hair: "#0a0a0a", shirt: "#2a1a1a", pants: "#1a0a0a", contactRange: 76,
     ai: 'grunt', _specials: ['guillotine_drop'], specialCD: 480,
     deathColors: ["#4a4a4a","#2a1a1a","#6a6a6a","#1a0a0a"],
   },
   laser_grid_thief: {
-    name: "Laser Grid Thief", hp: 160, speed: 5.5, damage: 26, killHeal: 5, goldReward: 5,
+    name: "Laser Grid Thief", hp: 160, speed: 5.8, damage: 26, killHeal: 5, goldReward: 5,
     skin: "#5a5a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#2a2a3a", contactRange: 74,
     ai: 'runner', _specials: ['tripwire_drop_e205'], specialCD: 360,
     deathColors: ["#5a5a6a","#3a3a4a","#7a7a8a","#2a2a3a"],
   },
   tactical_spotter: {
-    name: "Tactical Spotter", hp: 170, speed: 3, damage: 24, killHeal: 10, goldReward: 6,
+    name: "Tactical Spotter", hp: 170, speed: 3.2, damage: 24, killHeal: 10, goldReward: 6,
     skin: "#5a5050", hair: "#1a1a1a", shirt: "#3a2a2a", pants: "#2a1a1a", contactRange: 76,
     ai: 'archer', _specials: ['laser_designation'], specialCD: 540,
     deathColors: ["#5a5050","#3a2a2a","#7a7070","#2a1a1a"],
   },
   tommy_gun_heavy: {
-    name: "Tommy Gun Heavy", hp: 260, speed: 3.8, damage: 32, killHeal: 12, goldReward: 7,
+    name: "Tommy Gun Heavy", hp: 260, speed: 4, damage: 32, killHeal: 12, goldReward: 7,
     skin: "#4a4040", hair: "#0a0a0a", shirt: "#2a2a2a", pants: "#1a1a1a", contactRange: 78,
     ai: 'tank', _specials: ['spray_and_pray'], specialCD: 600,
     deathColors: ["#4a4040","#2a2a2a","#6a6060","#1a1a1a"],
   },
   breacher_unit: {
-    name: "Breacher Unit", hp: 210, speed: 4.6, damage: 28, killHeal: 8, goldReward: 6,
+    name: "Breacher Unit", hp: 210, speed: 4.8, damage: 28, killHeal: 8, goldReward: 6,
     skin: "#4a4a4a", hair: "#1a1a1a", shirt: "#3a3a3a", pants: "#2a2a2a", contactRange: 76,
     ai: 'grunt', _specials: ['kick_and_clear'], specialCD: 480,
     deathColors: ["#4a4a4a","#3a3a3a","#6a6a6a","#2a2a2a"],
@@ -890,7 +890,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 2 — Boss: Mr. Schwallie
   mr_schwallie: {
-    name: "Mr. Schwallie", hp: 4000, speed: 4, damage: 50, killHeal: 50, goldReward: 55,
+    name: "Mr. Schwallie", hp: 4000, speed: 4.2, damage: 50, killHeal: 50, goldReward: 55,
     skin: "#3a3a3a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 82,
     ai: 'tank', _specials: ['cigar_flick', 'cqc_counter', 'akimbo_barrage', 'tactical_slide', 'flashbang_breach', 'one_man_army'],
     isBoss: true, bossScale: 1.5, specialCD: 420,
@@ -901,20 +901,20 @@ const MOB_TYPES = {
   // ===================== EARTH-205 FLOOR 3: CARNIVAL OF DREAD =====================
   // Section A — Carnival Freaks (waves 1-4)
   balloon_twister: {
-    name: "Balloon Twister", hp: 180, speed: 2.2, damage: 22, killHeal: 12, goldReward: 6,
+    name: "Balloon Twister", hp: 180, speed: 2.3, damage: 22, killHeal: 12, goldReward: 6,
     skin: "#8a7a8a", hair: "#4a2a5a", shirt: "#7a4a8a", pants: "#5a2a6a", contactRange: 76,
     ai: 'witch', _specials: ['static_poodle'], specialCD: 600,
     kiteRange: 280,
     deathColors: ["#8a7a8a","#7a4a8a","#aa9aaa","#5a2a6a"],
   },
   sledgehammer_brute: {
-    name: "Sledgehammer Brute", hp: 250, speed: 4, damage: 32, killHeal: 8, goldReward: 6,
+    name: "Sledgehammer Brute", hp: 250, speed: 4.2, damage: 32, killHeal: 8, goldReward: 6,
     skin: "#6a5a5a", hair: "#2a1a2a", shirt: "#5a3a4a", pants: "#4a2a3a", contactRange: 78,
     ai: 'grunt', _specials: ['earthquake_slam_e205'], specialCD: 540,
     deathColors: ["#6a5a5a","#5a3a4a","#8a7a7a","#4a2a3a"],
   },
   stagehand_brute: {
-    name: "Stagehand Brute", hp: 230, speed: 4.4, damage: 30, killHeal: 8, goldReward: 6,
+    name: "Stagehand Brute", hp: 230, speed: 4.6, damage: 30, killHeal: 8, goldReward: 6,
     skin: "#7a6a6a", hair: "#2a1a1a", shirt: "#6a4a3a", pants: "#5a3a2a", contactRange: 76,
     ai: 'grunt', _specials: ['rigging_drop'], specialCD: 480,
     deathColors: ["#7a6a6a","#6a4a3a","#9a8a8a","#5a3a2a"],
@@ -926,7 +926,7 @@ const MOB_TYPES = {
     deathColors: ["#9a9a9a","#8a8a8a","#bababa","#6a6a6a"],
   },
   juggling_jester: {
-    name: "Juggling Jester", hp: 170, speed: 5, damage: 24, killHeal: 5, goldReward: 5,
+    name: "Juggling Jester", hp: 170, speed: 5.3, damage: 24, killHeal: 5, goldReward: 5,
     skin: "#8a7a6a", hair: "#3a2a1a", shirt: "#aa4444", pants: "#6a2a2a", contactRange: 74,
     ai: 'runner', _specials: ['pin_cascade'], specialCD: 420,
     deathColors: ["#8a7a6a","#aa4444","#aa9a8a","#6a2a2a"],
@@ -934,7 +934,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 3 — Boss: Killer Mime
   killer_mime: {
-    name: "Killer Mime", hp: 4000, speed: 3.8, damage: 48, killHeal: 50, goldReward: 55,
+    name: "Killer Mime", hp: 4000, speed: 4, damage: 48, killHeal: 50, goldReward: 55,
     skin: "#e0e0e0", hair: "#1a1a1a", shirt: "#2a2a3a", pants: "#1a1a2a", contactRange: 82,
     ai: 'tank', _specials: ['finger_gun', 'invisible_wall', 'heavy_mallet', 'tug_of_war', 'trapped_in_box'],
     isBoss: true, bossScale: 1.5, specialCD: 480,
@@ -943,26 +943,26 @@ const MOB_TYPES = {
 
   // Section B — Funhouse (waves 6-9)
   illusionist: {
-    name: "Illusionist", hp: 200, speed: 2.6, damage: 26, killHeal: 12, goldReward: 6,
+    name: "Illusionist", hp: 200, speed: 2.7, damage: 26, killHeal: 12, goldReward: 6,
     skin: "#7a6a8a", hair: "#3a2a4a", shirt: "#6a3a7a", pants: "#4a2a5a", contactRange: 76,
     ai: 'witch', _specials: ['smoke_and_mirrors'], specialCD: 600,
     kiteRange: 300,
     deathColors: ["#7a6a8a","#6a3a7a","#9a8aaa","#4a2a5a"],
   },
   prop_master: {
-    name: "Prop Master", hp: 210, speed: 3.6, damage: 28, killHeal: 10, goldReward: 6,
+    name: "Prop Master", hp: 210, speed: 3.8, damage: 28, killHeal: 10, goldReward: 6,
     skin: "#8a7070", hair: "#2a1a1a", shirt: "#6a4a4a", pants: "#4a2a2a", contactRange: 76,
     ai: 'archer', _specials: ['prop_toss'], specialCD: 540,
     deathColors: ["#8a7070","#6a4a4a","#aa9090","#4a2a2a"],
   },
   disco_brawler: {
-    name: "Disco Brawler", hp: 190, speed: 5, damage: 30, killHeal: 5, goldReward: 5,
+    name: "Disco Brawler", hp: 190, speed: 5.3, damage: 30, killHeal: 5, goldReward: 5,
     skin: "#7a6a7a", hair: "#3a2a3a", shirt: "#8a5a9a", pants: "#5a3a6a", contactRange: 74,
     ai: 'runner', _specials: ['hustle_step'], specialCD: 420,
     deathColors: ["#7a6a7a","#8a5a9a","#9a8a9a","#5a3a6a"],
   },
   phantom_chorus: {
-    name: "Phantom Chorus", hp: 220, speed: 2, damage: 24, killHeal: 12, goldReward: 7,
+    name: "Phantom Chorus", hp: 220, speed: 2.1, damage: 24, killHeal: 12, goldReward: 7,
     skin: "#6a6a7a", hair: "#3a3a4a", shirt: "#5a5a7a", pants: "#3a3a5a", contactRange: 76,
     ai: 'witch', _specials: ['soprano_shriek'], specialCD: 540,
     kiteRange: 300,
@@ -971,7 +971,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 3 — Boss: Major Phantom
   major_phantom: {
-    name: "Major Phantom", hp: 4500, speed: 3.6, damage: 52, killHeal: 50, goldReward: 60,
+    name: "Major Phantom", hp: 4500, speed: 3.8, damage: 52, killHeal: 50, goldReward: 60,
     skin: "#5a5a6a", hair: "#2a2a3a", shirt: "#4a3a5a", pants: "#2a1a3a", contactRange: 82,
     ai: 'tank', _specials: ['overture_slash', 'stage_blood', 'theatrical_parry', 'phantom_step', 'grand_finale'],
     isBoss: true, bossScale: 1.5, specialCD: 420,
@@ -982,26 +982,26 @@ const MOB_TYPES = {
   // ===================== EARTH-205 FLOOR 4: CASINO / MOB HQ =====================
   // Section A — Casino Floor (waves 1-4)
   tracksuit_goon: {
-    name: "Tracksuit Goon", hp: 240, speed: 4.4, damage: 30, killHeal: 8, goldReward: 7,
+    name: "Tracksuit Goon", hp: 240, speed: 4.6, damage: 30, killHeal: 8, goldReward: 7,
     skin: "#6a5a4a", hair: "#1a1a0a", shirt: "#8a7040", pants: "#5a4a20", contactRange: 76,
     ai: 'grunt', _specials: ['knee_capper'], specialCD: 480,
     deathColors: ["#6a5a4a","#8a7040","#8a7a6a","#5a4a20"],
   },
   vault_hacker: {
-    name: "Vault Hacker", hp: 200, speed: 2.2, damage: 26, killHeal: 12, goldReward: 7,
+    name: "Vault Hacker", hp: 200, speed: 2.3, damage: 26, killHeal: 12, goldReward: 7,
     skin: "#7a6a5a", hair: "#2a1a0a", shirt: "#3a3020", pants: "#2a2010", contactRange: 76,
     ai: 'witch', _specials: ['auto_turret'], specialCD: 600,
     kiteRange: 280,
     deathColors: ["#7a6a5a","#3a3020","#9a8a7a","#2a2010"],
   },
   casino_pit_boss: {
-    name: "Casino Pit Boss", hp: 270, speed: 4.6, damage: 34, killHeal: 8, goldReward: 7,
+    name: "Casino Pit Boss", hp: 270, speed: 4.8, damage: 34, killHeal: 8, goldReward: 7,
     skin: "#5a4a3a", hair: "#0a0a0a", shirt: "#2a1a0a", pants: "#1a0a0a", contactRange: 78,
     ai: 'grunt', _specials: ['baton_sweep'], specialCD: 540,
     deathColors: ["#5a4a3a","#2a1a0a","#7a6a5a","#1a0a0a"],
   },
   smokescreen_smuggler: {
-    name: "Smokescreen Smuggler", hp: 210, speed: 2, damage: 24, killHeal: 12, goldReward: 6,
+    name: "Smokescreen Smuggler", hp: 210, speed: 2.1, damage: 24, killHeal: 12, goldReward: 6,
     skin: "#6a5a50", hair: "#1a1a1a", shirt: "#4a3a2a", pants: "#3a2a1a", contactRange: 76,
     ai: 'witch', _specials: ['flash_and_fade'], specialCD: 540,
     kiteRange: 300,
@@ -1010,7 +1010,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 4 — Boss: Lady Red
   lady_red: {
-    name: "Lady Red", hp: 4800, speed: 4, damage: 54, killHeal: 50, goldReward: 60,
+    name: "Lady Red", hp: 4800, speed: 4.2, damage: 54, killHeal: 50, goldReward: 60,
     skin: "#8a6a6a", hair: "#2a0a0a", shirt: "#6a1a1a", pants: "#4a0a0a", contactRange: 82,
     ai: 'tank', _specials: ['concealed_stiletto', 'suppressed_fire', 'toxic_perfume', 'red_herring', 'checkmate'],
     isBoss: true, bossScale: 1.5, specialCD: 420,
@@ -1020,25 +1020,25 @@ const MOB_TYPES = {
 
   // Section B — Mob Headquarters (waves 6-9)
   the_cleaner: {
-    name: "The Cleaner", hp: 250, speed: 3.2, damage: 32, killHeal: 10, goldReward: 7,
+    name: "The Cleaner", hp: 250, speed: 3.4, damage: 32, killHeal: 10, goldReward: 7,
     skin: "#5a5050", hair: "#0a0a0a", shirt: "#2a2020", pants: "#1a1010", contactRange: 76,
     ai: 'archer', _specials: ['execution_shot'], specialCD: 540,
     deathColors: ["#5a5050","#2a2020","#7a7070","#1a1010"],
   },
   lockdown_sentinel: {
-    name: "Lockdown Sentinel", hp: 320, speed: 3.8, damage: 36, killHeal: 15, goldReward: 8,
+    name: "Lockdown Sentinel", hp: 320, speed: 4, damage: 36, killHeal: 15, goldReward: 8,
     skin: "#4a4a4a", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#1a1a1a", contactRange: 78,
     ai: 'tank', _specials: ['stasis_beam'], specialCD: 660,
     deathColors: ["#4a4a4a","#2a2a2a","#6a6a6a","#1a1a1a"],
   },
   sprayer_drone: {
-    name: "Sprayer Drone", hp: 180, speed: 3.1, damage: 26, killHeal: 10, goldReward: 6,
+    name: "Sprayer Drone", hp: 180, speed: 3.3, damage: 26, killHeal: 10, goldReward: 6,
     skin: "#7a7a7a", hair: "#4a4a4a", shirt: "#5a5a5a", pants: "#3a3a3a", contactRange: 76,
     ai: 'hover', _specials: ['crop_dust'], specialCD: 480,
     deathColors: ["#7a7a7a","#5a5a5a","#9a9a9a","#3a3a3a"],
   },
   mad_assistant: {
-    name: "Mad Assistant", hp: 220, speed: 3, damage: 28, killHeal: 10, goldReward: 7,
+    name: "Mad Assistant", hp: 220, speed: 3.2, damage: 28, killHeal: 10, goldReward: 7,
     skin: "#6a6050", hair: "#2a1a0a", shirt: "#4a3a20", pants: "#3a2a10", contactRange: 76,
     ai: 'archer', _specials: ['volatile_reaction'], specialCD: 480,
     deathColors: ["#6a6050","#4a3a20","#8a8070","#3a2a10"],
@@ -1046,7 +1046,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 4 — Boss: The Boss (E-205)
   the_boss_e205: {
-    name: "The Boss", hp: 5200, speed: 3.8, damage: 58, killHeal: 50, goldReward: 65,
+    name: "The Boss", hp: 5200, speed: 4, damage: 58, killHeal: 50, goldReward: 65,
     skin: "#3a3030", hair: "#0a0a0a", shirt: "#1a1010", pants: "#0a0a0a", contactRange: 82,
     ai: 'tank', _specials: ['gold_ring_hook', 'saturday_night_shuffle', 'call_the_goons', 'dirty_money', 'the_hit'],
     isBoss: true, bossScale: 1.6, specialCD: 420,
@@ -1057,26 +1057,26 @@ const MOB_TYPES = {
   // ===================== EARTH-205 FLOOR 5: CHEMICAL PLANT =====================
   // Section A — Hazmat Zone (waves 1-4)
   hazmat_grunt: {
-    name: "Hazmat Grunt", hp: 290, speed: 4.4, damage: 34, killHeal: 8, goldReward: 7,
+    name: "Hazmat Grunt", hp: 290, speed: 4.6, damage: 34, killHeal: 8, goldReward: 7,
     skin: "#8a8a40", hair: "#4a4a10", shirt: "#7a7a30", pants: "#5a5a10", contactRange: 76,
     ai: 'grunt', _specials: ['acid_splash'], specialCD: 480,
     deathColors: ["#8a8a40","#7a7a30","#aaaa60","#5a5a10"],
   },
   sludge_crawler: {
-    name: "Sludge Crawler", hp: 220, speed: 5, damage: 30, killHeal: 5, goldReward: 6,
+    name: "Sludge Crawler", hp: 220, speed: 5.3, damage: 30, killHeal: 5, goldReward: 6,
     skin: "#5a7a3a", hair: "#2a4a1a", shirt: "#4a6a2a", pants: "#3a5a1a", contactRange: 74,
     ai: 'runner', _specials: ['sticky_trail'], specialCD: 360,
     deathColors: ["#5a7a3a","#4a6a2a","#7a9a5a","#3a5a1a"],
   },
   irradiated_walker: {
-    name: "Irradiated Walker", hp: 250, speed: 1.9, damage: 28, killHeal: 12, goldReward: 7,
+    name: "Irradiated Walker", hp: 250, speed: 2, damage: 28, killHeal: 12, goldReward: 7,
     skin: "#6a8a4a", hair: "#3a5a2a", shirt: "#5a7a3a", pants: "#4a6a2a", contactRange: 76,
     ai: 'witch', _specials: ['rad_burst'], specialCD: 540,
     kiteRange: 280,
     deathColors: ["#6a8a4a","#5a7a3a","#8aaa6a","#4a6a2a"],
   },
   chem_brute: {
-    name: "Chem Brute", hp: 310, speed: 4, damage: 36, killHeal: 10, goldReward: 7,
+    name: "Chem Brute", hp: 310, speed: 4.2, damage: 36, killHeal: 10, goldReward: 7,
     skin: "#7a7a30", hair: "#3a3a10", shirt: "#6a6a20", pants: "#4a4a10", contactRange: 78,
     ai: 'grunt', _specials: ['fume_slam'], specialCD: 540,
     deathColors: ["#7a7a30","#6a6a20","#9a9a50","#4a4a10"],
@@ -1084,7 +1084,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 5 — Boss: Lady Elixir
   lady_elixir: {
-    name: "Lady Elixir", hp: 5500, speed: 3.2, damage: 56, killHeal: 50, goldReward: 65,
+    name: "Lady Elixir", hp: 5500, speed: 3.4, damage: 56, killHeal: 50, goldReward: 65,
     skin: "#5a8a5a", hair: "#2a5a2a", shirt: "#4a7a4a", pants: "#2a5a2a", contactRange: 82,
     ai: 'tank', _specials: ['toxic_stream', 'corrosive_puddle', 'volatile_flask_boss', 'stim_valve', 'maximum_overpressure'],
     isBoss: true, bossScale: 1.5, specialCD: 420,
@@ -1094,26 +1094,26 @@ const MOB_TYPES = {
 
   // Section B — Reactor Core (waves 6-9)
   failed_specimen: {
-    name: "Failed Specimen", hp: 260, speed: 5.4, damage: 32, killHeal: 5, goldReward: 6,
+    name: "Failed Specimen", hp: 260, speed: 5.7, damage: 32, killHeal: 5, goldReward: 6,
     skin: "#8a9a8a", hair: "#5a6a5a", shirt: "#d0d0d0", pants: "#b0b0b0", contactRange: 74,
     ai: 'runner', _specials: ['feral_leap'], specialCD: 360,
     deathColors: ["#8a9a8a","#d0d0d0","#aabaa0","#b0b0b0"],
   },
   reactor_technician: {
-    name: "Reactor Technician", hp: 240, speed: 3.6, damage: 30, killHeal: 10, goldReward: 7,
+    name: "Reactor Technician", hp: 240, speed: 3.8, damage: 30, killHeal: 10, goldReward: 7,
     skin: "#d0d0c0", hair: "#8a8a70", shirt: "#b0b0a0", pants: "#9a9a80", contactRange: 76,
     ai: 'archer', _specials: ['plasma_bolt'], specialCD: 480,
     deathColors: ["#d0d0c0","#b0b0a0","#e0e0d0","#9a9a80"],
   },
   containment_breach_blob: {
-    name: "Containment Breach", hp: 280, speed: 2.2, damage: 26, killHeal: 12, goldReward: 7,
+    name: "Containment Breach", hp: 280, speed: 2.3, damage: 26, killHeal: 12, goldReward: 7,
     skin: "#4a8a4a", hair: "#2a6a2a", shirt: "#3a7a3a", pants: "#2a5a2a", contactRange: 76,
     ai: 'witch', _specials: ['ooze_spread'], specialCD: 540,
     kiteRange: 280,
     deathColors: ["#4a8a4a","#3a7a3a","#6aaa6a","#2a5a2a"],
   },
   lockdown_sentinel_e205: {
-    name: "Lockdown Sentinel Mk2", hp: 350, speed: 4, damage: 38, killHeal: 15, goldReward: 8,
+    name: "Lockdown Sentinel Mk2", hp: 350, speed: 4.2, damage: 38, killHeal: 15, goldReward: 8,
     skin: "#e0e0d0", hair: "#a0a090", shirt: "#d0d0c0", pants: "#b0b0a0", contactRange: 78,
     ai: 'tank', _specials: ['reactor_slam'], specialCD: 600,
     deathColors: ["#e0e0d0","#d0d0c0","#f0f0e0","#b0b0a0"],
@@ -1121,7 +1121,7 @@ const MOB_TYPES = {
 
   // Earth-205 Floor 5 — Final Boss: Nofaux
   nofaux: {
-    name: "Nofaux", hp: 6000, speed: 4.5, damage: 60, killHeal: 50, goldReward: 75,
+    name: "Nofaux", hp: 6000, speed: 4.7, damage: 60, killHeal: 50, goldReward: 75,
     skin: "#4a6a4a", hair: "#1a3a1a", shirt: "#3a5a3a", pants: "#1a3a1a", contactRange: 84,
     ai: 'tank', _specials: ['caustic_cleave', 'viscous_sludge', 'reactive_gel_shield', 'hazard_spill', 'bio_grapple', 'critical_meltdown'],
     isBoss: true, bossScale: 1.6, specialCD: 360,
@@ -1132,13 +1132,13 @@ const MOB_TYPES = {
   // ===================== WAGASHI FLOOR 1: SILK NEST → BOAR TERRITORY =====================
   // Section A — Silk Nest (waves 1-4)
   silk_skitterer: {
-    name: "Silk Skitterer", hp: 200, speed: 5.7, damage: 28, killHeal: 8, goldReward: 5,
+    name: "Silk Skitterer", hp: 200, speed: 6, damage: 28, killHeal: 8, goldReward: 5,
     skin: "#c0b8c8", hair: "#9a90a8", shirt: "#b0a8b8", pants: "#8a8098", contactRange: 74,
     ai: 'runner', _specials: ['snap_web'], specialCD: 360, // 6s — fast spider scout
     deathColors: ["#c0b8c8","#b0a8b8","#d8d0e0","#8a8098"],
   },
   needleback_weaver: {
-    name: "Needleback Weaver", hp: 230, speed: 3.8, damage: 30, killHeal: 10, goldReward: 6,
+    name: "Needleback Weaver", hp: 230, speed: 4, damage: 30, killHeal: 10, goldReward: 6,
     skin: "#b8b0c0", hair: "#8a8098", shirt: "#a8a0b0", pants: "#7a7088", contactRange: 74,
     ai: 'archer', _specials: ['silk_needle_fan'], specialCD: 540, // 9s — fires silk spike spread
     arrowRate: 90, arrowSpeed: 9, arrowRange: 380, arrowBounces: 0, arrowLife: 450,
@@ -1146,14 +1146,14 @@ const MOB_TYPES = {
     deathColors: ["#b8b0c0","#a8a0b0","#d0c8d8","#7a7088"],
   },
   brood_lantern_mite: {
-    name: "Brood Lantern Mite", hp: 250, speed: 3.8, damage: 28, killHeal: 12, goldReward: 7,
+    name: "Brood Lantern Mite", hp: 250, speed: 4, damage: 28, killHeal: 12, goldReward: 7,
     skin: "#d0c8b0", hair: "#b0a890", shirt: "#c8c0a8", pants: "#a0988a", contactRange: 76,
     ai: 'witch', _specials: ['brood_glow'], specialCD: 720, // 12s — slow support that buffs allies speed
     kiteRange: 300,
     deathColors: ["#d0c8b0","#c8c0a8","#e8e0c8","#a0988a"],
   },
   silk_coffin_widow: {
-    name: "Silk Coffin Widow", hp: 280, speed: 4, damage: 35, killHeal: 15, goldReward: 8,
+    name: "Silk Coffin Widow", hp: 280, speed: 4.2, damage: 35, killHeal: 15, goldReward: 8,
     skin: "#a098b0", hair: "#7a7088", shirt: "#9088a0", pants: "#6a6078", contactRange: 76,
     ai: 'grunt', _specials: ['wrap_tomb'], specialCD: 660, // 11s — delayed floor trap
     deathColors: ["#a098b0","#9088a0","#b8b0c8","#6a6078"],
@@ -1161,7 +1161,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 1 — Mini-Boss: Sichou (L5)
   sichou: {
-    name: "Sichou", hp: 3500, speed: 4.8, damage: 45, killHeal: 40, goldReward: 30,
+    name: "Sichou", hp: 3500, speed: 5.1, damage: 45, killHeal: 40, goldReward: 30,
     skin: "#d8d0e0", hair: "#a098b8", shirt: "#c8c0d8", pants: "#9088a8", contactRange: 80,
     ai: 'runner', _specials: ['silk_snare', 'thread_shot', 'brood_call'],
     isBoss: true, bossScale: 1.4, specialCD: 600, // 10s
@@ -1170,25 +1170,25 @@ const MOB_TYPES = {
 
   // Section B — Boar Territory (waves 6-9)
   copperhide_hoglet: {
-    name: "Copperhide Hoglet", hp: 240, speed: 4.5, damage: 32, killHeal: 10, goldReward: 6,
+    name: "Copperhide Hoglet", hp: 240, speed: 4.7, damage: 32, killHeal: 10, goldReward: 6,
     skin: "#8a6a4a", hair: "#5a4020", shirt: "#7a5a3a", pants: "#5a4020", contactRange: 76,
     ai: 'grunt', _specials: ['metal_skull_bash'], specialCD: 420, // 7s — short charge
     deathColors: ["#8a6a4a","#7a5a3a","#aa8a6a","#5a4020"],
   },
   tusk_raider: {
-    name: "Tusk Raider", hp: 210, speed: 5.4, damage: 30, killHeal: 8, goldReward: 5,
+    name: "Tusk Raider", hp: 210, speed: 5.7, damage: 30, killHeal: 8, goldReward: 5,
     skin: "#7a5a3a", hair: "#4a3010", shirt: "#6a4a2a", pants: "#4a3010", contactRange: 74,
     ai: 'runner', _specials: ['dust_rush'], specialCD: 360, // 6s — dash + dust cloud
     deathColors: ["#7a5a3a","#6a4a2a","#9a7a5a","#4a3010"],
   },
   bronzeback_crusher: {
-    name: "Bronzeback Crusher", hp: 280, speed: 3.8, damage: 34, killHeal: 15, goldReward: 8,
+    name: "Bronzeback Crusher", hp: 280, speed: 4, damage: 34, killHeal: 15, goldReward: 8,
     skin: "#9a7a50", hair: "#6a5030", shirt: "#8a6a40", pants: "#6a5030", contactRange: 78,
     ai: 'tank', _specials: ['armor_brace'], specialCD: 660, // 11s — damage reduction
     deathColors: ["#9a7a50","#8a6a40","#ba9a70","#6a5030"],
   },
   warboar_drummer: {
-    name: "Warboar Drummer", hp: 220, speed: 3.8, damage: 28, killHeal: 12, goldReward: 7,
+    name: "Warboar Drummer", hp: 220, speed: 4, damage: 28, killHeal: 12, goldReward: 7,
     skin: "#6a5030", hair: "#4a3010", shirt: "#5a4020", pants: "#3a2010", contactRange: 76,
     ai: 'witch', _specials: ['battle_beat'], specialCD: 720, // 12s — buffs allies
     kiteRange: 280,
@@ -1197,7 +1197,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 1 — Boss: Tongya (L10)
   tongya: {
-    name: "Tongya", hp: 4000, speed: 3.8, damage: 50, killHeal: 50, goldReward: 40,
+    name: "Tongya", hp: 4000, speed: 4, damage: 50, killHeal: 50, goldReward: 40,
     skin: "#aa8a60", hair: "#7a6030", shirt: "#9a7a50", pants: "#7a5a30", contactRange: 82,
     ai: 'tank', _specials: ['titan_charge', 'war_stomp', 'boar_fury'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
@@ -1207,26 +1207,26 @@ const MOB_TYPES = {
   // ===================== WAGASHI FLOOR 2: JADE TEMPLE → RUINED SANCTUM =====================
   // Section A — Jade Temple (waves 1-4)
   temple_fang_acolyte: {
-    name: "Temple Fang Acolyte", hp: 280, speed: 5, damage: 32, killHeal: 10, goldReward: 6,
+    name: "Temple Fang Acolyte", hp: 280, speed: 5.3, damage: 32, killHeal: 10, goldReward: 6,
     skin: "#5a8a5a", hair: "#2a5a2a", shirt: "#4a7a4a", pants: "#2a5a2a", contactRange: 74,
     ai: 'runner', _specials: ['venom_arc'], specialCD: 480, // 8s — poison arc
     deathColors: ["#5a8a5a","#4a7a4a","#7aaa7a","#2a5a2a"],
   },
   jade_idol_watcher: {
-    name: "Jade Idol Watcher", hp: 340, speed: 4, damage: 36, killHeal: 14, goldReward: 8,
+    name: "Jade Idol Watcher", hp: 340, speed: 4.2, damage: 36, killHeal: 14, goldReward: 8,
     skin: "#4a7a5a", hair: "#2a5a3a", shirt: "#3a6a4a", pants: "#1a4a2a", contactRange: 76,
     ai: 'grunt', _specials: ['jade_flash'], specialCD: 600, // 10s — slow/stun cone
     deathColors: ["#4a7a5a","#3a6a4a","#6a9a7a","#1a4a2a"],
   },
   coil_priestess: {
-    name: "Coil Priestess", hp: 300, speed: 3.8, damage: 34, killHeal: 16, goldReward: 9,
+    name: "Coil Priestess", hp: 300, speed: 4, damage: 34, killHeal: 16, goldReward: 9,
     skin: "#3a6a4a", hair: "#1a4a2a", shirt: "#2a5a3a", pants: "#1a3a1a", contactRange: 76,
     ai: 'witch', _specials: ['snake_call'], specialCD: 780, // 13s — summons snakes
     kiteRange: 320,
     deathColors: ["#3a6a4a","#2a5a3a","#5a8a6a","#1a3a1a"],
   },
   jade_vein_stalker: {
-    name: "Jade Vein Stalker", hp: 310, speed: 5, damage: 38, killHeal: 12, goldReward: 7,
+    name: "Jade Vein Stalker", hp: 310, speed: 5.3, damage: 38, killHeal: 12, goldReward: 7,
     skin: "#5a9a6a", hair: "#3a7a4a", shirt: "#4a8a5a", pants: "#2a6a3a", contactRange: 74,
     ai: 'runner', _specials: ['petrify_glint'], specialCD: 540, // 9s — delayed stun
     deathColors: ["#5a9a6a","#4a8a5a","#7aba8a","#2a6a3a"],
@@ -1234,7 +1234,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 2 — Mini-Boss: Jade Serpent (L15)
   jade_serpent: {
-    name: "Jade Serpent", hp: 4500, speed: 4.8, damage: 50, killHeal: 40, goldReward: 35,
+    name: "Jade Serpent", hp: 4500, speed: 5.1, damage: 50, killHeal: 40, goldReward: 35,
     skin: "#3a8a5a", hair: "#1a6a3a", shirt: "#2a7a4a", pants: "#1a5a2a", contactRange: 80,
     ai: 'runner', _specials: ['jade_glare', 'serpent_swarm', 'jade_spires'],
     isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
@@ -1243,13 +1243,13 @@ const MOB_TYPES = {
 
   // Section B — Ruined Sanctum (waves 6-9)
   rubblebound_sentinel: {
-    name: "Rubblebound Sentinel", hp: 380, speed: 3.8, damage: 38, killHeal: 15, goldReward: 8,
+    name: "Rubblebound Sentinel", hp: 380, speed: 4, damage: 38, killHeal: 15, goldReward: 8,
     skin: "#7a7060", hair: "#5a5040", shirt: "#6a6050", pants: "#4a4030", contactRange: 78,
     ai: 'tank', _specials: ['rubble_toss'], specialCD: 600, // 10s — throws debris
     deathColors: ["#7a7060","#6a6050","#9a9080","#4a4030"],
   },
   pillarbreaker_brute: {
-    name: "Pillarbreaker Brute", hp: 340, speed: 4.4, damage: 40, killHeal: 12, goldReward: 7,
+    name: "Pillarbreaker Brute", hp: 340, speed: 4.6, damage: 40, killHeal: 12, goldReward: 7,
     skin: "#6a6050", hair: "#4a4030", shirt: "#5a5040", pants: "#3a3020", contactRange: 76,
     ai: 'grunt', _specials: ['ground_split'], specialCD: 540, // 9s — line attack
     deathColors: ["#6a6050","#5a5040","#8a8070","#3a3020"],
@@ -1261,7 +1261,7 @@ const MOB_TYPES = {
     deathColors: ["#8a8070","#7a7060","#aaa090","#5a5040"],
   },
   mausoleum_warden: {
-    name: "Mausoleum Warden", hp: 360, speed: 4, damage: 36, killHeal: 14, goldReward: 8,
+    name: "Mausoleum Warden", hp: 360, speed: 4.2, damage: 36, killHeal: 14, goldReward: 8,
     skin: "#5a5a48", hair: "#3a3a28", shirt: "#4a4a38", pants: "#2a2a18", contactRange: 76,
     ai: 'grunt', _specials: ['aftershock_ring'], specialCD: 660, // 11s — delayed AoE
     deathColors: ["#5a5a48","#4a4a38","#7a7a68","#2a2a18"],
@@ -1269,7 +1269,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 2 — Boss: Stone Golem Guardian (L20)
   stone_golem_guardian: {
-    name: "Stone Golem Guardian", hp: 5000, speed: 3.2, damage: 55, killHeal: 50, goldReward: 45,
+    name: "Stone Golem Guardian", hp: 5000, speed: 3.4, damage: 55, killHeal: 50, goldReward: 45,
     skin: "#6a6a5a", hair: "#4a4a3a", shirt: "#5a5a4a", pants: "#3a3a2a", contactRange: 82,
     ai: 'tank', _specials: ['earthbreaker_slam', 'boulder_hurl', 'stonehide'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
@@ -1279,13 +1279,13 @@ const MOB_TYPES = {
   // ===================== WAGASHI FLOOR 3: STORM PALACE → INFERNO BASTION =====================
   // Section A — Storm Palace (waves 1-4)
   tempest_spearman: {
-    name: "Tempest Spearman", hp: 380, speed: 4.6, damage: 42, killHeal: 14, goldReward: 8,
+    name: "Tempest Spearman", hp: 380, speed: 4.8, damage: 42, killHeal: 14, goldReward: 8,
     skin: "#5a7a8a", hair: "#2a4a5a", shirt: "#4a6a7a", pants: "#2a4a5a", contactRange: 76,
     ai: 'grunt', _specials: ['static_lunge'], specialCD: 420, // 7s — lightning charge
     deathColors: ["#5a7a8a","#4a6a7a","#7a9aaa","#2a4a5a"],
   },
   cloudscale_archer: {
-    name: "Cloudscale Archer", hp: 400, speed: 3.8, damage: 40, killHeal: 16, goldReward: 9,
+    name: "Cloudscale Archer", hp: 400, speed: 4, damage: 40, killHeal: 16, goldReward: 9,
     skin: "#6a8a9a", hair: "#3a5a6a", shirt: "#5a7a8a", pants: "#3a5a6a", contactRange: 74,
     ai: 'archer', _specials: ['charged_burst_arrow'], specialCD: 540, // 9s — AoE arrow
     arrowRate: 85, arrowSpeed: 9, arrowRange: 420, arrowBounces: 0, arrowLife: 480,
@@ -1293,13 +1293,13 @@ const MOB_TYPES = {
     deathColors: ["#6a8a9a","#5a7a8a","#8aaaba","#3a5a6a"],
   },
   tideblade_disciple: {
-    name: "Tideblade Disciple", hp: 420, speed: 4.4, damage: 44, killHeal: 14, goldReward: 8,
+    name: "Tideblade Disciple", hp: 420, speed: 4.6, damage: 44, killHeal: 14, goldReward: 8,
     skin: "#4a6a7a", hair: "#2a4a5a", shirt: "#3a5a6a", pants: "#1a3a4a", contactRange: 76,
     ai: 'grunt', _specials: ['wave_cut'], specialCD: 480, // 8s — water slash projectile
     deathColors: ["#4a6a7a","#3a5a6a","#6a8a9a","#1a3a4a"],
   },
   thunder_crest_knight: {
-    name: "Thunder Crest Knight", hp: 460, speed: 4, damage: 46, killHeal: 16, goldReward: 9,
+    name: "Thunder Crest Knight", hp: 460, speed: 4.2, damage: 46, killHeal: 16, goldReward: 9,
     skin: "#7a8a9a", hair: "#4a5a6a", shirt: "#6a7a8a", pants: "#4a5a6a", contactRange: 76,
     ai: 'grunt', _specials: ['lightning_seal'], specialCD: 600, // 10s — delayed lightning strike
     deathColors: ["#7a8a9a","#6a7a8a","#9aaaba","#4a5a6a"],
@@ -1307,7 +1307,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 3 — Mini-Boss: Azure Dragon (L25)
   azure_dragon: {
-    name: "Azure Dragon", hp: 5500, speed: 5, damage: 55, killHeal: 50, goldReward: 40,
+    name: "Azure Dragon", hp: 5500, speed: 5.3, damage: 55, killHeal: 50, goldReward: 40,
     skin: "#3a6a8a", hair: "#1a4a6a", shirt: "#2a5a7a", pants: "#1a3a5a", contactRange: 80,
     ai: 'runner', _specials: ['lightning_mark', 'tidal_wave', 'cyclone_guard'],
     isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
@@ -1316,26 +1316,26 @@ const MOB_TYPES = {
 
   // Section B — Inferno Bastion (waves 6-9)
   ember_guard: {
-    name: "Ember Guard", hp: 440, speed: 4.6, damage: 44, killHeal: 14, goldReward: 8,
+    name: "Ember Guard", hp: 440, speed: 4.8, damage: 44, killHeal: 14, goldReward: 8,
     skin: "#8a4a2a", hair: "#5a2a0a", shirt: "#7a3a1a", pants: "#5a2a0a", contactRange: 76,
     ai: 'grunt', _specials: ['cinder_step'], specialCD: 420, // 7s — dash + fire patch
     deathColors: ["#8a4a2a","#7a3a1a","#aa6a4a","#5a2a0a"],
   },
   furnace_hound: {
-    name: "Furnace Hound", hp: 400, speed: 5.7, damage: 42, killHeal: 12, goldReward: 7,
+    name: "Furnace Hound", hp: 400, speed: 6, damage: 42, killHeal: 12, goldReward: 7,
     skin: "#6a2a0a", hair: "#3a1a0a", shirt: "#5a1a0a", pants: "#3a1a0a", contactRange: 74,
     ai: 'runner', _specials: ['coal_breath'], specialCD: 480, // 8s — fire cone
     deathColors: ["#6a2a0a","#5a1a0a","#8a4a2a","#3a1a0a"],
   },
   ashen_banner_monk: {
-    name: "Ashen Banner Monk", hp: 420, speed: 3.8, damage: 38, killHeal: 18, goldReward: 10,
+    name: "Ashen Banner Monk", hp: 420, speed: 4, damage: 38, killHeal: 18, goldReward: 10,
     skin: "#4a2a1a", hair: "#2a1a0a", shirt: "#3a1a0a", pants: "#1a0a0a", contactRange: 76,
     ai: 'witch', _specials: ['war_ember_chant'], specialCD: 720, // 12s — buffs ally damage
     kiteRange: 300,
     deathColors: ["#4a2a1a","#3a1a0a","#6a4a3a","#1a0a0a"],
   },
   crimson_furnace_captain: {
-    name: "Crimson Furnace Captain", hp: 480, speed: 4.4, damage: 48, killHeal: 20, goldReward: 10,
+    name: "Crimson Furnace Captain", hp: 480, speed: 4.6, damage: 48, killHeal: 20, goldReward: 10,
     skin: "#9a3a1a", hair: "#6a2a0a", shirt: "#8a2a0a", pants: "#5a1a0a", contactRange: 78,
     ai: 'grunt', _specials: ['magma_breaker'], specialCD: 540, // 9s — fire line eruption
     deathColors: ["#9a3a1a","#8a2a0a","#ba5a3a","#5a1a0a"],
@@ -1343,7 +1343,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 3 — Boss: Jaja (L30)
   jaja: {
-    name: "Jaja", hp: 6000, speed: 3.8, damage: 60, killHeal: 60, goldReward: 50,
+    name: "Jaja", hp: 6000, speed: 4, damage: 60, killHeal: 60, goldReward: 50,
     skin: "#aa4a1a", hair: "#7a2a0a", shirt: "#9a3a0a", pants: "#6a1a0a", contactRange: 82,
     ai: 'tank', _specials: ['inferno_crash', 'blazing_advance', 'ember_mantle'],
     isBoss: true, bossScale: 1.6, specialCD: 480, // 8s
@@ -1353,19 +1353,19 @@ const MOB_TYPES = {
   // ===================== WAGASHI FLOOR 4: EXECUTION GROUNDS → VOID SANCTUM =====================
   // Section A — Execution Grounds (waves 1-4)
   ashen_blade_retainer: {
-    name: "Ashen Blade Retainer", hp: 470, speed: 4.8, damage: 46, killHeal: 16, goldReward: 9,
+    name: "Ashen Blade Retainer", hp: 470, speed: 5.1, damage: 46, killHeal: 16, goldReward: 9,
     skin: "#4a4a4a", hair: "#2a2a2a", shirt: "#3a3a3a", pants: "#1a1a1a", contactRange: 76,
     ai: 'grunt', _specials: ['draw_cut'], specialCD: 360, // 6s — fast line slash
     deathColors: ["#4a4a4a","#3a3a3a","#6a6a6a","#1a1a1a"],
   },
   lantern_veil_assassin: {
-    name: "Lantern Veil Assassin", hp: 450, speed: 6.4, damage: 42, killHeal: 15, goldReward: 8,
+    name: "Lantern Veil Assassin", hp: 450, speed: 6.7, damage: 42, killHeal: 15, goldReward: 8,
     skin: "#3a3a3a", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#0a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['afterimage_dash'], specialCD: 360, // 6s — dash through player
     deathColors: ["#3a3a3a","#2a2a2a","#5a5a5a","#0a0a0a"],
   },
   blood_script_archer: {
-    name: "Blood Script Archer", hp: 480, speed: 4.5, damage: 44, killHeal: 18, goldReward: 10,
+    name: "Blood Script Archer", hp: 480, speed: 4.7, damage: 44, killHeal: 18, goldReward: 10,
     skin: "#5a3a3a", hair: "#3a1a1a", shirt: "#4a2a2a", pants: "#2a0a0a", contactRange: 74,
     ai: 'archer', _specials: ['blood_seal_shot'], specialCD: 540, // 9s — delayed ranged burst
     arrowRate: 80, arrowSpeed: 9, arrowRange: 440, arrowBounces: 0, arrowLife: 500,
@@ -1373,7 +1373,7 @@ const MOB_TYPES = {
     deathColors: ["#5a3a3a","#4a2a2a","#7a5a5a","#2a0a0a"],
   },
   crimson_gate_executioner: {
-    name: "Crimson Gate Executioner", hp: 550, speed: 4.5, damage: 52, killHeal: 22, goldReward: 11,
+    name: "Crimson Gate Executioner", hp: 550, speed: 4.7, damage: 52, killHeal: 22, goldReward: 11,
     skin: "#4a2a2a", hair: "#2a0a0a", shirt: "#3a1a1a", pants: "#1a0a0a", contactRange: 78,
     ai: 'tank', _specials: ['judgment_drop'], specialCD: 600, // 10s — line shockwave
     deathColors: ["#4a2a2a","#3a1a1a","#6a4a4a","#1a0a0a"],
@@ -1381,7 +1381,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 4 — Mini-Boss: Gensai (L35)
   gensai: {
-    name: "Gensai", hp: 6500, speed: 5.7, damage: 60, killHeal: 50, goldReward: 45,
+    name: "Gensai", hp: 6500, speed: 6, damage: 60, killHeal: 50, goldReward: 45,
     skin: "#3a2a2a", hair: "#1a0a0a", shirt: "#2a1a1a", pants: "#0a0a0a", contactRange: 80,
     ai: 'runner', _specials: ['shadow_step', 'blood_crescent', 'demon_cleaver'],
     isBoss: true, bossScale: 1.4, specialCD: 480, // 8s
@@ -1390,27 +1390,27 @@ const MOB_TYPES = {
 
   // Section B — Void Sanctum (waves 6-9)
   lunar_dust_hare: {
-    name: "Lunar Dust Hare", hp: 460, speed: 6.4, damage: 44, killHeal: 15, goldReward: 8,
+    name: "Lunar Dust Hare", hp: 460, speed: 6.7, damage: 44, killHeal: 15, goldReward: 8,
     skin: "#b0a8c0", hair: "#8a80a0", shirt: "#a098b0", pants: "#7a7090", contactRange: 74,
     ai: 'runner', _specials: ['dust_pop'], specialCD: 360, // 6s — teleport + burst
     deathColors: ["#b0a8c0","#a098b0","#d0c8e0","#7a7090"],
   },
   crescent_mirror_wisp: {
-    name: "Crescent Mirror Wisp", hp: 480, speed: 4.5, damage: 42, killHeal: 18, goldReward: 9,
+    name: "Crescent Mirror Wisp", hp: 480, speed: 4.7, damage: 42, killHeal: 18, goldReward: 9,
     skin: "#c0b8d0", hair: "#9a90b0", shirt: "#b0a8c0", pants: "#8a80a0", contactRange: 76,
     ai: 'witch', _specials: ['mirror_split'], specialCD: 660, // 11s — decoy + shot
     kiteRange: 300,
     deathColors: ["#c0b8d0","#b0a8c0","#e0d8f0","#8a80a0"],
   },
   gravity_ear_monk: {
-    name: "Gravity Ear Monk", hp: 500, speed: 4.5, damage: 46, killHeal: 20, goldReward: 10,
+    name: "Gravity Ear Monk", hp: 500, speed: 4.7, damage: 46, killHeal: 20, goldReward: 10,
     skin: "#9a90b0", hair: "#6a6080", shirt: "#8a80a0", pants: "#5a5070", contactRange: 76,
     ai: 'witch', _specials: ['gravity_press'], specialCD: 600, // 10s — slow zone
     kiteRange: 280,
     deathColors: ["#9a90b0","#8a80a0","#bab0d0","#5a5070"],
   },
   eclipse_burrower: {
-    name: "Eclipse Burrower", hp: 520, speed: 5.7, damage: 50, killHeal: 18, goldReward: 9,
+    name: "Eclipse Burrower", hp: 520, speed: 6, damage: 50, killHeal: 18, goldReward: 9,
     skin: "#7a70a0", hair: "#4a4060", shirt: "#6a6090", pants: "#3a3050", contactRange: 74,
     ai: 'runner', _specials: ['rift_leap'], specialCD: 420, // 7s — blink pounce
     deathColors: ["#7a70a0","#6a6090","#9a90c0","#3a3050"],
@@ -1418,7 +1418,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 4 — Boss: Moon Rabbit (L40)
   moon_rabbit: {
-    name: "Moon Rabbit", hp: 7000, speed: 4.8, damage: 65, killHeal: 60, goldReward: 55,
+    name: "Moon Rabbit", hp: 7000, speed: 5.1, damage: 65, killHeal: 60, goldReward: 55,
     skin: "#d0c8e0", hair: "#a098c0", shirt: "#c0b8d0", pants: "#9088b0", contactRange: 82,
     ai: 'archer', _specials: ['gravity_well', 'moon_rift_orb', 'phase_skip'],
     isBoss: true, bossScale: 1.5, specialCD: 480, // 8s
@@ -1431,26 +1431,26 @@ const MOB_TYPES = {
   // ===================== WAGASHI FLOOR 5: DEVOURING MAW → UNSEALED HEAVEN =====================
   // Section A — Devouring Maw (waves 1-4)
   miregulp_tadpole: {
-    name: "Miregulp Tadpole", hp: 520, speed: 5.7, damage: 48, killHeal: 18, goldReward: 9,
+    name: "Miregulp Tadpole", hp: 520, speed: 6, damage: 48, killHeal: 18, goldReward: 9,
     skin: "#5a6a4a", hair: "#3a4a2a", shirt: "#4a5a3a", pants: "#2a3a1a", contactRange: 74,
     ai: 'runner', _specials: ['mire_spit'], specialCD: 420, // 7s — spit projectile
     deathColors: ["#5a6a4a","#4a5a3a","#7a8a6a","#2a3a1a"],
   },
   gulchspine_bloater: {
-    name: "Gulchspine Bloater", hp: 600, speed: 4.5, damage: 52, killHeal: 20, goldReward: 10,
+    name: "Gulchspine Bloater", hp: 600, speed: 4.7, damage: 52, killHeal: 20, goldReward: 10,
     skin: "#4a5a3a", hair: "#2a3a1a", shirt: "#3a4a2a", pants: "#1a2a0a", contactRange: 76,
     ai: 'grunt', _specials: ['dread_belch'], specialCD: 540, // 9s — cone AoE
     deathColors: ["#4a5a3a","#3a4a2a","#6a7a5a","#1a2a0a"],
   },
   hymn_eater_toadlet: {
-    name: "Hymn Eater Toadlet", hp: 560, speed: 4.5, damage: 48, killHeal: 22, goldReward: 11,
+    name: "Hymn Eater Toadlet", hp: 560, speed: 4.7, damage: 48, killHeal: 22, goldReward: 11,
     skin: "#5a4a5a", hair: "#3a2a3a", shirt: "#4a3a4a", pants: "#2a1a2a", contactRange: 76,
     ai: 'witch', _specials: ['maw_hymn'], specialCD: 660, // 11s — debuff aura
     kiteRange: 300,
     deathColors: ["#5a4a5a","#4a3a4a","#7a6a7a","#2a1a2a"],
   },
   abyssal_swallower: {
-    name: "Abyssal Swallower", hp: 650, speed: 4.5, damage: 56, killHeal: 25, goldReward: 12,
+    name: "Abyssal Swallower", hp: 650, speed: 4.7, damage: 56, killHeal: 25, goldReward: 12,
     skin: "#3a3a4a", hair: "#1a1a2a", shirt: "#2a2a3a", pants: "#0a0a1a", contactRange: 78,
     ai: 'tank', _specials: ['dark_gulp'], specialCD: 600, // 10s — pull + damage
     deathColors: ["#3a3a4a","#2a2a3a","#5a5a6a","#0a0a1a"],
@@ -1458,7 +1458,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 5 — Mini-Boss: Celestial Toad (L45)
   celestial_toad: {
-    name: "Celestial Toad", hp: 7500, speed: 4.5, damage: 65, killHeal: 60, goldReward: 50,
+    name: "Celestial Toad", hp: 7500, speed: 4.7, damage: 65, killHeal: 60, goldReward: 50,
     skin: "#4a5a4a", hair: "#2a3a2a", shirt: "#3a4a3a", pants: "#1a2a1a", contactRange: 82,
     ai: 'tank', _specials: ['devouring_pull', 'void_spit', 'corruption_mire'],
     isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
@@ -1467,26 +1467,26 @@ const MOB_TYPES = {
 
   // Section B — Unsealed Heaven (waves 6-9)
   shrine_shard_monkey: {
-    name: "Shrine Shard Monkey", hp: 540, speed: 6.4, damage: 50, killHeal: 18, goldReward: 9,
+    name: "Shrine Shard Monkey", hp: 540, speed: 6.7, damage: 50, killHeal: 18, goldReward: 9,
     skin: "#2a2a2a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['shard_toss'], specialCD: 360, // 6s — ranged chip
     deathColors: ["#2a2a2a","#1a1a1a","#4a4a4a","#0a0a0a"],
   },
   seal_fragment_sprite: {
-    name: "Seal Fragment Sprite", hp: 580, speed: 4.5, damage: 48, killHeal: 22, goldReward: 11,
+    name: "Seal Fragment Sprite", hp: 580, speed: 4.7, damage: 48, killHeal: 22, goldReward: 11,
     skin: "#9a8a40", hair: "#7a6a20", shirt: "#8a7a30", pants: "#6a5a10", contactRange: 76,
     ai: 'witch', _specials: ['minor_orb_pulse'], specialCD: 600, // 10s — orb burst
     kiteRange: 300,
     deathColors: ["#9a8a40","#8a7a30","#baaa60","#6a5a10"],
   },
   thundertail_ape: {
-    name: "Thundertail Ape", hp: 620, speed: 4.8, damage: 54, killHeal: 20, goldReward: 10,
+    name: "Thundertail Ape", hp: 620, speed: 5.1, damage: 54, killHeal: 20, goldReward: 10,
     skin: "#3a3a3a", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#0a0a0a", contactRange: 76,
     ai: 'grunt', _specials: ['thunder_tail_crash'], specialCD: 480, // 8s — ground slam
     deathColors: ["#3a3a3a","#2a2a2a","#5a5a5a","#0a0a0a"],
   },
   heavens_gate_breaker: {
-    name: "Heaven's Gate Breaker", hp: 650, speed: 4.5, damage: 58, killHeal: 25, goldReward: 12,
+    name: "Heaven's Gate Breaker", hp: 650, speed: 4.7, damage: 58, killHeal: 25, goldReward: 12,
     skin: "#8a7a30", hair: "#6a5a10", shirt: "#7a6a20", pants: "#5a4a0a", contactRange: 78,
     ai: 'tank', _specials: ['seal_rupture'], specialCD: 540, // 9s — AoE shockwave
     deathColors: ["#8a7a30","#7a6a20","#aa9a50","#5a4a0a"],
@@ -1494,7 +1494,7 @@ const MOB_TYPES = {
 
   // Wagashi Floor 5 — Final Boss: Lord Sarugami (L50)
   lord_sarugami: {
-    name: "Lord Sarugami", hp: 8500, speed: 5, damage: 75, killHeal: 70, goldReward: 65,
+    name: "Lord Sarugami", hp: 8500, speed: 5.3, damage: 75, killHeal: 70, goldReward: 65,
     skin: "#1a1a2a", hair: "#0a0a1a", shirt: "#2a1a3a", pants: "#0a0a1a", contactRange: 84,
     ai: 'runner', _specials: ['black_orb_sentinels', 'orb_bomb_command', 'divine_form_shift'],
     isBoss: true, bossScale: 1.6, specialCD: 420, // 7s
@@ -1505,25 +1505,25 @@ const MOB_TYPES = {
   // ===================== EARTH-216 FLOOR 1: CRIME & CASINO =====================
   // Section A — Crime & Casino (waves 1-4)
   chip_runner: {
-    name: "Chip Runner", hp: 240, speed: 5.4, damage: 30, killHeal: 8, goldReward: 5,
+    name: "Chip Runner", hp: 240, speed: 5.7, damage: 30, killHeal: 8, goldReward: 5,
     skin: "#9a8a6a", hair: "#3a2a1a", shirt: "#8a7a4a", pants: "#5a4a2a", contactRange: 74,
     ai: 'runner', _specials: ['chip_toss'], specialCD: 360, // 6s
     deathColors: ["#9a8a6a","#8a7a4a","#baa88a","#5a4a2a"],
   },
   pit_bruiser: {
-    name: "Pit Bruiser", hp: 350, speed: 3.6, damage: 38, killHeal: 15, goldReward: 8,
+    name: "Pit Bruiser", hp: 350, speed: 3.8, damage: 38, killHeal: 15, goldReward: 8,
     skin: "#6a5a4a", hair: "#1a1a1a", shirt: "#4a3a2a", pants: "#2a2a1a", contactRange: 78,
     ai: 'tank', _specials: ['pit_slam'], specialCD: 540, // 9s
     deathColors: ["#6a5a4a","#4a3a2a","#8a7a6a","#2a2a1a"],
   },
   velvet_knifer: {
-    name: "Velvet Knifer", hp: 260, speed: 4.8, damage: 32, killHeal: 10, goldReward: 6,
+    name: "Velvet Knifer", hp: 260, speed: 5.1, damage: 32, killHeal: 10, goldReward: 6,
     skin: "#8a6a6a", hair: "#2a1a1a", shirt: "#6a2a3a", pants: "#3a1a1a", contactRange: 76,
     ai: 'grunt', _specials: ['velvet_slash'], specialCD: 480, // 8s
     deathColors: ["#8a6a6a","#6a2a3a","#aa8a8a","#3a1a1a"],
   },
   vault_hound_e216: {
-    name: "Vault Hound", hp: 220, speed: 6, damage: 28, killHeal: 6, goldReward: 5,
+    name: "Vault Hound", hp: 220, speed: 6.3, damage: 28, killHeal: 6, goldReward: 5,
     skin: "#7a6a5a", hair: "#2a2a1a", shirt: "#5a4a3a", pants: "#3a2a1a", contactRange: 74,
     ai: 'runner', _specials: ['vault_leap'], specialCD: 360, // 6s
     deathColors: ["#7a6a5a","#5a4a3a","#9a8a7a","#3a2a1a"],
@@ -1531,7 +1531,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 1 — Mini-Boss: Victor Graves (L5)
   victor_graves: {
-    name: "Victor Graves", hp: 4000, speed: 3.6, damage: 48, killHeal: 40, goldReward: 30,
+    name: "Victor Graves", hp: 4000, speed: 3.8, damage: 48, killHeal: 40, goldReward: 30,
     skin: "#7a6a5a", hair: "#2a2a2a", shirt: "#3a3a2a", pants: "#1a1a0a", contactRange: 80,
     ai: 'tank', _specials: ['tribute_taken', 'call_collection', 'iron_debt'],
     isBoss: true, bossScale: 1.4, specialCD: 600, // 10s
@@ -1540,26 +1540,26 @@ const MOB_TYPES = {
 
   // Section B — Casino (waves 6-9)
   gilded_maid: {
-    name: "Gilded Maid", hp: 280, speed: 4.4, damage: 34, killHeal: 12, goldReward: 7,
+    name: "Gilded Maid", hp: 280, speed: 4.6, damage: 34, killHeal: 12, goldReward: 7,
     skin: "#aa9a7a", hair: "#4a3a2a", shirt: "#9a8a5a", pants: "#6a5a3a", contactRange: 76,
     ai: 'grunt', _specials: ['gilded_sweep'], specialCD: 480, // 8s
     deathColors: ["#aa9a7a","#9a8a5a","#ccbb99","#6a5a3a"],
   },
   cashmere_viper: {
-    name: "Cashmere Viper", hp: 230, speed: 5.4, damage: 30, killHeal: 8, goldReward: 6,
+    name: "Cashmere Viper", hp: 230, speed: 5.7, damage: 30, killHeal: 8, goldReward: 6,
     skin: "#5a7a5a", hair: "#1a2a1a", shirt: "#3a5a3a", pants: "#1a3a1a", contactRange: 74,
     ai: 'runner', _specials: ['venom_lunge'], specialCD: 420, // 7s
     deathColors: ["#5a7a5a","#3a5a3a","#7a9a7a","#1a3a1a"],
   },
   jewel_wraith: {
-    name: "Jewel Wraith", hp: 300, speed: 3.8, damage: 32, killHeal: 14, goldReward: 8,
+    name: "Jewel Wraith", hp: 300, speed: 4, damage: 32, killHeal: 14, goldReward: 8,
     skin: "#6a5a8a", hair: "#2a1a4a", shirt: "#4a3a6a", pants: "#2a1a3a", contactRange: 76,
     ai: 'witch', _specials: ['gem_bolt'], specialCD: 540, // 9s
     kiteRange: 300,
     deathColors: ["#6a5a8a","#4a3a6a","#8a7aaa","#2a1a3a"],
   },
   bullion_knight: {
-    name: "Bullion Knight", hp: 380, speed: 3.6, damage: 40, killHeal: 16, goldReward: 9,
+    name: "Bullion Knight", hp: 380, speed: 3.8, damage: 40, killHeal: 16, goldReward: 9,
     skin: "#aa9a5a", hair: "#5a4a1a", shirt: "#8a7a3a", pants: "#5a4a1a", contactRange: 78,
     ai: 'tank', _specials: ['bullion_charge'], specialCD: 600, // 10s
     deathColors: ["#aa9a5a","#8a7a3a","#ccbb77","#5a4a1a"],
@@ -1567,7 +1567,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 1 — Boss: Madame Midas (L10)
   madame_midas: {
-    name: "Madame Midas", hp: 5000, speed: 4, damage: 52, killHeal: 50, goldReward: 40,
+    name: "Madame Midas", hp: 5000, speed: 4.2, damage: 52, killHeal: 50, goldReward: 40,
     skin: "#ccaa44", hair: "#aa8822", shirt: "#bb9933", pants: "#886611", contactRange: 80,
     ai: 'witch', _specials: ['jackpot_bloom', 'crown_of_debt', 'touch_of_midas'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
@@ -1578,25 +1578,25 @@ const MOB_TYPES = {
   // ===================== EARTH-216 FLOOR 2: CURSED FLESH & DEAD PERFORMANCE =====================
   // Section A — Cursed Flesh (waves 1-4)
   scar_punk: {
-    name: "Scar Punk", hp: 270, speed: 5, damage: 34, killHeal: 10, goldReward: 6,
+    name: "Scar Punk", hp: 270, speed: 5.3, damage: 34, killHeal: 10, goldReward: 6,
     skin: "#8a5a5a", hair: "#2a0a0a", shirt: "#6a2a2a", pants: "#3a1a1a", contactRange: 76,
     ai: 'grunt', _specials: ['scar_flurry'], specialCD: 420, // 7s
     deathColors: ["#8a5a5a","#6a2a2a","#aa7a7a","#3a1a1a"],
   },
   splitjaw: {
-    name: "Splitjaw", hp: 240, speed: 5.5, damage: 32, killHeal: 8, goldReward: 5,
+    name: "Splitjaw", hp: 240, speed: 5.8, damage: 32, killHeal: 8, goldReward: 5,
     skin: "#7a5a4a", hair: "#1a0a0a", shirt: "#5a3a2a", pants: "#2a1a0a", contactRange: 74,
     ai: 'runner', _specials: ['jaw_lunge'], specialCD: 360, // 6s
     deathColors: ["#7a5a4a","#5a3a2a","#9a7a6a","#2a1a0a"],
   },
   razorback_youth: {
-    name: "Razorback Youth", hp: 210, speed: 6, damage: 28, killHeal: 6, goldReward: 5,
+    name: "Razorback Youth", hp: 210, speed: 6.3, damage: 28, killHeal: 6, goldReward: 5,
     skin: "#6a4a3a", hair: "#0a0a0a", shirt: "#4a2a1a", pants: "#2a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['razor_sprint'], specialCD: 360, // 6s
     deathColors: ["#6a4a3a","#4a2a1a","#8a6a5a","#2a0a0a"],
   },
   grin_stitcher: {
-    name: "Grin Stitcher", hp: 290, speed: 4.4, damage: 34, killHeal: 12, goldReward: 7,
+    name: "Grin Stitcher", hp: 290, speed: 4.6, damage: 34, killHeal: 12, goldReward: 7,
     skin: "#8a7a6a", hair: "#2a2a1a", shirt: "#5a4a3a", pants: "#3a2a1a", contactRange: 76,
     ai: 'grunt', _specials: ['stitch_bomb'], specialCD: 540, // 9s
     deathColors: ["#8a7a6a","#5a4a3a","#aa9a8a","#3a2a1a"],
@@ -1604,7 +1604,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 2 — Mini-Boss: Slasher (L15)
   slasher_e216: {
-    name: "Slasher", hp: 4500, speed: 5, damage: 52, killHeal: 40, goldReward: 35,
+    name: "Slasher", hp: 4500, speed: 5.3, damage: 52, killHeal: 40, goldReward: 35,
     skin: "#5a2a2a", hair: "#1a0a0a", shirt: "#3a1a1a", pants: "#1a0a0a", contactRange: 80,
     ai: 'grunt', _specials: ['carnage_arm', 'blood_trail_dash', 'predator_lock'],
     isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
@@ -1613,27 +1613,27 @@ const MOB_TYPES = {
 
   // Section B — Dead Performance (waves 6-9)
   chorus_shade: {
-    name: "Chorus Shade", hp: 310, speed: 4, damage: 34, killHeal: 14, goldReward: 8,
+    name: "Chorus Shade", hp: 310, speed: 4.2, damage: 34, killHeal: 14, goldReward: 8,
     skin: "#5a5a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#1a1a2a", contactRange: 76,
     ai: 'witch', _specials: ['shade_note'], specialCD: 540, // 9s
     kiteRange: 300,
     deathColors: ["#5a5a6a","#3a3a4a","#7a7a8a","#1a1a2a"],
   },
   spotlight_stalker: {
-    name: "Spotlight Stalker", hp: 250, speed: 5.4, damage: 32, killHeal: 8, goldReward: 6,
+    name: "Spotlight Stalker", hp: 250, speed: 5.7, damage: 32, killHeal: 8, goldReward: 6,
     skin: "#7a7a5a", hair: "#2a2a0a", shirt: "#5a5a3a", pants: "#3a3a1a", contactRange: 74,
     ai: 'runner', _specials: ['spotlight_dash'], specialCD: 420, // 7s
     deathColors: ["#7a7a5a","#5a5a3a","#9a9a7a","#3a3a1a"],
   },
   velvet_mourner: {
-    name: "Velvet Mourner", hp: 300, speed: 4.6, damage: 34, killHeal: 14, goldReward: 8,
+    name: "Velvet Mourner", hp: 300, speed: 4.8, damage: 34, killHeal: 14, goldReward: 8,
     skin: "#4a3a4a", hair: "#1a0a1a", shirt: "#3a2a3a", pants: "#1a0a1a", contactRange: 76,
     ai: 'witch', _specials: ['mourning_wail'], specialCD: 600, // 10s
     kiteRange: 280,
     deathColors: ["#4a3a4a","#3a2a3a","#6a5a6a","#1a0a1a"],
   },
   static_tenor: {
-    name: "Static Tenor", hp: 270, speed: 4, damage: 30, killHeal: 12, goldReward: 7,
+    name: "Static Tenor", hp: 270, speed: 4.2, damage: 30, killHeal: 12, goldReward: 7,
     skin: "#6a6a7a", hair: "#2a2a3a", shirt: "#4a4a5a", pants: "#2a2a3a", contactRange: 76,
     ai: 'archer', _specials: ['static_shot'], specialCD: 480, // 8s
     arrowRate: 90, arrowSpeed: 9, arrowRange: 380, arrowBounces: 0, arrowLife: 450,
@@ -1643,7 +1643,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 2 — Boss: Blackout Belle (L20)
   blackout_belle: {
-    name: "Blackout Belle", hp: 5500, speed: 5.7, damage: 55, killHeal: 50, goldReward: 45,
+    name: "Blackout Belle", hp: 5500, speed: 6, damage: 55, killHeal: 50, goldReward: 45,
     skin: "#3a2a3a", hair: "#0a0a1a", shirt: "#2a1a2a", pants: "#0a0a0a", contactRange: 80,
     ai: 'runner', _specials: ['total_blackout', 'feedback_kiss', 'dead_applause'],
     isBoss: true, bossScale: 1.5, specialCD: 480, // 8s
@@ -1653,26 +1653,26 @@ const MOB_TYPES = {
   // ===================== EARTH-216 FLOOR 3: SPIRIT & DEATH =====================
   // Section A — Spirit & Death (waves 1-4)
   marrow_guard: {
-    name: "Marrow Guard", hp: 360, speed: 3.8, damage: 38, killHeal: 15, goldReward: 8,
+    name: "Marrow Guard", hp: 360, speed: 4, damage: 38, killHeal: 15, goldReward: 8,
     skin: "#d0c8b0", hair: "#b0a890", shirt: "#c0b8a0", pants: "#a09880", contactRange: 78,
     ai: 'tank', _specials: ['bone_wall'], specialCD: 600, // 10s
     deathColors: ["#d0c8b0","#c0b8a0","#e8e0c8","#a09880"],
   },
   candle_child: {
-    name: "Candle Child", hp: 260, speed: 4.4, damage: 32, killHeal: 10, goldReward: 6,
+    name: "Candle Child", hp: 260, speed: 4.6, damage: 32, killHeal: 10, goldReward: 6,
     skin: "#aa9a6a", hair: "#6a5a3a", shirt: "#8a7a4a", pants: "#5a4a2a", contactRange: 76,
     ai: 'grunt', _specials: ['candle_toss'], specialCD: 480, // 8s
     deathColors: ["#aa9a6a","#8a7a4a","#ccbb88","#5a4a2a"],
   },
   ofrenda_keeper: {
-    name: "Ofrenda Keeper", hp: 320, speed: 3.6, damage: 30, killHeal: 16, goldReward: 9,
+    name: "Ofrenda Keeper", hp: 320, speed: 3.8, damage: 30, killHeal: 16, goldReward: 9,
     skin: "#8a6a8a", hair: "#4a2a4a", shirt: "#6a4a6a", pants: "#3a1a3a", contactRange: 76,
     ai: 'witch', _specials: ['spirit_ward'], specialCD: 720, // 12s
     kiteRange: 300,
     deathColors: ["#8a6a8a","#6a4a6a","#aa8aaa","#3a1a3a"],
   },
   grave_trumpeter: {
-    name: "Grave Trumpeter", hp: 280, speed: 4, damage: 32, killHeal: 12, goldReward: 7,
+    name: "Grave Trumpeter", hp: 280, speed: 4.2, damage: 32, killHeal: 12, goldReward: 7,
     skin: "#7a7a6a", hair: "#3a3a2a", shirt: "#5a5a4a", pants: "#3a3a2a", contactRange: 76,
     ai: 'archer', _specials: ['death_note'], specialCD: 480, // 8s
     arrowRate: 100, arrowSpeed: 8, arrowRange: 400, arrowBounces: 0, arrowLife: 500,
@@ -1682,7 +1682,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 3 — Mini-Boss: Macabre (L25)
   macabre_e216: {
-    name: "Macabre", hp: 5000, speed: 4.4, damage: 55, killHeal: 40, goldReward: 35,
+    name: "Macabre", hp: 5000, speed: 4.6, damage: 55, killHeal: 40, goldReward: 35,
     skin: "#d8d0c0", hair: "#b0a890", shirt: "#c8c0a8", pants: "#a09880", contactRange: 80,
     ai: 'grunt', _specials: ['cemetery_call', 'funeral_ring', 'ofrenda_burst'],
     isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
@@ -1691,26 +1691,26 @@ const MOB_TYPES = {
 
   // Section B — Spirit & Death (waves 6-9)
   veil_sister: {
-    name: "Veil Sister", hp: 320, speed: 3.8, damage: 34, killHeal: 16, goldReward: 9,
+    name: "Veil Sister", hp: 320, speed: 4, damage: 34, killHeal: 16, goldReward: 9,
     skin: "#8a8a9a", hair: "#3a3a4a", shirt: "#6a6a7a", pants: "#3a3a4a", contactRange: 76,
     ai: 'witch', _specials: ['veil_mist'], specialCD: 660, // 11s
     kiteRange: 300,
     deathColors: ["#8a8a9a","#6a6a7a","#aaaabc","#3a3a4a"],
   },
   candle_bride: {
-    name: "Candle Bride", hp: 280, speed: 4.4, damage: 36, killHeal: 12, goldReward: 7,
+    name: "Candle Bride", hp: 280, speed: 4.6, damage: 36, killHeal: 12, goldReward: 7,
     skin: "#ccaa66", hair: "#8a6a2a", shirt: "#aa8844", pants: "#6a4a1a", contactRange: 76,
     ai: 'grunt', _specials: ['flame_kiss'], specialCD: 480, // 8s
     deathColors: ["#ccaa66","#aa8844","#eeccaa","#6a4a1a"],
   },
   rosary_fencer: {
-    name: "Rosary Fencer", hp: 260, speed: 4.8, damage: 34, killHeal: 10, goldReward: 7,
+    name: "Rosary Fencer", hp: 260, speed: 5.1, damage: 34, killHeal: 10, goldReward: 7,
     skin: "#7a6a5a", hair: "#2a1a0a", shirt: "#5a4a3a", pants: "#2a1a0a", contactRange: 74,
     ai: 'runner', _specials: ['rosary_thrust'], specialCD: 420, // 7s
     deathColors: ["#7a6a5a","#5a4a3a","#9a8a7a","#2a1a0a"],
   },
   choir_widow: {
-    name: "Choir Widow", hp: 300, speed: 4, damage: 32, killHeal: 14, goldReward: 8,
+    name: "Choir Widow", hp: 300, speed: 4.2, damage: 32, killHeal: 14, goldReward: 8,
     skin: "#5a4a5a", hair: "#1a0a1a", shirt: "#3a2a3a", pants: "#1a0a1a", contactRange: 76,
     ai: 'archer', _specials: ['dirge_arrow'], specialCD: 540, // 9s
     arrowRate: 110, arrowSpeed: 6, arrowRange: 380, arrowBounces: 0, arrowLife: 500,
@@ -1720,7 +1720,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 3 — Boss: Rosa Calavera (L30)
   rosa_calavera: {
-    name: "Rosa Calavera", hp: 6000, speed: 3.8, damage: 58, killHeal: 50, goldReward: 45,
+    name: "Rosa Calavera", hp: 6000, speed: 4, damage: 58, killHeal: 50, goldReward: 45,
     skin: "#d0c8b0", hair: "#a09880", shirt: "#c0b8a0", pants: "#8a8070", contactRange: 82,
     ai: 'witch', _specials: ['ghost_mariachi', 'candle_procession', 'last_serenade'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
@@ -1732,25 +1732,25 @@ const MOB_TYPES = {
   // ===================== EARTH-216 FLOOR 4: HELL ENGINES & SPEED =====================
   // Section A — Hell Engines (waves 1-4)
   chain_gremlin: {
-    name: "Chain Gremlin", hp: 250, speed: 5.4, damage: 32, killHeal: 8, goldReward: 6,
+    name: "Chain Gremlin", hp: 250, speed: 5.7, damage: 32, killHeal: 8, goldReward: 6,
     skin: "#5a4a3a", hair: "#1a0a0a", shirt: "#3a2a1a", pants: "#1a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['chain_whip'], specialCD: 420, // 7s
     deathColors: ["#5a4a3a","#3a2a1a","#7a6a5a","#1a0a0a"],
   },
   road_reaper: {
-    name: "Road Reaper", hp: 280, speed: 5, damage: 36, killHeal: 10, goldReward: 7,
+    name: "Road Reaper", hp: 280, speed: 5.3, damage: 36, killHeal: 10, goldReward: 7,
     skin: "#4a4a4a", hair: "#0a0a0a", shirt: "#2a2a2a", pants: "#0a0a0a", contactRange: 76,
     ai: 'grunt', _specials: ['road_rage'], specialCD: 420, // 7s
     deathColors: ["#4a4a4a","#2a2a2a","#6a6a6a","#0a0a0a"],
   },
   furnace_knuckle: {
-    name: "Furnace Knuckle", hp: 380, speed: 3.8, damage: 40, killHeal: 16, goldReward: 9,
+    name: "Furnace Knuckle", hp: 380, speed: 4, damage: 40, killHeal: 16, goldReward: 9,
     skin: "#8a4a2a", hair: "#3a1a0a", shirt: "#6a3a1a", pants: "#3a1a0a", contactRange: 78,
     ai: 'tank', _specials: ['furnace_punch'], specialCD: 600, // 10s
     deathColors: ["#8a4a2a","#6a3a1a","#aa6a4a","#3a1a0a"],
   },
   rev_hound: {
-    name: "Rev Hound", hp: 220, speed: 6.4, damage: 30, killHeal: 6, goldReward: 5,
+    name: "Rev Hound", hp: 220, speed: 6.7, damage: 30, killHeal: 6, goldReward: 5,
     skin: "#3a3a3a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['rev_charge'], specialCD: 360, // 6s
     deathColors: ["#3a3a3a","#1a1a1a","#5a5a5a","#0a0a0a"],
@@ -1758,7 +1758,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 4 — Mini-Boss: Motor Demon (L35)
   motor_demon: {
-    name: "Motor Demon", hp: 5500, speed: 4.8, damage: 58, killHeal: 40, goldReward: 35,
+    name: "Motor Demon", hp: 5500, speed: 5.1, damage: 58, killHeal: 40, goldReward: 35,
     skin: "#4a2a2a", hair: "#1a0a0a", shirt: "#3a1a0a", pants: "#1a0a0a", contactRange: 80,
     ai: 'tank', _specials: ['redline_e216', 'hell_exhaust', 'geargrind_slam'],
     isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
@@ -1767,26 +1767,26 @@ const MOB_TYPES = {
 
   // Section B — Speed (waves 6-9)
   drift_phantom: {
-    name: "Drift Phantom", hp: 240, speed: 6.4, damage: 34, killHeal: 8, goldReward: 6,
+    name: "Drift Phantom", hp: 240, speed: 6.7, damage: 34, killHeal: 8, goldReward: 6,
     skin: "#5a5a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#1a1a2a", contactRange: 74,
     ai: 'runner', _specials: ['drift_blink'], specialCD: 420, // 7s
     deathColors: ["#5a5a6a","#3a3a4a","#7a7a8a","#1a1a2a"],
   },
   crash_dummy: {
-    name: "Crash Dummy", hp: 300, speed: 4.6, damage: 38, killHeal: 12, goldReward: 7,
+    name: "Crash Dummy", hp: 300, speed: 4.8, damage: 38, killHeal: 12, goldReward: 7,
     skin: "#aa8a3a", hair: "#5a4a1a", shirt: "#8a6a2a", pants: "#5a4a1a", contactRange: 76,
     ai: 'grunt', _specials: ['dummy_detonate'], specialCD: 540, // 9s
     deathColors: ["#aa8a3a","#8a6a2a","#ccaa5a","#5a4a1a"],
   },
   neon_screamer: {
-    name: "Neon Screamer", hp: 280, speed: 5, damage: 34, killHeal: 14, goldReward: 8,
+    name: "Neon Screamer", hp: 280, speed: 5.3, damage: 34, killHeal: 14, goldReward: 8,
     skin: "#6a3a6a", hair: "#2a0a2a", shirt: "#4a1a4a", pants: "#2a0a2a", contactRange: 76,
     ai: 'witch', _specials: ['neon_shriek'], specialCD: 540, // 9s
     kiteRange: 250,
     deathColors: ["#6a3a6a","#4a1a4a","#8a5a8a","#2a0a2a"],
   },
   ramp_widow: {
-    name: "Ramp Widow", hp: 290, speed: 4.6, damage: 36, killHeal: 14, goldReward: 8,
+    name: "Ramp Widow", hp: 290, speed: 4.8, damage: 36, killHeal: 14, goldReward: 8,
     skin: "#5a3a4a", hair: "#1a0a1a", shirt: "#3a1a2a", pants: "#1a0a0a", contactRange: 76,
     ai: 'witch', _specials: ['ramp_launch'], specialCD: 600, // 10s
     kiteRange: 280,
@@ -1795,7 +1795,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 4 — Boss: Nitro Wraith (L40)
   nitro_wraith: {
-    name: "Nitro Wraith", hp: 6500, speed: 6.4, damage: 62, killHeal: 50, goldReward: 45,
+    name: "Nitro Wraith", hp: 6500, speed: 6.7, damage: 62, killHeal: 50, goldReward: 45,
     skin: "#2a2a3a", hair: "#0a0a1a", shirt: "#1a1a2a", pants: "#0a0a0a", contactRange: 80,
     ai: 'runner', _specials: ['nitro_line', 'phantom_splitstream', 'crash_bloom'],
     isBoss: true, bossScale: 1.5, specialCD: 480, // 8s
@@ -1805,26 +1805,26 @@ const MOB_TYPES = {
   // ===================== EARTH-216 FLOOR 5: FATE & CORRUPTION =====================
   // Section A — Fate & Corruption (waves 1-4)
   cardling: {
-    name: "Cardling", hp: 240, speed: 5.4, damage: 32, killHeal: 8, goldReward: 6,
+    name: "Cardling", hp: 240, speed: 5.7, damage: 32, killHeal: 8, goldReward: 6,
     skin: "#8a8a8a", hair: "#3a3a3a", shirt: "#6a6a6a", pants: "#3a3a3a", contactRange: 74,
     ai: 'runner', _specials: ['card_flick'], specialCD: 360, // 6s
     deathColors: ["#8a8a8a","#6a6a6a","#aaaaaa","#3a3a3a"],
   },
   pit_oracle: {
-    name: "Pit Oracle", hp: 320, speed: 4, damage: 34, killHeal: 16, goldReward: 9,
+    name: "Pit Oracle", hp: 320, speed: 4.2, damage: 34, killHeal: 16, goldReward: 9,
     skin: "#6a4a8a", hair: "#2a1a4a", shirt: "#4a2a6a", pants: "#2a1a3a", contactRange: 76,
     ai: 'witch', _specials: ['oracle_curse'], specialCD: 600, // 10s
     kiteRange: 300,
     deathColors: ["#6a4a8a","#4a2a6a","#8a6aaa","#2a1a3a"],
   },
   roulette_revenant: {
-    name: "Roulette Revenant", hp: 290, speed: 4.6, damage: 36, killHeal: 12, goldReward: 7,
+    name: "Roulette Revenant", hp: 290, speed: 4.8, damage: 36, killHeal: 12, goldReward: 7,
     skin: "#5a5a3a", hair: "#1a1a0a", shirt: "#3a3a1a", pants: "#1a1a0a", contactRange: 76,
     ai: 'grunt', _specials: ['spin_slash'], specialCD: 480, // 8s
     deathColors: ["#5a5a3a","#3a3a1a","#7a7a5a","#1a1a0a"],
   },
   suit_reaper: {
-    name: "Suit Reaper", hp: 280, speed: 4.4, damage: 36, killHeal: 12, goldReward: 7,
+    name: "Suit Reaper", hp: 280, speed: 4.6, damage: 36, killHeal: 12, goldReward: 7,
     skin: "#3a3a3a", hair: "#0a0a0a", shirt: "#1a1a1a", pants: "#0a0a0a", contactRange: 76,
     ai: 'grunt', _specials: ['reaper_cut'], specialCD: 480, // 8s
     deathColors: ["#3a3a3a","#1a1a1a","#5a5a5a","#0a0a0a"],
@@ -1832,7 +1832,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 5 — Mini-Boss: Hollow Ace (L45)
   hollow_ace: {
-    name: "Hollow Ace", hp: 6000, speed: 4.8, damage: 60, killHeal: 40, goldReward: 40,
+    name: "Hollow Ace", hp: 6000, speed: 5.1, damage: 60, killHeal: 40, goldReward: 40,
     skin: "#5a5a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#1a1a1a", contactRange: 80,
     ai: 'witch', _specials: ['stacked_deck', 'cold_read_e216', 'house_pull'],
     isBoss: true, bossScale: 1.4, specialCD: 540, // 9s
@@ -1843,26 +1843,26 @@ const MOB_TYPES = {
 
   // Section B — Corruption (waves 6-9)
   blight_husk: {
-    name: "Blight Husk", hp: 300, speed: 4.4, damage: 36, killHeal: 12, goldReward: 7,
+    name: "Blight Husk", hp: 300, speed: 4.6, damage: 36, killHeal: 12, goldReward: 7,
     skin: "#4a5a3a", hair: "#1a2a0a", shirt: "#3a4a2a", pants: "#1a2a0a", contactRange: 76,
     ai: 'grunt', _specials: ['blight_burst'], specialCD: 480, // 8s
     deathColors: ["#4a5a3a","#3a4a2a","#6a7a5a","#1a2a0a"],
   },
   maw_sprite: {
-    name: "Maw Sprite", hp: 230, speed: 6, damage: 32, killHeal: 6, goldReward: 6,
+    name: "Maw Sprite", hp: 230, speed: 6.3, damage: 32, killHeal: 6, goldReward: 6,
     skin: "#3a2a3a", hair: "#0a0a0a", shirt: "#2a1a2a", pants: "#0a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['maw_bite'], specialCD: 360, // 6s
     deathColors: ["#3a2a3a","#2a1a2a","#5a4a5a","#0a0a0a"],
   },
   rift_penitent: {
-    name: "Rift Penitent", hp: 330, speed: 3.8, damage: 34, killHeal: 16, goldReward: 9,
+    name: "Rift Penitent", hp: 330, speed: 4, damage: 34, killHeal: 16, goldReward: 9,
     skin: "#4a4a6a", hair: "#1a1a3a", shirt: "#3a3a5a", pants: "#1a1a2a", contactRange: 76,
     ai: 'witch', _specials: ['rift_pulse'], specialCD: 660, // 11s
     kiteRange: 300,
     deathColors: ["#4a4a6a","#3a3a5a","#6a6a8a","#1a1a2a"],
   },
   grin_apostle: {
-    name: "Grin Apostle", hp: 260, speed: 5.4, damage: 34, killHeal: 10, goldReward: 7,
+    name: "Grin Apostle", hp: 260, speed: 5.7, damage: 34, killHeal: 10, goldReward: 7,
     skin: "#5a3a5a", hair: "#1a0a1a", shirt: "#3a1a3a", pants: "#1a0a0a", contactRange: 74,
     ai: 'runner', _specials: ['apostle_dash'], specialCD: 420, // 7s
     deathColors: ["#5a3a5a","#3a1a3a","#7a5a7a","#1a0a0a"],
@@ -1870,7 +1870,7 @@ const MOB_TYPES = {
 
   // Earth-216 Floor 5 — Final Boss: Alcazar (L50)
   alcazar: {
-    name: "Alcazar", hp: 8500, speed: 4.4, damage: 70, killHeal: 70, goldReward: 65,
+    name: "Alcazar", hp: 8500, speed: 4.6, damage: 70, killHeal: 70, goldReward: 65,
     skin: "#2a1a3a", hair: "#0a0a1a", shirt: "#1a0a2a", pants: "#0a0a0a", contactRange: 84,
     ai: 'archer', _specials: ['corrupt_vessel', 'black_benediction', 'unsealing_maw'],
     isBoss: true, bossScale: 1.6, specialCD: 480, // 8s
