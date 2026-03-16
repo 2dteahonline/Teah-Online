@@ -997,19 +997,9 @@ function draw() {
       // Team indicator circle under feet
       ctx.fillStyle = sb._sparTeam === 'teamA' ? 'rgba(50,120,220,0.4)' : 'rgba(220,50,50,0.4)';
       ctx.beginPath(); ctx.arc(sbx, sby, 14, 0, Math.PI * 2); ctx.fill();
-      // Draw character
+      // Draw character (drawChar → drawNameTag already draws HP bar)
       drawChar(sb.x, sb.y, sb.dir, 0, sb.moving,
         sb.skin, sb.hair, sb.shirt, sb.pants, sb.name, sb.hp, false, null, sb.maxHp);
-      // HP bar
-      if (sb.hp < sb.maxHp) {
-        const hpPct = sb.hp / sb.maxHp;
-        const barW = 36, barH = 4;
-        const barX = sbx - barW / 2, barY = sby - 48;
-        ctx.fillStyle = '#222';
-        ctx.fillRect(barX, barY, barW, barH);
-        ctx.fillStyle = sb._sparTeam === 'teamA' ? '#4488ff' : '#ff4444';
-        ctx.fillRect(barX, barY, barW * hpPct, barH);
-      }
 
     } else if (e.mob) {
       const m = e.mob;

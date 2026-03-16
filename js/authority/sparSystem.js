@@ -246,11 +246,12 @@ const SparSystem = {
       _ai: {
         aggression: 0.3 + Math.random() * 0.7,
         strafeDir: Math.random() > 0.5 ? 1 : -1,
-        strafeTimer: Math.floor(90 + Math.random() * 60),
-        coverTarget: null,
+        strafeTimer: Math.floor(60 + Math.random() * 90),
         targetId: null,
         targetTimer: 0,
         shootAngle: 0,
+        laneY: null,              // assigned vertical lane (set on first tick)
+        laneShiftTimer: 0,        // timer to periodically shift lane
       },
       // Rendering
       skin: team === 'teamA' ? '#4488cc' : '#cc4444',
@@ -516,6 +517,15 @@ const SparSystem = {
     const allies = team === 'teamA' ? SparState.teamA : SparState.teamB;
     const ai = bot._ai;
 
+    // --- Arena awareness ---
+    const arenaLevel = LEVELS[SparState.activeRoom.arenaLevel];
+    const arenaW = arenaLevel.widthTiles * TILE;
+    const arenaH = arenaLevel.heightTiles * TILE;
+    const midX = arenaW / 2;
+    const midY = arenaH / 2;
+    // Bot's "home side" — teamA is left, teamB is right
+    const homeSideX = team === 'teamA' ? arenaW * 0.3 : arenaW * 0.7;
+
     // --- Target selection ---
     ai.targetTimer--;
     let target = null;
@@ -524,16 +534,20 @@ const SparSystem = {
       if (prev) target = prev;
     }
     if (!target || ai.targetTimer <= 0) {
-      let bestDist = Infinity;
+      // Prefer enemies that are on our side (invading) over distant ones
+      let bestScore = -Infinity;
       for (const p of enemies) {
         if (!p.alive) continue;
         const dx = bot.x - p.entity.x, dy = bot.y - p.entity.y;
-        const dist = dx * dx + dy * dy;
-        if (dist < bestDist) { bestDist = dist; target = p; }
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Score: closer enemies score higher, enemies invading our side score much higher
+        const onOurSide = team === 'teamA' ? (p.entity.x < midX) : (p.entity.x > midX);
+        const score = -dist + (onOurSide ? 400 : 0);
+        if (score > bestScore) { bestScore = score; target = p; }
       }
       if (target) {
         ai.targetId = target.id;
-        ai.targetTimer = 120;
+        ai.targetTimer = 90 + Math.floor(Math.random() * 60);
       }
     }
     if (!target) return;
@@ -554,56 +568,142 @@ const SparSystem = {
       }
     }
 
-    // --- Movement (tactical) ---
+    // --- Decide behavior state ---
+    // Behaviors: 'hold_lane', 'strafe', 'retreat', 'push', 'reposition'
+    const hpPct = bot.hp / bot.maxHp;
+    const hasAmmo = !bot._gunReloading && bot._gunAmmo > 0;
+    const isDeepEnemy = team === 'teamA' ? (bot.x > midX + 100) : (bot.x < midX - 100);
+    const enemyOnOurSide = team === 'teamA' ? (tgt.x < midX) : (tgt.x > midX);
+
+    let behavior;
+    if (hpPct < 0.3 || (bot._gunReloading && dist < 250)) {
+      behavior = 'retreat';              // low HP or reloading close = fall back
+    } else if (isDeepEnemy) {
+      behavior = 'retreat';              // overextended, pull back to own side
+    } else if (enemyOnOurSide && dist < 350) {
+      behavior = 'push';                 // enemy invading our zone, push them out
+    } else if (hasAmmo && dist < 450 && dist > 150) {
+      behavior = 'strafe';               // good range, strafe and shoot
+    } else if (dist > 450) {
+      behavior = 'hold_lane';            // too far, move toward control point
+    } else if (dist < 150 && hasAmmo) {
+      behavior = 'strafe';               // close but have ammo, strafe-fight
+    } else {
+      behavior = 'hold_lane';
+    }
+
+    // --- Movement based on behavior ---
     const speed = SPAR_CONFIG.BOT_SPEED;
     let moveX = 0, moveY = 0;
-    const preferredRange = 120 + (1 - ai.aggression) * 200;
 
-    if ((bot.hp < bot.maxHp * 0.5 || bot._gunReloading) && dist < 300) {
-      if (dist > 1) {
-        moveX = -(dx / dist) * speed;
-        moveY = -(dy / dist) * speed;
+    // Assign a vertical lane based on bot index to spread map coverage
+    if (ai.laneY == null) {
+      // Distribute bots across top/mid/bottom of arena
+      const allyIndex = allies.findIndex(a => a.entity === bot);
+      const allyCount = allies.length;
+      if (allyCount <= 1) {
+        ai.laneY = midY;
+      } else {
+        const margin = arenaH * 0.2;
+        ai.laneY = margin + ((arenaH - margin * 2) * allyIndex / (allyCount - 1));
       }
-    } else if (dist > preferredRange + 40) {
-      moveX = (dx / dist) * speed;
-      moveY = (dy / dist) * speed;
-    } else if (dist < preferredRange - 40) {
-      moveX = -(dx / dist) * speed;
-      moveY = -(dy / dist) * speed;
-    } else {
+      // Periodically shift lane slightly for unpredictability
+      ai.laneShiftTimer = 180 + Math.floor(Math.random() * 180);
+    }
+    ai.laneShiftTimer--;
+    if (ai.laneShiftTimer <= 0) {
+      ai.laneY += (Math.random() - 0.5) * arenaH * 0.15;
+      ai.laneY = Math.max(arenaH * 0.15, Math.min(arenaH * 0.85, ai.laneY));
+      ai.laneShiftTimer = 180 + Math.floor(Math.random() * 180);
+    }
+
+    if (behavior === 'retreat') {
+      // Move back toward home side + assigned lane
+      const retreatX = homeSideX;
+      const retreatY = ai.laneY;
+      const rdx = retreatX - bot.x, rdy = retreatY - bot.y;
+      const rDist = Math.sqrt(rdx * rdx + rdy * rdy);
+      if (rDist > 20) {
+        moveX = (rdx / rDist) * speed;
+        moveY = (rdy / rDist) * speed;
+      }
+    } else if (behavior === 'hold_lane') {
+      // Move toward a control position (slightly past mid toward enemy) along lane
+      const holdX = team === 'teamA' ? midX - arenaW * 0.05 : midX + arenaW * 0.05;
+      const holdY = ai.laneY;
+      const hdx = holdX - bot.x, hdy = holdY - bot.y;
+      const hDist = Math.sqrt(hdx * hdx + hdy * hdy);
+      if (hDist > 30) {
+        // Move at reduced speed when holding (patient, not rushing)
+        moveX = (hdx / hDist) * speed * 0.5;
+        moveY = (hdy / hDist) * speed * 0.5;
+      }
+    } else if (behavior === 'push') {
+      // Push toward enemy but don't overextend past midline too much
+      const maxPushX = team === 'teamA' ? midX + arenaW * 0.1 : midX - arenaW * 0.1;
+      const pushPastMid = team === 'teamA' ? (bot.x > maxPushX) : (bot.x < maxPushX);
+      if (pushPastMid) {
+        // At push limit, strafe instead
+        ai.strafeTimer--;
+        if (ai.strafeTimer <= 0) {
+          ai.strafeDir *= -1;
+          ai.strafeTimer = 60 + Math.floor(Math.random() * 90);
+        }
+        const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
+        moveX = perpX * speed * ai.strafeDir * 0.6;
+        moveY = perpY * speed * ai.strafeDir * 0.6;
+      } else {
+        // Approach enemy at moderate speed along their angle
+        if (dist > 1) {
+          moveX = (dx / dist) * speed * 0.6;
+          moveY = (dy / dist) * speed * 0.6;
+        }
+      }
+    } else if (behavior === 'strafe') {
+      // Strafe perpendicular to enemy — core combat movement
       ai.strafeTimer--;
       if (ai.strafeTimer <= 0) {
         ai.strafeDir *= -1;
-        ai.strafeTimer = 90 + Math.floor(Math.random() * 60);
+        ai.strafeTimer = 60 + Math.floor(Math.random() * 90);
       }
-      const perpX = -dy / dist, perpY = dx / dist;
-      moveX = perpX * speed * ai.strafeDir * 0.7;
-      moveY = perpY * speed * ai.strafeDir * 0.7;
+      const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
+      moveX = perpX * speed * ai.strafeDir * 0.65;
+      moveY = perpY * speed * ai.strafeDir * 0.65;
+
+      // Slight forward/back adjustment to maintain ideal range (250-350px)
+      const idealRange = 250 + (1 - ai.aggression) * 100;
+      if (dist > idealRange + 30 && dist > 1) {
+        moveX += (dx / dist) * speed * 0.25;
+        moveY += (dy / dist) * speed * 0.25;
+      } else if (dist < idealRange - 30 && dist > 1) {
+        moveX -= (dx / dist) * speed * 0.25;
+        moveY -= (dy / dist) * speed * 0.25;
+      }
+
+      // Drift toward lane Y
+      const laneDrift = ai.laneY - bot.y;
+      if (Math.abs(laneDrift) > 40) {
+        moveY += Math.sign(laneDrift) * speed * 0.15;
+      }
     }
 
-    // Separation from allies
+    // Separation from allies (prevent stacking)
     for (const a of allies) {
       if (!a.alive || a.entity === bot) continue;
       const adx = bot.x - a.entity.x, ady = bot.y - a.entity.y;
       const adist = Math.sqrt(adx * adx + ady * ady);
-      if (adist < 60 && adist > 1) {
-        moveX += (adx / adist) * speed * 0.4;
-        moveY += (ady / adist) * speed * 0.4;
+      if (adist < 80 && adist > 1) {
+        moveX += (adx / adist) * speed * 0.35;
+        moveY += (ady / adist) * speed * 0.35;
       }
     }
 
-    // Flanking
-    if (allies.length > 1) {
-      for (const a of allies) {
-        if (!a.alive || a.entity === bot) continue;
-        const aDist = Math.sqrt((tgt.x - a.entity.x) ** 2 + (tgt.y - a.entity.y) ** 2);
-        if (aDist < 120) {
-          const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
-          moveX += perpX * speed * 0.3;
-          moveY += perpY * speed * 0.3;
-        }
-      }
-    }
+    // Wall avoidance — steer away from arena edges
+    const wallMargin = TILE * 2;
+    if (bot.x < wallMargin) moveX += speed * 0.4;
+    else if (bot.x > arenaW - wallMargin) moveX -= speed * 0.4;
+    if (bot.y < wallMargin) moveY += speed * 0.4;
+    else if (bot.y > arenaH - wallMargin) moveY -= speed * 0.4;
 
     // Normalize speed
     const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
@@ -622,17 +722,31 @@ const SparSystem = {
     bot.vx = moveX; bot.vy = moveY;
     bot.moving = Math.abs(moveX) > 0.5 || Math.abs(moveY) > 0.5;
 
-    // Facing direction
-    if (Math.abs(dx) > Math.abs(dy)) {
-      bot.dir = dx > 0 ? 0 : 2;
+    // Facing direction — always face target when in combat range
+    if (dist < 500) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        bot.dir = dx > 0 ? 0 : 2;
+      } else {
+        bot.dir = dy > 0 ? 3 : 1;
+      }
     } else {
-      bot.dir = dy > 0 ? 3 : 1;
+      // Face movement direction when far
+      if (Math.abs(moveX) > Math.abs(moveY)) {
+        bot.dir = moveX > 0 ? 0 : 2;
+      } else if (Math.abs(moveY) > 0.5) {
+        bot.dir = moveY > 0 ? 3 : 1;
+      }
     }
 
     // --- Shooting ---
-    if (!bot._gunReloading && bot._gunAmmo > 0 && bot._fireCooldown <= 0 && dist < 400) {
+    // Only shoot when in strafe/push/hold behaviors, not while retreating
+    const canShoot = behavior !== 'retreat' || (hpPct > 0.15 && dist < 200);
+    if (canShoot && !bot._gunReloading && bot._gunAmmo > 0 && bot._fireCooldown <= 0 && dist < 450) {
       if (this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
-        const leadFrames = 8;
+        // Predictive aiming — lead target based on distance
+        const bulletSpeed = GAME_CONFIG.BULLET_SPEED;
+        const travelTime = dist / bulletSpeed;
+        const leadFrames = Math.min(travelTime, 12);
         const predX = tgt.x + (tgt.vx || 0) * leadFrames;
         const predY = tgt.y + (tgt.vy || 0) * leadFrames;
         const aimDx = predX - bot.x;
@@ -640,9 +754,10 @@ const SparSystem = {
         const angle = Math.atan2(aimDy, aimDx);
         ai.shootAngle = angle;
 
-        // Bot's CT-X spread + slight inaccuracy
+        // Bot's CT-X spread + slight inaccuracy (better accuracy at closer range)
         const spreadRad = (bot._gunSpread || 0) * Math.PI / 180;
-        const inaccuracy = (Math.random() - 0.5) * (0.15 + spreadRad);
+        const distFactor = Math.min(1, dist / 400); // 0 at close, 1 at far
+        const inaccuracy = (Math.random() - 0.5) * (0.08 + spreadRad * distFactor);
         const finalAngle = angle + inaccuracy;
 
         const bSpeed = GAME_CONFIG.BULLET_SPEED;
