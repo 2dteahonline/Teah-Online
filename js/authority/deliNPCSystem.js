@@ -263,6 +263,16 @@ function _routeToExit(fromTX, fromTY) {
   return route;
 }
 
+// Route from queue position to exit — steps EAST out of the line first (to tx:13)
+// so the NPC doesn't walk through other queue members at tx:11.
+function _routeQueueToExit(npc) {
+  const npcTY = Math.floor(npc.y / TILE);
+  return [
+    { tx: 13, ty: npcTY },   // step east out of queue line (tx:11 → tx:13)
+    { tx: 13, ty: 30 },      // south to exit
+  ];
+}
+
 // Route from exit (13,30) to a shelf browse spot (for retail shoppers)
 function _routeExitToShelf(shelf) {
   const gap = _nearestAisleGap(shelf.tx);
@@ -522,7 +532,7 @@ const DELI_NPC_AI = {
       if (npc.linkedOrderId && typeof _incrementMissedOrders === 'function') {
         _incrementMissedOrders();
       }
-      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeQueueToExit(npc), '_despawn', 0);
       return;
     }
   },
@@ -542,7 +552,7 @@ const DELI_NPC_AI = {
       }
       npc.hasOrdered = true;
       npc._queueIdx = -1;
-      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeQueueToExit(npc), '_despawn', 0);
       return;
     }
 
@@ -571,7 +581,7 @@ const DELI_NPC_AI = {
       }
       npc._queueIdx = -1;
       _advanceQueue(0);
-      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeQueueToExit(npc), '_despawn', 0);
       return;
     }
   },
@@ -589,7 +599,7 @@ const DELI_NPC_AI = {
       }
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
-      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeQueueToExit(npc), '_despawn', 0);
       return;
     }
 
@@ -604,7 +614,7 @@ const DELI_NPC_AI = {
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
       _advanceQueue(0);
-      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeQueueToExit(npc), '_despawn', 0);
       return;
     }
     // Patience timeout — leave angry after 30 sec if food never comes
@@ -615,7 +625,7 @@ const DELI_NPC_AI = {
       npc.linkedOrderId = null;
       npc._queueIdx = -1;
       _advanceQueue(0);
-      _cStartRoute(npc, _routeToExit(11, 22), '_despawn', 0);
+      _cStartRoute(npc, _routeQueueToExit(npc), '_despawn', 0);
       return;
     }
   },
@@ -831,9 +841,7 @@ function updateDeliNPCs() {
       } else {
         // No free slot — eject from queue
         yielder._queueIdx = -1;
-        const curTX = Math.floor(yielder.x / TILE);
-        const curTY = Math.floor(yielder.y / TILE);
-        _cStartRoute(yielder, _routeToExit(curTX, curTY), '_despawn', 0);
+        _cStartRoute(yielder, _routeQueueToExit(yielder), '_despawn', 0);
       }
     } else {
       _queueSlots.set(npc._queueIdx, npc);

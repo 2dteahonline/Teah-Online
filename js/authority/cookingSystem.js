@@ -777,12 +777,7 @@ function drawCookingHUD() {
     ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = order.customer.color || '#80a0c0';
     ctx.fillText((order.customer.name || order.customer.type || 'Customer'), panelX + 8, panelY + 14);
-    // Timer type label
-    const timerLabel = order.timerType ? order.timerType.label : '';
-    if (timerLabel) {
-      ctx.fillStyle = '#a0a0a0';
-      ctx.fillText(timerLabel, panelX + panelW - 60, panelY + 14);
-    }
+    // (Timer type label removed — bar color communicates urgency)
 
     // === Service timer bar (green→yellow→red) ===
     const sTimerPct = Math.max(0, 1.0 - (order.serviceTimer / order.serviceDuration));
