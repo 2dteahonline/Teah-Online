@@ -18,7 +18,7 @@ const GAME_CONFIG = {
   // --- Projectiles ---
   BULLET_SPEED: 10,             // default bullet speed (px/frame)
   BULLET_R: 7,                  // projectile collision radius
-  ENTITY_R: 17,                 // entity hit detection radius (bullet-vs-entity)
+  ENTITY_R: 19,                 // entity hit detection radius (bullet-vs-entity) [+10% from 17]
 
   // --- Mining ---
   ORE_COLLISION_RADIUS: 22,     // ore node collision circle
@@ -29,8 +29,8 @@ const GAME_CONFIG = {
   KNOCKBACK_THRESHOLD: 0.5,     // min velocity before clearing
 
   // --- Hitbox Indicator ---
-  DEFAULT_HITBOX_RADIUS: 30,    // green circle radius (matches PLAYER_RADIUS)
+  DEFAULT_HITBOX_RADIUS: 33,    // green circle radius (scaled with ENTITY_R +10%)
 
   // --- Version ---
-  GAME_UPDATE: 215,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 216,             // increment each deploy — shown on lobby version sign
 };
