@@ -643,35 +643,41 @@ const SparSystem = {
   _getIncomingBulletDodge(bot, team) {
     let dodgeX = 0, dodgeY = 0;
     const botCY = bot.y - 10; // body center
-    const hitR = 30; // dodge if bullet will pass within this range
+    const dodgeLane = 50; // dodge if bullet will pass within this range (wider = earlier dodge)
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
       const dbx = bot.x - b.x, dby = botCY - b.y;
       const bDist = Math.sqrt(dbx * dbx + dby * dby);
-      if (bDist > 250 || bDist < 8) continue;
+      if (bDist > 400 || bDist < 8) continue; // detect at 400px (was 250)
 
-      const urgency = Math.max(0.3, 1 - bDist / 250);
+      // Urgency: closer = stronger dodge. Minimum 0.5 so distant bullets still trigger movement
+      const urgency = Math.max(0.5, 1.2 - bDist / 350);
 
       if (Math.abs(b.vy) > Math.abs(b.vx)) {
-        // Vertical bullet (going up or down) — dodge LEFT or RIGHT
+        // Vertical bullet — dodge LEFT or RIGHT
         const isApproaching = (b.vy > 0 && b.y < botCY) || (b.vy < 0 && b.y > botCY);
         if (!isApproaching) continue;
-        if (Math.abs(dbx) > hitR * 2) continue; // not in our lane
-        // Dodge perpendicular — away from bullet's X
+        if (Math.abs(dbx) > dodgeLane) continue;
         const dodgeDir = dbx >= 0 ? 1 : -1;
-        // Stronger dodge when bullet is closer to our X lane
-        const laneProximity = Math.max(0, 1 - Math.abs(dbx) / (hitR * 2));
-        dodgeX += dodgeDir * urgency * laneProximity * 5;
+        const laneProximity = Math.max(0.3, 1 - Math.abs(dbx) / dodgeLane);
+        dodgeX += dodgeDir * urgency * laneProximity * 3;
       } else {
-        // Horizontal bullet (going left or right) — dodge UP or DOWN
+        // Horizontal bullet — dodge UP or DOWN
         const isApproaching = (b.vx > 0 && b.x < bot.x) || (b.vx < 0 && b.x > bot.x);
         if (!isApproaching) continue;
-        if (Math.abs(dby) > hitR * 2) continue; // not in our lane
+        if (Math.abs(dby) > dodgeLane) continue;
         const dodgeDir = dby >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0, 1 - Math.abs(dby) / (hitR * 2));
-        dodgeY += dodgeDir * urgency * laneProximity * 5;
+        const laneProximity = Math.max(0.3, 1 - Math.abs(dby) / dodgeLane);
+        dodgeY += dodgeDir * urgency * laneProximity * 3;
       }
+    }
+
+    // Clamp total dodge so it doesn't exceed reasonable movement
+    const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
+    if (dodgeLen > 4) {
+      dodgeX = (dodgeX / dodgeLen) * 4;
+      dodgeY = (dodgeY / dodgeLen) * 4;
     }
     return { x: dodgeX, y: dodgeY };
   },
@@ -1365,65 +1371,61 @@ const SparSystem = {
   _pickBotOpeningRoute(pm, arenaW, arenaH) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
 
-    // Available routes
+    // Available routes — bottom is meta, so bottom routes are default
     const routes = ['bottomCenter', 'bottomLeft', 'bottomRight', 'topHold', 'midFlank', 'mirrorPlayer'];
 
-    // Not enough data — pick randomly from bottom routes (bottom is meta)
+    // Not enough data — rush bottom
     if (!sl || sl.matchCount < 1) {
       const starters = ['bottomCenter', 'bottomLeft', 'bottomRight'];
       return starters[Math.floor(Math.random() * starters.length)];
     }
 
-    // Score each route based on past results and counter-play
+    // Score each route — RESULTS MATTER MOST
     const scores = {};
     for (const r of routes) scores[r] = 0;
 
-    // Base scores from win rates (if we have results)
+    // All bottom routes get base bonus — bottom is meta
+    scores['bottomCenter'] += 8;
+    scores['bottomLeft'] += 8;
+    scores['bottomRight'] += 8;
+    scores['mirrorPlayer'] += 5; // can get bottom too
+
     const rr = sl.botOpenings.routeResults;
     for (const r of routes) {
       if (rr[r] && rr[r].total > 0) {
+        // Win rate is king
         const winRate = rr[r].wins / rr[r].total;
+        scores[r] += winRate * 40;
+
+        // Getting bottom is very valuable
         const bottomRate = rr[r].gotBottom / rr[r].total;
-        scores[r] += winRate * 30;          // winning is most important
-        scores[r] += bottomRate * 15;       // getting bottom is good
-        scores[r] += rr[r].total * 0.5;    // slight bonus for tested routes
+        scores[r] += bottomRate * 25;
+
+        // Penalize routes that consistently LOSE
+        const lossRate = rr[r].losses / rr[r].total;
+        scores[r] -= lossRate * 15;
+
+        // Routes with no wins and many attempts should be deprioritized
+        if (rr[r].wins === 0 && rr[r].total >= 3) {
+          scores[r] -= 20; // clearly doesn't work
+        }
       }
     }
 
-    // Counter-play: adjust based on what player does
+    // Counter player's specific route
     const playerRoute = sl.opening.route;
     if (playerRoute === 'bottomLeft') {
-      scores['bottomRight'] += 10; // go opposite side
-      scores['bottomCenter'] += 5;
+      scores['bottomRight'] += 6;
     } else if (playerRoute === 'bottomRight') {
-      scores['bottomLeft'] += 10;
-      scores['bottomCenter'] += 5;
-    } else if (playerRoute === 'bottomCenter') {
-      scores['bottomLeft'] += 8;   // offset to not collide
-      scores['bottomRight'] += 8;
-      scores['mirrorPlayer'] -= 5; // mirroring center is bad
+      scores['bottomLeft'] += 6;
     }
 
-    // If player ALWAYS rushes bottom, sometimes top-hold can surprise
-    if (sl.opening.rushBottom > 0.8) {
-      scores['topHold'] += 5;
-      scores['midFlank'] += 5;
-    }
-
-    // If player shoots during opening, routes that avoid their shot axis score higher
-    if (sl.opening.shootsDuringOpening > 0.6) {
-      // Player shoots early — evasive routes are better
-      scores['midFlank'] += 5;
-      scores['bottomLeft'] += (sl.shooting.leftPct > 0.3 ? -3 : 3);  // avoid left if they shoot left
-      scores['bottomRight'] += (sl.shooting.rightPct > 0.3 ? -3 : 3);
-    }
-
-    // Don't repeat the same route too many times in a row — variety matters
+    // Small variety bonus — don't repeat same route more than twice
     const lastRoute = sl.botOpenings.lastRoute;
-    if (lastRoute) scores[lastRoute] -= 8;
+    if (lastRoute) scores[lastRoute] -= 4;
 
-    // Add randomness so bot isn't perfectly predictable
-    for (const r of routes) scores[r] += Math.random() * 12;
+    // Small randomness for unpredictability
+    for (const r of routes) scores[r] += Math.random() * 8;
 
     // Pick highest scoring route
     let bestRoute = 'bottomCenter';
@@ -1596,45 +1598,52 @@ const SparSystem = {
       }
       const route = ai._openingRoute;
 
-      // Route-specific movement
+      // Route-specific movement — ALL routes prioritize getting bottom
       if (route === 'bottomCenter') {
-        // Straight down the middle — fastest to bottom
-        const goalY = arenaH * 0.82;
-        if (bot.y < goalY - 15) moveY = speed * 0.92;
-        moveX = ai.strafeDir * speed * 0.25;
+        // Straight down the middle — FULL SPEED to bottom
+        const goalY = arenaH * 0.85;
+        if (bot.y < goalY - 10) moveY = speed; // full speed down
+        moveX = ai.strafeDir * speed * 0.15; // minimal strafe, commit to bottom
       } else if (route === 'bottomLeft') {
-        // Angle to bottom-left
-        const goalY = arenaH * 0.8;
+        // Full speed to bottom-left corner
+        const goalY = arenaH * 0.85;
         const goalX = arenaW * 0.25;
-        if (bot.y < goalY - 15) moveY = speed * 0.8;
-        moveX = (goalX - bot.x) > 10 ? -speed * 0.5 : (goalX - bot.x) < -10 ? speed * 0.5 : 0;
+        if (bot.y < goalY - 10) moveY = speed * 0.9;
+        moveX = Math.sign(goalX - bot.x) * speed * 0.4;
       } else if (route === 'bottomRight') {
-        // Angle to bottom-right
-        const goalY = arenaH * 0.8;
+        // Full speed to bottom-right corner
+        const goalY = arenaH * 0.85;
         const goalX = arenaW * 0.75;
-        if (bot.y < goalY - 15) moveY = speed * 0.8;
-        moveX = (goalX - bot.x) > 10 ? speed * 0.5 : (goalX - bot.x) < -10 ? -speed * 0.5 : 0;
+        if (bot.y < goalY - 10) moveY = speed * 0.9;
+        moveX = Math.sign(goalX - bot.x) * speed * 0.4;
       } else if (route === 'topHold') {
-        // Stay near top, strafe and wall bullets — let player take bottom
+        // Strafe at top, wall bullets — sometimes surprises
         const goalY = arenaH * 0.3;
-        moveY = (goalY - bot.y) > 15 ? speed * 0.5 : (goalY - bot.y) < -15 ? -speed * 0.5 : 0;
-        moveX = ai.strafeDir * speed * 0.7;
+        moveY = Math.sign(goalY - bot.y) * speed * 0.5;
+        moveX = ai.strafeDir * speed * 0.8;
       } else if (route === 'midFlank') {
-        // Go mid-height, offset horizontally to flank
-        const goalY = arenaH * 0.55;
-        const flankSide = (tgt.vx < 0 || tgt.x < midX) ? arenaW * 0.75 : arenaW * 0.25;
-        if (bot.y < goalY - 15) moveY = speed * 0.6;
-        moveX = Math.sign(flankSide - bot.x) * speed * 0.6;
+        // Go to bottom but offset horizontally from player
+        const goalY = arenaH * 0.8;
+        const flankSide = tgt.x < midX ? arenaW * 0.7 : arenaW * 0.3;
+        if (bot.y < goalY - 10) moveY = speed * 0.85;
+        moveX = Math.sign(flankSide - bot.x) * speed * 0.45;
       } else if (route === 'mirrorPlayer') {
-        // Mirror player's movement — go wherever they go
-        moveX = (tgt.vx || 0) * 0.8;
-        moveY = (tgt.vy || 0) * 0.8;
-        // But also drift toward bottom
-        if (bot.y < arenaH * 0.7) moveY += speed * 0.3;
+        // Match player's movement but race them to bottom
+        const tVx = tgt.vx || 0, tVy = tgt.vy || 0;
+        moveX = tVx * 0.9;
+        moveY = tVy * 0.9;
+        // Always push toward bottom — harder than just drifting
+        if (bot.y < arenaH * 0.8) moveY = Math.max(moveY, speed * 0.7);
       }
 
-      // Shoot during opening if player is in range and we have LOS
-      // (shooting logic happens below, this section is movement only)
+      // Dodge bullets even during opening — don't just tank hits
+      const openDodge = this._getIncomingBulletDodge(bot, team);
+      const openDodgeMag = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
+      if (openDodgeMag > 0.5) {
+        moveX += openDodge.x * speed * 0.7;
+        // Don't let dodging stop downward progress too much
+        moveY += openDodge.y * speed * 0.4;
+      }
 
     } else if (member.gun.reloading) {
       // === RELOADING: dodge hard, create distance, strafe unpredictably ===
@@ -1854,10 +1863,19 @@ const SparSystem = {
       }
     }
 
-    // --- Bullet dodging (reactive, all behaviors) ---
+    // --- Bullet dodging (reactive, OVERRIDES movement when urgent) ---
     const dodge = this._getIncomingBulletDodge(bot, team);
-    moveX += dodge.x * speed;
-    moveY += dodge.y * speed;
+    const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
+    if (dodgeMag > 1.5) {
+      // Strong dodge signal — override most of current movement
+      const overridePct = Math.min(0.85, dodgeMag / 4); // up to 85% override
+      moveX = moveX * (1 - overridePct) + dodge.x * speed * overridePct * 1.5;
+      moveY = moveY * (1 - overridePct) + dodge.y * speed * overridePct * 1.5;
+    } else if (dodgeMag > 0.1) {
+      // Mild dodge — additive
+      moveX += dodge.x * speed;
+      moveY += dodge.y * speed;
+    }
 
     // Separation from allies
     for (const a of allies) {
