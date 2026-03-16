@@ -194,11 +194,18 @@ function _getSparTrainingArchetype() {
     rt.strafeTimer = 30 + Math.floor(Math.random() * 60);
   }
 
-  const intent = archetype.getIntent(player, te, dist, dx, dy, GAME_CONFIG.PLAYER_BASE_SPEED, rt);
+  const speed = GAME_CONFIG.PLAYER_BASE_SPEED;
+  const intent = archetype.getIntent(player, te, dist, dx, dy, speed, rt);
 
-  // Convert continuous velocity to binary direction (matches real keyboard input)
-  const moveX = Math.abs(intent.mx) > 0.1 ? (intent.mx > 0 ? 1 : -1) : 0;
-  const moveY = Math.abs(intent.my) > 0.1 ? (intent.my > 0 ? 1 : -1) : 0;
+  // Probabilistic quantization: convert continuous velocity to binary input
+  // while preserving average speed. If archetype wants 30% of max speed,
+  // press the key on ~30% of frames. This keeps distinct archetype profiles
+  // (waller's gentle 0.3x vs rusher's aggressive 0.7x) instead of collapsing
+  // everything to full-speed-or-nothing.
+  const ratioX = Math.min(1, Math.abs(intent.mx) / speed);
+  const ratioY = Math.min(1, Math.abs(intent.my) / speed);
+  const moveX = (ratioX > 0.01 && Math.random() < ratioX) ? (intent.mx > 0 ? 1 : -1) : 0;
+  const moveY = (ratioY > 0.01 && Math.random() < ratioY) ? (intent.my > 0 ? 1 : -1) : 0;
 
   // Compute aim direction toward enemy
   let aimDir = 0;
@@ -257,6 +264,7 @@ function _sparTrainOnMatchEnd(won) {
   } else {
     _sparTrainPrintSummary();
     _sparTrainState = null;
+    _clearTrainingInput();
   }
 }
 
@@ -299,9 +307,22 @@ function sparTrainStop() {
     console.log('[SparTrain] Stopping training...');
     _sparTrainPrintSummary();
     _sparTrainState = null;
+    _clearTrainingInput();
   }
 }
 
 function _isSparTraining() {
   return _sparTrainState && _sparTrainState.active;
+}
+
+// Clear held InputIntent fields that training may have set. Without this,
+// translateIntentsToCommands reads stale shootHeld/arrowShooting on the
+// first frame after training ends (before authorityTick can reset them).
+function _clearTrainingInput() {
+  if (typeof InputIntent !== 'undefined') {
+    InputIntent.shootHeld = false;
+    InputIntent.arrowShooting = false;
+    InputIntent.moveX = 0;
+    InputIntent.moveY = 0;
+  }
 }
