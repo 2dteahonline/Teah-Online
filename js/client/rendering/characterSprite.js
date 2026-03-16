@@ -2305,9 +2305,9 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   } else if (dir === 2) { // facing LEFT
     if (_gunRight) {
       drawFreeArm(bodyL + 4, y + 29 + bobY + armSwing); // free arm front-lower
-      ctx.fillStyle = black; ctx.fillRect(bodyL + 8, armY - 5, 10, 7);
-      ctx.fillStyle = skin; ctx.fillRect(bodyL + 4, armY - 4, 5, 5);
-      drawGunArm(bodyL + 4, armY - 3, bodyL + 2, armY - 3, 2);
+      ctx.fillStyle = black; ctx.fillRect(bodyL + 8, armY - 10, 10, 7);
+      ctx.fillStyle = skin; ctx.fillRect(bodyL + 4, armY - 9, 5, 5);
+      drawGunArm(bodyL + 4, armY - 8, bodyL + 2, armY - 8, 2);
     } else {
       drawFreeArm(bodyL + 12, y + 29 + bobY - armSwing); // free arm behind
       ctx.fillStyle = black; ctx.fillRect(bodyL + 8, armY - 2, 10, 7);
@@ -2317,8 +2317,8 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
   } else { // facing RIGHT
     if (_gunRight) {
       drawFreeArm(bodyR - 2, y + 29 + bobY - armSwing); // free arm back
-      ctx.fillStyle = black; ctx.fillRect(bodyR - 2, armY - 1, 10, 7);
-      drawGunArm(bodyR + 6, armY, bodyR + 9, armY + 3, 3);
+      ctx.fillStyle = black; ctx.fillRect(bodyR - 2, armY + 4, 10, 7);
+      drawGunArm(bodyR + 6, armY + 5, bodyR + 9, armY + 8, 3);
     } else {
       drawFreeArm(bodyL - 2, y + 29 + bobY + armSwing); // free arm in front
       ctx.fillStyle = black; ctx.fillRect(bodyR - 2, armY - 4, 10, 7);
