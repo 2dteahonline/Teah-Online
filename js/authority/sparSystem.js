@@ -1473,8 +1473,8 @@ const SparSystem = {
     const horizShotPct = sl.shooting.leftPct + sl.shooting.rightPct;
     const preferredOffsetX = (vertShotPct - horizShotPct) * 0.5; // -0.5 to 0.5
 
-    // Strafe speed: based on win rate (losing = speed up)
-    const strafeSpeedMult = 1.15 - sl.winRate * 0.3; // 0.85 to 1.15
+    // Strafe speed: based on win rate (losing = speed up, but NEVER exceed player speed)
+    const strafeSpeedMult = Math.min(1.0, 1.15 - sl.winRate * 0.3); // 0.85 to 1.0
 
     // --- Situational modifiers (v2) ---
 
@@ -2287,8 +2287,7 @@ const SparSystem = {
           moveY += (dy / dist) * speed * 0.15;
         }
       } else {
-        // Full evasion mode
-        moveX *= 1.2;
+        // Full evasion mode — no speed boost, same rules as player
         if (dist < 250 && dist > 1) {
           moveX -= (dx / dist) * speed * 0.25;
           moveY -= (dy / dist) * speed * 0.25;
