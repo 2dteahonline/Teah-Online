@@ -10,7 +10,7 @@ const SPAR_CONFIG = {
   COUNTDOWN_FRAMES: 180,       // 3 seconds at 60fps
   POST_MATCH_FRAMES: 60,       // 1 second results (fast testing)
   POINT_BUDGET: 100,           // total points to allocate across CT-X stats
-  BOT_SPEED: 6.66,
+  BOT_SPEED: GAME_CONFIG.PLAYER_BASE_SPEED,  // always match player speed
   ARENA_SMALL: { w: 24, h: 20 },
   ARENA_LARGE: { w: 36, h: 28 },
 };
