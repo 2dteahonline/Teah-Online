@@ -225,8 +225,10 @@ const SparSystem = {
   _createBot(nameId, spawnTX, spawnTY, team) {
     const id = 'spar_bot_' + SparState._nextBotId++;
 
-    // Random 100-point CT-X allocation
-    const alloc = this._randomBotAlloc();
+    // CT-X allocation: fixed build for 1v1 enemy bots, random meta for others
+    const room = SparState.activeRoom;
+    const is1v1Enemy = team === 'teamB' && room && room.teamSize === 1;
+    const alloc = is1v1Enemy ? { freeze: 50, rof: 50, spread: 0 } : this._randomBotAlloc();
     const botGun = this._buildCtxGun(alloc.freeze, alloc.rof, alloc.spread);
 
     // Entity — same structure as party bot entities
@@ -257,7 +259,7 @@ const SparSystem = {
     };
 
     // Full member object (same pattern as partySystem.createPartyMember)
-    return {
+    const member = {
       id: id,
       controlType: 'bot',
       entity: entity,
@@ -296,8 +298,55 @@ const SparSystem = {
         baitDirX: 0,             // fake direction
         baitDirY: 0,
         baitCooldown: 120 + Math.floor(Math.random() * 120),
+        // Phase 1a: circumstance tracking
+        _lastHitFrame: 0,
+        _lastTookHitFrame: 0,
+        _losBlockedFrames: 0,
+        _chaseFrames: 0,
+        _retreatFrames: 0,
+        _shotMode: 'immediate',
+        _styleSwitchEvaluated: false,
+        _matchDmgDealt: 0,
+        _matchDmgTaken: 0,
       },
     };
+
+    // Phase 2: Assign duel style for 1v1 enemy bots
+    if (is1v1Enemy && typeof SPAR_DUEL_STYLES !== 'undefined') {
+      const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+      let style = 'pressure'; // default
+
+      if (sl && sl.general1v1 && sl.general1v1.styleResults) {
+        // Pick style with best win rate, but 20% exploration
+        if (Math.random() < 0.2) {
+          const styleNames = Object.keys(SPAR_DUEL_STYLES);
+          style = styleNames[Math.floor(Math.random() * styleNames.length)];
+        } else {
+          let bestScore = -Infinity;
+          for (const [name, _] of Object.entries(SPAR_DUEL_STYLES)) {
+            const sr = sl.general1v1.styleResults[name];
+            if (!sr || sr.total < 1) {
+              style = name; break; // try untested styles first
+            }
+            const score = sr.wins / sr.total;
+            // Jeff-specific adjustment
+            if (sl.jeffProfile && sl.jeffProfile.styleResults && sl.jeffProfile.styleResults[name]) {
+              const jr = sl.jeffProfile.styleResults[name];
+              if (jr.total > 0) {
+                const jeffAdj = (jr.wins / jr.total - 0.5) * 0.2;
+                if (score + jeffAdj > bestScore) { bestScore = score + jeffAdj; style = name; }
+                continue;
+              }
+            }
+            if (score > bestScore) { bestScore = score; style = name; }
+          }
+        }
+      }
+
+      member.ai._duelStyle = style;
+    }
+
+    return member;
   },
 
   tick() {
@@ -739,6 +788,17 @@ const SparSystem = {
         botMisses: [],     // [{dist, playerMoving, playerVx, playerVy, dir, relY}]
         playerDmgFrames: [],  // [{frame, dmg, hasBottom}] — when player deals damage
         botDmgFrames: [],     // [{frame, dmg, hasBottom}] — when bot deals damage
+        // Phase 1e: Circumstance-specific sampling
+        afterHit_frames: 0,
+        afterHit_aggrFrames: 0,
+        afterTookHit_frames: 0,
+        afterTookHit_retreatFrames: 0,
+        lowHp_aggrFrames: 0,
+        lowHp_fleeFrames: 0,
+        chase_frames: 0,
+        chase_giveUpFrames: 0,
+        nearWall_frames: 0,
+        nearWall_cornerStuckFrames: 0,
       };
     }
 
@@ -944,6 +1004,60 @@ const SparSystem = {
     if (nearBotDist > 1 && nearBotDist < 400) {
       const botRetreating2 = (botVx * relDx + botVy * relDy) / nearBotDist;
       if (botRetreating2 > 2 && recentShot > prevTotal) c.botRetreat_shots++;
+    }
+
+    // --- Phase 1e: Circumstance-specific sampling ---
+    // After-hit tracking: did player just hit the bot?
+    const recentPlayerHit = c.playerDmgFrames.length > 0 &&
+      (SparState.matchTimer - c.playerDmgFrames[c.playerDmgFrames.length - 1].frame) < 30;
+    if (recentPlayerHit) {
+      c.afterHit_frames++;
+      // Is player pushing toward bot (aggressive after hit)?
+      if (nearBotDist > 1) {
+        const dot = (pVx * relDx + pVy * relDy) / nearBotDist;
+        if (dot > 1) c.afterHit_aggrFrames++;
+      }
+    }
+
+    // After-took-hit tracking: did player just take damage?
+    const recentPlayerTookHit = c.botDmgFrames.length > 0 &&
+      (SparState.matchTimer - c.botDmgFrames[c.botDmgFrames.length - 1].frame) < 30;
+    if (recentPlayerTookHit) {
+      c.afterTookHit_frames++;
+      if (nearBotDist > 1) {
+        const dot = (pVx * relDx + pVy * relDy) / nearBotDist;
+        if (dot < -1) c.afterTookHit_retreatFrames++;
+      }
+    }
+
+    // Low HP expanded: flee vs aggress
+    if (hpPct < 0.25) {
+      if (nearBotDist > 1) {
+        const dot = (pVx * relDx + pVy * relDy) / nearBotDist;
+        if (dot < -1) c.lowHp_fleeFrames++;
+      }
+    }
+
+    // Chase tracking
+    if (nearBotDist > 1 && nearBotDist < 400) {
+      const playerChasing = (pVx * relDx + pVy * relDy) / nearBotDist;
+      if (playerChasing > 2) {
+        c.chase_frames++;
+      }
+      // Give-up detection: was chasing but stopped
+      if (c.chase_frames > 30 && Math.abs(pVx) < 1 && Math.abs(pVy) < 1) {
+        c.chase_giveUpFrames++;
+      }
+    }
+
+    // Near-wall tracking
+    const arenaLevelW = arenaLevel.widthTiles * TILE;
+    const arenaLevelH = arenaLevel.heightTiles * TILE;
+    const pNearWall = player.x < TILE * 3 || player.x > arenaLevelW - TILE * 3 ||
+                      player.y < TILE * 3 || player.y > arenaLevelH - TILE * 3;
+    if (pNearWall) {
+      c.nearWall_frames++;
+      if (Math.abs(pVx) < 1 && Math.abs(pVy) < 1) c.nearWall_cornerStuckFrames++;
     }
   },
 
@@ -1221,6 +1335,31 @@ const SparSystem = {
       sl.combatPatterns.tradeRatio = ema(sl.combatPatterns.tradeRatio, tradePlayerDmg / (tradePlayerDmg + tradeBotDmg));
     }
 
+    // --- Phase 1e: Circumstance EMA updates ---
+    if (!sl.afterHit) sl.afterHit = { pressesAdvantage: 0.5, retreatsOnDamage: 0.5 };
+    if (!sl.lowHpExpanded) sl.lowHpExpanded = { fleesPct: 0.5, killAttemptPct: 0.5 };
+    if (!sl.chasePatterns) sl.chasePatterns = { giveUpFrames: 90 };
+    if (!sl.nearWall) sl.nearWall = { cornerStuckPct: 0.3 };
+
+    if (c.afterHit_frames > 3) {
+      sl.afterHit.pressesAdvantage = ema(sl.afterHit.pressesAdvantage, c.afterHit_aggrFrames / c.afterHit_frames);
+    }
+    if (c.afterTookHit_frames > 3) {
+      sl.afterHit.retreatsOnDamage = ema(sl.afterHit.retreatsOnDamage, c.afterTookHit_retreatFrames / c.afterTookHit_frames);
+    }
+    if (c.lowHpTotalFrames > 3) {
+      const flees = c.lowHp_fleeFrames / c.lowHpTotalFrames;
+      sl.lowHpExpanded.fleesPct = ema(sl.lowHpExpanded.fleesPct, flees);
+      sl.lowHpExpanded.killAttemptPct = ema(sl.lowHpExpanded.killAttemptPct, 1 - flees);
+    }
+    if (c.chase_frames > 10) {
+      const giveUpRate = c.chase_giveUpFrames / c.chase_frames;
+      sl.chasePatterns.giveUpFrames = ema(sl.chasePatterns.giveUpFrames, giveUpRate > 0.1 ? c.chase_frames : 180);
+    }
+    if (c.nearWall_frames > 5) {
+      sl.nearWall.cornerStuckPct = ema(sl.nearWall.cornerStuckPct, c.nearWall_cornerStuckFrames / c.nearWall_frames);
+    }
+
     // --- Win rate ---
     sl.winRate = ema(sl.winRate, won ? 1 : 0);
 
@@ -1233,6 +1372,36 @@ const SparSystem = {
       ts: Date.now(),
     });
     if (sl.history.length > 20) sl.history = sl.history.slice(-20);
+
+    // --- Phase 2e: Style result tracking ---
+    // Find the enemy bot's duel style for this match
+    const enemyBot1v1 = SparState.teamB[0] && SparState.teamB[0].member;
+    if (enemyBot1v1 && enemyBot1v1.ai._duelStyle) {
+      const style = enemyBot1v1.ai._duelStyle;
+      // Ensure structure exists
+      if (!sl.general1v1) sl.general1v1 = { styleResults: {} };
+      if (!sl.general1v1.styleResults) sl.general1v1.styleResults = {};
+      if (!sl.general1v1.styleResults[style]) {
+        sl.general1v1.styleResults[style] = { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 };
+      }
+      const sr = sl.general1v1.styleResults[style];
+      sr.total++;
+      if (won) sr.losses++; else sr.wins++; // won = player won, so bot lost
+      // Damage delta: bot damage dealt minus taken
+      const dmgDelta = (enemyBot1v1.ai._matchDmgDealt || 0) - (enemyBot1v1.ai._matchDmgTaken || 0);
+      sr.avgDmgDelta = sr.total > 1 ? ema(sr.avgDmgDelta, dmgDelta) : dmgDelta;
+
+      // Jeff-specific style results (always update for live matches)
+      if (!sl.jeffProfile) sl.jeffProfile = { styleResults: {} };
+      if (!sl.jeffProfile.styleResults) sl.jeffProfile.styleResults = {};
+      if (!sl.jeffProfile.styleResults[style]) {
+        sl.jeffProfile.styleResults[style] = { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 };
+      }
+      const jr = sl.jeffProfile.styleResults[style];
+      jr.total++;
+      if (won) jr.losses++; else jr.wins++;
+      jr.avgDmgDelta = jr.total > 1 ? ema(jr.avgDmgDelta, dmgDelta) : dmgDelta;
+    }
 
     SparState._matchCollector = null;
   },
@@ -1363,6 +1532,11 @@ const SparSystem = {
       avoidTrades,          // should bot avoid mutual damage exchanges?
       bottomMatters,        // is bottom position actually decisive?
       playerHitRate: ps.hitRate, // overall player accuracy
+      // Phase 1e circumstance modifiers
+      playerPressesAfterHit: sl.afterHit ? sl.afterHit.pressesAdvantage : 0.5,
+      playerRetreatsOnDamage: sl.afterHit ? sl.afterHit.retreatsOnDamage : 0.5,
+      playerFleesLowHp: sl.lowHpExpanded ? sl.lowHpExpanded.fleesPct : 0.5,
+      playerChaseEndurance: sl.chasePatterns ? sl.chasePatterns.giveUpFrames : 90,
     };
   },
 
@@ -1506,6 +1680,28 @@ const SparSystem = {
         c.botMisses.push(record);
       }
     }
+
+    // Phase 1b: Track hit/took-hit frames on bot AI
+    if (wasHit && !isPlayerBullet) {
+      // Bot bullet hit the player — find the shooter bot
+      for (const m of SparState._sparBots) {
+        if (m.entity === shooter || m.id === (bullet._sparOwnerId || null)) {
+          m.ai._lastHitFrame = SparState.matchTimer;
+          m.ai._matchDmgDealt += bullet.damage || 20;
+          break;
+        }
+      }
+    }
+    if (wasHit && isPlayerBullet) {
+      // Player bullet hit a bot — find the hit bot
+      for (const m of SparState._sparBots) {
+        if (m.entity === target || m.entity.x === target.x && m.entity.y === target.y) {
+          m.ai._lastTookHitFrame = SparState.matchTimer;
+          m.ai._matchDmgTaken += bullet.damage || 20;
+          break;
+        }
+      }
+    }
   },
 
   _tickOneBot(member) {
@@ -1520,6 +1716,12 @@ const SparSystem = {
       ai._profileMods = this._getProfileModifiers(); // null if <2 matches
     }
     const pm = ai._profileMods; // may be null
+
+    // Phase 2: Apply duel style weights
+    let styleWeights = null;
+    if (ai._duelStyle && typeof SPAR_DUEL_STYLES !== 'undefined') {
+      styleWeights = SPAR_DUEL_STYLES[ai._duelStyle];
+    }
 
     // --- Arena awareness ---
     const arenaLevel = LEVELS[SparState.activeRoom.arenaLevel];
@@ -1810,12 +2012,168 @@ const SparSystem = {
       }
     }
 
-    // Low HP modifier — play more evasive regardless of position
-    if (hpPct < 0.25 && !isOpening) {
-      moveX *= 1.15;
+    // === DUEL STYLE WEIGHT APPLICATION ===
+    if (styleWeights && !isOpening) {
+      // Scale approach/retreat based on style
+      if (dist > 1) {
+        const moveDot = (moveX * dx + moveY * dy) / dist;
+        if (moveDot > 0) {
+          // Moving toward enemy — scale by approachMult
+          const approachComponent = moveDot / speed;
+          const scaledApproach = approachComponent * styleWeights.approachMult;
+          const diff = (scaledApproach - approachComponent) * speed;
+          moveX += (dx / dist) * diff;
+          moveY += (dy / dist) * diff;
+        }
+      }
+      // Scale strafe intensity
+      const perpComponent = Math.abs(moveX * dy - moveY * dx) / Math.max(1, dist);
+      if (perpComponent > 0.5) {
+        moveX *= styleWeights.strafeMult;
+      }
+      // Apply preferred distance from style
+      if (styleWeights.preferredDist && dist > 1) {
+        const styleDist = styleWeights.preferredDist;
+        const distDiff = dist - styleDist;
+        if (Math.abs(distDiff) > 50) {
+          const adjust = Math.min(0.2, Math.abs(distDiff) / 600);
+          const dir = distDiff > 0 ? 1 : -1;
+          moveX += (dx / dist) * speed * adjust * dir;
+          moveY += (dy / dist) * speed * adjust * dir;
+        }
+      }
+      // Scale bait frequency
+      if (styleWeights.baitMult) {
+        // Already handled in bait section, just adjust cooldown
+      }
+    }
+
+    // === MID-MATCH SOFT-SWITCH ===
+    if (ai._duelStyle && !ai._styleSwitchEvaluated && !isOpening && SparState.matchTimer > 480) {
+      // Check if we should switch: down by >=30 HP or no hits for 180 frames
+      const hpDiff = bot.hp - tgt.hp;
+      const noHitsRecently = (SparState.matchTimer - ai._lastHitFrame) > 180;
+      if (hpDiff <= -30 || noHitsRecently) {
+        ai._styleSwitchEvaluated = true;
+        const switchMap = { pressure: 'control', control: 'pressure', bait: 'pressure' };
+        const newStyle = switchMap[ai._duelStyle];
+        if (newStyle && typeof SPAR_DUEL_STYLES !== 'undefined') {
+          ai._duelStyle = newStyle;
+          styleWeights = SPAR_DUEL_STYLES[newStyle];
+        }
+      }
+    }
+
+    // === CIRCUMSTANCE LAYERS (Phase 1c) ===
+
+    // After-hit momentum: within 30 frames of landing a hit, push harder
+    if (ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30 && !isOpening) {
+      if (dist > 1) {
+        moveX += (dx / dist) * speed * 0.15;
+        moveY += (dy / dist) * speed * 0.15;
+      }
+      // Reduce shot timing hesitation (handled in shooting section)
+    }
+
+    // After-taking-hit defense: within 30 frames of taking a hit, strafe harder and back off
+    if (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 30 && !isOpening) {
+      moveX += ai.strafeDir * speed * 0.12;
       if (dist < 250 && dist > 1) {
-        moveX -= (dx / dist) * speed * 0.2;
-        moveY -= (dy / dist) * speed * 0.2;
+        moveX -= (dx / dist) * speed * 0.1;
+        moveY -= (dy / dist) * speed * 0.1;
+      }
+    }
+
+    // Wall/corner logic: if near wall and enemy is collapsing, dodge perpendicular
+    const nearLeftWall = bot.x < TILE * 3;
+    const nearRightWall = bot.x > arenaW - TILE * 3;
+    const nearTopWall = bot.y < TILE * 3;
+    const nearBottomWall = bot.y > arenaH - TILE * 3;
+    const nearAnyWall = nearLeftWall || nearRightWall || nearTopWall || nearBottomWall;
+    if (nearAnyWall && dist < 250 && !isOpening) {
+      // Enemy closing in while we're near wall — dodge perpendicular
+      const closing = dist > 1 ? ((tgt.vx || 0) * -dx + (tgt.vy || 0) * -dy) / dist : 0;
+      if (closing > 2) {
+        if (nearLeftWall || nearRightWall) {
+          moveY += (bot.y < midY ? 1 : -1) * speed * 0.4;
+        }
+        if (nearTopWall || nearBottomWall) {
+          moveX += (bot.x < midX ? 1 : -1) * speed * 0.4;
+        }
+      }
+    }
+
+    // LOS blocked tracking
+    if (!isOpening && dist > 1) {
+      const hasLOS = this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20);
+      if (!hasLOS) {
+        ai._losBlockedFrames++;
+        if (ai._losBlockedFrames > 60) {
+          // Reposition: move toward center and perpendicular to enemy
+          moveX += Math.sign(midX - bot.x) * speed * 0.3;
+          moveY += Math.sign(midY - bot.y) * speed * 0.3;
+        }
+      } else {
+        ai._losBlockedFrames = Math.max(0, ai._losBlockedFrames - 2);
+      }
+    }
+
+    // Chase/retreat reset: track consecutive chase and retreat frames
+    if (!isOpening && dist > 1) {
+      const movingToward = (moveX * dx + moveY * dy) / dist;
+      if (movingToward > speed * 0.3) {
+        ai._chaseFrames++;
+        ai._retreatFrames = 0;
+        // Break off chase if no hit in 180 frames of pursuit
+        if (ai._chaseFrames > 180 && (SparState.matchTimer - ai._lastHitFrame) > 180) {
+          moveX = ai.strafeDir * speed * 0.7;
+          moveY = 0;
+          ai._chaseFrames = 0;
+        }
+      } else if (movingToward < -speed * 0.3) {
+        ai._retreatFrames++;
+        ai._chaseFrames = 0;
+        // Stop endless retreat — recommit after 120 frames
+        if (ai._retreatFrames > 120) {
+          moveX = ai.strafeDir * speed * 0.5;
+          moveY = (dy / dist) * speed * 0.2;
+          ai._retreatFrames = 0;
+        }
+      } else {
+        ai._chaseFrames = Math.max(0, ai._chaseFrames - 1);
+        ai._retreatFrames = Math.max(0, ai._retreatFrames - 1);
+      }
+    }
+
+    // === Expanded Low HP behavior (below 25%) ===
+    if (hpPct < 0.25 && !isOpening) {
+      const tgtHpPct = tgt.hp / tgt.maxHp;
+      // Estimate shots to kill each other
+      const botDmg = member.gun.damage || 20;
+      const tgtDmg = 20; // assume player does 20 per hit
+      const shotsToKillTarget = Math.ceil(tgt.hp / botDmg);
+      const shotsToKillBot = Math.ceil(bot.hp / tgtDmg);
+
+      if (shotsToKillTarget <= 2) {
+        // Within 2 shots of killing — override to aggression
+        ai._lowHpKillAttempt = true;
+        if (dist > 1) {
+          moveX += (dx / dist) * speed * 0.25;
+          moveY += (dy / dist) * speed * 0.25;
+        }
+      } else if (tgtHpPct < 0.25 && shotsToKillBot >= shotsToKillTarget) {
+        // Both low, but we need more shots — race (push in)
+        if (dist > 1) {
+          moveX += (dx / dist) * speed * 0.15;
+          moveY += (dy / dist) * speed * 0.15;
+        }
+      } else {
+        // Full evasion mode
+        moveX *= 1.2;
+        if (dist < 250 && dist > 1) {
+          moveX -= (dx / dist) * speed * 0.25;
+          moveY -= (dy / dist) * speed * 0.25;
+        }
       }
     }
 
@@ -1964,10 +2322,52 @@ const SparSystem = {
       bot.dir = moveY > 0 ? 3 : 1;
     }
 
-    // --- Shooting ---
-    // Shoot whenever possible — no range cap, just LOS + cooldown + ammo
+    // --- Shooting with shot timing modes ---
+    // Re-evaluate shot mode every 90 frames or on context change
+    if (SparState.matchTimer % 90 === 0 || (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 2)) {
+      // Pick mode based on context
+      if (nearAnyWall && !this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
+        ai._shotMode = 'prefire';
+      } else if (dist < 150) {
+        ai._shotMode = 'immediate';
+      } else if (ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30) {
+        ai._shotMode = 'immediate'; // momentum — shoot fast after landing hits
+      } else if (dist > 250) {
+        ai._shotMode = 'held';
+      } else {
+        ai._shotMode = Math.random() < 0.3 ? 'held' : 'immediate';
+      }
+    }
+
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
-      if (this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
+      const hasLOS = this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20);
+
+      if (ai._shotMode === 'immediate' && hasLOS) {
+        this._sparBotShoot(member, tgt);
+      } else if (ai._shotMode === 'held' && hasLOS) {
+        // Wait for better alignment: target about to cross our shot axis
+        const alignX = Math.abs(tgt.x - bot.x);
+        const alignY = Math.abs(tgt.y - bot.y);
+        const aligned = Math.min(alignX, alignY) < 40; // close to axis
+        if (aligned) {
+          this._sparBotShoot(member, tgt);
+        } else if (member.ai.shootCD <= -10) {
+          // Been waiting too long, just fire
+          this._sparBotShoot(member, tgt);
+        }
+      } else if (ai._shotMode === 'prefire') {
+        // Fire toward where LOS is about to open (corner peek)
+        // Fire at predicted position even without current LOS
+        const tgtMoving = Math.abs(tgt.vx || 0) > 1 || Math.abs(tgt.vy || 0) > 1;
+        if (hasLOS || (tgtMoving && dist < 300)) {
+          this._sparBotShoot(member, tgt);
+          if (hasLOS) ai._shotMode = 'immediate'; // got LOS, switch back
+        }
+      } else if (ai._shotMode === 'cutoff' && hasLOS) {
+        // Fire perpendicular to predict wall run exit
+        this._sparBotShoot(member, tgt);
+      } else if (hasLOS) {
+        // Fallback
         this._sparBotShoot(member, tgt);
       }
     }

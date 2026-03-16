@@ -263,9 +263,48 @@ const SaveLoad = {
           }
         };
         _deepMerge(sparLearning, saved);
-        sparLearning.version = 2; // always ensure current version
+
+        // v2→v3 migration
+        if (!saved.version || saved.version < 3) {
+          // Fix midStrafe → midFlank naming
+          if (sparLearning.opening && sparLearning.opening.routeCounts) {
+            const rc = sparLearning.opening.routeCounts;
+            if (rc.midStrafe !== undefined && rc.midFlank === undefined) {
+              rc.midFlank = rc.midStrafe;
+              delete rc.midStrafe;
+            }
+          }
+          if (sparLearning.opening && sparLearning.opening.route === 'midStrafe') {
+            sparLearning.opening.route = 'midFlank';
+          }
+          // Initialize new v3 fields from existing data where possible
+          if (!sparLearning.general1v1) {
+            sparLearning.general1v1 = {
+              styleResults: {
+                pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+                control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+                bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+              },
+            };
+          }
+          if (!sparLearning.jeffProfile) {
+            sparLearning.jeffProfile = {
+              styleResults: {
+                pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+                control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+                bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+              },
+            };
+          }
+          // Initialize circumstance fields
+          if (!sparLearning.afterHit) sparLearning.afterHit = { pressesAdvantage: 0.5, retreatsOnDamage: 0.5 };
+          if (!sparLearning.lowHpExpanded) sparLearning.lowHpExpanded = { fleesPct: 0.5, killAttemptPct: 0.5 };
+          if (!sparLearning.chasePatterns) sparLearning.chasePatterns = { giveUpFrames: 90 };
+          if (!sparLearning.nearWall) sparLearning.nearWall = { cornerStuckPct: 0.3 };
+        }
+        sparLearning.version = 3;
         // Ensure new fields exist with defaults if missing from old saves
-        if (!sparLearning.opening.routeCounts) sparLearning.opening.routeCounts = { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midStrafe: 0 };
+        if (!sparLearning.opening.routeCounts) sparLearning.opening.routeCounts = { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midFlank: 0 };
         if (!sparLearning.botOpenings) sparLearning.botOpenings = { lastRoute: 'bottomCenter', routeResults: { bottomLeft: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, bottomRight: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, topHold: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, midFlank: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0 } } };
         if (!sparLearning.playerShots) sparLearning.playerShots = { hitRate: 0.5, hitRateClose: 0.5, hitRateMid: 0.5, hitRateFar: 0.5, hitWhenBotStrafing: 0.5, hitWhenBotStill: 0.5, hitWhenBotApproach: 0.5, hitWhenBotRetreat: 0.5 };
         if (!sparLearning.botShots) sparLearning.botShots = { hitRate: 0.5, dodgedRate: 0.5, hitWhenPlayerStrafing: 0.5, hitWhenPlayerStill: 0.5, hitWhenPlayerApproach: 0.5 };

@@ -38,6 +38,37 @@ const SPAR_CTX_STATS = {
   },
 };
 
+// Duel style definitions — weight multipliers for bot behavior in 1v1
+const SPAR_DUEL_STYLES = {
+  pressure: {
+    label: 'Pressure',
+    approachMult: 1.3,     // pushes in harder
+    strafeMult: 0.8,       // tighter strafes
+    retreatMult: 0.5,      // rarely retreats
+    baitMult: 0.6,         // less baiting
+    shootAggr: 1.2,        // shoots more aggressively
+    preferredDist: 150,    // close range
+  },
+  control: {
+    label: 'Control',
+    approachMult: 0.7,     // cautious approach
+    strafeMult: 1.2,       // wider strafes
+    retreatMult: 1.3,      // retreats when needed
+    baitMult: 0.8,         // moderate baiting
+    shootAggr: 0.8,        // picks shots
+    preferredDist: 280,    // mid range
+  },
+  bait: {
+    label: 'Bait',
+    approachMult: 1.0,     // normal approach
+    strafeMult: 1.0,       // normal strafes
+    retreatMult: 1.5,      // frequent fake retreats
+    baitMult: 2.0,         // heavy baiting
+    shootAggr: 0.7,        // conservative shooting
+    preferredDist: 200,    // mid-close range
+  },
+};
+
 const SPAR_ROOMS = [
   { id: 'spar_1v1',        label: '1v1',        teamSize: 1, streakMode: false, arenaLevel: 'spar_1v1_01',   column: 'left' },
   { id: 'spar_2v2',        label: '2v2',        teamSize: 2, streakMode: false, arenaLevel: 'spar_2v2_01',   column: 'left' },
@@ -71,13 +102,13 @@ let sparProgress = {
 // If localStorage has newer data, it overrides these defaults on load.
 // To update: paste sparData() output to Claude, who updates these defaults.
 let sparLearning = {
-  version: 2,
+  version: 3,
   matchCount: 70,
   opening: {
     rushBottom: 1.0,
     strafeLeft: 0.300,
-    route: 'midStrafe',
-    routeCounts: { bottomLeft: 4, bottomRight: 10, bottomCenter: 13, topHold: 0, midStrafe: 13 },
+    route: 'midFlank',
+    routeCounts: { bottomLeft: 4, bottomRight: 10, bottomCenter: 13, topHold: 0, midFlank: 13 },
     speedPct: 0.258,
     firstShotFrame: 20.2,
     shootsDuringOpening: 1.0,
@@ -166,6 +197,26 @@ let sparLearning = {
   },
   winRate: 1.0,
   history: [],  // history not checkpointed — only lives in localStorage
+  // Phase 1e: Circumstance learning
+  afterHit: { pressesAdvantage: 0.5, retreatsOnDamage: 0.5 },
+  lowHpExpanded: { fleesPct: 0.5, killAttemptPct: 0.5 },
+  chasePatterns: { giveUpFrames: 90 },
+  nearWall: { cornerStuckPct: 0.3 },
+  // Phase 2/3: Split data stores
+  general1v1: {
+    styleResults: {
+      pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+      control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+      bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+    },
+  },
+  jeffProfile: {
+    styleResults: {
+      pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+      control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+      bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+    },
+  },
 };
 
 // Quick helper — type sparData() in console to copy learning data
