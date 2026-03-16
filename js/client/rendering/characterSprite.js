@@ -378,12 +378,22 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   // Legacy canvas drawing
   // Draw hitbox circle at normal scale (before character) — skip for deli NPCs
   // Radius is per-mob (MOB_TYPES[type].radius) or DEFAULT_HITBOX_RADIUS fallback
-  // Hitbox colors: green = you/allies (party members), dark blue = enemies/mobs
-  const isAlly = isPlayer || mobType === 'partyBot';
+  // Hitbox colors: green = you/allies, dark blue = enemies/mobs, red = spar enemies
+  const _inSpar = typeof Scene !== 'undefined' && Scene.inSpar;
+  const isAlly = isPlayer || mobType === 'partyBot' || (_inSpar && _charEquipOverride && _charEquipOverride._sparTeam === 'teamA');
   const showHitbox = isPlayer ? gameSettings.showOwnHitbox : gameSettings.showOtherHitbox;
-  if (showHitbox && mobType !== 'deliNPC' && !(typeof Scene !== 'undefined' && Scene.inSpar)) {
+  if (showHitbox && mobType !== 'deliNPC') {
     const hitboxR = (!isPlayer && mobType && mobType !== 'partyBot' && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || DEFAULT_HITBOX_RADIUS;
-    if (isAlly) {
+    if (_inSpar) {
+      // Spar: green = ally, red = enemy
+      if (isAlly) {
+        ctx.strokeStyle = "rgba(0,220,68,0.7)";
+        ctx.fillStyle = "rgba(0,200,60,0.18)";
+      } else {
+        ctx.strokeStyle = "rgba(220,50,50,0.7)";
+        ctx.fillStyle = "rgba(220,50,50,0.18)";
+      }
+    } else if (isAlly) {
       ctx.strokeStyle = "rgba(0,220,68,0.7)";
       ctx.fillStyle = "rgba(0,200,60,0.18)";
     } else {

@@ -382,12 +382,6 @@ function draw() {
         player.vx = 0;
         player.vy = 0;
       } else {
-        // Spar team indicator under player (green = your team)
-        if (typeof SparState !== 'undefined' && Scene.inSpar && SparState.phase === 'fighting') {
-          ctx.strokeStyle = 'rgba(50,200,80,0.55)';
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(player.x - camera.x, player.y - camera.y + 4, 16, 0, Math.PI * 2); ctx.stroke();
-        }
         const flashAlpha = contactCooldown > 0 && Math.floor(renderTime / 80) % 2 === 0;
         if (flashAlpha) ctx.globalAlpha = 0.5;
         // Phase visual — semi-transparent + cyan glow
@@ -992,16 +986,14 @@ function draw() {
       gun.recoilTimer = _savedRecoil; // restore player's recoil
 
     } else if (e.type === "sparBot") {
-      // Spar bot rendering — full member pattern (same as partyBot) with team indicator
+      // Spar bot rendering — full member pattern (same as partyBot)
+      // Hitbox circle colors handled by characterSprite.js via _sparTeam on equip
       const _sm = e.member;
       const _se = _sm.entity;
-      const _sex = _se.x - camera.x, _sey = _se.y - camera.y;
-      // Team indicator ring: green = ally, red = enemy
-      ctx.strokeStyle = _sm._sparTeam === 'teamA' ? 'rgba(50,200,80,0.55)' : 'rgba(220,50,50,0.55)';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(_sex, _sey + 4, 16, 0, Math.PI * 2); ctx.stroke();
       // Set equip/color overrides so drawChar renders the bot's gun
+      // Tag equip with team so characterSprite can color hitbox circles
       _charEquipOverride = _sm.equip;
+      _charEquipOverride._sparTeam = _sm._sparTeam;
       _charColorOverride = { skin: _se.skin, hair: _se.hair, shirt: _se.shirt, pants: _se.pants };
       const _savedSlot2 = activeSlot;
       const _savedRecoil2 = gun.recoilTimer;

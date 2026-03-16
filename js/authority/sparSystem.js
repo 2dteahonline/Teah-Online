@@ -679,14 +679,14 @@ const SparSystem = {
     const enemyOnOurSide = team === 'teamA' ? (tgt.x < midX) : (tgt.x > midX);
 
     let behavior;
-    if (hpPct < 0.25 && !enemyReloading) {
-      behavior = 'retreat';              // low HP, enemy has ammo — back off
-    } else if (isDeepEnemy) {
-      behavior = 'retreat';              // overextended
+    if (isDeepEnemy) {
+      behavior = 'retreat';              // overextended — pull back
     } else if (member.gun.reloading) {
       behavior = 'kite';                 // reloading — dodge and stay mobile
     } else if (enemyReloading && dist < 400) {
       behavior = 'push';                 // enemy reloading — punish window
+    } else if (hpPct < 0.25 && !enemyReloading) {
+      behavior = 'kite';                 // low HP — play evasive but still fight
     } else if (enemyOnOurSide && dist < 350) {
       behavior = 'push';                 // invader on our side
     } else if (hasAmmo && dist < 450 && dist > 120) {
