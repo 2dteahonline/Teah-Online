@@ -6,31 +6,31 @@
 const GAME_CONFIG = {
   // --- Player ---
   PLAYER_BASE_SPEED: 5.83,      // base movement speed (no boots) → 350 px/sec
-  PLAYER_WALL_HW: 18,           // player wall collision half-width (AABB)
-  PLAYER_RADIUS: 30,            // body-blocking circle radius
+  PLAYER_WALL_HW: 14,           // player wall collision half-width (AABB)
+  PLAYER_RADIUS: 23,            // body-blocking circle radius
 
   // --- Mobs ---
-  MOB_WALL_HW: 15,              // mob wall collision half-width (AABB)
-  MOB_RADIUS: 30,               // body-blocking circle radius
-  POS_HW: 13,                   // spawn/position clearance half-width
-  MOB_CROWD_RADIUS: 61,         // crowding detection radius
+  MOB_WALL_HW: 11,              // mob wall collision half-width (AABB)
+  MOB_RADIUS: 23,               // body-blocking circle radius
+  POS_HW: 10,                   // spawn/position clearance half-width
+  MOB_CROWD_RADIUS: 46,         // crowding detection radius
 
   // --- Projectiles ---
   BULLET_SPEED: 9,             // default bullet speed (px/frame)
-  BULLET_R: 7,                  // projectile collision radius
-  ENTITY_R: 33,                 // entity hit detection radius (bullet-vs-entity) — matches visual hitbox (7+33=40)
+  BULLET_R: 5,                  // projectile collision radius
+  ENTITY_R: 25,                 // entity hit detection radius (bullet-vs-entity) — (5+25=30)
 
   // --- Mining ---
-  ORE_COLLISION_RADIUS: 22,     // ore node collision circle
-  MINING_PLAYER_R: 13,          // player half-width for ore push
+  ORE_COLLISION_RADIUS: 17,     // ore node collision circle
+  MINING_PLAYER_R: 10,          // player half-width for ore push
 
   // --- Knockback ---
   KNOCKBACK_DECAY: 0.8,         // velocity multiplier per frame
   KNOCKBACK_THRESHOLD: 0.5,     // min velocity before clearing
 
   // --- Hitbox Indicator ---
-  DEFAULT_HITBOX_RADIUS: 40,    // green circle radius (matches BULLET_R + ENTITY_R = 40)
+  DEFAULT_HITBOX_RADIUS: 30,    // green circle radius (matches BULLET_R + ENTITY_R = 30)
 
   // --- Version ---
-  GAME_UPDATE: 234,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 235,             // increment each deploy — shown on lobby version sign
 };
