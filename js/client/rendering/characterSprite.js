@@ -231,7 +231,8 @@ let useSpriteMode = false;
 
 // ===================== BIG CHARACTER (~96px tall) =====================
 const CHAR_SCALE = 1.1;
-const DEFAULT_HITBOX_RADIUS = GAME_CONFIG.DEFAULT_HITBOX_RADIUS;
+const DEFAULT_HITBOX_RX = GAME_CONFIG.DEFAULT_HITBOX_RX;
+const DEFAULT_HITBOX_RY = GAME_CONFIG.DEFAULT_HITBOX_RY;
 
 // ===================== AMONG US CREWMATE (game world) =====================
 // Draws a full-size crewmate sprite at world position (sx, sy).
@@ -383,7 +384,9 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   const isAlly = isPlayer || mobType === 'partyBot' || (_inSpar && _charEquipOverride && _charEquipOverride._sparTeam === 'teamA');
   const showHitbox = isPlayer ? gameSettings.showOwnHitbox : gameSettings.showOtherHitbox;
   if (showHitbox && mobType !== 'deliNPC') {
-    const hitboxR = (!isPlayer && mobType && mobType !== 'partyBot' && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || DEFAULT_HITBOX_RADIUS;
+    const mobR = (!isPlayer && mobType && mobType !== 'partyBot' && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || 0;
+    const hitboxRX = mobR ? (GAME_CONFIG.BULLET_R + mobR) : DEFAULT_HITBOX_RX;
+    const hitboxRY = mobR ? (GAME_CONFIG.BULLET_R + Math.round(mobR * GAME_CONFIG.ENTITY_RY / GAME_CONFIG.ENTITY_RX)) : DEFAULT_HITBOX_RY;
     if (_inSpar) {
       // Spar: green = ally, red = enemy
       if (isAlly) {
@@ -402,10 +405,10 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
     }
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(sx, sy - 20, hitboxR, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy - 20, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(sx, sy - 20, hitboxR, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy - 20, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
