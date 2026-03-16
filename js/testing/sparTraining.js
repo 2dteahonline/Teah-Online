@@ -197,15 +197,26 @@ function _getSparTrainingArchetype() {
   const speed = GAME_CONFIG.PLAYER_BASE_SPEED;
   const intent = archetype.getIntent(player, te, dist, dx, dy, speed, rt);
 
-  // Probabilistic quantization: convert continuous velocity to binary input
-  // while preserving average speed. If archetype wants 30% of max speed,
-  // press the key on ~30% of frames. This keeps distinct archetype profiles
-  // (waller's gentle 0.3x vs rusher's aggressive 0.7x) instead of collapsing
-  // everything to full-speed-or-nothing.
+  // Single-axis-per-frame quantization: pick at most ONE axis to move on
+  // each frame, weighted by axis ratio. This avoids diagonal normalization
+  // (inventory.js normalizes (dx,dy) to unit length before applying speed,
+  // so pressing both keys gives 0.707/0.707 not the intended ratio).
+  // Average velocity converges to the archetype's intended profile.
   const ratioX = Math.min(1, Math.abs(intent.mx) / speed);
   const ratioY = Math.min(1, Math.abs(intent.my) / speed);
-  const moveX = (ratioX > 0.01 && Math.random() < ratioX) ? (intent.mx > 0 ? 1 : -1) : 0;
-  const moveY = (ratioY > 0.01 && Math.random() < ratioY) ? (intent.my > 0 ? 1 : -1) : 0;
+  const total = ratioX + ratioY;
+  let moveX = 0, moveY = 0;
+  if (total > 0.01) {
+    const moveProb = Math.min(1, total);
+    if (Math.random() < moveProb) {
+      // Pick which axis — weighted by ratio
+      if (Math.random() < ratioX / total) {
+        moveX = intent.mx > 0 ? 1 : -1;
+      } else {
+        moveY = intent.my > 0 ? 1 : -1;
+      }
+    }
+  }
 
   // Compute aim direction toward enemy
   let aimDir = 0;
@@ -315,14 +326,19 @@ function _isSparTraining() {
   return _sparTrainState && _sparTrainState.active;
 }
 
-// Clear held InputIntent fields that training may have set. Without this,
-// translateIntentsToCommands reads stale shootHeld/arrowShooting on the
-// first frame after training ends (before authorityTick can reset them).
+// Clear held InputIntent fields and any already-queued commands that
+// training may have produced. Without this, translateIntentsToCommands
+// reads stale shootHeld/arrowShooting on the first frame after training
+// ends, and any commands already in CommandQueue from the current frame's
+// translateIntentsToCommands would be consumed by authorityTick.
 function _clearTrainingInput() {
   if (typeof InputIntent !== 'undefined') {
     InputIntent.shootHeld = false;
     InputIntent.arrowShooting = false;
     InputIntent.moveX = 0;
     InputIntent.moveY = 0;
+  }
+  if (typeof CommandQueue !== 'undefined') {
+    CommandQueue.length = 0;
   }
 }
