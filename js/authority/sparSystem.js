@@ -552,20 +552,33 @@ const SparSystem = {
     }
   },
 
-  // Shoot — follows botShoot() pattern from BotAI
+  // Shoot — 4 cardinal directions only (same as player shoot() in gunSystem.js)
   _sparBotShoot(member, target) {
     const e = member.entity;
     const g = member.gun;
     const dx = target.x - e.x, dy = target.y - e.y;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
     const bspd = GAME_CONFIG.BULLET_SPEED;
+
+    // Pick best cardinal direction based on target position
+    let bvx = 0, bvy = 0;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      bvx = dx > 0 ? bspd : -bspd;  // right or left
+      e.dir = dx > 0 ? 0 : 2;
+    } else {
+      bvy = dy > 0 ? bspd : -bspd;  // down or up
+      e.dir = dy > 0 ? 3 : 1;
+    }
+
+    // Muzzle offset (same direction as bullet)
+    const mx = e.x + (bvx !== 0 ? Math.sign(bvx) * 20 : 0);
+    const my = e.y - 10 + (bvy !== 0 ? Math.sign(bvy) * 20 : 0);
 
     bullets.push({
       id: typeof nextBulletId !== 'undefined' ? nextBulletId++ : Date.now() + Math.random(),
-      x: e.x,
-      y: e.y - 10,
-      vx: (dx / dist) * bspd,
-      vy: (dy / dist) * bspd,
+      x: mx,
+      y: my,
+      vx: bvx,
+      vy: bvy,
       fromPlayer: true,
       sparTeam: member._sparTeam,
       damage: g.damage,
