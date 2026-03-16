@@ -107,7 +107,7 @@ function createDefaultSparLearning() {
       rushBottom: 0.5,
       strafeLeft: 0.5,
       route: 'bottomCenter',
-      routeCounts: { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midFlank: 0, midStrafe: 0 },
+      routeCounts: { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midFlank: 0 },
       speedPct: 0.5,
       firstShotFrame: 90,
       shootsDuringOpening: 0.5,

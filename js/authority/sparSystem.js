@@ -1247,7 +1247,7 @@ const SparSystem = {
       const arenaH = arenaLevel ? arenaLevel.heightTiles * TILE : 1;
       const endNormX = last.x / arenaW;
       const endNormY = last.y / arenaH;
-      let route = 'midStrafe';
+      let route = 'midFlank';
       if (endNormY > 0.6) {
         // Went to bottom — which side?
         if (endNormX < 0.4) route = 'bottomLeft';
@@ -1591,8 +1591,8 @@ const SparSystem = {
 
   // ---- LEARNING: compute bot behavior modifiers from player profile ----
   _getProfileModifiers() {
-    if (typeof sparLearning === 'undefined' || sparLearning.matchCount < 1) {
-      return null; // not enough data yet
+    if (typeof sparLearning === 'undefined' || sparLearning.matchCount < 3) {
+      return null; // not enough data yet — bot stays fully neutral
     }
     const sl = sparLearning;
     const mc = sl.matchCount;
@@ -1624,27 +1624,24 @@ const SparSystem = {
 
     // --- Situational modifiers (v2) ---
 
+    // Situational modifiers — gated to avoid neutral 0.5 crossing live thresholds
     // When we have bottom and player tries to retake:
-    // If player retakes aggressively, bot should be ready to defend / wall bullets
-    // If player flanks, bot should watch horizontal approaches
-    // If player retreats, bot can push
-    const playerRetakes = sl.whenBotHasBottom.retakePct;    // 0-1
-    const playerFlanks = sl.whenBotHasBottom.flankPct;      // 0-1
-    const playerRetreats = sl.whenBotHasBottom.retreatPct;  // 0-1
+    const playerRetakes = hasPositionData ? sl.whenBotHasBottom.retakePct : 0;
+    const playerFlanks = hasPositionData ? sl.whenBotHasBottom.flankPct : 0;
+    const playerRetreats = hasPositionData ? sl.whenBotHasBottom.retreatPct : 0;
 
-    // When player has bottom: if they hold and spam, we need to be more evasive approaching
-    // If they push, we can bait them out of position
-    const playerHoldsBottom = sl.whenHasBottom.holdsPct;      // 0-1
-    const playerWallsFromBottom = sl.whenHasBottom.shotFreq;  // 0-1
-    const playerPushesFromBottom = sl.whenHasBottom.pushPct;  // 0-1
+    // When player has bottom:
+    const playerHoldsBottom = hasPositionData ? sl.whenHasBottom.holdsPct : 0;
+    const playerWallsFromBottom = hasPositionData ? sl.whenHasBottom.shotFreq : 0.5;
+    const playerPushesFromBottom = hasPositionData ? sl.whenHasBottom.pushPct : 0;
 
     // When bot approaches: does player stand or run?
-    const playerHoldsOnApproach = sl.whenBotApproaches.holdGroundPct;
-    const playerCounterPushes = sl.whenBotApproaches.counterPushPct;
-    const playerSidesteps = sl.whenBotApproaches.sidestepPct;
+    const playerHoldsOnApproach = hasPositionData ? sl.whenBotApproaches.holdGroundPct : 0;
+    const playerCounterPushes = hasPositionData ? sl.whenBotApproaches.counterPushPct : 0;
+    const playerSidesteps = hasPositionData ? sl.whenBotApproaches.sidestepPct : 0;
 
     // When bot retreats: does player chase?
-    const playerChases = sl.whenBotRetreats.chasePct;
+    const playerChases = hasPositionData ? sl.whenBotRetreats.chasePct : 0;
 
     // Shot patterns by position: which direction to avoid from each angle
     const aboveShootsDown = hasShootingData ? sl.shotByPosition.whenAbove.downPct : 0.5;
@@ -1724,14 +1721,14 @@ const SparSystem = {
       avoidTrades,          // should bot avoid mutual damage exchanges?
       bottomMatters,        // is bottom position actually decisive?
       playerHitRate: ps.hitRate, // overall player accuracy
-      // Phase 1e circumstance modifiers
-      playerPressesAfterHit: sl.afterHit ? sl.afterHit.pressesAdvantage : 0.5,
-      playerRetreatsOnDamage: sl.afterHit ? sl.afterHit.retreatsOnDamage : 0.5,
-      playerFleesLowHp: sl.lowHpExpanded ? sl.lowHpExpanded.fleesPct : 0.5,
-      playerChaseEndurance: sl.chasePatterns ? sl.chasePatterns.giveUpFrames : 90,
+      // Phase 1e circumstance modifiers — gated until enough data
+      playerPressesAfterHit: hasPositionData && sl.afterHit ? sl.afterHit.pressesAdvantage : 0.5,
+      playerRetreatsOnDamage: hasPositionData && sl.afterHit ? sl.afterHit.retreatsOnDamage : 0.5,
+      playerFleesLowHp: hasPositionData && sl.lowHpExpanded ? sl.lowHpExpanded.fleesPct : 0.5,
+      playerChaseEndurance: hasPositionData && sl.chasePatterns ? sl.chasePatterns.giveUpFrames : 90,
       // Position value — how important is bottom?
-      bottomWinCorrelation: sl.positionValue ? sl.positionValue.bottomWinCorrelation : 0.6,
-      topPenalty: sl.positionValue ? sl.positionValue.topPenalty : 0.3,
+      bottomWinCorrelation: hasPositionData && sl.positionValue ? sl.positionValue.bottomWinCorrelation : 0.6,
+      topPenalty: hasPositionData && sl.positionValue ? sl.positionValue.topPenalty : 0.3,
       // Gun side + hitbox awareness (v4) — need 5+ matches for reliable data
       playerGunSide: hasShootingData && sl.gunSide ? sl.gunSide.playerPreference : 'left',
       playerLeftPct: hasShootingData && sl.gunSide ? sl.gunSide.leftPct : 0.5,
