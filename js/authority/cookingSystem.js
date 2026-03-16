@@ -203,9 +203,8 @@ function _generateTicket() {
       : pickCustomerType();
   const moodThresholds = MOOD_STAGES.map(s => Math.round(s.baseFrames * customerType.patience));
 
-  // Pick a service timer type for the active restaurant
-  const timerTypes = _getActiveTimerTypes();
-  const timerType = timerTypes ? _pickTimerType(timerTypes) : { id: 'patient', duration: 3600 };
+  // Flat 30-second service timer for all orders
+  const timerType = { id: 'standard', duration: 1800 };
 
   // Build ticket (multi-item for diner, single for deli/fine_dining)
   let ticketItems = [{ recipe: recipe, qty: 1 }];
