@@ -1042,7 +1042,7 @@ function updateBullets() {
         const ent = p.entity;
         const sdx = b.x - ent.x;
         const sdy = b.y - (ent.y - 20);
-        if (sdx * sdx + sdy * sdy < 24 * 24) {
+        if (sdx * sdx + sdy * sdy < HIT_DIST_SQ) {
           const dmg = b.damage || (typeof CT_X_GUN !== 'undefined' ? CT_X_GUN.damage : 20);
           ent.hp -= dmg;
           hitEffects.push({ x: b.x, y: b.y - 10, life: 19, type: "hit", dmg: dmg });
