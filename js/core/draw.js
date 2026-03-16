@@ -2803,46 +2803,12 @@ function drawSparHUD() {
 
   if (phase === 'fighting' || phase === 'post_match') {
     // Top bar: room label + team alive counts
-    const barW = 300, barH = 40;
-    const barX = BASE_W / 2 - barW / 2, barY = 10;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(barX, barY, barW, barH);
-    ctx.strokeStyle = '#55ccff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(barX, barY, barW, barH);
-    ctx.lineWidth = 1;
-
-    // Room label
-    const label = room ? (room.label + (room.streakMode ? ' Streak' : ' Standard')) : 'Spar';
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, BASE_W / 2, barY + 16);
-
-    // Team alive counts
-    const aAlive = SparState.teamA.filter(p => p.alive).length;
-    const bAlive = SparState.teamB.filter(p => p.alive).length;
-    const aTotal = SparState.teamA.length;
-    const bTotal = SparState.teamB.length;
-
-    ctx.font = 'bold 13px monospace';
-    ctx.fillStyle = '#55cc88';
-    ctx.textAlign = 'right';
-    ctx.fillText(aAlive + '/' + aTotal, BASE_W / 2 - 10, barY + 34);
-    ctx.fillStyle = '#aaa';
-    ctx.textAlign = 'center';
-    ctx.fillText('vs', BASE_W / 2, barY + 34);
-    ctx.fillStyle = '#ff4444';
-    ctx.textAlign = 'left';
-    ctx.fillText(bAlive + '/' + bTotal, BASE_W / 2 + 10, barY + 34);
-    ctx.textAlign = 'left';
-
-    // Streak counter
+    // Streak counter (top center, only in streak mode)
     if (room && room.streakMode && SparState.streakCount > 0) {
       ctx.fillStyle = '#ffd700';
-      ctx.font = 'bold 12px monospace';
+      ctx.font = 'bold 14px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('STREAK: ' + SparState.streakCount, BASE_W / 2, barY + barH + 16);
+      ctx.fillText('STREAK: ' + SparState.streakCount, BASE_W / 2, 24);
       ctx.textAlign = 'left';
     }
 

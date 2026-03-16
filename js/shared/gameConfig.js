@@ -5,7 +5,7 @@
 
 const GAME_CONFIG = {
   // --- Player ---
-  PLAYER_BASE_SPEED: 7.08,      // base movement speed (no boots) → 425 px/sec
+  PLAYER_BASE_SPEED: 7.92,      // base movement speed (no boots) → 475 px/sec
   PLAYER_WALL_HW: 18,           // player wall collision half-width (AABB)
   PLAYER_RADIUS: 30,            // body-blocking circle radius
 
@@ -32,5 +32,5 @@ const GAME_CONFIG = {
   DEFAULT_HITBOX_RADIUS: 30,    // green circle radius (matches PLAYER_RADIUS)
 
   // --- Version ---
-  GAME_UPDATE: 195,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 196,             // increment each deploy — shown on lobby version sign
 };
