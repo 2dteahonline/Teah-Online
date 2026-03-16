@@ -1469,11 +1469,14 @@ const SparSystem = {
 
     // Player's best range: where they're most accurate → bot should avoid that distance
     // Pick the range where player is WORST and prefer to fight there
-    const bestRange = ps.hitRateClose > ps.hitRateMid
-      ? (ps.hitRateClose > ps.hitRateFar ? 'close' : 'far')
-      : (ps.hitRateMid > ps.hitRateFar ? 'mid' : 'far');
-    // Preferred engagement distance: stay at player's weakest range
-    const preferredDist = bestRange === 'close' ? 300 : (bestRange === 'mid' ? 120 : 200);
+    const ranges = [
+      { name: 'close', rate: ps.hitRateClose, dist: 120 },
+      { name: 'mid', rate: ps.hitRateMid, dist: 220 },
+      { name: 'far', rate: ps.hitRateFar, dist: 350 },
+    ];
+    ranges.sort((a, b) => a.rate - b.rate); // lowest accuracy first
+    const bestRange = ranges[0].name; // player's WORST range
+    const preferredDist = ranges[0].dist; // fight there
 
     // What bot movement is hardest for player to hit?
     // Compare player accuracy vs strafe/still/approach/retreat
@@ -1554,34 +1557,40 @@ const SparSystem = {
       return starters[Math.floor(Math.random() * starters.length)];
     }
 
-    // Score each route — RESULTS MATTER MOST
+    // Score each route — WIN RATE IS EVERYTHING
     const scores = {};
     for (const r of routes) scores[r] = 0;
 
-    // All bottom routes get base bonus — bottom is meta
-    scores['bottomCenter'] += 8;
-    scores['bottomLeft'] += 8;
-    scores['bottomRight'] += 8;
-    scores['mirrorPlayer'] += 5; // can get bottom too
+    // Small base bonus for bottom routes (but not dominant)
+    scores['bottomCenter'] += 3;
+    scores['bottomLeft'] += 3;
+    scores['bottomRight'] += 3;
+    scores['mirrorPlayer'] += 2;
+    scores['midFlank'] += 2;
+    scores['topHold'] += 1;
 
     const rr = sl.botOpenings.routeResults;
     for (const r of routes) {
       if (rr[r] && rr[r].total > 0) {
-        // Win rate is king
+        // Win rate dominates scoring
         const winRate = rr[r].wins / rr[r].total;
-        scores[r] += winRate * 40;
+        scores[r] += winRate * 60;
 
-        // Getting bottom is very valuable
+        // Getting bottom is only slightly valuable — it doesn't help if we still lose
         const bottomRate = rr[r].gotBottom / rr[r].total;
-        scores[r] += bottomRate * 25;
+        scores[r] += bottomRate * 5;
 
-        // Penalize routes that consistently LOSE
+        // Penalize routes that consistently LOSE — HARD
         const lossRate = rr[r].losses / rr[r].total;
-        scores[r] -= lossRate * 15;
+        scores[r] -= lossRate * 25;
 
-        // Routes with no wins and many attempts should be deprioritized
+        // Routes with no wins and many attempts: massive penalty
         if (rr[r].wins === 0 && rr[r].total >= 3) {
-          scores[r] -= 20; // clearly doesn't work
+          scores[r] -= 30;
+        }
+        // Additional scaling penalty for high-sample losers
+        if (rr[r].wins === 0 && rr[r].total >= 5) {
+          scores[r] -= rr[r].total * 2;
         }
       }
     }
@@ -1881,20 +1890,45 @@ const SparSystem = {
       }
 
     } else if (hasBottom) {
-      // === WE HAVE BOTTOM — play from advantage ===
-      moveX = ai.strafeDir * speed * 0.65;
+      // === WE HAVE BOTTOM — use it actively, don't just camp ===
+
+      // CRITICAL: if player hits strafing bot easily, use stop-start movement instead
+      const playerHitsStrafe = pm && pm.botMoveEffectiveness && pm.botMoveEffectiveness.strafe < 0.4;
+
+      if (playerHitsStrafe) {
+        // Player destroys horizontal strafing — use stop-start + vertical movement
+        // Pause briefly then burst move
+        if (!ai._pauseTimer) ai._pauseTimer = 0;
+        ai._pauseTimer--;
+        if (ai._pauseTimer > 0) {
+          // Pausing — minimal movement, hard to predict
+          moveX = 0;
+          moveY = 0;
+        } else {
+          // Burst move — quick direction change
+          moveX = ai.strafeDir * speed * 0.9;
+          moveY = (Math.random() < 0.4 ? -1 : 1) * speed * 0.4; // vertical too!
+          if (ai._pauseTimer <= -15) {
+            ai._pauseTimer = 8 + Math.floor(Math.random() * 12); // pause for 8-20 frames
+            ai.strafeDir *= -1; // always change direction after burst
+          }
+        }
+      } else {
+        moveX = ai.strafeDir * speed * 0.65;
+      }
+
+      // Don't camp bottom corner — stay mobile. Occasionally push toward enemy.
+      if (dist > 300 && dist > 1) {
+        moveX += (dx / dist) * speed * 0.25;
+        moveY += (dy / dist) * speed * 0.25;
+      }
 
       // Learning v2: adapt based on what player does when we have bottom
       if (pm) {
-        // Stay off player's dominant shot axis
-        if (pm.preferredOffsetX > 0.1) {
-          moveX += Math.sign(bot.x - tgt.x) * speed * pm.preferredOffsetX * 0.3;
-        }
         // If player retakes hard, wall bullets and be ready for them coming down
         if (pm.playerRetakes > 0.5 && enemyMovingDown) {
-          // They're coming — strafe wider to dodge while walling
           moveX = ai.strafeDir * speed * 0.8;
-          if (dist < 200) moveY -= speed * 0.15; // slight back to keep spacing
+          if (dist < 200) moveY -= speed * 0.15;
         }
         // If player flanks, track their horizontal movement more
         if (pm.playerFlanks > 0.4) {
@@ -1902,25 +1936,17 @@ const SparSystem = {
         }
         // If player retreats / gives up bottom, PUSH and pressure
         if (pm.playerRetreats > 0.4 && !enemyMovingDown && dist > 200) {
-          moveY += (dy / dist) * speed * 0.35; // advance on passive player
-        }
-        // If player shoots down from above, stay offset from their X (dodge lane)
-        if (pm.aboveShootsDown > 0.6) {
-          moveX += Math.sign(bot.x - tgt.x) * speed * 0.2;
+          if (dist > 1) moveY += (dy / dist) * speed * 0.4;
         }
       }
 
       if (enemyMovingDown) {
-        // Enemy trying to contest — cut them off
         moveX += Math.sign(dx) * speed * 0.3;
         if (dist < 200) moveY -= speed * 0.2;
       } else if (enemyMovingLeft || enemyMovingRight) {
         moveX += Math.sign(dx) * speed * 0.25;
-      } else if (dist > 350) {
-        moveX += (dx / dist) * speed * 0.2;
-        moveY += (dy / dist) * speed * 0.2;
       }
-      if (bot.y > arenaH - TILE * 2) moveY -= speed * 0.2;
+      if (bot.y > arenaH - TILE * 2) moveY -= speed * 0.3;
 
     } else if (enemyHasBottom) {
       // === ENEMY HAS BOTTOM — adapt based on what they do when they have it ===
@@ -1976,13 +2002,20 @@ const SparSystem = {
       }
 
     } else {
-      // === NEUTRAL — neither has clear bottom, play mid ===
+      // === NEUTRAL — neither has clear bottom, play mobile ===
       moveX = ai.strafeDir * speed * 0.65;
-      if (bot.y < tgt.y) {
-        moveY = speed * 0.3; // drift down when above enemy
-      }
-      if (enemyMovingDown) {
-        moveY = speed * 0.5; // race them for bottom
+      // Stay at preferred engagement distance, not just rush bottom
+      if (pm && pm.preferredDist && dist > 1) {
+        const distDiff = dist - pm.preferredDist;
+        if (distDiff > 60) {
+          moveX += (dx / dist) * speed * 0.3;
+          moveY += (dy / dist) * speed * 0.3;
+        } else if (distDiff < -60) {
+          moveX -= (dx / dist) * speed * 0.2;
+          moveY -= (dy / dist) * speed * 0.2;
+        }
+      } else if (bot.y < tgt.y) {
+        moveY = speed * 0.2; // slight drift down, not hard commit
       }
       // Maintain fighting distance
       if (dist < 100 && dist > 1) {
@@ -2177,46 +2210,61 @@ const SparSystem = {
       }
     }
 
-    // --- Combat-informed adjustments (applied on top of all behaviors) ---
+    // --- Combat-informed adjustments (STRONG — override base behaviors) ---
     if (pm && !isOpening) {
-      // DISTANCE MANAGEMENT: push toward preferred engagement range
+      // DISTANCE MANAGEMENT: aggressively push toward preferred engagement range
       if (pm.preferredDist && dist > 1) {
         const distDiff = dist - pm.preferredDist;
-        if (Math.abs(distDiff) > 60) {
-          // Too far from preferred range → close in or back off
-          const adjustStr = Math.min(0.25, Math.abs(distDiff) / 800);
-          const towardEnemy = distDiff > 0 ? 1 : -1; // positive = too far, close in
+        if (Math.abs(distDiff) > 40) {
+          // STRONG adjustment — this is where we should be fighting
+          const adjustStr = Math.min(0.45, Math.abs(distDiff) / 400);
+          const towardEnemy = distDiff > 0 ? 1 : -1;
           moveX += (dx / dist) * speed * adjustStr * towardEnemy;
           moveY += (dy / dist) * speed * adjustStr * towardEnemy;
         }
       }
 
-      // EVASION STYLE: favor the movement that makes player miss most
-      if (pm.bestEvasion === 'strafe') {
-        // Already strafing — boost it
-        moveX += ai.strafeDir * speed * 0.1;
-      } else if (pm.bestEvasion === 'retreat' && dist < 250) {
-        // Player misses more when bot retreats — back off while shooting
-        if (dist > 1) {
-          moveX -= (dx / dist) * speed * 0.15;
-          moveY -= (dy / dist) * speed * 0.15;
+      // EVASION STYLE: STRONGLY favor the movement that makes player miss most
+      if (pm.bestEvasion === 'still') {
+        // Player can't hit a still bot — use STOP-START movement
+        // This is critical: don't constantly strafe, pause between bursts
+        if (!ai._pauseTimer) ai._pauseTimer = 0;
+        if (ai._pauseTimer <= 0 && Math.random() < 0.06) {
+          ai._pauseTimer = 10 + Math.floor(Math.random() * 15); // pause 10-25 frames
         }
-      } else if (pm.bestEvasion === 'approach' && dist > 150) {
-        // Player misses when bot rushes — push in more
-        if (dist > 1) {
-          moveX += (dx / dist) * speed * 0.12;
-          moveY += (dy / dist) * speed * 0.12;
+        if (ai._pauseTimer > 0) {
+          moveX *= 0.1; // nearly stop
+          moveY *= 0.1;
+          ai._pauseTimer--;
         }
+      } else if (pm.bestEvasion === 'strafe') {
+        moveX += ai.strafeDir * speed * 0.15;
+      } else if (pm.bestEvasion === 'retreat' && dist < 300) {
+        if (dist > 1) {
+          moveX -= (dx / dist) * speed * 0.25;
+          moveY -= (dy / dist) * speed * 0.25;
+        }
+      } else if (pm.bestEvasion === 'approach' && dist > 120) {
+        if (dist > 1) {
+          moveX += (dx / dist) * speed * 0.2;
+          moveY += (dy / dist) * speed * 0.2;
+        }
+      }
+
+      // VERTICAL MOVEMENT: if player primarily shoots horizontally, move vertically more
+      const horizShootPct = (typeof sparLearning !== 'undefined') ?
+        sparLearning.shooting.leftPct + sparLearning.shooting.rightPct : 0;
+      if (horizShootPct > 0.5) {
+        // Player shoots mostly left/right — add vertical movement to dodge
+        moveY += (Math.random() < 0.5 ? 1 : -1) * speed * 0.15 * horizShootPct;
       }
 
       // TRADE AVOIDANCE: if player wins trades, don't stand and trade
       if (pm.avoidTrades && dist < 200) {
-        // Strafe harder, don't face-tank
-        moveX += ai.strafeDir * speed * 0.15;
-        // Back off slightly when both are shooting
+        moveX += ai.strafeDir * speed * 0.2;
         if (dist > 1 && hasAmmo) {
-          moveX -= (dx / dist) * speed * 0.1;
-          moveY -= (dy / dist) * speed * 0.1;
+          moveX -= (dx / dist) * speed * 0.15;
+          moveY -= (dy / dist) * speed * 0.15;
         }
       }
     }
