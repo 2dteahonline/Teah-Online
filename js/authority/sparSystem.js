@@ -775,7 +775,6 @@ const SparSystem = {
           fromPlayer: true,
           sparTeam: team,
           damage: bot._gunDamage,
-          bulletColor: team === 'teamA' ? '#55aaff' : '#ff5544',
           ownerId: bot._sparId,
         };
         bullets.push(bulletObj);
