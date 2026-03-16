@@ -70,7 +70,7 @@ const BotAI = {
     if (ai.meleeCD > 0) ai.meleeCD--;
     if (e._contactCD > 0) e._contactCD--;
 
-    // Tick ninja dash state (same logic as player in updateMelee)
+    // Tick ninja dash state (uses shared functions from meleeSystem.js)
     const ml = member.melee;
     if (ml) {
       if (ml.dashCooldown > 0) ml.dashCooldown--;
@@ -83,42 +83,9 @@ const BotAI = {
           ml.dashCooldown = ml.dashCooldownMax || 240;
         }
       }
-      // Dash movement — bot dashes toward target mob
+      // Dash movement — shared with player via _tickDashMovement()
       if (ml.dashing) {
-        ml.dashTimer--;
-        if (ml.dashTrail) ml.dashTrail.push({ x: e.x, y: e.y, life: 14 });
-        if (ml.dashTrail && ml.dashTrail.length > 8) ml.dashTrail.shift();
-        const nx = e.x + ml.dashDirX * ml.dashSpeed;
-        const ny = e.y + ml.dashDirY * ml.dashSpeed;
-        const col = Math.floor(nx / TILE), row = Math.floor(ny / TILE);
-        if (!isSolid(col, row)) { e.x = nx; e.y = ny; }
-        else { ml.dashTimer = 0; }
-        // Damage mobs passed through (2x * 1.5 crit = 3x)
-        for (const m of mobs) {
-          if (m.hp <= 0 || m._botDashHit) continue;
-          const ddx = m.x - e.x, ddy = m.y - e.y;
-          if (ddx * ddx + ddy * ddy < 50 * 50) {
-            m._botDashHit = true;
-            const dmg = Math.round(ml.damage * 2.0 * 1.5);
-            hitEffects.push({ x: m.x, y: m.y - 30, life: 28, type: "crit", dmg: dmg });
-            const sa = Math.atan2(m.y - e.y, m.x - e.x);
-            hitEffects.push({ x: m.x, y: m.y - 10, life: 16, type: "ninja_slash", angle: sa });
-            hitEffects.push({ x: m.x, y: m.y - 10, life: 18, type: "ninja_slash", angle: sa + Math.PI / 3 });
-            dealDamageToMob(m, dmg, "ninja_dash_kill", e);
-            const dashHeal = calcLifesteal(dmg);
-            if (dashHeal > 0) e.hp = Math.min(e.maxHp, e.hp + dashHeal);
-          }
-        }
-        if (ml.dashTimer <= 0) {
-          ml.dashing = false;
-          ml.dashGap = 12;
-          for (const m of mobs) delete m._botDashHit;
-          hitEffects.push({ x: e.x, y: e.y - 15, life: 12, type: "ninja_dash_end" });
-          if (ml.dashesLeft <= 0) {
-            ml.dashActive = false;
-            ml.dashCooldown = ml.dashCooldownMax || 240;
-          }
-        }
+        _tickDashMovement(e, ml);
         // Tick dash trail lifetime
         if (ml.dashTrail) {
           for (let ti = ml.dashTrail.length - 1; ti >= 0; ti--) {
@@ -562,6 +529,7 @@ const BotAI = {
           cooldownMax: item.cooldown,
           critChance: item.critChance || 0.10,
           special: item.special || null,
+          knockback: 6, arcAngle: Math.PI * 0.8,
           // Dash fields (ninja katanas) — same defaults as gameState.js
           dashing: false, dashTimer: 0, dashDuration: 14, dashSpeed: 26,
           dashDirX: 0, dashDirY: 0, dashTrail: [],
@@ -990,151 +958,18 @@ const BotAI = {
     const ml = member.melee;
     const dx = mob.x - e.x, dy = mob.y - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-
     if (dist >= ml.range) return;
 
-    // Crit check: 10% base, shadow step guarantees crit, 1.5x multiplier
-    const hasShadowStep = !!e._shadowStep;
-    const isCrit = hasShadowStep || Math.random() < (ml.critChance || 0.10);
-    if (hasShadowStep) e._shadowStep = false; // consume on use
-    const critMult = isCrit ? 1.5 : 1.0;
-    const meleeDmg = Math.round(ml.damage * critMult);
-    const isCleave = ml.special === 'cleave';
-    const isStorm = ml.special === 'storm';
-    const isNinja = ml.special === 'ninja';
-    const stormHits = [];
-    const cleaveHits = [];
-
-    // --- Hit mobs: cleave hits ALL in range (360°), others hit only the target ---
-    const hitTargets = isCleave ? mobs.filter(m => {
-      if (m.hp <= 0) return false;
-      const mdx = m.x - e.x, mdy = m.y - e.y;
-      return Math.sqrt(mdx * mdx + mdy * mdy) < ml.range;
-    }) : [mob];
-
-    for (const m of hitTargets) {
-      const dealt = dealDamageToMob(m, meleeDmg, 'melee', e);
-      if (dealt === false) continue;
-
-      if (isCrit) {
-        hitEffects.push({ x: m.x, y: m.y - 30, life: 28, type: "crit", dmg: meleeDmg });
-      } else {
-        hitEffects.push({ x: m.x, y: m.y - 20, life: 19, type: "hit", dmg: meleeDmg });
-      }
-
-      // Lifesteal on direct hit
-      const directHeal = calcLifesteal(meleeDmg);
-      if (directHeal > 0) e.hp = Math.min(e.maxHp, e.hp + directHeal);
-
-      // --- Ninja: splash damage to mobs near hit target ---
-      if (isNinja) {
-        hitEffects.push({ x: m.x, y: m.y, life: 14, type: "ninja_aoe" });
-        const splashDmg = Math.round(ml.damage * 0.3);
-        for (const s of mobs) {
-          if (s === m || s.hp <= 0) continue;
-          const sdx = s.x - m.x, sdy = s.y - m.y;
-          if (sdx * sdx + sdy * sdy < 60 * 60) {
-            hitEffects.push({ x: s.x, y: s.y - 15, life: 12, type: "hit", dmg: splashDmg });
-            dealDamageToMob(s, splashDmg, "ninja_splash", e);
-            const splashHeal = calcLifesteal(splashDmg);
-            if (splashHeal > 0) e.hp = Math.min(e.maxHp, e.hp + splashHeal);
-          }
-        }
-      }
-
-      // --- Storm: shockwave + track for chain lightning ---
-      if (isStorm && m.hp > 0) {
-        stormHits.push(m);
-        hitEffects.push({ x: m.x, y: m.y, life: 18, type: "shockwave" });
-        const shockDmg = Math.round(ml.damage * 0.65);
-        for (const s of mobs) {
-          if (s === m || s.hp <= 0) continue;
-          const sdx = s.x - m.x, sdy = s.y - m.y;
-          if (sdx * sdx + sdy * sdy < 80 * 80) {
-            const shockHeal = calcLifesteal(shockDmg);
-            if (shockHeal > 0) e.hp = Math.min(e.maxHp, e.hp + shockHeal);
-            hitEffects.push({ x: s.x, y: s.y - 15, life: 15, type: "hit", dmg: shockDmg });
-            dealDamageToMob(s, shockDmg, "storm_shock", e);
-          }
-        }
-      }
-
-      // --- Cleave: visual + track for piercing blood ---
-      if (isCleave) {
-        hitEffects.push({ x: m.x, y: m.y - 10, life: 15, type: "cleave_hit" });
-        cleaveHits.push(m);
-      }
-    }
-
-    // --- Storm chain lightning (arcs from each hit mob to 3 nearby) ---
-    if (isStorm && stormHits.length > 0) {
-      const chainDmg = Math.round(ml.damage * 0.50);
-      const chainedSet = new Set(stormHits.map(m2 => mobs.indexOf(m2)));
-      for (const src of stormHits) {
-        let prev = src;
-        for (let c = 0; c < 3; c++) {
-          let closest = null, closestDist = 160;
-          for (const t of mobs) {
-            if (t.hp <= 0 || t === prev) continue;
-            if (chainedSet.has(mobs.indexOf(t))) continue;
-            const cdx = t.x - prev.x, cdy = t.y - prev.y;
-            const cd = Math.sqrt(cdx * cdx + cdy * cdy);
-            if (cd < closestDist) { closest = t; closestDist = cd; }
-          }
-          if (!closest) break;
-          chainedSet.add(mobs.indexOf(closest));
-          const chainHeal = calcLifesteal(chainDmg);
-          if (chainHeal > 0) e.hp = Math.min(e.maxHp, e.hp + chainHeal);
-          hitEffects.push({ x: closest.x, y: closest.y - 15, life: 15, type: "hit", dmg: chainDmg });
-          hitEffects.push({ x: prev.x, y: prev.y - 15, life: 12, type: "lightning", tx: closest.x, ty: closest.y - 15 });
-          dealDamageToMob(closest, chainDmg, "storm_chain", e);
-          prev = closest;
-        }
-      }
-    }
-
-    // --- Piercing Blood (cleave secondary: blood slashes damage mobs beyond melee range) ---
-    if (isCleave && cleaveHits.length > 0) {
-      const bloodDmg = Math.round(ml.damage * 0.55);
-      const bloodRange = 280;
-      const alreadyBled = new Set(cleaveHits);
-      for (const src of cleaveHits) {
-        if (src.hp <= 0) continue;
-        const dirFromBot = Math.atan2(src.y - e.y, src.x - e.x);
-        for (let s = 0; s < 5; s++) {
-          const a = dirFromBot + (s - 2) * 0.45;
-          hitEffects.push({ x: src.x, y: src.y, life: 22, maxLife: 22, type: "blood_slash_arc", angle: a, px: src.x, py: src.y });
-        }
-        for (const t of mobs) {
-          if (t.hp <= 0 || alreadyBled.has(t)) continue;
-          const tdx = t.x - src.x, tdy = t.y - src.y;
-          if (Math.sqrt(tdx * tdx + tdy * tdy) < bloodRange) {
-            alreadyBled.add(t);
-            dealDamageToMob(t, bloodDmg, "piercing_blood", e);
-            const bloodHeal = calcLifesteal(bloodDmg);
-            if (bloodHeal > 0) e.hp = Math.min(e.maxHp, e.hp + bloodHeal);
-            hitEffects.push({ x: t.x, y: t.y - 20, life: 18, type: "hit", dmg: bloodDmg });
-            hitEffects.push({ x: t.x, y: t.y - 10, life: 22, type: "blood_slash_hit" });
-          }
-        }
-      }
-    }
-
-    // Use the melee's actual cooldown (same as player)
+    // Bots don't have arc-based aiming — pass null halfArc so _meleeHitMobs
+    // uses cleave (360°) for cleave weapons, and range-only check for others.
+    // swingDir doesn't matter for bots (they face the target).
+    const swingDir = Math.atan2(dy, dx);
+    _meleeHitMobs(e, ml, swingDir, (ml.arcAngle || Math.PI * 0.8) / 2);
     member.ai.meleeCD = ml.cooldown || ml.cooldownMax || 24;
   },
 
-  // Use a potion — same heal logic as player (healAmount + heal boost from chest)
+  // Use a potion — delegates to shared entity-agnostic function
   botUsePotion(member) {
-    const e = member.entity;
-    const p = member.potion;
-    if (!p || p.count <= 0 || p.cooldown > 0 || e.hp >= e.maxHp) return;
-    p.count--;
-    p.cooldown = p.cooldownMax;
-    const chestHealBoost = member.equip.chest && member.equip.chest.healBoost ? member.equip.chest.healBoost : 0;
-    const boostedHeal = Math.round(p.healAmount * (1 + chestHealBoost));
-    const healed = Math.min(boostedHeal, e.maxHp - e.hp);
-    e.hp = Math.min(e.maxHp, e.hp + boostedHeal);
-    hitEffects.push({ x: e.x, y: e.y - 30, life: 20, type: "heal", dmg: "+" + healed + " HP" });
+    usePotionEntity(member.entity, member.potion, member.equip);
   },
 };
