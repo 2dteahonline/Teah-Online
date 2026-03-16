@@ -599,6 +599,9 @@ const SparSystem = {
       ownerId: member.id,
       _botBullet: true,
       bulletColor: g.bulletColor || null,
+      startX: mx,
+      startY: my,
+      _sparDir: e.dir,
     });
 
     g.ammo--;
@@ -692,6 +695,13 @@ const SparSystem = {
         shotWhenAbove: { down: 0, side: 0, total: 0 }, // player above bot
         shotWhenBelow: { up: 0, side: 0, total: 0 },   // player below bot
         shotWhenLevel: { left: 0, right: 0, total: 0 }, // roughly same Y
+        // --- Combat outcome tracking ---
+        playerHits: [],    // [{dist, botMoving, botVx, botVy, dir, relY}]
+        playerMisses: [],  // [{dist, botMoving, botVx, botVy, dir, relY}]
+        botHits: [],       // [{dist, playerMoving, playerVx, playerVy, dir, relY}]
+        botMisses: [],     // [{dist, playerMoving, playerVx, playerVy, dir, relY}]
+        playerDmgFrames: [],  // [{frame, dmg, hasBottom}] — when player deals damage
+        botDmgFrames: [],     // [{frame, dmg, hasBottom}] — when bot deals damage
       };
     }
 
@@ -1018,6 +1028,103 @@ const SparSystem = {
       sl.shotByPosition.whenLevel.rightPct = ema(sl.shotByPosition.whenLevel.rightPct, c.shotWhenLevel.right / c.shotWhenLevel.total);
     }
 
+    // --- Combat outcomes (v2) ---
+    // Player shot accuracy by context
+    const pH = c.playerHits, pM = c.playerMisses;
+    const pTotal = pH.length + pM.length;
+    if (pTotal > 3) {
+      sl.playerShots.hitRate = ema(sl.playerShots.hitRate, pH.length / pTotal);
+
+      // By distance
+      const closeH = pH.filter(r => r.dist < 150).length;
+      const closeM = pM.filter(r => r.dist < 150).length;
+      if (closeH + closeM > 2) sl.playerShots.hitRateClose = ema(sl.playerShots.hitRateClose, closeH / (closeH + closeM));
+
+      const midH = pH.filter(r => r.dist >= 150 && r.dist < 300).length;
+      const midM = pM.filter(r => r.dist >= 150 && r.dist < 300).length;
+      if (midH + midM > 2) sl.playerShots.hitRateMid = ema(sl.playerShots.hitRateMid, midH / (midH + midM));
+
+      const farH = pH.filter(r => r.dist >= 300).length;
+      const farM = pM.filter(r => r.dist >= 300).length;
+      if (farH + farM > 2) sl.playerShots.hitRateFar = ema(sl.playerShots.hitRateFar, farH / (farH + farM));
+
+      // By bot movement state
+      const strafH = pH.filter(r => r.tMovement === 'strafe').length;
+      const strafM = pM.filter(r => r.tMovement === 'strafe').length;
+      if (strafH + strafM > 2) sl.playerShots.hitWhenBotStrafing = ema(sl.playerShots.hitWhenBotStrafing, strafH / (strafH + strafM));
+
+      const stillH = pH.filter(r => r.tMovement === 'still').length;
+      const stillM = pM.filter(r => r.tMovement === 'still').length;
+      if (stillH + stillM > 2) sl.playerShots.hitWhenBotStill = ema(sl.playerShots.hitWhenBotStill, stillH / (stillH + stillM));
+
+      const apprH = pH.filter(r => r.tMovement === 'approach').length;
+      const apprM = pM.filter(r => r.tMovement === 'approach').length;
+      if (apprH + apprM > 2) sl.playerShots.hitWhenBotApproach = ema(sl.playerShots.hitWhenBotApproach, apprH / (apprH + apprM));
+
+      const retH = pH.filter(r => r.tMovement === 'retreat').length;
+      const retM = pM.filter(r => r.tMovement === 'retreat').length;
+      if (retH + retM > 2) sl.playerShots.hitWhenBotRetreat = ema(sl.playerShots.hitWhenBotRetreat, retH / (retH + retM));
+    }
+
+    // Bot shot accuracy
+    const bH = c.botHits, bM = c.botMisses;
+    const bTotal = bH.length + bM.length;
+    if (bTotal > 3) {
+      sl.botShots.hitRate = ema(sl.botShots.hitRate, bH.length / bTotal);
+
+      const dodged = bM.filter(r => r.tMovement !== 'still').length;
+      if (bTotal > 5) sl.botShots.dodgedRate = ema(sl.botShots.dodgedRate, dodged / bTotal);
+
+      const pStrafH = bH.filter(r => r.tMovement === 'strafe').length;
+      const pStrafT = pStrafH + bM.filter(r => r.tMovement === 'strafe').length;
+      if (pStrafT > 2) sl.botShots.hitWhenPlayerStrafing = ema(sl.botShots.hitWhenPlayerStrafing, pStrafH / pStrafT);
+
+      const pStillH = bH.filter(r => r.tMovement === 'still').length;
+      const pStillT = pStillH + bM.filter(r => r.tMovement === 'still').length;
+      if (pStillT > 2) sl.botShots.hitWhenPlayerStill = ema(sl.botShots.hitWhenPlayerStill, pStillH / pStillT);
+
+      const pApprH = bH.filter(r => r.tMovement === 'approach').length;
+      const pApprT = pApprH + bM.filter(r => r.tMovement === 'approach').length;
+      if (pApprT > 2) sl.botShots.hitWhenPlayerApproach = ema(sl.botShots.hitWhenPlayerApproach, pApprH / pApprT);
+    }
+
+    // Combat patterns
+    if (pH.length > 2) {
+      const avgPDist = pH.reduce((s, r) => s + r.dist, 0) / pH.length;
+      sl.combatPatterns.playerHitDist = ema(sl.combatPatterns.playerHitDist, avgPDist);
+    }
+    if (bH.length > 2) {
+      const avgBDist = bH.reduce((s, r) => s + r.dist, 0) / bH.length;
+      sl.combatPatterns.botHitDist = ema(sl.combatPatterns.botHitDist, avgBDist);
+    }
+
+    // Damage while having bottom
+    const pDmgTotal = c.playerDmgFrames.reduce((s, f) => s + f.dmg, 0);
+    const pDmgBottom = c.playerDmgFrames.filter(f => f.hasBottom).reduce((s, f) => s + f.dmg, 0);
+    if (pDmgTotal > 0) {
+      sl.combatPatterns.playerDmgWhenHasBottom = ema(sl.combatPatterns.playerDmgWhenHasBottom, pDmgBottom / pDmgTotal);
+    }
+    const bDmgTotal = c.botDmgFrames.reduce((s, f) => s + f.dmg, 0);
+    const bDmgBottom = c.botDmgFrames.filter(f => f.hasBottom).reduce((s, f) => s + f.dmg, 0);
+    if (bDmgTotal > 0) {
+      sl.combatPatterns.botDmgWhenHasBottom = ema(sl.combatPatterns.botDmgWhenHasBottom, bDmgBottom / bDmgTotal);
+    }
+
+    // Trade ratio: when both deal damage within 30 frames of each other
+    let tradePlayerDmg = 0, tradeBotDmg = 0;
+    for (const pf of c.playerDmgFrames) {
+      for (const bf of c.botDmgFrames) {
+        if (Math.abs(pf.frame - bf.frame) <= 30) {
+          tradePlayerDmg += pf.dmg;
+          tradeBotDmg += bf.dmg;
+          break;
+        }
+      }
+    }
+    if (tradePlayerDmg + tradeBotDmg > 0) {
+      sl.combatPatterns.tradeRatio = ema(sl.combatPatterns.tradeRatio, tradePlayerDmg / (tradePlayerDmg + tradeBotDmg));
+    }
+
     // --- Win rate ---
     sl.winRate = ema(sl.winRate, won ? 1 : 0);
 
@@ -1090,6 +1197,48 @@ const SparSystem = {
     const belowShootsUp = sl.shotByPosition.whenBelow.upPct;       // how often they shoot up when below us
     const levelShootsLeft = sl.shotByPosition.whenLevel.leftPct;
 
+    // --- Combat outcome modifiers ---
+    const ps = sl.playerShots;
+    const bs = sl.botShots;
+    const cp = sl.combatPatterns;
+
+    // Player's best range: where they're most accurate → bot should avoid that distance
+    // Pick the range where player is WORST and prefer to fight there
+    const bestRange = ps.hitRateClose > ps.hitRateMid
+      ? (ps.hitRateClose > ps.hitRateFar ? 'close' : 'far')
+      : (ps.hitRateMid > ps.hitRateFar ? 'mid' : 'far');
+    // Preferred engagement distance: stay at player's weakest range
+    const preferredDist = bestRange === 'close' ? 300 : (bestRange === 'mid' ? 120 : 200);
+
+    // What bot movement is hardest for player to hit?
+    // Compare player accuracy vs strafe/still/approach/retreat
+    const botMoveEffectiveness = {
+      strafe: 1 - ps.hitWhenBotStrafing,    // higher = better for bot
+      still: 1 - ps.hitWhenBotStill,
+      approach: 1 - ps.hitWhenBotApproach,
+      retreat: 1 - ps.hitWhenBotRetreat,
+    };
+    // Best evasion: which movement makes player miss most
+    let bestEvasion = 'strafe';
+    let bestEvasionVal = botMoveEffectiveness.strafe;
+    for (const [k, v] of Object.entries(botMoveEffectiveness)) {
+      if (v > bestEvasionVal) { bestEvasion = k; bestEvasionVal = v; }
+    }
+
+    // What player movement is hardest for bot to hit?
+    // → player's best defensive movement (bot should predict/counter this)
+    const playerWorstToHit = {
+      strafe: bs.hitWhenPlayerStrafing,   // lower = harder to hit
+      still: bs.hitWhenPlayerStill,
+      approach: bs.hitWhenPlayerApproach,
+    };
+
+    // Should bot avoid trades? If player wins trades consistently
+    const avoidTrades = cp.tradeRatio > 0.6; // player does 60%+ damage in trades
+
+    // Bottom value: does having bottom actually help?
+    const bottomMatters = cp.playerDmgWhenHasBottom > 0.5; // >50% of player damage from bottom
+
     return {
       openingGoalY,
       openingStrafeDir,
@@ -1098,20 +1247,98 @@ const SparSystem = {
       preferredOffsetX,
       strafeSpeedMult,
       // v2 situational
-      playerRetakes,          // how hard player tries to retake bottom
-      playerFlanks,           // does player flank when bot has bottom
-      playerRetreats,         // does player give up when bot has bottom
-      playerHoldsBottom,      // does player hold position when they have bottom
-      playerWallsFromBottom,  // does player spam bullets from bottom
-      playerPushesFromBottom, // does player push from bottom advantage
-      playerHoldsOnApproach,  // does player stand ground when bot approaches
-      playerCounterPushes,    // does player counter-charge
-      playerSidesteps,        // does player dodge sideways on approach
-      playerChases,           // does player chase retreating bot
-      aboveShootsDown,        // % player shoots down when above bot
-      belowShootsUp,          // % player shoots up when below bot
-      levelShootsLeft,        // % player shoots left when level with bot
+      playerRetakes,
+      playerFlanks,
+      playerRetreats,
+      playerHoldsBottom,
+      playerWallsFromBottom,
+      playerPushesFromBottom,
+      playerHoldsOnApproach,
+      playerCounterPushes,
+      playerSidesteps,
+      playerChases,
+      aboveShootsDown,
+      belowShootsUp,
+      levelShootsLeft,
+      // v2 combat outcomes
+      preferredDist,        // ideal engagement distance (avoid player's best range)
+      bestEvasion,          // what movement makes player miss most (strafe/still/approach/retreat)
+      botMoveEffectiveness, // full breakdown of evasion effectiveness
+      avoidTrades,          // should bot avoid mutual damage exchanges?
+      bottomMatters,        // is bottom position actually decisive?
+      playerHitRate: ps.hitRate, // overall player accuracy
     };
+  },
+
+  // ---- LEARNING: called from meleeSystem when a spar bullet hits or misses ----
+  _onSparBulletHit(bullet, hitEntity, wasHit) {
+    const c = SparState._matchCollector;
+    if (!c) return;
+
+    const isPlayerBullet = bullet.sparTeam === 'teamA';
+
+    // Find the nearest enemy to compute context
+    let shooter, target;
+    if (isPlayerBullet) {
+      shooter = player;
+      // Find nearest bot for context
+      let nearBot = null, nearDist = Infinity;
+      for (const p of SparState.teamB) {
+        if (!p.alive) continue;
+        const d = Math.sqrt((p.entity.x - player.x) ** 2 + (p.entity.y - player.y) ** 2);
+        if (d < nearDist) { nearDist = d; nearBot = p.entity; }
+      }
+      target = nearBot;
+    } else {
+      // Bot bullet — find which bot shot it (use closest alive bot to bullet origin)
+      let nearBot = null, nearDist = Infinity;
+      for (const p of SparState.teamB) {
+        if (!p.alive) continue;
+        const d = Math.sqrt((p.entity.x - bullet.startX) ** 2 + (p.entity.y - bullet.startY) ** 2);
+        if (d < nearDist) { nearDist = d; nearBot = p.entity; }
+      }
+      shooter = nearBot;
+      target = player;
+    }
+    if (!shooter || !target) return;
+
+    const dist = Math.sqrt((shooter.x - target.x) ** 2 + (shooter.y - target.y) ** 2);
+    const tVx = target.vx || 0, tVy = target.vy || 0;
+    const tSpeed = Math.sqrt(tVx * tVx + tVy * tVy);
+    const tMoving = tSpeed > 2;
+
+    // Relative movement: is target strafing, approaching, or retreating?
+    const relDx = shooter.x - target.x, relDy = shooter.y - target.y;
+    const relDist = Math.sqrt(relDx * relDx + relDy * relDy);
+    let tMovement = 'still';
+    if (tMoving && relDist > 1) {
+      const dot = (tVx * relDx + tVy * relDy) / relDist;
+      const perp = Math.abs(tVx * relDy - tVy * relDx) / relDist;
+      if (dot > tSpeed * 0.5) tMovement = 'approach';
+      else if (dot < -tSpeed * 0.5) tMovement = 'retreat';
+      else if (perp > tSpeed * 0.3) tMovement = 'strafe';
+    }
+
+    // Who has bottom?
+    const shooterHasBottom = shooter.y > target.y + 30;
+
+    const record = { dist, tMovement, dir: bullet._sparDir || 0, relY: shooter.y - target.y };
+
+    if (isPlayerBullet) {
+      if (wasHit) {
+        c.playerHits.push(record);
+        c.playerDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: player.y > (target.y + 30) });
+      } else {
+        c.playerMisses.push(record);
+      }
+    } else {
+      if (wasHit) {
+        c.botHits.push(record);
+        c.botDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: shooterHasBottom });
+      } else {
+        c.botMisses.push(record);
+      }
+    }
   },
 
   _tickOneBot(member) {
@@ -1377,11 +1604,54 @@ const SparSystem = {
 
     // Low HP modifier — play more evasive regardless of position
     if (hpPct < 0.25 && !isOpening) {
-      // Increase strafe speed, back away more
       moveX *= 1.15;
       if (dist < 250 && dist > 1) {
         moveX -= (dx / dist) * speed * 0.2;
         moveY -= (dy / dist) * speed * 0.2;
+      }
+    }
+
+    // --- Combat-informed adjustments (applied on top of all behaviors) ---
+    if (pm && !isOpening) {
+      // DISTANCE MANAGEMENT: push toward preferred engagement range
+      if (pm.preferredDist && dist > 1) {
+        const distDiff = dist - pm.preferredDist;
+        if (Math.abs(distDiff) > 60) {
+          // Too far from preferred range → close in or back off
+          const adjustStr = Math.min(0.25, Math.abs(distDiff) / 800);
+          const towardEnemy = distDiff > 0 ? 1 : -1; // positive = too far, close in
+          moveX += (dx / dist) * speed * adjustStr * towardEnemy;
+          moveY += (dy / dist) * speed * adjustStr * towardEnemy;
+        }
+      }
+
+      // EVASION STYLE: favor the movement that makes player miss most
+      if (pm.bestEvasion === 'strafe') {
+        // Already strafing — boost it
+        moveX += ai.strafeDir * speed * 0.1;
+      } else if (pm.bestEvasion === 'retreat' && dist < 250) {
+        // Player misses more when bot retreats — back off while shooting
+        if (dist > 1) {
+          moveX -= (dx / dist) * speed * 0.15;
+          moveY -= (dy / dist) * speed * 0.15;
+        }
+      } else if (pm.bestEvasion === 'approach' && dist > 150) {
+        // Player misses when bot rushes — push in more
+        if (dist > 1) {
+          moveX += (dx / dist) * speed * 0.12;
+          moveY += (dy / dist) * speed * 0.12;
+        }
+      }
+
+      // TRADE AVOIDANCE: if player wins trades, don't stand and trade
+      if (pm.avoidTrades && dist < 200) {
+        // Strafe harder, don't face-tank
+        moveX += ai.strafeDir * speed * 0.15;
+        // Back off slightly when both are shooting
+        if (dist > 1 && hasAmmo) {
+          moveX -= (dx / dist) * speed * 0.1;
+          moveY -= (dy / dist) * speed * 0.1;
+        }
       }
     }
 

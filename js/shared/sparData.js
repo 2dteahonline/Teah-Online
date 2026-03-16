@@ -123,6 +123,32 @@ let sparLearning = {
     whenBelow: { upPct: 0.5, sidePct: 0.5 },      // below bot: shoot up vs strafe-shoot
     whenLevel: { leftPct: 0.5, rightPct: 0.5 },   // same height: shoot left vs right
   },
+  // --- Combat outcome data (v2) ---
+  // "What works and what doesn't — cause and effect"
+  playerShots: {
+    hitRate: 0.5,            // overall accuracy
+    hitRateClose: 0.5,       // accuracy at <150px
+    hitRateMid: 0.5,         // accuracy at 150-300px
+    hitRateFar: 0.5,         // accuracy at 300+px
+    hitWhenBotStrafing: 0.5, // accuracy when bot is moving sideways
+    hitWhenBotStill: 0.5,    // accuracy when bot isn't moving much
+    hitWhenBotApproach: 0.5, // accuracy when bot closing distance
+    hitWhenBotRetreat: 0.5,  // accuracy when bot backing off
+  },
+  botShots: {
+    hitRate: 0.5,            // how often bot lands shots
+    dodgedRate: 0.5,         // how often player dodges (moved away before impact)
+    hitWhenPlayerStrafing: 0.5, // bot accuracy vs strafing player
+    hitWhenPlayerStill: 0.5,    // bot accuracy vs still player
+    hitWhenPlayerApproach: 0.5, // bot accuracy vs approaching player
+  },
+  combatPatterns: {
+    playerHitDist: 250,         // avg distance when player lands hits
+    botHitDist: 250,            // avg distance when bot lands hits
+    playerDmgWhenHasBottom: 0.5, // % of player damage dealt while having bottom (0-1)
+    botDmgWhenHasBottom: 0.5,    // % of bot damage dealt while having bottom
+    tradeRatio: 0.5,            // when both deal damage within 30 frames, player % of damage
+  },
   winRate: 0.5,
   history: [],           // last 20 match summaries
 };

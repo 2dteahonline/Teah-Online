@@ -542,10 +542,13 @@ function shoot() {
       if (playerEquip.gun && playerEquip.gun.isArrow) {
         bulletObj.isMainArrow = true; // different from mob archer arrows
       }
-      // Spar: tag player bullets with team + damage
+      // Spar: tag player bullets with team + damage + context for learning
       if (typeof SparState !== 'undefined' && SparState.phase === 'fighting') {
         bulletObj.sparTeam = 'teamA';
         bulletObj.damage = (typeof CT_X_GUN !== 'undefined') ? CT_X_GUN.damage : 20;
+        bulletObj._sparDir = player.dir;
+        bulletObj.startX = bulletObj.x;
+        bulletObj.startY = bulletObj.y;
       }
 
       bullets.push(bulletObj);

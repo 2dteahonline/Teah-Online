@@ -1014,6 +1014,10 @@ function updateBullets() {
         }
         hitEffects.push({ x: b.x, y: b.y, life: 10, type: "wall" });
       }
+      // Report spar bullet miss (hit wall instead of target)
+      if (b.sparTeam && typeof SparSystem !== 'undefined' && SparSystem._onSparBulletHit) {
+        SparSystem._onSparBulletHit(b, null, false);
+      }
       bullets.splice(i, 1);
       continue;
     }
@@ -1042,6 +1046,10 @@ function updateBullets() {
           const dmg = b.damage || (typeof CT_X_GUN !== 'undefined' ? CT_X_GUN.damage : 20);
           ent.hp -= dmg;
           hitEffects.push({ x: b.x, y: b.y - 10, life: 19, type: "hit", dmg: dmg });
+          // Report hit to learning system
+          if (typeof SparSystem !== 'undefined' && SparSystem._onSparBulletHit) {
+            SparSystem._onSparBulletHit(b, ent, true);
+          }
           if (ent.hp <= 0) SparSystem.onParticipantDeath(ent);
           bullets.splice(i, 1);
           sparHit = true;
@@ -1049,6 +1057,9 @@ function updateBullets() {
         }
       }
       if (sparHit) continue;
+      // Bullet missed — hit wall or went off-screen, report miss
+      // (wall hit is handled above with splice+continue, so if we reach here the bullet
+      //  is still alive and traveling. We only report miss when it actually dies.)
       continue; // skip normal mob/player collision for spar bullets
     }
 
