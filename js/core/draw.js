@@ -296,10 +296,10 @@ function draw() {
   if (typeof fineDiningNPCs !== 'undefined' && Scene.inCooking && typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'fine_dining') {
     for (const npc of fineDiningNPCs) sortedChars.push({ y: npc.y, type: "fineDiningNPC", npc: npc });
   }
-  // Spar bots
+  // Spar bots (member objects — entity is member.entity)
   if (typeof SparState !== 'undefined' && Scene.inSpar && SparState._sparBots) {
-    for (const bot of SparState._sparBots) {
-      if (bot.hp > 0) sortedChars.push({ y: bot.y, type: "sparBot", bot: bot });
+    for (const member of SparState._sparBots) {
+      if (!member.dead && member.entity.hp > 0) sortedChars.push({ y: member.entity.y, type: "sparBot", bot: member.entity });
     }
   }
   sortedChars.sort((a, b) => a.y - b.y);
