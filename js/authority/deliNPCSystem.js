@@ -128,19 +128,18 @@ function _pickFreeAisle() {
 // Build arrays of {tx,ty} waypoints. ALL legs are horizontal or vertical
 // to prevent NPCs clipping through solid entities.
 //
-// LAYOUT — AISLE AREA (tx:27+, ty:22+):
-//   Shelf row: ty:24-25 → shelves at tx:27-31, tx:34-38
-//   Browse row: ty:27   → NPCs stand here to browse shelves
+// TRAFFIC LANES (separated to prevent body-blocking):
+//   tx:13  — ENTRY lane (meal NPCs walking north to queue)
+//   tx:15  — QUEUE EXIT lane (NPCs leaving queue angry)
+//   tx:16  — MAIN EXIT lane (NPCs leaving from dining/aisles)
+//   tx:18  — RETAIL ENTRY lane (retail NPCs entering to shelves)
+//   tx:26  — MAIN N/S corridor (east of kitchen wall)
+//   ty:22  — E/W corridor south of counter wall (counter-departing NPCs go east)
+//   ty:20  — E/W corridor below dining tables (dining/condiment traffic)
 //
-// GAPS between shelves (safe vertical corridors through aisle area):
-//   tx:26  — west of all shelves (main corridor)
-//   tx:32-33 — between shelf columns
-//
-// SAFE CORRIDORS:
-//   tx:26  vertical  ty:1-30   (just east of kitchen wall — main N/S corridor)
-//   ty:20  horizontal tx:25-39  (below dining tables, above counter wall)
-//   ty:27  horizontal tx:26-39  (below shelf row — NPC browse)
-//   tx:32  vertical  ty:24-27  (gap between shelf columns 1 and 2)
+// AISLE AREA (tx:27+, ty:22+):
+//   Shelf row: ty:24-25, Browse row: ty:27
+//   Gaps: tx:26 (west), tx:32 (between shelf columns)
 
 // Find the nearest safe vertical gap for a given tx position in the aisle area
 function _nearestAisleGap(tx) {
@@ -157,9 +156,9 @@ function _nearestAisleGap(tx) {
 
 function _routeCounterToChair(chairIdx) {
   const ch = DELI_CHAIRS[chairIdx];
+  // Go east directly along ty:22 — avoids tx:13 entry corridor entirely
   return [
-    { tx: 13, ty: 23 },         // south-east away from counter + queue
-    { tx: 26, ty: 23 },         // east past counter wall (1 tile south of solid wall)
+    { tx: 26, ty: 22 },         // east along open floor (south of counter wall)
     { tx: 26, ty: 20 },         // north to safe horizontal corridor
     { tx: ch.tx, ty: 20 },      // east to chair's column (safe at ty:20)
     { tx: ch.tx, ty: ch.ty },   // north to chair
@@ -167,10 +166,9 @@ function _routeCounterToChair(chairIdx) {
 }
 
 function _routeCounterToCondiments() {
+  // Go east directly along ty:22 — avoids tx:13 entry corridor entirely
   return [
-    { tx: 13, ty: 23 },        // south-east away from counter + queue
-    { tx: 26, ty: 23 },        // east past counter wall (1 tile south of solid wall)
-    { tx: 26, ty: 20 },        // north to dining entry
+    { tx: 26, ty: 22 },        // east along open floor
     { tx: 26, ty: 13 },        // north to condiment row
     { tx: 35, ty: 13 },        // east to condiments
   ];
@@ -200,19 +198,16 @@ function _routeChairToAisle(chairIdx, aisle) {
 function _routeCounterToAisle(aisle) {
   const gap = _nearestAisleGap(aisle.tx);
   if (gap <= 26) {
-    // Gap is tx:26 — go south-east then straight south
+    // Gap is tx:26 — go east along ty:22 then south
     return [
-      { tx: 13, ty: 23 },              // south-east away from counter + queue
-      { tx: 26, ty: 23 },              // east past counter wall
+      { tx: 26, ty: 22 },              // east along open floor
       { tx: 26, ty: aisle.ty },        // south to aisle row
       { tx: aisle.tx, ty: aisle.ty },  // east to aisle spot
     ];
   }
-  // Gap is tx:32 or tx:39 — must go north to ty:20 first (above shelves),
-  // then east to gap, then south through gap
+  // Gap is tx:32 or tx:39 — go east, north above shelves, then through gap
   return [
-    { tx: 13, ty: 23 },              // south-east away from counter + queue
-    { tx: 26, ty: 23 },              // east past counter wall
+    { tx: 26, ty: 22 },              // east along open floor
     { tx: 26, ty: 20 },              // north above shelves
     { tx: gap, ty: 20 },             // east to gap column
     { tx: gap, ty: aisle.ty },       // south through gap to aisle row
@@ -256,37 +251,39 @@ function _routeToExit(fromTX, fromTY) {
         route.push({ tx: 26, ty: 20 });           // north on main corridor
       }
     }
-    route.push({ tx: 26, ty: 23 });               // south past counter wall (safe clearance)
+    // Exit lane at tx:16 — separated from entry lane (tx:13) and queue (tx:11)
+    route.push({ tx: 26, ty: 22 });               // south past counter wall
+    route.push({ tx: 16, ty: 22 });               // west on ty:22
   }
-  route.push({ tx: 13, ty: 23 });  // west to exit area (1 tile south of counter)
-  route.push({ tx: 13, ty: 30 });  // south to exit
+  route.push({ tx: 16, ty: 30 });  // south to exit on tx:16 (east of entry lane)
   return route;
 }
 
-// Route from queue position to exit — steps EAST out of the line first (to tx:13)
-// so the NPC doesn't walk through other queue members at tx:11.
+// Route from queue position to exit — steps EAST out of the line (to tx:15)
+// so the NPC doesn't walk through other queue members (tx:11) or entering NPCs (tx:13).
 function _routeQueueToExit(npc) {
   const npcTY = Math.floor(npc.y / TILE);
   return [
-    { tx: 13, ty: npcTY },   // step east out of queue line (tx:11 → tx:13)
-    { tx: 13, ty: 30 },      // south to exit
+    { tx: 15, ty: npcTY },   // step east out of queue line (tx:11 → tx:15)
+    { tx: 15, ty: 30 },      // south to exit on tx:15
   ];
 }
 
 // Route from exit (13,30) to a shelf browse spot (for retail shoppers)
+// Retail NPCs enter on tx:18 — separate from meal queue entry at tx:13
 function _routeExitToShelf(shelf) {
   const gap = _nearestAisleGap(shelf.tx);
   if (gap <= 26) {
     return [
-      { tx: 13, ty: 23 },              // north to counter area
-      { tx: 26, ty: 23 },              // east past counter wall
+      { tx: 18, ty: 22 },              // north-east to open floor (own entry lane)
+      { tx: 26, ty: 22 },              // east to main corridor
       { tx: 26, ty: shelf.ty },        // south to browse row
       { tx: shelf.tx, ty: shelf.ty },  // east to shelf spot
     ];
   }
   return [
-    { tx: 13, ty: 23 },              // north to counter area
-    { tx: 26, ty: 23 },              // east past counter wall
+    { tx: 18, ty: 22 },              // north-east to open floor
+    { tx: 26, ty: 22 },              // east to main corridor
     { tx: 26, ty: 20 },              // north above shelves
     { tx: gap, ty: 20 },             // east to gap column
     { tx: gap, ty: shelf.ty },       // south through gap to browse row
@@ -303,14 +300,14 @@ function _routeShelfToCashier() {
   ];
 }
 
-// Route from cashier (40,24) to exit (13,30)
+// Route from cashier (40,24) to exit — uses tx:16 exit lane
 function _routeCashierToExit() {
   return [
     { tx: DELI_CASHIER.tx, ty: 27 },  // south to browse row
     { tx: 26, ty: 27 },               // west along browse row to main corridor
-    { tx: 26, ty: 23 },               // north to safe clearance
-    { tx: 13, ty: 23 },               // west to exit area
-    { tx: 13, ty: 30 },               // south to exit
+    { tx: 26, ty: 22 },               // north past counter wall
+    { tx: 16, ty: 22 },               // west on ty:22
+    { tx: 16, ty: 30 },               // south to exit on tx:16
   ];
 }
 
@@ -325,11 +322,11 @@ function _routeAisleToQueue(fromTX, fromTY, queueSpot) {
   } else {
     route.push({ tx: 26, ty: 20 });
   }
-  // Go south to ty:23 (safe clearance from counter wall at ty:21)
-  route.push({ tx: 26, ty: 23 });                      // south past counter wall
-  route.push({ tx: 13, ty: 23 });                      // west along safe corridor
-  route.push({ tx: 13, ty: queueSpot.ty });             // south to queue Y level (vertical)
-  route.push({ tx: queueSpot.tx, ty: queueSpot.ty });   // west into line (horizontal)
+  // Go south to ty:22, west to tx:13 (entry lane), then approach queue
+  route.push({ tx: 26, ty: 22 });                      // south past counter wall
+  route.push({ tx: 13, ty: 22 });                      // west to entry corridor
+  route.push({ tx: 13, ty: queueSpot.ty });             // south to queue Y level
+  route.push({ tx: queueSpot.tx, ty: queueSpot.ty });   // west into line
   return route;
 }
 
