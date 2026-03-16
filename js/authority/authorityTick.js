@@ -176,6 +176,44 @@ window.authorityTick = function() {
     }
   }
 
+  // ---- Spar training: replace ALL gameplay input with scripted archetype ----
+  // Runs after commands are applied and after spar freeze/slot restrictions,
+  // but before update(). The full movement/gun pipeline processes these normally.
+  if (typeof Scene !== 'undefined' && Scene.inSpar &&
+      typeof SparState !== 'undefined' && SparState.phase === 'fighting' &&
+      typeof _isSparTraining === 'function' && _isSparTraining()) {
+    const _trainIntent = typeof _getSparTrainingArchetype === 'function'
+      ? _getSparTrainingArchetype() : null;
+    if (_trainIntent) {
+      // Replace movement + shooting
+      InputIntent.moveX = _trainIntent.moveX;
+      InputIntent.moveY = _trainIntent.moveY;
+      InputIntent.shootHeld = _trainIntent.shouldShoot;
+      InputIntent.arrowAimDir = _trainIntent.aimDir;
+      InputIntent.arrowShooting = _trainIntent.shouldShoot;
+      // Clear all conflicting one-frame actions
+      InputIntent.reloadPressed = false;
+      InputIntent.meleePressed = false;
+      InputIntent.dashPressed = false;
+      InputIntent.interactPressed = false;
+      InputIntent.potionPressed = false;
+      InputIntent.ultimatePressed = false;
+      InputIntent.slot1Pressed = false;
+      InputIntent.slot2Pressed = false;
+      InputIntent.slot3Pressed = false;
+      InputIntent.slot4Pressed = false;
+      InputIntent.slot5Pressed = false;
+      InputIntent.skipWavePressed = false;
+      InputIntent.readyWavePressed = false;
+    } else {
+      // No valid target or archetype — neutral no-op
+      InputIntent.moveX = 0;
+      InputIntent.moveY = 0;
+      InputIntent.shootHeld = false;
+      InputIntent.arrowShooting = false;
+    }
+  }
+
   // ---- 3. Run simulation ----
   // Tell update() to skip keysDown → InputIntent translation (we already did it).
   _authorityDriven = true;

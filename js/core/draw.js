@@ -2881,8 +2881,6 @@ function gameLoop(timestamp) {
   let updates = 0;
   while (accumulator >= FIXED_DT && updates < 4) {
     // === SERVER-AUTHORITY LOOP ===
-    // 0. Training harness: override input BEFORE commands are generated
-    if (typeof SparSystem !== 'undefined' && SparSystem._injectTrainingInput) SparSystem._injectTrainingInput();
     // 1. Client: gather input → produce commands
     translateIntentsToCommands();
     // 2. Authority: consume commands → run simulation → snapshot

@@ -354,53 +354,6 @@ const SparSystem = {
     return member;
   },
 
-  // Called from game loop BEFORE translateIntentsToCommands() so the training
-  // archetype's input flows through the entire real pipeline: keysDown →
-  // translateIntentsToCommands → CommandQueue → authorityTick → update()
-  // including freeze, knockback, wall collision, corner nudge, etc.
-  _injectTrainingInput() {
-    if (SparState.phase !== 'fighting') return;
-    if (typeof _getSparTrainingBotOverride !== 'function') return;
-    const trainBot = _getSparTrainingBotOverride();
-    if (!trainBot) return;
-    const enemyMember = SparState.teamB.find(p => p.alive);
-    if (!enemyMember) return;
-
-    const te = enemyMember.entity;
-    const tdx = te.x - player.x, tdy = te.y - player.y;
-    const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
-    const fakeMember = { entity: player, _trainMoveX: 0, _trainMoveY: 0 };
-    const fakeAi = SparState._trainPlayerAi || { strafeDir: 1, strafeTimer: 0, _cornerTarget: null };
-    fakeAi.strafeTimer = (fakeAi.strafeTimer || 0) - 1;
-    if (fakeAi.strafeTimer <= 0) {
-      fakeAi.strafeDir = Math.random() < 0.5 ? -1 : 1;
-      fakeAi.strafeTimer = 30 + Math.floor(Math.random() * 60);
-    }
-    SparState._trainPlayerAi = fakeAi;
-    const shouldShoot = trainBot.tick(fakeMember, te, tdist, tdx, tdy, GAME_CONFIG.PLAYER_BASE_SPEED, fakeAi);
-
-    // Override keysDown so translateIntentsToCommands picks up training movement
-    const mx = fakeMember._trainMoveX, my = fakeMember._trainMoveY;
-    keysDown[keybinds.moveLeft] = mx < -0.1;
-    keysDown[keybinds.moveRight] = mx > 0.1;
-    keysDown[keybinds.moveUp] = my < -0.1;
-    keysDown[keybinds.moveDown] = my > 0.1;
-
-    // Override shooting state so translateIntentsToCommands enqueues correct shoot command
-    InputIntent.shootHeld = !!shouldShoot;
-    if (shouldShoot) {
-      // Aim toward enemy using arrow-key style
-      if (Math.abs(tdx) > Math.abs(tdy)) {
-        InputIntent.arrowAimDir = tdx > 0 ? 3 : 2;
-      } else {
-        InputIntent.arrowAimDir = tdy > 0 ? 0 : 1;
-      }
-      InputIntent.arrowShooting = true;
-    } else {
-      InputIntent.arrowShooting = false;
-    }
-  },
-
   tick() {
     if (SparState.phase === 'idle' || SparState.phase === 'hub') return;
 
