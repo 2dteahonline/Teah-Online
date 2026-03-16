@@ -423,7 +423,7 @@ MOB_SPECIALS.ghost_mariachi = (m, ctx) => {
       const spread = (Math.random() - 0.5) * 0.2;
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir + spread) * 9, vy: Math.sin(dir + spread) * 9,
+        vx: Math.cos(dir + spread) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(dir + spread) * GAME_CONFIG.BULLET_SPEED,
         fromPlayer: false, mobBullet: true, damage: Math.round(30 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#88ddff', life: 60,
       });

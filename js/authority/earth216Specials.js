@@ -14,7 +14,7 @@ MOB_SPECIALS.chip_toss = (m, ctx) => {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
+        vx: Math.cos(dir) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(dir) * GAME_CONFIG.BULLET_SPEED,
         fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#e8c44a',
         onHitPlayer: (b, hitTarget) => {

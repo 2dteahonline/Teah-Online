@@ -417,7 +417,7 @@ MOB_SPECIALS.kick_and_clear = (m, ctx) => {
         const angle = dir + i * spreadAngle;
         bullets.push({
           id: nextBulletId++, x: m.x, y: m.y - 8,
-          vx: Math.cos(angle) * 9, vy: Math.sin(angle) * 9,
+          vx: Math.cos(angle) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(angle) * GAME_CONFIG.BULLET_SPEED,
           fromPlayer: false, mobBullet: true, damage: Math.round(10 * getMobDamageMultiplier()),
           ownerId: m.id, bulletColor: '#99aabb',
         });
@@ -1080,7 +1080,7 @@ MOB_SPECIALS.akimbo_barrage = (m, ctx) => {
     const angle = dir - spread / 2 + (i / 5) * spread;
     bullets.push({
       id: nextBulletId++, x: m.x, y: m.y - 8,
-      vx: Math.cos(angle) * 9, vy: Math.sin(angle) * 9,
+      vx: Math.cos(angle) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(angle) * GAME_CONFIG.BULLET_SPEED,
       fromPlayer: false, mobBullet: true, damage: Math.round(18 * getMobDamageMultiplier()),
       ownerId: m.id, bulletColor: '#ccbb88',
     });
@@ -1171,7 +1171,7 @@ MOB_SPECIALS.one_man_army = (m, ctx) => {
         const angle = dir - spread / 2 + (i / 5) * spread;
         bullets.push({
           id: nextBulletId++, x: m.x, y: m.y - 8,
-          vx: Math.cos(angle) * 9, vy: Math.sin(angle) * 9,
+          vx: Math.cos(angle) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(angle) * GAME_CONFIG.BULLET_SPEED,
           fromPlayer: false, mobBullet: true, damage: Math.round(18 * getMobDamageMultiplier()),
           ownerId: m.id, bulletColor: '#ccbb88',
         });
@@ -1411,7 +1411,7 @@ MOB_SPECIALS.prop_toss = (m, ctx) => {
   const colors = ['#aa6644', '#668844', '#6644aa'];
   for (let i = 0; i < 3; i++) {
     const angle = dir + (i - 1) * spreadAngle;
-    const speed = 6 + Math.random() * 3; // 6-9
+    const speed = 7 + Math.random() * 3; // 7-10
     bullets.push({
       id: nextBulletId++, x: m.x, y: m.y - 8,
       vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,

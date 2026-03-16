@@ -114,7 +114,7 @@ MOB_SPECIALS.wave_cut = (m, ctx) => {
       const dir = Math.atan2(player.y - m.y, player.x - m.x);
       bullets.push({
         id: nextBulletId++, x: m.x, y: m.y - 8,
-        vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
+        vx: Math.cos(dir) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(dir) * GAME_CONFIG.BULLET_SPEED,
         fromPlayer: false, mobBullet: true, damage: Math.round(38 * getMobDamageMultiplier()),
         ownerId: m.id, bulletColor: '#4488cc',
       });
@@ -807,7 +807,7 @@ MOB_SPECIALS.mirror_split = (m, ctx) => {
   const dir = Math.atan2(player.y - fireY, player.x - fireX);
   bullets.push({
     id: nextBulletId++, x: fireX, y: fireY - 8,
-    vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
+    vx: Math.cos(dir) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(dir) * GAME_CONFIG.BULLET_SPEED,
     fromPlayer: false, mobBullet: true, damage: Math.round(35 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#aaccff',
   });

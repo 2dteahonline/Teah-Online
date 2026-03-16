@@ -390,7 +390,7 @@ MOB_SPECIALS.paralysis_dart = (m, ctx) => {
   const dir = Math.atan2(player.y - m.y, player.x - m.x);
   bullets.push({
     id: nextBulletId++, x: m.x, y: m.y - 8,
-    vx: Math.cos(dir) * 9, vy: Math.sin(dir) * 9,
+    vx: Math.cos(dir) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(dir) * GAME_CONFIG.BULLET_SPEED,
     fromPlayer: false, mobBullet: true, damage: Math.round(m.damage * 0.5 * getMobDamageMultiplier()),
     ownerId: m.id, bulletColor: '#77cc44',
     onHitPlayer: (b, hitTarget) => { StatusFX.applyToPlayer('root', { duration: 42 }); hitEffects.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 30, type: "stun" }); },

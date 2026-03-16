@@ -17,7 +17,7 @@ MOB_SPECIALS.card_flick = (m, ctx) => {
         const angle = dir + i * spread;
         bullets.push({
           id: nextBulletId++, x: m.x, y: m.y - 8,
-          vx: Math.cos(angle) * 9, vy: Math.sin(angle) * 9,
+          vx: Math.cos(angle) * GAME_CONFIG.BULLET_SPEED, vy: Math.sin(angle) * GAME_CONFIG.BULLET_SPEED,
           fromPlayer: false, mobBullet: true, damage: Math.round(20 * getMobDamageMultiplier()),
           ownerId: m.id, bulletColor: '#eeddaa',
         });

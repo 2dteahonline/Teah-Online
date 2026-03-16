@@ -14,10 +14,10 @@ const MOB_TYPES = {
   tank:    { name: "Tank",    hp: 375, speed: 4,  damage: 20, killHeal: 20, goldReward: 6, skin: "#6a5a50", hair: "#2a2a2a", shirt: "#445566", pants: "#2a3a4a", contactRange: 78, deathColors: ["#4466aa","#335588","#6688cc","#224466"] },
   witch:   { name: "Witch",   hp: 188, speed: 2.1, damage: 6,  killHeal: 25, goldReward: 7, skin: "#8a9a7a", hair: "#2a1a3a", shirt: "#3a2a4a", pants: "#2a1a2a", contactRange: 76, summonRate: 540, summonMax: 4, deathColors: ["#a060e0","#8040c0","#c080ff","#6020a0"] },
   skeleton:{ name: "Skeleton",hp: 38,  speed: 4.6, damage: 8,  killHeal: 1,  goldReward: 0, skin: "#d8d0c0", hair: "#d0c8b8", shirt: "#c8c0b0", pants: "#b8b0a0", contactRange: 74, deathColors: ["#d8d0c0","#c8c0b0","#e0d8c8","#b8b0a0"] },
-  golem:   { name: "Golem",   hp: 1000,speed: 1.8, damage: 13, killHeal: 40, goldReward: 30, skin: "#6a6a6a", hair: "#555555", shirt: "#5a5a5a", pants: "#4a4a4a", contactRange: 82, boulderRate: 88, boulderSpeed: 9, boulderRange: 1000, summonRate: 300, summonMax: 3, deathColors: ["#8a8580","#6a6560","#a09a90","#585450"] },
-  mini_golem: { name: "Mini Golem", hp: 120, speed: 2.2, damage: 6, killHeal: 10, goldReward: 5, skin: "#7a7a7a", hair: "#666666", shirt: "#6a6a6a", pants: "#5a5a5a", contactRange: 50, boulderRate: 140, boulderSpeed: 9, boulderRange: 500, deathColors: ["#9a9590","#7a7570","#b0aaa0","#686460"] },
+  golem:   { name: "Golem",   hp: 1000,speed: 1.8, damage: 13, killHeal: 40, goldReward: 30, skin: "#6a6a6a", hair: "#555555", shirt: "#5a5a5a", pants: "#4a4a4a", contactRange: 82, boulderRate: 88, boulderSpeed: 10, boulderRange: 1000, summonRate: 300, summonMax: 3, deathColors: ["#8a8580","#6a6560","#a09a90","#585450"] },
+  mini_golem: { name: "Mini Golem", hp: 120, speed: 2.2, damage: 6, killHeal: 10, goldReward: 5, skin: "#7a7a7a", hair: "#666666", shirt: "#6a6a6a", pants: "#5a5a5a", contactRange: 50, boulderRate: 140, boulderSpeed: 10, boulderRange: 500, deathColors: ["#9a9590","#7a7570","#b0aaa0","#686460"] },
   mummy:   { name: "Mummy",   hp: 56,  speed: 4,  damage: 0,  killHeal: 5,  goldReward: 3, skin: "#8a8580", hair: "#7a7570", shirt: "#6a6560", pants: "#5a5550", contactRange: 76, explodeRange: 140, explodeDamage: 28, fuseMin: 32, fuseMax: 96, deathColors: ["#c8b878","#a89858","#e0d098","#887838"] },
-  archer:  { name: "Archer",  hp: 75,  speed: 3.4, damage: 6,  killHeal: 8,  goldReward: 4, skin: "#3a3530", hair: "#0e0e0e", shirt: "#111111", pants: "#1a1a1a", contactRange: 74, arrowRate: 80, arrowSpeed: 9, arrowRange: 400, arrowBounces: 4, arrowLife: 600, deathColors: ["#30ff20","#1a1a1a","#0e0e0e","#20cc10"] },
+  archer:  { name: "Archer",  hp: 75,  speed: 3.4, damage: 6,  killHeal: 8,  goldReward: 4, skin: "#3a3530", hair: "#0e0e0e", shirt: "#111111", pants: "#1a1a1a", contactRange: 74, arrowRate: 80, arrowSpeed: 10, arrowRange: 400, arrowBounces: 4, arrowLife: 600, deathColors: ["#30ff20","#1a1a1a","#0e0e0e","#20cc10"] },
   healer:  { name: "Healer",  hp: 81,  speed: 2.6, damage: 5,  killHeal: 15, goldReward: 5, skin: "#e8d8c8", hair: "#f0e0c0", shirt: "#eee8dd", pants: "#d8d0c0", contactRange: 74, healRadius: 220, healRate: 72, healAmount: 10, deathColors: ["#ffdd30","#ffe870","#ffc800","#ffee90"] },
 
   // ===================== FLOOR 1: AZURINE CITY =====================
@@ -36,7 +36,7 @@ const MOB_TYPES = {
     name: "Drone Lookout", hp: 70, speed: 3.7, damage: 8, killHeal: 10, goldReward: 4,
     skin: "#6a6a7a", hair: "#2a2a3a", shirt: "#4a4a5a", pants: "#3a3a4a", contactRange: 74,
     ai: 'archer', _specials: ['spot_mark'], specialCD: 600, // 10s
-    arrowRate: 100, arrowSpeed: 9, arrowRange: 350, arrowBounces: 0, arrowLife: 400,
+    arrowRate: 100, arrowSpeed: 10, arrowRange: 350, arrowBounces: 0, arrowLife: 400,
     projectileStyle: 'neon_bolt',
   },
   street_chemist: {
@@ -66,7 +66,7 @@ const MOB_TYPES = {
     name: "Renegade Sniper", hp: 70, speed: 3.4, damage: 10, killHeal: 10, goldReward: 5,
     skin: "#6a6a6a", hair: "#1a1a2a", shirt: "#3a3a4a", pants: "#2a2a3a", contactRange: 74,
     ai: 'archer', _specials: ['ricochet_round'], specialCD: 480, // 8s
-    arrowRate: 90, arrowSpeed: 9, arrowRange: 650, arrowBounces: 1, arrowLife: 500,
+    arrowRate: 90, arrowSpeed: 10, arrowRange: 650, arrowBounces: 1, arrowLife: 500,
     projectileStyle: 'tracer',
   },
 
@@ -76,8 +76,8 @@ const MOB_TYPES = {
     skin: "#8a7a6a", hair: "#2a2a2a", shirt: "#3a2a1a", pants: "#2a1a0a", contactRange: 80,
     ai: 'archer', _specials: ['laser_snipe', 'tommy_burst', 'smart_mine', 'smoke_screen'],
     isBoss: true, bossScale: 1.4, specialCD: 720, // 12s — Floor 1 mini-boss
-    arrowRate: 120, arrowSpeed: 9, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
-    bulletSpeed: 9,
+    arrowRate: 120, arrowSpeed: 10, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    bulletSpeed: 10,
     projectileStyle: 'golden',
     bulletColor: { main: '#ffd700', core: '#fff8dc', glow: 'rgba(255,215,0,0.3)' },
   },
@@ -128,7 +128,7 @@ const MOB_TYPES = {
     name: "Suit Enforcer", hp: 120, speed: 3.7, damage: 16, killHeal: 10, goldReward: 6,
     skin: "#8a7a6a", hair: "#1a1a1a", shirt: "#2a2a2a", pants: "#1a1a1a", contactRange: 78,
     ai: 'tank', _specials: ['briefcase_turret'], specialCD: 840, // 14s
-    bulletSpeed: 9,
+    bulletSpeed: 10,
   },
   compliance_officer: {
     name: "Compliance Officer", hp: 80, speed: 3.2, damage: 10, killHeal: 8, goldReward: 5,
@@ -145,7 +145,7 @@ const MOB_TYPES = {
     name: "Executive Handler", hp: 90, speed: 3.7, damage: 12, killHeal: 10, goldReward: 6,
     skin: "#8a8a7a", hair: "#2a2a1a", shirt: "#3a3a2a", pants: "#2a2a1a", contactRange: 76,
     ai: 'archer', _specials: ['drone_swarm'], specialCD: 900, // 15s
-    arrowRate: 100, arrowSpeed: 9, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
+    arrowRate: 100, arrowSpeed: 10, arrowRange: 400, arrowBounces: 0, arrowLife: 450,
     projectileStyle: 'electric_bolt',
   },
 
@@ -155,8 +155,8 @@ const MOB_TYPES = {
     skin: "#9a8a6a", hair: "#1a1a1a", shirt: "#2a1a0a", pants: "#1a0a0a", contactRange: 80,
     ai: 'archer', _specials: ['dividend_barrage', 'hostile_takeover', 'nda_field', 'golden_parachute'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
-    arrowRate: 110, arrowSpeed: 9, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
-    bulletSpeed: 9,
+    arrowRate: 110, arrowSpeed: 10, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    bulletSpeed: 10,
     projectileStyle: 'golden',
     bulletColor: { main: '#c0a040', core: '#f0e0a0', glow: 'rgba(192,160,64,0.3)' },
   },
@@ -177,7 +177,7 @@ const MOB_TYPES = {
     name: "Rust Sawman", hp: 85, speed: 4.8, damage: 16, killHeal: 6, goldReward: 5,
     skin: "#8a7a6a", hair: "#2a1a0a", shirt: "#6a5a3a", pants: "#5a4a2a", contactRange: 76,
     ai: 'runner', _specials: ['saw_line'], specialCD: 540, // 9s
-    bulletSpeed: 9,
+    bulletSpeed: 10,
   },
   junkyard_pyro: {
     name: "Junkyard Pyro", hp: 75, speed: 4, damage: 12, killHeal: 8, goldReward: 5,
@@ -288,7 +288,7 @@ const MOB_TYPES = {
     skin: "#5a5a7a", hair: "#1a1a3a", shirt: "#2a2a5a", pants: "#1a1a4a", contactRange: 82,
     ai: 'archer', _specials: ['pulse_override', 'repulsor_beam', 'nano_armor', 'drone_court'],
     isBoss: true, bossScale: 1.5, specialCD: 540, // 9s
-    arrowRate: 90, arrowSpeed: 9, arrowRange: 550, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 90, arrowSpeed: 10, arrowRange: 550, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'electric_bolt',
     bulletColor: { main: '#4488ff', core: '#aaccff', glow: 'rgba(68,136,255,0.3)' },
   },
@@ -1141,7 +1141,7 @@ const MOB_TYPES = {
     name: "Needleback Weaver", hp: 230, speed: 4, damage: 30, killHeal: 10, goldReward: 6,
     skin: "#b8b0c0", hair: "#8a8098", shirt: "#a8a0b0", pants: "#7a7088", contactRange: 74,
     ai: 'archer', _specials: ['silk_needle_fan'], specialCD: 540, // 9s — fires silk spike spread
-    arrowRate: 90, arrowSpeed: 9, arrowRange: 380, arrowBounces: 0, arrowLife: 450,
+    arrowRate: 90, arrowSpeed: 10, arrowRange: 380, arrowBounces: 0, arrowLife: 450,
     projectileStyle: 'silk_needle',
     deathColors: ["#b8b0c0","#a8a0b0","#d0c8d8","#7a7088"],
   },
@@ -1288,7 +1288,7 @@ const MOB_TYPES = {
     name: "Cloudscale Archer", hp: 400, speed: 4, damage: 40, killHeal: 16, goldReward: 9,
     skin: "#6a8a9a", hair: "#3a5a6a", shirt: "#5a7a8a", pants: "#3a5a6a", contactRange: 74,
     ai: 'archer', _specials: ['charged_burst_arrow'], specialCD: 540, // 9s — AoE arrow
-    arrowRate: 85, arrowSpeed: 9, arrowRange: 420, arrowBounces: 0, arrowLife: 480,
+    arrowRate: 85, arrowSpeed: 10, arrowRange: 420, arrowBounces: 0, arrowLife: 480,
     projectileStyle: 'lightning_arrow',
     deathColors: ["#6a8a9a","#5a7a8a","#8aaaba","#3a5a6a"],
   },
@@ -1368,7 +1368,7 @@ const MOB_TYPES = {
     name: "Blood Script Archer", hp: 480, speed: 4.7, damage: 44, killHeal: 18, goldReward: 10,
     skin: "#5a3a3a", hair: "#3a1a1a", shirt: "#4a2a2a", pants: "#2a0a0a", contactRange: 74,
     ai: 'archer', _specials: ['blood_seal_shot'], specialCD: 540, // 9s — delayed ranged burst
-    arrowRate: 80, arrowSpeed: 9, arrowRange: 440, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 80, arrowSpeed: 10, arrowRange: 440, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'blood_arrow',
     deathColors: ["#5a3a3a","#4a2a2a","#7a5a5a","#2a0a0a"],
   },
@@ -1422,7 +1422,7 @@ const MOB_TYPES = {
     skin: "#d0c8e0", hair: "#a098c0", shirt: "#c0b8d0", pants: "#9088b0", contactRange: 82,
     ai: 'archer', _specials: ['gravity_well', 'moon_rift_orb', 'phase_skip'],
     isBoss: true, bossScale: 1.5, specialCD: 480, // 8s
-    arrowRate: 90, arrowSpeed: 9, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 90, arrowSpeed: 10, arrowRange: 500, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'moon_bolt',
     bulletColor: { main: '#c0a0e0', core: '#e8d8ff', glow: 'rgba(192,160,224,0.3)' },
     deathColors: ["#d0c8e0","#c0b8d0","#f0e8ff","#9088b0"],
@@ -1636,7 +1636,7 @@ const MOB_TYPES = {
     name: "Static Tenor", hp: 270, speed: 4.2, damage: 30, killHeal: 12, goldReward: 7,
     skin: "#6a6a7a", hair: "#2a2a3a", shirt: "#4a4a5a", pants: "#2a2a3a", contactRange: 76,
     ai: 'archer', _specials: ['static_shot'], specialCD: 480, // 8s
-    arrowRate: 90, arrowSpeed: 9, arrowRange: 380, arrowBounces: 0, arrowLife: 450,
+    arrowRate: 90, arrowSpeed: 10, arrowRange: 380, arrowBounces: 0, arrowLife: 450,
     projectileStyle: 'static_bolt',
     deathColors: ["#6a6a7a","#4a4a5a","#8a8a9a","#2a2a3a"],
   },
@@ -1675,7 +1675,7 @@ const MOB_TYPES = {
     name: "Grave Trumpeter", hp: 280, speed: 4.2, damage: 32, killHeal: 12, goldReward: 7,
     skin: "#7a7a6a", hair: "#3a3a2a", shirt: "#5a5a4a", pants: "#3a3a2a", contactRange: 76,
     ai: 'archer', _specials: ['death_note'], specialCD: 480, // 8s
-    arrowRate: 100, arrowSpeed: 8, arrowRange: 400, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 100, arrowSpeed: 8.9, arrowRange: 400, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'death_note',
     deathColors: ["#7a7a6a","#5a5a4a","#9a9a8a","#3a3a2a"],
   },
@@ -1713,7 +1713,7 @@ const MOB_TYPES = {
     name: "Choir Widow", hp: 300, speed: 4.2, damage: 32, killHeal: 14, goldReward: 8,
     skin: "#5a4a5a", hair: "#1a0a1a", shirt: "#3a2a3a", pants: "#1a0a1a", contactRange: 76,
     ai: 'archer', _specials: ['dirge_arrow'], specialCD: 540, // 9s
-    arrowRate: 110, arrowSpeed: 6, arrowRange: 380, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 110, arrowSpeed: 6.7, arrowRange: 380, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'dirge',
     deathColors: ["#5a4a5a","#3a2a3a","#7a6a7a","#1a0a1a"],
   },
@@ -1874,7 +1874,7 @@ const MOB_TYPES = {
     skin: "#2a1a3a", hair: "#0a0a1a", shirt: "#1a0a2a", pants: "#0a0a0a", contactRange: 84,
     ai: 'archer', _specials: ['corrupt_vessel', 'black_benediction', 'unsealing_maw'],
     isBoss: true, bossScale: 1.6, specialCD: 480, // 8s
-    arrowRate: 100, arrowSpeed: 9, arrowRange: 450, arrowBounces: 0, arrowLife: 500,
+    arrowRate: 100, arrowSpeed: 10, arrowRange: 450, arrowBounces: 0, arrowLife: 500,
     projectileStyle: 'corrupt',
     bulletColor: { main: '#4a1a6a', core: '#8a4aaa', glow: 'rgba(74,26,106,0.4)' },
     deathColors: ["#2a1a3a","#1a0a2a","#4a3a5a","#0a0a0a"],

@@ -16,7 +16,7 @@ const GAME_CONFIG = {
   MOB_CROWD_RADIUS: 61,         // crowding detection radius
 
   // --- Projectiles ---
-  BULLET_SPEED: 9,              // default bullet speed (px/frame)
+  BULLET_SPEED: 10,             // default bullet speed (px/frame)
   BULLET_R: 7,                  // projectile collision radius
   ENTITY_R: 17,                 // entity hit detection radius (bullet-vs-entity)
 
@@ -32,5 +32,5 @@ const GAME_CONFIG = {
   DEFAULT_HITBOX_RADIUS: 30,    // green circle radius (matches PLAYER_RADIUS)
 
   // --- Version ---
-  GAME_UPDATE: 201,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 202,             // increment each deploy — shown on lobby version sign
 };
