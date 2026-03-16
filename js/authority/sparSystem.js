@@ -281,6 +281,8 @@ const SparSystem = {
         target: null,
         targetAge: 0,
         shootCD: 0,              // fire cooldown (frames), same as BotAI
+        _freezeTimer: 0,         // post-shot freeze (same as player freezeTimer)
+        _freezePenalty: 0,       // speed penalty during freeze (same as player)
         // Spar-specific tactical state
         aggression: 0.3 + Math.random() * 0.7,
         strafeDir: Math.random() > 0.5 ? 1 : -1,
@@ -684,6 +686,10 @@ const SparSystem = {
     g.ammo--;
     // Fire rate: match player's actual cooldown (fireRate * 4, same as gunSystem.js)
     member.ai.shootCD = Math.round((g.fireRate || 5) * 4);
+
+    // Freeze penalty after shooting — same as player (gunSystem.js shoot())
+    member.ai._freezeTimer = g.freezeDuration || 15;
+    member.ai._freezePenalty = g.freezePenalty != null ? g.freezePenalty : 0.54;
 
     if (g.ammo <= 0) {
       g.reloading = true;
@@ -2418,6 +2424,14 @@ const SparSystem = {
       moveY *= pm.strafeSpeedMult;
     }
 
+    // Freeze penalty after shooting — same slowdown as player
+    if (ai._freezeTimer > 0) {
+      ai._freezeTimer--;
+      const penalty = ai._freezePenalty || 0.54;
+      moveX *= (1.0 - penalty);
+      moveY *= (1.0 - penalty);
+    }
+
     // Normalize
     const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
     if (moveLen > speed) {
@@ -2432,8 +2446,8 @@ const SparSystem = {
     ai.smoothVx = moveX;
     ai.smoothVy = moveY;
 
-    // Collision
-    const hw = GAME_CONFIG.MOB_WALL_HW;
+    // Collision — use player wall size, not mob (bots = future players)
+    const hw = GAME_CONFIG.PLAYER_WALL_HW;
     if (positionClear(bot.x + moveX, bot.y, hw)) bot.x += moveX;
     if (positionClear(bot.x, bot.y + moveY, hw)) bot.y += moveY;
 
@@ -2441,16 +2455,17 @@ const SparSystem = {
     bot.moving = Math.abs(moveX) > 0.5 || Math.abs(moveY) > 0.5;
 
     // Facing — always face target
+    // dir: 0=down, 1=up, 2=left, 3=right
     if (dist < 500) {
       if (Math.abs(dx) > Math.abs(dy)) {
-        bot.dir = dx > 0 ? 0 : 2;
+        bot.dir = dx > 0 ? 3 : 2;
       } else {
-        bot.dir = dy > 0 ? 3 : 1;
+        bot.dir = dy > 0 ? 0 : 1;
       }
     } else if (Math.abs(moveX) > Math.abs(moveY)) {
-      bot.dir = moveX > 0 ? 0 : 2;
+      bot.dir = moveX > 0 ? 3 : 2;
     } else if (Math.abs(moveY) > 0.5) {
-      bot.dir = moveY > 0 ? 3 : 1;
+      bot.dir = moveY > 0 ? 0 : 1;
     }
 
     // --- Shooting with shot timing modes ---
