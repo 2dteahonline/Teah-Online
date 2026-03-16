@@ -386,14 +386,34 @@ const SparSystem = {
 
         // Record results
         const won = SparState.lastResult === 'teamA';
-        const modeKey = SparState.activeRoom.teamSize + 'v' + SparState.activeRoom.teamSize;
-        sparProgress.totals[won ? 'wins' : 'losses']++;
-        if (sparProgress.byMode[modeKey]) {
-          sparProgress.byMode[modeKey][won ? 'wins' : 'losses']++;
-        }
-        if (won) spars++;
+        const isTraining = typeof _isSparTraining === 'function' && _isSparTraining();
 
-        // Update learning profile
+        // Skip progression/stats/save during automated training
+        if (!isTraining) {
+          const modeKey = SparState.activeRoom.teamSize + 'v' + SparState.activeRoom.teamSize;
+          sparProgress.totals[won ? 'wins' : 'losses']++;
+          if (sparProgress.byMode[modeKey]) {
+            sparProgress.byMode[modeKey][won ? 'wins' : 'losses']++;
+          }
+          if (won) spars++;
+
+          // Streak tracking
+          if (SparState.activeRoom.streakMode) {
+            const sk = sparProgress.streak[modeKey];
+            if (sk) {
+              if (won) {
+                SparState.streakCount++;
+                sk.current = SparState.streakCount;
+                if (sk.current > sk.best) sk.best = sk.current;
+              } else {
+                SparState.streakCount = 0;
+                sk.current = 0;
+              }
+            }
+          }
+        }
+
+        // Update learning profile (skips internally during training)
         this._updateLearningProfile(won);
 
         // Training harness hook — auto-advance to next match
@@ -401,23 +421,8 @@ const SparSystem = {
           _sparTrainOnMatchEnd(won);
         }
 
-        // Streak tracking
-        if (SparState.activeRoom.streakMode) {
-          const sk = sparProgress.streak[modeKey];
-          if (sk) {
-            if (won) {
-              SparState.streakCount++;
-              sk.current = SparState.streakCount;
-              if (sk.current > sk.best) sk.best = sk.current;
-            } else {
-              SparState.streakCount = 0;
-              sk.current = 0;
-            }
-          }
-        }
-
-        // Auto-save
-        if (typeof SaveLoad !== 'undefined') SaveLoad.save();
+        // Auto-save (skip during training to avoid persisting training state)
+        if (!isTraining && typeof SaveLoad !== 'undefined') SaveLoad.save();
       }
       return;
     }

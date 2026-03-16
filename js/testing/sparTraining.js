@@ -215,19 +215,22 @@ function _sparTrainOnMatchEnd(won) {
 
   _sparTrainState.completedMatches++;
 
-  // Update ONLY general1v1 (not player1v1)
+  // Update general1v1 keyed by TRAINING BOT TYPE, not the spar duel style.
+  // The duel style tag (pressure/control/bait) is assigned at bot creation but
+  // the training override fully replaces that behavior, so logging under the
+  // duel style would corrupt style effectiveness data.
   const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
-  if (sl && enemyBot && enemyBot.ai._duelStyle) {
-    const style = enemyBot.ai._duelStyle;
+  if (sl) {
     if (!sl.general1v1) sl.general1v1 = { styleResults: {} };
     if (!sl.general1v1.styleResults) sl.general1v1.styleResults = {};
-    if (!sl.general1v1.styleResults[style]) {
-      sl.general1v1.styleResults[style] = { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 };
+    const trainKey = 'train_' + type; // e.g. 'train_rusher', 'train_waller'
+    if (!sl.general1v1.styleResults[trainKey]) {
+      sl.general1v1.styleResults[trainKey] = { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 };
     }
-    const sr = sl.general1v1.styleResults[style];
+    const sr = sl.general1v1.styleResults[trainKey];
     sr.total++;
     if (won) sr.losses++; else sr.wins++;
-    const dmgDelta = (enemyBot.ai._matchDmgDealt || 0) - (enemyBot.ai._matchDmgTaken || 0);
+    const dmgDelta = enemyBot ? ((enemyBot.ai._matchDmgDealt || 0) - (enemyBot.ai._matchDmgTaken || 0)) : 0;
     sr.avgDmgDelta = sr.total > 1 ? (0.5 * sr.avgDmgDelta + 0.5 * dmgDelta) : dmgDelta;
   }
 
