@@ -1892,24 +1892,32 @@ const SparSystem = {
     } else if (hasBottom) {
       // === WE HAVE BOTTOM — use it actively, don't just camp ===
 
-      // CRITICAL: if player hits strafing bot easily, use stop-start movement instead
-      const playerHitsStrafe = pm && pm.botMoveEffectiveness && pm.botMoveEffectiveness.strafe < 0.4;
+      // CRITICAL: if player hits strafing bot more than retreating/still, use stop-start movement
+      // Compare strafe effectiveness to alternatives — if strafe is NOT the best, mix it up
+      const playerHitsStrafe = pm && pm.botMoveEffectiveness &&
+        (pm.botMoveEffectiveness.strafe < pm.botMoveEffectiveness.retreat ||
+         pm.botMoveEffectiveness.strafe < pm.botMoveEffectiveness.still);
 
       if (playerHitsStrafe) {
-        // Player destroys horizontal strafing — use stop-start + vertical movement
-        // Pause briefly then burst move
+        // Player destroys horizontal strafing — use retreat-kite + stop-start
+        // Mix retreating (player misses retreat 99%) with brief pauses and burst strafes
         if (!ai._pauseTimer) ai._pauseTimer = 0;
         ai._pauseTimer--;
         if (ai._pauseTimer > 0) {
-          // Pausing — minimal movement, hard to predict
+          // Pausing — minimal movement
           moveX = 0;
           moveY = 0;
         } else {
-          // Burst move — quick direction change
-          moveX = ai.strafeDir * speed * 0.9;
-          moveY = (Math.random() < 0.4 ? -1 : 1) * speed * 0.4; // vertical too!
-          if (ai._pauseTimer <= -15) {
-            ai._pauseTimer = 8 + Math.floor(Math.random() * 12); // pause for 8-20 frames
+          // Active phase: retreat-kite pattern with lateral bursts
+          // Pull away from enemy while strafing — hardest to hit
+          if (dist < 300 && dist > 1) {
+            moveX = -(dx / dist) * speed * 0.3; // retreat component
+            moveY = -(dy / dist) * speed * 0.3;
+          }
+          moveX += ai.strafeDir * speed * 0.6; // lateral burst
+          moveY += (Math.random() < 0.4 ? -1 : 1) * speed * 0.3; // vertical juke
+          if (ai._pauseTimer <= -18) {
+            ai._pauseTimer = 6 + Math.floor(Math.random() * 10); // pause for 6-16 frames
             ai.strafeDir *= -1; // always change direction after burst
           }
         }
@@ -1917,8 +1925,9 @@ const SparSystem = {
         moveX = ai.strafeDir * speed * 0.65;
       }
 
-      // Don't camp bottom corner — stay mobile. Occasionally push toward enemy.
-      if (dist > 300 && dist > 1) {
+      // Don't camp bottom corner — stay mobile. Push toward enemy only if too far.
+      const engageDist = (pm && pm.preferredDist) ? pm.preferredDist + 50 : 300;
+      if (dist > engageDist && dist > 1) {
         moveX += (dx / dist) * speed * 0.25;
         moveY += (dy / dist) * speed * 0.25;
       }
@@ -2239,15 +2248,19 @@ const SparSystem = {
         }
       } else if (pm.bestEvasion === 'strafe') {
         moveX += ai.strafeDir * speed * 0.15;
-      } else if (pm.bestEvasion === 'retreat' && dist < 300) {
-        if (dist > 1) {
-          moveX -= (dx / dist) * speed * 0.25;
-          moveY -= (dy / dist) * speed * 0.25;
+      } else if (pm.bestEvasion === 'retreat') {
+        // Player can't hit a retreating bot — maintain distance and kite
+        if (dist < 350 && dist > 1) {
+          const retreatStr = Math.min(0.4, (350 - dist) / 500);
+          moveX -= (dx / dist) * speed * retreatStr;
+          moveY -= (dy / dist) * speed * retreatStr;
         }
+        // Add lateral movement while retreating — harder to predict
+        moveX += ai.strafeDir * speed * 0.2;
       } else if (pm.bestEvasion === 'approach' && dist > 120) {
         if (dist > 1) {
-          moveX += (dx / dist) * speed * 0.2;
-          moveY += (dy / dist) * speed * 0.2;
+          moveX += (dx / dist) * speed * 0.25;
+          moveY += (dy / dist) * speed * 0.25;
         }
       }
 
