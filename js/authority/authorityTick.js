@@ -141,6 +141,30 @@ window.authorityTick = function() {
     InputIntent.reloadPressed = false;
   }
 
+  // ---- Spar: freeze during countdown/post_match ----
+  if (typeof SparSystem !== 'undefined' && SparSystem.isPlayerFrozen()) {
+    InputIntent.moveX = 0;
+    InputIntent.moveY = 0;
+    InputIntent.meleePressed = false;
+    InputIntent.shootHeld = false;
+    InputIntent.shootPressed = false;
+    InputIntent.dashPressed = false;
+    InputIntent.interactPressed = false;
+    InputIntent.ultimatePressed = false;
+    InputIntent.reloadPressed = false;
+    InputIntent.potionPressed = false;
+  }
+
+  // ---- Spar: gun only, block all other slots during fighting ----
+  if (typeof Scene !== 'undefined' && Scene.inSpar &&
+      typeof SparState !== 'undefined' && SparState.phase === 'fighting') {
+    activeSlot = 0;
+    InputIntent.meleePressed = false;
+    InputIntent.dashPressed = false;
+    InputIntent.potionPressed = false;
+    InputIntent.ultimatePressed = false;
+  }
+
   // ---- Hide & Seek weapon restrictions: no guns, force melee slot ----
   if (typeof Scene !== 'undefined' && Scene.inHideSeek &&
       typeof HideSeekState !== 'undefined' && HideSeekState.phase !== 'idle') {

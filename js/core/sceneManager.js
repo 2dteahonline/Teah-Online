@@ -52,6 +52,7 @@ const Scene = {
     else if (level.isWagashi) this._current = 'wagashi';
     else if (level.isEarth216) this._current = 'earth216';
     else if (level.isCasino) this._current = 'casino';
+    else if (level.isSpar) this._current = 'spar';
     else this._current = 'dungeon';
     if (prev !== this._current) {
       try { Events.emit('scene_changed', { from: prev, to: this._current }); } catch(e) {}
@@ -77,6 +78,7 @@ const Scene = {
   get inWagashi() { return this._current === 'wagashi'; },
   get inEarth216() { return this._current === 'earth216'; },
   get inCasino() { return this._current === 'casino'; },
+  get inSpar() { return this._current === 'spar'; },
 };
 
 // ---- PORTAL TYPE REGISTRY ----
@@ -105,10 +107,12 @@ const PORTAL_SCENES = {
   earth216_exit: 'earth216',
   casino_entrance: 'lobby',
   casino_exit: 'casino',
+  spar_entrance: 'lobby',
+  spar_exit: 'spar',
 };
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
-const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi', 'earth216', 'casino']);
+const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi', 'earth216', 'casino', 'spar']);
 
 // ---- /LEAVE SYSTEM ----
 // Registry for enclosed scenes that require /leave to exit (no walkable door).
@@ -208,6 +212,13 @@ const LEAVE_HANDLERS = {
     returnTY: 33,
     message: 'Leaving casino...',
   },
+  spar: {
+    cleanup() {
+      if (typeof SparSystem !== 'undefined') SparSystem.endMatch();
+    },
+    returnLevel: null,
+    message: 'Left Spar Building.',
+  },
   dungeon: {
     cleanup() {
       mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
@@ -275,8 +286,10 @@ let transitionSpawnTY = 0;
 function enterLevel(targetLevelId, spawnTX, spawnTY) {
   try {
     // Run cleanup for current scene before transitioning (close panels, etc.)
+    // Guard: skip spar cleanup on intra-spar transitions (hub↔arena)
+    const _targetIsSpar = LEVELS[targetLevelId] && LEVELS[targetLevelId].isSpar;
     const leavingHandler = LEAVE_HANDLERS[Scene.current];
-    if (leavingHandler && leavingHandler.cleanup) leavingHandler.cleanup();
+    if (leavingHandler && leavingHandler.cleanup && !(Scene.inSpar && _targetIsSpar)) leavingHandler.cleanup();
 
     const targetLevel = LEVELS[targetLevelId];
     if (!targetLevel) return;

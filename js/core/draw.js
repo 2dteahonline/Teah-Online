@@ -296,6 +296,12 @@ function draw() {
   if (typeof fineDiningNPCs !== 'undefined' && Scene.inCooking && typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'fine_dining') {
     for (const npc of fineDiningNPCs) sortedChars.push({ y: npc.y, type: "fineDiningNPC", npc: npc });
   }
+  // Spar bots
+  if (typeof SparState !== 'undefined' && Scene.inSpar && SparState._sparBots) {
+    for (const bot of SparState._sparBots) {
+      if (bot.hp > 0) sortedChars.push({ y: bot.y, type: "sparBot", bot: bot });
+    }
+  }
   sortedChars.sort((a, b) => a.y - b.y);
 
   // Ore nodes (under characters)
@@ -376,6 +382,11 @@ function draw() {
         player.vx = 0;
         player.vy = 0;
       } else {
+        // Spar team indicator under player
+        if (typeof SparState !== 'undefined' && Scene.inSpar && SparState.phase === 'fighting') {
+          ctx.fillStyle = 'rgba(50,120,220,0.4)';
+          ctx.beginPath(); ctx.arc(player.x - camera.x, player.y - camera.y, 14, 0, Math.PI * 2); ctx.fill();
+        }
         const flashAlpha = contactCooldown > 0 && Math.floor(renderTime / 80) % 2 === 0;
         if (flashAlpha) ctx.globalAlpha = 0.5;
         // Phase visual — semi-transparent + cyan glow
@@ -978,6 +989,27 @@ function draw() {
       _charColorOverride = null;
       activeSlot = _savedSlot; // restore player's weapon slot
       gun.recoilTimer = _savedRecoil; // restore player's recoil
+
+    } else if (e.type === "sparBot") {
+      // Spar bot rendering — simple character with team color indicator
+      const sb = e.bot;
+      const sbx = sb.x - camera.x, sby = sb.y - camera.y;
+      // Team indicator circle under feet
+      ctx.fillStyle = sb._sparTeam === 'teamA' ? 'rgba(50,120,220,0.4)' : 'rgba(220,50,50,0.4)';
+      ctx.beginPath(); ctx.arc(sbx, sby, 14, 0, Math.PI * 2); ctx.fill();
+      // Draw character
+      drawChar(sb.x, sb.y, sb.dir, 0, sb.moving,
+        sb.skin, sb.hair, sb.shirt, sb.pants, sb.name, sb.hp, false, null, sb.maxHp);
+      // HP bar
+      if (sb.hp < sb.maxHp) {
+        const hpPct = sb.hp / sb.maxHp;
+        const barW = 36, barH = 4;
+        const barX = sbx - barW / 2, barY = sby - 48;
+        ctx.fillStyle = '#222';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = sb._sparTeam === 'teamA' ? '#4488ff' : '#ff4444';
+        ctx.fillRect(barX, barY, barW * hpPct, barH);
+      }
 
     } else if (e.mob) {
       const m = e.mob;
@@ -2152,6 +2184,7 @@ function draw() {
   if (typeof drawGunsmithPanel === 'function') drawGunsmithPanel();
   if (typeof drawMiningShopPanel === 'function') drawMiningShopPanel();
   if (typeof drawCasinoPanel === 'function') drawCasinoPanel();
+  if (typeof SparState !== 'undefined' && Scene.inSpar && SparState.phase !== 'idle' && SparState.phase !== 'hub') drawSparHUD();
   if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) CameraSystem.drawOverlay();
   if (typeof drawSkeldTaskPanel === 'function') drawSkeldTaskPanel();
   if (typeof drawSkeldTaskList === 'function') drawSkeldTaskList();
@@ -2748,6 +2781,97 @@ function draw() {
     console.error('DRAW ERROR:', drawErr.message, drawErr.stack);
   }
 }
+// ===================== SPAR HUD =====================
+function drawSparHUD() {
+  if (typeof SparState === 'undefined') return;
+  const phase = SparState.phase;
+  const room = SparState.activeRoom;
+
+  if (phase === 'countdown') {
+    // Large centered countdown text
+    const secs = Math.ceil(SparState.countdown / 60);
+    const text = secs > 0 ? secs.toString() : 'FIGHT!';
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 72px monospace';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#55ccff';
+    ctx.shadowBlur = 20;
+    ctx.fillText(text, BASE_W / 2, BASE_H / 2);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  if (phase === 'fighting' || phase === 'post_match') {
+    // Top bar: room label + team alive counts
+    const barW = 300, barH = 40;
+    const barX = BASE_W / 2 - barW / 2, barY = 10;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.strokeStyle = '#55ccff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(barX, barY, barW, barH);
+    ctx.lineWidth = 1;
+
+    // Room label
+    const label = room ? (room.label + (room.streakMode ? ' Streak' : ' Standard')) : 'Spar';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, BASE_W / 2, barY + 16);
+
+    // Team alive counts
+    const aAlive = SparState.teamA.filter(p => p.alive).length;
+    const bAlive = SparState.teamB.filter(p => p.alive).length;
+    const aTotal = SparState.teamA.length;
+    const bTotal = SparState.teamB.length;
+
+    ctx.font = 'bold 13px monospace';
+    ctx.fillStyle = '#4488ff';
+    ctx.textAlign = 'right';
+    ctx.fillText('BLUE ' + aAlive + '/' + aTotal, BASE_W / 2 - 10, barY + 34);
+    ctx.fillStyle = '#ff4444';
+    ctx.textAlign = 'left';
+    ctx.fillText(bAlive + '/' + bTotal + ' RED', BASE_W / 2 + 10, barY + 34);
+    ctx.textAlign = 'left';
+
+    // Streak counter
+    if (room && room.streakMode && SparState.streakCount > 0) {
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('STREAK: ' + SparState.streakCount, BASE_W / 2, barY + barH + 16);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  if (phase === 'post_match') {
+    // Victory / Defeat banner
+    const won = SparState.lastResult === 'teamA';
+    const text = won ? 'VICTORY' : 'DEFEAT';
+    const color = won ? '#55ff55' : '#ff4444';
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.font = 'bold 56px monospace';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 15;
+    ctx.fillText(text, BASE_W / 2, BASE_H / 2);
+    ctx.shadowBlur = 0;
+    // Streak result
+    if (SparState.activeRoom && SparState.activeRoom.streakMode) {
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 18px monospace';
+      if (won) {
+        ctx.fillText('Streak: ' + SparState.streakCount, BASE_W / 2, BASE_H / 2 + 40);
+      } else {
+        ctx.fillText('Streak ended', BASE_W / 2, BASE_H / 2 + 40);
+      }
+    }
+    ctx.restore();
+  }
+}
+
 const FIXED_DT = 1000 / 60;
 let lastTime = 0;
 let accumulator = 0;

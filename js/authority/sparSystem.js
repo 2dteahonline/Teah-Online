@@ -1,0 +1,670 @@
+// ===================== SPAR SYSTEM =====================
+// Authority: spar arena combat, bot AI, match flow
+// Phase B — loaded after casinoSystem.js
+// Depends on: SPAR_CONFIG, SPAR_ROOMS, sparProgress (sparData.js)
+//             player, bullets, hitEffects (gameState.js)
+//             enterLevel, Scene, LEVELS (sceneManager.js)
+//             positionClear (mobSystem.js)
+//             TILE (levelData.js)
+
+// ---- SPAR STATE ----
+const SparState = {
+  phase: 'idle',           // 'idle' | 'hub' | 'countdown' | 'fighting' | 'post_match'
+  activeRoom: null,        // SPAR_ROOMS entry
+  teamA: [],               // [{ id, entity, isLocal, isBot, alive, gun }]
+  teamB: [],               // same
+  countdown: 0,
+  matchTimer: 0,
+  lastResult: null,        // 'teamA' | 'teamB'
+  postMatchTimer: 0,
+  streakCount: 0,
+  _sparBots: [],           // all spar bot entities (both teams)
+  _savedSnapshot: null,    // loadout snapshot for restore
+  _nextBotId: 1,
+};
+
+// ---- SPAR SYSTEM ----
+const SparSystem = {
+  enterHub() {
+    SparState.phase = 'hub';
+    SparState.activeRoom = null;
+    SparState._sparBots.length = 0;
+    SparState.teamA.length = 0;
+    SparState.teamB.length = 0;
+  },
+
+  joinRoom(roomId) {
+    const room = SPAR_ROOMS.find(r => r.id === roomId);
+    if (!room) return;
+    SparState.activeRoom = room;
+
+    // 1. Snapshot loadout
+    SparState._savedSnapshot = {
+      gunDamage: gun.damage,
+      gunFireRate: gun.fireRate,
+      gunMagSize: gun.magSize,
+      gunAmmo: gun.ammo,
+      gunReloading: gun.reloading,
+      gunReloadTimer: gun.reloadTimer,
+      gunSpecial: gun.special,
+      meleeDamage: melee.damage,
+      meleeRange: melee.range,
+      meleeSpeed: melee.speed,
+      meleeSpecial: melee.special,
+      playerHp: player.hp,
+      playerMaxHp: player.maxHp,
+      activeSlot: activeSlot,
+      lives: lives,
+      playerDead: playerDead,
+      // Deep copy equip
+      playerEquipGun: playerEquip.gun ? JSON.parse(JSON.stringify(playerEquip.gun)) : null,
+      playerEquipBoots: playerEquip.boots ? JSON.parse(JSON.stringify(playerEquip.boots)) : null,
+      playerEquipPants: playerEquip.pants ? JSON.parse(JSON.stringify(playerEquip.pants)) : null,
+      playerEquipChest: playerEquip.chest ? JSON.parse(JSON.stringify(playerEquip.chest)) : null,
+      playerEquipHelmet: playerEquip.helmet ? JSON.parse(JSON.stringify(playerEquip.helmet)) : null,
+    };
+
+    // 2. Apply spar loadout
+    // Check if player has a main gun equipped
+    let sparGunStats;
+    if (playerEquip.gun && playerEquip.gun.progItemId) {
+      // Keep equipped main gun stats
+      sparGunStats = {
+        damage: gun.damage,
+        fireRate: gun.fireRate,
+        magSize: gun.magSize,
+      };
+    } else {
+      // Fallback to default Sidearm
+      sparGunStats = { ...SPAR_CONFIG.DEFAULT_GUN };
+      gun.damage = sparGunStats.damage;
+      gun.fireRate = sparGunStats.fireRate;
+      gun.magSize = sparGunStats.magSize;
+    }
+    player.hp = SPAR_CONFIG.HP_BASELINE;
+    player.maxHp = SPAR_CONFIG.HP_BASELINE;
+    gun.ammo = gun.magSize;
+    gun.reloading = false;
+    gun.reloadTimer = 0;
+    activeSlot = 0;
+    lives = 1;
+    playerDead = false;
+
+    // Zero out melee/armor effects during spar
+    melee.damage = 0;
+    melee.range = 0;
+
+    // 3. Create spar bots
+    SparState._sparBots.length = 0;
+    SparState.teamA.length = 0;
+    SparState.teamB.length = 0;
+
+    const arenaLevel = LEVELS[room.arenaLevel];
+    if (!arenaLevel) return;
+    const spawns = arenaLevel.spawns;
+
+    // Player on teamA
+    SparState.teamA.push({
+      id: 'player',
+      entity: player,
+      isLocal: true,
+      isBot: false,
+      alive: true,
+      gun: sparGunStats,
+    });
+
+    // Ally bots (teamA, teamSize - 1)
+    for (let i = 1; i < room.teamSize; i++) {
+      const spawnKey = 'teamA' + (i > 0 ? (i + 1) : '');
+      const spawnPt = spawns[spawnKey] || spawns.teamA;
+      const bot = this._createBot('ally_' + i, spawnPt.tx, spawnPt.ty, sparGunStats, 'teamA');
+      SparState._sparBots.push(bot);
+      SparState.teamA.push({
+        id: bot._sparId,
+        entity: bot,
+        isLocal: false,
+        isBot: true,
+        alive: true,
+        gun: { ...sparGunStats },
+      });
+    }
+
+    // Enemy bots (teamB, full teamSize)
+    for (let i = 0; i < room.teamSize; i++) {
+      const spawnKey = i === 0 ? 'teamB' : ('teamB' + (i + 1));
+      const spawnPt = spawns[spawnKey] || spawns.teamB;
+      const bot = this._createBot('enemy_' + i, spawnPt.tx, spawnPt.ty, sparGunStats, 'teamB');
+      SparState._sparBots.push(bot);
+      SparState.teamB.push({
+        id: bot._sparId,
+        entity: bot,
+        isLocal: false,
+        isBot: true,
+        alive: true,
+        gun: { ...sparGunStats },
+      });
+    }
+
+    // 4. Enter arena level
+    enterLevel(room.arenaLevel, spawns.p1.tx, spawns.p1.ty);
+
+    // Position bots at their spawn points (after enterLevel resets)
+    for (const bot of SparState._sparBots) {
+      bot.x = bot._spawnTX * TILE + TILE / 2;
+      bot.y = bot._spawnTY * TILE + TILE / 2;
+    }
+
+    // 5. Start countdown
+    SparState.phase = 'countdown';
+    SparState.countdown = SPAR_CONFIG.COUNTDOWN_FRAMES;
+    SparState.matchTimer = 0;
+    SparState.lastResult = null;
+    SparState.postMatchTimer = 0;
+  },
+
+  _createBot(nameId, spawnTX, spawnTY, gunStats, team) {
+    const id = 'spar_bot_' + SparState._nextBotId++;
+    return {
+      _sparId: id,
+      _isBot: true,
+      _isSparBot: true,
+      _sparTeam: team,
+      _spawnTX: spawnTX,
+      _spawnTY: spawnTY,
+      x: spawnTX * TILE + TILE / 2,
+      y: spawnTY * TILE + TILE / 2,
+      vx: 0, vy: 0,
+      hp: SPAR_CONFIG.HP_BASELINE,
+      maxHp: SPAR_CONFIG.HP_BASELINE,
+      dir: team === 'teamA' ? 0 : 2, // face right (A) / left (B)
+      name: nameId.startsWith('ally') ? 'Ally Bot' : 'Spar Bot',
+      moving: false,
+      // Gun state
+      _gunDamage: gunStats.damage,
+      _gunFireRate: gunStats.fireRate,
+      _gunMagSize: gunStats.magSize,
+      _gunAmmo: gunStats.magSize,
+      _gunReloading: false,
+      _gunReloadTimer: 0,
+      _fireCooldown: 0,
+      // AI state
+      _ai: {
+        aggression: 0.3 + Math.random() * 0.7,
+        strafeDir: Math.random() > 0.5 ? 1 : -1,
+        strafeTimer: Math.floor(90 + Math.random() * 60),
+        coverTarget: null,
+        targetId: null,
+        targetTimer: 0,
+        shootAngle: 0,
+      },
+      // Rendering
+      skin: team === 'teamA' ? '#4488cc' : '#cc4444',
+      hair: '#333',
+      shirt: team === 'teamA' ? '#2266aa' : '#aa2222',
+      pants: '#222',
+      shoes: '#111',
+      hat: null,
+      knockVx: 0, knockVy: 0,
+    };
+  },
+
+  tick() {
+    if (SparState.phase === 'idle' || SparState.phase === 'hub') return;
+
+    if (SparState.phase === 'countdown') {
+      SparState.countdown--;
+      // Freeze all bots during countdown
+      for (const bot of SparState._sparBots) {
+        bot.vx = 0; bot.vy = 0; bot.moving = false;
+      }
+      if (SparState.countdown <= 0) {
+        SparState.phase = 'fighting';
+        SparState.matchTimer = 0;
+      }
+      return;
+    }
+
+    if (SparState.phase === 'fighting') {
+      SparState.matchTimer++;
+      this._tickSparBots();
+
+      // Check alive counts
+      const aAlive = SparState.teamA.filter(p => p.alive).length;
+      const bAlive = SparState.teamB.filter(p => p.alive).length;
+
+      if (aAlive <= 0 || bAlive <= 0) {
+        SparState.lastResult = aAlive > 0 ? 'teamA' : 'teamB';
+        SparState.phase = 'post_match';
+        SparState.postMatchTimer = SPAR_CONFIG.POST_MATCH_FRAMES;
+
+        // Record results
+        const won = SparState.lastResult === 'teamA';
+        const modeKey = SparState.activeRoom.teamSize + 'v' + SparState.activeRoom.teamSize;
+        sparProgress.totals[won ? 'wins' : 'losses']++;
+        if (sparProgress.byMode[modeKey]) {
+          sparProgress.byMode[modeKey][won ? 'wins' : 'losses']++;
+        }
+        if (won) spars++;
+
+        // Streak tracking
+        if (SparState.activeRoom.streakMode) {
+          const sk = sparProgress.streak[modeKey];
+          if (sk) {
+            if (won) {
+              SparState.streakCount++;
+              sk.current = SparState.streakCount;
+              if (sk.current > sk.best) sk.best = sk.current;
+            } else {
+              SparState.streakCount = 0;
+              sk.current = 0;
+            }
+          }
+        }
+
+        // Auto-save
+        if (typeof SaveLoad !== 'undefined') SaveLoad.save();
+      }
+      return;
+    }
+
+    if (SparState.phase === 'post_match') {
+      SparState.postMatchTimer--;
+      if (SparState.postMatchTimer <= 0) {
+        // Streak: if player won, stay and spawn new challengers
+        if (SparState.activeRoom && SparState.activeRoom.streakMode && SparState.lastResult === 'teamA') {
+          this._resetForStreakContinue();
+        } else {
+          this.exitToHub();
+        }
+      }
+      return;
+    }
+  },
+
+  _resetForStreakContinue() {
+    // Remove old enemy bots
+    const oldEnemies = SparState._sparBots.filter(b => b._sparTeam === 'teamB');
+    for (const e of oldEnemies) {
+      const idx = SparState._sparBots.indexOf(e);
+      if (idx >= 0) SparState._sparBots.splice(idx, 1);
+    }
+    SparState.teamB.length = 0;
+
+    // Restore player + ally HP
+    player.hp = SPAR_CONFIG.HP_BASELINE;
+    playerDead = false;
+    gun.ammo = gun.magSize;
+    gun.reloading = false;
+    for (const p of SparState.teamA) {
+      p.alive = true;
+      p.entity.hp = SPAR_CONFIG.HP_BASELINE;
+      if (p.isBot) {
+        p.entity._gunAmmo = p.entity._gunMagSize;
+        p.entity._gunReloading = false;
+      }
+    }
+
+    // Spawn fresh enemy bots
+    const room = SparState.activeRoom;
+    const arenaLevel = LEVELS[room.arenaLevel];
+    const spawns = arenaLevel.spawns;
+    const sparGunStats = SparState.teamA[0].gun;
+
+    for (let i = 0; i < room.teamSize; i++) {
+      const spawnKey = i === 0 ? 'teamB' : ('teamB' + (i + 1));
+      const spawnPt = spawns[spawnKey] || spawns.teamB;
+      const bot = this._createBot('enemy_' + i, spawnPt.tx, spawnPt.ty, sparGunStats, 'teamB');
+      bot.x = spawnPt.tx * TILE + TILE / 2;
+      bot.y = spawnPt.ty * TILE + TILE / 2;
+      SparState._sparBots.push(bot);
+      SparState.teamB.push({
+        id: bot._sparId,
+        entity: bot,
+        isLocal: false,
+        isBot: true,
+        alive: true,
+        gun: { ...sparGunStats },
+      });
+    }
+
+    // Restart countdown
+    bullets.length = 0;
+    hitEffects.length = 0;
+    SparState.phase = 'countdown';
+    SparState.countdown = SPAR_CONFIG.COUNTDOWN_FRAMES;
+    SparState.lastResult = null;
+  },
+
+  onParticipantDeath(entity) {
+    // Mark participant as dead in team arrays
+    const allParticipants = [...SparState.teamA, ...SparState.teamB];
+    for (const p of allParticipants) {
+      if (p.entity === entity) {
+        p.alive = false;
+        break;
+      }
+    }
+
+    // If it's the local player
+    if (entity === player) {
+      playerDead = true;
+      deathTimer = 60;
+      deathX = player.x;
+      deathY = player.y;
+      deathRotation = 0;
+      deathGameOver = false; // don't trigger normal game over
+    }
+
+    // Death effect
+    if (typeof hitEffects !== 'undefined') {
+      hitEffects.push({ x: entity.x, y: entity.y, life: 25, type: "shockwave" });
+    }
+  },
+
+  exitToHub() {
+    this._restoreSnapshot();
+    this._cleanupBots();
+    SparState.phase = 'hub';
+    SparState.activeRoom = null;
+    SparState.lastResult = null;
+    enterLevel(SPAR_CONFIG.HUB_LEVEL, 15, 18);
+  },
+
+  endMatch() {
+    if (SparState.phase === 'idle') return;
+    this._restoreSnapshot();
+    this._cleanupBots();
+    SparState.phase = 'idle';
+    SparState.activeRoom = null;
+    SparState.lastResult = null;
+    SparState.streakCount = 0;
+    // Only transition if not already heading to lobby
+    if (!transitioning) {
+      enterLevel(SPAR_CONFIG.RETURN_LEVEL, SPAR_CONFIG.RETURN_TX, SPAR_CONFIG.RETURN_TY);
+    }
+  },
+
+  _restoreSnapshot() {
+    const snap = SparState._savedSnapshot;
+    if (!snap) return;
+    gun.damage = snap.gunDamage;
+    gun.fireRate = snap.gunFireRate;
+    gun.magSize = snap.gunMagSize;
+    gun.ammo = snap.gunAmmo;
+    gun.reloading = snap.gunReloading;
+    gun.reloadTimer = snap.gunReloadTimer;
+    gun.special = snap.gunSpecial;
+    melee.damage = snap.meleeDamage;
+    melee.range = snap.meleeRange;
+    melee.speed = snap.meleeSpeed;
+    melee.special = snap.meleeSpecial;
+    player.hp = snap.playerHp;
+    player.maxHp = snap.playerMaxHp;
+    activeSlot = snap.activeSlot;
+    lives = snap.lives;
+    playerDead = snap.playerDead;
+    playerEquip.gun = snap.playerEquipGun;
+    playerEquip.boots = snap.playerEquipBoots;
+    playerEquip.pants = snap.playerEquipPants;
+    playerEquip.chest = snap.playerEquipChest;
+    playerEquip.helmet = snap.playerEquipHelmet;
+    SparState._savedSnapshot = null;
+  },
+
+  _cleanupBots() {
+    SparState._sparBots.length = 0;
+    SparState.teamA.length = 0;
+    SparState.teamB.length = 0;
+  },
+
+  isPlayerFrozen() {
+    return SparState.phase === 'countdown' || SparState.phase === 'post_match';
+  },
+
+  getTeamForEntity(entity) {
+    for (const p of SparState.teamA) if (p.entity === entity) return 'teamA';
+    for (const p of SparState.teamB) if (p.entity === entity) return 'teamB';
+    return null;
+  },
+
+  isAlly(a, b) {
+    const teamA = this.getTeamForEntity(a);
+    const teamB = this.getTeamForEntity(b);
+    return teamA && teamB && teamA === teamB;
+  },
+
+  // ===================== SPAR BOT TACTICAL AI =====================
+  _tickSparBots() {
+    for (const bot of SparState._sparBots) {
+      if (bot.hp <= 0) continue;
+      this._tickOneBot(bot);
+    }
+  },
+
+  _tickOneBot(bot) {
+    const team = bot._sparTeam;
+    const enemies = team === 'teamA' ? SparState.teamB : SparState.teamA;
+    const allies = team === 'teamA' ? SparState.teamA : SparState.teamB;
+    const ai = bot._ai;
+
+    // --- Target selection ---
+    ai.targetTimer--;
+    let target = null;
+    if (ai.targetId) {
+      const prev = enemies.find(p => p.id === ai.targetId && p.alive);
+      if (prev) target = prev;
+    }
+    if (!target || ai.targetTimer <= 0) {
+      // Pick closest alive enemy
+      let bestDist = Infinity;
+      for (const p of enemies) {
+        if (!p.alive) continue;
+        const dx = bot.x - p.entity.x, dy = bot.y - p.entity.y;
+        const dist = dx * dx + dy * dy;
+        if (dist < bestDist) { bestDist = dist; target = p; }
+      }
+      if (target) {
+        ai.targetId = target.id;
+        ai.targetTimer = 120;
+      }
+    }
+    if (!target) return; // no enemies alive
+
+    const tgt = target.entity;
+    const dx = tgt.x - bot.x, dy = tgt.y - bot.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // --- Fire cooldown ---
+    if (bot._fireCooldown > 0) bot._fireCooldown--;
+
+    // --- Reload ---
+    if (bot._gunReloading) {
+      bot._gunReloadTimer--;
+      if (bot._gunReloadTimer <= 0) {
+        bot._gunReloading = false;
+        bot._gunAmmo = bot._gunMagSize;
+      }
+    }
+
+    // --- Movement (tactical) ---
+    const speed = SPAR_CONFIG.BOT_SPEED;
+    let moveX = 0, moveY = 0;
+    const preferredRange = 120 + (1 - ai.aggression) * 200; // 120-320px
+
+    // Cover seeking when low HP or reloading
+    if ((bot.hp < bot.maxHp * 0.5 || bot._gunReloading) && dist < 300) {
+      // Move away from target
+      if (dist > 1) {
+        moveX = -(dx / dist) * speed;
+        moveY = -(dy / dist) * speed;
+      }
+    }
+    // Approach or maintain distance
+    else if (dist > preferredRange + 40) {
+      moveX = (dx / dist) * speed;
+      moveY = (dy / dist) * speed;
+    } else if (dist < preferredRange - 40) {
+      moveX = -(dx / dist) * speed;
+      moveY = -(dy / dist) * speed;
+    }
+    // Strafe when in range
+    else {
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 90 + Math.floor(Math.random() * 60);
+      }
+      // Perpendicular to target
+      const perpX = -dy / dist, perpY = dx / dist;
+      moveX = perpX * speed * ai.strafeDir * 0.7;
+      moveY = perpY * speed * ai.strafeDir * 0.7;
+    }
+
+    // Separation from allies (prevent clustering)
+    for (const a of allies) {
+      if (!a.alive || a.entity === bot) continue;
+      const adx = bot.x - a.entity.x, ady = bot.y - a.entity.y;
+      const adist = Math.sqrt(adx * adx + ady * ady);
+      if (adist < 60 && adist > 1) {
+        moveX += (adx / adist) * speed * 0.4;
+        moveY += (ady / adist) * speed * 0.4;
+      }
+    }
+
+    // Flanking: if ally is close to same target, offset approach
+    if (allies.length > 1) {
+      for (const a of allies) {
+        if (!a.alive || a.entity === bot) continue;
+        const aDist = Math.sqrt((tgt.x - a.entity.x) ** 2 + (tgt.y - a.entity.y) ** 2);
+        if (aDist < 120) {
+          // Add perpendicular offset
+          const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
+          moveX += perpX * speed * 0.3;
+          moveY += perpY * speed * 0.3;
+        }
+      }
+    }
+
+    // Normalize speed
+    const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
+    if (moveLen > speed) {
+      moveX = (moveX / moveLen) * speed;
+      moveY = (moveY / moveLen) * speed;
+    }
+
+    // Collision check
+    const hw = GAME_CONFIG.MOB_WALL_HW;
+    const newX = bot.x + moveX;
+    const newY = bot.y + moveY;
+    if (positionClear(newX, bot.y, hw)) bot.x = newX;
+    if (positionClear(bot.x, newY, hw)) bot.y = newY;
+
+    bot.vx = moveX; bot.vy = moveY;
+    bot.moving = Math.abs(moveX) > 0.5 || Math.abs(moveY) > 0.5;
+
+    // Facing direction (toward target)
+    if (Math.abs(dx) > Math.abs(dy)) {
+      bot.dir = dx > 0 ? 0 : 2; // right : left
+    } else {
+      bot.dir = dy > 0 ? 3 : 1; // down : up
+    }
+
+    // --- Shooting ---
+    if (!bot._gunReloading && bot._gunAmmo > 0 && bot._fireCooldown <= 0 && dist < 400) {
+      // Line of sight check (simple raycast)
+      if (this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
+        // Predict target position (lead by ~8 frames)
+        const leadFrames = 8;
+        const predX = tgt.x + (tgt.vx || 0) * leadFrames;
+        const predY = tgt.y + (tgt.vy || 0) * leadFrames;
+        const aimDx = predX - bot.x;
+        const aimDy = (predY - 20) - (bot.y - 20);
+        const angle = Math.atan2(aimDy, aimDx);
+        ai.shootAngle = angle;
+
+        // Add slight inaccuracy
+        const inaccuracy = (Math.random() - 0.5) * 0.15;
+        const finalAngle = angle + inaccuracy;
+
+        // Create bullet
+        const bSpeed = GAME_CONFIG.BULLET_SPEED;
+        const bulletObj = {
+          id: Date.now() + Math.random(),
+          x: bot.x + Math.cos(finalAngle) * 20,
+          y: bot.y - 20 + Math.sin(finalAngle) * 20,
+          vx: Math.cos(finalAngle) * bSpeed,
+          vy: Math.sin(finalAngle) * bSpeed,
+          fromPlayer: true, // needed so bullet rendering works
+          sparTeam: team,
+          damage: bot._gunDamage,
+          bulletColor: team === 'teamA' ? '#55aaff' : '#ff5544',
+          ownerId: bot._sparId,
+        };
+        bullets.push(bulletObj);
+
+        bot._fireCooldown = bot._gunFireRate;
+        bot._gunAmmo--;
+
+        if (bot._gunAmmo <= 0) {
+          bot._gunReloading = true;
+          bot._gunReloadTimer = 60; // 1 second reload
+        }
+      }
+    }
+  },
+
+  _hasLOS(x1, y1, x2, y2) {
+    // Simple raycast along line, check wall tiles every 24px
+    const dx = x2 - x1, dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const steps = Math.ceil(dist / 24);
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const px = x1 + dx * t;
+      const py = y1 + dy * t;
+      const col = Math.floor(px / TILE);
+      const row = Math.floor(py / TILE);
+      if (isSolid(col, row)) return false;
+    }
+    return true;
+  },
+};
+
+// ---- SPAR DOOR INTERACTABLE REGISTRATION ----
+// Register interactables dynamically when hub is entered
+Events.on('scene_changed', (data) => {
+  if (data.to === 'spar') {
+    // Remove old spar interactables
+    for (let i = interactables.length - 1; i >= 0; i--) {
+      if (interactables[i].id && interactables[i].id.startsWith('spar_door_')) {
+        interactables.splice(i, 1);
+      }
+    }
+    // Register door interactables from level entities
+    if (level && level.isSpar && !level.isSparArena) {
+      SparSystem.enterHub();
+      for (const e of levelEntities) {
+        if (e.type !== 'spar_room_door') continue;
+        const doorCenterX = (e.tx + (e.w || 2) / 2) * TILE;
+        const doorCenterY = (e.ty + (e.h || 2) / 2) * TILE;
+        registerInteractable({
+          id: 'spar_door_' + e.roomId,
+          x: doorCenterX,
+          y: doorCenterY,
+          range: 80,
+          label: 'Enter ' + (e.label || '') + ' ' + (e.mode === 'streak' ? 'Streak' : 'Standard'),
+          type: 'spar_door',
+          canInteract() { return SparState.phase === 'hub' && Scene.inSpar; },
+          onInteract() { SparSystem.joinRoom(e.roomId); },
+        });
+      }
+    }
+  } else {
+    // Clean up spar interactables on scene exit
+    for (let i = interactables.length - 1; i >= 0; i--) {
+      if (interactables[i].id && interactables[i].id.startsWith('spar_door_')) {
+        interactables.splice(i, 1);
+      }
+    }
+  }
+});

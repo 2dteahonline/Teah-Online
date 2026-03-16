@@ -542,6 +542,10 @@ function shoot() {
       if (playerEquip.gun && playerEquip.gun.isArrow) {
         bulletObj.isMainArrow = true; // different from mob archer arrows
       }
+      // Spar: tag player bullets with team
+      if (typeof SparState !== 'undefined' && SparState.phase === 'fighting') {
+        bulletObj.sparTeam = 'teamA';
+      }
 
       bullets.push(bulletObj);
     }

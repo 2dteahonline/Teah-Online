@@ -316,6 +316,11 @@ Object.defineProperty(window, 'phaseTimer', {
 // Centralized death check — handles auto-revive from chest armor
 function checkPlayerDeath() {
   if (player.hp > 0 || playerDead) return;
+  // Spar: delegate to spar system, skip normal death/respawn
+  if (typeof SparState !== 'undefined' && SparState.phase === 'fighting') {
+    SparSystem.onParticipantDeath(player);
+    return;
+  }
   if (hasRevive() && !player._reviveUsed) {
     player._reviveUsed = true;
     reviveUsed = true; // keep global in sync for UI reads

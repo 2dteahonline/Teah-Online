@@ -2319,6 +2319,7 @@ function update() {
   updateTransition();
   updateQueue();
   if (typeof HideSeekSystem !== 'undefined') HideSeekSystem.tick();
+  if (typeof SparSystem !== 'undefined' && Scene.inSpar) SparSystem.tick();
   if (typeof VentSystem !== 'undefined') VentSystem.tick();
   if (typeof MafiaSystem !== 'undefined' && Scene.inSkeld) MafiaSystem.tick();
 

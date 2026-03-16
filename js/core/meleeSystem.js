@@ -1028,6 +1028,29 @@ function updateBullets() {
       }
     }
 
+    // ---- SPAR PvP BULLET COLLISION ----
+    if (typeof SparState !== 'undefined' && SparState.phase === 'fighting' && b.sparTeam) {
+      const opponents = (b.sparTeam === 'teamA') ? SparState.teamB : SparState.teamA;
+      let sparHit = false;
+      for (const p of opponents) {
+        if (!p.alive) continue;
+        const ent = p.entity;
+        const sdx = b.x - ent.x;
+        const sdy = b.y - (ent.y - 20);
+        if (sdx * sdx + sdy * sdy < 24 * 24) {
+          const dmg = b.damage || SPAR_CONFIG.DEFAULT_GUN.damage;
+          ent.hp -= dmg;
+          hitEffects.push({ x: b.x, y: b.y - 10, life: 19, type: "hit", dmg: dmg });
+          if (ent.hp <= 0) SparSystem.onParticipantDeath(ent);
+          bullets.splice(i, 1);
+          sparHit = true;
+          break;
+        }
+      }
+      if (sparHit) continue;
+      continue; // skip normal mob/player collision for spar bullets
+    }
+
     // Mob hit — circle centered 20px above feet (body center)
     if (b.fromPlayer) {
       let hit = false;

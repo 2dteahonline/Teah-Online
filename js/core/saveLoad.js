@@ -6,7 +6,7 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 8;
+const SAVE_VERSION = 9;
 
 // Cooking progression — persists across sessions
 const cookingProgress = {
@@ -67,6 +67,10 @@ const SaveLoad = {
         lifetimeOrdersByShop: { ...cookingProgress.lifetimeOrdersByShop },
         purchasedShops: [...cookingProgress.purchasedShops],
       };
+      // Spar progress (v9+)
+      if (typeof sparProgress !== 'undefined') {
+        data.sparProgress = JSON.parse(JSON.stringify(sparProgress));
+      }
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('Save failed:', e);
@@ -222,6 +226,23 @@ const SaveLoad = {
         if (cp.lifetimeOrdersTotal !== undefined) cookingProgress.lifetimeOrdersTotal = cp.lifetimeOrdersTotal;
         if (cp.lifetimeOrdersByShop) cookingProgress.lifetimeOrdersByShop = { ...cp.lifetimeOrdersByShop };
         if (cp.purchasedShops) cookingProgress.purchasedShops = [...cp.purchasedShops];
+      }
+      // Spar progress (v9+)
+      if (data.sparProgress && typeof sparProgress !== 'undefined') {
+        const sp = data.sparProgress;
+        if (sp.totals) Object.assign(sparProgress.totals, sp.totals);
+        if (sp.byMode) {
+          for (const k in sp.byMode) {
+            if (sparProgress.byMode[k]) Object.assign(sparProgress.byMode[k], sp.byMode[k]);
+          }
+        }
+        if (sp.streak) {
+          for (const k in sp.streak) {
+            if (sparProgress.streak[k]) Object.assign(sparProgress.streak[k], sp.streak[k]);
+          }
+        }
+        // Sync spars counter for identity panel
+        spars = sparProgress.totals.wins;
       }
 
       // Farming state (v5+)
