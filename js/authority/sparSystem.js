@@ -695,6 +695,9 @@ const SparSystem = {
         shotWhenAbove: { down: 0, side: 0, total: 0 }, // player above bot
         shotWhenBelow: { up: 0, side: 0, total: 0 },   // player below bot
         shotWhenLevel: { left: 0, right: 0, total: 0 }, // roughly same Y
+        // --- Opening tracking (v3) ---
+        firstShotFrame: -1,        // frame player first fires
+        openingShotCount: 0,       // shots during first 180 frames
         // --- Combat outcome tracking ---
         playerHits: [],    // [{dist, botMoving, botVx, botVy, dir, relY}]
         playerMisses: [],  // [{dist, botMoving, botVx, botVy, dir, relY}]
@@ -921,6 +924,7 @@ const SparSystem = {
       const first = c.openingFrames[0];
       const last = c.openingFrames[c.openingFrames.length - 1];
       const dyOpening = last.y - first.y;
+      const dxOpening = last.x - first.x;
       // rushBottom: did player move downward (positive Y = down)?
       const rushed = dyOpening > 30 ? 1 : (dyOpening > 0 ? 0.5 : 0);
       sl.opening.rushBottom = ema(sl.opening.rushBottom, rushed);
@@ -936,6 +940,58 @@ const SparSystem = {
       if (totalFrames > 3) {
         sl.opening.strafeLeft = ema(sl.opening.strafeLeft, leftFrames / totalFrames);
       }
+
+      // v3: Classify opening route
+      const arenaLevel = LEVELS[SparState.activeRoom.arenaLevel];
+      const arenaW = arenaLevel ? arenaLevel.widthTiles * TILE : 1;
+      const arenaH = arenaLevel ? arenaLevel.heightTiles * TILE : 1;
+      const endNormX = last.x / arenaW;
+      const endNormY = last.y / arenaH;
+      let route = 'midStrafe';
+      if (endNormY > 0.6) {
+        // Went to bottom — which side?
+        if (endNormX < 0.4) route = 'bottomLeft';
+        else if (endNormX > 0.6) route = 'bottomRight';
+        else route = 'bottomCenter';
+      } else if (endNormY < 0.35) {
+        route = 'topHold';
+      }
+      sl.opening.route = route;
+      if (sl.opening.routeCounts[route] !== undefined) sl.opening.routeCounts[route]++;
+
+      // Speed commitment: how much of max distance did player cover?
+      const totalDist = Math.sqrt(dxOpening * dxOpening + dyOpening * dyOpening);
+      const maxPossible = SPAR_CONFIG.BOT_SPEED * c.openingFrames.length * 6; // 6 frames per sample
+      sl.opening.speedPct = ema(sl.opening.speedPct, Math.min(1, totalDist / Math.max(1, maxPossible)));
+
+      // First shot timing
+      if (c.firstShotFrame > 0) {
+        sl.opening.firstShotFrame = ema(sl.opening.firstShotFrame, c.firstShotFrame);
+      }
+      // Shoots during opening?
+      sl.opening.shootsDuringOpening = ema(sl.opening.shootsDuringOpening, c.openingShotCount > 0 ? 1 : 0);
+
+      // Did player actually secure bottom by end of opening?
+      const botAtEnd = SparState.teamB[0] && SparState.teamB[0].alive ? SparState.teamB[0].entity : null;
+      if (botAtEnd) {
+        const gotBottom = last.y > botAtEnd.y + 20 ? 1 : 0;
+        sl.opening.takesBottomPct = ema(sl.opening.takesBottomPct, gotBottom);
+      }
+    }
+
+    // --- Bot opening results ---
+    if (sl.botOpenings && SparState._botOpeningRoute) {
+      const bRoute = SparState._botOpeningRoute;
+      const rr = sl.botOpenings.routeResults[bRoute];
+      if (rr) {
+        rr.total++;
+        if (won) rr.losses++; else rr.wins++; // won = player won, so bot lost
+        // Did bot get bottom?
+        const botE = SparState.teamB[0] && SparState.teamB[0].alive ? SparState.teamB[0].entity : null;
+        const playerE = player;
+        if (botE && botE.y > playerE.y + 20) rr.gotBottom++;
+      }
+      sl.botOpenings.lastRoute = bRoute;
     }
 
     // --- Position bias ---
@@ -1270,6 +1326,81 @@ const SparSystem = {
     };
   },
 
+  // ---- OPENING ROUTE SELECTION ----
+  // Pick the best opening route based on learning data
+  _pickBotOpeningRoute(pm, arenaW, arenaH) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+
+    // Available routes
+    const routes = ['bottomCenter', 'bottomLeft', 'bottomRight', 'topHold', 'midFlank', 'mirrorPlayer'];
+
+    // Not enough data — pick randomly from bottom routes (bottom is meta)
+    if (!sl || sl.matchCount < 3) {
+      const starters = ['bottomCenter', 'bottomLeft', 'bottomRight'];
+      return starters[Math.floor(Math.random() * starters.length)];
+    }
+
+    // Score each route based on past results and counter-play
+    const scores = {};
+    for (const r of routes) scores[r] = 0;
+
+    // Base scores from win rates (if we have results)
+    const rr = sl.botOpenings.routeResults;
+    for (const r of routes) {
+      if (rr[r] && rr[r].total > 0) {
+        const winRate = rr[r].wins / rr[r].total;
+        const bottomRate = rr[r].gotBottom / rr[r].total;
+        scores[r] += winRate * 30;          // winning is most important
+        scores[r] += bottomRate * 15;       // getting bottom is good
+        scores[r] += rr[r].total * 0.5;    // slight bonus for tested routes
+      }
+    }
+
+    // Counter-play: adjust based on what player does
+    const playerRoute = sl.opening.route;
+    if (playerRoute === 'bottomLeft') {
+      scores['bottomRight'] += 10; // go opposite side
+      scores['bottomCenter'] += 5;
+    } else if (playerRoute === 'bottomRight') {
+      scores['bottomLeft'] += 10;
+      scores['bottomCenter'] += 5;
+    } else if (playerRoute === 'bottomCenter') {
+      scores['bottomLeft'] += 8;   // offset to not collide
+      scores['bottomRight'] += 8;
+      scores['mirrorPlayer'] -= 5; // mirroring center is bad
+    }
+
+    // If player ALWAYS rushes bottom, sometimes top-hold can surprise
+    if (sl.opening.rushBottom > 0.8) {
+      scores['topHold'] += 5;
+      scores['midFlank'] += 5;
+    }
+
+    // If player shoots during opening, routes that avoid their shot axis score higher
+    if (sl.opening.shootsDuringOpening > 0.6) {
+      // Player shoots early — evasive routes are better
+      scores['midFlank'] += 5;
+      scores['bottomLeft'] += (sl.shooting.leftPct > 0.3 ? -3 : 3);  // avoid left if they shoot left
+      scores['bottomRight'] += (sl.shooting.rightPct > 0.3 ? -3 : 3);
+    }
+
+    // Don't repeat the same route too many times in a row — variety matters
+    const lastRoute = sl.botOpenings.lastRoute;
+    if (lastRoute) scores[lastRoute] -= 8;
+
+    // Add randomness so bot isn't perfectly predictable
+    for (const r of routes) scores[r] += Math.random() * 12;
+
+    // Pick highest scoring route
+    let bestRoute = 'bottomCenter';
+    let bestScore = -Infinity;
+    for (const r of routes) {
+      if (scores[r] > bestScore) { bestScore = scores[r]; bestRoute = r; }
+    }
+
+    return bestRoute;
+  },
+
   // ---- LEARNING: called from meleeSystem when a spar bullet hits or misses ----
   _onSparBulletHit(bullet, hitEntity, wasHit) {
     const c = SparState._matchCollector;
@@ -1423,19 +1554,53 @@ const SparSystem = {
     }
 
     if (isOpening) {
-      // === PHASE 1: Opening — race to take bottom ===
-      const goalYPct = pm ? pm.openingGoalY : 0.75;
-      const goalY = Math.min(arenaH - TILE * 1.5, arenaH * goalYPct);
-      const bdy = goalY - bot.y;
-      if (Math.abs(bdy) > 15) {
-        moveY = Math.sign(bdy) * speed * 0.9;
+      // === PHASE 1: Opening — choose a route and commit ===
+      // Pick route once at frame 1
+      if (!ai._openingRoute) {
+        ai._openingRoute = this._pickBotOpeningRoute(pm, arenaW, arenaH);
+        SparState._botOpeningRoute = ai._openingRoute;
       }
-      // Counter player's opening strafe bias
-      let openStrafe = ai.strafeDir;
-      if (pm && pm.openingStrafeDir !== 0) {
-        openStrafe = pm.openingStrafeDir; // go opposite of player's habit
+      const route = ai._openingRoute;
+
+      // Route-specific movement
+      if (route === 'bottomCenter') {
+        // Straight down the middle — fastest to bottom
+        const goalY = arenaH * 0.82;
+        if (bot.y < goalY - 15) moveY = speed * 0.92;
+        moveX = ai.strafeDir * speed * 0.25;
+      } else if (route === 'bottomLeft') {
+        // Angle to bottom-left
+        const goalY = arenaH * 0.8;
+        const goalX = arenaW * 0.25;
+        if (bot.y < goalY - 15) moveY = speed * 0.8;
+        moveX = (goalX - bot.x) > 10 ? -speed * 0.5 : (goalX - bot.x) < -10 ? speed * 0.5 : 0;
+      } else if (route === 'bottomRight') {
+        // Angle to bottom-right
+        const goalY = arenaH * 0.8;
+        const goalX = arenaW * 0.75;
+        if (bot.y < goalY - 15) moveY = speed * 0.8;
+        moveX = (goalX - bot.x) > 10 ? speed * 0.5 : (goalX - bot.x) < -10 ? -speed * 0.5 : 0;
+      } else if (route === 'topHold') {
+        // Stay near top, strafe and wall bullets — let player take bottom
+        const goalY = arenaH * 0.3;
+        moveY = (goalY - bot.y) > 15 ? speed * 0.5 : (goalY - bot.y) < -15 ? -speed * 0.5 : 0;
+        moveX = ai.strafeDir * speed * 0.7;
+      } else if (route === 'midFlank') {
+        // Go mid-height, offset horizontally to flank
+        const goalY = arenaH * 0.55;
+        const flankSide = (tgt.vx < 0 || tgt.x < midX) ? arenaW * 0.75 : arenaW * 0.25;
+        if (bot.y < goalY - 15) moveY = speed * 0.6;
+        moveX = Math.sign(flankSide - bot.x) * speed * 0.6;
+      } else if (route === 'mirrorPlayer') {
+        // Mirror player's movement — go wherever they go
+        moveX = (tgt.vx || 0) * 0.8;
+        moveY = (tgt.vy || 0) * 0.8;
+        // But also drift toward bottom
+        if (bot.y < arenaH * 0.7) moveY += speed * 0.3;
       }
-      moveX = openStrafe * speed * 0.4;
+
+      // Shoot during opening if player is in range and we have LOS
+      // (shooting logic happens below, this section is movement only)
 
     } else if (member.gun.reloading) {
       // === RELOADING: dodge hard, create distance, strafe unpredictably ===

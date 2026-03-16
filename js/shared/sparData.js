@@ -73,6 +73,25 @@ let sparLearning = {
   opening: {
     rushBottom: 0.5,    // does player rush bottom? 0=never, 1=always
     strafeLeft: 0.5,    // opening strafe bias. 0=right, 1=left
+    // v3: expanded opening data
+    route: 'unknown',          // detected route: 'bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midStrafe'
+    routeCounts: { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midStrafe: 0 },
+    speedPct: 0.5,             // how fast player commits (0=slow, 1=full speed)
+    firstShotFrame: 180,       // avg frame when player fires first shot (lower = shoots earlier)
+    shootsDuringOpening: 0.5,  // % of openings where player shoots before settling
+    takesBottomPct: 0.5,       // % of openings where player actually secures bottom
+  },
+  // Bot's own opening performance (what works for the bot)
+  botOpenings: {
+    lastRoute: 'bottomCenter', // what bot did last match
+    routeResults: {
+      bottomLeft:   { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+      bottomRight:  { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+      bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+      topHold:      { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+      midFlank:     { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+      mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+    },
   },
   position: {
     bottomBias: 0.5,    // 0=plays top, 1=plays bottom
@@ -152,3 +171,14 @@ let sparLearning = {
   winRate: 0.5,
   history: [],           // last 20 match summaries
 };
+
+// Quick helper — type sparData() in console to copy learning data to clipboard
+function sparData() {
+  const json = JSON.stringify(sparLearning, null, 2);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(json).then(() => console.log('sparLearning copied to clipboard!'));
+  } else {
+    console.log(json);
+  }
+  return json;
+}

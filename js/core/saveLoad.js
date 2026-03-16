@@ -249,18 +249,27 @@ const SaveLoad = {
         spars = sparProgress.totals.wins;
       }
       // Spar learning profile (v9+)
+      // Deep merge: saved data fills in, but code defaults remain for any missing fields
       if (data.sparLearning && typeof sparLearning !== 'undefined') {
         const saved = data.sparLearning;
-        if (saved.version === sparLearning.version) {
-          // Same version — load everything
-          Object.assign(sparLearning, saved);
-        } else if (saved.version === 1 && sparLearning.version === 2) {
-          // Migrate v1→v2: keep existing absolute data, new situational fields use defaults
-          for (const key of ['matchCount', 'opening', 'position', 'shooting', 'dodging', 'aggression', 'reload', 'winRate', 'history']) {
-            if (saved[key] !== undefined) sparLearning[key] = saved[key];
+        const _deepMerge = (target, source) => {
+          for (const key of Object.keys(source)) {
+            if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])
+                && target[key] !== null && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+              _deepMerge(target[key], source[key]);
+            } else {
+              target[key] = source[key];
+            }
           }
-          sparLearning.version = 2; // mark as migrated
-        }
+        };
+        _deepMerge(sparLearning, saved);
+        sparLearning.version = 2; // always ensure current version
+        // Ensure new fields exist with defaults if missing from old saves
+        if (!sparLearning.opening.routeCounts) sparLearning.opening.routeCounts = { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midStrafe: 0 };
+        if (!sparLearning.botOpenings) sparLearning.botOpenings = { lastRoute: 'bottomCenter', routeResults: { bottomLeft: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, bottomRight: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, topHold: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, midFlank: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0 } } };
+        if (!sparLearning.playerShots) sparLearning.playerShots = { hitRate: 0.5, hitRateClose: 0.5, hitRateMid: 0.5, hitRateFar: 0.5, hitWhenBotStrafing: 0.5, hitWhenBotStill: 0.5, hitWhenBotApproach: 0.5, hitWhenBotRetreat: 0.5 };
+        if (!sparLearning.botShots) sparLearning.botShots = { hitRate: 0.5, dodgedRate: 0.5, hitWhenPlayerStrafing: 0.5, hitWhenPlayerStill: 0.5, hitWhenPlayerApproach: 0.5 };
+        if (!sparLearning.combatPatterns) sparLearning.combatPatterns = { playerHitDist: 250, botHitDist: 250, playerDmgWhenHasBottom: 0.5, botDmgWhenHasBottom: 0.5, tradeRatio: 0.5 };
         if (sparLearning.history && sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
       }
 
