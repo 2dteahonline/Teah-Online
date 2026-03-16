@@ -403,12 +403,15 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
       ctx.strokeStyle = "rgba(34,68,170,0.7)";
       ctx.fillStyle = "rgba(34,68,170,0.18)";
     }
+    // Hitbox at feet for players/bots (Graal-style), body center for mobs
+    const _isMobHitbox = mobR > 0;
+    const hitboxCY = _isMobHitbox ? (sy - 20) : sy;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.ellipse(sx, sy - 20, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, hitboxCY, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(sx, sy - 20, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, hitboxCY, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
