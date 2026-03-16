@@ -287,6 +287,14 @@ const SparSystem = {
         laneY: null,
         laneShiftTimer: 0,
         jukeTimer: 0,            // cooldown for juke direction flips
+        // Smooth movement
+        smoothVx: 0,
+        smoothVy: 0,
+        // Baiting
+        baitTimer: 0,            // >0 = currently faking
+        baitDirX: 0,             // fake direction
+        baitDirY: 0,
+        baitCooldown: 120 + Math.floor(Math.random() * 120),
       },
     };
   },
@@ -830,12 +838,47 @@ const SparSystem = {
     if (bot.y < wallMargin) moveY += speed * 0.4;
     else if (bot.y > arenaH - wallMargin) moveY -= speed * 0.3;
 
+    // --- Baiting: occasionally fake a direction then snap back ---
+    if (ai.baitTimer > 0) {
+      ai.baitTimer--;
+      if (ai.baitTimer > 8) {
+        // Fake phase — move in bait direction
+        moveX = ai.baitDirX * speed * 0.7;
+        moveY = ai.baitDirY * speed * 0.7;
+      }
+      // else: snap back (use the real moveX/moveY calculated above)
+    } else {
+      ai.baitCooldown--;
+      if (ai.baitCooldown <= 0 && !isOpening && dist < 350 && dist > 100) {
+        // Start a bait — fake going one direction
+        ai.baitTimer = 18; // 12 frames fake + 6 frames real snap
+        // Fake toward enemy then pull back, or fake a strafe direction
+        if (Math.random() < 0.5) {
+          // Fake push toward enemy
+          ai.baitDirX = dist > 1 ? (dx / dist) : 0;
+          ai.baitDirY = dist > 1 ? (dy / dist) : 0;
+        } else {
+          // Fake strafe in opposite direction
+          ai.baitDirX = -ai.strafeDir;
+          ai.baitDirY = 0;
+        }
+        ai.baitCooldown = 90 + Math.floor(Math.random() * 120);
+      }
+    }
+
     // Normalize
     const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
     if (moveLen > speed) {
       moveX = (moveX / moveLen) * speed;
       moveY = (moveY / moveLen) * speed;
     }
+
+    // --- Smooth movement (blend toward target velocity) ---
+    const smoothFactor = 0.3; // 0 = instant snap, 1 = no change
+    moveX = ai.smoothVx * smoothFactor + moveX * (1 - smoothFactor);
+    moveY = ai.smoothVy * smoothFactor + moveY * (1 - smoothFactor);
+    ai.smoothVx = moveX;
+    ai.smoothVy = moveY;
 
     // Collision
     const hw = GAME_CONFIG.MOB_WALL_HW;
