@@ -64,13 +64,16 @@ const SparSystem = {
     };
   },
 
-  // Generate random 100-point bot allocation
+  // Meta builds — bots pick from proven competitive loadouts
+  _META_BUILDS: [
+    { freeze: 50, rof: 50, spread: 0 },
+    { freeze: 40, rof: 50, spread: 10 },
+    { freeze: 30, rof: 40, spread: 30 },
+  ],
+
+  // Pick a random meta build for a bot
   _randomBotAlloc() {
-    // Pick 2 random split points in 0-100, create 3 segments
-    const a = Math.floor(Math.random() * 101);
-    const b = Math.floor(Math.random() * 101);
-    const lo = Math.min(a, b), hi = Math.max(a, b);
-    return { freeze: lo, rof: hi - lo, spread: 100 - hi };
+    return this._META_BUILDS[Math.floor(Math.random() * this._META_BUILDS.length)];
   },
 
   joinRoom(roomId) {

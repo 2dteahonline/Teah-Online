@@ -382,9 +382,9 @@ function draw() {
         player.vx = 0;
         player.vy = 0;
       } else {
-        // Spar team indicator under player
+        // Spar team indicator under player (green = your team)
         if (typeof SparState !== 'undefined' && Scene.inSpar && SparState.phase === 'fighting') {
-          ctx.fillStyle = 'rgba(50,120,220,0.4)';
+          ctx.fillStyle = 'rgba(50,200,80,0.4)';
           ctx.beginPath(); ctx.arc(player.x - camera.x, player.y - camera.y, 14, 0, Math.PI * 2); ctx.fill();
         }
         const flashAlpha = contactCooldown > 0 && Math.floor(renderTime / 80) % 2 === 0;
@@ -994,8 +994,8 @@ function draw() {
       // Spar bot rendering — simple character with team color indicator
       const sb = e.bot;
       const sbx = sb.x - camera.x, sby = sb.y - camera.y;
-      // Team indicator circle under feet
-      ctx.fillStyle = sb._sparTeam === 'teamA' ? 'rgba(50,120,220,0.4)' : 'rgba(220,50,50,0.4)';
+      // Team indicator circle: green = ally, red = enemy
+      ctx.fillStyle = sb._sparTeam === 'teamA' ? 'rgba(50,200,80,0.4)' : 'rgba(220,50,50,0.4)';
       ctx.beginPath(); ctx.arc(sbx, sby, 14, 0, Math.PI * 2); ctx.fill();
       // Draw character — empty name so no name tag clutter, HP bar still shows
       drawChar(sb.x, sb.y, sb.dir, 0, sb.moving,
