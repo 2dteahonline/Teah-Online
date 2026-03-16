@@ -67,113 +67,121 @@ let sparProgress = {
 
 // Persistent learning profile — bot tracks player tendencies across matches
 // Uses exponential moving averages (alpha=0.3) so recent matches matter more
-// Checkpoint: last saved from 24 matches (2026-03-16)
+// Checkpoint: last saved from 50 matches (2026-03-16)
 // If localStorage has newer data, it overrides these defaults on load.
 // To update: paste sparData() output to Claude, who updates these defaults.
 let sparLearning = {
   version: 2,
-  matchCount: 24,
+  matchCount: 50,
   opening: {
-    rushBottom: 0.963,
-    strafeLeft: 0.416,
-    route: 'unknown',
-    routeCounts: { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midStrafe: 0 },
-    speedPct: 0.5,
-    firstShotFrame: 180,
-    shootsDuringOpening: 0.5,
+    rushBottom: 0.773,
+    strafeLeft: 0.252,
+    route: 'bottomRight',
+    routeCounts: { bottomLeft: 0, bottomRight: 7, bottomCenter: 4, topHold: 0, midStrafe: 9 },
+    speedPct: 0.321,
+    firstShotFrame: 16.5,
+    shootsDuringOpening: 1.0,
     takesBottomPct: 0.5,
   },
   botOpenings: {
-    lastRoute: 'bottomCenter',
+    lastRoute: 'bottomRight',
     routeResults: {
-      bottomLeft:   { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-      bottomRight:  { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-      bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-      topHold:      { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-      midFlank:     { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+      bottomLeft:   { wins: 0, losses: 1, gotBottom: 0, total: 1 },
+      bottomRight:  { wins: 0, losses: 5, gotBottom: 0, total: 5 },
+      bottomCenter: { wins: 0, losses: 1, gotBottom: 0, total: 1 },
+      topHold:      { wins: 0, losses: 4, gotBottom: 0, total: 4 },
+      midFlank:     { wins: 0, losses: 9, gotBottom: 0, total: 9 },
       mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0 },
     },
   },
   position: {
-    bottomBias: 0.763,
-    leftBias: 0.531,
+    bottomBias: 0.780,
+    leftBias: 0.518,
   },
   shooting: {
-    upPct: 0.051,
-    downPct: 0.488,
-    leftPct: 0.427,
-    rightPct: 0.034,
+    upPct: 0.004,
+    downPct: 0.470,
+    leftPct: 0.466,
+    rightPct: 0.060,
   },
   dodging: {
-    leftBias: 0.438,
-    upBias: 0.462,
+    leftBias: 0.683,
+    upBias: 0.459,
   },
   aggression: {
-    overall: 0.496,
-    onEnemyReload: 0.203,
-    whenLowHp: 0.310,
+    overall: 0.402,
+    onEnemyReload: 0.281,
+    whenLowHp: 0.276,
   },
   reload: {
-    avgNormalizedY: 0.632,
+    avgNormalizedY: 0.771,
   },
   whenHasBottom: {
-    holdsPct: 0.488,
-    shotFreq: 0.953,
-    pushPct: 0.194,
+    holdsPct: 0.412,
+    shotFreq: 0.916,
+    pushPct: 0.185,
   },
   whenBotHasBottom: {
-    retakePct: 0.267,
-    flankPct: 0.256,
-    retreatPct: 0.538,
+    retakePct: 0.276,
+    flankPct: 0.296,
+    retreatPct: 0.338,
   },
   whenBotApproaches: {
-    holdGroundPct: 0.136,
-    counterPushPct: 0.339,
-    sidestepPct: 0.647,
+    holdGroundPct: 0.087,
+    counterPushPct: 0.389,
+    sidestepPct: 0.676,
   },
   whenBotRetreats: {
-    chasePct: 0.682,
-    shotFreq: 0.813,
+    chasePct: 0.593,
+    shotFreq: 0.960,
   },
   shotByPosition: {
-    whenAbove: { downPct: 0.303, sidePct: 0.697 },
-    whenBelow: { upPct: 0.178, sidePct: 0.822 },
-    whenLevel: { leftPct: 0.437, rightPct: 0.041 },
+    whenAbove: { downPct: 0.247, sidePct: 0.753 },
+    whenBelow: { upPct: 0.060, sidePct: 0.940 },
+    whenLevel: { leftPct: 0.169, rightPct: 0.011 },
   },
   playerShots: {
-    hitRate: 0.201,
-    hitRateClose: 0.247,
-    hitRateMid: 0.188,
-    hitRateFar: 0.224,
-    hitWhenBotStrafing: 0.386,
-    hitWhenBotStill: 0.241,
-    hitWhenBotApproach: 0.116,
-    hitWhenBotRetreat: 0.102,
+    hitRate: 0.210,
+    hitRateClose: 0.303,
+    hitRateMid: 0.030,
+    hitRateFar: 0.361,
+    hitWhenBotStrafing: 0.486,
+    hitWhenBotStill: 0.031,
+    hitWhenBotApproach: 0.081,
+    hitWhenBotRetreat: 0.141,
   },
   botShots: {
-    hitRate: 0.131,
-    dodgedRate: 0.827,
-    hitWhenPlayerStrafing: 0.077,
-    hitWhenPlayerStill: 0.350,
-    hitWhenPlayerApproach: 0.177,
+    hitRate: 0.048,
+    dodgedRate: 0.941,
+    hitWhenPlayerStrafing: 0.082,
+    hitWhenPlayerStill: 0.171,
+    hitWhenPlayerApproach: 0.030,
   },
   combatPatterns: {
-    playerHitDist: 217,
-    botHitDist: 156,
-    playerDmgWhenHasBottom: 0.076,
-    botDmgWhenHasBottom: 0.155,
+    playerHitDist: 309,
+    botHitDist: 149,
+    playerDmgWhenHasBottom: 0.147,
+    botDmgWhenHasBottom: 0.371,
     tradeRatio: 0.5,
   },
-  winRate: 0.490,
+  winRate: 1.0,
   history: [],  // history not checkpointed — only lives in localStorage
 };
 
-// Quick helper — type sparData() in console to copy learning data to clipboard
+// Quick helper — type sparData() in console to copy learning data
 function sparData() {
   const json = JSON.stringify(sparLearning, null, 2);
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(json).then(() => console.log('sparLearning copied to clipboard!'));
-  } else {
+  // Try clipboard first, fall back to a selectable textarea
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    ta.style.cssText = 'position:fixed;top:10px;left:10px;width:80vw;height:80vh;z-index:99999;font-size:12px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    console.log('Copied! Close the text box by clicking the page or running: document.querySelector("textarea").remove()');
+    setTimeout(() => { if (ta.parentNode) ta.remove(); }, 15000); // auto-remove after 15s
+  } catch (e) {
     console.log(json);
   }
   return json;

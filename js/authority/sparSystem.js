@@ -569,20 +569,45 @@ const SparSystem = {
   _sparBotShoot(member, target) {
     const e = member.entity;
     const g = member.gun;
-    const dx = target.x - e.x, dy = target.y - e.y;
     const bspd = GAME_CONFIG.BULLET_SPEED;
 
-    // Pick best cardinal direction based on target position
-    let bvx = 0, bvy = 0;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      bvx = dx > 0 ? bspd : -bspd;  // right or left
-      e.dir = dx > 0 ? 0 : 2;
-    } else {
-      bvy = dy > 0 ? bspd : -bspd;  // down or up
-      e.dir = dy > 0 ? 3 : 1;
+    // PREDICTIVE AIMING: lead the target based on velocity and distance
+    const tVx = target.vx || 0, tVy = target.vy || 0;
+    const rawDx = target.x - e.x, rawDy = target.y - e.y;
+    const rawDist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
+
+    // Estimate frames for bullet to reach target
+    const travelFrames = rawDist > 1 ? rawDist / (bspd * 60) * 60 : 5; // approx frames
+    const leadFrames = Math.min(travelFrames, 15); // don't over-predict
+
+    // Predicted position
+    const predX = target.x + tVx * leadFrames * 0.5;
+    const predY = target.y + tVy * leadFrames * 0.5;
+
+    // Use predicted position for direction
+    const dx = predX - e.x, dy = predY - e.y;
+
+    // Learning: bias based on player's dodge tendency
+    let aimBiasX = 0, aimBiasY = 0;
+    const pm = member.ai._profileMods;
+    if (pm && Math.abs(pm.dodgePredictBiasX) > 0.15) {
+      aimBiasX = pm.dodgePredictBiasX * 30; // shift aim toward predicted dodge
     }
 
-    // Muzzle offset (same direction as bullet)
+    const aimDx = dx + aimBiasX;
+    const aimDy = dy + aimBiasY;
+
+    // Pick best cardinal direction
+    let bvx = 0, bvy = 0;
+    if (Math.abs(aimDx) > Math.abs(aimDy)) {
+      bvx = aimDx > 0 ? bspd : -bspd;
+      e.dir = aimDx > 0 ? 0 : 2;
+    } else {
+      bvy = aimDy > 0 ? bspd : -bspd;
+      e.dir = aimDy > 0 ? 3 : 1;
+    }
+
+    // Muzzle offset
     const mx = e.x + (bvx !== 0 ? Math.sign(bvx) * 20 : 0);
     const my = e.y - 10 + (bvy !== 0 ? Math.sign(bvy) * 20 : 0);
 
@@ -605,7 +630,8 @@ const SparSystem = {
     });
 
     g.ammo--;
-    member.ai.shootCD = Math.round((g.fireRate || 5) * 4);
+    // Fire rate: match the gun's actual fire rate (not 4x slower)
+    member.ai.shootCD = Math.round(g.fireRate || 5);
 
     if (g.ammo <= 0) {
       g.reloading = true;
@@ -698,6 +724,8 @@ const SparSystem = {
         // --- Opening tracking (v3) ---
         firstShotFrame: -1,        // frame player first fires
         openingShotCount: 0,       // shots during first 180 frames
+        botYAtOpeningEnd: -1,      // bot Y position at frame 180
+        playerYAtOpeningEnd: -1,   // player Y position at frame 180
         // --- Combat outcome tracking ---
         playerHits: [],    // [{dist, botMoving, botVx, botVy, dir, relY}]
         playerMisses: [],  // [{dist, botMoving, botVx, botVy, dir, relY}]
@@ -727,6 +755,12 @@ const SparSystem = {
     // Opening movement (first 180 frames = 3 seconds)
     if (SparState.matchTimer <= 180) {
       c.openingFrames.push({ x: player.x, y: player.y, vx: player.vx || 0, vy: player.vy || 0 });
+    }
+    // Snapshot positions at end of opening for gotBottom tracking
+    if (SparState.matchTimer >= 174 && SparState.matchTimer <= 186 && c.botYAtOpeningEnd < 0) {
+      c.playerYAtOpeningEnd = player.y;
+      const botE = SparState.teamB[0] && SparState.teamB[0].alive ? SparState.teamB[0].entity : null;
+      if (botE) c.botYAtOpeningEnd = botE.y;
     }
 
     // Dodge direction tracking — check if player is moving away from nearby bullets
@@ -986,10 +1020,10 @@ const SparSystem = {
       if (rr) {
         rr.total++;
         if (won) rr.losses++; else rr.wins++; // won = player won, so bot lost
-        // Did bot get bottom?
-        const botE = SparState.teamB[0] && SparState.teamB[0].alive ? SparState.teamB[0].entity : null;
-        const playerE = player;
-        if (botE && botE.y > playerE.y + 20) rr.gotBottom++;
+        // Did bot get bottom at END OF OPENING (frame ~180), not match end
+        if (c.botYAtOpeningEnd > 0 && c.playerYAtOpeningEnd > 0) {
+          if (c.botYAtOpeningEnd > c.playerYAtOpeningEnd + 20) rr.gotBottom++;
+        }
       }
       sl.botOpenings.lastRoute = bRoute;
     }
