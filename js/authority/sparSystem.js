@@ -697,9 +697,25 @@ const SparSystem = {
 
     // Pick best cardinal direction
     // dir: 0=down, 1=up, 2=left, 3=right
+    // Elliptical hitbox bias: vertical shots (up/down) hit through 53px wide zone,
+    // horizontal shots (left/right) hit through only 23px tall zone.
+    // Scale aimDy to prefer vertical when hitbox data shows it works better.
+    let effectiveDx = Math.abs(aimDx);
+    let effectiveDy = Math.abs(aimDy);
+    const pm2 = member.ai._profileMods;
+    if (pm2 && pm2.horizShotAdvantage) {
+      // horizShotAdvantage < 1 means vertical is better → bias toward vertical
+      // horizShotAdvantage > 1 means horizontal is better → bias toward horizontal
+      if (pm2.horizShotAdvantage < 0.5) {
+        // Vertical shots are 2x+ better — strongly prefer vertical
+        effectiveDy *= 1.8;
+      } else if (pm2.horizShotAdvantage < 1.0) {
+        effectiveDy *= 1.3;
+      }
+    }
     let bvx = 0, bvy = 0;
     let aimDir;
-    if (Math.abs(aimDx) > Math.abs(aimDy)) {
+    if (effectiveDx > effectiveDy) {
       bvx = aimDx > 0 ? bspd : -bspd;
       aimDir = aimDx > 0 ? 3 : 2;
     } else {
@@ -1194,7 +1210,7 @@ const SparSystem = {
     if (!c || c.samples < 3) { SparState._matchCollector = null; return; }
     if (typeof sparLearning === 'undefined') { SparState._matchCollector = null; return; }
 
-    const alpha = 0.5; // EMA weight for new data — fast adaptation
+    const alpha = 0.65; // EMA weight for new data — aggressive adaptation
     const ema = (oldVal, newVal) => alpha * newVal + (1 - alpha) * oldVal;
     const sl = sparLearning;
 
@@ -1491,14 +1507,19 @@ const SparSystem = {
     if (!sl.positionValue) sl.positionValue = { bottomWinCorrelation: 0.6, topPenalty: 0.3 };
     const totalSampleFrames = c.botHasBottom_frames + c.botInTop_frames;
     if (totalSampleFrames > 10) {
-      // bottomWinCorrelation: how much having bottom correlates with winning
-      const bottomPct = c.botHasBottom_frames / (c.samples || 1);
-      sl.positionValue.bottomWinCorrelation = ema(sl.positionValue.bottomWinCorrelation,
-        won ? bottomPct : 1 - bottomPct);
-      // topPenalty: how often being in top leads to losing
+      // bottomWinCorrelation: did having bottom predict the match outcome?
+      // Bot had bottom + bot won → bottom helps (1.0)
+      // Bot had NO bottom + bot lost → bottom matters (1.0)
+      // Bot had bottom + bot lost → bottom didn't help (0.0)
+      // Bot had NO bottom + bot won → bottom doesn't matter (0.0)
+      const botWon = !won;
+      const botHadBottom = c.botHasBottom_frames / (c.samples || 1) > 0.3;
+      const bottomPredictedOutcome = (botHadBottom === botWon) ? 1.0 : 0.0;
+      sl.positionValue.bottomWinCorrelation = ema(sl.positionValue.bottomWinCorrelation, bottomPredictedOutcome);
+      // topPenalty: how much time in top half when bot loses
       const topPct = c.botInTop_frames / (c.samples || 1);
       sl.positionValue.topPenalty = ema(sl.positionValue.topPenalty,
-        won ? 0 : topPct);
+        botWon ? 0 : topPct);
     }
 
     // --- Gun side preference (v4) ---
