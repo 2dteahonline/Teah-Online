@@ -1529,6 +1529,23 @@ const ENTITY_RENDERERS = {
       // Cushion highlight
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
       ctx.fillRect(ex + 8, by + 4, cw - 16, rowH * 0.3);
+
+      // Booth number badge — derive index from position
+      const _boothPositions = [[27,2],[27,6],[27,10],[38,2],[38,6],[38,10]];
+      let _boothNum = 0;
+      for (let _bi = 0; _bi < _boothPositions.length; _bi++) {
+        if (e.tx === _boothPositions[_bi][0] && e.ty === _boothPositions[_bi][1]) { _boothNum = _bi + 1; break; }
+      }
+      if (_boothNum > 0) {
+        const badgeX = ex + cw / 2, badgeY = ey + rowH + rowH / 2;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath(); ctx.arc(badgeX, badgeY, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath(); ctx.arc(badgeX, badgeY, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.font = "bold 11px monospace"; ctx.fillStyle = '#1a1a1a'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(String(_boothNum), badgeX, badgeY);
+        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      }
   },
 
   diner_booth_table: (e, ctx, ex, ey, w, h) => {
@@ -1695,6 +1712,31 @@ const ENTITY_RENDERERS = {
       ctx.font = "bold 10px monospace"; ctx.fillStyle = '#80ff80'; ctx.textAlign = "center";
       ctx.fillText("SERVE", ex + cw / 2, ey + ch - 4);
       ctx.textAlign = "left";
+
+      // Pending plates — show completed orders waiting for waitress pickup
+      if (typeof _dinerPendingServe !== 'undefined' && _dinerPendingServe.length > 0) {
+        const maxPlates = Math.min(_dinerPendingServe.length, 6);
+        const plateSpacing = cw / (maxPlates + 1);
+        for (let pi = 0; pi < maxPlates; pi++) {
+          const px = ex + plateSpacing * (pi + 1);
+          const py = ey - 18;
+          // Plate circle
+          ctx.fillStyle = '#f0ece0';
+          ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#c0b8a0'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.stroke();
+          // Food blob
+          const ing = _dinerPendingServe[pi].recipeIngredients;
+          const foodColor = ing && ing.length > 0 ? '#d4a040' : '#c08030';
+          ctx.fillStyle = foodColor;
+          ctx.beginPath(); ctx.arc(px, py - 1, 5, 0, Math.PI * 2); ctx.fill();
+          // Booth number on plate
+          const bNum = _dinerPendingServe[pi].boothId + 1;
+          ctx.font = "bold 7px monospace"; ctx.fillStyle = '#1a1a1a'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(bNum), px, py + 4);
+          ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        }
+      }
   },
 
   diner_service_counter: (e, ctx, ex, ey, w, h) => {
@@ -4717,6 +4759,171 @@ ENTITY_RENDERERS['building_casino'] = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = 'center';
   ctx.fillText('Casino', ex + cw / 2, ey + ch + 14);
   ctx.textAlign = 'left';
+};
+
+// ---- SPAR BUILDING (exterior) ----
+ENTITY_RENDERERS['building_spar'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(ex + cw / 2, ey + ch + 6, cw / 2 + 4, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Building body — dark steel blue
+  ctx.fillStyle = '#2a3a4a';
+  ctx.fillRect(ex, ey + TILE, cw, ch - TILE);
+  // Roof — metallic silver
+  ctx.fillStyle = '#556677';
+  ctx.beginPath();
+  ctx.moveTo(ex - 8, ey + TILE);
+  ctx.lineTo(ex + cw / 2, ey - 4);
+  ctx.lineTo(ex + cw + 8, ey + TILE);
+  ctx.closePath();
+  ctx.fill();
+  // Roof trim — cyan accent
+  ctx.strokeStyle = '#55ccff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ex - 8, ey + TILE);
+  ctx.lineTo(ex + cw / 2, ey - 4);
+  ctx.lineTo(ex + cw + 8, ey + TILE);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  // Border
+  ctx.strokeStyle = '#55ccff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 2, ey + TILE + 2, cw - 4, ch - TILE - 4);
+  ctx.lineWidth = 1;
+  // Windows (3 across, cool glow)
+  for (let i = 0; i < 3; i++) {
+    const wx = ex + TILE + i * (TILE * 1.8);
+    const wy = ey + TILE + 20;
+    ctx.fillStyle = '#55ccff';
+    ctx.globalAlpha = 0.25 + 0.1 * Math.sin(Date.now() / 500 + i);
+    ctx.fillRect(wx, wy, 32, 24);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#55ccff';
+    ctx.strokeRect(wx, wy, 32, 24);
+    ctx.beginPath();
+    ctx.moveTo(wx + 16, wy); ctx.lineTo(wx + 16, wy + 24);
+    ctx.moveTo(wx, wy + 12); ctx.lineTo(wx + 32, wy + 12);
+    ctx.stroke();
+  }
+  // Door (bottom center)
+  const dx = ex + cw / 2 - 20;
+  const dy = ey + ch - TILE - 8;
+  ctx.fillStyle = '#1a2a3a';
+  ctx.fillRect(dx, dy, 40, TILE + 8);
+  ctx.strokeStyle = '#55ccff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(dx, dy, 40, TILE + 8);
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#55ccff';
+  ctx.beginPath();
+  ctx.arc(dx + 32, dy + 28, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // "SPAR" neon sign
+  ctx.fillStyle = '#55ccff';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#55ccff';
+  ctx.shadowBlur = 8;
+  ctx.fillText('SPAR', ex + cw / 2, ey + TILE + 14);
+  ctx.shadowBlur = 0;
+  // Crossed swords icon
+  const sx = ex + cw / 2, sy = ey + TILE * 3 + 16;
+  ctx.strokeStyle = '#88aacc';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(sx - 12, sy - 8); ctx.lineTo(sx + 12, sy + 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx + 12, sy - 8); ctx.lineTo(sx - 12, sy + 8); ctx.stroke();
+  ctx.lineWidth = 1;
+  // Label
+  ctx.fillStyle = '#ccc';
+  ctx.font = '11px monospace';
+  ctx.fillText('Spar Arena', ex + cw / 2, ey + ch + 14);
+  ctx.textAlign = 'left';
+};
+
+// Spar hub interior floor
+ENTITY_RENDERERS['spar_hub_floor'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  ctx.fillStyle = '#1a1a28';
+  ctx.fillRect(ex, ey, cw, ch);
+  // Grid lines
+  ctx.strokeStyle = 'rgba(85,204,255,0.06)';
+  ctx.lineWidth = 1;
+  for (let y = 0; y <= ch; y += TILE) {
+    ctx.beginPath(); ctx.moveTo(ex, ey + y); ctx.lineTo(ex + cw, ey + y); ctx.stroke();
+  }
+  for (let x = 0; x <= cw; x += TILE) {
+    ctx.beginPath(); ctx.moveTo(ex + x, ey); ctx.lineTo(ex + x, ey + ch); ctx.stroke();
+  }
+  // Center divider line
+  ctx.strokeStyle = 'rgba(85,204,255,0.15)';
+  ctx.lineWidth = 2;
+  const midX = ex + cw / 2;
+  ctx.beginPath(); ctx.moveTo(midX, ey + TILE); ctx.lineTo(midX, ey + ch - TILE); ctx.stroke();
+  ctx.lineWidth = 1;
+  // "STANDARD" / "STREAK" labels
+  ctx.fillStyle = '#55ccff';
+  ctx.globalAlpha = 0.4;
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('STANDARD', ex + cw * 0.25, ey + TILE * 1.5);
+  ctx.fillText('STREAK', ex + cw * 0.75, ey + TILE * 1.5);
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+};
+
+// Spar room door
+ENTITY_RENDERERS['spar_room_door'] = (e, ctx, ex, ey, w, h) => {
+  const dw = (w || 2) * TILE, dh = (h || 2) * TILE;
+  const isStreak = e.mode === 'streak';
+  const color = isStreak ? '#ff6644' : '#55ccff';
+  // Door frame
+  ctx.fillStyle = '#1a2a3a';
+  ctx.fillRect(ex, ey, dw, dh);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 2, ey + 2, dw - 4, dh - 4);
+  ctx.lineWidth = 1;
+  // Glow pulse
+  const pulse = 0.3 + 0.15 * Math.sin(Date.now() / 600);
+  ctx.fillStyle = color;
+  ctx.globalAlpha = pulse;
+  ctx.fillRect(ex + 4, ey + 4, dw - 8, dh - 8);
+  ctx.globalAlpha = 1;
+  // Room label
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(e.label || '?', ex + dw / 2, ey + dh / 2 - 4);
+  // Mode indicator
+  ctx.fillStyle = color;
+  ctx.font = '9px monospace';
+  ctx.fillText(isStreak ? 'STREAK' : 'STANDARD', ex + dw / 2, ey + dh / 2 + 10);
+  ctx.textAlign = 'left';
+};
+
+// Spar arena floor
+ENTITY_RENDERERS['spar_arena_floor'] = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Dark arena floor
+  ctx.fillStyle = '#12121e';
+  ctx.fillRect(ex, ey, cw, ch);
+  // Center line
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 2;
+  const midX = ex + cw / 2;
+  ctx.beginPath(); ctx.moveTo(midX, ey); ctx.lineTo(midX, ey + ch); ctx.stroke();
+  // Center circle
+  ctx.beginPath(); ctx.arc(midX, ey + ch / 2, TILE * 2, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 1;
+  // Team side shading
+  ctx.fillStyle = 'rgba(50,100,200,0.04)';
+  ctx.fillRect(ex, ey, cw / 2, ch);
+  ctx.fillStyle = 'rgba(200,50,50,0.04)';
+  ctx.fillRect(ex + cw / 2, ey, cw / 2, ch);
 };
 
 // Casino carpet (interior floor)

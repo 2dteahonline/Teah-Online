@@ -22,6 +22,7 @@ const DINER_NPC_NAMES = ['Customer', 'Patron', 'Guest', 'Diner', 'Regular', 'Foo
 const DINER_SPOTS = {
   exit:        { tx: 27, ty: 21 },
   passWindow:  { tx: 23, ty: 14 },
+  counterWait: { tx: 12, ty: 16 }, // waitress idle spot — dining side, south of pickup counter
 };
 
 // ===================== BOOTHS =====================
@@ -220,47 +221,53 @@ function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
 }
 
 // ===================== WAITRESS ROUTE BUILDERS =====================
-// Pass window is at tx:23, ty:14
+// Waitress idles at counterWait (tx:12, ty:16) — dining side, south of pickup counter
 
-function _routePassToBooth(boothId) {
+function _routeCounterToBooth(boothId) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
+  // counterWait(12,16) → east to (26,16) → north to corridor (26,14) → booth
   if (booth.tx >= 38) {
-    // Right column — pass window → east along corridor → gap → booth entry
     return _cConcatRoutes(
+      [_cWP(26, 16)],
       [_cWP(26, 14)],
       [_cWP(36, 14)],
       [_cWP(booth.entry.tx, booth.entry.ty)]
     );
   } else {
-    // Left column — pass window → east to booth column → booth entry
     return _cConcatRoutes(
+      [_cWP(26, 16)],
       [_cWP(26, 14)],
       [_cWP(booth.entry.tx, booth.entry.ty)]
     );
   }
 }
 
-function _routeBoothToPass(boothId) {
+function _routeBoothToCounter(boothId) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
+  // booth entry → corridor → west to counterWait
   if (booth.tx >= 38) {
-    // Right column — booth entry → gap → west along corridor → pass window
     return _cConcatRoutes(
       [_cWP(36, booth.entry.ty)],
       [_cWP(36, 14)],
       [_cWP(26, 14)],
-      [_cWP(DINER_SPOTS.passWindow.tx, DINER_SPOTS.passWindow.ty)]
+      [_cWP(26, 16)],
+      [_cWP(DINER_SPOTS.counterWait.tx, DINER_SPOTS.counterWait.ty)]
     );
   } else {
-    // Left column — booth entry → south/west to corridor → pass window
     return _cConcatRoutes(
       [_cWP(26, booth.entry.ty)],
       [_cWP(26, 14)],
-      [_cWP(DINER_SPOTS.passWindow.tx, DINER_SPOTS.passWindow.ty)]
+      [_cWP(26, 16)],
+      [_cWP(DINER_SPOTS.counterWait.tx, DINER_SPOTS.counterWait.ty)]
     );
   }
 }
+
+// Legacy aliases for route intent system
+function _routePassToBooth(boothId) { return _routeCounterToBooth(boothId); }
+function _routeBoothToPass(boothId) { return _routeBoothToCounter(boothId); }
 
 // ===================== ARCADE-ONLY ROUTE BUILDERS =====================
 
@@ -324,7 +331,7 @@ function _getDinerIntentAnchor(intent, npc) {
     }
     case 'pass_to_booth':
     case 'booth_to_pass':
-      return DINER_SPOTS.passWindow;
+      return DINER_SPOTS.counterWait;
     case 'arcade_to_exit': {
       const spot = DINER_ARCADE_SPOTS[intent.arcadeIdx];
       return spot || null;
@@ -388,7 +395,7 @@ function _spawnDinerNPC(partyId, isLeader, corridorTX, extraOverrides) {
 // ===================== WAITRESS =====================
 
 function _spawnDinerWaitress() {
-  const npc = _cCreateNPC(_dinerIdCounter, DINER_SPOTS.passWindow, DINER_NPC_APPEARANCES, ['Waitress'], DINER_NPC_CONFIG, {
+  const npc = _cCreateNPC(_dinerIdCounter, DINER_SPOTS.counterWait, DINER_NPC_APPEARANCES, ['Waitress'], DINER_NPC_CONFIG, {
     partyId: -1,
     isLeader: false,
     claimedSeatIdx: -1,
@@ -408,6 +415,7 @@ function _spawnDinerWaitress() {
     pants: '#3a3a50',
     name: 'Waitress',
   });
+  npc.speed = 2.2; // faster than customers
   npc.state = 'idle';
   npc.moving = false;
   // Waitress state tracking
@@ -457,11 +465,11 @@ function _updateDinerWaitress() {
 
   switch (w.state) {
     case 'idle': {
-      // Snap to pass window
+      // Snap to counter wait spot (dining side, south of pickup counter)
       w.moving = false;
-      w.dir = 0; // face south
-      w.x = DINER_SPOTS.passWindow.tx * TILE + TILE / 2;
-      w.y = DINER_SPOTS.passWindow.ty * TILE + TILE / 2;
+      w.dir = 1; // face north toward counter
+      w.x = DINER_SPOTS.counterWait.tx * TILE + TILE / 2;
+      w.y = DINER_SPOTS.counterWait.ty * TILE + TILE / 2;
 
       // Priority 1: serve completed orders
       const serve = _waitressFindNextServe();
@@ -471,8 +479,8 @@ function _updateDinerWaitress() {
         w.hasFood = true;
         w._recipeIngredients = serve.recipeIngredients || null;
         _dinerPendingServe.shift(); // remove from queue
-        // Route from pass window to booth
-        const route = _routePassToBooth(serve.boothId);
+        // Route from counter to booth
+        const route = _routeCounterToBooth(serve.boothId);
         _cStartRoute(w, route, 'serving', DINER_NPC_CONFIG.waitressServeDuration, { kind: 'pass_to_booth', boothId: serve.boothId });
         return;
       }
@@ -483,7 +491,7 @@ function _updateDinerWaitress() {
         party._waitressTaking = true;
         w._targetBoothId = party.boothId;
         w._targetPartyId = party.id;
-        const route = _routePassToBooth(party.boothId);
+        const route = _routeCounterToBooth(party.boothId);
         _cStartRoute(w, route, 'taking_order', DINER_NPC_CONFIG.waitressTakeOrderDuration, { kind: 'pass_to_booth', boothId: party.boothId });
       }
       break;
@@ -513,18 +521,18 @@ function _updateDinerWaitress() {
         }
       }
 
-      // Walk back to pass window to submit
-      const route = _routeBoothToPass(w._targetBoothId);
+      // Walk back to counter to submit
+      const route = _routeBoothToCounter(w._targetBoothId);
       _cStartRoute(w, route, 'submitting_ticket', DINER_NPC_CONFIG.waitressSubmitDuration, { kind: 'booth_to_pass', boothId: w._targetBoothId });
       break;
     }
 
     case 'submitting_ticket': {
-      // Brief pause at pass window, ticket appears in HUD
+      // Brief pause at counter wait spot, ticket appears in HUD
       w.moving = false;
-      w.x = DINER_SPOTS.passWindow.tx * TILE + TILE / 2;
-      w.y = DINER_SPOTS.passWindow.ty * TILE + TILE / 2;
-      w.dir = 0;
+      w.x = DINER_SPOTS.counterWait.tx * TILE + TILE / 2;
+      w.y = DINER_SPOTS.counterWait.ty * TILE + TILE / 2;
+      w.dir = 1; // face north toward counter
       if (w.stateTimer > 0) { w.stateTimer--; return; }
 
       // Mark the party order as submitted
@@ -568,11 +576,11 @@ function _updateDinerWaitress() {
         }
       }
 
-      // Waitress drops food, walks back to pass window
+      // Waitress drops food, walks back to counter
       w.hasFood = false;
       w._recipeIngredients = null;
       const servedBoothId = w._targetBoothId;
-      const routeBack = _routeBoothToPass(servedBoothId);
+      const routeBack = _routeBoothToCounter(servedBoothId);
       w._targetBoothId = -1;
       w._targetPartyId = -1;
       _cStartRoute(w, routeBack, 'idle', 0, { kind: 'booth_to_pass', boothId: servedBoothId });

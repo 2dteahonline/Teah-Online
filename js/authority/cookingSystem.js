@@ -654,6 +654,7 @@ function applyOrderResult(result) {
     const nextItem = cookingState.ticket.items[cookingState.ticket.completedCount];
     cookingState.currentOrder.recipe = nextItem.recipe;
     cookingState.assembly = [];
+    cookingState.currentOrder.serviceTimer = 0; // reset timer between ticket items
     cookingState.lastResult = result;
     cookingState.lastResultTimer = 120;
     return; // don't clear order — more items to serve
@@ -806,6 +807,10 @@ function drawCookingHUD() {
     let orderLabel = "Order: " + order.recipe.name;
     if (cookingState.ticket && cookingState.ticket.items.length > 1) {
       orderLabel = "Item " + (cookingState.ticket.completedCount + 1) + "/" + cookingState.ticket.items.length + ": " + order.recipe.name;
+    }
+    // Prepend table number for diner orders
+    if (order._dinerBoothId != null) {
+      orderLabel = "Table " + (order._dinerBoothId + 1) + " \u2014 " + orderLabel;
     }
     ctx.fillText(orderLabel, panelX + 8, panelY + 42);
 

@@ -32,5 +32,5 @@ const GAME_CONFIG = {
   DEFAULT_HITBOX_RADIUS: 27,   // green circle radius (matches PLAYER_RADIUS)
 
   // --- Version ---
-  GAME_UPDATE: 181,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 182,             // increment each deploy — shown on lobby version sign
 };
