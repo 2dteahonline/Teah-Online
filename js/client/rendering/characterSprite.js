@@ -2278,9 +2278,10 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     }
   };
 
-  // Gun side: 'right' mirrors which arm holds the gun
+  // Gun side: 'right' mirrors which arm holds the gun (player only, bots always left)
   const _gunId = (_eq.gun && _eq.gun.id) || '';
-  const _gunRight = (typeof getGunSide === 'function') ? getGunSide(_gunId) === 'right' : false;
+  const _isPlayerChar = !_charEquipOverride;
+  const _gunRight = (_isPlayerChar && typeof getGunSide === 'function') ? getGunSide(_gunId) === 'right' : false;
 
   if (dir === 0) { // facing DOWN
     if (_gunRight) {

@@ -649,13 +649,14 @@ const SparSystem = {
     const aimDy = dy + aimBiasY;
 
     // Pick best cardinal direction
+    // dir: 0=down, 1=up, 2=left, 3=right
     let bvx = 0, bvy = 0;
     if (Math.abs(aimDx) > Math.abs(aimDy)) {
       bvx = aimDx > 0 ? bspd : -bspd;
-      e.dir = aimDx > 0 ? 0 : 2;
+      e.dir = aimDx > 0 ? 3 : 2;
     } else {
       bvy = aimDy > 0 ? bspd : -bspd;
-      e.dir = aimDy > 0 ? 3 : 1;
+      e.dir = aimDy > 0 ? 0 : 1;
     }
 
     // Muzzle offset
