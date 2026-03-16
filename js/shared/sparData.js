@@ -67,23 +67,24 @@ let sparProgress = {
 
 // Persistent learning profile — bot tracks player tendencies across matches
 // Uses exponential moving averages (alpha=0.3) so recent matches matter more
+// Checkpoint: last saved from 24 matches (2026-03-16)
+// If localStorage has newer data, it overrides these defaults on load.
+// To update: paste sparData() output to Claude, who updates these defaults.
 let sparLearning = {
   version: 2,
-  matchCount: 0,
+  matchCount: 24,
   opening: {
-    rushBottom: 0.5,    // does player rush bottom? 0=never, 1=always
-    strafeLeft: 0.5,    // opening strafe bias. 0=right, 1=left
-    // v3: expanded opening data
-    route: 'unknown',          // detected route: 'bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midStrafe'
+    rushBottom: 0.963,
+    strafeLeft: 0.416,
+    route: 'unknown',
     routeCounts: { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midStrafe: 0 },
-    speedPct: 0.5,             // how fast player commits (0=slow, 1=full speed)
-    firstShotFrame: 180,       // avg frame when player fires first shot (lower = shoots earlier)
-    shootsDuringOpening: 0.5,  // % of openings where player shoots before settling
-    takesBottomPct: 0.5,       // % of openings where player actually secures bottom
+    speedPct: 0.5,
+    firstShotFrame: 180,
+    shootsDuringOpening: 0.5,
+    takesBottomPct: 0.5,
   },
-  // Bot's own opening performance (what works for the bot)
   botOpenings: {
-    lastRoute: 'bottomCenter', // what bot did last match
+    lastRoute: 'bottomCenter',
     routeResults: {
       bottomLeft:   { wins: 0, losses: 0, gotBottom: 0, total: 0 },
       bottomRight:  { wins: 0, losses: 0, gotBottom: 0, total: 0 },
@@ -94,82 +95,77 @@ let sparLearning = {
     },
   },
   position: {
-    bottomBias: 0.5,    // 0=plays top, 1=plays bottom
-    leftBias: 0.5,      // 0=plays right, 1=plays left
+    bottomBias: 0.763,
+    leftBias: 0.531,
   },
   shooting: {
-    upPct: 0.25,
-    downPct: 0.25,
-    leftPct: 0.25,
-    rightPct: 0.25,
+    upPct: 0.051,
+    downPct: 0.488,
+    leftPct: 0.427,
+    rightPct: 0.034,
   },
   dodging: {
-    leftBias: 0.5,      // dodges left vs right for vertical bullets
-    upBias: 0.5,        // dodges up vs down for horizontal bullets
+    leftBias: 0.438,
+    upBias: 0.462,
   },
   aggression: {
-    overall: 0.5,       // 0=passive, 1=aggressive
-    onEnemyReload: 0.5, // punish tendency during bot reload
-    whenLowHp: 0.5,     // aggression when player is low
+    overall: 0.496,
+    onEnemyReload: 0.203,
+    whenLowHp: 0.310,
   },
   reload: {
-    avgNormalizedY: 0.5, // where player reloads (0=top, 1=bottom)
+    avgNormalizedY: 0.632,
   },
-  // --- Situational / relational data (v2) ---
-  // "What does the player do based on the game state?"
   whenHasBottom: {
-    holdsPct: 0.5,       // 0=leaves/pushes, 1=holds position
-    shotFreq: 0.5,       // 0=rarely shoots, 1=spam walls
-    pushPct: 0.5,        // 0=stays back, 1=pushes toward bot
+    holdsPct: 0.488,
+    shotFreq: 0.953,
+    pushPct: 0.194,
   },
   whenBotHasBottom: {
-    retakePct: 0.5,      // 0=gives up / plays top, 1=always tries to retake
-    flankPct: 0.5,       // 0=comes straight down, 1=flanks to the side
-    retreatPct: 0.5,     // 0=stays engaged, 1=retreats / creates distance
+    retakePct: 0.267,
+    flankPct: 0.256,
+    retreatPct: 0.538,
   },
   whenBotApproaches: {
-    holdGroundPct: 0.5,  // 0=runs away, 1=stands and fights
-    counterPushPct: 0.5, // 0=never counter-pushes, 1=always counter-charges
-    sidestepPct: 0.5,    // 0=moves vertically, 1=dodges sideways
+    holdGroundPct: 0.136,
+    counterPushPct: 0.339,
+    sidestepPct: 0.647,
   },
   whenBotRetreats: {
-    chasePct: 0.5,       // 0=lets bot go, 1=chases aggressively
-    shotFreq: 0.5,       // 0=stops shooting, 1=shoots while chasing
+    chasePct: 0.682,
+    shotFreq: 0.813,
   },
   shotByPosition: {
-    // what dir player shoots from each relative position
-    whenAbove: { downPct: 0.5, sidePct: 0.5 },   // above bot: shoot down vs strafe-shoot
-    whenBelow: { upPct: 0.5, sidePct: 0.5 },      // below bot: shoot up vs strafe-shoot
-    whenLevel: { leftPct: 0.5, rightPct: 0.5 },   // same height: shoot left vs right
+    whenAbove: { downPct: 0.303, sidePct: 0.697 },
+    whenBelow: { upPct: 0.178, sidePct: 0.822 },
+    whenLevel: { leftPct: 0.437, rightPct: 0.041 },
   },
-  // --- Combat outcome data (v2) ---
-  // "What works and what doesn't — cause and effect"
   playerShots: {
-    hitRate: 0.5,            // overall accuracy
-    hitRateClose: 0.5,       // accuracy at <150px
-    hitRateMid: 0.5,         // accuracy at 150-300px
-    hitRateFar: 0.5,         // accuracy at 300+px
-    hitWhenBotStrafing: 0.5, // accuracy when bot is moving sideways
-    hitWhenBotStill: 0.5,    // accuracy when bot isn't moving much
-    hitWhenBotApproach: 0.5, // accuracy when bot closing distance
-    hitWhenBotRetreat: 0.5,  // accuracy when bot backing off
+    hitRate: 0.201,
+    hitRateClose: 0.247,
+    hitRateMid: 0.188,
+    hitRateFar: 0.224,
+    hitWhenBotStrafing: 0.386,
+    hitWhenBotStill: 0.241,
+    hitWhenBotApproach: 0.116,
+    hitWhenBotRetreat: 0.102,
   },
   botShots: {
-    hitRate: 0.5,            // how often bot lands shots
-    dodgedRate: 0.5,         // how often player dodges (moved away before impact)
-    hitWhenPlayerStrafing: 0.5, // bot accuracy vs strafing player
-    hitWhenPlayerStill: 0.5,    // bot accuracy vs still player
-    hitWhenPlayerApproach: 0.5, // bot accuracy vs approaching player
+    hitRate: 0.131,
+    dodgedRate: 0.827,
+    hitWhenPlayerStrafing: 0.077,
+    hitWhenPlayerStill: 0.350,
+    hitWhenPlayerApproach: 0.177,
   },
   combatPatterns: {
-    playerHitDist: 250,         // avg distance when player lands hits
-    botHitDist: 250,            // avg distance when bot lands hits
-    playerDmgWhenHasBottom: 0.5, // % of player damage dealt while having bottom (0-1)
-    botDmgWhenHasBottom: 0.5,    // % of bot damage dealt while having bottom
-    tradeRatio: 0.5,            // when both deal damage within 30 frames, player % of damage
+    playerHitDist: 217,
+    botHitDist: 156,
+    playerDmgWhenHasBottom: 0.076,
+    botDmgWhenHasBottom: 0.155,
+    tradeRatio: 0.5,
   },
-  winRate: 0.5,
-  history: [],           // last 20 match summaries
+  winRate: 0.490,
+  history: [],  // history not checkpointed — only lives in localStorage
 };
 
 // Quick helper — type sparData() in console to copy learning data to clipboard
