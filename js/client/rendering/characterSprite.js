@@ -403,9 +403,9 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
       ctx.strokeStyle = "rgba(34,68,170,0.7)";
       ctx.fillStyle = "rgba(34,68,170,0.18)";
     }
-    // Hitbox at feet for players/bots (Graal-style), body center for mobs
+    // Hitbox below feet for players/bots (Graal-style, biased down), body center for mobs
     const _isMobHitbox = mobR > 0;
-    const hitboxCY = _isMobHitbox ? (sy - 20) : sy;
+    const hitboxCY = _isMobHitbox ? (sy - 20) : (sy + 5);
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.ellipse(sx, hitboxCY, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);

@@ -1002,7 +1002,7 @@ function updateBullets() {
         const _boulderTargets = PartySystem.getAliveEntities();
         for (const _bt of _boulderTargets) {
           const dxP = b.x - _bt.x;
-          const dyP = b.y - _bt.y; // hitbox at feet (Graal-style)
+          const dyP = b.y - (_bt.y + 5); // hitbox below feet (Graal-style, biased down)
           const distP = Math.sqrt(dxP * dxP + dyP * dyP);
           if (distP < 100 && !(_bt === player && playerDead) && !_bt._isDead) {
             const blastDmg = Math.round((distP < 50 ? 20 : 12) * getMobDamageMultiplier());
@@ -1045,7 +1045,7 @@ function updateBullets() {
         if (!p.alive) continue;
         const ent = p.entity;
         const sdx = b.x - ent.x;
-        const sdy = b.y - ent.y; // hitbox at feet (Graal-style)
+        const sdy = b.y - (ent.y + 5); // hitbox below feet (Graal-style, biased down)
         if (sdx * sdx * HIT_RY_SQ + sdy * sdy * HIT_RX_SQ < HIT_CROSS) {
           const dmg = b.damage || (typeof CT_X_GUN !== 'undefined' ? CT_X_GUN.damage : 20);
           ent.hp -= dmg;
@@ -1139,7 +1139,7 @@ function updateBullets() {
         let _arrowHit = false;
         for (const _at of _arrowTargets) {
           const dxA = b.x - _at.x;
-          const dyA = b.y - _at.y; // hitbox at feet (Graal-style)
+          const dyA = b.y - (_at.y + 5); // hitbox below feet (Graal-style, biased down)
           if (dxA * dxA * HIT_RY_SQ + dyA * dyA * HIT_RX_SQ < HIT_CROSS && !(_at === player && playerDead) && !_at._isDead) {
             dealDamageToPlayer(b.damage, "projectile", null, _at);
             // Apply/reset poison — 20 seconds (all entities via _currentDamageTarget)
@@ -1163,7 +1163,7 @@ function updateBullets() {
         let _bdrHit = false;
         for (const _bdt of _bdrTargets) {
           const dxB = b.x - _bdt.x;
-          const dyB = b.y - _bdt.y; // hitbox at feet (Graal-style)
+          const dyB = b.y - (_bdt.y + 5); // hitbox below feet (Graal-style, biased down)
           const boulderHitR = b.boulderHitRadius || 40;
           if (dxB * dxB + dyB * dyB < boulderHitR * boulderHitR && !(_bdt === player && playerDead) && !_bdt._isDead) {
             hitEffects.push({ x: b.x, y: b.y, life: 30, type: "explosion" });
@@ -1183,7 +1183,7 @@ function updateBullets() {
       let _genHit = false;
       for (const _gt of _genTargets) {
         const dx = b.x - _gt.x;
-        const dy = b.y - _gt.y; // hitbox at feet (Graal-style)
+        const dy = b.y - (_gt.y + 5); // hitbox below feet (Graal-style, biased down)
         if (dx * dx * HIT_RY_SQ + dy * dy * HIT_RX_SQ < HIT_CROSS && !(_gt === player && playerDead) && !_gt._isDead) {
           const bDmg = b.damage || gun.damage;
           const dmgDealt = dealDamageToPlayer(bDmg, "projectile", null, _gt);
