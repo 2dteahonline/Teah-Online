@@ -197,25 +197,54 @@ function _getSparTrainingArchetype() {
   const speed = GAME_CONFIG.PLAYER_BASE_SPEED;
   const intent = archetype.getIntent(player, te, dist, dx, dy, speed, rt);
 
-  // Single-axis-per-frame quantization: pick at most ONE axis to move on
-  // each frame, weighted by axis ratio. This avoids diagonal normalization
-  // (inventory.js normalizes (dx,dy) to unit length before applying speed,
-  // so pressing both keys gives 0.707/0.707 not the intended ratio).
-  // Average velocity converges to the archetype's intended profile.
+  // Movement quantization: convert continuous velocity to binary key presses.
+  // inventory.js normalizes diagonal (dx,dy) to unit length (0.707/0.707),
+  // so we solve for per-frame probabilities that reproduce the archetype's
+  // intended average velocity on each axis.
+  //
+  // When total <= 1: single-axis frames only (no normalization penalty).
+  // When total > 1: some diagonal frames are required. We solve for the
+  // minimum diagonal probability (pDiag) that keeps idle probability >= 0,
+  // accounting for diagonal normalization (each axis gets √2/2 * speed).
   const ratioX = Math.min(1, Math.abs(intent.mx) / speed);
   const ratioY = Math.min(1, Math.abs(intent.my) / speed);
   const total = ratioX + ratioY;
   let moveX = 0, moveY = 0;
-  if (total > 0.01) {
-    const moveProb = Math.min(1, total);
-    if (Math.random() < moveProb) {
-      // Pick which axis — weighted by ratio
+  if (total <= 0.01) {
+    // No movement
+  } else if (total <= 1) {
+    // Single-axis only — no diagonal normalization issue
+    if (Math.random() < total) {
       if (Math.random() < ratioX / total) {
         moveX = intent.mx > 0 ? 1 : -1;
       } else {
         moveY = intent.my > 0 ? 1 : -1;
       }
     }
+  } else {
+    // total > 1: need diagonal frames to reach target velocity.
+    // Solve: pX + pDiag*DIAG = ratioX, pY + pDiag*DIAG = ratioY
+    // where DIAG = √2/2 ≈ 0.7071 (per-axis speed on diagonal frames).
+    // Minimum pDiag for pIdle >= 0: (total - 1) / (√2 - 1)
+    const DIAG = Math.SQRT1_2;
+    const minR = Math.min(ratioX, ratioY);
+    let pDiag = (total - 1) / (Math.SQRT2 - 1);
+    // Cap: pDiag can't exceed minR/DIAG or pX/pY goes negative
+    const maxDiag = minR / DIAG;
+    if (pDiag > maxDiag) pDiag = maxDiag; // fallback for total > ~1.41
+    const pX = ratioX - DIAG * pDiag;
+    const pY = ratioY - DIAG * pDiag;
+    // Roll once to select frame type
+    const roll = Math.random();
+    if (roll < pX) {
+      moveX = intent.mx > 0 ? 1 : -1;
+    } else if (roll < pX + pY) {
+      moveY = intent.my > 0 ? 1 : -1;
+    } else if (roll < pX + pY + pDiag) {
+      moveX = intent.mx > 0 ? 1 : -1;
+      moveY = intent.my > 0 ? 1 : -1;
+    }
+    // else: idle frame
   }
 
   // Compute aim direction toward enemy
@@ -326,19 +355,16 @@ function _isSparTraining() {
   return _sparTrainState && _sparTrainState.active;
 }
 
-// Clear held InputIntent fields and any already-queued commands that
-// training may have produced. Without this, translateIntentsToCommands
-// reads stale shootHeld/arrowShooting on the first frame after training
-// ends, and any commands already in CommandQueue from the current frame's
-// translateIntentsToCommands would be consumed by authorityTick.
+// Clear held InputIntent fields that training wrote. Training override
+// happens in authorityTick AFTER CommandQueue is consumed, so the queue
+// never contains training-produced entries — only legitimate user commands.
+// We only need to zero the InputIntent flags to prevent stale shoot/move
+// from leaking into the next frame's translateIntentsToCommands.
 function _clearTrainingInput() {
   if (typeof InputIntent !== 'undefined') {
     InputIntent.shootHeld = false;
     InputIntent.arrowShooting = false;
     InputIntent.moveX = 0;
     InputIntent.moveY = 0;
-  }
-  if (typeof CommandQueue !== 'undefined') {
-    CommandQueue.length = 0;
   }
 }
