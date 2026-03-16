@@ -71,6 +71,10 @@ const SaveLoad = {
       if (typeof sparProgress !== 'undefined') {
         data.sparProgress = JSON.parse(JSON.stringify(sparProgress));
       }
+      // Spar learning profile (v9+)
+      if (typeof sparLearning !== 'undefined') {
+        data.sparLearning = JSON.parse(JSON.stringify(sparLearning));
+      }
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('Save failed:', e);
@@ -243,6 +247,13 @@ const SaveLoad = {
         }
         // Sync spars counter for identity panel
         spars = sparProgress.totals.wins;
+      }
+      // Spar learning profile (v9+)
+      if (data.sparLearning && typeof sparLearning !== 'undefined') {
+        if (data.sparLearning.version === sparLearning.version) {
+          Object.assign(sparLearning, data.sparLearning);
+        }
+        if (sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
       }
 
       // Farming state (v5+)

@@ -64,3 +64,38 @@ let sparProgress = {
     '4v4': { current: 0, best: 0 },
   },
 };
+
+// Persistent learning profile — bot tracks player tendencies across matches
+// Uses exponential moving averages (alpha=0.3) so recent matches matter more
+let sparLearning = {
+  version: 1,
+  matchCount: 0,
+  opening: {
+    rushBottom: 0.5,    // does player rush bottom? 0=never, 1=always
+    strafeLeft: 0.5,    // opening strafe bias. 0=right, 1=left
+  },
+  position: {
+    bottomBias: 0.5,    // 0=plays top, 1=plays bottom
+    leftBias: 0.5,      // 0=plays right, 1=plays left
+  },
+  shooting: {
+    upPct: 0.25,
+    downPct: 0.25,
+    leftPct: 0.25,
+    rightPct: 0.25,
+  },
+  dodging: {
+    leftBias: 0.5,      // dodges left vs right for vertical bullets
+    upBias: 0.5,        // dodges up vs down for horizontal bullets
+  },
+  aggression: {
+    overall: 0.5,       // 0=passive, 1=aggressive
+    onEnemyReload: 0.5, // punish tendency during bot reload
+    whenLowHp: 0.5,     // aggression when player is low
+  },
+  reload: {
+    avgNormalizedY: 0.5, // where player reloads (0=top, 1=bottom)
+  },
+  winRate: 0.5,
+  history: [],           // last 20 match summaries
+};

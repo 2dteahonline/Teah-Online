@@ -23,6 +23,7 @@ const SparState = {
   _sparBots: [],           // all spar bot member objects (both teams)
   _savedSnapshot: null,    // loadout snapshot for restore
   _nextBotId: 1,
+  _matchCollector: null,   // per-match data collection for learning
 };
 
 // ---- SPAR SYSTEM ----
@@ -316,6 +317,7 @@ const SparSystem = {
 
     if (SparState.phase === 'fighting') {
       SparState.matchTimer++;
+      this._collectPlayerData();
       this._tickSparBots();
 
       // Check alive counts
@@ -335,6 +337,9 @@ const SparSystem = {
           sparProgress.byMode[modeKey][won ? 'wins' : 'losses']++;
         }
         if (won) spars++;
+
+        // Update learning profile
+        this._updateLearningProfile(won);
 
         // Streak tracking
         if (SparState.activeRoom.streakMode) {
@@ -642,12 +647,278 @@ const SparSystem = {
     return { x: dodgeX, y: dodgeY };
   },
 
+  // ---- LEARNING: collect player data each frame during fighting ----
+  _collectPlayerData() {
+    if (SparState.phase !== 'fighting') return;
+    if (!SparState._matchCollector) {
+      // Initialize collector at first call
+      SparState._matchCollector = {
+        samples: 0,
+        posYSum: 0,       // normalized Y accumulator (0=top, 1=bottom)
+        posXSum: 0,       // normalized X accumulator (0=left, 1=right)
+        openingFrames: [],  // [{x,y}] for first 180 frames
+        dodgeLeftCount: 0,  // vertical bullet dodges to the left
+        dodgeRightCount: 0,
+        dodgeUpCount: 0,    // horizontal bullet dodges up
+        dodgeDownCount: 0,
+        shotDirs: { up: 0, down: 0, left: 0, right: 0 },
+        reloadYSamples: [],  // normalized Y when player is reloading
+        distSamples: [],     // distance to nearest enemy
+        aggrOnReload: 0,     // frames player pushes toward bot during bot reload
+        aggrOnReloadTotal: 0,
+        lowHpAggrFrames: 0,
+        lowHpTotalFrames: 0,
+      };
+    }
+
+    // Sample every 6 frames (10Hz)
+    if (SparState.matchTimer % 6 !== 0) return;
+
+    const c = SparState._matchCollector;
+    const arenaLevel = LEVELS[SparState.activeRoom.arenaLevel];
+    if (!arenaLevel) return;
+    const arenaW = arenaLevel.widthTiles * TILE;
+    const arenaH = arenaLevel.heightTiles * TILE;
+
+    // Normalized position (0-1)
+    const normY = Math.max(0, Math.min(1, player.y / arenaH));
+    const normX = Math.max(0, Math.min(1, player.x / arenaW));
+    c.posYSum += normY;
+    c.posXSum += normX;
+    c.samples++;
+
+    // Opening movement (first 180 frames = 3 seconds)
+    if (SparState.matchTimer <= 180) {
+      c.openingFrames.push({ x: player.x, y: player.y, vx: player.vx || 0, vy: player.vy || 0 });
+    }
+
+    // Dodge direction tracking — check if player is moving away from nearby bullets
+    for (const b of bullets) {
+      if (!b.sparTeam || b.sparTeam === 'teamA') continue; // only enemy bullets
+      const dbx = player.x - b.x, dby = player.y - b.y;
+      const bDist = Math.sqrt(dbx * dbx + dby * dby);
+      if (bDist > 200 || bDist < 20) continue;
+
+      const pVx = player.vx || 0;
+      const pVy = player.vy || 0;
+      if (Math.abs(pVx) < 0.5 && Math.abs(pVy) < 0.5) continue;
+
+      if (Math.abs(b.vy) > Math.abs(b.vx)) {
+        // Vertical bullet — player dodges left/right
+        if (pVx < -1) c.dodgeLeftCount++;
+        else if (pVx > 1) c.dodgeRightCount++;
+      } else {
+        // Horizontal bullet — player dodges up/down
+        if (pVy < -1) c.dodgeUpCount++;
+        else if (pVy > 1) c.dodgeDownCount++;
+      }
+    }
+
+    // Reload position tracking
+    if (gun.reloading) {
+      c.reloadYSamples.push(normY);
+    }
+
+    // Distance to nearest enemy
+    let minDist = Infinity;
+    for (const p of SparState.teamB) {
+      if (!p.alive) continue;
+      const edx = player.x - p.entity.x, edy = player.y - p.entity.y;
+      const ed = Math.sqrt(edx * edx + edy * edy);
+      if (ed < minDist) minDist = ed;
+    }
+    if (minDist < Infinity) c.distSamples.push(minDist);
+
+    // Aggression during bot reload
+    for (const p of SparState.teamB) {
+      if (!p.alive || !p.member) continue;
+      if (p.member.gun.reloading) {
+        c.aggrOnReloadTotal++;
+        const edx = p.entity.x - player.x, edy = p.entity.y - player.y;
+        const ed = Math.sqrt(edx * edx + edy * edy);
+        const pVx = player.vx || 0, pVy = player.vy || 0;
+        // Dot product of player velocity toward enemy
+        if (ed > 1) {
+          const dot = (pVx * edx + pVy * edy) / ed;
+          if (dot > 1) c.aggrOnReload++;
+        }
+      }
+    }
+
+    // Low HP aggression
+    const hpPct = player.hp / player.maxHp;
+    if (hpPct < 0.35) {
+      c.lowHpTotalFrames++;
+      // Check if moving toward nearest enemy
+      let nearestEnemy = null;
+      let nearDist = Infinity;
+      for (const p of SparState.teamB) {
+        if (!p.alive) continue;
+        const edx = p.entity.x - player.x, edy = p.entity.y - player.y;
+        const ed = Math.sqrt(edx * edx + edy * edy);
+        if (ed < nearDist) { nearDist = ed; nearestEnemy = p.entity; }
+      }
+      if (nearestEnemy && nearDist > 1) {
+        const pVx = player.vx || 0, pVy = player.vy || 0;
+        const edx = nearestEnemy.x - player.x, edy = nearestEnemy.y - player.y;
+        const dot = (pVx * edx + pVy * edy) / nearDist;
+        if (dot > 1) c.lowHpAggrFrames++;
+      }
+    }
+  },
+
+  // ---- LEARNING: update persistent profile at match end ----
+  _updateLearningProfile(won) {
+    const c = SparState._matchCollector;
+    if (!c || c.samples < 3) { SparState._matchCollector = null; return; }
+    if (typeof sparLearning === 'undefined') { SparState._matchCollector = null; return; }
+
+    const alpha = 0.3; // EMA weight for new data
+    const ema = (oldVal, newVal) => alpha * newVal + (1 - alpha) * oldVal;
+    const sl = sparLearning;
+
+    sl.matchCount++;
+
+    // --- Opening analysis ---
+    if (c.openingFrames.length > 5) {
+      const first = c.openingFrames[0];
+      const last = c.openingFrames[c.openingFrames.length - 1];
+      const dyOpening = last.y - first.y;
+      // rushBottom: did player move downward (positive Y = down)?
+      const rushed = dyOpening > 30 ? 1 : (dyOpening > 0 ? 0.5 : 0);
+      sl.opening.rushBottom = ema(sl.opening.rushBottom, rushed);
+
+      // Strafe bias: average horizontal velocity direction
+      let leftFrames = 0, totalFrames = 0;
+      for (const f of c.openingFrames) {
+        if (Math.abs(f.vx) > 0.5) {
+          totalFrames++;
+          if (f.vx < 0) leftFrames++;
+        }
+      }
+      if (totalFrames > 3) {
+        sl.opening.strafeLeft = ema(sl.opening.strafeLeft, leftFrames / totalFrames);
+      }
+    }
+
+    // --- Position bias ---
+    sl.position.bottomBias = ema(sl.position.bottomBias, c.posYSum / c.samples);
+    sl.position.leftBias = ema(sl.position.leftBias, 1 - c.posXSum / c.samples);
+
+    // --- Shooting directions ---
+    const totalShots = c.shotDirs.up + c.shotDirs.down + c.shotDirs.left + c.shotDirs.right;
+    if (totalShots > 5) {
+      sl.shooting.upPct = ema(sl.shooting.upPct, c.shotDirs.up / totalShots);
+      sl.shooting.downPct = ema(sl.shooting.downPct, c.shotDirs.down / totalShots);
+      sl.shooting.leftPct = ema(sl.shooting.leftPct, c.shotDirs.left / totalShots);
+      sl.shooting.rightPct = ema(sl.shooting.rightPct, c.shotDirs.right / totalShots);
+    }
+
+    // --- Dodge bias ---
+    const dodgeHTotal = c.dodgeLeftCount + c.dodgeRightCount;
+    if (dodgeHTotal > 3) {
+      sl.dodging.leftBias = ema(sl.dodging.leftBias, c.dodgeLeftCount / dodgeHTotal);
+    }
+    const dodgeVTotal = c.dodgeUpCount + c.dodgeDownCount;
+    if (dodgeVTotal > 3) {
+      sl.dodging.upBias = ema(sl.dodging.upBias, c.dodgeUpCount / dodgeVTotal);
+    }
+
+    // --- Aggression ---
+    // Overall: based on average distance (closer = more aggressive)
+    if (c.distSamples.length > 5) {
+      const avgDist = c.distSamples.reduce((a, b) => a + b, 0) / c.distSamples.length;
+      // Normalize: 0 dist = 1.0 aggression, 500+ dist = 0.0
+      const aggrVal = Math.max(0, Math.min(1, 1 - avgDist / 500));
+      sl.aggression.overall = ema(sl.aggression.overall, aggrVal);
+    }
+    if (c.aggrOnReloadTotal > 3) {
+      sl.aggression.onEnemyReload = ema(sl.aggression.onEnemyReload, c.aggrOnReload / c.aggrOnReloadTotal);
+    }
+    if (c.lowHpTotalFrames > 3) {
+      sl.aggression.whenLowHp = ema(sl.aggression.whenLowHp, c.lowHpAggrFrames / c.lowHpTotalFrames);
+    }
+
+    // --- Reload position ---
+    if (c.reloadYSamples.length > 2) {
+      const avgReloadY = c.reloadYSamples.reduce((a, b) => a + b, 0) / c.reloadYSamples.length;
+      sl.reload.avgNormalizedY = ema(sl.reload.avgNormalizedY, avgReloadY);
+    }
+
+    // --- Win rate ---
+    sl.winRate = ema(sl.winRate, won ? 1 : 0);
+
+    // --- Match history (cap at 20) ---
+    sl.history.push({
+      won: won,
+      matchTimer: SparState.matchTimer,
+      shots: totalShots,
+      bottomBias: c.samples > 0 ? c.posYSum / c.samples : 0.5,
+      ts: Date.now(),
+    });
+    if (sl.history.length > 20) sl.history = sl.history.slice(-20);
+
+    SparState._matchCollector = null;
+  },
+
+  // ---- LEARNING: compute bot behavior modifiers from player profile ----
+  _getProfileModifiers() {
+    if (typeof sparLearning === 'undefined' || sparLearning.matchCount < 2) {
+      return null; // not enough data yet
+    }
+    const sl = sparLearning;
+
+    // Opening goal Y: if player rushes bottom, bot should also rush bottom harder
+    // If player doesn't rush, bot can take bottom unopposed (less urgency)
+    const openingGoalY = sl.opening.rushBottom > 0.6 ? 0.82 : 0.72;
+
+    // Counter player's opening strafe: if they go left, bot strafes right (and vice versa)
+    // Returns 1 for right bias, -1 for left bias
+    const openingStrafeDir = sl.opening.strafeLeft > 0.6 ? 1 : (sl.opening.strafeLeft < 0.4 ? -1 : 0);
+
+    // Aggression multiplier: counter-play
+    // If player is aggressive, bot plays more defensive (lower mult)
+    // If player is passive, bot can push more
+    const aggressionMult = 1.3 - sl.aggression.overall * 0.6; // 0.7 to 1.3
+
+    // Dodge prediction: bias toward where player tends to dodge
+    // If player dodges left a lot, aim/position to their left
+    const dodgePredictBiasX = (sl.dodging.leftBias - 0.5) * 2; // -1 to 1
+
+    // Preferred X offset: stay off the player's most-used shot axis
+    // If player shoots up/down a lot (high upPct+downPct), stay offset horizontally
+    // If player shoots left/right a lot, stay offset vertically
+    const vertShotPct = sl.shooting.upPct + sl.shooting.downPct;
+    const horizShotPct = sl.shooting.leftPct + sl.shooting.rightPct;
+    // Positive = prefer horizontal offset, negative = prefer vertical offset
+    const preferredOffsetX = (vertShotPct - horizShotPct) * 0.5; // -0.5 to 0.5
+
+    // Strafe speed multiplier: based on win rate
+    // If bot is winning, slow down slightly (don't stomp). If losing, speed up.
+    const strafeSpeedMult = 1.15 - sl.winRate * 0.3; // 0.85 to 1.15
+
+    return {
+      openingGoalY,
+      openingStrafeDir,
+      aggressionMult,
+      dodgePredictBiasX,
+      preferredOffsetX,
+      strafeSpeedMult,
+    };
+  },
+
   _tickOneBot(member) {
     const bot = member.entity;
     const team = member._sparTeam;
     const enemies = team === 'teamA' ? SparState.teamB : SparState.teamA;
     const allies = team === 'teamA' ? SparState.teamA : SparState.teamB;
     const ai = member.ai;
+
+    // --- Cache learning profile modifiers (once per match) ---
+    if (!ai._profileMods && team === 'teamB') {
+      ai._profileMods = this._getProfileModifiers(); // null if <2 matches
+    }
+    const pm = ai._profileMods; // may be null
 
     // --- Arena awareness ---
     const arenaLevel = LEVELS[SparState.activeRoom.arenaLevel];
@@ -719,12 +990,18 @@ const SparSystem = {
 
     if (isOpening) {
       // === PHASE 1: Opening — race to take bottom ===
-      const goalY = Math.min(arenaH - TILE * 1.5, arenaH * 0.75);
+      const goalYPct = pm ? pm.openingGoalY : 0.75;
+      const goalY = Math.min(arenaH - TILE * 1.5, arenaH * goalYPct);
       const bdy = goalY - bot.y;
       if (Math.abs(bdy) > 15) {
         moveY = Math.sign(bdy) * speed * 0.9;
       }
-      moveX = ai.strafeDir * speed * 0.4;
+      // Counter player's opening strafe bias
+      let openStrafe = ai.strafeDir;
+      if (pm && pm.openingStrafeDir !== 0) {
+        openStrafe = pm.openingStrafeDir; // go opposite of player's habit
+      }
+      moveX = openStrafe * speed * 0.4;
 
     } else if (member.gun.reloading) {
       // === RELOADING: dodge hard, create distance, strafe unpredictably ===
@@ -737,9 +1014,11 @@ const SparSystem = {
 
     } else if (enemyReloading) {
       // === PUNISH: enemy reloading — close in aggressively ===
+      // Learning: if player punishes hard on reload, bot is more cautious
+      const punishAggr = pm ? pm.aggressionMult : 1.0;
       if (dist > 80 && dist > 1) {
-        moveX = (dx / dist) * speed * 0.55;
-        moveY = (dy / dist) * speed * 0.55;
+        moveX = (dx / dist) * speed * 0.55 * punishAggr;
+        moveY = (dy / dist) * speed * 0.55 * punishAggr;
       }
       moveX += ai.strafeDir * speed * 0.35;
 
@@ -747,6 +1026,11 @@ const SparSystem = {
       // === WE HAVE BOTTOM — play from advantage ===
       // Strafe horizontally, wall bullets upward, react to enemy movement
       moveX = ai.strafeDir * speed * 0.65;
+      // Learning: offset to stay off player's dominant shot axis
+      if (pm && pm.preferredOffsetX > 0.1) {
+        // Player shoots vertically a lot — drift horizontally away from player's X
+        moveX += Math.sign(bot.x - tgt.x) * speed * pm.preferredOffsetX * 0.3;
+      }
 
       if (enemyMovingDown) {
         // Enemy trying to contest — cut them off, move toward them
@@ -786,6 +1070,10 @@ const SparSystem = {
         moveX = ai.strafeDir * speed * 0.5;
         moveY = speed * 0.5;
       }
+      // Learning: offset away from player's dominant shot axis
+      if (pm && pm.preferredOffsetX > 0.1) {
+        moveX += Math.sign(bot.x - tgt.x) * speed * pm.preferredOffsetX * 0.25;
+      }
 
     } else {
       // === NEUTRAL — neither has clear bottom, play mid ===
@@ -802,6 +1090,10 @@ const SparSystem = {
       if (dist < 100 && dist > 1) {
         moveX -= (dx / dist) * speed * 0.2;
         moveY -= (dy / dist) * speed * 0.2;
+      }
+      // Learning: bias approach angle based on dodge prediction
+      if (pm && Math.abs(pm.dodgePredictBiasX) > 0.2) {
+        moveX += pm.dodgePredictBiasX * speed * 0.15;
       }
     }
 
@@ -864,6 +1156,12 @@ const SparSystem = {
         }
         ai.baitCooldown = 90 + Math.floor(Math.random() * 120);
       }
+    }
+
+    // Learning: apply strafe speed multiplier (win-rate based)
+    if (pm && pm.strafeSpeedMult !== 1.0) {
+      moveX *= pm.strafeSpeedMult;
+      moveY *= pm.strafeSpeedMult;
     }
 
     // Normalize

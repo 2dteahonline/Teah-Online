@@ -552,6 +552,12 @@ function shoot() {
     }
   }
 
+  // Spar learning: track player shot directions
+  if (typeof SparState !== 'undefined' && SparState.phase === 'fighting' && SparState._matchCollector) {
+    const dirNames = ['right', 'up', 'left', 'down'];
+    SparState._matchCollector.shotDirs[dirNames[player.dir]]++;
+  }
+
   // Ammo / reload (skip for neverReload guns like the bow)
   if (!isNeverReload) {
     gun.ammo--;
