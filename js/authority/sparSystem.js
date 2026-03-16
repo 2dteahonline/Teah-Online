@@ -738,35 +738,40 @@ const SparSystem = {
       }
     }
 
-    // --- Shooting ---
+    // --- Shooting (4 cardinal directions only, same as player) ---
     // Only shoot when in strafe/push/hold behaviors, not while retreating
     const canShoot = behavior !== 'retreat' || (hpPct > 0.15 && dist < 200);
     if (canShoot && !bot._gunReloading && bot._gunAmmo > 0 && bot._fireCooldown <= 0 && dist < 450) {
       if (this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
-        // Predictive aiming — lead target based on distance
-        const bulletSpeed = GAME_CONFIG.BULLET_SPEED;
-        const travelTime = dist / bulletSpeed;
-        const leadFrames = Math.min(travelTime, 12);
-        const predX = tgt.x + (tgt.vx || 0) * leadFrames;
-        const predY = tgt.y + (tgt.vy || 0) * leadFrames;
-        const aimDx = predX - bot.x;
-        const aimDy = (predY - 20) - (bot.y - 20);
-        const angle = Math.atan2(aimDy, aimDx);
-        ai.shootAngle = angle;
+        // Pick best cardinal direction: 0=right, 1=up, 2=left, 3=down (matches player dir)
+        let shootDir;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          shootDir = dx > 0 ? 0 : 2; // right or left
+        } else {
+          shootDir = dy > 0 ? 3 : 1; // down or up
+        }
+        // Face shoot direction
+        bot.dir = shootDir;
 
-        // Bot's CT-X spread + slight inaccuracy (better accuracy at closer range)
-        const spreadRad = (bot._gunSpread || 0) * Math.PI / 180;
-        const distFactor = Math.min(1, dist / 400); // 0 at close, 1 at far
-        const inaccuracy = (Math.random() - 0.5) * (0.08 + spreadRad * distFactor);
-        const finalAngle = angle + inaccuracy;
-
+        // Cardinal velocity (same as player shoot() in gunSystem.js)
         const bSpeed = GAME_CONFIG.BULLET_SPEED;
+        let bvx = 0, bvy = 0;
+        if (shootDir === 0) bvx = bSpeed;       // right
+        else if (shootDir === 1) bvy = -bSpeed;  // up
+        else if (shootDir === 2) bvx = -bSpeed;  // left
+        else bvy = bSpeed;                        // down
+
+        // Muzzle offset (simplified version of player's getMuzzlePos)
+        const muzzleOffset = 20;
+        const mx = bot.x + (bvx !== 0 ? Math.sign(bvx) * muzzleOffset : 0);
+        const my = bot.y - 20 + (bvy !== 0 ? Math.sign(bvy) * muzzleOffset : 0);
+
         const bulletObj = {
           id: Date.now() + Math.random(),
-          x: bot.x + Math.cos(finalAngle) * 20,
-          y: bot.y - 20 + Math.sin(finalAngle) * 20,
-          vx: Math.cos(finalAngle) * bSpeed,
-          vy: Math.sin(finalAngle) * bSpeed,
+          x: mx,
+          y: my,
+          vx: bvx,
+          vy: bvy,
           fromPlayer: true,
           sparTeam: team,
           damage: bot._gunDamage,
