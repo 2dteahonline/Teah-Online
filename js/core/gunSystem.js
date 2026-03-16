@@ -568,7 +568,7 @@ function shoot() {
   // Spar learning: track player shot directions + opening shots
   if (typeof SparState !== 'undefined' && SparState.phase === 'fighting' && SparState._matchCollector) {
     const _mc = SparState._matchCollector;
-    const dirNames = ['right', 'up', 'left', 'down'];
+    const dirNames = ['down', 'up', 'left', 'right'];
     _mc.shotDirs[dirNames[player.dir]]++;
     // Track first shot timing and opening shots
     if (_mc.firstShotFrame === -1) _mc.firstShotFrame = SparState.matchTimer;

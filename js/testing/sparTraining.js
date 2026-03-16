@@ -1,7 +1,7 @@
 // ===================== SPAR TRAINING HARNESS =====================
 // Manual console-driven training for spar bot generalization
 // Usage: sparTrain('rusher', 20) or sparTrain('all', 50)
-// Only updates general1v1 learning, never jeffProfile
+// Only updates general1v1 learning, never player1v1
 
 const SPAR_TRAINING_BOTS = {
   rusher: {
@@ -215,7 +215,7 @@ function _sparTrainOnMatchEnd(won) {
 
   _sparTrainState.completedMatches++;
 
-  // Update ONLY general1v1 (not jeffProfile)
+  // Update ONLY general1v1 (not player1v1)
   const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
   if (sl && enemyBot && enemyBot.ai._duelStyle) {
     const style = enemyBot.ai._duelStyle;

@@ -96,148 +96,145 @@ let sparProgress = {
   },
 };
 
-// Persistent learning profile — bot tracks player tendencies across matches
-// Uses exponential moving averages (alpha=0.5) so recent matches matter more
-// Checkpoint: last saved from 148 matches (2026-03-16)
-// Physics changed at ~match 119: speed 8.33→6.66, bullet 10→9, hitbox 17→19
-// v4: Elliptical hitboxes (RX=38,RY=13), gun side awareness, body blocking, BULLET_R=7→23
-// If localStorage has newer data, it overrides these defaults on load.
-// To update: paste sparData() output to Claude, who updates these defaults.
-let sparLearning = {
-  version: 4,
-  matchCount: 299,
-  opening: {
-    rushBottom: 0.969,
-    strafeLeft: 0.171,
-    route: 'bottomCenter',
-    routeCounts: { bottomLeft: 44, bottomRight: 29, bottomCenter: 158, topHold: 0, midFlank: 13, midStrafe: 38 },
-    speedPct: 0.445,
-    firstShotFrame: 35.61,
-    shootsDuringOpening: 0.969,
-    takesBottomPct: 0.027,
-  },
-  botOpenings: {
-    lastRoute: 'midFlank',
-    routeResults: {
-      bottomLeft:   { wins: 0, losses: 1, gotBottom: 0, total: 1 },
-      bottomRight:  { wins: 0, losses: 7, gotBottom: 0, total: 7 },
-      bottomCenter: { wins: 0, losses: 1, gotBottom: 0, total: 1 },
-      topHold:      { wins: 0, losses: 4, gotBottom: 0, total: 4 },
-      midFlank:     { wins: 66, losses: 140, gotBottom: 27, total: 206 },
-      mirrorPlayer: { wins: 3, losses: 47, gotBottom: 39, total: 50 },
+// v5 neutral factory — creates a clean learning profile with no bias
+// All percentages start at 0.5 (neutral), all counts at 0
+// Called on first load and on v4→v5 migration (v4 data was corrupted)
+function createDefaultSparLearning() {
+  return {
+    version: 5,
+    matchCount: 0,
+    opening: {
+      rushBottom: 0.5,
+      strafeLeft: 0.5,
+      route: 'bottomCenter',
+      routeCounts: { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midFlank: 0, midStrafe: 0 },
+      speedPct: 0.5,
+      firstShotFrame: 90,
+      shootsDuringOpening: 0.5,
+      takesBottomPct: 0.5,
     },
-  },
-  position: {
-    bottomBias: 0.756,
-    leftBias: 0.537,
-  },
-  shooting: {
-    upPct: 0.010,
-    downPct: 0.777,
-    leftPct: 0.185,
-    rightPct: 0.029,
-  },
-  dodging: {
-    leftBias: 0.450,
-    upBias: 0.319,
-  },
-  aggression: {
-    overall: 0.455,
-    onEnemyReload: 0.605,
-    whenLowHp: 0.129,
-  },
-  reload: {
-    avgNormalizedY: 0.926,
-  },
-  whenHasBottom: {
-    holdsPct: 0.386,
-    shotFreq: 0.982,
-    pushPct: 0.228,
-  },
-  whenBotHasBottom: {
-    retakePct: 0.349,
-    flankPct: 0.079,
-    retreatPct: 0.116,
-  },
-  whenBotApproaches: {
-    holdGroundPct: 0.092,
-    counterPushPct: 0.699,
-    sidestepPct: 0.165,
-  },
-  whenBotRetreats: {
-    chasePct: 0.086,
-    shotFreq: 0.732,
-  },
-  shotByPosition: {
-    whenAbove: { downPct: 0.013, sidePct: 0.987 },
-    whenBelow: { upPct: 0.440, sidePct: 0.560 },
-    whenLevel: { leftPct: 0.051, rightPct: 0.0 },
-  },
-  playerShots: {
-    hitRate: 0.505,
-    hitRateClose: 0.608,
-    hitRateMid: 0.258,
-    hitRateFar: 0.063,
-    hitWhenBotStrafing: 0.605,
-    hitWhenBotStill: 0.603,
-    hitWhenBotApproach: 0.389,
-    hitWhenBotRetreat: 0.396,
-  },
-  botShots: {
-    hitRate: 0.017,
-    dodgedRate: 0.761,
-    hitWhenPlayerStrafing: 0.155,
-    hitWhenPlayerStill: 0.036,
-    hitWhenPlayerApproach: 0.006,
-  },
-  combatPatterns: {
-    playerHitDist: 114,
-    botHitDist: 101,
-    playerDmgWhenHasBottom: 0.488,
-    botDmgWhenHasBottom: 0.125,
-    tradeRatio: 0.5,
-  },
-  winRate: 0.99999,
-  history: [],  // history not checkpointed — only lives in localStorage
-  // Phase 1e: Circumstance learning
-  afterHit: { pressesAdvantage: 0.243, retreatsOnDamage: 0.376 },
-  lowHpExpanded: { fleesPct: 0.180, killAttemptPct: 0.820 },
-  chasePatterns: { giveUpFrames: 180 },
-  nearWall: { cornerStuckPct: 0.052 },
-  positionValue: { bottomWinCorrelation: 0.95, topPenalty: 0.8 },
-  // Phase 2/3: Split data stores
-  general1v1: {
-    styleResults: {
-      pressure: { wins: 33, losses: 71, total: 104, avgDmgDelta: -90 },
-      control: { wins: 32, losses: 84, total: 116, avgDmgDelta: -68 },
-      bait: { wins: 0, losses: 7, total: 7, avgDmgDelta: -83 },
+    botOpenings: {
+      lastRoute: null,
+      routeResults: {
+        bottomLeft:   { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+        bottomRight:  { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+        bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+        topHold:      { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+        midFlank:     { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+        mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+      },
     },
-  },
-  jeffProfile: {
-    styleResults: {
-      pressure: { wins: 33, losses: 71, total: 104, avgDmgDelta: -90 },
-      control: { wins: 32, losses: 84, total: 116, avgDmgDelta: -68 },
-      bait: { wins: 0, losses: 7, total: 7, avgDmgDelta: -83 },
+    position: {
+      bottomBias: 0.5,
+      leftBias: 0.5,
     },
-  },
-  // v4: Gun side + elliptical hitbox awareness
-  gunSide: {
-    playerPreference: 'right',
-    leftPct: 0.0,
-  },
-  hitboxAwareness: {
-    playerHorizHitRate: 0.491,
-    playerVertHitRate: 0.716,
-    botHorizHitRate: 0.004,
-    botVertHitRate: 0.458,
-    peekSuccessRate: 0.105,
-  },
-};
+    shooting: {
+      upPct: 0.25,
+      downPct: 0.25,
+      leftPct: 0.25,
+      rightPct: 0.25,
+    },
+    dodging: {
+      leftBias: 0.5,
+      upBias: 0.5,
+    },
+    aggression: {
+      overall: 0.5,
+      onEnemyReload: 0.5,
+      whenLowHp: 0.5,
+    },
+    reload: {
+      avgNormalizedY: 0.5,
+    },
+    whenHasBottom: {
+      holdsPct: 0.5,
+      shotFreq: 0.5,
+      pushPct: 0.5,
+    },
+    whenBotHasBottom: {
+      retakePct: 0.5,
+      flankPct: 0.5,
+      retreatPct: 0.5,
+    },
+    whenBotApproaches: {
+      holdGroundPct: 0.5,
+      counterPushPct: 0.5,
+      sidestepPct: 0.5,
+    },
+    whenBotRetreats: {
+      chasePct: 0.5,
+      shotFreq: 0.5,
+    },
+    shotByPosition: {
+      whenAbove: { downPct: 0.5, sidePct: 0.5 },
+      whenBelow: { upPct: 0.5, sidePct: 0.5 },
+      whenLevel: { leftPct: 0.5, rightPct: 0.5 },
+    },
+    playerShots: {
+      hitRate: 0.5,
+      hitRateClose: 0.5,
+      hitRateMid: 0.5,
+      hitRateFar: 0.5,
+      hitWhenBotStrafing: 0.5,
+      hitWhenBotStill: 0.5,
+      hitWhenBotApproach: 0.5,
+      hitWhenBotRetreat: 0.5,
+    },
+    botShots: {
+      hitRate: 0.5,
+      dodgedRate: 0.5,
+      hitWhenPlayerStrafing: 0.5,
+      hitWhenPlayerStill: 0.5,
+      hitWhenPlayerApproach: 0.5,
+    },
+    combatPatterns: {
+      playerHitDist: 250,
+      botHitDist: 250,
+      playerDmgWhenHasBottom: 0.5,
+      botDmgWhenHasBottom: 0.5,
+      tradeRatio: 0.5,
+    },
+    winRate: 0.5,
+    history: [],
+    afterHit: { pressesAdvantage: 0.5, retreatsOnDamage: 0.5 },
+    lowHpExpanded: { fleesPct: 0.5, killAttemptPct: 0.5 },
+    chasePatterns: { giveUpFrames: 90 },
+    nearWall: { cornerStuckPct: 0.5 },
+    positionValue: { bottomWinCorrelation: 0.5, topPenalty: 0.5 },
+    general1v1: {
+      styleResults: {
+        pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+        control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+        bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+      },
+    },
+    player1v1: {
+      styleResults: {
+        pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+        control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+        bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+      },
+    },
+    gunSide: {
+      playerPreference: 'left',
+      leftPct: 0.5,
+    },
+    hitboxAwareness: {
+      playerHorizHitRate: 0.5,
+      playerVertHitRate: 0.5,
+      botHorizHitRate: 0.5,
+      botVertHitRate: 0.5,
+      peekSuccessRate: 0.5,
+    },
+  };
+}
+
+// Initialize with neutral defaults — localStorage overrides on load
+let sparLearning = createDefaultSparLearning();
 
 // Quick helper — type sparData() in console to copy learning data
 function sparData() {
   const json = JSON.stringify(sparLearning, null, 2);
-  // Try clipboard first, fall back to a selectable textarea
   try {
     const ta = document.createElement('textarea');
     ta.value = json;
@@ -246,9 +243,19 @@ function sparData() {
     ta.select();
     document.execCommand('copy');
     console.log('Copied! Close the text box by clicking the page or running: document.querySelector("textarea").remove()');
-    setTimeout(() => { if (ta.parentNode) ta.remove(); }, 15000); // auto-remove after 15s
+    setTimeout(() => { if (ta.parentNode) ta.remove(); }, 15000);
   } catch (e) {
     console.log(json);
   }
   return json;
+}
+
+// Console helper to wipe learning data during testing
+function resetSparLearning() {
+  const fresh = createDefaultSparLearning();
+  Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
+  Object.assign(sparLearning, fresh);
+  if (typeof SaveLoad !== 'undefined') SaveLoad.save();
+  console.log('[Spar] Learning profile wiped to neutral v5 defaults');
+  return sparLearning;
 }

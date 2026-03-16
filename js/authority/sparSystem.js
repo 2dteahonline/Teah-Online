@@ -335,8 +335,8 @@ const SparSystem = {
             }
             const score = sr.wins / sr.total;
             // Jeff-specific adjustment
-            if (sl.jeffProfile && sl.jeffProfile.styleResults && sl.jeffProfile.styleResults[name]) {
-              const jr = sl.jeffProfile.styleResults[name];
+            if (sl.player1v1 && sl.player1v1.styleResults && sl.player1v1.styleResults[name]) {
+              const jr = sl.player1v1.styleResults[name];
               if (jr.total > 0) {
                 const jeffAdj = (jr.wins / jr.total - 0.5) * 0.2;
                 if (score + jeffAdj > bestScore) { bestScore = score + jeffAdj; style = name; }
@@ -431,6 +431,7 @@ const SparSystem = {
   },
 
   _resetForStreakContinue() {
+    SparState._matchCollector = null;
     // Remove old enemy bots
     const oldEnemies = SparState._sparBots.filter(m => m._sparTeam === 'teamB');
     for (const e of oldEnemies) {
@@ -521,6 +522,7 @@ const SparSystem = {
   exitToHub() {
     this._restoreSnapshot();
     this._cleanupBots();
+    SparState._matchCollector = null;
     SparState.phase = 'hub';
     SparState.activeRoom = null;
     SparState.lastResult = null;
@@ -531,6 +533,7 @@ const SparSystem = {
     if (SparState.phase === 'idle') return;
     this._restoreSnapshot();
     this._cleanupBots();
+    SparState._matchCollector = null;
     SparState.phase = 'idle';
     SparState.activeRoom = null;
     SparState.lastResult = null;
@@ -1113,7 +1116,7 @@ const SparSystem = {
       if (player.y < botE.y - 40) {
         // Player is ABOVE bot
         c.shotWhenAbove.total++;
-        if (player.dir === 3) c.shotWhenAbove.down++; // shooting down toward bot
+        if (player.dir === 0) c.shotWhenAbove.down++; // shooting down toward bot
         else c.shotWhenAbove.side++;
       } else if (player.y > botE.y + 40) {
         // Player is BELOW bot
@@ -1124,7 +1127,7 @@ const SparSystem = {
         // Roughly same Y level
         c.shotWhenLevel.total++;
         if (player.dir === 2) c.shotWhenLevel.left++;
-        else if (player.dir === 0) c.shotWhenLevel.right++;
+        else if (player.dir === 3) c.shotWhenLevel.right++;
       }
     }
     c._prevShotTotal = recentShot;
@@ -1269,9 +1272,8 @@ const SparSystem = {
       sl.opening.shootsDuringOpening = ema(sl.opening.shootsDuringOpening, c.openingShotCount > 0 ? 1 : 0);
 
       // Did player actually secure bottom by end of opening?
-      const botAtEnd = SparState.teamB[0] && SparState.teamB[0].alive ? SparState.teamB[0].entity : null;
-      if (botAtEnd) {
-        const gotBottom = last.y > botAtEnd.y + 20 ? 1 : 0;
+      if (c.botYAtOpeningEnd > 0) {
+        const gotBottom = last.y > c.botYAtOpeningEnd + 20 ? 1 : 0;
         sl.opening.takesBottomPct = ema(sl.opening.takesBottomPct, gotBottom);
       }
     }
@@ -1573,12 +1575,12 @@ const SparSystem = {
       sr.avgDmgDelta = sr.total > 1 ? ema(sr.avgDmgDelta, dmgDelta) : dmgDelta;
 
       // Jeff-specific style results (always update for live matches)
-      if (!sl.jeffProfile) sl.jeffProfile = { styleResults: {} };
-      if (!sl.jeffProfile.styleResults) sl.jeffProfile.styleResults = {};
-      if (!sl.jeffProfile.styleResults[style]) {
-        sl.jeffProfile.styleResults[style] = { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 };
+      if (!sl.player1v1) sl.player1v1 = { styleResults: {} };
+      if (!sl.player1v1.styleResults) sl.player1v1.styleResults = {};
+      if (!sl.player1v1.styleResults[style]) {
+        sl.player1v1.styleResults[style] = { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 };
       }
-      const jr = sl.jeffProfile.styleResults[style];
+      const jr = sl.player1v1.styleResults[style];
       jr.total++;
       if (won) jr.losses++; else jr.wins++;
       jr.avgDmgDelta = jr.total > 1 ? ema(jr.avgDmgDelta, dmgDelta) : dmgDelta;
@@ -1593,23 +1595,29 @@ const SparSystem = {
       return null; // not enough data yet
     }
     const sl = sparLearning;
+    const mc = sl.matchCount;
+
+    // Confidence gating: need minimum matches before using learned biases
+    const hasShootingData = mc >= 5;   // shooting direction bias
+    const hasPositionData = mc >= 5;   // bottom/position modifiers
+    const hasOpeningData = mc >= 3;    // opening route selection
 
     // Opening goal Y: if player rushes bottom, bot should also rush bottom harder
-    const openingGoalY = sl.opening.rushBottom > 0.6 ? 0.82 : 0.72;
+    const openingGoalY = hasOpeningData && sl.opening.rushBottom > 0.6 ? 0.82 : 0.72;
 
     // Counter player's opening strafe
-    const openingStrafeDir = sl.opening.strafeLeft > 0.6 ? 1 : (sl.opening.strafeLeft < 0.4 ? -1 : 0);
+    const openingStrafeDir = hasOpeningData ? (sl.opening.strafeLeft > 0.6 ? 1 : (sl.opening.strafeLeft < 0.4 ? -1 : 0)) : 0;
 
     // Aggression multiplier: counter-play
-    const aggressionMult = 1.3 - sl.aggression.overall * 0.6; // 0.7 to 1.3
+    const aggressionMult = mc >= 3 ? (1.3 - sl.aggression.overall * 0.6) : 1.0; // 0.7 to 1.3
 
     // Dodge prediction bias
-    const dodgePredictBiasX = (sl.dodging.leftBias - 0.5) * 2; // -1 to 1
+    const dodgePredictBiasX = mc >= 3 ? (sl.dodging.leftBias - 0.5) * 2 : 0; // -1 to 1
 
     // Preferred X offset: stay off player's shot axis
     const vertShotPct = sl.shooting.upPct + sl.shooting.downPct;
     const horizShotPct = sl.shooting.leftPct + sl.shooting.rightPct;
-    const preferredOffsetX = (vertShotPct - horizShotPct) * 0.5; // -0.5 to 0.5
+    const preferredOffsetX = hasShootingData ? (vertShotPct - horizShotPct) * 0.5 : 0; // -0.5 to 0.5
 
     // Strafe speed: based on win rate (losing = speed up, but NEVER exceed player speed)
     const strafeSpeedMult = Math.min(1.0, 1.15 - sl.winRate * 0.3); // 0.85 to 1.0
@@ -1639,9 +1647,9 @@ const SparSystem = {
     const playerChases = sl.whenBotRetreats.chasePct;
 
     // Shot patterns by position: which direction to avoid from each angle
-    const aboveShootsDown = sl.shotByPosition.whenAbove.downPct;   // how often they shoot down when above us
-    const belowShootsUp = sl.shotByPosition.whenBelow.upPct;       // how often they shoot up when below us
-    const levelShootsLeft = sl.shotByPosition.whenLevel.leftPct;
+    const aboveShootsDown = hasShootingData ? sl.shotByPosition.whenAbove.downPct : 0.5;
+    const belowShootsUp = hasShootingData ? sl.shotByPosition.whenBelow.upPct : 0.5;
+    const levelShootsLeft = hasShootingData ? sl.shotByPosition.whenLevel.leftPct : 0.5;
 
     // --- Combat outcome modifiers ---
     const ps = sl.playerShots;
@@ -1683,10 +1691,10 @@ const SparSystem = {
     };
 
     // Should bot avoid trades? If player wins trades consistently
-    const avoidTrades = cp.tradeRatio > 0.6; // player does 60%+ damage in trades
+    const avoidTrades = hasPositionData ? cp.tradeRatio > 0.6 : false;
 
     // Bottom value: does having bottom actually help?
-    const bottomMatters = cp.playerDmgWhenHasBottom > 0.5; // >50% of player damage from bottom
+    const bottomMatters = hasPositionData ? cp.playerDmgWhenHasBottom > 0.5 : true; // assume bottom matters until proven otherwise
 
     return {
       openingGoalY,
@@ -1724,13 +1732,12 @@ const SparSystem = {
       // Position value — how important is bottom?
       bottomWinCorrelation: sl.positionValue ? sl.positionValue.bottomWinCorrelation : 0.6,
       topPenalty: sl.positionValue ? sl.positionValue.topPenalty : 0.3,
-      // Gun side + hitbox awareness (v4)
-      playerGunSide: sl.gunSide ? sl.gunSide.playerPreference : 'left',
-      playerLeftPct: sl.gunSide ? sl.gunSide.leftPct : 1.0,
-      // How much better horizontal shots are vs vertical (>1 = horiz is better)
-      horizShotAdvantage: sl.hitboxAwareness ?
-        (sl.hitboxAwareness.botHorizHitRate || 0.1) / Math.max(0.01, sl.hitboxAwareness.botVertHitRate || 0.05) : 2.0,
-      peekEffective: sl.hitboxAwareness ? sl.hitboxAwareness.peekSuccessRate > 0.3 : true,
+      // Gun side + hitbox awareness (v4) — need 5+ matches for reliable data
+      playerGunSide: hasShootingData && sl.gunSide ? sl.gunSide.playerPreference : 'left',
+      playerLeftPct: hasShootingData && sl.gunSide ? sl.gunSide.leftPct : 0.5,
+      horizShotAdvantage: hasShootingData && sl.hitboxAwareness ?
+        (sl.hitboxAwareness.botHorizHitRate || 0.1) / Math.max(0.01, sl.hitboxAwareness.botVertHitRate || 0.05) : 1.0,
+      peekEffective: hasShootingData && sl.hitboxAwareness ? sl.hitboxAwareness.peekSuccessRate > 0.3 : true,
     };
   },
 
@@ -1742,8 +1749,8 @@ const SparSystem = {
     // Available routes — bottom is meta, so bottom routes are default
     const routes = ['bottomCenter', 'bottomLeft', 'bottomRight', 'topHold', 'midFlank', 'mirrorPlayer'];
 
-    // Not enough data — rush bottom
-    if (!sl || sl.matchCount < 1) {
+    // Not enough data — rush bottom (need 3+ matches before using learned routes)
+    if (!sl || sl.matchCount < 3) {
       const starters = ['bottomCenter', 'bottomLeft', 'bottomRight'];
       return starters[Math.floor(Math.random() * starters.length)];
     }
@@ -1897,7 +1904,7 @@ const SparSystem = {
     if (wasHit && !isPlayerBullet) {
       // Bot bullet hit the player — find the shooter bot
       for (const m of SparState._sparBots) {
-        if (m.entity === shooter || m.id === (bullet._sparOwnerId || null)) {
+        if (m.entity === shooter || m.id === (bullet.ownerId || null)) {
           m.ai._lastHitFrame = SparState.matchTimer;
           m.ai._matchDmgDealt += bullet.damage || 20;
           break;

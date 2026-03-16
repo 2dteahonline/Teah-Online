@@ -257,69 +257,36 @@ const SaveLoad = {
         spars = sparProgress.totals.wins;
       }
       // Spar learning profile (v9+)
-      // Deep merge: saved data fills in, but code defaults remain for any missing fields
       if (data.sparLearning && typeof sparLearning !== 'undefined') {
         const saved = data.sparLearning;
-        const _deepMerge = (target, source) => {
-          for (const key of Object.keys(source)) {
-            if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])
-                && target[key] !== null && typeof target[key] === 'object' && !Array.isArray(target[key])) {
-              _deepMerge(target[key], source[key]);
-            } else {
-              target[key] = source[key];
+        // v4→v5 migration: wipe corrupted data (direction bugs, timestamp bugs)
+        if (!saved.version || saved.version < 5) {
+          // All v1-v4 data was collected with corrupted telemetry — full wipe
+          if (typeof createDefaultSparLearning === 'function') {
+            const fresh = createDefaultSparLearning();
+            Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
+            Object.assign(sparLearning, fresh);
+          }
+        } else {
+          // v5+ saved data is clean — deep merge
+          const _deepMerge = (target, source) => {
+            for (const key of Object.keys(source)) {
+              if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])
+                  && target[key] !== null && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+                _deepMerge(target[key], source[key]);
+              } else {
+                target[key] = source[key];
+              }
             }
+          };
+          _deepMerge(sparLearning, saved);
+          // Rename jeffProfile → player1v1 if old key exists
+          if (sparLearning.jeffProfile && !sparLearning.player1v1) {
+            sparLearning.player1v1 = sparLearning.jeffProfile;
           }
-        };
-        _deepMerge(sparLearning, saved);
-
-        // v2→v3 migration
-        if (!saved.version || saved.version < 3) {
-          // Fix midStrafe → midFlank naming
-          if (sparLearning.opening && sparLearning.opening.routeCounts) {
-            const rc = sparLearning.opening.routeCounts;
-            if (rc.midStrafe !== undefined && rc.midFlank === undefined) {
-              rc.midFlank = rc.midStrafe;
-              delete rc.midStrafe;
-            }
-          }
-          if (sparLearning.opening && sparLearning.opening.route === 'midStrafe') {
-            sparLearning.opening.route = 'midFlank';
-          }
-          // Initialize new v3 fields from existing data where possible
-          if (!sparLearning.general1v1) {
-            sparLearning.general1v1 = {
-              styleResults: {
-                pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
-                control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
-                bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
-              },
-            };
-          }
-          if (!sparLearning.jeffProfile) {
-            sparLearning.jeffProfile = {
-              styleResults: {
-                pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
-                control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
-                bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
-              },
-            };
-          }
-          // Initialize circumstance fields
-          if (!sparLearning.afterHit) sparLearning.afterHit = { pressesAdvantage: 0.5, retreatsOnDamage: 0.5 };
-          if (!sparLearning.lowHpExpanded) sparLearning.lowHpExpanded = { fleesPct: 0.5, killAttemptPct: 0.5 };
-          if (!sparLearning.chasePatterns) sparLearning.chasePatterns = { giveUpFrames: 90 };
-          if (!sparLearning.nearWall) sparLearning.nearWall = { cornerStuckPct: 0.3 };
+          delete sparLearning.jeffProfile;
         }
-        sparLearning.version = 4;
-        // v4: gun side + elliptical hitbox awareness
-        if (!sparLearning.gunSide) sparLearning.gunSide = { playerPreference: 'left', leftPct: 1.0 };
-        if (!sparLearning.hitboxAwareness) sparLearning.hitboxAwareness = { playerHorizHitRate: 0.1, playerVertHitRate: 0.05, botHorizHitRate: 0.1, botVertHitRate: 0.05, peekSuccessRate: 0.5 };
-        // Ensure new fields exist with defaults if missing from old saves
-        if (!sparLearning.opening.routeCounts) sparLearning.opening.routeCounts = { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midFlank: 0 };
-        if (!sparLearning.botOpenings) sparLearning.botOpenings = { lastRoute: 'bottomCenter', routeResults: { bottomLeft: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, bottomRight: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, topHold: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, midFlank: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0 } } };
-        if (!sparLearning.playerShots) sparLearning.playerShots = { hitRate: 0.5, hitRateClose: 0.5, hitRateMid: 0.5, hitRateFar: 0.5, hitWhenBotStrafing: 0.5, hitWhenBotStill: 0.5, hitWhenBotApproach: 0.5, hitWhenBotRetreat: 0.5 };
-        if (!sparLearning.botShots) sparLearning.botShots = { hitRate: 0.5, dodgedRate: 0.5, hitWhenPlayerStrafing: 0.5, hitWhenPlayerStill: 0.5, hitWhenPlayerApproach: 0.5 };
-        if (!sparLearning.combatPatterns) sparLearning.combatPatterns = { playerHitDist: 250, botHitDist: 250, playerDmgWhenHasBottom: 0.5, botDmgWhenHasBottom: 0.5, tradeRatio: 0.5 };
+        sparLearning.version = 5;
         if (sparLearning.history && sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
       }
 
