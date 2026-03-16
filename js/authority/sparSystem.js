@@ -678,6 +678,11 @@ const SparSystem = {
     const isDeepEnemy = team === 'teamA' ? (bot.x > midX + 100) : (bot.x < midX - 100);
     const enemyOnOurSide = team === 'teamA' ? (tgt.x < midX) : (tgt.x > midX);
 
+    // --- Vertical positioning (bottom = higher Y = dominant position) ---
+    const hasBottom = bot.y > tgt.y + 30;       // bot is below enemy (good)
+    const enemyHasBottom = tgt.y > bot.y + 30;  // enemy is below bot (bad)
+    const bottomTarget = arenaH * 0.75;          // ideal bottom zone
+
     let behavior;
     if (isDeepEnemy) {
       behavior = 'retreat';              // overextended — pull back
@@ -687,16 +692,20 @@ const SparSystem = {
       behavior = 'push';                 // enemy reloading — punish window
     } else if (hpPct < 0.25 && !enemyReloading) {
       behavior = 'kite';                 // low HP — play evasive but still fight
+    } else if (enemyHasBottom && dist > 120) {
+      behavior = 'take_bottom';          // enemy has bottom — reclaim it
+    } else if (hasBottom && hasAmmo) {
+      behavior = 'hold_bottom';          // we have bottom — play from advantage
     } else if (enemyOnOurSide && dist < 350) {
       behavior = 'push';                 // invader on our side
     } else if (hasAmmo && dist < 450 && dist > 120) {
       behavior = 'strafe';               // good range — strafe combat
     } else if (dist > 450) {
-      behavior = 'hold_lane';            // too far — hold position
+      behavior = 'take_bottom';          // far away — use time to take position
     } else if (dist < 120 && hasAmmo) {
       behavior = 'strafe';               // close range — strafe fight
     } else {
-      behavior = 'hold_lane';
+      behavior = 'take_bottom';          // default — always seek bottom
     }
 
     // --- Movement ---
@@ -754,6 +763,51 @@ const SparSystem = {
       if (dist < 200 && dist > 1) {
         moveX -= (dx / dist) * speed * 0.4;
         moveY -= (dy / dist) * speed * 0.4;
+      }
+
+    } else if (behavior === 'take_bottom') {
+      // Priority: get below the enemy — move toward bottom zone
+      const targetY = Math.max(bottomTarget, tgt.y + 80); // below enemy or at bottom zone
+      const clampedTargetY = Math.min(targetY, arenaH - TILE * 2);
+      const bdy = clampedTargetY - bot.y;
+      // Move down aggressively
+      if (Math.abs(bdy) > 20) {
+        moveY = Math.sign(bdy) * speed * 0.7;
+      }
+      // Strafe horizontally while repositioning to dodge shots
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 35 + Math.floor(Math.random() * 40);
+      }
+      moveX = ai.strafeDir * speed * 0.5;
+      // Stay near center horizontally
+      const centerDrift = midX - bot.x;
+      if (Math.abs(centerDrift) > arenaW * 0.25) {
+        moveX += Math.sign(centerDrift) * speed * 0.3;
+      }
+
+    } else if (behavior === 'hold_bottom') {
+      // We have bottom — strafe horizontally, maintain vertical advantage
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 40 + Math.floor(Math.random() * 50);
+      }
+      // Juke while holding
+      if (ai.jukeTimer <= 0 && Math.random() < 0.01) {
+        ai.strafeDir *= -1;
+        ai.jukeTimer = 15;
+      }
+      moveX = ai.strafeDir * speed * 0.65;
+      // Maintain bottom position — drift down if enemy is pushing us up
+      if (bot.y < tgt.y + 20) {
+        moveY = speed * 0.5; // push back down
+      }
+      // Stay near center horizontally for better angles
+      const centerDrift = midX - bot.x;
+      if (Math.abs(centerDrift) > arenaW * 0.2) {
+        moveX += Math.sign(centerDrift) * speed * 0.25;
       }
 
     } else if (behavior === 'hold_lane') {
