@@ -65,6 +65,13 @@ const SparSystem = {
   },
 
   joinRoom(roomId) {
+    // CT-X must be equipped to enter spar
+    if (!playerEquip.gun || playerEquip.gun.id !== 'ct_x') {
+      if (typeof hitEffects !== 'undefined') {
+        hitEffects.push({ x: player.x, y: player.y - 40, life: 50, maxLife: 50, type: "heal", dmg: "Equip CT-X to spar!" });
+      }
+      return;
+    }
     const room = SPAR_ROOMS.find(r => r.id === roomId);
     if (!room) return;
     SparState.activeRoom = room;
@@ -338,24 +345,33 @@ const SparSystem = {
     }
     SparState.teamB.length = 0;
 
-    // Restore player + ally HP
+    // Restore player + ally HP and reset to spawn positions
+    const room = SparState.activeRoom;
+    const arenaLevel = LEVELS[room.arenaLevel];
+    const spawns = arenaLevel.spawns;
+
     player.hp = SPAR_CONFIG.HP_BASELINE;
+    player.x = spawns.p1.tx * TILE + TILE / 2;
+    player.y = spawns.p1.ty * TILE + TILE / 2;
+    player.vx = 0; player.vy = 0;
     playerDead = false;
+    deathTimer = 0;
+    deathGameOver = false;
     gun.ammo = gun.magSize;
     gun.reloading = false;
     for (const p of SparState.teamA) {
       p.alive = true;
       p.entity.hp = SPAR_CONFIG.HP_BASELINE;
       if (p.isBot) {
+        // Reset bot to its original spawn
+        p.entity.x = p.entity._spawnTX * TILE + TILE / 2;
+        p.entity.y = p.entity._spawnTY * TILE + TILE / 2;
+        p.entity.vx = 0; p.entity.vy = 0;
         p.entity._gunAmmo = p.entity._gunMagSize;
         p.entity._gunReloading = false;
+        p.entity._fireCooldown = 0;
       }
     }
-
-    // Spawn fresh enemy bots with new random allocations
-    const room = SparState.activeRoom;
-    const arenaLevel = LEVELS[room.arenaLevel];
-    const spawns = arenaLevel.spawns;
 
     for (let i = 0; i < room.teamSize; i++) {
       const spawnKey = i === 0 ? 'teamB' : ('teamB' + (i + 1));
@@ -457,6 +473,10 @@ const SparSystem = {
     playerEquip.pants = snap.playerEquipPants;
     playerEquip.chest = snap.playerEquipChest;
     playerEquip.helmet = snap.playerEquipHelmet;
+    // Clear any lingering death/respawn state
+    deathTimer = 0;
+    if (typeof respawnTimer !== 'undefined') respawnTimer = 0;
+    deathGameOver = false;
     SparState._savedSnapshot = null;
   },
 
