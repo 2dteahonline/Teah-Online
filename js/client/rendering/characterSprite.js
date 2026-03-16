@@ -381,7 +381,7 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   // Hitbox colors: green = you/allies (party members), dark blue = enemies/mobs
   const isAlly = isPlayer || mobType === 'partyBot';
   const showHitbox = isPlayer ? gameSettings.showOwnHitbox : gameSettings.showOtherHitbox;
-  if (showHitbox && mobType !== 'deliNPC') {
+  if (showHitbox && mobType !== 'deliNPC' && !(typeof Scene !== 'undefined' && Scene.inSpar)) {
     const hitboxR = (!isPlayer && mobType && mobType !== 'partyBot' && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || DEFAULT_HITBOX_RADIUS;
     if (isAlly) {
       ctx.strokeStyle = "rgba(0,220,68,0.7)";

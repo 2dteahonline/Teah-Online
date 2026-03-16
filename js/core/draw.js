@@ -2834,12 +2834,15 @@ function drawSparHUD() {
     const bTotal = SparState.teamB.length;
 
     ctx.font = 'bold 13px monospace';
-    ctx.fillStyle = '#4488ff';
+    ctx.fillStyle = '#55cc88';
     ctx.textAlign = 'right';
-    ctx.fillText('BLUE ' + aAlive + '/' + aTotal, BASE_W / 2 - 10, barY + 34);
+    ctx.fillText(aAlive + '/' + aTotal, BASE_W / 2 - 10, barY + 34);
+    ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'center';
+    ctx.fillText('vs', BASE_W / 2, barY + 34);
     ctx.fillStyle = '#ff4444';
     ctx.textAlign = 'left';
-    ctx.fillText(bAlive + '/' + bTotal + ' RED', BASE_W / 2 + 10, barY + 34);
+    ctx.fillText(bAlive + '/' + bTotal, BASE_W / 2 + 10, barY + 34);
     ctx.textAlign = 'left';
 
     // Streak counter

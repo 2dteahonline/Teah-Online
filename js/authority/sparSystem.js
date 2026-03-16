@@ -877,7 +877,8 @@ const SparSystem = {
     }
 
     // --- Shooting ---
-    const canShoot = behavior !== 'retreat' || (hpPct > 0.15 && dist < 200);
+    // Always allow shooting — retreating bots still fight back, just prioritize evasion
+    const canShoot = true;
     if (canShoot && !member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0 && dist < 450) {
       if (this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
         this._sparBotShoot(member, tgt);
