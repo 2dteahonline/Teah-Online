@@ -99,11 +99,12 @@ let sparProgress = {
 // Persistent learning profile — bot tracks player tendencies across matches
 // Uses exponential moving averages (alpha=0.5) so recent matches matter more
 // Checkpoint: last saved from 148 matches (2026-03-16)
-// Physics changed at ~match 119: speed 8.33→6.66, bullet 10→9, hitbox 17→19→23
+// Physics changed at ~match 119: speed 8.33→6.66, bullet 10→9, hitbox 17→19
+// v4: Elliptical hitboxes (RX=38,RY=13), gun side awareness, body blocking, BULLET_R=7→23
 // If localStorage has newer data, it overrides these defaults on load.
 // To update: paste sparData() output to Claude, who updates these defaults.
 let sparLearning = {
-  version: 3,
+  version: 4,
   matchCount: 148,
   opening: {
     rushBottom: 0.977,
@@ -218,6 +219,18 @@ let sparLearning = {
       control: { wins: 8, losses: 20, total: 28, avgDmgDelta: 8 },
       bait: { wins: 0, losses: 1, total: 1, avgDmgDelta: -100 },
     },
+  },
+  // v4: Gun side + elliptical hitbox awareness
+  gunSide: {
+    playerPreference: 'left',
+    leftPct: 1.0,
+  },
+  hitboxAwareness: {
+    playerHorizHitRate: 0.1,   // player hit rate with horizontal shots
+    playerVertHitRate: 0.05,   // player hit rate with vertical shots
+    botHorizHitRate: 0.1,      // bot hit rate with horizontal shots
+    botVertHitRate: 0.05,      // bot hit rate with vertical shots
+    peekSuccessRate: 0.5,      // hit rate when bot peeks from bottom with horizontal shot
   },
 };
 

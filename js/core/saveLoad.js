@@ -310,7 +310,10 @@ const SaveLoad = {
           if (!sparLearning.chasePatterns) sparLearning.chasePatterns = { giveUpFrames: 90 };
           if (!sparLearning.nearWall) sparLearning.nearWall = { cornerStuckPct: 0.3 };
         }
-        sparLearning.version = 3;
+        sparLearning.version = 4;
+        // v4: gun side + elliptical hitbox awareness
+        if (!sparLearning.gunSide) sparLearning.gunSide = { playerPreference: 'left', leftPct: 1.0 };
+        if (!sparLearning.hitboxAwareness) sparLearning.hitboxAwareness = { playerHorizHitRate: 0.1, playerVertHitRate: 0.05, botHorizHitRate: 0.1, botVertHitRate: 0.05, peekSuccessRate: 0.5 };
         // Ensure new fields exist with defaults if missing from old saves
         if (!sparLearning.opening.routeCounts) sparLearning.opening.routeCounts = { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midFlank: 0 };
         if (!sparLearning.botOpenings) sparLearning.botOpenings = { lastRoute: 'bottomCenter', routeResults: { bottomLeft: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, bottomRight: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, topHold: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, midFlank: { wins: 0, losses: 0, gotBottom: 0, total: 0 }, mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0 } } };

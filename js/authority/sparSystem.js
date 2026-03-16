@@ -773,43 +773,46 @@ const SparSystem = {
 
     if (g.ammo <= 0) {
       g.reloading = true;
-      // Same reload formula as player: getReloadTime() = Math.round(40 + firerate * 0.5)
+      // Same reload formula as player: getReloadTime() = Math.round(20 + firerate * 0.25)
       // Bot's firerate stat is derived from rof points, use same calculation
-      g.reloadTimer = g.reloadSpeed || Math.round(40 + (g._sparRof || 50) * 0.5);
+      g.reloadTimer = g.reloadSpeed || Math.round(20 + (g._sparRof || 50) * 0.25);
     }
   },
 
   // Dodge incoming enemy bullets — optimized for 4-cardinal bullet paths
   _getIncomingBulletDodge(bot, team) {
     let dodgeX = 0, dodgeY = 0;
-    const botCY = bot.y - 10; // body center
-    const dodgeLane = 50; // dodge if bullet will pass within this range (wider = earlier dodge)
+    const botHitY = bot.y + 5; // hitbox at feet level (entity.y + 5)
+    // Elliptical hit zones: horizontal 45px wide, vertical 20px tall
+    // Detect earlier on the wider axis, tighter on the narrow axis
+    const dodgeLaneX = 55; // vertical bullets: detect 55px (hit zone is 45px wide)
+    const dodgeLaneY = 30; // horizontal bullets: detect 30px (hit zone is only 20px tall)
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
-      const dbx = bot.x - b.x, dby = botCY - b.y;
+      const dbx = bot.x - b.x, dby = botHitY - b.y;
       const bDist = Math.sqrt(dbx * dbx + dby * dby);
-      if (bDist > 400 || bDist < 8) continue; // detect at 400px (was 250)
+      if (bDist > 400 || bDist < 8) continue;
 
-      // Urgency: closer = stronger dodge. Minimum 0.5 so distant bullets still trigger movement
+      // Urgency: closer = stronger dodge
       const urgency = Math.max(0.5, 1.2 - bDist / 350);
 
       if (Math.abs(b.vy) > Math.abs(b.vx)) {
-        // Vertical bullet — dodge LEFT or RIGHT
-        const isApproaching = (b.vy > 0 && b.y < botCY) || (b.vy < 0 && b.y > botCY);
+        // Vertical bullet — dodge LEFT or RIGHT (wide 45px hit zone = must dodge harder)
+        const isApproaching = (b.vy > 0 && b.y < botHitY) || (b.vy < 0 && b.y > botHitY);
         if (!isApproaching) continue;
-        if (Math.abs(dbx) > dodgeLane) continue;
+        if (Math.abs(dbx) > dodgeLaneX) continue;
         const dodgeDir = dbx >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0.3, 1 - Math.abs(dbx) / dodgeLane);
-        dodgeX += dodgeDir * urgency * laneProximity * 3;
+        const laneProximity = Math.max(0.3, 1 - Math.abs(dbx) / dodgeLaneX);
+        dodgeX += dodgeDir * urgency * laneProximity * 3.5; // stronger: wide hit zone
       } else {
-        // Horizontal bullet — dodge UP or DOWN
+        // Horizontal bullet — dodge UP or DOWN (narrow 20px hit zone = easier to escape)
         const isApproaching = (b.vx > 0 && b.x < bot.x) || (b.vx < 0 && b.x > bot.x);
         if (!isApproaching) continue;
-        if (Math.abs(dby) > dodgeLane) continue;
+        if (Math.abs(dby) > dodgeLaneY) continue;
         const dodgeDir = dby >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0.3, 1 - Math.abs(dby) / dodgeLane);
-        dodgeY += dodgeDir * urgency * laneProximity * 3;
+        const laneProximity = Math.max(0.3, 1 - Math.abs(dby) / dodgeLaneY);
+        dodgeY += dodgeDir * urgency * laneProximity * 2.5; // weaker: narrow hit zone
       }
     }
 
@@ -897,6 +900,14 @@ const SparSystem = {
         botInTop_frames: 0,
         botInTop_dmgDealt: 0,
         botInTop_dmgTaken: 0,
+        // Gun side tracking (v4)
+        playerGunSideSamples: { left: 0, right: 0 },
+        // Directional hit rates — elliptical hitbox awareness (v4)
+        hitsByBulletDir: { horiz: { hits: 0, total: 0 }, vert: { hits: 0, total: 0 } },
+        botHitsByBulletDir: { horiz: { hits: 0, total: 0 }, vert: { hits: 0, total: 0 } },
+        // Peek tracking: bot has bottom + shooting horizontal (v4)
+        peekAttempts: 0,
+        peekHits: 0,
       };
     }
 
@@ -915,6 +926,11 @@ const SparSystem = {
     c.posYSum += normY;
     c.posXSum += normX;
     c.samples++;
+
+    // Track player gun side (v4)
+    const pGunSide = typeof getCurrentGunSide === 'function' ? getCurrentGunSide() : 'left';
+    if (pGunSide === 'left') c.playerGunSideSamples.left++;
+    else c.playerGunSideSamples.right++;
 
     // Opening movement (first 180 frames = 3 seconds)
     if (SparState.matchTimer <= 180) {
@@ -1485,6 +1501,25 @@ const SparSystem = {
         won ? 0 : topPct);
     }
 
+    // --- Gun side preference (v4) ---
+    if (!sl.gunSide) sl.gunSide = { playerPreference: 'left', leftPct: 1.0 };
+    const gsTotal = c.playerGunSideSamples.left + c.playerGunSideSamples.right;
+    if (gsTotal > 3) {
+      const leftPct = c.playerGunSideSamples.left / gsTotal;
+      sl.gunSide.leftPct = ema(sl.gunSide.leftPct, leftPct);
+      sl.gunSide.playerPreference = sl.gunSide.leftPct > 0.5 ? 'left' : 'right';
+    }
+
+    // --- Hitbox awareness: directional hit rates (v4) ---
+    if (!sl.hitboxAwareness) sl.hitboxAwareness = { playerHorizHitRate: 0.1, playerVertHitRate: 0.05, botHorizHitRate: 0.1, botVertHitRate: 0.05, peekSuccessRate: 0.5 };
+    const phDir = c.hitsByBulletDir;
+    if (phDir.horiz.total > 2) sl.hitboxAwareness.playerHorizHitRate = ema(sl.hitboxAwareness.playerHorizHitRate, phDir.horiz.hits / phDir.horiz.total);
+    if (phDir.vert.total > 2) sl.hitboxAwareness.playerVertHitRate = ema(sl.hitboxAwareness.playerVertHitRate, phDir.vert.hits / phDir.vert.total);
+    const bhDir = c.botHitsByBulletDir;
+    if (bhDir.horiz.total > 2) sl.hitboxAwareness.botHorizHitRate = ema(sl.hitboxAwareness.botHorizHitRate, bhDir.horiz.hits / bhDir.horiz.total);
+    if (bhDir.vert.total > 2) sl.hitboxAwareness.botVertHitRate = ema(sl.hitboxAwareness.botVertHitRate, bhDir.vert.hits / bhDir.vert.total);
+    if (c.peekAttempts > 2) sl.hitboxAwareness.peekSuccessRate = ema(sl.hitboxAwareness.peekSuccessRate, c.peekHits / c.peekAttempts);
+
     // --- Win rate ---
     sl.winRate = ema(sl.winRate, won ? 1 : 0);
 
@@ -1668,6 +1703,13 @@ const SparSystem = {
       // Position value — how important is bottom?
       bottomWinCorrelation: sl.positionValue ? sl.positionValue.bottomWinCorrelation : 0.6,
       topPenalty: sl.positionValue ? sl.positionValue.topPenalty : 0.3,
+      // Gun side + hitbox awareness (v4)
+      playerGunSide: sl.gunSide ? sl.gunSide.playerPreference : 'left',
+      playerLeftPct: sl.gunSide ? sl.gunSide.leftPct : 1.0,
+      // How much better horizontal shots are vs vertical (>1 = horiz is better)
+      horizShotAdvantage: sl.hitboxAwareness ?
+        (sl.hitboxAwareness.botHorizHitRate || 0.1) / Math.max(0.01, sl.hitboxAwareness.botVertHitRate || 0.05) : 2.0,
+      peekEffective: sl.hitboxAwareness ? sl.hitboxAwareness.peekSuccessRate > 0.3 : true,
     };
   },
 
@@ -1800,7 +1842,8 @@ const SparSystem = {
     // Who has bottom?
     const shooterHasBottom = shooter.y > target.y + 30;
 
-    const record = { dist, tMovement, dir: bullet._sparDir || 0, relY: shooter.y - target.y };
+    const bulletDir = Math.abs(bullet.vx) > Math.abs(bullet.vy) ? 'horiz' : 'vert';
+    const record = { dist, tMovement, dir: bullet._sparDir || 0, relY: shooter.y - target.y, bulletDir };
 
     if (isPlayerBullet) {
       if (wasHit) {
@@ -1809,12 +1852,23 @@ const SparSystem = {
       } else {
         c.playerMisses.push(record);
       }
+      // Directional hit tracking (v4 — elliptical hitbox awareness)
+      c.hitsByBulletDir[bulletDir].total++;
+      if (wasHit) c.hitsByBulletDir[bulletDir].hits++;
     } else {
       if (wasHit) {
         c.botHits.push(record);
         c.botDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: shooterHasBottom });
       } else {
         c.botMisses.push(record);
+      }
+      // Bot directional hit tracking (v4)
+      c.botHitsByBulletDir[bulletDir].total++;
+      if (wasHit) c.botHitsByBulletDir[bulletDir].hits++;
+      // Peek tracking: bot had bottom + shot horizontal
+      if (shooterHasBottom && bulletDir === 'horiz') {
+        c.peekAttempts++;
+        if (wasHit) c.peekHits++;
       }
     }
 
@@ -1897,6 +1951,10 @@ const SparSystem = {
     const tgt = target.entity;
     const dx = tgt.x - bot.x, dy = tgt.y - bot.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // --- Enemy gun side awareness ---
+    // Player's gun side from getCurrentGunSide(), bot entities have _gunSide directly
+    const enemyGunSide = tgt._gunSide || (typeof getCurrentGunSide === 'function' ? getCurrentGunSide() : 'left');
 
     // --- Detect enemy state ---
     const enemyMember = target.member;
@@ -2046,6 +2104,12 @@ const SparSystem = {
         }
       } else {
         moveX = ai.strafeDir * speed * 0.65;
+      }
+
+      // Elliptical peek advantage: maintain vertical gap (20px hit zone = hard to hit us)
+      // Don't close vertically — keep the peek distance, strafe horizontally instead
+      if (Math.abs(dy) > 40) {
+        moveY *= 0.4; // strongly reduce vertical drift to preserve peek gap
       }
 
       // Don't camp bottom corner — stay mobile. Push toward enemy only if too far.
@@ -2429,6 +2493,35 @@ const SparSystem = {
         moveY += (Math.random() < 0.5 ? 1 : -1) * speed * 0.15 * horizShootPct;
       }
 
+      // ELLIPTICAL HITBOX AWARENESS: hit zone is 45px wide, only 20px tall
+      // Vertical offset is 2.25x more evasive than horizontal offset
+      if (tgt.dir === 2 || tgt.dir === 3) {
+        // Enemy shooting horizontally — maximize VERTICAL offset (exploit narrow 20px zone)
+        const vertOffset = bot.y - tgt.y;
+        if (Math.abs(vertOffset) < 30) {
+          // Too close to horizontal shot axis — push perpendicular urgently
+          moveY += (vertOffset >= 0 ? 1 : -1) * speed * 0.25;
+        }
+        // Gun side muzzle offset: bullet spawns ±22px from body center
+        // Left gun shooting right = muzzle high (-22), left gun shooting left = muzzle low (+22)
+        // Right gun shooting right = muzzle low (+22), right gun shooting left = muzzle high (-22)
+        const enemyIsRight = enemyGunSide === 'right';
+        const shootingRight = tgt.dir === 3;
+        const muzzleHigh = (enemyIsRight && !shootingRight) || (!enemyIsRight && shootingRight);
+        // If muzzle is high (bullet spawns above center), be BELOW. If low, be ABOVE.
+        const preferBelow = muzzleHigh;
+        const currentBelow = bot.y > tgt.y;
+        if (preferBelow !== currentBelow) {
+          moveY += (preferBelow ? 1 : -1) * speed * 0.12;
+        }
+      } else if (tgt.dir === 0 || tgt.dir === 1) {
+        // Enemy shooting vertically — maximize horizontal offset (45px zone, harder)
+        const horizOffset = bot.x - tgt.x;
+        if (Math.abs(horizOffset) < 50) {
+          moveX += (horizOffset >= 0 ? 1 : -1) * speed * 0.15;
+        }
+      }
+
       // TRADE AVOIDANCE: if player wins trades, don't stand and trade
       if (pm.avoidTrades && dist < 200) {
         moveX += ai.strafeDir * speed * 0.2;
@@ -2575,7 +2668,10 @@ const SparSystem = {
         // Wait for better alignment: target about to cross our shot axis
         const alignX = Math.abs(tgt.x - bot.x);
         const alignY = Math.abs(tgt.y - bot.y);
-        const aligned = Math.min(alignX, alignY) < 40; // close to axis
+        let aligned = Math.min(alignX, alignY) < 40; // close to axis
+        // Elliptical peek: if we have vertical offset, horizontal alignment is valuable
+        // Horizontal shots through 45px hit zone are much more likely to land
+        if ((hasBottom || enemyHasBottom) && alignX < 50) aligned = true;
         if (aligned) {
           this._sparBotShoot(member, tgt);
         } else if (member.ai.shootCD <= -10) {
