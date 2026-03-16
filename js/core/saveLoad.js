@@ -250,10 +250,18 @@ const SaveLoad = {
       }
       // Spar learning profile (v9+)
       if (data.sparLearning && typeof sparLearning !== 'undefined') {
-        if (data.sparLearning.version === sparLearning.version) {
-          Object.assign(sparLearning, data.sparLearning);
+        const saved = data.sparLearning;
+        if (saved.version === sparLearning.version) {
+          // Same version — load everything
+          Object.assign(sparLearning, saved);
+        } else if (saved.version === 1 && sparLearning.version === 2) {
+          // Migrate v1→v2: keep existing absolute data, new situational fields use defaults
+          for (const key of ['matchCount', 'opening', 'position', 'shooting', 'dodging', 'aggression', 'reload', 'winRate', 'history']) {
+            if (saved[key] !== undefined) sparLearning[key] = saved[key];
+          }
+          sparLearning.version = 2; // mark as migrated
         }
-        if (sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
+        if (sparLearning.history && sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
       }
 
       // Farming state (v5+)

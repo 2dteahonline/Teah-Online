@@ -68,7 +68,7 @@ let sparProgress = {
 // Persistent learning profile — bot tracks player tendencies across matches
 // Uses exponential moving averages (alpha=0.3) so recent matches matter more
 let sparLearning = {
-  version: 1,
+  version: 2,
   matchCount: 0,
   opening: {
     rushBottom: 0.5,    // does player rush bottom? 0=never, 1=always
@@ -95,6 +95,33 @@ let sparLearning = {
   },
   reload: {
     avgNormalizedY: 0.5, // where player reloads (0=top, 1=bottom)
+  },
+  // --- Situational / relational data (v2) ---
+  // "What does the player do based on the game state?"
+  whenHasBottom: {
+    holdsPct: 0.5,       // 0=leaves/pushes, 1=holds position
+    shotFreq: 0.5,       // 0=rarely shoots, 1=spam walls
+    pushPct: 0.5,        // 0=stays back, 1=pushes toward bot
+  },
+  whenBotHasBottom: {
+    retakePct: 0.5,      // 0=gives up / plays top, 1=always tries to retake
+    flankPct: 0.5,       // 0=comes straight down, 1=flanks to the side
+    retreatPct: 0.5,     // 0=stays engaged, 1=retreats / creates distance
+  },
+  whenBotApproaches: {
+    holdGroundPct: 0.5,  // 0=runs away, 1=stands and fights
+    counterPushPct: 0.5, // 0=never counter-pushes, 1=always counter-charges
+    sidestepPct: 0.5,    // 0=moves vertically, 1=dodges sideways
+  },
+  whenBotRetreats: {
+    chasePct: 0.5,       // 0=lets bot go, 1=chases aggressively
+    shotFreq: 0.5,       // 0=stops shooting, 1=shoots while chasing
+  },
+  shotByPosition: {
+    // what dir player shoots from each relative position
+    whenAbove: { downPct: 0.5, sidePct: 0.5 },   // above bot: shoot down vs strafe-shoot
+    whenBelow: { upPct: 0.5, sidePct: 0.5 },      // below bot: shoot up vs strafe-shoot
+    whenLevel: { leftPct: 0.5, rightPct: 0.5 },   // same height: shoot left vs right
   },
   winRate: 0.5,
   history: [],           // last 20 match summaries

@@ -668,6 +668,30 @@ const SparSystem = {
         aggrOnReloadTotal: 0,
         lowHpAggrFrames: 0,
         lowHpTotalFrames: 0,
+        // --- Situational / relational data ---
+        // When player has bottom
+        hasBottom_frames: 0,        // total frames player had bottom
+        hasBottom_holdFrames: 0,    // frames staying roughly same Y (holding)
+        hasBottom_pushFrames: 0,    // frames moving toward bot
+        hasBottom_shots: 0,         // shots fired while having bottom
+        // When bot has bottom
+        botBottom_frames: 0,
+        botBottom_retakeFrames: 0,  // frames moving downward (trying to retake)
+        botBottom_flankFrames: 0,   // frames moving horizontally more than vertically
+        botBottom_retreatFrames: 0, // frames moving away from bot
+        // When bot is approaching (closing distance)
+        botApproach_frames: 0,
+        botApproach_holdFrames: 0,  // player stays still or moves toward bot
+        botApproach_counterFrames: 0, // player moves TOWARD approaching bot
+        botApproach_sidestepFrames: 0, // player moves sideways
+        // When bot is retreating
+        botRetreat_frames: 0,
+        botRetreat_chaseFrames: 0,  // player moves toward retreating bot
+        botRetreat_shots: 0,        // shots while bot retreats
+        // Shot direction by relative position
+        shotWhenAbove: { down: 0, side: 0, total: 0 }, // player above bot
+        shotWhenBelow: { up: 0, side: 0, total: 0 },   // player below bot
+        shotWhenLevel: { left: 0, right: 0, total: 0 }, // roughly same Y
       };
     }
 
@@ -765,6 +789,109 @@ const SparSystem = {
         if (dot > 1) c.lowHpAggrFrames++;
       }
     }
+
+    // ---- Situational / relational data collection ----
+    // Find nearest bot enemy for relational tracking
+    let nearBot = null;
+    let nearBotDist = Infinity;
+    for (const p of SparState.teamB) {
+      if (!p.alive) continue;
+      const edx = p.entity.x - player.x, edy = p.entity.y - player.y;
+      const ed = Math.sqrt(edx * edx + edy * edy);
+      if (ed < nearBotDist) { nearBotDist = ed; nearBot = p; }
+    }
+    if (!nearBot) return;
+    const botE = nearBot.entity;
+    const pVx = player.vx || 0, pVy = player.vy || 0;
+    const botVx = botE.vx || 0, botVy = botE.vy || 0;
+    const relDx = botE.x - player.x, relDy = botE.y - player.y;
+    const playerHasBottom = player.y > botE.y + 30;
+    const botHasBottom = botE.y > player.y + 30;
+
+    // --- When player has bottom ---
+    if (playerHasBottom) {
+      c.hasBottom_frames++;
+      // Holding: player not moving much vertically (staying in position)
+      if (Math.abs(pVy) < 2) c.hasBottom_holdFrames++;
+      // Pushing: player moving toward bot (upward since player is below)
+      if (pVy < -2 && nearBotDist < 400) c.hasBottom_pushFrames++;
+    }
+
+    // --- When bot has bottom ---
+    if (botHasBottom) {
+      c.botBottom_frames++;
+      // Retaking: player moving downward (toward bottom)
+      if (pVy > 2) c.botBottom_retakeFrames++;
+      // Flanking: player moving more horizontally than vertically
+      if (Math.abs(pVx) > Math.abs(pVy) + 1 && Math.abs(pVx) > 2) c.botBottom_flankFrames++;
+      // Retreating: player moving away from bot (increasing distance)
+      if (nearBotDist > 1) {
+        const dot = (pVx * relDx + pVy * relDy) / nearBotDist;
+        if (dot < -2) c.botBottom_retreatFrames++;
+      }
+    }
+
+    // --- When bot is approaching player (closing distance) ---
+    if (nearBotDist > 1 && nearBotDist < 400) {
+      const botClosing = (botVx * -relDx + botVy * -relDy) / nearBotDist;
+      if (botClosing > 2) {
+        // Bot is closing distance on player
+        c.botApproach_frames++;
+        // Player holds ground (doesn't move away much)
+        const playerFlee = (pVx * relDx + pVy * relDy) / nearBotDist;
+        if (playerFlee > 1) {
+          c.botApproach_counterFrames++; // moving TOWARD the approaching bot
+        } else if (playerFlee > -1) {
+          c.botApproach_holdFrames++; // standing ground
+        }
+        // Sidestep: perpendicular movement
+        const perp = Math.abs(pVx * relDy - pVy * relDx) / nearBotDist;
+        if (perp > 3) c.botApproach_sidestepFrames++;
+      }
+
+      // --- When bot is retreating (moving away from player) ---
+      const botRetreating = (botVx * relDx + botVy * relDy) / nearBotDist;
+      if (botRetreating > 2) {
+        c.botRetreat_frames++;
+        // Player chasing: moving toward retreating bot
+        const playerChase = (pVx * -relDx + pVy * -relDy) / nearBotDist;
+        if (playerChase > 1) c.botRetreat_chaseFrames++;
+      }
+    }
+
+    // --- Shot direction by relative position ---
+    // Track what direction the player was LAST shooting (use player.dir)
+    // Only count if player is actively shooting (check fire cooldown proxy: recent shot)
+    const recentShot = c.shotDirs.up + c.shotDirs.down + c.shotDirs.left + c.shotDirs.right;
+    const prevTotal = c._prevShotTotal || 0;
+    if (recentShot > prevTotal) {
+      // A shot was fired this sample window
+      const vertDiff = Math.abs(player.y - botE.y);
+      if (player.y < botE.y - 40) {
+        // Player is ABOVE bot
+        c.shotWhenAbove.total++;
+        if (player.dir === 3) c.shotWhenAbove.down++; // shooting down toward bot
+        else c.shotWhenAbove.side++;
+      } else if (player.y > botE.y + 40) {
+        // Player is BELOW bot
+        c.shotWhenBelow.total++;
+        if (player.dir === 1) c.shotWhenBelow.up++; // shooting up toward bot
+        else c.shotWhenBelow.side++;
+      } else {
+        // Roughly same Y level
+        c.shotWhenLevel.total++;
+        if (player.dir === 2) c.shotWhenLevel.left++;
+        else if (player.dir === 0) c.shotWhenLevel.right++;
+      }
+    }
+    c._prevShotTotal = recentShot;
+
+    // --- Track shots while having bottom / bot retreating ---
+    if (playerHasBottom && recentShot > prevTotal) c.hasBottom_shots++;
+    if (nearBotDist > 1 && nearBotDist < 400) {
+      const botRetreating2 = (botVx * relDx + botVy * relDy) / nearBotDist;
+      if (botRetreating2 > 2 && recentShot > prevTotal) c.botRetreat_shots++;
+    }
   },
 
   // ---- LEARNING: update persistent profile at match end ----
@@ -845,6 +972,52 @@ const SparSystem = {
       sl.reload.avgNormalizedY = ema(sl.reload.avgNormalizedY, avgReloadY);
     }
 
+    // --- Situational / relational learning (v2) ---
+
+    // When player has bottom: holding, pushing, shot frequency
+    if (c.hasBottom_frames > 5) {
+      sl.whenHasBottom.holdsPct = ema(sl.whenHasBottom.holdsPct, c.hasBottom_holdFrames / c.hasBottom_frames);
+      sl.whenHasBottom.pushPct = ema(sl.whenHasBottom.pushPct, c.hasBottom_pushFrames / c.hasBottom_frames);
+      // Shot frequency: shots per frame while having bottom (normalized 0-1, cap at ~0.2 shots/frame)
+      const shotFreq = Math.min(1, (c.hasBottom_shots / c.hasBottom_frames) / 0.2);
+      sl.whenHasBottom.shotFreq = ema(sl.whenHasBottom.shotFreq, shotFreq);
+    }
+
+    // When bot has bottom: retake, flank, retreat
+    if (c.botBottom_frames > 5) {
+      sl.whenBotHasBottom.retakePct = ema(sl.whenBotHasBottom.retakePct, c.botBottom_retakeFrames / c.botBottom_frames);
+      sl.whenBotHasBottom.flankPct = ema(sl.whenBotHasBottom.flankPct, c.botBottom_flankFrames / c.botBottom_frames);
+      sl.whenBotHasBottom.retreatPct = ema(sl.whenBotHasBottom.retreatPct, c.botBottom_retreatFrames / c.botBottom_frames);
+    }
+
+    // When bot approaches: hold ground, counter-push, sidestep
+    if (c.botApproach_frames > 5) {
+      sl.whenBotApproaches.holdGroundPct = ema(sl.whenBotApproaches.holdGroundPct, c.botApproach_holdFrames / c.botApproach_frames);
+      sl.whenBotApproaches.counterPushPct = ema(sl.whenBotApproaches.counterPushPct, c.botApproach_counterFrames / c.botApproach_frames);
+      sl.whenBotApproaches.sidestepPct = ema(sl.whenBotApproaches.sidestepPct, c.botApproach_sidestepFrames / c.botApproach_frames);
+    }
+
+    // When bot retreats: chase, shot frequency
+    if (c.botRetreat_frames > 5) {
+      sl.whenBotRetreats.chasePct = ema(sl.whenBotRetreats.chasePct, c.botRetreat_chaseFrames / c.botRetreat_frames);
+      const chaseShots = Math.min(1, (c.botRetreat_shots / c.botRetreat_frames) / 0.2);
+      sl.whenBotRetreats.shotFreq = ema(sl.whenBotRetreats.shotFreq, chaseShots);
+    }
+
+    // Shot direction by relative position
+    if (c.shotWhenAbove.total > 3) {
+      sl.shotByPosition.whenAbove.downPct = ema(sl.shotByPosition.whenAbove.downPct, c.shotWhenAbove.down / c.shotWhenAbove.total);
+      sl.shotByPosition.whenAbove.sidePct = ema(sl.shotByPosition.whenAbove.sidePct, c.shotWhenAbove.side / c.shotWhenAbove.total);
+    }
+    if (c.shotWhenBelow.total > 3) {
+      sl.shotByPosition.whenBelow.upPct = ema(sl.shotByPosition.whenBelow.upPct, c.shotWhenBelow.up / c.shotWhenBelow.total);
+      sl.shotByPosition.whenBelow.sidePct = ema(sl.shotByPosition.whenBelow.sidePct, c.shotWhenBelow.side / c.shotWhenBelow.total);
+    }
+    if (c.shotWhenLevel.total > 3) {
+      sl.shotByPosition.whenLevel.leftPct = ema(sl.shotByPosition.whenLevel.leftPct, c.shotWhenLevel.left / c.shotWhenLevel.total);
+      sl.shotByPosition.whenLevel.rightPct = ema(sl.shotByPosition.whenLevel.rightPct, c.shotWhenLevel.right / c.shotWhenLevel.total);
+    }
+
     // --- Win rate ---
     sl.winRate = ema(sl.winRate, won ? 1 : 0);
 
@@ -869,33 +1042,53 @@ const SparSystem = {
     const sl = sparLearning;
 
     // Opening goal Y: if player rushes bottom, bot should also rush bottom harder
-    // If player doesn't rush, bot can take bottom unopposed (less urgency)
     const openingGoalY = sl.opening.rushBottom > 0.6 ? 0.82 : 0.72;
 
-    // Counter player's opening strafe: if they go left, bot strafes right (and vice versa)
-    // Returns 1 for right bias, -1 for left bias
+    // Counter player's opening strafe
     const openingStrafeDir = sl.opening.strafeLeft > 0.6 ? 1 : (sl.opening.strafeLeft < 0.4 ? -1 : 0);
 
     // Aggression multiplier: counter-play
-    // If player is aggressive, bot plays more defensive (lower mult)
-    // If player is passive, bot can push more
     const aggressionMult = 1.3 - sl.aggression.overall * 0.6; // 0.7 to 1.3
 
-    // Dodge prediction: bias toward where player tends to dodge
-    // If player dodges left a lot, aim/position to their left
+    // Dodge prediction bias
     const dodgePredictBiasX = (sl.dodging.leftBias - 0.5) * 2; // -1 to 1
 
-    // Preferred X offset: stay off the player's most-used shot axis
-    // If player shoots up/down a lot (high upPct+downPct), stay offset horizontally
-    // If player shoots left/right a lot, stay offset vertically
+    // Preferred X offset: stay off player's shot axis
     const vertShotPct = sl.shooting.upPct + sl.shooting.downPct;
     const horizShotPct = sl.shooting.leftPct + sl.shooting.rightPct;
-    // Positive = prefer horizontal offset, negative = prefer vertical offset
     const preferredOffsetX = (vertShotPct - horizShotPct) * 0.5; // -0.5 to 0.5
 
-    // Strafe speed multiplier: based on win rate
-    // If bot is winning, slow down slightly (don't stomp). If losing, speed up.
+    // Strafe speed: based on win rate (losing = speed up)
     const strafeSpeedMult = 1.15 - sl.winRate * 0.3; // 0.85 to 1.15
+
+    // --- Situational modifiers (v2) ---
+
+    // When we have bottom and player tries to retake:
+    // If player retakes aggressively, bot should be ready to defend / wall bullets
+    // If player flanks, bot should watch horizontal approaches
+    // If player retreats, bot can push
+    const playerRetakes = sl.whenBotHasBottom.retakePct;    // 0-1
+    const playerFlanks = sl.whenBotHasBottom.flankPct;      // 0-1
+    const playerRetreats = sl.whenBotHasBottom.retreatPct;  // 0-1
+
+    // When player has bottom: if they hold and spam, we need to be more evasive approaching
+    // If they push, we can bait them out of position
+    const playerHoldsBottom = sl.whenHasBottom.holdsPct;      // 0-1
+    const playerWallsFromBottom = sl.whenHasBottom.shotFreq;  // 0-1
+    const playerPushesFromBottom = sl.whenHasBottom.pushPct;  // 0-1
+
+    // When bot approaches: does player stand or run?
+    const playerHoldsOnApproach = sl.whenBotApproaches.holdGroundPct;
+    const playerCounterPushes = sl.whenBotApproaches.counterPushPct;
+    const playerSidesteps = sl.whenBotApproaches.sidestepPct;
+
+    // When bot retreats: does player chase?
+    const playerChases = sl.whenBotRetreats.chasePct;
+
+    // Shot patterns by position: which direction to avoid from each angle
+    const aboveShootsDown = sl.shotByPosition.whenAbove.downPct;   // how often they shoot down when above us
+    const belowShootsUp = sl.shotByPosition.whenBelow.upPct;       // how often they shoot up when below us
+    const levelShootsLeft = sl.shotByPosition.whenLevel.leftPct;
 
     return {
       openingGoalY,
@@ -904,6 +1097,20 @@ const SparSystem = {
       dodgePredictBiasX,
       preferredOffsetX,
       strafeSpeedMult,
+      // v2 situational
+      playerRetakes,          // how hard player tries to retake bottom
+      playerFlanks,           // does player flank when bot has bottom
+      playerRetreats,         // does player give up when bot has bottom
+      playerHoldsBottom,      // does player hold position when they have bottom
+      playerWallsFromBottom,  // does player spam bullets from bottom
+      playerPushesFromBottom, // does player push from bottom advantage
+      playerHoldsOnApproach,  // does player stand ground when bot approaches
+      playerCounterPushes,    // does player counter-charge
+      playerSidesteps,        // does player dodge sideways on approach
+      playerChases,           // does player chase retreating bot
+      aboveShootsDown,        // % player shoots down when above bot
+      belowShootsUp,          // % player shoots up when below bot
+      levelShootsLeft,        // % player shoots left when level with bot
     };
   },
 
@@ -1014,86 +1221,157 @@ const SparSystem = {
 
     } else if (enemyReloading) {
       // === PUNISH: enemy reloading — close in aggressively ===
-      // Learning: if player punishes hard on reload, bot is more cautious
       const punishAggr = pm ? pm.aggressionMult : 1.0;
       if (dist > 80 && dist > 1) {
         moveX = (dx / dist) * speed * 0.55 * punishAggr;
         moveY = (dy / dist) * speed * 0.55 * punishAggr;
       }
       moveX += ai.strafeDir * speed * 0.35;
+      // Learning v2: if player holds ground on approach, commit harder
+      // If player sidesteps, match their lateral direction
+      if (pm) {
+        if (pm.playerHoldsOnApproach > 0.5) {
+          // They stand and fight — push straight in, they won't dodge
+          if (dist > 1) {
+            moveX = (dx / dist) * speed * 0.65 * punishAggr;
+            moveY = (dy / dist) * speed * 0.65 * punishAggr;
+          }
+        }
+        if (pm.playerSidesteps > 0.5) {
+          // They'll dodge sideways — lead toward their dodge direction
+          moveX += pm.dodgePredictBiasX * speed * 0.2;
+        }
+      }
 
     } else if (hasBottom) {
       // === WE HAVE BOTTOM — play from advantage ===
-      // Strafe horizontally, wall bullets upward, react to enemy movement
       moveX = ai.strafeDir * speed * 0.65;
-      // Learning: offset to stay off player's dominant shot axis
-      if (pm && pm.preferredOffsetX > 0.1) {
-        // Player shoots vertically a lot — drift horizontally away from player's X
-        moveX += Math.sign(bot.x - tgt.x) * speed * pm.preferredOffsetX * 0.3;
+
+      // Learning v2: adapt based on what player does when we have bottom
+      if (pm) {
+        // Stay off player's dominant shot axis
+        if (pm.preferredOffsetX > 0.1) {
+          moveX += Math.sign(bot.x - tgt.x) * speed * pm.preferredOffsetX * 0.3;
+        }
+        // If player retakes hard, wall bullets and be ready for them coming down
+        if (pm.playerRetakes > 0.5 && enemyMovingDown) {
+          // They're coming — strafe wider to dodge while walling
+          moveX = ai.strafeDir * speed * 0.8;
+          if (dist < 200) moveY -= speed * 0.15; // slight back to keep spacing
+        }
+        // If player flanks, track their horizontal movement more
+        if (pm.playerFlanks > 0.4) {
+          moveX += Math.sign(dx) * speed * 0.35;
+        }
+        // If player retreats / gives up bottom, PUSH and pressure
+        if (pm.playerRetreats > 0.4 && !enemyMovingDown && dist > 200) {
+          moveY += (dy / dist) * speed * 0.35; // advance on passive player
+        }
+        // If player shoots down from above, stay offset from their X (dodge lane)
+        if (pm.aboveShootsDown > 0.6) {
+          moveX += Math.sign(bot.x - tgt.x) * speed * 0.2;
+        }
       }
 
       if (enemyMovingDown) {
-        // Enemy trying to contest — cut them off, move toward them
+        // Enemy trying to contest — cut them off
         moveX += Math.sign(dx) * speed * 0.3;
-        if (dist < 200) moveY -= speed * 0.2; // slight retreat to maintain gap
+        if (dist < 200) moveY -= speed * 0.2;
       } else if (enemyMovingLeft || enemyMovingRight) {
-        // Enemy strafing — mirror their horizontal movement to stay lined up
         moveX += Math.sign(dx) * speed * 0.25;
       } else if (dist > 350) {
-        // Enemy far away and passive — advance to pressure
         moveX += (dx / dist) * speed * 0.2;
         moveY += (dy / dist) * speed * 0.2;
       }
-      // Don't hug bottom wall — stay mobile in the bottom zone
       if (bot.y > arenaH - TILE * 2) moveY -= speed * 0.2;
 
     } else if (enemyHasBottom) {
-      // === ENEMY HAS BOTTOM — adapt, don't just force it ===
+      // === ENEMY HAS BOTTOM — adapt based on what they do when they have it ===
+
+      // Learning v2: counter their bottom-holding style
+      let approachAggr = 0.35;  // default downward drift
+      let strafeAggr = 0.6;     // default strafe speed
+
+      if (pm) {
+        // If player walls bullets from bottom (high shot freq), be more evasive
+        if (pm.playerWallsFromBottom > 0.5) {
+          strafeAggr = 0.85; // wider strafes to dodge bullet walls
+          approachAggr = 0.2; // approach slower to not run into walls
+        }
+        // If player holds position (passive bottom), we can be bolder approaching
+        if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.3) {
+          approachAggr = 0.5; // they won't push, so commit more
+        }
+        // If player pushes from bottom, we can bait them out and steal position
+        if (pm.playerPushesFromBottom > 0.4) {
+          // Fake retreating to draw them out, then cut behind
+          if (dist < 250) {
+            moveY = -speed * 0.3; // back off to bait
+            moveX = ai.strafeDir * speed * 0.7;
+            // Skip normal approach logic below
+            approachAggr = -0.1;
+          }
+        }
+        // Stay off their dominant shot axis
+        if (pm.preferredOffsetX > 0.1) {
+          moveX += Math.sign(bot.x - tgt.x) * speed * pm.preferredOffsetX * 0.25;
+        }
+        // If they shoot up a lot from below, stay offset
+        if (pm.belowShootsUp > 0.6) {
+          moveX += Math.sign(bot.x - tgt.x) * speed * 0.2;
+        }
+      }
+
       if (dist > 300) {
-        // Far away — try to flank to the side, approach at an angle
-        moveX = ai.strafeDir * speed * 0.6;
-        // Drift down gradually, don't rush straight into their bullets
-        moveY = speed * 0.35;
+        moveX = ai.strafeDir * speed * strafeAggr;
+        moveY = speed * approachAggr;
       } else if (dist > 150) {
-        // Mid range — strafe and look for an opening
-        moveX = ai.strafeDir * speed * 0.7;
-        // If enemy is shooting upward (we're above), strafe more, commit less
+        moveX = ai.strafeDir * speed * (strafeAggr + 0.1);
         if (tgt.dir === 1) {
-          // Enemy facing up — they're walling us. Strafe wide.
-          moveX = ai.strafeDir * speed * 0.85;
+          // Enemy facing up — they're walling. Strafe wider.
+          moveX = ai.strafeDir * speed * Math.min(0.95, strafeAggr + 0.25);
         } else {
-          // Enemy not aiming at us — take ground
-          moveY = speed * 0.4;
+          moveY = speed * Math.min(0.5, approachAggr + 0.15);
         }
       } else {
-        // Close range — commit to the fight, try to get below
         moveX = ai.strafeDir * speed * 0.5;
         moveY = speed * 0.5;
-      }
-      // Learning: offset away from player's dominant shot axis
-      if (pm && pm.preferredOffsetX > 0.1) {
-        moveX += Math.sign(bot.x - tgt.x) * speed * pm.preferredOffsetX * 0.25;
       }
 
     } else {
       // === NEUTRAL — neither has clear bottom, play mid ===
-      // Strafe and try to gain vertical advantage gradually
       moveX = ai.strafeDir * speed * 0.65;
       if (bot.y < tgt.y) {
         moveY = speed * 0.3; // drift down when above enemy
       }
-      // React to enemy movement
       if (enemyMovingDown) {
-        moveY = speed * 0.5; // race them
+        moveY = speed * 0.5; // race them for bottom
       }
       // Maintain fighting distance
       if (dist < 100 && dist > 1) {
         moveX -= (dx / dist) * speed * 0.2;
         moveY -= (dy / dist) * speed * 0.2;
       }
-      // Learning: bias approach angle based on dodge prediction
-      if (pm && Math.abs(pm.dodgePredictBiasX) > 0.2) {
-        moveX += pm.dodgePredictBiasX * speed * 0.15;
+      // Learning v2: use approach/retreat knowledge in neutral
+      if (pm) {
+        // Dodge prediction bias
+        if (Math.abs(pm.dodgePredictBiasX) > 0.2) {
+          moveX += pm.dodgePredictBiasX * speed * 0.15;
+        }
+        // If player sidesteps a lot when we approach, fake approach then cut perpendicular
+        if (pm.playerSidesteps > 0.5 && dist < 250) {
+          moveX += ai.strafeDir * speed * 0.15; // more lateral movement to match
+        }
+        // If player counter-pushes, don't approach head-on — angle in
+        if (pm.playerCounterPushes > 0.4 && dist < 300) {
+          moveX += ai.strafeDir * speed * 0.2; // offset approach angle
+        }
+        // If player chases when we retreat, we can use retreats as baits
+        if (pm.playerChases > 0.6 && hpPct > 0.5 && dist < 200) {
+          // They'll chase us — this is useful info for baiting (handled in bait section)
+          // Increase bait frequency by reducing cooldown check threshold
+          if (ai.baitCooldown > 30) ai.baitCooldown = 30;
+        }
       }
     }
 
