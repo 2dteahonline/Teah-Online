@@ -942,6 +942,7 @@ function draw() {
       const _pm = e.member;
       const _pe = _pm.entity;
       _charEquipOverride = _pm.equip;
+      _charEquipOverride._entity = _pe;
       _charColorOverride = { skin: _pe.skin, hair: _pe.hair, shirt: _pe.shirt, pants: _pe.pants };
       // Override weapon/gun state so bots don't mirror player's visuals
       const _savedSlot = activeSlot;
@@ -994,6 +995,7 @@ function draw() {
       // Tag equip with team so characterSprite can color hitbox circles
       _charEquipOverride = _sm.equip;
       _charEquipOverride._sparTeam = _sm._sparTeam;
+      _charEquipOverride._entity = _se;
       _charColorOverride = { skin: _se.skin, hair: _se.hair, shirt: _se.shirt, pants: _se.pants };
       const _savedSlot2 = activeSlot;
       const _savedRecoil2 = gun.recoilTimer;

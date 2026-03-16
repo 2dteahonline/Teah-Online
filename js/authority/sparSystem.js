@@ -231,6 +231,9 @@ const SparSystem = {
     const alloc = is1v1Enemy ? { freeze: 50, rof: 50, spread: 0 } : this._randomBotAlloc();
     const botGun = this._buildCtxGun(alloc.freeze, alloc.rof, alloc.spread);
 
+    // Match player's gun side so bot shoots from same position
+    const botGunSide = (typeof getCurrentGunSide === 'function') ? getCurrentGunSide() : 'left';
+
     // Entity — same structure as party bot entities
     const entity = {
       x: spawnTX * TILE + TILE / 2,
@@ -248,6 +251,7 @@ const SparSystem = {
       _isBot: true,
       _isSparBot: true,
       _sparTeam: team,
+      _gunSide: botGunSide,
       _contactCD: 0,
       // Cosmetics
       skin: team === 'teamA' ? '#4488cc' : '#cc4444',
@@ -666,17 +670,27 @@ const SparSystem = {
     e.dir = aimDir;
 
     // Muzzle position — same body-relative formula as player getMuzzlePos()
-    // Bots always use left gun side (default)
+    // Uses entity's gun side to match player parity
     const bx = e.x - 20;
     const by = e.y - 68;
     const bodyL = bx + 2;
     const bodyR = bx + 36;
     const armY = by + 35;
+    const isRight = e._gunSide === 'right';
     let mx, my;
-    if (aimDir === 0) { mx = bodyR + 1; my = armY + 6 + 49; }
-    else if (aimDir === 1) { mx = bodyL - 1; my = by + 28 - 49; }
-    else if (aimDir === 2) { mx = bodyL + 2 - 49; my = armY + 22; }
-    else { mx = bodyR + 9 + 49; my = armY - 22; }
+    if (aimDir === 0) { // down
+      mx = isRight ? (bodyL - 1) : (bodyR + 1);
+      my = armY + 6 + 49;
+    } else if (aimDir === 1) { // up
+      mx = isRight ? (bodyR + 1) : (bodyL - 1);
+      my = by + 28 - 49;
+    } else if (aimDir === 2) { // left
+      mx = bodyL + 2 - 49;
+      my = isRight ? (armY - 22) : (armY + 22);
+    } else { // right
+      mx = bodyR + 9 + 49;
+      my = isRight ? (armY + 22) : (armY - 22);
+    }
 
     // Apply spread (same as player shoot() — random angular offset)
     const spreadDeg = g.spread || 0;
