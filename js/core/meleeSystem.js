@@ -1421,22 +1421,27 @@ function drawBullets() {
     const coreColor = isMob ? "#ffaa80" : (bc ? bc.core : "#fff");
     const glowColor = isMob ? "rgba(255,80,40,0.25)" : (bc ? bc.glow : "rgba(255,230,80,0.2)");
 
-    // Bullet body
+    // Bullet body — scales with BULLET_R
+    const br = GAME_CONFIG.BULLET_R;
+    const bLong = Math.round(br * 1.4);  // half-length along travel dir
+    const bShort = Math.round(br * 0.7); // half-width perpendicular
+    const cLong = Math.round(br * 1.0);  // core half-length
+    const cShort = Math.round(br * 0.4); // core half-width
     ctx.fillStyle = mainColor;
     if (isH) {
-      ctx.fillRect(b.x - 10, b.y - 5, 20, 10);
+      ctx.fillRect(b.x - bLong, b.y - bShort, bLong * 2, bShort * 2);
       ctx.fillStyle = coreColor;
-      ctx.fillRect(b.x - 7, b.y - 3, 14, 6);
+      ctx.fillRect(b.x - cLong, b.y - cShort, cLong * 2, cShort * 2);
     } else {
-      ctx.fillRect(b.x - 5, b.y - 10, 10, 20);
+      ctx.fillRect(b.x - bShort, b.y - bLong, bShort * 2, bLong * 2);
       ctx.fillStyle = coreColor;
-      ctx.fillRect(b.x - 3, b.y - 7, 6, 14);
+      ctx.fillRect(b.x - cShort, b.y - cLong, cShort * 2, cLong * 2);
     }
 
     // Glow
     ctx.fillStyle = glowColor;
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 12, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, Math.round(br * 1.7), 0, Math.PI * 2);
     ctx.fill();
   }
 

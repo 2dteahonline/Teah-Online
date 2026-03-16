@@ -32,5 +32,5 @@ const GAME_CONFIG = {
   DEFAULT_HITBOX_RADIUS: 32,    // green circle radius (matches BULLET_R + ENTITY_R = 32)
 
   // --- Version ---
-  GAME_UPDATE: 239,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 240,             // increment each deploy — shown on lobby version sign
 };
