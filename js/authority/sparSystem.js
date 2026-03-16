@@ -675,35 +675,25 @@ const SparSystem = {
     // --- Decide behavior ---
     const hpPct = bot.hp / bot.maxHp;
     const hasAmmo = !member.gun.reloading && member.gun.ammo > 0;
-    const isDeepEnemy = team === 'teamA' ? (bot.x > midX + 100) : (bot.x < midX - 100);
-    const enemyOnOurSide = team === 'teamA' ? (tgt.x < midX) : (tgt.x > midX);
 
     // --- Vertical positioning (bottom = higher Y = dominant position) ---
     const hasBottom = bot.y > tgt.y + 30;       // bot is below enemy (good)
     const enemyHasBottom = tgt.y > bot.y + 30;  // enemy is below bot (bad)
     const bottomTarget = arenaH * 0.75;          // ideal bottom zone
+    // Predict: is enemy moving toward bottom?
+    const enemyMovingDown = tgt.vy > 1;
 
     let behavior;
-    if (isDeepEnemy) {
-      behavior = 'retreat';              // overextended — pull back
-    } else if (member.gun.reloading) {
-      behavior = 'kite';                 // reloading — dodge and stay mobile
-    } else if (enemyReloading && dist < 400) {
-      behavior = 'push';                 // enemy reloading — punish window
-    } else if (hpPct < 0.25 && !enemyReloading) {
-      behavior = 'kite';                 // low HP — play evasive but still fight
-    } else if (enemyHasBottom && dist > 120) {
-      behavior = 'take_bottom';          // enemy has bottom — reclaim it
+    if (member.gun.reloading) {
+      behavior = 'kite';                 // reloading — dodge while moving down
     } else if (hasBottom && hasAmmo) {
-      behavior = 'hold_bottom';          // we have bottom — play from advantage
-    } else if (enemyOnOurSide && dist < 350) {
-      behavior = 'push';                 // invader on our side
-    } else if (hasAmmo && dist < 450 && dist > 120) {
-      behavior = 'strafe';               // good range — strafe combat
-    } else if (dist > 450) {
-      behavior = 'take_bottom';          // far away — use time to take position
-    } else if (dist < 120 && hasAmmo) {
-      behavior = 'strafe';               // close range — strafe fight
+      behavior = 'hold_bottom';          // we have bottom — wall up with bullets
+    } else if (enemyHasBottom || enemyMovingDown) {
+      behavior = 'take_bottom';          // enemy has/wants bottom — contest it NOW
+    } else if (enemyReloading && dist < 400) {
+      behavior = 'push';                 // enemy reloading — punish hard
+    } else if (hpPct < 0.25) {
+      behavior = 'kite';                 // low HP — evasive but still shooting
     } else {
       behavior = 'take_bottom';          // default — always seek bottom
     }
@@ -731,152 +721,90 @@ const SparSystem = {
       ai.laneShiftTimer = 120 + Math.floor(Math.random() * 120);
     }
 
-    if (behavior === 'retreat') {
-      // Retreat toward home side but ALWAYS strafe — never stand still
-      const rdx = homeSideX - bot.x, rdy = ai.laneY - bot.y;
-      const rDist = Math.sqrt(rdx * rdx + rdy * rdy);
-      if (rDist > 20) {
-        moveX = (rdx / rDist) * speed * 0.6;
-        moveY = (rdy / rDist) * speed * 0.6;
+    if (behavior === 'kite') {
+      // Reloading or low HP — dodge hard but STILL drift toward bottom
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 20 + Math.floor(Math.random() * 30);
       }
-      // Add perpendicular movement even while retreating
+      moveX = ai.strafeDir * speed * 0.8;
+      // Back away from enemy if close
+      if (dist < 250 && dist > 1) {
+        moveX -= (dx / dist) * speed * 0.35;
+        moveY -= (dy / dist) * speed * 0.35;
+      }
+      // Still drift toward bottom even while kiting
+      if (bot.y < bottomTarget) {
+        moveY += speed * 0.3;
+      }
+
+    } else if (behavior === 'take_bottom') {
+      // RUSH bottom — full speed down, strafe to dodge incoming fire
+      const targetY = Math.max(bottomTarget, tgt.y + 60);
+      const clampedTargetY = Math.min(targetY, arenaH - TILE * 1.5);
+      const bdy = clampedTargetY - bot.y;
+      // Full speed toward bottom
+      if (Math.abs(bdy) > 15) {
+        moveY = Math.sign(bdy) * speed * 0.85;
+      }
+      // Strafe to dodge while rushing down
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 25 + Math.floor(Math.random() * 35);
+      }
+      moveX = ai.strafeDir * speed * 0.45;
+      // If enemy is also going bottom and we're racing, go even harder
+      if (enemyMovingDown && !hasBottom) {
+        moveY = Math.sign(bdy) * speed * 0.95; // full commit
+      }
+
+    } else if (behavior === 'hold_bottom') {
+      // We have bottom — strafe horizontally and WALL with bullets
+      // Stay below enemy, spam shots upward to zone them out
+      ai.strafeTimer--;
+      if (ai.strafeTimer <= 0) {
+        ai.strafeDir *= -1;
+        ai.strafeTimer = 30 + Math.floor(Math.random() * 40);
+      }
+      // Juke to be unpredictable while holding
+      if (ai.jukeTimer <= 0 && Math.random() < 0.015) {
+        ai.strafeDir *= -1;
+        ai.jukeTimer = 12;
+      }
+      moveX = ai.strafeDir * speed * 0.7;
+      // Maintain bottom — always push back down if displaced
+      if (bot.y < tgt.y + 20) {
+        moveY = speed * 0.6;
+      } else if (bot.y < bottomTarget) {
+        moveY = speed * 0.3; // keep drifting to ideal zone
+      }
+      // Mirror enemy's horizontal position to stay lined up for shots
+      const xDiffToEnemy = tgt.x - bot.x;
+      if (Math.abs(xDiffToEnemy) > 60) {
+        moveX += Math.sign(xDiffToEnemy) * speed * 0.2;
+      }
+
+    } else if (behavior === 'push') {
+      // Enemy reloading — rush them aggressively while drifting bottom
+      if (dist > 1) {
+        moveX = (dx / dist) * speed * 0.6;
+        moveY = (dy / dist) * speed * 0.6;
+      }
+      // Still drift toward bottom during push
+      if (bot.y < bottomTarget) {
+        moveY += speed * 0.25;
+      }
+      // Strafe while pushing
       ai.strafeTimer--;
       if (ai.strafeTimer <= 0) {
         ai.strafeDir *= -1;
         ai.strafeTimer = 30 + Math.floor(Math.random() * 40);
       }
       const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
-      moveX += perpX * speed * ai.strafeDir * 0.5;
-      moveY += perpY * speed * ai.strafeDir * 0.5;
-
-    } else if (behavior === 'kite') {
-      // Reloading — juke and dodge, stay mobile, maintain distance
-      ai.strafeTimer--;
-      if (ai.strafeTimer <= 0) {
-        ai.strafeDir *= -1;
-        ai.strafeTimer = 25 + Math.floor(Math.random() * 35);
-      }
-      const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
-      moveX = perpX * speed * ai.strafeDir * 0.8;
-      moveY = perpY * speed * ai.strafeDir * 0.8;
-      // Back away if too close
-      if (dist < 200 && dist > 1) {
-        moveX -= (dx / dist) * speed * 0.4;
-        moveY -= (dy / dist) * speed * 0.4;
-      }
-
-    } else if (behavior === 'take_bottom') {
-      // Priority: get below the enemy — move toward bottom zone
-      const targetY = Math.max(bottomTarget, tgt.y + 80); // below enemy or at bottom zone
-      const clampedTargetY = Math.min(targetY, arenaH - TILE * 2);
-      const bdy = clampedTargetY - bot.y;
-      // Move down aggressively
-      if (Math.abs(bdy) > 20) {
-        moveY = Math.sign(bdy) * speed * 0.7;
-      }
-      // Strafe horizontally while repositioning to dodge shots
-      ai.strafeTimer--;
-      if (ai.strafeTimer <= 0) {
-        ai.strafeDir *= -1;
-        ai.strafeTimer = 35 + Math.floor(Math.random() * 40);
-      }
-      moveX = ai.strafeDir * speed * 0.5;
-      // Stay near center horizontally
-      const centerDrift = midX - bot.x;
-      if (Math.abs(centerDrift) > arenaW * 0.25) {
-        moveX += Math.sign(centerDrift) * speed * 0.3;
-      }
-
-    } else if (behavior === 'hold_bottom') {
-      // We have bottom — strafe horizontally, maintain vertical advantage
-      ai.strafeTimer--;
-      if (ai.strafeTimer <= 0) {
-        ai.strafeDir *= -1;
-        ai.strafeTimer = 40 + Math.floor(Math.random() * 50);
-      }
-      // Juke while holding
-      if (ai.jukeTimer <= 0 && Math.random() < 0.01) {
-        ai.strafeDir *= -1;
-        ai.jukeTimer = 15;
-      }
-      moveX = ai.strafeDir * speed * 0.65;
-      // Maintain bottom position — drift down if enemy is pushing us up
-      if (bot.y < tgt.y + 20) {
-        moveY = speed * 0.5; // push back down
-      }
-      // Stay near center horizontally for better angles
-      const centerDrift = midX - bot.x;
-      if (Math.abs(centerDrift) > arenaW * 0.2) {
-        moveX += Math.sign(centerDrift) * speed * 0.25;
-      }
-
-    } else if (behavior === 'hold_lane') {
-      const holdX = team === 'teamA' ? midX - arenaW * 0.05 : midX + arenaW * 0.05;
-      const hdx = holdX - bot.x, hdy = ai.laneY - bot.y;
-      const hDist = Math.sqrt(hdx * hdx + hdy * hdy);
-      if (hDist > 30) {
-        moveX = (hdx / hDist) * speed * 0.45;
-        moveY = (hdy / hDist) * speed * 0.45;
-      }
-      // Gentle sway at hold position
-      ai.strafeTimer--;
-      if (ai.strafeTimer <= 0) {
-        ai.strafeDir *= -1;
-        ai.strafeTimer = 50 + Math.floor(Math.random() * 60);
-      }
-      const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
       moveX += perpX * speed * ai.strafeDir * 0.3;
       moveY += perpY * speed * ai.strafeDir * 0.3;
-
-    } else if (behavior === 'push') {
-      const maxPushX = team === 'teamA' ? midX + arenaW * 0.15 : midX - arenaW * 0.15;
-      const pushPastMid = team === 'teamA' ? (bot.x > maxPushX) : (bot.x < maxPushX);
-      if (pushPastMid) {
-        ai.strafeTimer--;
-        if (ai.strafeTimer <= 0) {
-          ai.strafeDir *= -1;
-          ai.strafeTimer = 40 + Math.floor(Math.random() * 60);
-        }
-        const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
-        moveX = perpX * speed * ai.strafeDir * 0.6;
-        moveY = perpY * speed * ai.strafeDir * 0.6;
-      } else if (dist > 1) {
-        moveX = (dx / dist) * speed * 0.65;
-        moveY = (dy / dist) * speed * 0.65;
-      }
-
-    } else if (behavior === 'strafe') {
-      ai.strafeTimer--;
-      if (ai.strafeTimer <= 0) {
-        ai.strafeDir *= -1;
-        ai.strafeTimer = 40 + Math.floor(Math.random() * 60);
-      }
-
-      // Juke: occasional quick direction flip mid-strafe (throws off enemy aim)
-      if (ai.jukeTimer <= 0 && Math.random() < 0.008) {
-        ai.strafeDir *= -1;
-        ai.jukeTimer = 20; // brief juke, then resume normal rhythm
-      }
-
-      const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
-      moveX = perpX * speed * ai.strafeDir * 0.7;
-      moveY = perpY * speed * ai.strafeDir * 0.7;
-
-      // Range maintenance
-      const idealRange = 220 + (1 - ai.aggression) * 120;
-      if (dist > idealRange + 40 && dist > 1) {
-        moveX += (dx / dist) * speed * 0.3;
-        moveY += (dy / dist) * speed * 0.3;
-      } else if (dist < idealRange - 40 && dist > 1) {
-        moveX -= (dx / dist) * speed * 0.3;
-        moveY -= (dy / dist) * speed * 0.3;
-      }
-
-      // Drift toward assigned lane
-      const laneDrift = ai.laneY - bot.y;
-      if (Math.abs(laneDrift) > 50) {
-        moveY += Math.sign(laneDrift) * speed * 0.15;
-      }
     }
 
     // --- Bullet dodging (reactive, all behaviors) ---
@@ -895,12 +823,12 @@ const SparSystem = {
       }
     }
 
-    // Wall avoidance
-    const wallMargin = TILE * 2;
-    if (bot.x < wallMargin) moveX += speed * 0.5;
-    else if (bot.x > arenaW - wallMargin) moveX -= speed * 0.5;
-    if (bot.y < wallMargin) moveY += speed * 0.5;
-    else if (bot.y > arenaH - wallMargin) moveY -= speed * 0.5;
+    // Wall avoidance (soft — don't fight bottom-seeking)
+    const wallMargin = TILE * 1.2;
+    if (bot.x < wallMargin) moveX += speed * 0.4;
+    else if (bot.x > arenaW - wallMargin) moveX -= speed * 0.4;
+    if (bot.y < wallMargin) moveY += speed * 0.4;
+    else if (bot.y > arenaH - wallMargin) moveY -= speed * 0.2; // gentle at bottom — we WANT to be here
 
     // Normalize
     const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
@@ -931,9 +859,8 @@ const SparSystem = {
     }
 
     // --- Shooting ---
-    // Always allow shooting — retreating bots still fight back, just prioritize evasion
-    const canShoot = true;
-    if (canShoot && !member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0 && dist < 450) {
+    // Shoot whenever possible — no range cap, just LOS + cooldown + ammo
+    if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
       if (this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
         this._sparBotShoot(member, tgt);
       }
