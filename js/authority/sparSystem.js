@@ -396,6 +396,11 @@ const SparSystem = {
         // Update learning profile
         this._updateLearningProfile(won);
 
+        // Training harness hook — auto-advance to next match
+        if (typeof _sparTrainOnMatchEnd === 'function') {
+          _sparTrainOnMatchEnd(won);
+        }
+
         // Streak tracking
         if (SparState.activeRoom.streakMode) {
           const sk = sparProgress.streak[modeKey];
@@ -1652,46 +1657,50 @@ const SparSystem = {
     const ps = sl.playerShots;
     const bs = sl.botShots;
     const cp = sl.combatPatterns;
+    const hasCombatData = mc >= 5; // need real combat data before deriving preferences
 
     // Player's best range: where they're most accurate → bot should avoid that distance
-    // Pick the range where player is WORST and prefer to fight there
-    const ranges = [
-      { name: 'close', rate: ps.hitRateClose, dist: 120 },
-      { name: 'mid', rate: ps.hitRateMid, dist: 220 },
-      { name: 'far', rate: ps.hitRateFar, dist: 350 },
-    ];
-    ranges.sort((a, b) => a.rate - b.rate); // lowest accuracy first
-    const bestRange = ranges[0].name; // player's WORST range
-    const preferredDist = ranges[0].dist; // fight there
+    let bestRange = 'mid';
+    let preferredDist = 220; // neutral default
+    if (hasCombatData) {
+      const ranges = [
+        { name: 'close', rate: ps.hitRateClose, dist: 120 },
+        { name: 'mid', rate: ps.hitRateMid, dist: 220 },
+        { name: 'far', rate: ps.hitRateFar, dist: 350 },
+      ];
+      ranges.sort((a, b) => a.rate - b.rate); // lowest accuracy first
+      bestRange = ranges[0].name;
+      preferredDist = ranges[0].dist;
+    }
 
     // What bot movement is hardest for player to hit?
-    // Compare player accuracy vs strafe/still/approach/retreat
-    const botMoveEffectiveness = {
-      strafe: 1 - ps.hitWhenBotStrafing,    // higher = better for bot
-      still: 1 - ps.hitWhenBotStill,
-      approach: 1 - ps.hitWhenBotApproach,
-      retreat: 1 - ps.hitWhenBotRetreat,
-    };
-    // Best evasion: which movement makes player miss most
-    let bestEvasion = 'strafe';
-    let bestEvasionVal = botMoveEffectiveness.strafe;
-    for (const [k, v] of Object.entries(botMoveEffectiveness)) {
-      if (v > bestEvasionVal) { bestEvasion = k; bestEvasionVal = v; }
+    let botMoveEffectiveness = { strafe: 0.5, still: 0.5, approach: 0.5, retreat: 0.5 };
+    let bestEvasion = 'strafe'; // neutral default
+    if (hasCombatData) {
+      botMoveEffectiveness = {
+        strafe: 1 - ps.hitWhenBotStrafing,
+        still: 1 - ps.hitWhenBotStill,
+        approach: 1 - ps.hitWhenBotApproach,
+        retreat: 1 - ps.hitWhenBotRetreat,
+      };
+      let bestEvasionVal = botMoveEffectiveness.strafe;
+      for (const [k, v] of Object.entries(botMoveEffectiveness)) {
+        if (v > bestEvasionVal) { bestEvasion = k; bestEvasionVal = v; }
+      }
     }
 
     // What player movement is hardest for bot to hit?
-    // → player's best defensive movement (bot should predict/counter this)
     const playerWorstToHit = {
-      strafe: bs.hitWhenPlayerStrafing,   // lower = harder to hit
+      strafe: bs.hitWhenPlayerStrafing,
       still: bs.hitWhenPlayerStill,
       approach: bs.hitWhenPlayerApproach,
     };
 
     // Should bot avoid trades? If player wins trades consistently
-    const avoidTrades = hasPositionData ? cp.tradeRatio > 0.6 : false;
+    const avoidTrades = hasCombatData ? cp.tradeRatio > 0.6 : false;
 
     // Bottom value: does having bottom actually help?
-    const bottomMatters = hasPositionData ? cp.playerDmgWhenHasBottom > 0.5 : true; // assume bottom matters until proven otherwise
+    const bottomMatters = hasCombatData ? cp.playerDmgWhenHasBottom > 0.5 : true;
 
     return {
       openingGoalY,
@@ -1927,9 +1936,40 @@ const SparSystem = {
     const allies = team === 'teamA' ? SparState.teamA : SparState.teamB;
     const ai = member.ai;
 
+    // --- Training harness override: replace bot AI with scripted behavior ---
+    if (team === 'teamB' && typeof _getSparTrainingBotOverride === 'function') {
+      const trainBot = _getSparTrainingBotOverride();
+      if (trainBot) {
+        const enemies2 = SparState.teamA;
+        let tgt2 = enemies2.find(p => p.alive);
+        if (tgt2) {
+          const te = tgt2.entity;
+          const tdx = te.x - bot.x, tdy = te.y - bot.y;
+          const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
+          member._trainMoveX = 0;
+          member._trainMoveY = 0;
+          const shouldShoot = trainBot.tick(member, te, tdist, tdx, tdy, SPAR_CONFIG.BOT_SPEED, ai);
+          bot.x += member._trainMoveX;
+          bot.y += member._trainMoveY;
+          // Clamp to arena
+          const aLvl = LEVELS[SparState.activeRoom.arenaLevel];
+          bot.x = Math.max(TILE, Math.min(aLvl.widthTiles * TILE - TILE, bot.x));
+          bot.y = Math.max(TILE, Math.min(aLvl.heightTiles * TILE - TILE, bot.y));
+          // Face target
+          if (Math.abs(tdx) > Math.abs(tdy)) bot.dir = tdx > 0 ? 3 : 2;
+          else bot.dir = tdy > 0 ? 0 : 1;
+          // Shoot
+          if (shouldShoot && !member.gun.reloading && ai.shootCD <= 0 && member.gun.ammo > 0) {
+            this._sparBotShoot(member, te);
+          }
+        }
+        return; // skip normal AI
+      }
+    }
+
     // --- Cache learning profile modifiers (once per match) ---
     if (!ai._profileMods && team === 'teamB') {
-      ai._profileMods = this._getProfileModifiers(); // null if <2 matches
+      ai._profileMods = this._getProfileModifiers(); // null if <3 matches
     }
     const pm = ai._profileMods; // may be null
 

@@ -259,16 +259,16 @@ const SaveLoad = {
       // Spar learning profile (v9+)
       if (data.sparLearning && typeof sparLearning !== 'undefined') {
         const saved = data.sparLearning;
-        // v4→v5 migration: wipe corrupted data (direction bugs, timestamp bugs)
-        if (!saved.version || saved.version < 5) {
-          // All v1-v4 data was collected with corrupted telemetry — full wipe
+        // v1-v5 all had corrupted telemetry or broken confidence gating — full wipe
+        // v5 was shipped in update 269 with ungated neutral priors crossing thresholds
+        if (!saved.version || saved.version < 6) {
           if (typeof createDefaultSparLearning === 'function') {
             const fresh = createDefaultSparLearning();
             Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
             Object.assign(sparLearning, fresh);
           }
         } else {
-          // v5+ saved data is clean — deep merge
+          // v6+ saved data is clean — deep merge
           const _deepMerge = (target, source) => {
             for (const key of Object.keys(source)) {
               if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])
@@ -280,13 +280,8 @@ const SaveLoad = {
             }
           };
           _deepMerge(sparLearning, saved);
-          // Rename jeffProfile → player1v1 if old key exists
-          if (sparLearning.jeffProfile && !sparLearning.player1v1) {
-            sparLearning.player1v1 = sparLearning.jeffProfile;
-          }
-          delete sparLearning.jeffProfile;
         }
-        sparLearning.version = 5;
+        sparLearning.version = 6;
         if (sparLearning.history && sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
       }
 

@@ -101,7 +101,7 @@ let sparProgress = {
 // Called on first load and on v4→v5 migration (v4 data was corrupted)
 function createDefaultSparLearning() {
   return {
-    version: 5,
+    version: 6,
     matchCount: 0,
     opening: {
       rushBottom: 0.5,
