@@ -8,7 +8,7 @@ const SPAR_CONFIG = {
   RETURN_TX: 17, RETURN_TY: 34,
   HP_BASELINE: 100,
   COUNTDOWN_FRAMES: 180,       // 3 seconds at 60fps
-  POST_MATCH_FRAMES: 300,      // 5 seconds results
+  POST_MATCH_FRAMES: 60,       // 1 second results (fast testing)
   POINT_BUDGET: 100,           // total points to allocate across CT-X stats
   BOT_SPEED: 8.33,
   ARENA_SMALL: { w: 24, h: 20 },
