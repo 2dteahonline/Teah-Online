@@ -1429,19 +1429,19 @@ function drawBullets() {
     // Bullet body — wide and flat (Graal-style)
     ctx.fillStyle = mainColor;
     if (isH) {
-      ctx.fillRect(b.x - 12, b.y - 3, 24, 6);
+      ctx.fillRect(b.x - 15, b.y - 4, 30, 8);
       ctx.fillStyle = coreColor;
-      ctx.fillRect(b.x - 9, b.y - 1.5, 18, 3);
+      ctx.fillRect(b.x - 11, b.y - 2, 22, 4);
     } else {
-      ctx.fillRect(b.x - 3, b.y - 12, 6, 24);
+      ctx.fillRect(b.x - 4, b.y - 15, 8, 30);
       ctx.fillStyle = coreColor;
-      ctx.fillRect(b.x - 1.5, b.y - 9, 3, 18);
+      ctx.fillRect(b.x - 2, b.y - 11, 4, 22);
     }
 
     // Glow — wide ellipse
     ctx.fillStyle = glowColor;
     ctx.beginPath();
-    ctx.ellipse(b.x, b.y, 14, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(b.x, b.y, 18, 10, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
