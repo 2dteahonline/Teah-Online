@@ -1537,6 +1537,7 @@ const SparSystem = {
         _midPressureStartDmg: 0,
         _lastMidPressurePolicy: null,
         _lastMidPressureFamily: null,
+        _midPressureCooldown: 0,       // frames until mid-pressure can re-open
         // v11: wall pressure policy state
         _wallPressurePolicy: null,
         _wallPressureFamily: null,
@@ -1544,6 +1545,7 @@ const SparSystem = {
         _wallPressureStartDmg: 0,
         _lastWallPressurePolicy: null,
         _lastWallPressureFamily: null,
+        _wallPressureCooldown: 0,      // frames until wall-pressure can re-open
         _cornerFrames: 0,         // consecutive frames stuck in a corner
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
       },
@@ -1782,7 +1784,9 @@ const SparSystem = {
         m.ai._gunSideCooldown = 0;
         m.ai._escapePolicy = null;
         m.ai._midPressurePolicy = null;
+        m.ai._midPressureCooldown = 0;
         m.ai._wallPressurePolicy = null;
+        m.ai._wallPressureCooldown = 0;
         m.ai._shotTimingPolicy = null;
         m.ai._reloadPolicy = null;
         m.ai._topStuckFrames = 0;
@@ -3743,11 +3747,11 @@ const SparSystem = {
     if (ai._gunSidePolicy) {
       ai._gunSideFrames++;
       ai._gunSideBestQuality = Math.max(ai._gunSideBestQuality || laneQuality, laneQuality);
-      // Require minimum 12 frames before success-finalize to avoid lane flicker
-      if (ai._gunSideFrames >= 12 && ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom))) {
+      // Require minimum 20 frames before success-finalize to avoid lane flicker
+      if (ai._gunSideFrames >= 20 && ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom))) {
         this._finalizeGunSideEngagement(ai, true);
         ai._gunSideCooldown = 20;
-      } else if (ai._gunSideFrames > 150 || (ai._gunSideFrames >= 12 && noAdvantageState)) {
+      } else if (ai._gunSideFrames > 150 || (ai._gunSideFrames >= 20 && noAdvantageState)) {
         this._finalizeGunSideEngagement(ai, false);
         ai._gunSideCooldown = 20;
       }
@@ -3763,13 +3767,13 @@ const SparSystem = {
     }
 
     if (!isOpening && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
-      // Only force-finalize if engagement has run long enough to be meaningful (>=15f)
-      if (ai._antiBottomTactic && ai._antiBottomFrames >= 15) {
+      // Only force-finalize if engagement has run long enough to be meaningful
+      if (ai._antiBottomTactic && ai._antiBottomFrames >= 30) {
         this._finalizeAntiBottomEngagement(ai, false, c);
         ai._antiBottomCooldown = 30;
         ai._antiBottomHysteresisFrames = 0;
       }
-      if (ai._gunSidePolicy && ai._gunSideFrames >= 12) {
+      if (ai._gunSidePolicy && ai._gunSideFrames >= 20) {
         this._finalizeGunSideEngagement(ai, false);
         ai._gunSideCooldown = 20;
       }
@@ -3807,16 +3811,21 @@ const SparSystem = {
       ai.jukeTimer = 15;
     }
 
+    // Cooldowns: prevent rapid reopen after finalize
+    if (ai._midPressureCooldown > 0) ai._midPressureCooldown--;
+    if (ai._wallPressureCooldown > 0) ai._wallPressureCooldown--;
     // v11: Detect when leaving neutral state → finalize mid-fight pressure
     const isNeutral = !isOpening && !member.gun.reloading && !enemyReloading && !hasBottom && !enemyHasBottom;
-    if (!isNeutral && ai._midPressurePolicy) {
+    if (!isNeutral && ai._midPressurePolicy && (ai._midPressureFrames || 0) >= 20) {
       const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
       this._finalizeMidFightPressure(ai, mpDmg);
+      ai._midPressureCooldown = 25;
     }
     // v11: Detect when enemy leaves wall → finalize wall pressure
-    if (!nearEnemyWall && ai._wallPressurePolicy) {
+    if (!nearEnemyWall && ai._wallPressurePolicy && (ai._wallPressureFrames || 0) >= 15) {
       const wpDmg = (ai._matchDmgDealt || 0) - (ai._wallPressureStartDmg || 0);
       this._finalizeWallPressure(ai, wpDmg);
+      ai._wallPressureCooldown = 20;
     }
 
     if (isOpening) {
@@ -4284,8 +4293,8 @@ const SparSystem = {
       // Reset engagement if enemy lost bottom (handled by hysteresis above)
       if (!ai._antiBottomTactic) ai._antiBottomFrames = 0;
       // === NEUTRAL — neither has clear bottom, actively contest ===
-      // v11: Pick mid-fight pressure policy if not active
-      if (!ai._midPressurePolicy) {
+      // v11: Pick mid-fight pressure policy if not active (respect cooldown)
+      if (!ai._midPressurePolicy && !(ai._midPressureCooldown > 0)) {
         const mpCtx = {
           dist, hasBottom, enemyHasBottom,
           recentHit: ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30,
@@ -4382,6 +4391,7 @@ const SparSystem = {
       if (ai._midPressureFrames >= 180) {
         const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
         this._finalizeMidFightPressure(ai, mpDmg);
+        ai._midPressureCooldown = 25;
       }
     }
 
@@ -4564,13 +4574,14 @@ const SparSystem = {
 
       // v11: WALL PRESSURE — exploit enemy near wall (suppresses mid-fight pressure)
       if (nearEnemyWall && !nearAnyWall && !member.gun.reloading && !ai._escapePolicy) {
-        // Finalize mid-fight pressure if wall pressure is taking over
-        if (ai._midPressurePolicy) {
+        // Finalize mid-fight pressure if wall pressure is taking over (respect min duration)
+        if (ai._midPressurePolicy && (ai._midPressureFrames || 0) >= 20) {
           const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
           this._finalizeMidFightPressure(ai, mpDmg);
+          ai._midPressureCooldown = 25;
         }
-        // Pick wall pressure policy if not active
-        if (!ai._wallPressurePolicy) {
+        // Pick wall pressure policy if not active (respect cooldown)
+        if (!ai._wallPressurePolicy && !(ai._wallPressureCooldown > 0)) {
           const wpCtx = {
             dist, hasBottom, enemyHasBottom,
             enemyNearWall: nearEnemyWall, enemyInCorner,
@@ -4629,6 +4640,7 @@ const SparSystem = {
         if (ai._wallPressureFrames >= 150) {
           const wpDmg = (ai._matchDmgDealt || 0) - (ai._wallPressureStartDmg || 0);
           this._finalizeWallPressure(ai, wpDmg);
+          ai._wallPressureCooldown = 20;
         }
       }
 
