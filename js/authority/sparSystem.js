@@ -1593,8 +1593,15 @@ const SparSystem = {
       const bRoute = SparState._botOpeningRoute;
       const rr = sl.botOpenings.routeResults[bRoute];
       if (rr) {
+        if (typeof rr.failStreak !== 'number') rr.failStreak = 0;
         rr.total++;
-        if (won) rr.losses++; else rr.wins++; // won = player won, so bot lost
+        if (won) {
+          rr.losses++;
+          rr.failStreak++;
+        } else {
+          rr.wins++;
+          rr.failStreak = 0;
+        }
         // Did bot get bottom at END OF OPENING (frame ~180), not match end
         if (c.botYAtOpeningEnd > 0 && c.playerYAtOpeningEnd > 0) {
           if (c.botYAtOpeningEnd > c.playerYAtOpeningEnd + 20) rr.gotBottom++;
@@ -2065,12 +2072,12 @@ const SparSystem = {
     // Not enough data — still favor bottom, but don't lock out all other routes.
     if (!sl || sl.matchCount < 2) {
       const openers = {
-        bottomCenter: 0.34,
-        bottomLeft: 0.22,
-        bottomRight: 0.22,
-        midFlank: 0.10,
-        mirrorPlayer: 0.08,
-        topHold: 0.04,
+        bottomCenter: 0.24,
+        bottomLeft: 0.18,
+        bottomRight: 0.18,
+        midFlank: 0.15,
+        mirrorPlayer: 0.15,
+        topHold: 0.10,
       };
       return this._pickWeightedScoreChoice(openers);
     }
@@ -2086,40 +2093,47 @@ const SparSystem = {
     const totalGeneralOpening = this._sumBucketPlays(gOpeningBuckets);
     const totalSelfPlayOpening = this._sumBucketPlays(sOpeningBuckets);
 
-    // Base bonus for bottom routes — bottom is meta, but not the only answer.
-    scores['bottomCenter'] += 4;
-    scores['bottomLeft'] += 4;
-    scores['bottomRight'] += 4;
-    scores['mirrorPlayer'] += 3.5;
-    scores['midFlank'] += 3.5;
-    scores['topHold'] += 2.5;
+    // Light priors only. The bot should sample broadly and let outcomes decide.
+    scores['bottomCenter'] += 1.6;
+    scores['bottomLeft'] += 1.4;
+    scores['bottomRight'] += 1.4;
+    scores['mirrorPlayer'] += 1.3;
+    scores['midFlank'] += 1.3;
+    scores['topHold'] += 1.0;
 
     const rr = sl.botOpenings.routeResults;
     for (const r of routes) {
-      if (rr[r] && rr[r].total > 0) {
+      const routeRec = rr[r];
+      if (routeRec && typeof routeRec.failStreak !== 'number') routeRec.failStreak = 0;
+      if (routeRec && routeRec.total > 0) {
         // Win rate dominates scoring
-        const winRate = rr[r].wins / rr[r].total;
-        scores[r] += winRate * 60;
+        const winRate = routeRec.wins / routeRec.total;
+        scores[r] += winRate * 54;
 
         // Getting bottom is only slightly valuable — it doesn't help if we still lose
-        const bottomRate = rr[r].gotBottom / rr[r].total;
-        scores[r] += bottomRate * 5;
+        const bottomRate = routeRec.gotBottom / routeRec.total;
+        scores[r] += bottomRate * 3;
 
         // Penalize routes that consistently LOSE — HARD
-        const lossRate = rr[r].losses / rr[r].total;
-        scores[r] -= lossRate * 30;
+        const lossRate = routeRec.losses / routeRec.total;
+        scores[r] -= lossRate * 34;
+
+        // Repeated failed starts should get shoved out quickly.
+        scores[r] -= routeRec.failStreak * 18;
+        if (routeRec.failStreak >= 2) scores[r] -= 18;
+        if (routeRec.failStreak >= 3) scores[r] -= 28;
 
         // Routes with no wins and many attempts: massive penalty
-        if (rr[r].wins === 0 && rr[r].total >= 3) {
-          scores[r] -= 35;
+        if (routeRec.wins === 0 && routeRec.total >= 3) {
+          scores[r] -= 42;
         }
         // Additional scaling penalty for high-sample losers
-        if (rr[r].wins === 0 && rr[r].total >= 5) {
-          scores[r] -= rr[r].total * 3;
+        if (routeRec.wins === 0 && routeRec.total >= 5) {
+          scores[r] -= routeRec.total * 4;
         }
       } else {
         // Untested routes should actually get sampled.
-        scores[r] += r.indexOf('bottom') === 0 ? 5 : 9;
+        scores[r] += 14;
       }
 
       const playerRewardScore = this._scoreRewardBucket(
@@ -2142,44 +2156,47 @@ const SparSystem = {
       scores[r] += (selfPlayRewardScore - 0.5) * 10;
     }
 
-    // Counter player's specific route — STRONG counter
+    // Counter player's specific route — but not so hard that we collapse into one answer.
     const playerRoute = sl.opening.route;
     if (playerRoute === 'bottomLeft') {
-      scores['bottomRight'] += 12;
-      scores['midFlank'] += 5;
-    } else if (playerRoute === 'bottomRight') {
-      scores['bottomLeft'] += 12;
-      scores['midFlank'] += 5;
-    } else if (playerRoute === 'bottomCenter') {
-      // Counter center by flanking to a side
-      scores['bottomLeft'] += 6;
-      scores['bottomRight'] += 6;
+      scores['bottomRight'] += 9;
       scores['midFlank'] += 8;
       scores['mirrorPlayer'] += 5;
+    } else if (playerRoute === 'bottomRight') {
+      scores['bottomLeft'] += 9;
+      scores['midFlank'] += 8;
+      scores['mirrorPlayer'] += 5;
+    } else if (playerRoute === 'bottomCenter') {
+      // Counter center by flanking to a side
+      scores['bottomLeft'] += 5;
+      scores['bottomRight'] += 5;
+      scores['midFlank'] += 10;
+      scores['mirrorPlayer'] += 7;
+      scores['topHold'] += 3;
     }
 
-    // Variety bonus — don't repeat same route more than twice
+    // Variety penalty — repeated routes should drop off fast.
     const lastRoute = sl.botOpenings.lastRoute;
     if (lastRoute) {
-      scores[lastRoute] -= 10;
+      scores[lastRoute] -= 16;
       if (rr[lastRoute] && rr[lastRoute].total >= 3) {
         const lastWinRate = rr[lastRoute].wins / rr[lastRoute].total;
-        if (lastWinRate < 0.4) scores[lastRoute] -= 10;
+        if (lastWinRate < 0.4) scores[lastRoute] -= 14;
       }
     }
 
     // If the player heavily rushes bottom, make side counters and mirrors more appealing.
     if (sl.opening && sl.opening.rushBottom > 0.6) {
-      scores['midFlank'] += 7;
-      scores['mirrorPlayer'] += 6;
-      scores['topHold'] += 2;
+      scores['midFlank'] += 10;
+      scores['mirrorPlayer'] += 8;
+      scores['topHold'] += 4;
     }
 
     // Small randomness for unpredictability
-    for (const r of routes) scores[r] += Math.random() * 8;
+    for (const r of routes) scores[r] += Math.random() * 6;
 
     // Occasionally force broad exploration so weak habits do not calcify.
-    if (Math.random() < 0.16) {
+    if (Math.random() < 0.24) {
       return routes[Math.floor(Math.random() * routes.length)];
     }
 

@@ -125,12 +125,12 @@ function createDefaultSparLearning() {
     botOpenings: {
       lastRoute: null,
       routeResults: {
-        bottomLeft:   { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-        bottomRight:  { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-        bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-        topHold:      { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-        midFlank:     { wins: 0, losses: 0, gotBottom: 0, total: 0 },
-        mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0 },
+        bottomLeft:   { wins: 0, losses: 0, gotBottom: 0, total: 0, failStreak: 0 },
+        bottomRight:  { wins: 0, losses: 0, gotBottom: 0, total: 0, failStreak: 0 },
+        bottomCenter: { wins: 0, losses: 0, gotBottom: 0, total: 0, failStreak: 0 },
+        topHold:      { wins: 0, losses: 0, gotBottom: 0, total: 0, failStreak: 0 },
+        midFlank:     { wins: 0, losses: 0, gotBottom: 0, total: 0, failStreak: 0 },
+        mirrorPlayer: { wins: 0, losses: 0, gotBottom: 0, total: 0, failStreak: 0 },
       },
     },
     position: {
