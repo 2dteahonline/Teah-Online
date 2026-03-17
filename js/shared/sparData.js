@@ -224,6 +224,13 @@ function createDefaultSparLearning() {
         bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
       },
     },
+    selfPlay1v1: {
+      styleResults: {
+        pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+        control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+        bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+      },
+    },
     reinforcement1v1: {
       general: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -231,6 +238,11 @@ function createDefaultSparLearning() {
         antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
       },
       player: {
+        style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
+        opening: createSparRewardBuckets(SPAR_OPENING_ROUTE_KEYS),
+        antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
+      },
+      selfPlay: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
         opening: createSparRewardBuckets(SPAR_OPENING_ROUTE_KEYS),
         antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),

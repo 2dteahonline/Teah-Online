@@ -1,6 +1,6 @@
 // ===================== SPAR TRAINING HARNESS =====================
 // Console-driven training for spar bot style generalization.
-// Usage: sparTrain('rusher', 20) or sparTrain('all', 50)
+// Usage: sparTrain('rusher', 20), sparTrain('all', 50), sparSelfPlay(50)
 //
 // Architecture: training archetypes are "scripted player input generators."
 // They output { moveX, moveY, shouldShoot, aimDir } each frame.
@@ -113,6 +113,7 @@ function sparTrain(botType, count) {
     console.log(`[SparTrain] Starting ${count} matches rotating all types (${perType} each)`);
     _sparTrainState = {
       active: true,
+      mode: 'archetype',
       botType: null,
       queue: [],
       totalMatches: count,
@@ -138,6 +139,7 @@ function sparTrain(botType, count) {
   console.log(`[SparTrain] Starting ${count} matches against ${botType}`);
   _sparTrainState = {
     active: true,
+    mode: 'archetype',
     botType: botType,
     queue: Array(count).fill(botType),
     totalMatches: count,
@@ -150,7 +152,211 @@ function sparTrain(botType, count) {
 }
 
 function _createTrainingRuntime() {
-  return { strafeDir: 1, strafeTimer: 0, cornerTarget: null };
+  return { strafeDir: 1, strafeTimer: 0, cornerTarget: null, selfPlayStyle: null, selfPlayRoute: null, selfPlayAntiBottom: null };
+}
+
+function _cloneTrainingPolicy(src) {
+  try {
+    return JSON.parse(JSON.stringify(src || {}));
+  } catch (e) {
+    return null;
+  }
+}
+
+function sparSelfPlay(count) {
+  if (!count || count < 1) count = 10;
+  console.log(`[SparTrain] Starting ${count} self-play matches (current bot vs frozen snapshot)`);
+  _sparTrainState = {
+    active: true,
+    mode: 'selfplay',
+    botType: 'selfPlay',
+    queue: Array(count).fill('selfPlay'),
+    totalMatches: count,
+    completedMatches: 0,
+    results: { selfPlay: { wins: 0, losses: 0, dmgDealt: 0, dmgTaken: 0 } },
+    startTime: Date.now(),
+    runtime: _createTrainingRuntime(),
+    snapshotPolicy: _cloneTrainingPolicy(typeof sparLearning !== 'undefined' ? sparLearning : null),
+  };
+  _sparTrainStartNext();
+}
+
+function _getSnapshotStyleScore(policy, name) {
+  const player = policy && policy.player1v1 && policy.player1v1.styleResults ? policy.player1v1.styleResults[name] : null;
+  const general = policy && policy.general1v1 && policy.general1v1.styleResults ? policy.general1v1.styleResults[name] : null;
+  const selfPlay = policy && policy.selfPlay1v1 && policy.selfPlay1v1.styleResults ? policy.selfPlay1v1.styleResults[name] : null;
+  const rf = policy && policy.reinforcement1v1 ? policy.reinforcement1v1 : null;
+  const pBucket = rf && rf.player && rf.player.style ? rf.player.style[name] : null;
+  const gBucket = rf && rf.general && rf.general.style ? rf.general.style[name] : null;
+  const sBucket = rf && rf.selfPlay && rf.selfPlay.style ? rf.selfPlay.style[name] : null;
+  const pScore = player && player.total > 0 ? player.wins / player.total : 0.5;
+  const gScore = general && general.total > 0 ? general.wins / general.total : 0.5;
+  const sScore = selfPlay && selfPlay.total > 0 ? selfPlay.wins / selfPlay.total : gScore;
+  const pReward = pBucket && typeof pBucket.reward === 'number' ? pBucket.reward : 0.5;
+  const gReward = gBucket && typeof gBucket.reward === 'number' ? gBucket.reward : 0.5;
+  const sReward = sBucket && typeof sBucket.reward === 'number' ? sBucket.reward : 0.5;
+  return pScore * 0.4 + gScore * 0.25 + sScore * 0.15 + pReward * 0.1 + gReward * 0.05 + sReward * 0.05;
+}
+
+function _pickSnapshotStyle(policy) {
+  let best = 'pressure', bestScore = -Infinity;
+  for (const name of Object.keys(SPAR_DUEL_STYLES)) {
+    const score = _getSnapshotStyleScore(policy, name) + Math.random() * 0.03;
+    if (score > bestScore) { bestScore = score; best = name; }
+  }
+  return best;
+}
+
+function _pickSnapshotRoute(policy) {
+  const routes = typeof SPAR_OPENING_ROUTE_KEYS !== 'undefined'
+    ? SPAR_OPENING_ROUTE_KEYS
+    : ['bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midFlank', 'mirrorPlayer'];
+  let best = 'bottomCenter', bestScore = -Infinity;
+  const rr = policy && policy.botOpenings ? policy.botOpenings.routeResults : null;
+  const rf = policy && policy.reinforcement1v1 ? policy.reinforcement1v1 : null;
+  for (const name of routes) {
+    let score = name.indexOf('bottom') === 0 ? 0.58 : 0.45;
+    const route = rr && rr[name] ? rr[name] : null;
+    if (route && route.total > 0) {
+      score += (route.wins / route.total) * 0.22;
+      score += (route.gotBottom / route.total) * 0.12;
+    }
+    const gBucket = rf && rf.general && rf.general.opening ? rf.general.opening[name] : null;
+    const sBucket = rf && rf.selfPlay && rf.selfPlay.opening ? rf.selfPlay.opening[name] : null;
+    score += ((gBucket && gBucket.reward) || 0.5) * 0.05;
+    score += ((sBucket && sBucket.reward) || 0.5) * 0.08;
+    score += Math.random() * 0.02;
+    if (score > bestScore) { bestScore = score; best = name; }
+  }
+  return best;
+}
+
+function _pickSnapshotAntiBottom(policy) {
+  const names = typeof SPAR_ANTI_BOTTOM_RESPONSE_KEYS !== 'undefined'
+    ? SPAR_ANTI_BOTTOM_RESPONSE_KEYS
+    : ['directContest', 'sideFlank', 'baitPull'];
+  let best = 'sideFlank', bestScore = -Infinity;
+  const rf = policy && policy.reinforcement1v1 ? policy.reinforcement1v1 : null;
+  const holdBottom = policy && policy.whenHasBottom ? policy.whenHasBottom.holdsPct : 0.5;
+  const wallBottom = policy && policy.whenHasBottom ? policy.whenHasBottom.shotFreq : 0.5;
+  const pushBottom = policy && policy.whenHasBottom ? policy.whenHasBottom.pushPct : 0.5;
+  for (const name of names) {
+    let score = name === 'sideFlank' ? 0.55 : (name === 'directContest' ? 0.5 : 0.48);
+    if (name === 'sideFlank') score += wallBottom * 0.2 + holdBottom * 0.12;
+    if (name === 'directContest') score += holdBottom * 0.18 - pushBottom * 0.08;
+    if (name === 'baitPull') score += pushBottom * 0.22;
+    const gBucket = rf && rf.general && rf.general.antiBottom ? rf.general.antiBottom[name] : null;
+    const sBucket = rf && rf.selfPlay && rf.selfPlay.antiBottom ? rf.selfPlay.antiBottom[name] : null;
+    score += ((gBucket && gBucket.reward) || 0.5) * 0.05;
+    score += ((sBucket && sBucket.reward) || 0.5) * 0.08;
+    if (score > bestScore) { bestScore = score; best = name; }
+  }
+  return best;
+}
+
+function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
+  if (!policy) return null;
+  if (!rt.selfPlayStyle) rt.selfPlayStyle = _pickSnapshotStyle(policy);
+  if (!rt.selfPlayRoute) rt.selfPlayRoute = _pickSnapshotRoute(policy);
+  if (!rt.selfPlayAntiBottom) rt.selfPlayAntiBottom = _pickSnapshotAntiBottom(policy);
+
+  const style = SPAR_DUEL_STYLES[rt.selfPlayStyle] || SPAR_DUEL_STYLES.pressure;
+  const arenaLevel = LEVELS[SparState.activeRoom.arenaLevel];
+  const arenaW = arenaLevel.widthTiles * TILE;
+  const arenaH = arenaLevel.heightTiles * TILE;
+  const midX = arenaW / 2;
+  const enemyReloading = !!(SparState.teamB[0] && SparState.teamB[0].member && SparState.teamB[0].member.gun && SparState.teamB[0].member.gun.reloading);
+  const isOpening = SparState.matchTimer < 180;
+  const hasBottom = p.y > tgt.y + 30;
+  const enemyHasBottom = tgt.y > p.y + 30;
+  const alignX = Math.abs(dx), alignY = Math.abs(dy);
+  let mx = 0, my = 0;
+
+  if (isOpening) {
+    const route = rt.selfPlayRoute;
+    if (route === 'bottomCenter') {
+      const goalY = arenaH * 0.84;
+      if (p.y < goalY - 10) my = speed;
+      mx = rt.strafeDir * speed * 0.15;
+    } else if (route === 'bottomLeft') {
+      const goalY = arenaH * 0.84, goalX = arenaW * 0.25;
+      if (p.y < goalY - 10) my = speed * 0.92;
+      mx = Math.sign(goalX - p.x) * speed * 0.42;
+    } else if (route === 'bottomRight') {
+      const goalY = arenaH * 0.84, goalX = arenaW * 0.75;
+      if (p.y < goalY - 10) my = speed * 0.92;
+      mx = Math.sign(goalX - p.x) * speed * 0.42;
+    } else if (route === 'topHold') {
+      const goalY = arenaH * 0.3;
+      my = Math.sign(goalY - p.y) * speed * 0.5;
+      mx = rt.strafeDir * speed * 0.8;
+    } else if (route === 'midFlank') {
+      const goalY = arenaH * 0.8;
+      const flankSide = tgt.x < midX ? arenaW * 0.7 : arenaW * 0.3;
+      if (p.y < goalY - 10) my = speed * 0.85;
+      mx = Math.sign(flankSide - p.x) * speed * 0.45;
+    } else {
+      mx = (tgt.vx || 0) * 0.85;
+      my = (tgt.vy || 0) * 0.85;
+      if (p.y < arenaH * 0.8) my = Math.max(my, speed * 0.7);
+    }
+  } else if (enemyReloading && dist > 1) {
+    mx = (dx / dist) * speed * 0.7 * style.approachMult;
+    my = (dy / dist) * speed * 0.7 * style.approachMult;
+    mx += rt.strafeDir * speed * 0.2;
+  } else if (hasBottom) {
+    mx = rt.strafeDir * speed * (0.55 + 0.18 * style.strafeMult);
+    if (Math.abs(dy) > 40) my *= 0.3;
+    if (dist > style.preferredDist + 40 && dist > 1) {
+      mx += (dx / dist) * speed * 0.24;
+      my += (dy / dist) * speed * 0.24;
+    }
+  } else if (enemyHasBottom) {
+    const response = rt.selfPlayAntiBottom;
+    const aboveTrapLine = p.y < tgt.y - 35;
+    if (response === 'sideFlank') {
+      const flankDir = alignX < 110 ? rt.strafeDir : Math.sign(dx || rt.strafeDir);
+      mx = flankDir * speed * 0.9;
+      my = speed * (alignX < 110 ? 0.18 : 0.5);
+      if (aboveTrapLine && alignX < 90) my = Math.min(my, 0.12 * speed);
+    } else if (response === 'baitPull') {
+      if (dist < 240) {
+        my = -speed * 0.35;
+        mx = rt.strafeDir * speed * 0.8;
+      } else {
+        mx = Math.sign(dx || rt.strafeDir) * speed * 0.55;
+        my = speed * 0.35;
+      }
+    } else {
+      mx = rt.strafeDir * speed * 0.7;
+      my = speed * 0.55;
+    }
+    if (alignX < 80) {
+      mx += rt.strafeDir * speed * 0.22;
+      if (aboveTrapLine) my = Math.min(my, speed * 0.15);
+    }
+  } else {
+    mx = rt.strafeDir * speed * (0.6 + 0.15 * style.strafeMult);
+    if (dist > style.preferredDist + 40 && dist > 1) {
+      mx += (dx / dist) * speed * 0.3;
+      my += (dy / dist) * speed * 0.3;
+    } else if (dist < style.preferredDist - 40 && dist > 1) {
+      mx -= (dx / dist) * speed * 0.22;
+      my -= (dy / dist) * speed * 0.22;
+    } else if (p.y < tgt.y) {
+      my = speed * 0.35;
+    } else {
+      my = speed * 0.1;
+    }
+  }
+
+  let shouldShoot = false;
+  if (enemyReloading) shouldShoot = true;
+  else if (rt.selfPlayStyle === 'pressure') shouldShoot = Math.min(alignX, alignY) < 80 || dist < 180;
+  else if (rt.selfPlayStyle === 'control') shouldShoot = Math.min(alignX, alignY) < 45 && dist > 110 && dist < 320;
+  else shouldShoot = Math.min(alignX, alignY) < 60 || hasBottom || dist < 170;
+
+  return { mx, my, shouldShoot, dx, dy };
 }
 
 function _sparTrainJoinWhenReady() {
@@ -197,8 +403,9 @@ function _sparTrainStartNext() {
 // ---- Called by authorityTick — returns one frame of scripted intent ----
 function _getSparTrainingArchetype() {
   if (!_sparTrainState || !_sparTrainState._currentMatchType) return null;
-  const archetype = SPAR_TRAINING_ARCHETYPES[_sparTrainState._currentMatchType];
-  if (!archetype) return null;
+  const isSelfPlay = _sparTrainState.mode === 'selfplay';
+  const archetype = isSelfPlay ? null : SPAR_TRAINING_ARCHETYPES[_sparTrainState._currentMatchType];
+  if (!isSelfPlay && !archetype) return null;
 
   // Validate player alive + enemy alive
   if (!player || player.hp <= 0) return null;
@@ -218,7 +425,10 @@ function _getSparTrainingArchetype() {
   }
 
   const speed = GAME_CONFIG.PLAYER_BASE_SPEED;
-  const intent = archetype.getIntent(player, te, dist, dx, dy, speed, rt);
+  const intent = isSelfPlay
+    ? _getSparSelfPlayIntent(player, te, dist, dx, dy, speed, rt, _sparTrainState.snapshotPolicy)
+    : archetype.getIntent(player, te, dist, dx, dy, speed, rt);
+  if (!intent) return null;
 
   // Movement quantization: convert continuous velocity to binary key presses.
   // inventory.js normalizes diagonal (dx,dy) to unit length (0.707/0.707),
@@ -305,12 +515,13 @@ function _sparTrainOnMatchEnd(won) {
   const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
   if (sl && enemyBot && enemyBot.ai._duelStyle) {
     const style = enemyBot.ai._duelStyle;
-    if (!sl.general1v1) sl.general1v1 = { styleResults: {} };
-    if (!sl.general1v1.styleResults) sl.general1v1.styleResults = {};
-    if (!sl.general1v1.styleResults[style]) {
-      sl.general1v1.styleResults[style] = { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 };
+    const destKey = _sparTrainState.mode === 'selfplay' ? 'selfPlay1v1' : 'general1v1';
+    if (!sl[destKey]) sl[destKey] = { styleResults: {} };
+    if (!sl[destKey].styleResults) sl[destKey].styleResults = {};
+    if (!sl[destKey].styleResults[style]) {
+      sl[destKey].styleResults[style] = { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 };
     }
-    const sr = sl.general1v1.styleResults[style];
+    const sr = sl[destKey].styleResults[style];
     sr.total++;
     if (won) sr.losses++; else sr.wins++;
     const dmgDelta = (enemyBot.ai._matchDmgDealt || 0) - (enemyBot.ai._matchDmgTaken || 0);
@@ -347,9 +558,10 @@ function _sparTrainPrintSummary() {
   }
 
   const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
-  if (sl && sl.general1v1 && sl.general1v1.styleResults) {
-    console.log('\nStyle effectiveness (general1v1):');
-    for (const [style, sr] of Object.entries(sl.general1v1.styleResults)) {
+  const styleBucket = _sparTrainState.mode === 'selfplay' ? 'selfPlay1v1' : 'general1v1';
+  if (sl && sl[styleBucket] && sl[styleBucket].styleResults) {
+    console.log(`\nStyle effectiveness (${styleBucket}):`);
+    for (const [style, sr] of Object.entries(sl[styleBucket].styleResults)) {
       if (sr.total > 0) {
         console.log(`  ${style}: ${sr.wins}W/${sr.losses}L (${((sr.wins / sr.total) * 100).toFixed(1)}%) avgDmgDelta: ${sr.avgDmgDelta.toFixed(0)}`);
       }
@@ -376,6 +588,10 @@ function sparTrainStop() {
 
 function _isSparTraining() {
   return _sparTrainState && _sparTrainState.active;
+}
+
+function _isSparSelfPlay() {
+  return _sparTrainState && _sparTrainState.active && _sparTrainState.mode === 'selfplay';
 }
 
 function _getSparTrainingTiming() {

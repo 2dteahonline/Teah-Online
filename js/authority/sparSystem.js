@@ -96,7 +96,8 @@ const SparSystem = {
     if (!sl.reinforcement1v1) sl.reinforcement1v1 = {};
     if (!sl.reinforcement1v1.general) sl.reinforcement1v1.general = {};
     if (!sl.reinforcement1v1.player) sl.reinforcement1v1.player = {};
-    const scopes = [sl.reinforcement1v1.general, sl.reinforcement1v1.player];
+    if (!sl.reinforcement1v1.selfPlay) sl.reinforcement1v1.selfPlay = {};
+    const scopes = [sl.reinforcement1v1.general, sl.reinforcement1v1.player, sl.reinforcement1v1.selfPlay];
     for (const scope of scopes) {
       if (!scope.style) scope.style = createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES || {}));
       if (!scope.opening) scope.opening = createSparRewardBuckets(routeKeys);
@@ -176,8 +177,10 @@ const SparSystem = {
     const rf = this._ensureReinforcementProfile(sl);
     const pBuckets = rf && rf.player ? rf.player.antiBottom : null;
     const gBuckets = rf && rf.general ? rf.general.antiBottom : null;
+    const sBuckets = rf && rf.selfPlay ? rf.selfPlay.antiBottom : null;
     const totalPlayer = this._sumBucketPlays(pBuckets);
     const totalGeneral = this._sumBucketPlays(gBuckets);
+    const totalSelfPlay = this._sumBucketPlays(sBuckets);
     let best = 'sideFlank';
     let bestScore = -Infinity;
     for (const name of responses) {
@@ -196,8 +199,10 @@ const SparSystem = {
       }
       const pScore = this._scoreRewardBucket(pBuckets && pBuckets[name], totalPlayer, 0.24);
       const gScore = this._scoreRewardBucket(gBuckets && gBuckets[name], totalGeneral, 0.12);
+      const sScore = this._scoreRewardBucket(sBuckets && sBuckets[name], totalSelfPlay, 0.08);
       score += (pScore - 0.5) * 28;
       score += (gScore - 0.5) * 14;
+      score += (sScore - 0.5) * 10;
       score += Math.random() * 3;
       if (score > bestScore) {
         bestScore = score;
@@ -459,8 +464,10 @@ const SparSystem = {
         const rf = this._ensureReinforcementProfile(sl);
         const pStyleBuckets = rf && rf.player ? rf.player.style : null;
         const gStyleBuckets = rf && rf.general ? rf.general.style : null;
+        const sStyleBuckets = rf && rf.selfPlay ? rf.selfPlay.style : null;
         const totalPlayerStylePlays = this._sumBucketPlays(pStyleBuckets);
         const totalGeneralStylePlays = this._sumBucketPlays(gStyleBuckets);
+        const totalSelfPlayStylePlays = this._sumBucketPlays(sStyleBuckets);
         // Pick style with best win rate, 10% exploration
         if (Math.random() < 0.1) {
           const styleNames = Object.keys(SPAR_DUEL_STYLES);
@@ -477,8 +484,9 @@ const SparSystem = {
           for (const [name, _] of Object.entries(SPAR_DUEL_STYLES)) {
             const sr = sl.general1v1.styleResults[name];
             const jr = hasPersonal ? sl.player1v1.styleResults[name] : null;
+            const kr = sl.selfPlay1v1 && sl.selfPlay1v1.styleResults ? sl.selfPlay1v1.styleResults[name] : null;
             // Only force untested styles when we have no personal read yet.
-            if (personalSamples < 1 && (!sr || sr.total < 1) && (!jr || jr.total < 1)) {
+            if (personalSamples < 1 && (!sr || sr.total < 1) && (!jr || jr.total < 1) && (!kr || kr.total < 1)) {
               style = name; break;
             }
             let score;
@@ -489,14 +497,20 @@ const SparSystem = {
               if (sr && sr.total > 0) {
                 score += (sr.wins / sr.total - 0.5) * 0.15;
               }
+              if (kr && kr.total > 0) {
+                score += (kr.wins / kr.total - 0.5) * 0.10;
+              }
             } else if (jr && jr.total > 0) {
               // Some personal data — blend 60/40 personal/general
               const pScore = jr.wins / jr.total;
               const gScore = sr && sr.total > 0 ? sr.wins / sr.total : 0.5;
-              score = pScore * 0.6 + gScore * 0.4;
+              const kScore = kr && kr.total > 0 ? kr.wins / kr.total : gScore;
+              score = pScore * 0.6 + gScore * 0.25 + kScore * 0.15;
             } else {
-              // No personal data — use general
-              score = sr && sr.total > 0 ? sr.wins / sr.total : 0.5;
+              // No personal data — blend general and self-play
+              const gScore = sr && sr.total > 0 ? sr.wins / sr.total : 0.5;
+              const kScore = kr && kr.total > 0 ? kr.wins / kr.total : gScore;
+              score = gScore * 0.65 + kScore * 0.35;
             }
             const playerRewardScore = this._scoreRewardBucket(
               pStyleBuckets && pStyleBuckets[name],
@@ -508,12 +522,17 @@ const SparSystem = {
               totalGeneralStylePlays,
               0.1
             );
+            const selfPlayRewardScore = this._scoreRewardBucket(
+              sStyleBuckets && sStyleBuckets[name],
+              totalSelfPlayStylePlays,
+              0.08
+            );
             if (jr && jr.total >= 3) {
-              score = score * 0.72 + playerRewardScore * 0.22 + generalRewardScore * 0.06;
+              score = score * 0.68 + playerRewardScore * 0.20 + generalRewardScore * 0.06 + selfPlayRewardScore * 0.06;
             } else if (jr && jr.total > 0) {
-              score = score * 0.75 + playerRewardScore * 0.15 + generalRewardScore * 0.10;
+              score = score * 0.68 + playerRewardScore * 0.14 + generalRewardScore * 0.10 + selfPlayRewardScore * 0.08;
             } else {
-              score = score * 0.8 + generalRewardScore * 0.2;
+              score = score * 0.68 + generalRewardScore * 0.20 + selfPlayRewardScore * 0.12;
             }
             if (score > bestScore) { bestScore = score; style = name; }
           }
@@ -1408,7 +1427,10 @@ const SparSystem = {
     // We still update the general reinforcement buckets so bulk sims keep
     // teaching the bot broad meta/style preferences.
     if (typeof _isSparTraining === 'function' && _isSparTraining()) {
-      this._updateMatchReinforcement(won, c, enemyBot1v1, ['general']);
+      const scopes = (typeof _isSparSelfPlay === 'function' && _isSparSelfPlay())
+        ? ['general', 'selfPlay']
+        : ['general'];
+      this._updateMatchReinforcement(won, c, enemyBot1v1, scopes);
       SparState._matchCollector = null;
       return;
     }
@@ -1964,8 +1986,10 @@ const SparSystem = {
     const rf = sl ? this._ensureReinforcementProfile(sl) : null;
     const pOpeningBuckets = rf && rf.player ? rf.player.opening : null;
     const gOpeningBuckets = rf && rf.general ? rf.general.opening : null;
+    const sOpeningBuckets = rf && rf.selfPlay ? rf.selfPlay.opening : null;
     const totalPlayerOpening = this._sumBucketPlays(pOpeningBuckets);
     const totalGeneralOpening = this._sumBucketPlays(gOpeningBuckets);
+    const totalSelfPlayOpening = this._sumBucketPlays(sOpeningBuckets);
 
     // Base bonus for bottom routes — bottom is meta
     scores['bottomCenter'] += 5;
@@ -2010,8 +2034,14 @@ const SparSystem = {
         totalGeneralOpening,
         0.14
       );
+      const selfPlayRewardScore = this._scoreRewardBucket(
+        sOpeningBuckets && sOpeningBuckets[r],
+        totalSelfPlayOpening,
+        0.1
+      );
       scores[r] += (playerRewardScore - 0.5) * 26;
       scores[r] += (generalRewardScore - 0.5) * 14;
+      scores[r] += (selfPlayRewardScore - 0.5) * 10;
     }
 
     // Counter player's specific route — STRONG counter
