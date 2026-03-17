@@ -1709,6 +1709,25 @@ const SparSystem = {
         m.gun.fireCooldown = 0;
         m.ai.shootCD = 0;
         m.dead = false;
+        // Reset per-match AI state for ally bots
+        m.ai._matchDmgDealt = 0;
+        m.ai._matchDmgTaken = 0;
+        m.ai._openingRoute = null;
+        m.ai._duelStyle = null;
+        m.ai._antiBottomTactic = null;
+        m.ai._antiBottomFamily = null;
+        m.ai._antiBottomFrames = 0;
+        m.ai._gunSidePolicy = null;
+        m.ai._escapePolicy = null;
+        m.ai._midPressurePolicy = null;
+        m.ai._wallPressurePolicy = null;
+        m.ai._shotTimingPolicy = null;
+        m.ai._reloadPolicy = null;
+        m.ai._topStuckFrames = 0;
+        m.ai._chaseFrames = 0;
+        m.ai._retreatFrames = 0;
+        m.ai._cornerFrames = 0;
+        m.ai._profileMods = null;
       }
     }
 
@@ -3564,7 +3583,8 @@ const SparSystem = {
 
     // --- Detect enemy state ---
     const enemyMember = target.member;
-    const enemyReloading = enemyMember ? enemyMember.gun.reloading : false;
+    // Player has member=null, uses global gun; bots have member.gun
+    const enemyReloading = enemyMember ? enemyMember.gun.reloading : (typeof gun !== 'undefined' ? gun.reloading : false);
 
     // v10: Finalize reload behavior when enemy stops reloading
     if (!enemyReloading && ai._reloadPolicy) {
@@ -3709,7 +3729,7 @@ const SparSystem = {
     }
 
     // v11: Detect when leaving neutral state → finalize mid-fight pressure
-    const isNeutral = !isOpening && !member.gun.reloading && !enemyReloading && !hasBottom && !(enemyHasBottom && ai._antiBottomHysteresisFrames >= 20) && !(enemyHasBottom);
+    const isNeutral = !isOpening && !member.gun.reloading && !enemyReloading && !hasBottom && !enemyHasBottom;
     if (!isNeutral && ai._midPressurePolicy) {
       const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
       this._finalizeMidFightPressure(ai, mpDmg);
@@ -4462,8 +4482,13 @@ const SparSystem = {
         }
       }
 
-      // v11: WALL PRESSURE — exploit enemy near wall
+      // v11: WALL PRESSURE — exploit enemy near wall (suppresses mid-fight pressure)
       if (nearEnemyWall && !nearAnyWall && !member.gun.reloading && !ai._escapePolicy) {
+        // Finalize mid-fight pressure if wall pressure is taking over
+        if (ai._midPressurePolicy) {
+          const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
+          this._finalizeMidFightPressure(ai, mpDmg);
+        }
         // Pick wall pressure policy if not active
         if (!ai._wallPressurePolicy) {
           const wpCtx = {

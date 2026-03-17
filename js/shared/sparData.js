@@ -138,7 +138,7 @@ const SPAR_WALL_PRESSURE_KEYS = ['wallPinHold', 'pressureWiden', 'prefireCorner'
 const SPAR_WALL_PRESSURE_FAMILY_KEYS = ['pin', 'widen'];
 const SPAR_WALL_PRESSURE_FAMILY_MAP = {
   wallPinHold: 'pin',
-  pressureWiden: 'pin',
+  pressureWiden: 'widen',
   prefireCorner: 'widen',
 };
 
@@ -188,7 +188,7 @@ function createDefaultSparLearning() {
       rushBottom: 0.5,
       strafeLeft: 0.5,
       route: 'bottomCenter',
-      routeCounts: { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midFlank: 0 },
+      routeCounts: { bottomLeft: 0, bottomRight: 0, bottomCenter: 0, topHold: 0, midFlank: 0, mirrorPlayer: 0 },
       speedPct: 0.5,
       firstShotFrame: 90,
       shootsDuringOpening: 0.5,
