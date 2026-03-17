@@ -34,5 +34,5 @@ const GAME_CONFIG = {
   DEFAULT_HITBOX_RY: 23,        // hitbox visual vertical (BULLET_R + ENTITY_RY = 23)
 
   // --- Version ---
-  GAME_UPDATE: 282,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 283,             // increment each deploy — shown on lobby version sign
 };

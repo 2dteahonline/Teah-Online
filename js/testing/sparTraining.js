@@ -144,6 +144,18 @@ function _createTrainingRuntime() {
   return { strafeDir: 1, strafeTimer: 0, cornerTarget: null };
 }
 
+function _sparTrainJoinWhenReady() {
+  setTimeout(() => {
+    if (!_sparTrainState) return;
+    if (typeof SparState === 'undefined' || typeof SparSystem === 'undefined') return;
+    if (SparState.phase === 'hub') {
+      SparSystem.joinRoom('spar_1v1');
+    } else {
+      _sparTrainJoinWhenReady();
+    }
+  }, 100);
+}
+
 function _sparTrainStartNext() {
   if (!_sparTrainState || _sparTrainState.queue.length === 0) {
     _sparTrainPrintSummary();
@@ -159,16 +171,18 @@ function _sparTrainStartNext() {
 
   console.log(`[SparTrain] Match ${_sparTrainState.completedMatches + 1}/${_sparTrainState.totalMatches}: vs ${nextType}`);
 
+  if (typeof SparSystem === 'undefined') return;
+
   if (SparState.phase !== 'hub') {
-    if (typeof SparSystem !== 'undefined' && typeof enterLevel !== 'undefined') {
+    if (SparState.phase !== 'idle') {
+      SparSystem.exitToHub();
+    } else if (typeof enterLevel !== 'undefined') {
       enterLevel('spar_hub_01', 15, 18);
       SparSystem.enterHub();
     }
   }
 
-  setTimeout(() => {
-    if (_sparTrainState) SparSystem.joinRoom('spar_1v1');
-  }, 100);
+  _sparTrainJoinWhenReady();
 }
 
 // ---- Called by authorityTick — returns one frame of scripted intent ----

@@ -333,11 +333,17 @@ const SparSystem = {
         } else {
           let bestScore = -Infinity;
           const hasPersonal = sl.player1v1 && sl.player1v1.styleResults;
+          let personalSamples = 0;
+          if (hasPersonal) {
+            for (const name of Object.keys(SPAR_DUEL_STYLES)) {
+              personalSamples += (sl.player1v1.styleResults[name] && sl.player1v1.styleResults[name].total) || 0;
+            }
+          }
           for (const [name, _] of Object.entries(SPAR_DUEL_STYLES)) {
             const sr = sl.general1v1.styleResults[name];
             const jr = hasPersonal ? sl.player1v1.styleResults[name] : null;
-            // Try untested styles first
-            if ((!sr || sr.total < 1) && (!jr || jr.total < 1)) {
+            // Only force untested styles when we have no personal read yet.
+            if (personalSamples < 1 && (!sr || sr.total < 1) && (!jr || jr.total < 1)) {
               style = name; break;
             }
             let score;
