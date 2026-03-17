@@ -849,7 +849,7 @@ const SparSystem = {
   },
 
   // vNext: Finalize opening contest engagement
-  _finalizeOpeningContest(ai, botSecuredBottom, playerDeniedBottom, dmgDealt, duration) {
+  _finalizeOpeningContest(ai, botSecuredBottom, playerDeniedBottom, dmgDealt, duration, openingQuality) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     const policy = ai._openingContestPolicy;
     const family = ai._openingContestFamily;
@@ -857,7 +857,9 @@ const SparSystem = {
     const securedR = botSecuredBottom ? 1 : 0;
     const deniedR = playerDeniedBottom ? 1 : 0;
     const dmgR = this._clamp01(0.5 + dmgDealt / (SPAR_CONFIG.HP_BASELINE * 0.5));
-    const phaseReward = this._clamp01(securedR * 0.4 + deniedR * 0.25 + dmgR * 0.2 + 0.15 * 0.5);
+    const qualityR = typeof openingQuality === 'number' ? openingQuality : 0.5;
+    // 40% bottom control, 25% denied player opening, 20% damage, 15% lane quality
+    const phaseReward = this._clamp01(securedR * 0.4 + deniedR * 0.25 + dmgR * 0.2 + qualityR * 0.15);
     if (sl) {
       const rf = this._ensureReinforcementProfile(sl);
       if (rf) {
@@ -1893,15 +1895,22 @@ const SparSystem = {
       const aAlive = SparState.teamA.filter(p => p.alive).length;
       const bAlive = SparState.teamB.filter(p => p.alive).length;
 
-      // Hard timeout: prevent stalled matches (3600f = 60 seconds at 60fps)
-      const MAX_MATCH_FRAMES = 3600;
+      // Hard timeout — training uses a short watchdog, real matches use full duration
+      const isTraining = typeof _isSparTraining === 'function' && _isSparTraining();
+      const MAX_MATCH_FRAMES = isTraining ? 1200 : 3600; // training: 20s, real: 60s
       const matchTimedOut = aAlive > 0 && bAlive > 0 && SparState.matchTimer >= MAX_MATCH_FRAMES;
       if (matchTimedOut) {
-        // Force resolve by remaining HP
+        // Force resolve by remaining HP, then damage dealt as tiebreak
         const aHP = SparState.teamA.reduce((sum, p) => sum + (p.alive ? (p.entity.hp || 0) : 0), 0);
         const bHP = SparState.teamB.reduce((sum, p) => sum + (p.alive ? (p.entity.hp || 0) : 0), 0);
-        SparState.lastResult = aHP >= bHP ? 'teamA' : 'teamB';
-        const isTraining = typeof _isSparTraining === 'function' && _isSparTraining();
+        if (aHP !== bHP) {
+          SparState.lastResult = aHP > bHP ? 'teamA' : 'teamB';
+        } else {
+          // HP tied — compare total damage dealt
+          const aDmg = SparState.teamB.reduce((sum, p) => sum + ((p.entity.maxHp || SPAR_CONFIG.HP_BASELINE) - (p.alive ? (p.entity.hp || 0) : 0)), 0);
+          const bDmg = SparState.teamA.reduce((sum, p) => sum + ((p.entity.maxHp || SPAR_CONFIG.HP_BASELINE) - (p.alive ? (p.entity.hp || 0) : 0)), 0);
+          SparState.lastResult = aDmg >= bDmg ? 'teamA' : 'teamB';
+        }
         if (!isTraining) {
           console.log(`[Spar] Match timeout at ${MAX_MATCH_FRAMES}f — resolved by HP (A:${aHP} B:${bHP})`);
         }
@@ -1920,7 +1929,6 @@ const SparSystem = {
 
         // Record results
         const won = SparState.lastResult === 'teamA';
-        const isTraining = typeof _isSparTraining === 'function' && _isSparTraining();
 
         // Skip progression/stats/save during automated training
         if (!isTraining) {
@@ -4078,12 +4086,25 @@ const SparSystem = {
     // vNext: Finalize opening contest at opening-to-fight transition (frame 180)
     if (!isOpening && ai._openingContestPolicy) {
       const c = SparState._matchCollector;
+      const bg = this._getSparBottomGap();
+      // botSecured: bot clearly has bottom advantage (below player by gap)
       const botSecured = c && c.botYAtOpeningEnd > 0 && c.playerYAtOpeningEnd > 0
-        ? (c.botYAtOpeningEnd > c.playerYAtOpeningEnd + this._getSparBottomGap()) : false;
-      const playerDenied = c && c.playerYAtOpeningEnd > 0 && c.botYAtOpeningEnd > 0
-        ? (c.playerYAtOpeningEnd < c.botYAtOpeningEnd - this._getSparBottomGap()) : false;
+        ? (c.botYAtOpeningEnd > c.playerYAtOpeningEnd + bg) : false;
+      // playerDenied: player failed to establish strong bottom — distinct from botSecured
+      // Player is NOT meaningfully below arena midpoint (didn't reach bottom territory)
+      const arenaLvl = LEVELS[SparState.activeRoom.arenaLevel];
+      const arenaHPx = arenaLvl ? arenaLvl.heightTiles * TILE : 960;
+      const playerDenied = c && c.playerYAtOpeningEnd > 0 && !botSecured
+        ? (c.playerYAtOpeningEnd < arenaHPx * 0.6) : false;
+      // Lane quality at opening end: vertical advantage + lateral offset from enemy
+      const botY = c ? c.botYAtOpeningEnd : 0;
+      const playerY = c ? c.playerYAtOpeningEnd : 0;
+      const vertScore = (botY > 0 && playerY > 0) ? this._clamp01(0.5 + (botY - playerY) / 200) : 0.5;
+      const botLateralOffset = Math.abs(bot.x - tgt.x);
+      const laneScore = this._clamp01(botLateralOffset / 200); // wider offset = cleaner lane
+      const openingQuality = vertScore * 0.6 + laneScore * 0.4;
       const dmgDealt = (ai._matchDmgDealt || 0) - (ai._openingContestStartDmg || 0);
-      this._finalizeOpeningContest(ai, botSecured, playerDenied, dmgDealt, 180);
+      this._finalizeOpeningContest(ai, botSecured, playerDenied, dmgDealt, 180, openingQuality);
     }
     // v11: Detect when leaving neutral state → finalize mid-fight pressure
     const isNeutral = !isOpening && !member.gun.reloading && !enemyReloading && !hasBottom && !enemyHasBottom;
@@ -5312,11 +5333,12 @@ const SparSystem = {
         // Only count as whiff if bot wasn't ALSO hit in the same window
         (ai._lastTookHitFrame === 0 || (SparState.matchTimer - ai._lastTookHitFrame) > 12);
       // Quick re-peek: enemy fired recently AND there was a meaningful gap before it
-      // (gap = time between previous shot and this shot was 20+ frames, then this shot came fast)
-      const shotGap = ai._prevEnemyShotFrame > 0 ? (ai._lastEnemyShotFrame - ai._prevEnemyShotFrame) : 999;
-      const quickRepeek = pm && pm.playerRepeeksQuickly &&
-        ai._lastEnemyShotFrame > 0 && (SparState.matchTimer - ai._lastEnemyShotFrame) < 10 &&
-        shotGap >= 20; // there was a real disengage before this shot = a re-peek
+      // Requires TWO prior shots — can't re-peek on the very first shot of the match
+      const hasPrevShot = ai._prevEnemyShotFrame > 0 && ai._lastEnemyShotFrame > ai._prevEnemyShotFrame;
+      const shotGap = hasPrevShot ? (ai._lastEnemyShotFrame - ai._prevEnemyShotFrame) : 0;
+      const recentShot = ai._lastEnemyShotFrame > 0 && (SparState.matchTimer - ai._lastEnemyShotFrame) < 10;
+      const quickRepeek = hasPrevShot && pm && pm.playerRepeeksQuickly &&
+        recentShot && shotGap >= 20; // real disengage (20+ frame gap) then fast return
       const trigger = quickRepeek ? 'repeek' : (enemyWhiffed ? 'whiff' : null);
       if (trigger && Math.random() < 0.35) { // don't trigger every time
         const pwPolicy = this._pickPunishWindowPolicy(pm, trigger);

@@ -656,5 +656,9 @@ function sparSummary() {
   console.log('\n--- Anti-Stall ---');
   console.log(`  Idle breaks: ${t.idleBreaks || 0}, Low motion rescues: ${t.lowMotionRescues || 0}`);
 
+  // Timeout info
+  console.log('\n--- Timeouts ---');
+  console.log(`  Real match: 3600f (60s), Training watchdog: 1200f (20s)`);
+
   return 'Done';
 }
