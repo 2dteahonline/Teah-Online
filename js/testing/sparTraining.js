@@ -14,6 +14,8 @@ const SPAR_TRAINING_TIMING = {
   postMatchFrames: 12,
   joinPollMs: 50,
   nextMatchDelayMs: 100,
+  speedMultiplier: 6,
+  maxUpdatesPerFrame: 24,
 };
 
 const SPAR_TRAINING_ARCHETYPES = {
@@ -377,6 +379,10 @@ function _isSparTraining() {
 }
 
 function _getSparTrainingTiming() {
+  return _isSparTraining() ? SPAR_TRAINING_TIMING : null;
+}
+
+function _getSparTrainingLoopConfig() {
   return _isSparTraining() ? SPAR_TRAINING_TIMING : null;
 }
 

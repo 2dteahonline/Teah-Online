@@ -2872,14 +2872,25 @@ function gameLoop(timestamp) {
   let elapsed = timestamp - lastTime;
   lastTime = timestamp;
   if (elapsed > 100) elapsed = 100;
+  const trainingLoop = typeof _getSparTrainingLoopConfig === 'function'
+    ? _getSparTrainingLoopConfig()
+    : null;
   // /speed — game speed multiplier (0.25x slow-mo to 2x fast-forward)
   if (window._gameSpeed && window._gameSpeed !== 1) elapsed *= window._gameSpeed;
+  // Automated spar training can safely fast-forward time as long as each
+  // fixed tick still runs the normal combat logic.
+  if (trainingLoop && trainingLoop.speedMultiplier && trainingLoop.speedMultiplier !== 1) {
+    elapsed *= trainingLoop.speedMultiplier;
+  }
   accumulator += elapsed;
   // Fixed timestep: run exactly 60 physics ticks/sec regardless of display refresh rate.
   // On 120Hz+ displays the old code ran extra ticks (via updates===0 fallback),
   // making lightweight scenes (gunsmith) physically faster than heavy ones (lobby).
   let updates = 0;
-  while (accumulator >= FIXED_DT && updates < 4) {
+  const maxUpdates = trainingLoop && trainingLoop.maxUpdatesPerFrame
+    ? trainingLoop.maxUpdatesPerFrame
+    : 4;
+  while (accumulator >= FIXED_DT && updates < maxUpdates) {
     // === SERVER-AUTHORITY LOOP ===
     // 1. Client: gather input → produce commands
     translateIntentsToCommands();
