@@ -5290,7 +5290,7 @@ const SparSystem = {
       // Quick re-peek: enemy fired recently AND there was a meaningful gap before it
       // (gap = time between previous shot and this shot was 20+ frames, then this shot came fast)
       const shotGap = ai._prevEnemyShotFrame > 0 ? (ai._lastEnemyShotFrame - ai._prevEnemyShotFrame) : 999;
-      const quickRepeek = sl && sl.rhythm && sl.rhythm.repeeksQuickly > 0.55 &&
+      const quickRepeek = pm && pm.playerRepeeksQuickly &&
         ai._lastEnemyShotFrame > 0 && (SparState.matchTimer - ai._lastEnemyShotFrame) < 10 &&
         shotGap >= 20; // there was a real disengage before this shot = a re-peek
       const trigger = quickRepeek ? 'repeek' : (enemyWhiffed ? 'whiff' : null);
