@@ -4879,17 +4879,16 @@ const SparSystem = {
       // --- Tactic-specific movement ---
       if (tactic === 'contestDirect') {
         // Descend diagonally with lateral offset — never on centerline
+        // This is a deliberate retake tactic — approaching is the purpose
         const vertPush = 0.35 + 0.2 * Math.min(1, dist / 300);
         moveX = offDir * speed * 0.55;
         moveY = speed * vertPush;
-        // Close range: widen laterally to avoid stacking on enemy — don't rush straight in
-        if (dist < 150) {
-          moveX = offDir * speed * 0.75;
-          moveY = speed * 0.2;
-        }
+        // Close range: maintain lateral offset so we pass beside, not through
+        if (dist < 150) { moveX = offDir * speed * 0.65; moveY = speed * 0.3; }
 
       } else if (tactic === 'contestSprint') {
-        // Diagonal dive to below+beside target — but from a WIDE angle, not through them
+        // Full-speed diagonal dive to below+beside target
+        // Deliberate retake — approaching is correct, but target is offset, not on top of enemy
         const goalX = tgt.x + offDir * 75;
         const goalY = tgt.y + bottomGap + 30;
         const gdx = goalX - bot.x, gdy = goalY - bot.y;
@@ -4897,13 +4896,6 @@ const SparSystem = {
         if (gd > 15) {
           moveX = (gdx / gd) * speed;
           moveY = (gdy / gd) * speed;
-          // If path passes too close to enemy, add lateral separation
-          if (dist < 160 && dist > 1) {
-            const sepX = (bot.x - tgt.x) / dist;
-            const sepY = (bot.y - tgt.y) / dist;
-            moveX += sepX * speed * 0.3;
-            moveY += sepY * speed * 0.15;
-          }
         } else {
           // Arrived — hold position briefly, will transition to hasBottom
           moveX = ai.strafeDir * speed * 0.6;
@@ -5144,16 +5136,32 @@ const SparSystem = {
       ai._midPressureFrames++;
 
       // Policy-driven neutral movement
+      // Determine if bot has a positional advantage worth pressing
+      const hasPressAdvantage = hasBottom || (!badGunSide && laneQuality > 0.6);
+
       if (ai._midPressurePolicy === 'pressureHard') {
-        // Pressure with lateral dominance — close in only to safe distance, not into their face
+        // Controlled pressure — approach closer when we have advantage, hold distance otherwise
         moveX = ai.strafeDir * speed * 0.55;
-        if (dist > 180 && dist > 1) {
-          moveX += (dx / dist) * speed * 0.4;
-          moveY += (dy / dist) * speed * 0.35;
-        } else if (dist < 140 && dist > 1) {
-          // Too close — back off slightly while maintaining lateral pressure
-          moveX -= (dx / dist) * speed * 0.15;
-          moveY -= (dy / dist) * speed * 0.1;
+        if (hasPressAdvantage) {
+          // Has advantage: press closer (controlled push, not rush)
+          if (dist > 140 && dist > 1) {
+            moveX += (dx / dist) * speed * 0.45;
+            moveY += (dy / dist) * speed * 0.4;
+          }
+          // Even with advantage, don't stack on top — maintain minimum gap
+          if (dist < 90 && dist > 1) {
+            moveX -= (dx / dist) * speed * 0.15;
+            moveY -= (dy / dist) * speed * 0.1;
+          }
+        } else {
+          // No advantage: approach cautiously, don't get close
+          if (dist > 200 && dist > 1) {
+            moveX += (dx / dist) * speed * 0.35;
+            moveY += (dy / dist) * speed * 0.3;
+          } else if (dist < 140 && dist > 1) {
+            moveX -= (dx / dist) * speed * 0.15;
+            moveY -= (dy / dist) * speed * 0.1;
+          }
         }
         // Push toward bottom position — bottom is the primary objective
         if (bot.y < tgt.y) moveY += speed * 0.35;
@@ -5214,9 +5222,17 @@ const SparSystem = {
       }
 
       // Maintain fighting distance — close range must be earned, not drifted into
-      // In neutral, there's no deliberate close-range purpose, so always maintain space
-      if (dist < 160 && dist > 1) {
-        const sepStrength = (160 - dist) / 160; // stronger as we get closer (0→1)
+      // With advantage (bottom/gun-side): pressing closer is correct, only prevent stacking
+      // Without advantage: no reason to be close, maintain space
+      if (hasPressAdvantage) {
+        // Pressing from advantage — only separate if truly stacking (dist < 90)
+        if (dist < 90 && dist > 1) {
+          moveX -= (dx / dist) * speed * 0.2;
+          moveY -= (dy / dist) * speed * 0.15;
+        }
+      } else if (dist < 160 && dist > 1) {
+        // No advantage — no reason to be close, scale separation with proximity
+        const sepStrength = (160 - dist) / 160;
         moveX -= (dx / dist) * speed * (0.15 + sepStrength * 0.25);
         moveY -= (dy / dist) * speed * (0.10 + sepStrength * 0.20);
       }
