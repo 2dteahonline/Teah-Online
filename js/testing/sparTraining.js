@@ -159,7 +159,16 @@ function sparTrain(botType, count) {
 }
 
 function _createTrainingRuntime() {
-  return { strafeDir: 1, strafeTimer: 0, cornerTarget: null, selfPlayStyle: null, selfPlayRoute: null, selfPlayAntiBottom: null, selfPlayReactionDelay: 0, selfPlaySidePref: null, selfPlayVariantLabel: null };
+  return {
+    strafeDir: 1, strafeTimer: 0, cornerTarget: null,
+    selfPlayStyle: null, selfPlayRoute: null, selfPlayAntiBottom: null,
+    selfPlayReactionDelay: 0, selfPlaySidePref: null, selfPlayVariantLabel: null,
+    // Policy-dimension behavioral overrides for self-play diversity
+    selfPlayShootAggr: null,     // 'aggressive'|'patient'|null — shot timing behavior
+    selfPlayRetreatSpeed: null,  // 'fast'|'slow'|null — how quickly to disengage
+    selfPlayGunSideBias: null,   // 'peek'|'hold'|null — lateral aggression
+    selfPlayReloadPunish: null,  // 'hard'|'soft'|null — how aggressively to punish reloads
+  };
 }
 
 // Randomize self-play snapshot bot parameters for diversity across matches.
@@ -215,17 +224,34 @@ function _randomizeSelfPlayVariant(policy) {
     variant.sidePref = null;
   }
 
-  // (f) Anti-bottom tactic bias: 20% chance to force a specific family
+  // (f) Anti-bottom family bias: 20% chance to force a specific family
   if (Math.random() < 0.20) {
     const families = typeof SPAR_ANTI_BOTTOM_FAMILY_KEYS !== 'undefined'
       ? SPAR_ANTI_BOTTOM_FAMILY_KEYS
       : ['contest', 'flank', 'bait'];
     variant.antiBottomFamily = families[Math.floor(Math.random() * families.length)];
-    // Map family to a legacy response key for _getSparSelfPlayIntent compatibility
-    const familyToLegacy = { contest: 'directContest', flank: 'sideFlank', bait: 'baitPull' };
-    variant.antiBottomResponse = familyToLegacy[variant.antiBottomFamily] || 'sideFlank';
     parts.push('ab=' + variant.antiBottomFamily);
   }
+
+  // (g) Shot timing behavior: 25% aggressive, 25% patient, 50% default
+  const shootRoll = Math.random();
+  if (shootRoll < 0.25) { variant.shootAggr = 'aggressive'; parts.push('shoot=aggr'); }
+  else if (shootRoll < 0.50) { variant.shootAggr = 'patient'; parts.push('shoot=patient'); }
+
+  // (h) Retreat speed: 20% fast, 20% slow, 60% default
+  const retreatRoll = Math.random();
+  if (retreatRoll < 0.20) { variant.retreatSpeed = 'fast'; parts.push('retreat=fast'); }
+  else if (retreatRoll < 0.40) { variant.retreatSpeed = 'slow'; parts.push('retreat=slow'); }
+
+  // (i) Gun side bias: 20% peek-heavy, 20% hold-heavy, 60% default
+  const gunSideRoll = Math.random();
+  if (gunSideRoll < 0.20) { variant.gunSideBias = 'peek'; parts.push('gs=peek'); }
+  else if (gunSideRoll < 0.40) { variant.gunSideBias = 'hold'; parts.push('gs=hold'); }
+
+  // (j) Reload punishment: 20% hard rush, 20% soft/safe, 60% default
+  const reloadRoll = Math.random();
+  if (reloadRoll < 0.20) { variant.reloadPunish = 'hard'; parts.push('rl=hard'); }
+  else if (reloadRoll < 0.40) { variant.reloadPunish = 'soft'; parts.push('rl=soft'); }
 
   variant.label = parts.length > 0 ? parts.join(' ') : 'base';
   return variant;
@@ -341,21 +367,22 @@ function _pickSnapshotRoute(policy) {
 }
 
 function _pickSnapshotAntiBottom(policy) {
-  const names = typeof SPAR_ANTI_BOTTOM_RESPONSE_KEYS !== 'undefined'
-    ? SPAR_ANTI_BOTTOM_RESPONSE_KEYS
-    : ['directContest', 'sideFlank', 'baitPull'];
-  let best = 'sideFlank', bestScore = -Infinity;
+  // Use family keys (contest/flank/bait) instead of legacy response keys
+  const families = typeof SPAR_ANTI_BOTTOM_FAMILY_KEYS !== 'undefined'
+    ? SPAR_ANTI_BOTTOM_FAMILY_KEYS
+    : ['contest', 'flank', 'bait'];
+  let best = 'flank', bestScore = -Infinity;
   const rf = policy && policy.reinforcement1v1 ? policy.reinforcement1v1 : null;
   const holdBottom = policy && policy.whenHasBottom ? policy.whenHasBottom.holdsPct : 0.5;
   const wallBottom = policy && policy.whenHasBottom ? policy.whenHasBottom.shotFreq : 0.5;
   const pushBottom = policy && policy.whenHasBottom ? policy.whenHasBottom.pushPct : 0.5;
-  for (const name of names) {
-    let score = name === 'sideFlank' ? 0.55 : (name === 'directContest' ? 0.5 : 0.48);
-    if (name === 'sideFlank') score += wallBottom * 0.2 + holdBottom * 0.12;
-    if (name === 'directContest') score += holdBottom * 0.18 - pushBottom * 0.08;
-    if (name === 'baitPull') score += pushBottom * 0.22;
-    const gBucket = rf && rf.general && rf.general.antiBottom ? rf.general.antiBottom[name] : null;
-    const sBucket = rf && rf.selfPlay && rf.selfPlay.antiBottom ? rf.selfPlay.antiBottom[name] : null;
+  for (const name of families) {
+    let score = name === 'flank' ? 0.55 : (name === 'contest' ? 0.5 : 0.48);
+    if (name === 'flank') score += wallBottom * 0.2 + holdBottom * 0.12;
+    if (name === 'contest') score += holdBottom * 0.18 - pushBottom * 0.08;
+    if (name === 'bait') score += pushBottom * 0.22;
+    const gBucket = rf && rf.general && rf.general.antiBottomFamily ? rf.general.antiBottomFamily[name] : null;
+    const sBucket = rf && rf.selfPlay && rf.selfPlay.antiBottomFamily ? rf.selfPlay.antiBottomFamily[name] : null;
     score += ((gBucket && gBucket.reward) || 0.5) * 0.05;
     score += ((sBucket && sBucket.reward) || 0.5) * 0.08;
     if (score > bestScore) { bestScore = score; best = name; }
@@ -413,11 +440,15 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
       if (p.y < arenaH * 0.86) my = Math.max(my, speed * 0.78);
     }
   } else if (enemyReloading && dist > 1) {
-    mx = (dx / dist) * speed * 0.7 * style.approachMult;
-    my = (dy / dist) * speed * 0.7 * style.approachMult;
-    mx += rt.strafeDir * speed * 0.2;
+    // Reload punish variant: hard rushes in, soft stays at range
+    const rlAggr = rt.selfPlayReloadPunish === 'hard' ? 1.1 : (rt.selfPlayReloadPunish === 'soft' ? 0.4 : 0.7);
+    mx = (dx / dist) * speed * rlAggr * style.approachMult;
+    my = (dy / dist) * speed * rlAggr * style.approachMult;
+    mx += rt.strafeDir * speed * (rt.selfPlayReloadPunish === 'soft' ? 0.45 : 0.2);
   } else if (hasBottom) {
-    mx = rt.strafeDir * speed * (0.62 + 0.2 * style.strafeMult);
+    // Gun side bias: peek = wider lateral movement, hold = stay planted
+    const gsMult = rt.selfPlayGunSideBias === 'peek' ? 1.2 : (rt.selfPlayGunSideBias === 'hold' ? 0.6 : 1.0);
+    mx = rt.strafeDir * speed * (0.62 + 0.2 * style.strafeMult) * gsMult;
     if (Math.abs(dy) > 40) my *= 0.25;
     if (dist > style.preferredDist + 40 && dist > 1) {
       mx += (dx / dist) * speed * 0.28;
@@ -425,14 +456,14 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
     }
     if (alignX < 70) mx += rt.strafeDir * speed * 0.3;
   } else if (enemyHasBottom) {
-    const response = rt.selfPlayAntiBottom;
+    const abFamily = rt.selfPlayAntiBottom;  // now a family key: contest/flank/bait
     const aboveTrapLine = p.y < tgt.y - 35;
-    if (response === 'sideFlank') {
+    if (abFamily === 'flank') {
       const flankDir = alignX < 110 ? rt.strafeDir : Math.sign(dx || rt.strafeDir);
       mx = flankDir * speed * 0.9;
       my = speed * (alignX < 110 ? 0.18 : 0.5);
       if (aboveTrapLine && alignX < 90) my = Math.min(my, 0.12 * speed);
-    } else if (response === 'baitPull') {
+    } else if (abFamily === 'bait') {
       if (dist < 240) {
         my = -speed * 0.35;
         mx = rt.strafeDir * speed * 0.8;
@@ -441,6 +472,7 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
         my = speed * 0.35;
       }
     } else {
+      // contest (default): direct approach
       mx = rt.strafeDir * speed * 0.7;
       my = speed * 0.55;
     }
@@ -449,13 +481,15 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
       if (aboveTrapLine) my = Math.min(my, speed * 0.15);
     }
   } else {
+    // Retreat speed variant: fast disengages quicker, slow holds ground longer
+    const retreatMult = rt.selfPlayRetreatSpeed === 'fast' ? 1.4 : (rt.selfPlayRetreatSpeed === 'slow' ? 0.5 : 1.0);
     mx = rt.strafeDir * speed * (0.68 + 0.18 * style.strafeMult);
     if (dist > style.preferredDist + 40 && dist > 1) {
       mx += (dx / dist) * speed * 0.34;
       my += (dy / dist) * speed * 0.34;
     } else if (dist < style.preferredDist - 40 && dist > 1) {
-      mx -= (dx / dist) * speed * 0.24;
-      my -= (dy / dist) * speed * 0.24;
+      mx -= (dx / dist) * speed * 0.24 * retreatMult;
+      my -= (dy / dist) * speed * 0.24 * retreatMult;
     } else if (p.y < tgt.y) {
       my = speed * 0.42;
     } else {
@@ -477,6 +511,13 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
   else if (rt.selfPlayStyle === 'pressure') shouldShoot = Math.min(alignX, alignY) < 80 || dist < 180;
   else if (rt.selfPlayStyle === 'control') shouldShoot = Math.min(alignX, alignY) < 45 && dist > 110 && dist < 320;
   else shouldShoot = Math.min(alignX, alignY) < 60 || hasBottom || dist < 170;
+
+  // Shot timing variant: aggressive widens thresholds, patient tightens them
+  if (rt.selfPlayShootAggr === 'aggressive' && !shouldShoot) {
+    shouldShoot = Math.min(alignX, alignY) < 100 || dist < 200;
+  } else if (rt.selfPlayShootAggr === 'patient' && shouldShoot && !enemyReloading) {
+    shouldShoot = Math.min(alignX, alignY) < 35 && dist < 280;
+  }
 
   // (d) Reaction delay: suppress shooting for N frames after it first becomes valid
   if (shouldShoot && rt.selfPlayReactionDelay > 0) {
@@ -549,8 +590,13 @@ function _sparTrainStartNext() {
     // (e) Side preference (applied as initial strafe direction)
     if (variant.sidePref === 'left') { rt.strafeDir = -1; rt.selfPlaySidePref = 'left'; }
     else if (variant.sidePref === 'right') { rt.strafeDir = 1; rt.selfPlaySidePref = 'right'; }
-    // (f) Anti-bottom family override
-    if (variant.antiBottomResponse) rt.selfPlayAntiBottom = variant.antiBottomResponse;
+    // (f) Anti-bottom family override (using family key, not legacy response)
+    if (variant.antiBottomFamily) rt.selfPlayAntiBottom = variant.antiBottomFamily;
+    // (g-j) Policy-dimension behavioral overrides
+    if (variant.shootAggr) rt.selfPlayShootAggr = variant.shootAggr;
+    if (variant.retreatSpeed) rt.selfPlayRetreatSpeed = variant.retreatSpeed;
+    if (variant.gunSideBias) rt.selfPlayGunSideBias = variant.gunSideBias;
+    if (variant.reloadPunish) rt.selfPlayReloadPunish = variant.reloadPunish;
     // Store label for logging
     rt.selfPlayVariantLabel = variant.label;
     // (c) Store CT-X allocation for bot creation override

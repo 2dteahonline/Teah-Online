@@ -1050,7 +1050,7 @@ const SparSystem = {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     const rf = this._ensureReinforcementProfile(sl);
     const policies = typeof SPAR_WALL_PRESSURE_KEYS !== 'undefined' ? SPAR_WALL_PRESSURE_KEYS : ['wallPinHold', 'pressureWiden', 'prefireCorner'];
-    const familyMap = typeof SPAR_WALL_PRESSURE_FAMILY_MAP !== 'undefined' ? SPAR_WALL_PRESSURE_FAMILY_MAP : { wallPinHold: 'pin', pressureWiden: 'pin', prefireCorner: 'widen' };
+    const familyMap = typeof SPAR_WALL_PRESSURE_FAMILY_MAP !== 'undefined' ? SPAR_WALL_PRESSURE_FAMILY_MAP : { wallPinHold: 'pin', pressureWiden: 'widen', prefireCorner: 'widen' };
     const pPolicy = rf && rf.player ? rf.player.wallPressurePolicy : null;
     const gPolicy = rf && rf.general ? rf.general.wallPressurePolicy : null;
     const sPolicy = rf && rf.selfPlay ? rf.selfPlay.wallPressurePolicy : null;
@@ -4497,7 +4497,7 @@ const SparSystem = {
             laneQuality,
           };
           const wpPolicy = this._pickWallPressure(pm, wpCtx);
-          const wpFamilyMap = typeof SPAR_WALL_PRESSURE_FAMILY_MAP !== 'undefined' ? SPAR_WALL_PRESSURE_FAMILY_MAP : { wallPinHold: 'pin', pressureWiden: 'pin', prefireCorner: 'widen' };
+          const wpFamilyMap = typeof SPAR_WALL_PRESSURE_FAMILY_MAP !== 'undefined' ? SPAR_WALL_PRESSURE_FAMILY_MAP : { wallPinHold: 'pin', pressureWiden: 'widen', prefireCorner: 'widen' };
           ai._wallPressurePolicy = wpPolicy;
           ai._wallPressureFamily = wpFamilyMap[wpPolicy] || 'pin';
           ai._wallPressureStartDmg = ai._matchDmgDealt || 0;
