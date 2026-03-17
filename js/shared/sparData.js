@@ -80,23 +80,24 @@ const SPAR_DUEL_STYLES = {
 const SPAR_OPENING_ROUTE_KEYS = ['bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midFlank', 'mirrorPlayer'];
 const SPAR_ANTI_BOTTOM_RESPONSE_KEYS = ['directContest', 'sideFlank', 'baitPull']; // legacy — kept for migration
 
-// v8 anti-bottom tactical system: 6 tactics in 3 families
+// v8 anti-bottom tactical system: 9 tactics in 3 families
 const SPAR_ANTI_BOTTOM_TACTIC_KEYS = [
-  'contestDirect', 'contestSprint',
-  'flankWide', 'flankTight',
-  'baitRetreat', 'baitFake',
+  'contestDirect', 'contestSprint', 'lateCrossUnder',
+  'flankWide', 'flankTight', 'forceMirrorThenBreak',
+  'baitRetreat', 'baitFake', 'doubleFakeRetreat',
 ];
 const SPAR_ANTI_BOTTOM_FAMILY_KEYS = ['contest', 'flank', 'bait'];
 const SPAR_ANTI_BOTTOM_FAMILY_MAP = {
-  contestDirect: 'contest', contestSprint: 'contest',
-  flankWide: 'flank', flankTight: 'flank',
-  baitRetreat: 'bait', baitFake: 'bait',
+  contestDirect: 'contest', contestSprint: 'contest', lateCrossUnder: 'contest',
+  flankWide: 'flank', flankTight: 'flank', forceMirrorThenBreak: 'flank',
+  baitRetreat: 'bait', baitFake: 'bait', doubleFakeRetreat: 'bait',
 };
-const SPAR_GUN_SIDE_POLICY_KEYS = ['forcePeek', 'holdAngle', 'reAngleWide', 'yieldLane'];
+const SPAR_GUN_SIDE_POLICY_KEYS = ['forcePeek', 'holdAngle', 'preAimLaneHold', 'reAngleWide', 'yieldLane'];
 const SPAR_GUN_SIDE_FAMILY_KEYS = ['hold', 'reposition'];
 const SPAR_GUN_SIDE_FAMILY_MAP = {
   forcePeek: 'hold',
   holdAngle: 'hold',
+  preAimLaneHold: 'hold',
   reAngleWide: 'reposition',
   yieldLane: 'reposition',
 };
@@ -116,12 +117,13 @@ const SPAR_SHOT_TIMING_FAMILY_MAP = {
   baitShot: 'patient',
 };
 
-const SPAR_RELOAD_BEHAVIOR_KEYS = ['hardReloadPunish', 'safeReloadPunish', 'reloadBait'];
+const SPAR_RELOAD_BEHAVIOR_KEYS = ['hardReloadPunish', 'safeReloadPunish', 'reloadBait', 'reloadBaitPeek'];
 const SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS = ['punish', 'bait'];
 const SPAR_RELOAD_BEHAVIOR_FAMILY_MAP = {
   hardReloadPunish: 'punish',
   safeReloadPunish: 'punish',
   reloadBait: 'bait',
+  reloadBaitPeek: 'bait',
 };
 
 const SPAR_MID_PRESSURE_KEYS = ['pressureHard', 'pressureSoft', 'holdLane'];
@@ -371,9 +373,9 @@ function createDefaultSparLearning() {
     },
     tactical: {
       tacticFailStreaks: {
-        contestDirect: 0, contestSprint: 0,
-        flankWide: 0, flankTight: 0,
-        baitRetreat: 0, baitFake: 0,
+        contestDirect: 0, contestSprint: 0, lateCrossUnder: 0,
+        flankWide: 0, flankTight: 0, forceMirrorThenBreak: 0,
+        baitRetreat: 0, baitFake: 0, doubleFakeRetreat: 0,
       },
       trapZones: {
         center: { hits: 0, frames: 0 },

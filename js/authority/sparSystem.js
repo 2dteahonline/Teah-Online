@@ -185,7 +185,7 @@ const SparSystem = {
     }
     if (!sl.tactical) {
       sl.tactical = {
-        tacticFailStreaks: { contestDirect: 0, contestSprint: 0, flankWide: 0, flankTight: 0, baitRetreat: 0, baitFake: 0 },
+        tacticFailStreaks: { contestDirect: 0, contestSprint: 0, lateCrossUnder: 0, flankWide: 0, flankTight: 0, forceMirrorThenBreak: 0, baitRetreat: 0, baitFake: 0, doubleFakeRetreat: 0 },
         trapZones: { center: { hits: 0, frames: 0 }, near: { hits: 0, frames: 0 }, wide: { hits: 0, frames: 0 } },
         antiBottomOutcomes: { attempts: 0, regainedBottom: 0, avgDmgTakenDuring: 0, avgDuration: 0 },
         openingLostBottom: { fromLeft: 0, fromRight: 0, fromCenter: 0, totalLosses: 0 },
@@ -508,12 +508,18 @@ const SparSystem = {
         if (family === 'flank') {
           if (pm.playerWallsFromBottom > 0.45) score += 10;
           if (pm.playerHoldsBottom > 0.55) score += 6;
+          // forceMirrorThenBreak: extra bonus vs predictable horizontal movement
+          if (tactic === 'forceMirrorThenBreak' && pm.playerRetreatsSameSide > 0.55) score += 4;
         } else if (family === 'contest') {
           if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.35) score += 10;
           if (pm.playerPushesFromBottom > 0.45) score -= 4;
+          // lateCrossUnder: bonus when player shoots early (lots of wasted shots to wait out)
+          if (tactic === 'lateCrossUnder' && pm.playerShootsFast) score += 5;
         } else if (family === 'bait') {
           if (pm.playerPushesFromBottom > 0.45) score += 11;
           if (pm.playerWallsFromBottom > 0.55) score += 3;
+          // doubleFakeRetreat: bonus vs players who chase retreats
+          if (tactic === 'doubleFakeRetreat' && pm.playerChases > 0.45) score += 5;
         }
       }
 
@@ -554,17 +560,17 @@ const SparSystem = {
       if (openingLostDir) {
         if (openingLostDir === 'left') {
           // Player went left → flank/contest from the right side
-          if (tactic === 'flankWide' || tactic === 'flankTight') score += 5;
-          if (tactic === 'contestSprint') score += 3;
+          if (tactic === 'flankWide' || tactic === 'flankTight' || tactic === 'forceMirrorThenBreak') score += 5;
+          if (tactic === 'contestSprint' || tactic === 'lateCrossUnder') score += 3;
           // Bait less useful since player is already committed to a side
         } else if (openingLostDir === 'right') {
           // Player went right → flank/contest from the left side
-          if (tactic === 'flankWide' || tactic === 'flankTight') score += 5;
-          if (tactic === 'contestSprint') score += 3;
+          if (tactic === 'flankWide' || tactic === 'flankTight' || tactic === 'forceMirrorThenBreak') score += 5;
+          if (tactic === 'contestSprint' || tactic === 'lateCrossUnder') score += 3;
         } else {
           // Player went center → wide flanks or bait to pull them out
           if (tactic === 'flankWide') score += 4;
-          if (tactic === 'baitRetreat') score += 4;
+          if (tactic === 'baitRetreat' || tactic === 'doubleFakeRetreat') score += 4;
         }
       }
 
@@ -602,12 +608,14 @@ const SparSystem = {
     const failStreaks = {
       forcePeek: laneFail,
       holdAngle: Math.max(0, laneFail - 1),
+      preAimLaneHold: Math.max(0, laneFail - 1),
       reAngleWide: 0,
       yieldLane: 0,
     };
     const baseScores = {
       forcePeek: laneInfo && laneInfo.score > 0.56 ? 7 : 3,
       holdAngle: 6,
+      preAimLaneHold: laneInfo && laneInfo.score > 0.52 ? 7 : 4,
       reAngleWide: 7,
       yieldLane: 6,
     };
@@ -909,6 +917,9 @@ const SparSystem = {
       if (pm.playerRetreatsSameSide > 0.6) baseScores.hardReloadPunish += 3; // predictable = chase
       if (pm.playerReEngageDelay > 40) baseScores.hardReloadPunish += 2;     // slow re-engage = free push
       if (pm.playerReEngageDelay < 20) baseScores.safeReloadPunish += 3;     // fast re-engage = be careful
+      // reloadBaitPeek: bonus when enemy dodges well or near cover (brief peek to draw panic shot)
+      if (pm.playerSidesteps > 0.4) baseScores.reloadBaitPeek = (baseScores.reloadBaitPeek || 5) + 3;
+      if (pm.playerHitRate > 0.5) baseScores.reloadBaitPeek = (baseScores.reloadBaitPeek || 5) + 2;
     }
 
     return this._pickHierarchicalPolicy({
@@ -3827,6 +3838,23 @@ const SparSystem = {
           }
           moveX += ai.strafeDir * speed * 0.4;
         }
+      } else if (ai._reloadPolicy === 'reloadBaitPeek') {
+        // Brief advance (peek) for 15-20 frames to draw a panic shot, then retreat to punish
+        if (ai._reloadFrames <= 18) {
+          // Quick peek advance — aggressive burst toward enemy
+          if (dist > 60 && dist > 1) {
+            moveX = (dx / dist) * speed * 0.65;
+            moveY = (dy / dist) * speed * 0.65;
+          }
+          moveX += ai.strafeDir * speed * 0.2;
+        } else {
+          // Retreat sharply after the peek — create space to punish panic response
+          if (dist > 1) {
+            moveX = -(dx / dist) * speed * 0.6;
+            moveY = -(dy / dist) * speed * 0.6;
+          }
+          moveX += ai.strafeDir * speed * 0.55;
+        }
       } else {
         // Fallback: original behavior
         if (dist > 80 && dist > 1) {
@@ -3837,7 +3865,7 @@ const SparSystem = {
       }
       // Learning v2: if player holds ground on approach, commit harder
       // If player sidesteps, match their lateral direction
-      if (pm && ai._reloadPolicy !== 'reloadBait') {
+      if (pm && ai._reloadPolicy !== 'reloadBait' && ai._reloadPolicy !== 'reloadBaitPeek') {
         if (pm.playerHoldsOnApproach > 0.4) {
           if (dist > 1) {
             moveX = (dx / dist) * speed * 0.75 * punishAggr;
@@ -4040,6 +4068,62 @@ const SparSystem = {
           moveX = Math.sign(dx || offDir) * speed * 0.45;
           moveY = speed * 0.55;
         }
+
+      } else if (tactic === 'doubleFakeRetreat') {
+        // Phase 0 (0-40 frames): fake retreat upward to bait a chase
+        if (phase === 0) {
+          moveY = -speed * 0.55;
+          moveX = ai.strafeDir * speed * 0.5;
+          if (phaseF > 40) {
+            ai._antiBottomPhase = 1;
+            ai._antiBottomPhaseFrames = 0;
+          }
+        } else if (phase === 1) {
+          // Phase 1 (40-70 frames): reverse — move toward bottom with heavy lateral offset
+          moveY = speed * 0.35;
+          moveX = offDir * speed * 0.8;
+          if (phaseF > 30) {
+            ai._antiBottomPhase = 2;
+            ai._antiBottomPhaseFrames = 0;
+          }
+        } else {
+          // Phase 2 (70+): full lateral displacement, then diagonal descent from side
+          moveX = offDir * speed * 0.5;
+          moveY = speed * 0.6;
+        }
+
+      } else if (tactic === 'lateCrossUnder') {
+        // Phase 0 (0-50 frames): heavy strafe, hold vertical, dodge shots
+        if (phase === 0) {
+          moveX = ai.strafeDir * speed * 0.9;
+          moveY = speed * 0.1;
+          if (phaseF > 50) {
+            ai._antiBottomPhase = 1;
+            ai._antiBottomPhaseFrames = 0;
+          }
+        } else {
+          // Phase 1 (50+): sprint diagonally down-and-across (cross the centerline)
+          const crossDir = (bot.x < tgt.x) ? 1 : -1; // cross toward enemy's opposite side
+          moveX = crossDir * speed * 0.7;
+          moveY = speed * 0.7;
+        }
+
+      } else if (tactic === 'forceMirrorThenBreak') {
+        // Phase 0 (0-60 frames): mirror enemy X movement to build predictability
+        if (phase === 0) {
+          const tVx = tgt.vx || 0;
+          moveX = tVx * 0.85 + ai.strafeDir * speed * 0.15; // mostly mirror, slight strafe
+          moveY = speed * 0.15; // slow descent
+          if (phaseF > 60) {
+            ai._antiBottomPhase = 1;
+            ai._antiBottomPhaseFrames = 0;
+          }
+        } else {
+          // Phase 1 (60+): break pattern — sudden opposite direction strafe + diagonal descent
+          const breakDir = -(Math.sign(tgt.vx || 0) || offDir); // opposite of enemy's last direction
+          moveX = breakDir * speed * 0.85;
+          moveY = speed * 0.55;
+        }
       }
 
       // --- Shared: trap zone awareness ---
@@ -4079,7 +4163,7 @@ const SparSystem = {
         if (pm.belowShootsUp > 0.6) {
           moveX += Math.sign(bot.x - tgt.x || ai.strafeDir) * speed * 0.2;
         }
-        if (pm.playerPushesFromBottom > 0.45 && tactic !== 'baitRetreat' && tactic !== 'baitFake' && dist < 220) {
+        if (pm.playerPushesFromBottom > 0.45 && tactic !== 'baitRetreat' && tactic !== 'baitFake' && tactic !== 'doubleFakeRetreat' && dist < 220) {
           moveY -= speed * 0.12;
         }
       }
@@ -4230,6 +4314,13 @@ const SparSystem = {
         suppressPeekShots = laneQuality < 0.5;
         moveX += ai.strafeDir * speed * 0.18;
         moveY += (badGunSide ? 0.08 : 0) * speed;
+      } else if (ai._gunSidePolicy === 'preAimLaneHold') {
+        // Hold position firmly with pre-aimed lane — minimal movement, wait for enemy to walk into line
+        suppressPeekShots = laneQuality < 0.45;
+        // Micro-adjust only: tiny lateral corrections to maintain lane alignment
+        moveX += ai.strafeDir * speed * 0.06;
+        // No vertical push — stay planted
+        moveY *= 0.2;
       } else if (ai._gunSidePolicy === 'reAngleWide') {
         suppressPeekShots = true;
         moveX = reAngleDir * speed * 0.9;
