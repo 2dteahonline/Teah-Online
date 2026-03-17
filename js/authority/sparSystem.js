@@ -4152,9 +4152,10 @@ const SparSystem = {
     if (ai._oscWindow >= 16) {
       if ((ai._oscSignFlips || 0) >= 4 && Math.abs(ai._oscNetDisp || 0) < 15) {
         centerOscillating = true;
-        if (sl && sl.tactical) {
-          if (typeof sl.tactical.centerOscillationCount !== 'number') sl.tactical.centerOscillationCount = 0;
-          sl.tactical.centerOscillationCount++;
+        const _sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+        if (_sl && _sl.tactical) {
+          if (typeof _sl.tactical.centerOscillationCount !== 'number') _sl.tactical.centerOscillationCount = 0;
+          _sl.tactical.centerOscillationCount++;
         }
       }
       ai._oscSignFlips = 0;
