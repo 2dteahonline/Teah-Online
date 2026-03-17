@@ -4162,7 +4162,8 @@ const SparSystem = {
         }
       } else if (contest === 'denyLane') {
         // Cut off player's favored bottom side before descending
-        const playerFavSide = (sl && sl.opening && sl.opening.strafeLeft > 0.55) ? -1 : 1;
+        const _sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+        const playerFavSide = (_sl && _sl.opening && _sl.opening.strafeLeft > 0.55) ? -1 : 1;
         const denyX = midX + playerFavSide * arenaW * 0.25;
         if (SparState.matchTimer < 60) {
           // Phase 1: move laterally to deny lane
