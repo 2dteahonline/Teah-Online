@@ -10,13 +10,19 @@
 // general1v1.styleResults.{pressure,control,bait} for the style selector.
 
 const SPAR_TRAINING_TIMING = {
-  countdownFrames: 12,
-  postMatchFrames: 8,
-  joinPollMs: 25,
-  nextMatchDelayMs: 50,
-  speedMultiplier: 8,
-  maxUpdatesPerFrame: 32,
-  renderEveryUpdates: 6,
+  countdownFrames: 4,
+  postMatchFrames: 3,
+  joinPollMs: 5,
+  nextMatchDelayMs: 5,
+  speedMultiplier: 1,
+  fixedUpdatesPerLoop: 60,
+  maxUpdatesPerFrame: 60,
+  disableRender: true,
+  renderEveryUpdates: 999999,
+  minRenderIntervalMs: 1000,
+  useTimeoutScheduler: true,
+  logEveryMatches: 25,
+  saveEveryMatches: 10,
 };
 
 const SPAR_TRAINING_ARCHETYPES = {
@@ -431,7 +437,11 @@ function _sparTrainStartNext() {
   // Reset runtime for each new match
   _sparTrainState.runtime = _createTrainingRuntime();
 
-  console.log(`[SparTrain] Match ${_sparTrainState.completedMatches + 1}/${_sparTrainState.totalMatches}: vs ${nextType}`);
+  const nextMatchNum = _sparTrainState.completedMatches + 1;
+  const logEvery = SPAR_TRAINING_TIMING.logEveryMatches || 1;
+  if (nextMatchNum === 1 || nextMatchNum === _sparTrainState.totalMatches || nextMatchNum % logEvery === 0) {
+    console.log(`[SparTrain] Match ${nextMatchNum}/${_sparTrainState.totalMatches}: vs ${nextType}`);
+  }
 
   if (typeof SparSystem === 'undefined') return;
 
@@ -575,10 +585,17 @@ function _sparTrainOnMatchEnd(won) {
     sr.avgDmgDelta = sr.total > 1 ? (0.5 * sr.avgDmgDelta + 0.5 * dmgDelta) : dmgDelta;
   }
 
-  // Persist after every completed match (normal autosave is skipped during training)
-  if (typeof SaveLoad !== 'undefined') SaveLoad.save();
+  const saveEvery = SPAR_TRAINING_TIMING.saveEveryMatches || 1;
+  const shouldSave = _sparTrainState.completedMatches % saveEvery === 0 || _sparTrainState.queue.length === 0;
+  if (shouldSave && typeof SaveLoad !== 'undefined') SaveLoad.save();
 
-  console.log(`[SparTrain] Match ${_sparTrainState.completedMatches}/${_sparTrainState.totalMatches}: Bot ${won ? 'LOST' : 'WON'} (${type})`);
+  const logEvery = SPAR_TRAINING_TIMING.logEveryMatches || 1;
+  const shouldLog = _sparTrainState.completedMatches === 1
+    || _sparTrainState.completedMatches === _sparTrainState.totalMatches
+    || _sparTrainState.completedMatches % logEvery === 0;
+  if (shouldLog) {
+    console.log(`[SparTrain] Match ${_sparTrainState.completedMatches}/${_sparTrainState.totalMatches}: Bot ${won ? 'LOST' : 'WON'} (${type})`);
+  }
 
   if (_sparTrainState.queue.length > 0) {
     setTimeout(() => _sparTrainStartNext(), SPAR_TRAINING_TIMING.nextMatchDelayMs);

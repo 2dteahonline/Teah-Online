@@ -99,6 +99,22 @@ const SparSystem = {
     return this._getSparPerpHitRadius() + Math.max(4, GAME_CONFIG.BULLET_HALF_SHORT || 4);
   },
 
+  _getSparBottomGap() {
+    return Math.max(20, Math.round(this._getSparPerpHitRadius() * 0.9));
+  },
+
+  _getSparWideBottomGap() {
+    return this._getSparBottomGap() + Math.max(6, Math.round((GAME_CONFIG.BULLET_HALF_SHORT || 4) * 1.5));
+  },
+
+  _getSparSideOffsetNear() {
+    return Math.round(this._getSparAimSlack() * 2.2);
+  },
+
+  _getSparSideOffsetWide() {
+    return Math.round(this._getSparAimSlack() * 3.0);
+  },
+
   _getSparReloadFrames(gun) {
     if (gun && typeof gun.reloadSpeed === 'number') return gun.reloadSpeed;
     const rofPts = gun && typeof gun._sparRof === 'number' ? gun._sparRof : 50;
@@ -1236,6 +1252,8 @@ const SparSystem = {
     if (SparState.matchTimer % 6 !== 0) return;
 
     const c = SparState._matchCollector;
+    const bottomGap = this._getSparBottomGap();
+    const wideBottomGap = this._getSparWideBottomGap();
     const arenaLevel = LEVELS[SparState.activeRoom.arenaLevel];
     if (!arenaLevel) return;
     const arenaW = arenaLevel.widthTiles * TILE;
@@ -1353,8 +1371,8 @@ const SparSystem = {
     const pVx = player.vx || 0, pVy = player.vy || 0;
     const botVx = botE.vx || 0, botVy = botE.vy || 0;
     const relDx = botE.x - player.x, relDy = botE.y - player.y;
-    const playerHasBottom = player.y > botE.y + 30;
-    const botHasBottom = botE.y > player.y + 30;
+    const playerHasBottom = player.y > botE.y + bottomGap;
+    const botHasBottom = botE.y > player.y + bottomGap;
 
     // --- When player has bottom ---
     if (playerHasBottom) {
@@ -1420,7 +1438,7 @@ const SparSystem = {
         c.shotWhenAbove.total++;
         if (player.dir === 0) c.shotWhenAbove.down++; // shooting down toward bot
         else c.shotWhenAbove.side++;
-      } else if (player.y > botE.y + 40) {
+      } else if (player.y > botE.y + wideBottomGap) {
         // Player is BELOW bot
         c.shotWhenBelow.total++;
         if (player.dir === 1) c.shotWhenBelow.up++; // shooting up toward bot
@@ -1491,7 +1509,7 @@ const SparSystem = {
       const dBot = SparState.teamB[0];
       if (dBot && dBot.alive && dBot.entity) {
         const bMidY = arenaLevel ? arenaLevel.heightTiles * TILE / 2 : 480;
-        const botIsBottom = dBot.entity.y > player.y + 30;
+        const botIsBottom = dBot.entity.y > player.y + bottomGap;
         const botIsTop = dBot.entity.y < bMidY;
         if (botIsBottom) c.botHasBottom_frames++;
         if (botIsTop) c.botInTop_frames++;
@@ -1503,7 +1521,7 @@ const SparSystem = {
     if (SparState.teamB && SparState.teamB.length > 0) {
       const dBot = SparState.teamB[0];
       if (dBot && dBot.alive && dBot.entity) {
-        if (dBot.entity.y > player.y + 20) c.botUnderEnemy_frames++;
+        if (dBot.entity.y > player.y + Math.max(12, bottomGap - 8)) c.botUnderEnemy_frames++;
         else if (dBot.entity.y < player.y - 20) c.botAboveEnemy_frames++;
 
         const botLane = this._getGunSideLaneScore(dBot.entity, player);
@@ -1605,7 +1623,7 @@ const SparSystem = {
 
       // Did player actually secure bottom by end of opening?
       if (c.botYAtOpeningEnd > 0) {
-        const gotBottom = last.y > c.botYAtOpeningEnd + 20 ? 1 : 0;
+        const gotBottom = last.y > c.botYAtOpeningEnd + Math.max(12, this._getSparBottomGap() - 8) ? 1 : 0;
         sl.opening.takesBottomPct = ema(sl.opening.takesBottomPct, gotBottom);
       }
     }
@@ -1626,7 +1644,7 @@ const SparSystem = {
         }
         // Did bot get bottom at END OF OPENING (frame ~180), not match end
         if (c.botYAtOpeningEnd > 0 && c.playerYAtOpeningEnd > 0) {
-          if (c.botYAtOpeningEnd > c.playerYAtOpeningEnd + 20) rr.gotBottom++;
+          if (c.botYAtOpeningEnd > c.playerYAtOpeningEnd + Math.max(12, this._getSparBottomGap() - 8)) rr.gotBottom++;
         }
       }
       sl.botOpenings.lastRoute = bRoute;
@@ -2275,7 +2293,7 @@ const SparSystem = {
     }
 
     // Who has bottom?
-    const shooterHasBottom = shooter.y > target.y + 30;
+    const shooterHasBottom = shooter.y > target.y + this._getSparBottomGap();
 
     const bulletDir = Math.abs(bullet.vx) > Math.abs(bullet.vy) ? 'horiz' : 'vert';
     const record = { dist, tMovement, dir: bullet._sparDir || 0, relY: shooter.y - target.y, bulletDir };
@@ -2283,7 +2301,7 @@ const SparSystem = {
     if (isPlayerBullet) {
       if (wasHit) {
         c.playerHits.push(record);
-        c.playerDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: player.y > (target.y + 30) });
+        c.playerDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: player.y > (target.y + this._getSparBottomGap()) });
       } else {
         c.playerMisses.push(record);
       }
@@ -2402,8 +2420,9 @@ const SparSystem = {
     let moveX = 0, moveY = 0;
 
     // --- Vertical positioning ---
-    const hasBottom = bot.y > tgt.y + 30;
-    const enemyHasBottom = tgt.y > bot.y + 30;
+    const bottomGap = this._getSparBottomGap();
+    const hasBottom = bot.y > tgt.y + bottomGap;
+    const enemyHasBottom = tgt.y > bot.y + bottomGap;
     const enemyMovingDown = tgt.vy > 1;
     const enemyMovingUp = tgt.vy < -1;
     const enemyMovingLeft = tgt.vx < -1;
@@ -2582,7 +2601,9 @@ const SparSystem = {
 
       const response = ai._antiBottomResponse;
       const alignX = Math.abs(dx);
-      const aboveTrapLine = bot.y < tgt.y - 35;
+      const sideOffsetNear = this._getSparSideOffsetNear();
+      const sideOffsetWide = this._getSparSideOffsetWide();
+      const aboveTrapLine = bot.y < tgt.y - this._getSparAimSlack();
       let approachAggr = 0.45;
       let strafeAggr = 0.65;
 
@@ -2597,10 +2618,10 @@ const SparSystem = {
       }
 
       if (response === 'sideFlank') {
-        const flankDir = alignX < 110 ? ai.strafeDir : Math.sign(dx);
+        const flankDir = alignX < sideOffsetWide ? ai.strafeDir : Math.sign(dx);
         moveX = flankDir * speed * Math.max(0.8, strafeAggr + 0.15);
-        moveY = speed * (alignX < 110 ? 0.18 : 0.5);
-        if (aboveTrapLine && alignX < 90) moveY = Math.min(moveY, 0.12 * speed);
+        moveY = speed * (alignX < sideOffsetWide ? 0.18 : 0.5);
+        if (aboveTrapLine && alignX < sideOffsetNear) moveY = Math.min(moveY, 0.12 * speed);
         if (pm && pm.playerWallsFromBottom > 0.45) {
           moveX = flankDir * speed * 0.95;
           moveY = speed * 0.15;
@@ -2632,7 +2653,7 @@ const SparSystem = {
 
       // Shared anti-bottom adjustments: offset from their best peek line instead of
       // sitting directly above them, then descend once we have lateral separation.
-      if (alignX < 80) {
+      if (alignX < sideOffsetNear) {
         moveX += ai.strafeDir * speed * 0.25;
         if (aboveTrapLine) moveY = Math.min(moveY, speed * 0.15);
       }

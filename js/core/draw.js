@@ -2868,6 +2868,7 @@ const FIXED_DT = 1000 / 60;
 let lastTime = 0;
 let accumulator = 0;
 let trainingRenderDebt = 0;
+let lastTrainingRenderTime = 0;
 function gameLoop(timestamp) {
   if (!lastTime) lastTime = timestamp;
   let elapsed = timestamp - lastTime;
@@ -2884,6 +2885,12 @@ function gameLoop(timestamp) {
     elapsed *= trainingLoop.speedMultiplier;
   }
   accumulator += elapsed;
+  const usingFixedTrainingBurst = !!(trainingLoop && trainingLoop.fixedUpdatesPerLoop);
+  if (usingFixedTrainingBurst) {
+    // CPU-limited automated spar: simulate a fixed batch of real 60 Hz ticks per loop.
+    accumulator -= elapsed;
+    accumulator += FIXED_DT * trainingLoop.fixedUpdatesPerLoop;
+  }
   // Fixed timestep: run exactly 60 physics ticks/sec regardless of display refresh rate.
   // On 120Hz+ displays the old code ran extra ticks (via updates===0 fallback),
   // making lightweight scenes (gunsmith) physically faster than heavy ones (lobby).
@@ -2903,19 +2910,30 @@ function gameLoop(timestamp) {
   }
   // Only draw when physics actually updated — caps everything to 60 FPS
   if (updates > 0) {
-    if (trainingLoop && trainingLoop.renderEveryUpdates && trainingLoop.renderEveryUpdates > 1) {
+    if (trainingLoop && trainingLoop.disableRender) {
+      trainingRenderDebt = 0;
+    } else if (trainingLoop && trainingLoop.renderEveryUpdates && trainingLoop.renderEveryUpdates > 1) {
       trainingRenderDebt += updates;
-      if (trainingRenderDebt >= trainingLoop.renderEveryUpdates) {
+      const minRenderIntervalMs = trainingLoop.minRenderIntervalMs || 0;
+      const renderIntervalMet = !minRenderIntervalMs || (timestamp - lastTrainingRenderTime) >= minRenderIntervalMs;
+      if (trainingRenderDebt >= trainingLoop.renderEveryUpdates && renderIntervalMet) {
         draw();
+        lastTrainingRenderTime = timestamp;
         trainingRenderDebt = 0;
       }
     } else {
       draw();
+      if (trainingLoop) lastTrainingRenderTime = timestamp;
       trainingRenderDebt = 0;
     }
   } else if (!trainingLoop) {
     trainingRenderDebt = 0;
+    lastTrainingRenderTime = 0;
   }
-  requestAnimationFrame(gameLoop);
+  if (trainingLoop && trainingLoop.useTimeoutScheduler) {
+    setTimeout(() => gameLoop(performance.now()), 0);
+  } else {
+    requestAnimationFrame(gameLoop);
+  }
 }
 requestAnimationFrame(gameLoop);
