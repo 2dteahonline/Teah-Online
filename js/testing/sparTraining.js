@@ -159,7 +159,76 @@ function sparTrain(botType, count) {
 }
 
 function _createTrainingRuntime() {
-  return { strafeDir: 1, strafeTimer: 0, cornerTarget: null, selfPlayStyle: null, selfPlayRoute: null, selfPlayAntiBottom: null };
+  return { strafeDir: 1, strafeTimer: 0, cornerTarget: null, selfPlayStyle: null, selfPlayRoute: null, selfPlayAntiBottom: null, selfPlayReactionDelay: 0, selfPlaySidePref: null, selfPlayVariantLabel: null };
+}
+
+// Randomize self-play snapshot bot parameters for diversity across matches.
+// Returns a variant config object with overrides to apply to the runtime.
+function _randomizeSelfPlayVariant(policy) {
+  const variant = { label: 'base' };
+  const parts = [];
+
+  // (a) Opening route bias: 30% chance to override with a random route
+  if (Math.random() < 0.30) {
+    const routes = typeof SPAR_OPENING_ROUTE_KEYS !== 'undefined'
+      ? SPAR_OPENING_ROUTE_KEYS
+      : ['bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midFlank', 'mirrorPlayer'];
+    variant.route = routes[Math.floor(Math.random() * routes.length)];
+    parts.push('route=' + variant.route);
+  }
+
+  // (b) Duel style rotation: 25% chance to override with a random style
+  if (Math.random() < 0.25) {
+    const styles = Object.keys(SPAR_DUEL_STYLES);
+    variant.style = styles[Math.floor(Math.random() * styles.length)];
+    parts.push('style=' + variant.style);
+  }
+
+  // (c) Stat allocation: randomize CT-X point distribution
+  // Randomly distribute 100 points: freeze(0-60), rof(20-80), spread(0-40)
+  const budget = typeof SPAR_CONFIG !== 'undefined' ? SPAR_CONFIG.POINT_BUDGET : 100;
+  const freezeMin = 0, freezeMax = 60;
+  const rofMin = 20, rofMax = 80;
+  const spreadMin = 0, spreadMax = 40;
+  const freeze = freezeMin + Math.floor(Math.random() * (freezeMax - freezeMin + 1));
+  const remaining = budget - freeze;
+  const rofLow = Math.max(rofMin, remaining - spreadMax);
+  const rofHigh = Math.min(rofMax, remaining - spreadMin);
+  const rof = rofLow + Math.floor(Math.random() * (rofHigh - rofLow + 1));
+  const spread = budget - freeze - rof;
+  variant.ctxAlloc = { freeze, rof, spread };
+  parts.push('ctx=' + freeze + '/' + rof + '/' + spread);
+
+  // (d) Reaction delay: 0-4 frames artificial delay on shooting
+  variant.reactionDelay = Math.floor(Math.random() * 5);
+  if (variant.reactionDelay > 0) parts.push('delay=' + variant.reactionDelay + 'f');
+
+  // (e) Side preference: 40% left, 40% right, 20% none
+  const sideRoll = Math.random();
+  if (sideRoll < 0.40) {
+    variant.sidePref = 'left';
+    parts.push('side=L');
+  } else if (sideRoll < 0.80) {
+    variant.sidePref = 'right';
+    parts.push('side=R');
+  } else {
+    variant.sidePref = null;
+  }
+
+  // (f) Anti-bottom tactic bias: 20% chance to force a specific family
+  if (Math.random() < 0.20) {
+    const families = typeof SPAR_ANTI_BOTTOM_FAMILY_KEYS !== 'undefined'
+      ? SPAR_ANTI_BOTTOM_FAMILY_KEYS
+      : ['contest', 'flank', 'bait'];
+    variant.antiBottomFamily = families[Math.floor(Math.random() * families.length)];
+    // Map family to a legacy response key for _getSparSelfPlayIntent compatibility
+    const familyToLegacy = { contest: 'directContest', flank: 'sideFlank', bait: 'baitPull' };
+    variant.antiBottomResponse = familyToLegacy[variant.antiBottomFamily] || 'sideFlank';
+    parts.push('ab=' + variant.antiBottomFamily);
+  }
+
+  variant.label = parts.length > 0 ? parts.join(' ') : 'base';
+  return variant;
 }
 
 function _cloneTrainingPolicy(src) {
@@ -409,6 +478,29 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
   else if (rt.selfPlayStyle === 'control') shouldShoot = Math.min(alignX, alignY) < 45 && dist > 110 && dist < 320;
   else shouldShoot = Math.min(alignX, alignY) < 60 || hasBottom || dist < 170;
 
+  // (d) Reaction delay: suppress shooting for N frames after it first becomes valid
+  if (shouldShoot && rt.selfPlayReactionDelay > 0) {
+    rt._reactionFramesLeft = (rt._reactionFramesLeft || 0);
+    if (rt._reactionFramesLeft <= 0) {
+      // Start a new reaction delay window
+      rt._reactionFramesLeft = rt.selfPlayReactionDelay;
+    }
+    if (rt._reactionFramesLeft > 0) {
+      rt._reactionFramesLeft--;
+      if (rt._reactionFramesLeft > 0) shouldShoot = false;
+    }
+  } else {
+    // Reset reaction counter when not trying to shoot
+    rt._reactionFramesLeft = 0;
+  }
+
+  // (e) Side preference: bias strafe direction back toward preferred side
+  if (rt.selfPlaySidePref && !isOpening && Math.random() < 0.03) {
+    const arenaMidX = arenaW / 2;
+    if (rt.selfPlaySidePref === 'left' && p.x > arenaMidX) rt.strafeDir = -1;
+    else if (rt.selfPlaySidePref === 'right' && p.x < arenaMidX) rt.strafeDir = 1;
+  }
+
   return { mx, my, shouldShoot, dx, dy };
 }
 
@@ -417,6 +509,13 @@ function _sparTrainJoinWhenReady() {
     if (!_sparTrainState) return;
     if (typeof SparState === 'undefined' || typeof SparSystem === 'undefined') return;
     if (SparState.phase === 'hub') {
+      // (c) Apply CT-X stat allocation variant before joining
+      if (_sparTrainState.mode === 'selfplay' && _sparTrainState._selfPlayCtxAlloc) {
+        const alloc = _sparTrainState._selfPlayCtxAlloc;
+        if (typeof _ctxFreeze !== 'undefined') _ctxFreeze = alloc.freeze;
+        if (typeof _ctxRof !== 'undefined') _ctxRof = alloc.rof;
+        if (typeof _ctxSpread !== 'undefined') _ctxSpread = alloc.spread;
+      }
       SparSystem.joinRoom('spar_1v1');
     } else {
       _sparTrainJoinWhenReady();
@@ -437,10 +536,34 @@ function _sparTrainStartNext() {
   // Reset runtime for each new match
   _sparTrainState.runtime = _createTrainingRuntime();
 
+  // Apply self-play variant rotation per-match
+  if (_sparTrainState.mode === 'selfplay') {
+    const variant = _randomizeSelfPlayVariant(_sparTrainState.snapshotPolicy);
+    const rt = _sparTrainState.runtime;
+    // (a) Override opening route
+    if (variant.route) rt.selfPlayRoute = variant.route;
+    // (b) Override duel style
+    if (variant.style) rt.selfPlayStyle = variant.style;
+    // (d) Reaction delay on shooting
+    rt.selfPlayReactionDelay = variant.reactionDelay || 0;
+    // (e) Side preference (applied as initial strafe direction)
+    if (variant.sidePref === 'left') { rt.strafeDir = -1; rt.selfPlaySidePref = 'left'; }
+    else if (variant.sidePref === 'right') { rt.strafeDir = 1; rt.selfPlaySidePref = 'right'; }
+    // (f) Anti-bottom family override
+    if (variant.antiBottomResponse) rt.selfPlayAntiBottom = variant.antiBottomResponse;
+    // Store label for logging
+    rt.selfPlayVariantLabel = variant.label;
+    // (c) Store CT-X allocation for bot creation override
+    _sparTrainState._selfPlayCtxAlloc = variant.ctxAlloc;
+  }
+
   const nextMatchNum = _sparTrainState.completedMatches + 1;
   const logEvery = SPAR_TRAINING_TIMING.logEveryMatches || 1;
   if (nextMatchNum === 1 || nextMatchNum === _sparTrainState.totalMatches || nextMatchNum % logEvery === 0) {
-    console.log(`[SparTrain] Match ${nextMatchNum}/${_sparTrainState.totalMatches}: vs ${nextType}`);
+    const variantInfo = _sparTrainState.mode === 'selfplay' && _sparTrainState.runtime.selfPlayVariantLabel
+      ? ` [${_sparTrainState.runtime.selfPlayVariantLabel}]`
+      : '';
+    console.log(`[SparTrain] Match ${nextMatchNum}/${_sparTrainState.totalMatches}: vs ${nextType}${variantInfo}`);
   }
 
   if (typeof SparSystem === 'undefined') return;
