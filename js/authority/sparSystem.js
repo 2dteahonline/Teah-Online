@@ -4343,10 +4343,10 @@ const SparSystem = {
       // Require minimum 20 frames before success-finalize to avoid lane flicker
       } else if (ai._gunSideFrames >= 20 && ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom))) {
         this._finalizeGunSideEngagement(ai, true);
-        ai._gunSideCooldown = 20;
+        ai._gunSideCooldown = 25;
       } else if (ai._gunSideFrames > 150 || (ai._gunSideFrames >= 20 && noAdvantageState)) {
         this._finalizeGunSideEngagement(ai, false);
-        ai._gunSideCooldown = 20;
+        ai._gunSideCooldown = 45; // longer cooldown on failure to prevent spam re-entry
       }
     }
     if (ai._escapeCooldown > 0) ai._escapeCooldown--;
@@ -4386,7 +4386,7 @@ const SparSystem = {
         ai._escapeBestQuality = laneQuality;
         ai._escapeLaneShape = laneShape;
       }
-    } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic && (badGunSide || repeekedBadLane) && laneQuality < 0.58) {
+    } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic && (badGunSide || repeekedBadLane) && laneQuality < 0.48) {
       if (!ai._gunSidePolicy && !(ai._gunSideCooldown > 0)) {
         const chosenGunSide = this._pickGunSidePolicy(pm, laneInfo);
         ai._gunSidePolicy = chosenGunSide;
@@ -5694,7 +5694,8 @@ const SparSystem = {
           if (bot.y < tgt.y - 20) moveY += speed * 0.12;
         }
       } else if (ai._gunSidePolicy === 'reAngleWide') {
-        suppressPeekShots = true;
+        // Suppress shots only if lane is bad — still shoot while repositioning if lane is OK
+        suppressPeekShots = laneQuality < 0.45;
         moveX = reAngleDir * speed * 0.9;
         moveY += (!hasBottom ? 0.18 : 0.05) * speed;
       } else if (ai._gunSidePolicy === 'yieldLane') {
@@ -6476,7 +6477,7 @@ const SparSystem = {
 
       const policyShotAllowed = (!ai._escapePolicy && !suppressPeekShots && !openingFireGated)
         || (laneQuality > 0.62 && !badGunSide && !openingFireGated)
-        || (dist < 130 && botLaneScore >= enemyLaneScore)
+        || (dist < 130 && botLaneScore >= enemyLaneScore && !openingFireGated)
         // Stall-break fail-safe: if bot is stalled in an owner state, allow defensive firing
         || (ai._stallBreakActive && laneQuality > 0.35)
         // Long-stall fail-safe: if suppressPeekShots has been active 30+ frames without progress
