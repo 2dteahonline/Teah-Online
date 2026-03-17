@@ -1496,6 +1496,7 @@ const SparSystem = {
         _antiBottomDmgAtStart: 0,     // bot dmgTaken when engagement started
         _antiBottomStartFrame: 0,
         _antiBottomHysteresisFrames: 0, // hysteresis counter for engagement start/end
+        _antiBottomCooldown: 0,       // frames until anti-bottom can re-open after finalize
         _openingLostBottomDir: null,  // direction player came from when taking bottom
         _lastAntiBottomTactic: null,
         _lastAntiBottomFamily: null,
@@ -1506,6 +1507,7 @@ const SparSystem = {
         _gunSideStartQuality: 0,
         _gunSideBestQuality: 0,
         _gunSideLaneShape: null,
+        _gunSideCooldown: 0,          // frames until gun-side can re-open after finalize
         _lastGunSidePolicy: null,
         _lastGunSideFamily: null,
         _escapePolicy: null,
@@ -1774,7 +1776,10 @@ const SparSystem = {
         m.ai._antiBottomTactic = null;
         m.ai._antiBottomFamily = null;
         m.ai._antiBottomFrames = 0;
+        m.ai._antiBottomCooldown = 0;
+        m.ai._antiBottomHysteresisFrames = 0;
         m.ai._gunSidePolicy = null;
+        m.ai._gunSideCooldown = 0;
         m.ai._escapePolicy = null;
         m.ai._midPressurePolicy = null;
         m.ai._wallPressurePolicy = null;
@@ -3712,8 +3717,10 @@ const SparSystem = {
       lostBottomAndNoLane,
       noAdvantageState,
     };
-    // --- v8 anti-bottom engagement lifecycle (hysteresis) ---
+    // --- v8 anti-bottom engagement lifecycle (hysteresis + cooldown) ---
     const c = SparState._matchCollector;
+    // Cooldown: prevent re-open for 30 frames after finalize
+    if (ai._antiBottomCooldown > 0) ai._antiBottomCooldown--;
     if (enemyHasBottom) {
       ai._antiBottomHysteresisFrames = (ai._antiBottomHysteresisFrames || 0) + 1;
     } else {
@@ -3723,19 +3730,26 @@ const SparSystem = {
         if (ai._antiBottomHysteresisFrames <= -15) {
           // Engagement ended — fire phase reward
           this._finalizeAntiBottomEngagement(ai, hasBottom, c);
+          ai._antiBottomCooldown = 30;
+          ai._antiBottomHysteresisFrames = 0;
         }
       } else {
         ai._antiBottomHysteresisFrames = 0;
       }
     }
 
+    // Cooldown: prevent gun-side re-open for 20 frames after finalize
+    if (ai._gunSideCooldown > 0) ai._gunSideCooldown--;
     if (ai._gunSidePolicy) {
       ai._gunSideFrames++;
       ai._gunSideBestQuality = Math.max(ai._gunSideBestQuality || laneQuality, laneQuality);
-      if ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom)) {
+      // Require minimum 12 frames before success-finalize to avoid lane flicker
+      if (ai._gunSideFrames >= 12 && ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom))) {
         this._finalizeGunSideEngagement(ai, true);
-      } else if (ai._gunSideFrames > 150 || noAdvantageState) {
+        ai._gunSideCooldown = 20;
+      } else if (ai._gunSideFrames > 150 || (ai._gunSideFrames >= 12 && noAdvantageState)) {
         this._finalizeGunSideEngagement(ai, false);
+        ai._gunSideCooldown = 20;
       }
     }
     if (ai._escapePolicy) {
@@ -3749,8 +3763,16 @@ const SparSystem = {
     }
 
     if (!isOpening && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
-      if (ai._antiBottomTactic) this._finalizeAntiBottomEngagement(ai, false, c);
-      if (ai._gunSidePolicy) this._finalizeGunSideEngagement(ai, false);
+      // Only force-finalize if engagement has run long enough to be meaningful (>=15f)
+      if (ai._antiBottomTactic && ai._antiBottomFrames >= 15) {
+        this._finalizeAntiBottomEngagement(ai, false, c);
+        ai._antiBottomCooldown = 30;
+        ai._antiBottomHysteresisFrames = 0;
+      }
+      if (ai._gunSidePolicy && ai._gunSideFrames >= 12) {
+        this._finalizeGunSideEngagement(ai, false);
+        ai._gunSideCooldown = 20;
+      }
       if (!ai._escapePolicy) {
         const chosenEscape = this._pickEscapePolicy(pm, laneInfo);
         ai._escapePolicy = chosenEscape;
@@ -3762,7 +3784,7 @@ const SparSystem = {
         ai._escapeLaneShape = laneShape;
       }
     } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic && (badGunSide || repeekedBadLane) && laneQuality < 0.58) {
-      if (!ai._gunSidePolicy) {
+      if (!ai._gunSidePolicy && !(ai._gunSideCooldown > 0)) {
         const chosenGunSide = this._pickGunSidePolicy(pm, laneInfo);
         ai._gunSidePolicy = chosenGunSide;
         ai._gunSideFamily = (typeof SPAR_GUN_SIDE_FAMILY_MAP !== 'undefined') ? SPAR_GUN_SIDE_FAMILY_MAP[chosenGunSide] : 'reposition';
@@ -4018,7 +4040,7 @@ const SparSystem = {
       }
       if (bot.y > arenaH - TILE * 2) moveY -= speed * 0.3;
 
-    } else if (enemyHasBottom && ai._antiBottomHysteresisFrames >= 20) {
+    } else if (enemyHasBottom && ai._antiBottomHysteresisFrames >= 20 && !(ai._antiBottomCooldown > 0)) {
       // === ENEMY HAS BOTTOM — v8 tactical retake system ===
       const aimSlack = this._getSparAimSlack();
       const sideOffsetNear = this._getSparSideOffsetNear();
@@ -4248,7 +4270,8 @@ const SparSystem = {
       // --- Timeout: force re-pick after 300 frames ---
       if (ai._antiBottomFrames > 300) {
         this._finalizeAntiBottomEngagement(ai, false, c);
-        // Will re-pick next frame
+        ai._antiBottomCooldown = 30;
+        ai._antiBottomHysteresisFrames = 0;
       }
 
     } else if (enemyHasBottom) {
@@ -4939,8 +4962,8 @@ const SparSystem = {
         }
       }
     }
-    // v10: baitShot adds 50% more cooldown between shots
-    if (ai._shotTimingPolicy === 'baitShot' && member.ai.shootCD > 0) {
+    // Increment shot timing frame counter for ALL active policies
+    if (ai._shotTimingPolicy) {
       ai._shotTimingFrames++;
     }
 
