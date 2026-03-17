@@ -4651,6 +4651,13 @@ const SparSystem = {
         }
       }
 
+      // Normalize to full speed — bot must always move at max speed during anti-bottom
+      const abLen = Math.sqrt(moveX * moveX + moveY * moveY);
+      if (abLen > 0.1) {
+        moveX = (moveX / abLen) * speed;
+        moveY = (moveY / abLen) * speed;
+      }
+
       // --- Timeout: force re-pick after 300 frames ---
       if (ai._antiBottomFrames > 300) {
         this._finalizeAntiBottomEngagement(ai, false, c);
@@ -4660,9 +4667,9 @@ const SparSystem = {
 
     } else if (enemyHasBottom) {
       // Hysteresis not yet met — waiting for 20+ frames to confirm enemy has bottom
-      // Strafe and avoid descending into a trap
-      moveX = ai.strafeDir * speed * 0.7;
-      if (bot.y < tgt.y) moveY = speed * 0.15; // slight drift toward bottom
+      // Full speed strafe + descent toward bottom
+      moveX = ai.strafeDir * speed * 0.85;
+      moveY = (bot.y < tgt.y) ? speed * 0.53 : speed * 0.1;
 
     } else {
       // Reset engagement if enemy lost bottom (handled by hysteresis above)
