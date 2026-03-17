@@ -1126,6 +1126,32 @@ canvas.addEventListener("mousedown", e => {
 
     hexInputActive = false;
 
+    // Head selection grid clicks
+    if (CUSTOMIZE_CATS[customizeCat].key === 'headId') {
+      const headPadX = cpX + 16, headPadY = cpY + 34;
+      const thumbS = 52, thumbGap = 8;
+      const headCols = Math.floor((cpW - 32) / (thumbS + thumbGap));
+
+      // Build same head list as rendering
+      const headList = [{ id: 'default', name: 'Default' }];
+      if (typeof HEAD_REGISTRY !== 'undefined') {
+        for (const hid in HEAD_REGISTRY) {
+          if (HEAD_REGISTRY[hid]) headList.push(HEAD_REGISTRY[hid]);
+        }
+      }
+
+      for (let i = 0; i < headList.length; i++) {
+        const col = i % headCols, row = Math.floor(i / headCols);
+        const tx = headPadX + col * (thumbS + thumbGap);
+        const ty = headPadY + row * (thumbS + thumbGap);
+        if (mx >= tx && mx <= tx + thumbS && my >= ty && my <= ty + thumbS) {
+          applyCosmetic('headId', headList[i].id);
+          return;
+        }
+      }
+      return; // consume click in head grid area
+    }
+
     // SV picker
     if (mx >= svX && mx <= svX + svW && my >= svY && my <= svY + svH) {
       pickerSat = Math.max(0, Math.min(1, (mx - svX) / svW));

@@ -66,7 +66,7 @@ function drawCustomizeScreen() {
 
   // Category icon colors — vivid and distinct
   const CAT_ICON_COLORS = {
-    hair: "#e8a040", facialHair: "#b08050", skin: "#e8b898", eyes: "#50aaee",
+    headId: "#d4a888", hair: "#e8a040", facialHair: "#b08050", skin: "#e8b898", eyes: "#50aaee",
     shirt: "#5090dd", pants: "#6070cc", shoes: "#c06830", hat: "#ee5533",
     glasses: "#80ccff", gloves: "#a09070", belt: "#e8c040", cape: "#aa44dd",
     tattoo: "#40cc70", scars: "#ee8877", earring: "#ffd040", necklace: "#d0d8f0",
@@ -98,7 +98,23 @@ function drawCustomizeScreen() {
     const col = active ? baseCol : shadeColor(baseCol, -55);
     const hi = active ? shadeColor(baseCol, 50) : shadeColor(baseCol, -20);
 
-    if (cat === "hair") {
+    if (cat === "headId") {
+      // Head icon — face outline with hair tuft
+      ctx.fillStyle = active ? "#e8b898" : "#6a5040";
+      ctx.beginPath(); ctx.roundRect(icx - 11, icy - 8, 22, 20, 7); ctx.fill();
+      // Hair tuft
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.roundRect(icx - 13, icy - 12, 26, 10, 4); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(icx - 4, icy - 12); ctx.lineTo(icx - 1, icy - 20); ctx.lineTo(icx + 4, icy - 11); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(icx + 3, icy - 11); ctx.lineTo(icx + 7, icy - 18); ctx.lineTo(icx + 11, icy - 10); ctx.fill();
+      // Eyes
+      ctx.fillStyle = "#1a1a2a";
+      ctx.fillRect(icx - 6, icy - 1, 4, 3);
+      ctx.fillRect(icx + 3, icy - 1, 4, 3);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(icx - 5, icy - 1, 1, 1);
+      ctx.fillRect(icx + 4, icy - 1, 1, 1);
+    } else if (cat === "hair") {
       // Flowing hair with streaks
       ctx.fillStyle = col;
       ctx.beginPath();
@@ -379,6 +395,89 @@ function drawCustomizeScreen() {
   ctx.textAlign = "left";
   ctx.fillText(CUSTOMIZE_CATS[customizeCat].name.toUpperCase(), cpX + 16, cpY + 22);
 
+  // === CONTENT: HEAD GRID or COLOR PICKERS ===
+  const currentCatKey = CUSTOMIZE_CATS[customizeCat].key;
+
+  if (currentCatKey === 'headId') {
+    // === HEAD SELECTION GRID ===
+    const headPadX = cpX + 16, headPadY = cpY + 34;
+    const thumbS = 52, thumbGap = 8;
+    const headCols = Math.floor((cpW - 32) / (thumbS + thumbGap));
+
+    // Build head list: 'default' first, then all registered heads
+    const headList = [{ id: 'default', name: 'Default' }];
+    if (typeof HEAD_REGISTRY !== 'undefined') {
+      for (const hid in HEAD_REGISTRY) {
+        if (HEAD_REGISTRY[hid]) headList.push(HEAD_REGISTRY[hid]);
+      }
+    }
+
+    const currentHeadId = player.headId || 'default';
+
+    for (let i = 0; i < headList.length; i++) {
+      const col = i % headCols, row = Math.floor(i / headCols);
+      const tx = headPadX + col * (thumbS + thumbGap);
+      const ty = headPadY + row * (thumbS + thumbGap);
+
+      if (ty + thumbS > cpY + cpH - 40) break; // don't overflow panel
+
+      const isSelected = headList[i].id === currentHeadId;
+
+      // Thumbnail background
+      ctx.fillStyle = isSelected ? '#1a2a40' : '#0c1220';
+      ctx.beginPath(); ctx.roundRect(tx, ty, thumbS, thumbS, 6); ctx.fill();
+
+      if (isSelected) {
+        ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.roundRect(tx, ty, thumbS, thumbS, 6); ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#1a2a40'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(tx, ty, thumbS, thumbS, 6); ctx.stroke();
+      }
+
+      if (headList[i].id === 'default') {
+        // Draw procedural head preview (small version)
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(tx + 2, ty + 2, thumbS - 4, thumbS - 4);
+        ctx.clip();
+        const pcx = tx + thumbS / 2, pcy = ty + thumbS / 2 - 2;
+        // Mini face
+        ctx.fillStyle = player.skin || '#d4bba8';
+        ctx.beginPath(); ctx.roundRect(pcx - 10, pcy - 6, 20, 16, 4); ctx.fill();
+        // Mini hair
+        ctx.fillStyle = player.hair || '#0c0c10';
+        ctx.beginPath(); ctx.roundRect(pcx - 13, pcy - 10, 26, 10, 3); ctx.fill();
+        // Spikes
+        ctx.beginPath(); ctx.moveTo(pcx - 6, pcy - 10); ctx.lineTo(pcx - 3, pcy - 18); ctx.lineTo(pcx + 2, pcy - 9); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(pcx + 1, pcy - 9); ctx.lineTo(pcx + 5, pcy - 16); ctx.lineTo(pcx + 9, pcy - 8); ctx.fill();
+        // Eyes
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(pcx - 6, pcy - 1, 4, 3);
+        ctx.fillRect(pcx + 3, pcy - 1, 4, 3);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(pcx - 5, pcy - 1, 1, 1);
+        ctx.fillRect(pcx + 4, pcy - 1, 1, 1);
+        ctx.restore();
+      } else if (headList[i].img && headList[i].ready) {
+        // Draw the head spritesheet's front-facing frame (col 0, row 0)
+        ctx.drawImage(headList[i].img, 0, 0, 32, 32, tx + 4, ty + 4, thumbS - 8, thumbS - 8);
+      } else {
+        // Loading or failed
+        ctx.font = "9px monospace"; ctx.fillStyle = '#556';
+        ctx.textAlign = "center";
+        ctx.fillText("...", tx + thumbS / 2, ty + thumbS / 2 + 3);
+        ctx.textAlign = "left";
+      }
+
+      // Name label
+      ctx.font = "bold 8px 'Segoe UI', sans-serif";
+      ctx.fillStyle = isSelected ? '#c0e0ff' : '#556878';
+      ctx.textAlign = "center";
+      ctx.fillText(headList[i].name || headList[i].id, tx + thumbS / 2, ty + thumbS + 10);
+      ctx.textAlign = "left";
+    }
+  } else {
   // === PRESET COLORS ===
   const currentColor = player[CUSTOMIZE_CATS[customizeCat].key];
   const swatchS = 32, swatchGap = 5;
@@ -478,6 +577,7 @@ function drawCustomizeScreen() {
     ctx.fillStyle = "#cc3333";
     ctx.fillText("Invalid", hfx + hfw/2, hfy + hfh + 14);
   }
+  } // end else (non-head categories)
 
   // === PLAYER PREVIEW (right side, vertically centered) ===
   const prevX = cpX + cpW + (BASE_W - cpX - cpW) / 2;

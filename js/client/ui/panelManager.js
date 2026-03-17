@@ -379,6 +379,7 @@ let nameEditValue = "";
 
 // Customization categories and colors
 const CUSTOMIZE_CATS = [
+  { name: "Head", key: "headId" },
   { name: "Hair", key: "hair" },
   { name: "Facial Hair", key: "facialHair" },
   { name: "Skin", key: "skin" },

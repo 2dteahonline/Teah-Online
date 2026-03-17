@@ -116,6 +116,15 @@
 
   <!-- Phase C: Client rendering (continued) -->
   <script src="js/client/rendering/characterSprite.js?v=72"></script>
+  <script>
+  // Load available head sprites
+  if (typeof loadHeadSprites === 'function') {
+    loadHeadSprites([
+      // Add heads here as they are created:
+      // { id: 'head1', name: 'Head 1', src: 'assets/sprites/heads/head1.png' },
+    ]);
+  }
+  </script>
   <script src="js/client/rendering/hideSeekFOV.js?v=72"></script>
   <script src="js/client/rendering/mafiaFOV.js?v=76"></script>
 
