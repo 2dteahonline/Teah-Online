@@ -1702,15 +1702,30 @@ const SparSystem = {
     if (!arenaLevel) return;
     const spawns = arenaLevel.spawns;
 
-    // Player on teamA
-    SparState.teamA.push({
-      id: 'player',
-      entity: player,
-      isLocal: true,
-      isBot: false,
-      alive: true,
-      member: null, // player uses globals (gun, melee, playerEquip)
-    });
+    // Player on teamA (or a bot in fullBvB mode)
+    const isFullBvB = typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot();
+    if (isFullBvB) {
+      const spawnPtA = spawns.teamA || spawns.p1;
+      const memberA = this._createBot('selfplay_a_0', spawnPtA.tx, spawnPtA.ty, 'teamA');
+      SparState._sparBots.push(memberA);
+      SparState.teamA.push({
+        id: memberA.id,
+        entity: memberA.entity,
+        isLocal: false,
+        isBot: true,
+        alive: true,
+        member: memberA,
+      });
+    } else {
+      SparState.teamA.push({
+        id: 'player',
+        entity: player,
+        isLocal: true,
+        isBot: false,
+        alive: true,
+        member: null, // player uses globals (gun, melee, playerEquip)
+      });
+    }
 
     // Ally bots (teamA, teamSize - 1)
     for (let i = 1; i < room.teamSize; i++) {
@@ -1753,6 +1768,13 @@ const SparSystem = {
       member.entity.y = member._spawnTY * TILE + TILE / 2;
     }
 
+    // FullBvB: park real player offscreen so it doesn't interfere
+    if (isFullBvB) {
+      player.x = -9999; player.y = -9999;
+      player.vx = 0; player.vy = 0;
+      player.hp = player.maxHp; // keep alive to avoid death screen
+    }
+
     // 5. Start countdown
     SparState._botOpeningRoute = null;
     const trainTiming = typeof _getSparTrainingTiming === 'function' ? _getSparTrainingTiming() : null;
@@ -1770,7 +1792,11 @@ const SparSystem = {
     // CT-X allocation: fixed build for 1v1 enemy bots, random meta for others
     const room = SparState.activeRoom;
     const is1v1Enemy = team === 'teamB' && room && room.teamSize === 1;
-    const alloc = is1v1Enemy ? { freeze: 50, rof: 50, spread: 0 } : this._randomBotAlloc();
+    // FullBvB teamA: use training variant's CT-X allocation if available
+    const isFullBvBTeamA = team === 'teamA' && typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot();
+    const trainAlloc = isFullBvBTeamA && typeof _sparTrainState !== 'undefined' && _sparTrainState && _sparTrainState._selfPlayCtxAlloc
+      ? _sparTrainState._selfPlayCtxAlloc : null;
+    const alloc = trainAlloc || (is1v1Enemy ? { freeze: 50, rof: 50, spread: 0 } : this._randomBotAlloc());
     const botGun = this._buildCtxGun(alloc.freeze, alloc.rof, alloc.spread);
 
     // Entity — same structure as party bot entities
@@ -2050,6 +2076,10 @@ const SparSystem = {
         SparState.phase = 'fighting';
         SparState.matchTimer = 0;
         _resetEngagementLog();
+        // FullBvB: pre-initialize collector stub so reinforcement learning still runs
+        if (typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot()) {
+          SparState._matchCollector = { samples: 10 };
+        }
       }
       return;
     }
@@ -2153,6 +2183,8 @@ const SparSystem = {
 
   _resetForStreakContinue() {
     SparState._matchCollector = null;
+    const isFullBvB = typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot();
+
     // Remove old enemy bots
     const oldEnemies = SparState._sparBots.filter(m => m._sparTeam === 'teamB');
     for (const e of oldEnemies) {
@@ -2161,20 +2193,44 @@ const SparSystem = {
     }
     SparState.teamB.length = 0;
 
+    // FullBvB: also remove and recreate teamA bot
+    if (isFullBvB) {
+      const oldAllies = SparState._sparBots.filter(m => m._sparTeam === 'teamA');
+      for (const a of oldAllies) {
+        const idx = SparState._sparBots.indexOf(a);
+        if (idx >= 0) SparState._sparBots.splice(idx, 1);
+      }
+      SparState.teamA.length = 0;
+    }
+
     // Restore player + ally HP and reset to spawn positions
     const room = SparState.activeRoom;
     const arenaLevel = LEVELS[room.arenaLevel];
     const spawns = arenaLevel.spawns;
 
-    player.hp = SPAR_CONFIG.HP_BASELINE;
-    player.x = spawns.p1.tx * TILE + TILE / 2;
-    player.y = spawns.p1.ty * TILE + TILE / 2;
-    player.vx = 0; player.vy = 0;
-    playerDead = false;
-    deathTimer = 0;
-    deathGameOver = false;
-    gun.ammo = gun.magSize;
-    gun.reloading = false;
+    if (isFullBvB) {
+      // Create fresh teamA bot
+      const spawnPtA = spawns.teamA || spawns.p1;
+      const memberA = this._createBot('selfplay_a_0', spawnPtA.tx, spawnPtA.ty, 'teamA');
+      SparState._sparBots.push(memberA);
+      SparState.teamA.push({
+        id: memberA.id, entity: memberA.entity,
+        isLocal: false, isBot: true, alive: true, member: memberA,
+      });
+      // Keep player parked offscreen
+      player.x = -9999; player.y = -9999;
+      player.vx = 0; player.vy = 0;
+    } else {
+      player.hp = SPAR_CONFIG.HP_BASELINE;
+      player.x = spawns.p1.tx * TILE + TILE / 2;
+      player.y = spawns.p1.ty * TILE + TILE / 2;
+      player.vx = 0; player.vy = 0;
+      playerDead = false;
+      deathTimer = 0;
+      deathGameOver = false;
+      gun.ammo = gun.magSize;
+      gun.reloading = false;
+    }
     for (const p of SparState.teamA) {
       p.alive = true;
       p.entity.hp = SPAR_CONFIG.HP_BASELINE;
@@ -2721,6 +2777,8 @@ const SparSystem = {
   // ---- LEARNING: collect player data each frame during fighting ----
   _collectPlayerData() {
     if (SparState.phase !== 'fighting') return;
+    // FullBvB: player is offscreen, skip all player-specific data collection
+    if (typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot()) return;
     if (!SparState._matchCollector) {
       // Initialize collector at first call
       SparState._matchCollector = {
@@ -4027,19 +4085,33 @@ const SparSystem = {
     const isPlayerBullet = bullet.sparTeam === 'teamA';
 
     // Find the nearest enemy to compute context
+    const isFullBvB = typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot();
     let shooter, target;
     if (isPlayerBullet) {
-      shooter = player;
-      // Find nearest bot for context
+      // TeamA bullet — find shooter from teamA
+      if (isFullBvB) {
+        let nearA = null, nearDA = Infinity;
+        for (const p of SparState.teamA) {
+          if (!p.alive) continue;
+          const d = Math.sqrt((p.entity.x - bullet.startX) ** 2 + (p.entity.y - bullet.startY) ** 2);
+          if (d < nearDA) { nearDA = d; nearA = p.entity; }
+        }
+        shooter = nearA;
+      } else {
+        shooter = player;
+      }
+      // Find nearest opponent on teamB
       let nearBot = null, nearDist = Infinity;
+      const srcX = shooter ? shooter.x : bullet.startX;
+      const srcY = shooter ? shooter.y : bullet.startY;
       for (const p of SparState.teamB) {
         if (!p.alive) continue;
-        const d = Math.sqrt((p.entity.x - player.x) ** 2 + (p.entity.y - player.y) ** 2);
+        const d = Math.sqrt((p.entity.x - srcX) ** 2 + (p.entity.y - srcY) ** 2);
         if (d < nearDist) { nearDist = d; nearBot = p.entity; }
       }
       target = nearBot;
     } else {
-      // Bot bullet — find which bot shot it (use closest alive bot to bullet origin)
+      // TeamB bullet — find which bot shot it
       let nearBot = null, nearDist = Infinity;
       for (const p of SparState.teamB) {
         if (!p.alive) continue;
@@ -4047,7 +4119,18 @@ const SparSystem = {
         if (d < nearDist) { nearDist = d; nearBot = p.entity; }
       }
       shooter = nearBot;
-      target = player;
+      // Target: teamA bot in fullBvB, player otherwise
+      if (isFullBvB) {
+        let nearA = null, nearDA = Infinity;
+        for (const p of SparState.teamA) {
+          if (!p.alive) continue;
+          const d = Math.sqrt((p.entity.x - bullet.x) ** 2 + (p.entity.y - bullet.y) ** 2);
+          if (d < nearDA) { nearDA = d; nearA = p.entity; }
+        }
+        target = nearA;
+      } else {
+        target = player;
+      }
     }
     if (!shooter || !target) return;
 
@@ -4138,7 +4221,8 @@ const SparSystem = {
 
     // --- Cache learning profile modifiers (once per match) ---
     // During training/self-play, opponent is synthetic — don't bias with human profile
-    if (!ai._profileMods && team === 'teamB') {
+    const isFullBvB = typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot();
+    if (!ai._profileMods && (team === 'teamB' || isFullBvB)) {
       const isTrainingRun = typeof _isSparTraining === 'function' && _isSparTraining();
       ai._profileMods = isTrainingRun ? null : this._getProfileModifiers();
     }

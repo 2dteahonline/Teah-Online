@@ -1,6 +1,6 @@
 // ===================== SPAR TRAINING HARNESS =====================
 // Console-driven training for spar bot style generalization.
-// Usage: sparTrain('rusher', 20), sparTrain('all', 50), sparSelfPlay(50)
+// Usage: sparTrain('rusher', 20), sparTrain('all', 50), sparSelfPlay(50), sparFullSelfPlay(10000)
 //
 // Architecture: training archetypes are "scripted player input generators."
 // They output { moveX, moveY, shouldShoot, aimDir } each frame.
@@ -285,6 +285,33 @@ function sparSelfPlay(count) {
     snapshotPolicy: _cloneTrainingPolicy(typeof sparLearning !== 'undefined' ? sparLearning : null),
   };
   _sparTrainStartNext();
+}
+
+// Full bot-vs-bot self-play: both teams run _tickOneBot with full AI.
+// No scripted InputIntent — the player entity is parked offscreen.
+// Difficulty escalates as both sides use the same improving learned policy.
+function sparFullSelfPlay(count) {
+  if (!count || count < 1) count = 10;
+  console.log(`[SparTrain] Starting ${count} FULL bot-vs-bot self-play matches`);
+  _sparTrainState = {
+    active: true,
+    mode: 'selfplay',
+    fullBotVsBot: true,
+    botType: 'selfPlay',
+    queue: [],
+    _remainingMatches: count,
+    totalMatches: count,
+    completedMatches: 0,
+    results: { selfPlay: { wins: 0, losses: 0, dmgDealt: 0, dmgTaken: 0 } },
+    startTime: Date.now(),
+    runtime: _createTrainingRuntime(),
+    snapshotPolicy: _cloneTrainingPolicy(typeof sparLearning !== 'undefined' ? sparLearning : null),
+  };
+  _sparTrainStartNext();
+}
+
+function _isSparFullBotVsBot() {
+  return _sparTrainState && _sparTrainState.active && _sparTrainState.fullBotVsBot === true;
 }
 
 function _getSnapshotStyleScore(policy, name) {
@@ -663,6 +690,8 @@ function _sparTrainStartNext() {
 // ---- Called by authorityTick — returns one frame of scripted intent ----
 function _getSparTrainingArchetype() {
   if (!_sparTrainState || !_sparTrainState._currentMatchType) return null;
+  // Full bot-vs-bot: player entity is parked offscreen, no scripted input needed
+  if (_sparTrainState.fullBotVsBot) return null;
   const isSelfPlay = _sparTrainState.mode === 'selfplay';
   const archetype = isSelfPlay ? null : SPAR_TRAINING_ARCHETYPES[_sparTrainState._currentMatchType];
   if (!isSelfPlay && !archetype) return null;
