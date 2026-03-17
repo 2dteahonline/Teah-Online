@@ -21,8 +21,8 @@ const SPAR_TRAINING_TIMING = {
   renderEveryUpdates: 999999,
   minRenderIntervalMs: 1000,
   useTimeoutScheduler: true,
-  logEveryMatches: 25,
-  saveEveryMatches: 10,
+  logEveryMatches: 100,
+  saveEveryMatches: 50,
 };
 
 const SPAR_TRAINING_ARCHETYPES = {
@@ -268,11 +268,14 @@ function _cloneTrainingPolicy(src) {
 function sparSelfPlay(count) {
   if (!count || count < 1) count = 10;
   console.log(`[SparTrain] Starting ${count} self-play matches (current bot vs frozen snapshot)`);
+  // Use _remainingMatches counter instead of pre-allocating a huge array
+  // to avoid memory waste for large counts (1M+)
   _sparTrainState = {
     active: true,
     mode: 'selfplay',
     botType: 'selfPlay',
-    queue: Array(count).fill('selfPlay'),
+    queue: [],
+    _remainingMatches: count,
     totalMatches: count,
     completedMatches: 0,
     results: { selfPlay: { wins: 0, losses: 0, dmgDealt: 0, dmgTaken: 0 } },
@@ -582,13 +585,21 @@ function _sparTrainJoinWhenReady(retries) {
 }
 
 function _sparTrainStartNext() {
-  if (!_sparTrainState || _sparTrainState.queue.length === 0) {
+  const remaining = _sparTrainState ? (_sparTrainState._remainingMatches || _sparTrainState.queue.length) : 0;
+  if (!_sparTrainState || remaining <= 0) {
     _sparTrainPrintSummary();
     _sparTrainState = null;
     return;
   }
 
-  const nextType = _sparTrainState.queue.shift();
+  // Decrement counter for selfplay, shift queue for archetype mode
+  let nextType;
+  if (_sparTrainState._remainingMatches > 0) {
+    _sparTrainState._remainingMatches--;
+    nextType = 'selfPlay';
+  } else {
+    nextType = _sparTrainState.queue.shift();
+  }
   _sparTrainState.botType = nextType;
   _sparTrainState._currentMatchType = nextType;
   // Reset runtime for each new match
@@ -788,7 +799,8 @@ function _sparTrainOnMatchEnd(won) {
     console.log(`[SparTrain] Match ${_sparTrainState.completedMatches}/${_sparTrainState.totalMatches}: Bot ${won ? 'LOST' : 'WON'} (${type})`);
   }
 
-  if (_sparTrainState.queue.length > 0) {
+  const moreMatches = (_sparTrainState._remainingMatches > 0) || (_sparTrainState.queue.length > 0);
+  if (moreMatches) {
     setTimeout(() => _sparTrainStartNext(), SPAR_TRAINING_TIMING.nextMatchDelayMs);
   } else {
     _sparTrainPrintSummary();
