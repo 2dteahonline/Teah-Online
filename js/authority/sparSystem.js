@@ -132,6 +132,42 @@ const SparSystem = {
     return this._clamp01(0.5 + dmgDelta / (SPAR_CONFIG.HP_BASELINE * 1.5));
   },
 
+  _getAimDirToTarget(source, target) {
+    const dx = target.x - source.x;
+    const dy = target.y - source.y;
+    return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 3 : 2) : (dy > 0 ? 0 : 1);
+  },
+
+  _getEntityGunSide(entity) {
+    if (entity === player) {
+      return typeof getCurrentGunSide === 'function' ? getCurrentGunSide() : 'left';
+    }
+    return entity && entity._gunSide ? entity._gunSide : 'left';
+  },
+
+  _getSparMuzzlePos(entity, aimDir, gunSide) {
+    const bx = entity.x - 20;
+    const by = entity.y - 68;
+    const bodyL = bx + 2;
+    const bodyR = bx + 36;
+    const armY = by + 35;
+    const isRight = gunSide === 'right';
+    if (aimDir === 0) return { x: isRight ? (bodyL - 1) : (bodyR + 1), y: armY + 6 + 49 };
+    if (aimDir === 1) return { x: isRight ? (bodyR + 1) : (bodyL - 1), y: by + 28 - 49 };
+    if (aimDir === 2) return { x: bodyL + 2 - 49, y: isRight ? (armY - 20) : (armY + 20) };
+    return { x: bodyR + 9 + 49, y: isRight ? (armY + 20) : (armY - 20) };
+  },
+
+  _getGunSideLaneScore(source, target) {
+    if (!source || !target) return 0.5;
+    const aimDir = this._getAimDirToTarget(source, target);
+    const muzzle = this._getSparMuzzlePos(source, aimDir, this._getEntityGunSide(source));
+    if (aimDir === 0 || aimDir === 1) {
+      return this._clamp01(1 - Math.abs(target.x - muzzle.x) / 90);
+    }
+    return this._clamp01(1 - Math.abs(target.y - muzzle.y) / 55);
+  },
+
   _updateMatchReinforcement(won, collector, enemyBot, scopes) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     if (!sl || !collector || !enemyBot || !enemyBot.ai) return;
@@ -146,9 +182,21 @@ const SparSystem = {
       : 0.5;
     const totalBottomFrames = collector.botHasBottom_frames + collector.hasBottom_frames;
     const retakeShare = totalBottomFrames > 0 ? (collector.botHasBottom_frames / totalBottomFrames) : 0.5;
-    const styleReward = this._clamp01((botWon ? 0.62 : 0) + dmgReward * 0.38);
-    const routeReward = this._clamp01((botWon ? 0.5 : 0) + dmgReward * 0.25 + gotBottomAtOpening * 0.25);
-    const antiBottomReward = this._clamp01((botWon ? 0.4 : 0) + dmgReward * 0.25 + retakeShare * 0.35);
+    const verticalFrames = collector.botUnderEnemy_frames + collector.botAboveEnemy_frames;
+    const underReward = verticalFrames > 0 ? (collector.botUnderEnemy_frames / verticalFrames) : 0.5;
+    const gunFrames = collector.botGunAdv_frames + collector.botGunDisadv_frames;
+    const gunReward = gunFrames > 0 ? (collector.botGunAdv_frames / gunFrames) : 0.5;
+    const winReward = botWon ? 1 : 0;
+    // Winning is the biggest signal, then damage trade, then posture.
+    const baseReward = this._clamp01(
+      winReward * 0.5 +
+      dmgReward * 0.24 +
+      underReward * 0.16 +
+      gunReward * 0.10
+    );
+    const styleReward = baseReward;
+    const routeReward = this._clamp01(baseReward * 0.7 + gotBottomAtOpening * 0.2 + underReward * 0.1);
+    const antiBottomReward = this._clamp01(baseReward * 0.62 + retakeShare * 0.2 + underReward * 0.1 + gunReward * 0.08);
     const scopeList = Array.isArray(scopes) ? scopes : [];
     for (const scopeName of scopeList) {
       const scope = rf[scopeName];
@@ -1126,6 +1174,11 @@ const SparSystem = {
         botInTop_frames: 0,
         botInTop_dmgDealt: 0,
         botInTop_dmgTaken: 0,
+        // Reinforcement posture tracking
+        botUnderEnemy_frames: 0,
+        botAboveEnemy_frames: 0,
+        botGunAdv_frames: 0,
+        botGunDisadv_frames: 0,
         // Gun side tracking (v4)
         playerGunSideSamples: { left: 0, right: 0 },
         // Directional hit rates — elliptical hitbox awareness (v4)
@@ -1400,6 +1453,21 @@ const SparSystem = {
         const botIsTop = dBot.entity.y < bMidY;
         if (botIsBottom) c.botHasBottom_frames++;
         if (botIsTop) c.botInTop_frames++;
+      }
+    }
+
+    // Reinforcement posture tracking: staying under the enemy is generally strong,
+    // and using the better gun-side lane matters even when not literally at bottom.
+    if (SparState.teamB && SparState.teamB.length > 0) {
+      const dBot = SparState.teamB[0];
+      if (dBot && dBot.alive && dBot.entity) {
+        if (dBot.entity.y > player.y + 20) c.botUnderEnemy_frames++;
+        else if (dBot.entity.y < player.y - 20) c.botAboveEnemy_frames++;
+
+        const botLane = this._getGunSideLaneScore(dBot.entity, player);
+        const playerLane = this._getGunSideLaneScore(player, dBot.entity);
+        if (botLane > playerLane + 0.08) c.botGunAdv_frames++;
+        else if (playerLane > botLane + 0.08) c.botGunDisadv_frames++;
       }
     }
 
