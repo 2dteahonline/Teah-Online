@@ -24,7 +24,52 @@ const SparState = {
   _savedSnapshot: null,    // loadout snapshot for restore
   _nextBotId: 1,
   _matchCollector: null,   // per-match data collection for learning
+  // Diagnostic: engagement telemetry (reset per match, printed via sparEngagementReport())
+  _engagementLog: null,
 };
+
+// Engagement telemetry tracker — call sparEngagementReport() after matches
+function _resetEngagementLog() {
+  SparState._engagementLog = {
+    antiBottom:   { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
+    gunSide:      { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
+    escape:       { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
+    shotTiming:   { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
+    reload:       { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
+    midPressure:  { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
+    wallPressure: { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
+  };
+}
+
+function _logEngagement(type, frames, dmgDelta) {
+  const log = SparState._engagementLog;
+  if (!log || !log[type]) return;
+  const entry = log[type];
+  entry.count++;
+  entry.totalFrames += frames;
+  if (frames <= 1) entry.zeroFrames++;
+  if (frames <= 5) entry.shortCount++;
+  if (dmgDelta === 0) entry.zeroDmg++;
+  entry.durations.push(frames);
+  entry.dmgDeltas.push(dmgDelta);
+}
+
+function sparEngagementReport() {
+  const log = SparState._engagementLog;
+  if (!log) { console.log('[SparDiag] No engagement log — play a match first'); return; }
+  console.log('=== SPAR ENGAGEMENT TELEMETRY ===');
+  for (const [type, e] of Object.entries(log)) {
+    if (e.count === 0) { console.log(`  ${type}: 0 engagements`); continue; }
+    const avgF = (e.totalFrames / e.count).toFixed(1);
+    const avgD = e.dmgDeltas.length > 0 ? (e.dmgDeltas.reduce((a, b) => a + b, 0) / e.dmgDeltas.length).toFixed(1) : '0';
+    const minF = Math.min(...e.durations);
+    const maxF = Math.max(...e.durations);
+    const minD = Math.min(...e.dmgDeltas);
+    const maxD = Math.max(...e.dmgDeltas);
+    console.log(`  ${type}: ${e.count} engagements | avg ${avgF}f (${minF}-${maxF}) | avgDmg ${avgD} (${minD}-${maxD}) | <=1f: ${e.zeroFrames} | <=5f: ${e.shortCount} | zeroDmg: ${e.zeroDmg}`);
+  }
+  console.log('=================================');
+}
 
 // ---- SPAR SYSTEM ----
 const SparSystem = {
@@ -700,6 +745,7 @@ const SparSystem = {
     const frames = ai._gunSideFrames || 0;
     if (!policy || frames <= 0) return;
     const dmgTaken = (ai._matchDmgTaken || 0) - (ai._gunSideStartDmg || 0);
+    _logEngagement('gunSide', frames, dmgTaken);
     const startQuality = typeof ai._gunSideStartQuality === 'number' ? ai._gunSideStartQuality : 0.35;
     const endQuality = typeof ai._gunSideBestQuality === 'number' ? ai._gunSideBestQuality : startQuality;
     const qualityGain = this._clamp01(0.5 + (endQuality - startQuality));
@@ -754,6 +800,7 @@ const SparSystem = {
     const frames = ai._escapeFrames || 0;
     if (!policy || frames <= 0) return;
     const dmgTaken = (ai._matchDmgTaken || 0) - (ai._escapeStartDmg || 0);
+    _logEngagement('escape', frames, dmgTaken);
     const startQuality = typeof ai._escapeStartQuality === 'number' ? ai._escapeStartQuality : 0.25;
     const endQuality = typeof ai._escapeBestQuality === 'number' ? ai._escapeBestQuality : startQuality;
     const qualityGain = this._clamp01(0.5 + (endQuality - startQuality));
@@ -854,6 +901,7 @@ const SparSystem = {
   _finalizeShotTimingEngagement(ai, hitsDuring, dmgDealt) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     if (!sl || !ai._shotTimingPolicy) return;
+    _logEngagement('shotTiming', ai._shotTimingFrames || 0, dmgDealt);
     const policy = ai._shotTimingPolicy;
     const family = ai._shotTimingFamily;
     // Phase reward: 50% hits + 50% damage efficiency
@@ -939,6 +987,7 @@ const SparSystem = {
   _finalizeReloadBehavior(ai, dmgDealt) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     if (!sl || !ai._reloadPolicy) return;
+    _logEngagement('reload', ai._reloadFrames || 0, dmgDealt);
     const policy = ai._reloadPolicy;
     const family = ai._reloadFamily;
     const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
@@ -1021,6 +1070,7 @@ const SparSystem = {
   _finalizeMidFightPressure(ai, dmgDealt) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     if (!sl || !ai._midPressurePolicy) return;
+    _logEngagement('midPressure', ai._midPressureFrames || 0, dmgDealt);
     const policy = ai._midPressurePolicy;
     const family = ai._midPressureFamily;
     const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
@@ -1100,6 +1150,7 @@ const SparSystem = {
   _finalizeWallPressure(ai, dmgDealt) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     if (!sl || !ai._wallPressurePolicy) return;
+    _logEngagement('wallPressure', ai._wallPressureFrames || 0, dmgDealt);
     const policy = ai._wallPressurePolicy;
     const family = ai._wallPressureFamily;
     const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
@@ -1131,6 +1182,7 @@ const SparSystem = {
     const family = ai._antiBottomFamily;
     const frames = ai._antiBottomFrames;
     const dmgTaken = (ai._matchDmgTaken || 0) - (ai._antiBottomDmgAtStart || 0);
+    _logEngagement('antiBottom', frames || 0, dmgTaken);
 
     // Record engagement in collector
     if (collector) {
@@ -1596,6 +1648,7 @@ const SparSystem = {
       if (SparState.countdown <= 0) {
         SparState.phase = 'fighting';
         SparState.matchTimer = 0;
+        _resetEngagementLog();
       }
       return;
     }
@@ -1613,6 +1666,10 @@ const SparSystem = {
       if (aAlive <= 0 || bAlive <= 0) {
         SparState.lastResult = aAlive > 0 ? 'teamA' : 'teamB';
         SparState.phase = 'post_match';
+        // Auto-print engagement telemetry (skip during bulk training for cleaner logs)
+        if (SparState._engagementLog && !(typeof _isSparTraining === 'function' && _isSparTraining())) {
+          sparEngagementReport();
+        }
         const trainTiming = typeof _getSparTrainingTiming === 'function' ? _getSparTrainingTiming() : null;
         SparState.postMatchTimer = trainTiming ? trainTiming.postMatchFrames : SPAR_CONFIG.POST_MATCH_FRAMES;
 
