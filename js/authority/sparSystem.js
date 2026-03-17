@@ -1753,6 +1753,9 @@ const SparSystem = {
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
         _idleFrames: 0,           // consecutive frames with near-zero movement (idle guard)
         _lowMotionFrames: 0,     // anti-passivity: frames with tiny movement in neutral
+        _momentumBreakFrames: 0, // frames remaining in forced break direction after idle/low-motion guard
+        _momentumBreakDirX: 0,   // forced X direction during momentum break
+        _momentumBreakDirY: 0,   // forced Y direction during momentum break
         // vNext: opening contest policy state
         _openingContestPolicy: null,
         _openingContestFamily: null,
@@ -2034,6 +2037,9 @@ const SparSystem = {
         m.ai._cornerFrames = 0;
         m.ai._idleFrames = 0;
         m.ai._lowMotionFrames = 0;
+        m.ai._momentumBreakFrames = 0;
+        m.ai._momentumBreakDirX = 0;
+        m.ai._momentumBreakDirY = 0;
         m.ai._openingContestPolicy = null;
         m.ai._openingContestFamily = null;
         m.ai._punishWindowPolicy = null;
@@ -2059,13 +2065,14 @@ const SparSystem = {
       });
     }
 
-    // Restart countdown
+    // Restart countdown — shorter between streak matches (1.5s vs 3s for first match)
     bullets.length = 0;
     hitEffects.length = 0;
     SparState._botOpeningRoute = null;
     const trainTiming = typeof _getSparTrainingTiming === 'function' ? _getSparTrainingTiming() : null;
     SparState.phase = 'countdown';
-    SparState.countdown = trainTiming ? trainTiming.countdownFrames : SPAR_CONFIG.COUNTDOWN_FRAMES;
+    const STREAK_COUNTDOWN = 90; // 1.5 seconds — player knows the drill
+    SparState.countdown = trainTiming ? trainTiming.countdownFrames : STREAK_COUNTDOWN;
     SparState.lastResult = null;
   },
 
@@ -5323,24 +5330,36 @@ const SparSystem = {
       ai._punishWindowFrames++;
     }
 
+    // --- Momentum break: if active, override movement to prevent re-sticking ---
+    if (ai._momentumBreakFrames > 0) {
+      moveX = ai._momentumBreakDirX * speed;
+      moveY = ai._momentumBreakDirY * speed;
+      ai._momentumBreakFrames--;
+    }
+
     // vNext: Anti-passivity — detect low-motion in open neutral and force movement
     const isInNeutralOpen = !isOpening && !member.gun.reloading && !enemyReloading &&
       !ai._escapePolicy && !ai._wallPressurePolicy && !hasBottom && !enemyHasBottom &&
       SparState.phase === 'fighting';
     const moveMag = Math.sqrt(moveX * moveX + moveY * moveY);
-    if (isInNeutralOpen && moveMag < speed * 0.15) {
+    if (isInNeutralOpen && moveMag < speed * 0.15 && ai._momentumBreakFrames <= 0) {
       ai._lowMotionFrames++;
     } else {
       ai._lowMotionFrames = 0;
     }
     if (ai._lowMotionFrames >= 12) {
-      // Force lateral break
+      // Force lateral break with momentum commitment
       const breakDir = (Math.random() < 0.5 ? -1 : 1);
+      const breakDirY = (bot.y < tgt.y) ? 0.3 : ((Math.random() < 0.5 ? -1 : 1) * 0.2);
       moveX = breakDir * speed * 0.7;
-      moveY = (bot.y < tgt.y) ? speed * 0.3 : ((Math.random() < 0.5 ? -1 : 1) * speed * 0.2);
+      moveY = breakDirY * speed;
       ai.strafeDir = breakDir;
       ai.strafeTimer = 15 + Math.floor(Math.random() * 20);
       ai._lowMotionFrames = 0;
+      // Commit to this break direction for 25-35 frames
+      ai._momentumBreakFrames = 25 + Math.floor(Math.random() * 10);
+      ai._momentumBreakDirX = breakDir * 0.7;
+      ai._momentumBreakDirY = breakDirY;
       // Track diagnostics
       if (sl && sl.tactical) {
         if (typeof sl.tactical.lowMotionRescues !== 'number') sl.tactical.lowMotionRescues = 0;
@@ -5378,19 +5397,24 @@ const SparSystem = {
 
     // --- Idle guard: if near-stationary too long, force a lateral break ---
     const idleThreshold = 0.4;
-    if (Math.abs(moveX) < idleThreshold && Math.abs(moveY) < idleThreshold) {
+    if (Math.abs(moveX) < idleThreshold && Math.abs(moveY) < idleThreshold && ai._momentumBreakFrames <= 0) {
       ai._idleFrames++;
     } else {
       ai._idleFrames = 0;
     }
-    // After 20 idle frames, if not escaping or reloading, force a lateral break
+    // After 20 idle frames, if not escaping or reloading, force a lateral break with momentum
     if (ai._idleFrames >= 20 && !ai._escapePolicy && !(bot === tgt ? false : (member && member.gun.reloading))) {
       const breakDir = (Math.random() < 0.5 ? -1 : 1);
+      const breakDirY = (bot.y < tgt.y) ? 0.3 : ((Math.random() < 0.5 ? -1 : 1) * 0.25);
       moveX = breakDir * speed * 0.7;
-      moveY = (bot.y < tgt.y) ? speed * 0.3 : ((Math.random() < 0.5 ? -1 : 1) * speed * 0.25);
+      moveY = breakDirY * speed;
       ai._idleFrames = 0;
       ai.strafeDir = breakDir;
       ai.strafeTimer = 20 + Math.floor(Math.random() * 20);
+      // Commit to this break direction for 25-35 frames
+      ai._momentumBreakFrames = 25 + Math.floor(Math.random() * 10);
+      ai._momentumBreakDirX = breakDir * 0.7;
+      ai._momentumBreakDirY = breakDirY;
       // Track diagnostics
       const sl2 = typeof sparLearning !== 'undefined' ? sparLearning : null;
       if (sl2 && sl2.tactical) {
