@@ -370,6 +370,29 @@ const SparSystem = {
       playerExplore = 0.18, generalExplore = 0.1, selfPlayExplore = 0.08,
       noise = 2.5,
     } = config;
+
+    // Dynamic player-scope weighting: scale by total player evidence
+    // 0-4 plays: weak prior (half weight, more exploration)
+    // 5-9 plays: strong blend (1.3x weight, moderate exploration)
+    // 10+ plays: dominant (1.7x weight, minimal exploration)
+    let dynPW, dynPE, dynGW, dynSW;
+    if (totalPP >= 10) {
+      dynPW = playerWeight * 1.7;
+      dynPE = playerExplore * 0.35;
+      dynGW = generalWeight * 0.5;
+      dynSW = selfPlayWeight * 0.5;
+    } else if (totalPP >= 5) {
+      dynPW = playerWeight * 1.3;
+      dynPE = playerExplore * 0.65;
+      dynGW = generalWeight * 0.8;
+      dynSW = selfPlayWeight * 0.8;
+    } else {
+      dynPW = playerWeight * 0.5;
+      dynPE = playerExplore * 1.3;
+      dynGW = generalWeight;
+      dynSW = selfPlayWeight;
+    }
+
     let best = keys[0];
     let bestScore = -Infinity;
     for (const key of keys) {
@@ -380,21 +403,38 @@ const SparSystem = {
       const gPlays = gPolicy && gPolicy[key] ? gPolicy[key].plays || 0 : 0;
       const sPlays = sPolicy && sPolicy[key] ? sPolicy[key].plays || 0 : 0;
       const pScore = pPlays >= 3
-        ? this._scoreRewardBucket(pPolicy && pPolicy[key], totalPP, playerExplore)
-        : this._scoreRewardBucket(pFamily && pFamily[family], totalPF, playerExplore);
+        ? this._scoreRewardBucket(pPolicy && pPolicy[key], totalPP, dynPE)
+        : this._scoreRewardBucket(pFamily && pFamily[family], totalPF, dynPE);
       const gScore = gPlays >= 3
         ? this._scoreRewardBucket(gPolicy && gPolicy[key], totalGP, generalExplore)
         : this._scoreRewardBucket(gFamily && gFamily[family], totalGF, generalExplore);
       const sScore = sPlays >= 3
         ? this._scoreRewardBucket(sPolicy && sPolicy[key], totalSP, selfPlayExplore)
         : this._scoreRewardBucket(sFamily && sFamily[family], totalSF, selfPlayExplore);
-      score += (pScore - 0.5) * playerWeight;
-      score += (gScore - 0.5) * generalWeight;
-      score += (sScore - 0.5) * selfPlayWeight;
+      score += (pScore - 0.5) * dynPW;
+      score += (gScore - 0.5) * dynGW;
+      score += (sScore - 0.5) * dynSW;
+
+      // Exploitation bonus: strong player evidence with clearly positive reward
+      if (pPlays >= 3) {
+        const pReward = pPolicy && pPolicy[key] ? pPolicy[key].reward || 0.5 : 0.5;
+        if (pReward > 0.62) score += (pReward - 0.5) * 8;  // bonus for proven winners
+      }
+
+      // Fail streak suppression (strengthened)
       const fs = failStreaks && failStreaks[key] ? failStreaks[key] : 0;
-      if (fs >= 5) score -= 15;
-      else if (fs >= 4) score -= 10;
-      else if (fs >= 3) score -= 5;
+      if (fs >= 5) score -= 20;
+      else if (fs >= 4) score -= 13;
+      else if (fs >= 3) score -= 7;
+      // Family-level suppression: if 2+ policies in same family have streaks, penalize family
+      if (fs >= 3 && familyBiases) {
+        let familyFailCount = 0;
+        for (const k2 of keys) {
+          if (familyMap[k2] === family && failStreaks && (failStreaks[k2] || 0) >= 3) familyFailCount++;
+        }
+        if (familyFailCount >= 2) score -= 6;
+      }
+
       score += Math.random() * noise;
       if (score > bestScore) {
         bestScore = score;
@@ -484,41 +524,45 @@ const SparSystem = {
       if (escapeFamily && scope.escapeFamily && scope.escapeFamily[escapeFamily]) {
         this._updateRewardBucket(scope.escapeFamily[escapeFamily], escapeReward);
       }
-      // v10: shot timing policy match-end update (fall back to _last fields)
+      // v10: shot timing policy match-end update — half weight (phase reward is primary)
       const stPolicy = enemyBot.ai._shotTimingPolicy || enemyBot.ai._lastShotTimingPolicy || null;
       const stFamily = enemyBot.ai._shotTimingFamily || enemyBot.ai._lastShotTimingFamily || null;
+      const stRewardHalf = this._clamp01(0.5 + (shotTimingReward - 0.5) * 0.5);
       if (stPolicy && scope.shotTimingPolicy && scope.shotTimingPolicy[stPolicy]) {
-        this._updateRewardBucket(scope.shotTimingPolicy[stPolicy], shotTimingReward);
+        this._updateRewardBucket(scope.shotTimingPolicy[stPolicy], stRewardHalf);
       }
       if (stFamily && scope.shotTimingFamily && scope.shotTimingFamily[stFamily]) {
-        this._updateRewardBucket(scope.shotTimingFamily[stFamily], shotTimingReward);
+        this._updateRewardBucket(scope.shotTimingFamily[stFamily], stRewardHalf);
       }
-      // v10: reload behavior match-end update (fall back to _last fields)
+      // v10: reload behavior match-end update — half weight (phase reward is primary)
       const rlPolicy = enemyBot.ai._reloadPolicy || enemyBot.ai._lastReloadPolicy || null;
       const rlFamily = enemyBot.ai._reloadFamily || enemyBot.ai._lastReloadFamily || null;
+      const rlRewardHalf = this._clamp01(0.5 + (reloadReward - 0.5) * 0.5);
       if (rlPolicy && scope.reloadPolicy && scope.reloadPolicy[rlPolicy]) {
-        this._updateRewardBucket(scope.reloadPolicy[rlPolicy], reloadReward);
+        this._updateRewardBucket(scope.reloadPolicy[rlPolicy], rlRewardHalf);
       }
       if (rlFamily && scope.reloadFamily && scope.reloadFamily[rlFamily]) {
-        this._updateRewardBucket(scope.reloadFamily[rlFamily], reloadReward);
+        this._updateRewardBucket(scope.reloadFamily[rlFamily], rlRewardHalf);
       }
-      // v11: mid-fight pressure match-end update
+      // v11: mid-fight pressure match-end update — half weight
       const mpPolicy = enemyBot.ai._midPressurePolicy || enemyBot.ai._lastMidPressurePolicy || null;
       const mpFamily = enemyBot.ai._midPressureFamily || enemyBot.ai._lastMidPressureFamily || null;
+      const mpRewardHalf = this._clamp01(0.5 + (midPressureReward - 0.5) * 0.5);
       if (mpPolicy && scope.midPressurePolicy && scope.midPressurePolicy[mpPolicy]) {
-        this._updateRewardBucket(scope.midPressurePolicy[mpPolicy], midPressureReward);
+        this._updateRewardBucket(scope.midPressurePolicy[mpPolicy], mpRewardHalf);
       }
       if (mpFamily && scope.midPressureFamily && scope.midPressureFamily[mpFamily]) {
-        this._updateRewardBucket(scope.midPressureFamily[mpFamily], midPressureReward);
+        this._updateRewardBucket(scope.midPressureFamily[mpFamily], mpRewardHalf);
       }
-      // v11: wall pressure match-end update
+      // v11: wall pressure match-end update — half weight
       const wpPolicy = enemyBot.ai._wallPressurePolicy || enemyBot.ai._lastWallPressurePolicy || null;
       const wpFamily = enemyBot.ai._wallPressureFamily || enemyBot.ai._lastWallPressureFamily || null;
+      const wpRewardHalf = this._clamp01(0.5 + (wallPressureReward - 0.5) * 0.5);
       if (wpPolicy && scope.wallPressurePolicy && scope.wallPressurePolicy[wpPolicy]) {
-        this._updateRewardBucket(scope.wallPressurePolicy[wpPolicy], wallPressureReward);
+        this._updateRewardBucket(scope.wallPressurePolicy[wpPolicy], wpRewardHalf);
       }
       if (wpFamily && scope.wallPressureFamily && scope.wallPressureFamily[wpFamily]) {
-        this._updateRewardBucket(scope.wallPressureFamily[wpFamily], wallPressureReward);
+        this._updateRewardBucket(scope.wallPressureFamily[wpFamily], wpRewardHalf);
       }
       // vNext: opening contest match-end update
       const ocPolicy = enemyBot.ai._openingContestPolicy || enemyBot.ai._lastOpeningContestPolicy || null;
@@ -530,15 +574,16 @@ const SparSystem = {
       if (ocFamily && scope.openingContestFamily && scope.openingContestFamily[ocFamily]) {
         this._updateRewardBucket(scope.openingContestFamily[ocFamily], openingContestReward);
       }
-      // vNext: punish window match-end update
+      // vNext: punish window match-end update — half weight (phase reward is primary)
       const pwPolicy = enemyBot.ai._punishWindowPolicy || enemyBot.ai._lastPunishWindowPolicy || null;
       const pwFamily = enemyBot.ai._punishWindowFamily || enemyBot.ai._lastPunishWindowFamily || null;
       const punishWindowReward = this._clamp01(baseReward * 0.6 + dmgReward * 0.4);
+      const pwRewardHalf = this._clamp01(0.5 + (punishWindowReward - 0.5) * 0.5);
       if (pwPolicy && scope.punishWindowPolicy && scope.punishWindowPolicy[pwPolicy]) {
-        this._updateRewardBucket(scope.punishWindowPolicy[pwPolicy], punishWindowReward);
+        this._updateRewardBucket(scope.punishWindowPolicy[pwPolicy], pwRewardHalf);
       }
       if (pwFamily && scope.punishWindowFamily && scope.punishWindowFamily[pwFamily]) {
-        this._updateRewardBucket(scope.punishWindowFamily[pwFamily], punishWindowReward);
+        this._updateRewardBucket(scope.punishWindowFamily[pwFamily], pwRewardHalf);
       }
     }
   },
@@ -548,8 +593,7 @@ const SparSystem = {
     return this._pickAntiBottomTactic(pm);
   },
 
-  // v8 hierarchical anti-bottom tactic selector
-  // Scores 6 tactics in 3 families. Uses family-level stats until tactic has 3+ plays.
+  // v8 hierarchical anti-bottom tactic selector — unified through _pickHierarchicalPolicy
   _pickAntiBottomTactic(pm, openingLostDir) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     const tactics = typeof SPAR_ANTI_BOTTOM_TACTIC_KEYS !== 'undefined'
@@ -575,94 +619,49 @@ const SparSystem = {
     const totalSF = this._sumBucketPlays(sFamily);
     const failStreaks = sl.tactical ? sl.tactical.tacticFailStreaks : null;
 
-    let best = 'flankWide';
-    let bestScore = -Infinity;
-
+    // Build base scores from family + profile bonuses + opening context
+    const baseScores = {};
+    const familyBiases = { contest: 0, flank: 0, bait: 0 };
     for (const tactic of tactics) {
       const family = familyMap[tactic];
-      // Base score by family
-      let score = family === 'flank' ? 7 : (family === 'contest' ? 6 : 5);
+      baseScores[tactic] = family === 'flank' ? 7 : (family === 'contest' ? 6 : 5);
+    }
 
-      // Profile bonuses (mapped to family)
-      if (pm) {
-        if (family === 'flank') {
-          if (pm.playerWallsFromBottom > 0.45) score += 10;
-          if (pm.playerHoldsBottom > 0.55) score += 6;
-          // forceMirrorThenBreak: extra bonus vs predictable horizontal movement
-          if (tactic === 'forceMirrorThenBreak' && pm.playerRetreatsSameSide > 0.55) score += 4;
-        } else if (family === 'contest') {
-          if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.35) score += 10;
-          if (pm.playerPushesFromBottom > 0.45) score -= 4;
-          // lateCrossUnder: bonus when player shoots early (lots of wasted shots to wait out)
-          if (tactic === 'lateCrossUnder' && pm.playerShootsFast) score += 5;
-        } else if (family === 'bait') {
-          if (pm.playerPushesFromBottom > 0.45) score += 11;
-          if (pm.playerWallsFromBottom > 0.55) score += 3;
-          // doubleFakeRetreat: bonus vs players who chase retreats
-          if (tactic === 'doubleFakeRetreat' && pm.playerChases > 0.45) score += 5;
-        }
-      }
+    // Profile bonuses (mapped to family + specific tactics)
+    if (pm) {
+      if (pm.playerWallsFromBottom > 0.45) familyBiases.flank += 10;
+      if (pm.playerHoldsBottom > 0.55) familyBiases.flank += 6;
+      if (pm.playerRetreatsSameSide > 0.55) baseScores.forceMirrorThenBreak = (baseScores.forceMirrorThenBreak || 7) + 4;
+      if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.35) familyBiases.contest += 10;
+      if (pm.playerPushesFromBottom > 0.45) familyBiases.contest -= 4;
+      if (pm.playerShootsFast) baseScores.lateCrossUnder = (baseScores.lateCrossUnder || 6) + 5;
+      if (pm.playerPushesFromBottom > 0.45) familyBiases.bait += 11;
+      if (pm.playerWallsFromBottom > 0.55) familyBiases.bait += 3;
+      if (pm.playerChases > 0.45) baseScores.doubleFakeRetreat = (baseScores.doubleFakeRetreat || 5) + 5;
+    }
 
-      // Hierarchical reinforcement: use tactic-level if 3+ plays, else family-level
-      const pTacticPlays = pTactic && pTactic[tactic] ? pTactic[tactic].plays || 0 : 0;
-      let pScore, gScore, sScore;
-      if (pTacticPlays >= 3) {
-        pScore = this._scoreRewardBucket(pTactic && pTactic[tactic], totalPT, 0.24);
+    // Opening context bonus: prefer opposite side of player's bottom approach
+    if (openingLostDir) {
+      if (openingLostDir === 'left' || openingLostDir === 'right') {
+        for (const t of ['flankWide', 'flankTight', 'forceMirrorThenBreak']) baseScores[t] = (baseScores[t] || 7) + 5;
+        for (const t of ['contestSprint', 'lateCrossUnder']) baseScores[t] = (baseScores[t] || 6) + 3;
       } else {
-        pScore = this._scoreRewardBucket(pFamily && pFamily[family], totalPF, 0.24);
-      }
-      const gTacticPlays = gTactic && gTactic[tactic] ? gTactic[tactic].plays || 0 : 0;
-      if (gTacticPlays >= 3) {
-        gScore = this._scoreRewardBucket(gTactic && gTactic[tactic], totalGT, 0.12);
-      } else {
-        gScore = this._scoreRewardBucket(gFamily && gFamily[family], totalGF, 0.12);
-      }
-      const sTacticPlays = sTactic && sTactic[tactic] ? sTactic[tactic].plays || 0 : 0;
-      if (sTacticPlays >= 3) {
-        sScore = this._scoreRewardBucket(sTactic && sTactic[tactic], totalST, 0.08);
-      } else {
-        sScore = this._scoreRewardBucket(sFamily && sFamily[family], totalSF, 0.08);
-      }
-      score += (pScore - 0.5) * 28;
-      score += (gScore - 0.5) * 14;
-      score += (sScore - 0.5) * 10;
-
-      // Fail-streak suppression (tactic-specific, not family)
-      if (failStreaks && failStreaks[tactic]) {
-        const fs = failStreaks[tactic];
-        if (fs >= 5) score -= 15;
-        else if (fs >= 4) score -= 10;
-        else if (fs >= 3) score -= 5;
-      }
-
-      // Opening context bonus: if player took bottom from one side, prefer approaching
-      // from the OPPOSITE side. Flank tactics naturally use offDir, so they benefit most.
-      if (openingLostDir) {
-        if (openingLostDir === 'left') {
-          // Player went left → flank/contest from the right side
-          if (tactic === 'flankWide' || tactic === 'flankTight' || tactic === 'forceMirrorThenBreak') score += 5;
-          if (tactic === 'contestSprint' || tactic === 'lateCrossUnder') score += 3;
-          // Bait less useful since player is already committed to a side
-        } else if (openingLostDir === 'right') {
-          // Player went right → flank/contest from the left side
-          if (tactic === 'flankWide' || tactic === 'flankTight' || tactic === 'forceMirrorThenBreak') score += 5;
-          if (tactic === 'contestSprint' || tactic === 'lateCrossUnder') score += 3;
-        } else {
-          // Player went center → wide flanks or bait to pull them out
-          if (tactic === 'flankWide') score += 4;
-          if (tactic === 'baitRetreat' || tactic === 'doubleFakeRetreat') score += 4;
-        }
-      }
-
-      // Noise
-      score += Math.random() * 3;
-
-      if (score > bestScore) {
-        bestScore = score;
-        best = tactic;
+        baseScores.flankWide = (baseScores.flankWide || 7) + 4;
+        for (const t of ['baitRetreat', 'doubleFakeRetreat']) baseScores[t] = (baseScores[t] || 5) + 4;
       }
     }
-    return best;
+
+    return this._pickHierarchicalPolicy({
+      keys: tactics, familyMap,
+      pPolicy: pTactic, gPolicy: gTactic, sPolicy: sTactic,
+      pFamily, gFamily, sFamily,
+      totalPP: totalPT, totalGP: totalGT, totalSP: totalST,
+      totalPF, totalGF, totalSF,
+      baseScores, familyBiases, failStreaks,
+      playerWeight: 28, generalWeight: 14, selfPlayWeight: 10,
+      playerExplore: 0.24, generalExplore: 0.12, selfPlayExplore: 0.08,
+      noise: 3,
+    });
   },
 
   _pickGunSidePolicy(pm, laneInfo) {
@@ -858,8 +857,8 @@ const SparSystem = {
     const deniedR = playerDeniedBottom ? 1 : 0;
     const dmgR = this._clamp01(0.5 + dmgDealt / (SPAR_CONFIG.HP_BASELINE * 0.5));
     const qualityR = typeof openingQuality === 'number' ? openingQuality : 0.5;
-    // 40% bottom control, 25% denied player opening, 20% damage, 15% lane quality
-    const phaseReward = this._clamp01(securedR * 0.4 + deniedR * 0.25 + dmgR * 0.2 + qualityR * 0.15);
+    // Opening contest: bottom control is the key objective (50% + 25% deny = 75% objective-driven)
+    const phaseReward = this._clamp01(securedR * 0.50 + deniedR * 0.25 + dmgR * 0.10 + qualityR * 0.15);
     if (sl) {
       const rf = this._ensureReinforcementProfile(sl);
       if (rf) {
@@ -898,7 +897,8 @@ const SparSystem = {
     const dmgR = this._clamp01(0.5 + dmgDealt / (SPAR_CONFIG.HP_BASELINE * 0.3));
     const safeR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.2));
     const convertR = converted ? 1 : 0;
-    const phaseReward = this._clamp01(dmgR * 0.4 + safeR * 0.3 + convertR * 0.3);
+    // Punish window: conversion inside the window is the key objective
+    const phaseReward = this._clamp01(convertR * 0.45 + dmgR * 0.30 + safeR * 0.25);
     if (sl) {
       const rf = this._ensureReinforcementProfile(sl);
       if (rf) {
@@ -939,7 +939,8 @@ const SparSystem = {
     const endQuality = typeof ai._gunSideBestQuality === 'number' ? ai._gunSideBestQuality : startQuality;
     const qualityGain = this._clamp01(0.5 + (endQuality - startQuality));
     const dmgR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.35));
-    const phaseReward = this._clamp01((resolved ? 1 : 0) * 0.45 + dmgR * 0.3 + qualityGain * 0.25);
+    // Gun side: resolution + lane improvement are key; damage matters less
+    const phaseReward = this._clamp01((resolved ? 1 : 0) * 0.50 + qualityGain * 0.30 + dmgR * 0.20);
     if (sl) {
       const rf = this._ensureReinforcementProfile(sl);
       if (rf) {
@@ -995,7 +996,8 @@ const SparSystem = {
     const qualityGain = this._clamp01(0.5 + (endQuality - startQuality));
     const dmgR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.4));
     const speedR = this._clamp01(1 - frames / 220);
-    const phaseReward = this._clamp01((resolved ? 1 : 0) * 0.45 + dmgR * 0.3 + speedR * 0.15 + qualityGain * 0.1);
+    // Escape: successful neutral reset is the key objective; damage is secondary
+    const phaseReward = this._clamp01((resolved ? 1 : 0) * 0.55 + dmgR * 0.20 + speedR * 0.15 + qualityGain * 0.10);
     if (sl) {
       const rf = this._ensureReinforcementProfile(sl);
       if (rf) {
@@ -1093,10 +1095,10 @@ const SparSystem = {
     _logEngagement('shotTiming', ai._shotTimingFrames || 0, dmgDealt);
     const policy = ai._shotTimingPolicy;
     const family = ai._shotTimingFamily;
-    // Phase reward: 50% hits + 50% damage efficiency
+    // Shot timing: landing hits during the window is the objective
     const phaseReward = this._clamp01(
-      (hitsDuring > 0 ? 0.5 : 0) * 0.5 +
-      this._computeDamageReward(dmgDealt) * 0.5
+      (hitsDuring > 0 ? 0.65 : 0) * 0.65 +
+      this._computeDamageReward(dmgDealt) * 0.35
     );
     const rf = this._ensureReinforcementProfile(sl);
     if (rf) {
@@ -1183,7 +1185,9 @@ const SparSystem = {
     _logEngagement('reload', ai._reloadFrames || 0, dmgDealt);
     const policy = ai._reloadPolicy;
     const family = ai._reloadFamily;
-    const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
+    // Reload punish: actually dealing damage during the window is the objective
+    const punished = dmgDealt > 0 ? 1 : 0;
+    const phaseReward = this._clamp01(punished * 0.55 + this._computeDamageReward(dmgDealt) * 0.45);
     const rf = this._ensureReinforcementProfile(sl);
     if (rf) {
       for (const scopeName of this._getPhaseScopes()) {
@@ -1270,7 +1274,9 @@ const SparSystem = {
     _logEngagement('midPressure', ai._midPressureFrames || 0, dmgDealt);
     const policy = ai._midPressurePolicy;
     const family = ai._midPressureFamily;
-    const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
+    // Mid-pressure: dealing damage is the objective, but actually converting matters more
+    const converted = dmgDealt > 0 ? 1 : 0;
+    const phaseReward = this._clamp01(converted * 0.45 + this._computeDamageReward(dmgDealt) * 0.55);
     const rf = this._ensureReinforcementProfile(sl);
     if (rf) {
       for (const scopeName of this._getPhaseScopes()) {
@@ -1350,7 +1356,9 @@ const SparSystem = {
     _logEngagement('wallPressure', ai._wallPressureFrames || 0, dmgDealt);
     const policy = ai._wallPressurePolicy;
     const family = ai._wallPressureFamily;
-    const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
+    // Wall pressure: pinning + dealing damage are the objectives
+    const pinned = dmgDealt > 10 ? 1 : 0;
+    const phaseReward = this._clamp01(pinned * 0.40 + this._computeDamageReward(dmgDealt) * 0.60);
     const rf = this._ensureReinforcementProfile(sl);
     if (rf) {
       for (const scopeName of this._getPhaseScopes()) {
@@ -1388,12 +1396,12 @@ const SparSystem = {
       });
     }
 
-    // Phase reward: 40% regained, 35% damage efficiency, 25% speed
+    // Anti-bottom: regaining bottom is the key objective (50%)
     const hpBase = SPAR_CONFIG.HP_BASELINE || 100;
     const regainR = regainedBottom ? 1 : 0;
     const dmgR = Math.max(0, Math.min(1, 1 - dmgTaken / (hpBase * 0.5)));
     const speedR = Math.max(0, Math.min(1, 1 - frames / 300));
-    const phaseReward = regainR * 0.4 + dmgR * 0.35 + speedR * 0.25;
+    const phaseReward = regainR * 0.50 + dmgR * 0.28 + speedR * 0.22;
 
     // Update reinforcement buckets — respect training/self-play data separation
     if (sl) {
