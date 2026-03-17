@@ -135,6 +135,23 @@ const SparSystem = {
     return Math.max(0, Math.min(1, v));
   },
 
+  // vNext: Stable center direction — avoids Math.sign(0)=0 and hard-flip jitter at midX
+  // Uses a deadzone: within ±16px of midX, returns the stored sticky side bias.
+  // Outside the deadzone, updates the bias and returns the real direction.
+  _getStableCenterDir(ai, botX, midX) {
+    const DEADZONE = 16;
+    const diff = midX - botX;
+    if (Math.abs(diff) > DEADZONE) {
+      // Outside deadzone — update sticky bias and return real direction
+      ai._centerSideBias = diff > 0 ? 1 : -1;
+      return ai._centerSideBias;
+    }
+    // Inside deadzone — use sticky bias (or strafe dir as last resort)
+    if (ai._centerSideBias) return ai._centerSideBias;
+    ai._centerSideBias = ai.strafeDir || 1;
+    return ai._centerSideBias;
+  },
+
   _getSparPerpHitRadius() {
     const entityR = GAME_CONFIG.ENTITY_R || 25;
     const bulletHalfShort = GAME_CONFIG.BULLET_HALF_SHORT || 4;
@@ -4725,7 +4742,7 @@ const SparSystem = {
         } else if (ai._openingLostBottomDir === 'right') {
           ai._antiBottomOffsetDir = -1;  // player went right → we go left
         } else {
-          ai._antiBottomOffsetDir = (bot.x < midX) ? 1 : -1;
+          ai._antiBottomOffsetDir = this._getStableCenterDir(ai, bot.x, midX);
         }
       }
       ai._antiBottomFrames++;
@@ -5075,7 +5092,7 @@ const SparSystem = {
     let suppressPeekShots = false;
     if (!isOpening && ai._escapePolicy) {
       suppressPeekShots = true;
-      const centerDir = Math.sign(midX - bot.x) || ai.strafeDir;
+      const centerDir = this._getStableCenterDir(ai, bot.x, midX);
       const awayDir = -Math.sign(dx || ai.strafeDir);
       const descendDir = bot.y < arenaH * 0.6 ? 1 : -0.2;
       if (ai._escapePolicy === 'cornerBreak') {
@@ -5167,7 +5184,7 @@ const SparSystem = {
         moveY += (!hasBottom ? 0.18 : 0.05) * speed;
       } else if (ai._gunSidePolicy === 'yieldLane') {
         suppressPeekShots = true;
-        moveX = awayDir * speed * 0.7 + Math.sign(midX - bot.x) * speed * 0.25;
+        moveX = awayDir * speed * 0.7 + this._getStableCenterDir(ai, bot.x, midX) * speed * 0.25;
         moveY += (enemyHasBottom ? 0.25 : -0.05) * speed;
       }
       if (laneQuality > 0.62 && !badGunSide && !repeekedBadLane) suppressPeekShots = false;
@@ -5287,7 +5304,7 @@ const SparSystem = {
       if (inCorner) {
         const urgency = Math.min(0.7, ai._cornerFrames / 60); // ramps to 0.7 over 1 second
         // Push toward center — always
-        moveX += Math.sign(midX - bot.x) * speed * urgency;
+        moveX += this._getStableCenterDir(ai, bot.x, midX) * speed * urgency;
         moveY += Math.sign(midY - bot.y) * speed * urgency;
       } else if (nearAnyWall) {
         // Near wall but not corner — dodge perpendicular if enemy closing
@@ -5297,7 +5314,7 @@ const SparSystem = {
             moveY += (bot.y < midY ? 1 : -1) * speed * 0.4;
           }
           if (nearTopWall || nearBottomWall) {
-            moveX += (bot.x < midX ? 1 : -1) * speed * 0.4;
+            moveX += this._getStableCenterDir(ai, bot.x, midX) * speed * 0.4;
           }
         }
       }
@@ -5395,7 +5412,7 @@ const SparSystem = {
         ai._losBlockedFrames++;
         if (ai._losBlockedFrames > 60) {
           // Reposition: move toward center and perpendicular to enemy
-          moveX += Math.sign(midX - bot.x) * speed * 0.3;
+          moveX += this._getStableCenterDir(ai, bot.x, midX) * speed * 0.3;
           moveY += Math.sign(midY - bot.y) * speed * 0.3;
         }
       } else {
