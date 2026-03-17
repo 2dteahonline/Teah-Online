@@ -53,12 +53,12 @@ const DELI_CHAIRS = [
 const DELI_AISLES = [
   { name: 'Frozen',    price: 4, tx: 29, ty: 26 },   // shelf ty:24-25, browse ty:26
   { name: 'Snacks',    price: 3, tx: 36, ty: 26 },
-  { name: 'Candy',     price: 2, tx: 29, ty: 29 },   // shelf ty:27-28, browse ty:29
-  { name: 'Beverages', price: 3, tx: 36, ty: 29 },
+  { name: 'Candy',     price: 2, tx: 29, ty: 32 },   // shelf ty:30-31, browse ty:32
+  { name: 'Beverages', price: 3, tx: 36, ty: 32 },
 ];
 
-// Cashier spot for retail shoppers
-const DELI_CASHIER = { tx: 38, ty: 24 };
+// Cashier spot for retail shoppers (tx:37 keeps NPC body off right wall)
+const DELI_CASHIER = { tx: 37, ty: 24 };
 
 // ===================== CONFIG =====================
 const DELI_NPC_CONFIG = {
@@ -153,8 +153,9 @@ function _claimChair(npc) {
 //   ty:20  — E/W corridor below dining tables (dining/condiment traffic)
 //
 // AISLE AREA (tx:27+, ty:22+):
-//   Shelf rows: ty:24-25 and ty:27-28
-//   Browse rows: ty:26 and ty:29
+//   Shelf row 1: ty:24-25, Browse row 1: ty:26
+//   Walkway: ty:27-29 (open gap between shelf rows)
+//   Shelf row 2: ty:30-31, Browse row 2: ty:32
 //   Gaps: tx:26 (west), tx:32 (between shelf columns)
 
 // Find the nearest safe vertical gap for a given tx position in the aisle area
@@ -287,18 +288,20 @@ function _routeExitToShelf(shelf) {
 }
 
 // Route from shelf browse spot to cashier
-function _routeShelfToCashier() {
+function _routeShelfToCashier(fromTY) {
+  // Use the NPC's current browse row (ty:26 or ty:32)
+  const browseY = fromTY || 26;
   return [
-    { tx: DELI_CASHIER.tx, ty: 29 },             // east along browse row to cashier column
-    { tx: DELI_CASHIER.tx, ty: DELI_CASHIER.ty }, // north to cashier spot
+    { tx: DELI_CASHIER.tx, ty: browseY },          // east along browse row to cashier column
+    { tx: DELI_CASHIER.tx, ty: DELI_CASHIER.ty },   // north to cashier spot
   ];
 }
 
 // Route from cashier to exit — uses tx:16 exit lane
 function _routeCashierToExit() {
   return [
-    { tx: DELI_CASHIER.tx, ty: 29 },  // south to browse row
-    { tx: 26, ty: 29 },               // west along browse row to main corridor
+    { tx: DELI_CASHIER.tx, ty: 28 },  // south to walkway between shelf rows
+    { tx: 26, ty: 28 },               // west along walkway to main corridor
     { tx: 26, ty: 22 },               // north past counter wall
     { tx: 16, ty: 22 },               // west on ty:22
     { tx: 16, ty: 34 },               // south to exit on tx:16
@@ -649,7 +652,8 @@ const DELI_NPC_AI = {
     }
 
     // Route to cashier to pay
-    _cStartRoute(npc, _routeShelfToCashier(), 'at_cashier', 0);
+    const npcTY = Math.floor(npc.y / TILE);
+    _cStartRoute(npc, _routeShelfToCashier(npcTY), 'at_cashier', 0);
   },
 
   // ─── AT CASHIER: Retail shopper paying at cashier ──────────

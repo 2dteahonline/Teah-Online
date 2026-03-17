@@ -925,8 +925,8 @@ const LEVELS = {
       // 1 row of 2 shelves
       { type: 'deli_shelf_frozen',    tx: 27, ty: 24, w: 5, h: 2, solid: true },
       { type: 'deli_shelf_snacks',    tx: 34, ty: 24, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_candy',     tx: 27, ty: 27, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_drinks',    tx: 34, ty: 27, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_candy',     tx: 27, ty: 30, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_drinks',    tx: 34, ty: 30, w: 5, h: 2, solid: true },
     ]
   },
   diner_01: {
@@ -1006,6 +1006,9 @@ const LEVELS = {
       // === WORK COUNTER (clear plate) ===
       { type: 'diner_counter', tx: 17, ty: 7, w: 4, h: 2, solid: true },
 
+      // === TV ===
+      { type: 'diner_tv', tx: 21, ty: 7, w: 2, h: 3, solid: true },
+
       // === DINING AREA FLOOR ===
       { type: 'diner_floor', tx: 25, ty: 1, w: 22, h: 20, solid: false },
 
@@ -1056,11 +1059,11 @@ const LEVELS = {
       { type: 'diner_booth_seat', tx: 41, ty: 12, solid: false },
 
       // === ARCADE CORNER ===
-      { type: 'arcade_cabinet', tx: 44, ty: 3, w: 1, h: 2, solid: true },
-      { type: 'arcade_cabinet', tx: 46, ty: 3, w: 1, h: 2, solid: true },
+      { type: 'arcade_cabinet', tx: 44, ty: 17, w: 1, h: 2, solid: true },
+      { type: 'arcade_cabinet', tx: 46, ty: 17, w: 1, h: 2, solid: true },
 
-      // === JUKEBOX ===
-      { type: 'diner_jukebox', tx: 44, ty: 10, w: 2, h: 2, solid: true },
+      // === CUSTOMER EXIT ===
+      { type: 'diner_customer_exit', tx: 44, ty: 21, w: 3, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
     ]
   },
   // ---- FINE DINING (teppanyaki) ----
