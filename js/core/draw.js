@@ -880,6 +880,24 @@ function draw() {
           ctx.beginPath(); ctx.ellipse(fix - 2, fiy - 2, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
         }
       }
+      // Waitress tray — show table number badge when carrying food
+      if (npc.isWaitress && npc.hasFood && npc._targetPartyId >= 0) {
+        let _trayTableNum = null;
+        if (typeof dinerParties !== 'undefined') {
+          for (const _tp of dinerParties) {
+            if (_tp.id === npc._targetPartyId) { _trayTableNum = _tp.tableNumber; break; }
+          }
+        }
+        if (_trayTableNum) {
+          // Table number badge above the food
+          const badgeX = npc.x, badgeY = npc.y - 52;
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.beginPath(); ctx.roundRect(badgeX - 16, badgeY - 7, 32, 14, 3); ctx.fill();
+          ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffd700'; ctx.textAlign = "center";
+          ctx.fillText("Table " + _trayTableNum, badgeX, badgeY + 3);
+          ctx.textAlign = "left";
+        }
+      }
 
     } else if (e.type === "fineDiningNPC") {
       // Fine dining customer NPC rendering — upscale clothing, same structure as diner

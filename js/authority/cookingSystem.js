@@ -262,6 +262,7 @@ function _activateNextTicket() {
     _fdPartyId: ticket._fdPartyId != null ? ticket._fdPartyId : null,
     _dinerBoothId: ticket._dinerBoothId != null ? ticket._dinerBoothId : null,
     _dinerPartyId: ticket._dinerPartyId != null ? ticket._dinerPartyId : null,
+    _dinerTableNumber: ticket._dinerTableNumber || null,
   };
   cookingState.assembly = [];
 
@@ -353,6 +354,8 @@ function updateCooking() {
     const px = player.x + offX, py = player.y + offY;
     let hitEntity = null;
     let hitDist = 999;
+    const facingVecs = [[0,1],[0,-1],[-1,0],[1,0]]; // down, up, left, right
+    const [fvx, fvy] = facingVecs[player.dir] || [0,1];
     for (const e of levelEntities) {
       // Detect individual ingredient entities (ing_*/ding_*) + work stations
       const activeEntityMap = _getActiveEntityToIngredient();
@@ -370,9 +373,17 @@ function updateCooking() {
       const nearY = Math.max(eTop, Math.min(py, eBot));
       const dx = nearX - px, dy = nearY - py;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 55 && dist < hitDist) {
-        hitDist = dist;
-        hitEntity = e.type;
+      if (dist < 40) {
+        // Facing-direction bias: dot product of facing vector and direction to entity center
+        const eCx = (eLeft + eRight) / 2, eCy = (eTop + eBot) / 2;
+        const toCx = eCx - px, toCy = eCy - py;
+        const toLen = Math.sqrt(toCx * toCx + toCy * toCy) || 1;
+        const facingBias = Math.max(0, (fvx * toCx + fvy * toCy) / toLen); // 0 to 1
+        const effectiveDist = dist - facingBias * 15;
+        if (effectiveDist < hitDist) {
+          hitDist = effectiveDist;
+          hitEntity = e.type;
+        }
       }
     }
     if (hitEntity) handleStationInteract(hitEntity);
@@ -689,8 +700,14 @@ function applyOrderResult(result) {
       _dinerPendingServe.push({
         boothId: cookingState.currentOrder._dinerBoothId,
         partyId: cookingState.currentOrder._dinerPartyId,
+        tableNumber: cookingState.currentOrder._dinerTableNumber || null,
         recipeIngredients: recipeIngredients,
       });
+      // Update TV queue status to ready
+      if (typeof _dinerTVQueue !== 'undefined') {
+        const tvEntry = _dinerTVQueue.find(e => e.partyId === cookingState.currentOrder._dinerPartyId && e.status === 'pending');
+        if (tvEntry) tvEntry.status = 'ready';
+      }
     } else if (cookingState.activeRestaurantId === 'fine_dining' &&
                cookingState.currentOrder._fdTableId != null &&
                cookingState.currentOrder._fdPartyId != null &&
@@ -817,28 +834,31 @@ function drawCookingHUD() {
     ctx.fillText(customerLabel, panelX + 8, panelY + 14);
     // (Timer type label removed — bar color communicates urgency)
 
-    // === Service timer bar (green→yellow→red) ===
+    // === Service timer bar (green→yellow→red) — skip for diner (timer is on table) ===
+    const isDiner = cookingState.activeRestaurantId === 'diner';
     const sTimerPct = Math.max(0, 1.0 - (order.serviceTimer / order.serviceDuration));
-    const sBarW = panelW - 16, sBarH = 8;
-    const sBarX = panelX + 8, sBarY = panelY + 20;
-    // Background
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(sBarX, sBarY, sBarW, sBarH);
-    // Color interpolation: green→yellow→red as time runs out
-    let barR, barG;
-    if (sTimerPct > 0.5) {
-      // green to yellow (pct 1.0→0.5): R ramps up, G stays high
-      const t = (sTimerPct - 0.5) / 0.5; // t: 1→0 as pct drops
-      barR = Math.round(255 * (1 - t));   // R: 0→255
-      barG = 200;                          // G: stays 200
-    } else {
-      // yellow to red (pct 0.5→0.0): R stays high, G drops
-      const t = sTimerPct / 0.5;           // t: 1→0 as pct drops
-      barR = 255;                          // R: stays 255
-      barG = Math.round(200 * t);          // G: 200→0
+    if (!isDiner) {
+      const sBarW = panelW - 16, sBarH = 8;
+      const sBarX = panelX + 8, sBarY = panelY + 20;
+      // Background
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(sBarX, sBarY, sBarW, sBarH);
+      // Color interpolation: green→yellow→red as time runs out
+      let barR, barG;
+      if (sTimerPct > 0.5) {
+        // green to yellow (pct 1.0→0.5): R ramps up, G stays high
+        const t = (sTimerPct - 0.5) / 0.5; // t: 1→0 as pct drops
+        barR = Math.round(255 * (1 - t));   // R: 0→255
+        barG = 200;                          // G: stays 200
+      } else {
+        // yellow to red (pct 0.5→0.0): R stays high, G drops
+        const t = sTimerPct / 0.5;           // t: 1→0 as pct drops
+        barR = 255;                          // R: stays 255
+        barG = Math.round(200 * t);          // G: 200→0
+      }
+      ctx.fillStyle = 'rgb(' + barR + ',' + barG + ',40)';
+      ctx.fillRect(sBarX, sBarY, sBarW * sTimerPct, sBarH);
     }
-    ctx.fillStyle = 'rgb(' + barR + ',' + barG + ',40)';
-    ctx.fillRect(sBarX, sBarY, sBarW * sTimerPct, sBarH);
 
     // Order name + ticket progress
     ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ffd700';
@@ -847,8 +867,8 @@ function drawCookingHUD() {
       orderLabel = "Item " + (cookingState.ticket.completedCount + 1) + "/" + cookingState.ticket.items.length + ": " + order.recipe.name;
     }
     // Prepend table number for diner orders
-    if (order._dinerBoothId != null) {
-      orderLabel = "Table " + (order._dinerBoothId + 1) + " \u2014 " + orderLabel;
+    if (order._dinerTableNumber) {
+      orderLabel = "Table " + order._dinerTableNumber + " \u2014 " + orderLabel;
     }
     ctx.fillText(orderLabel, panelX + 8, panelY + 42);
 
@@ -901,8 +921,8 @@ function drawCookingHUD() {
     }
   }
 
-  // === Last order result popup ===
-  if (cookingState.lastResult && cookingState.lastResultTimer > 0) {
+  // === Last order result popup (skip for diner — timer is on table) ===
+  if (cookingState.lastResult && cookingState.lastResultTimer > 0 && cookingState.activeRestaurantId !== 'diner') {
     const r = cookingState.lastResult;
     const alpha = Math.min(1, cookingState.lastResultTimer / 30);
     const popX = BASE_W / 2, popY = BASE_H / 2 - 40;

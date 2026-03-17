@@ -16,11 +16,12 @@ const DINER_NPC_APPEARANCES = [
   { skin: '#f5d0a0', hair: '#d0a060', shirt: '#306060', pants: '#504040' },
   { skin: '#b5835a', hair: '#1a1010', shirt: '#808080', pants: '#2a2a3a' },
 ];
-const DINER_NPC_NAMES = ['Customer', 'Patron', 'Guest', 'Diner', 'Regular', 'Foodie', 'Tourist', 'Local'];
+const DINER_NPC_NAMES = typeof DINER_NAME_POOL !== 'undefined' ? DINER_NAME_POOL : ['Customer', 'Patron', 'Guest'];
 
 // ===================== DEFINED SPOTS =====================
 const DINER_SPOTS = {
   exit:        { tx: 27, ty: 21 },
+  customerExit: { tx: 45, ty: 21 },
   passWindow:  { tx: 23, ty: 14 },
   counterWait: { tx: 12, ty: 16 }, // waitress idle spot — dining side, south of pickup counter
 };
@@ -41,8 +42,8 @@ const DINER_BOOTHS = [
 
 // ===================== ARCADE SPOTS =====================
 const DINER_ARCADE_SPOTS = [
-  { tx: 44, ty: 4, claimedBy: null },
-  { tx: 46, ty: 4, claimedBy: null },
+  { tx: 44, ty: 18, claimedBy: null },
+  { tx: 46, ty: 18, claimedBy: null },
 ];
 
 // ===================== CONFIG =====================
@@ -69,12 +70,16 @@ const dinerParties = [];
 const _dinerIdCounter = { value: 0 };
 let _dinerPartyId = 0;
 const _dinerSpawnState = { timer: 0, nextInterval: 600 };
+let _dinerTableCounter = 0;
 
 // Waitress NPC — persistent, single instance
 let _dinerWaitress = null;
 
 // Pending serve queue — orders completed by player, waiting for waitress delivery
 let _dinerPendingServe = [];
+
+// TV queue — tracks order status for diner TV display
+let _dinerTVQueue = [];
 
 // ===================== HELPERS =====================
 // Utility functions (_cRandRange, _cRandFromArray, _cTilePx, _cWP, _cCloneRoute, _cConcatRoutes)
@@ -170,11 +175,9 @@ function _routeDinerExitToBooth(boothId, corridorTX) {
 }
 
 function _routeDinerToExit(fromTX, fromTY, corridorTX) {
-  const cx = corridorTX || _cRandRange(26, 29);
   const route = [];
   // Get to main corridor first
   if (fromTY < 14) {
-    // Above corridor — go south to corridor
     if (fromTX >= 35) {
       route.push({ tx: 36, ty: fromTY });
       route.push({ tx: 36, ty: 14 });
@@ -185,13 +188,13 @@ function _routeDinerToExit(fromTX, fromTY, corridorTX) {
       route.push({ tx: fromTX, ty: 14 });
     }
   } else if (fromTY > 14 && fromTX < 26) {
-    // Below corridor, west side — go to pass window area first
     route.push({ tx: fromTX, ty: 16 });
     route.push({ tx: 26, ty: 16 });
     route.push({ tx: 26, ty: 14 });
   }
-  route.push({ tx: cx, ty: 14 });    // to exit column
-  route.push({ tx: cx, ty: DINER_SPOTS.exit.ty });    // south to exit
+  // East along corridor to customer exit column
+  route.push({ tx: 44, ty: 14 });
+  route.push({ tx: 44, ty: DINER_SPOTS.customerExit.ty });
   return route;
 }
 
@@ -202,8 +205,8 @@ function _routeDinerSeatToArcade(boothId, seatIdx, arcadeIdx) {
   return _cConcatRoutes(
     _routeDinerSeatToBoothEntry(boothId, seatIdx),
     booth.entry.tx >= 36 ? [_cWP(36, 14)] : [_cWP(26, 14)],
-    booth.entry.tx >= 36 ? null : [_cWP(36, 14)],
-    [_cWP(36, spot.ty)],
+    [_cWP(44, 14)],
+    [_cWP(44, spot.ty)],
     [_cWP(spot.tx, spot.ty)]
   );
 }
@@ -211,12 +214,11 @@ function _routeDinerSeatToArcade(boothId, seatIdx, arcadeIdx) {
 function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
-  const cx = corridorTX || 27;
   return _cConcatRoutes(
     _routeDinerSeatToBoothEntry(boothId, seatIdx),
     booth.entry.tx >= 36 ? [_cWP(36, 14)] : [_cWP(26, 14)],
-    [_cWP(cx, 14)],
-    [_cWP(cx, DINER_SPOTS.exit.ty)]
+    [_cWP(44, 14)],
+    [_cWP(44, DINER_SPOTS.customerExit.ty)]
   );
 }
 
@@ -277,8 +279,8 @@ function _routeDinerExitToArcade(arcadeIdx, corridorTX) {
   const cx = corridorTX || 27;
   return _cConcatRoutes(
     [_cWP(cx, 14)],
-    [_cWP(36, 14)],
-    [_cWP(36, spot.ty)],
+    [_cWP(44, 14)],
+    [_cWP(44, spot.ty)],
     [_cWP(spot.tx, spot.ty)]
   );
 }
@@ -286,12 +288,9 @@ function _routeDinerExitToArcade(arcadeIdx, corridorTX) {
 function _routeDinerArcadeToExit(arcadeIdx, corridorTX) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  const cx = corridorTX || 27;
   return _cConcatRoutes(
-    [_cWP(36, spot.ty)],
-    [_cWP(36, 14)],
-    [_cWP(cx, 14)],
-    [_cWP(cx, DINER_SPOTS.exit.ty)]
+    [_cWP(44, spot.ty)],
+    [_cWP(44, DINER_SPOTS.customerExit.ty)]
   );
 }
 
@@ -479,6 +478,9 @@ function _updateDinerWaitress() {
         w.hasFood = true;
         w._recipeIngredients = serve.recipeIngredients || null;
         _dinerPendingServe.shift(); // remove from queue
+        // Remove from TV queue
+        const tvIdx = _dinerTVQueue.findIndex(e => e.partyId === serve.partyId);
+        if (tvIdx >= 0) _dinerTVQueue.splice(tvIdx, 1);
         // Route from counter to booth
         const route = _routeCounterToBooth(serve.boothId);
         _cStartRoute(w, route, 'serving', DINER_NPC_CONFIG.waitressServeDuration, { kind: 'pass_to_booth', boothId: serve.boothId });
@@ -518,6 +520,12 @@ function _updateDinerWaitress() {
           const newTicket = cookingState.ticketQueue[cookingState.ticketQueue.length - 1];
           newTicket._dinerBoothId = w._targetBoothId;
           newTicket._dinerPartyId = w._targetPartyId;
+          const _tp = _getDinerParty(w._targetPartyId);
+          if (_tp) newTicket._dinerTableNumber = _tp.tableNumber;
+          const _tvParty = _getDinerParty(w._targetPartyId);
+          const _tvName = _tvParty ? _getPartyMembers(_tvParty).find(m => !m.isWaitress)?.name || 'Customer' : 'Customer';
+          const _tvTableNum = _tvParty ? _tvParty.tableNumber : 0;
+          _dinerTVQueue.push({ name: _tvName, tableNumber: _tvTableNum, status: 'pending', partyId: w._targetPartyId });
         }
       }
 
@@ -540,6 +548,16 @@ function _updateDinerWaitress() {
       if (party) {
         party._waitressSubmitted = true;
         party._waitressTaking = false;
+        // Start table timer
+        // Count items in the ticket queue for this party
+        let itemCount = 1;
+        if (typeof cookingState !== 'undefined' && cookingState.ticketQueue.length > 0) {
+          const t = cookingState.ticketQueue.find(t => t._dinerPartyId === party.id);
+          if (t && t.ticketItems) itemCount = t.ticketItems.length;
+        }
+        party._tableDuration = 2700 + (itemCount - 1) * 900; // 45s base + 15s per extra item
+        party._tableTimer = 0;
+        party._tableTimerActive = true;
       }
       // Safety: if party was deleted mid-service, clear targeting anyway
 
@@ -572,6 +590,38 @@ function _updateDinerWaitress() {
             m.stateTimer = _cRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
             m.hasFood = true;
             m._recipeIngredients = w._recipeIngredients;
+          }
+        }
+        // Stop table timer — food delivered
+        party._tableTimerActive = false;
+
+        // Tip based on remaining time — more time remaining = bigger tip
+        if (party._tableDuration > 0) {
+          const timeRemaining = Math.max(0, 1.0 - (party._tableTimer / party._tableDuration));
+          // Tip chance: 70-90% if fast (>60% remaining), 30-50% if slow (<30% remaining)
+          let tipChance = 0.5;
+          if (timeRemaining > 0.6) tipChance = 0.7 + timeRemaining * 0.2;
+          else if (timeRemaining < 0.3) tipChance = 0.3 + timeRemaining * 0.2;
+          else tipChance = 0.5 + timeRemaining * 0.2;
+
+          if (Math.random() < tipChance) {
+            // Tip amount: base 5-15g scaled by time remaining and customer type
+            const leader = _getPartyLeader(party);
+            const customerTipMult = leader && leader._customerTipMult ? leader._customerTipMult : 1.0;
+            const baseTip = Math.round((5 + timeRemaining * 10) * customerTipMult);
+            if (baseTip > 0 && typeof gold !== 'undefined') {
+              gold += baseTip;
+              if (typeof cookingState !== 'undefined') {
+                cookingState.stats.totalTips += baseTip;
+              }
+              // Floating gold text at booth
+              if (typeof hitEffects !== 'undefined' && booth) {
+                hitEffects.push({
+                  x: (booth.tx + 2.5) * TILE, y: booth.ty * TILE,
+                  life: 35, maxLife: 35, type: "heal", dmg: "+$" + baseTip + " tip!"
+                });
+              }
+            }
           }
         }
       }
@@ -618,6 +668,10 @@ function spawnDinerParty() {
     members: [],
     leaderId: -1,
     boothId: boothIdx,
+    tableNumber: ++_dinerTableCounter,
+    _tableTimer: 0,
+    _tableDuration: 0,
+    _tableTimerActive: false,
     corridorTX: corridorTX,
     state: 'entering',
     menu_read_done: false,
@@ -627,8 +681,11 @@ function spawnDinerParty() {
   };
 
   // Create NPCs — first is leader
+  const partyCustomerType = pickDinerCustomerType();
   for (let i = 0; i < partySize; i++) {
     const npc = _spawnDinerNPC(partyId, i === 0, corridorTX);
+    // Store customer type tip multiplier from party type
+    npc._customerTipMult = partyCustomerType.tipMult || 1.0;
     party.members.push(npc.id);
     if (i === 0) party.leaderId = npc.id;
 
@@ -673,6 +730,7 @@ function _spawnArcadeOnlyVisitor() {
 
   DINER_ARCADE_SPOTS[arcadeIdx].claimedBy = npc.id;
   npc._claimedArcadeIdx = arcadeIdx;
+  npc.name = 'Gamer';
   npc.state = 'go_arcade_only';
 
   dinerParties.push(party);
@@ -686,9 +744,11 @@ function initDinerNPCs() {
   dinerParties.length = 0;
   _dinerIdCounter.value = 0;
   _dinerPartyId = 0;
+  _dinerTableCounter = 0;
   _dinerSpawnState.timer = 0;
   _dinerSpawnState.nextInterval = _cRandRange(120, 300);
   _dinerPendingServe = [];
+  _dinerTVQueue = [];
   _dinerWaitress = null;
   // Reset booths
   for (const b of DINER_BOOTHS) b.claimedBy = null;
@@ -983,6 +1043,17 @@ const DINER_NPC_AI = {
 
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
 
+    // Check for replay — 50% chance to play again
+    if (!npc._arcadePlaysRemaining && npc._arcadePlaysRemaining !== 0) {
+      npc._arcadePlaysRemaining = _cRandRange(0, 2); // 0-2 more plays
+    }
+    if (npc._arcadePlaysRemaining > 0) {
+      npc._arcadePlaysRemaining--;
+      npc._arcadeFeePaid = false; // will pay again next frame
+      npc.stateTimer = _cRandRange(DINER_NPC_CONFIG.arcadeOnlyDuration[0], DINER_NPC_CONFIG.arcadeOnlyDuration[1]);
+      return;
+    }
+
     // Done — release spot and leave
     if (npc._claimedArcadeIdx >= 0) {
       DINER_ARCADE_SPOTS[npc._claimedArcadeIdx].claimedBy = null;
@@ -1112,6 +1183,30 @@ function _triggerPartyPostMealExit(party) {
 function updateDinerNPCs() {
   // Update waitress BEFORE the main NPC loop
   _updateDinerWaitress();
+
+  // Update table timers for parties
+  for (const party of dinerParties) {
+    if (!party._tableTimerActive) continue;
+    if (party.state === 'leaving' || party.state === 'done') continue;
+    party._tableTimer++;
+    if (party._tableTimer >= party._tableDuration) {
+      // Timer expired — party leaves angry, missed order
+      party._tableTimerActive = false;
+      _triggerPartyLeave(party);
+      // Increment missed orders
+      if (typeof _incrementMissedOrders === 'function') _incrementMissedOrders();
+      // Gold popup for missed order
+      if (typeof hitEffects !== 'undefined') {
+        const booth = DINER_BOOTHS[party.boothId];
+        if (booth) {
+          hitEffects.push({
+            x: (booth.tx + 2.5) * TILE, y: booth.ty * TILE - 10,
+            life: 40, maxLife: 40, type: "heal", dmg: "Table " + party.tableNumber + " left!"
+          });
+        }
+      }
+    }
+  }
 
   _cUpdateNPCLoop({
     restaurantId: 'diner',

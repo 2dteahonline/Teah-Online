@@ -1496,6 +1496,26 @@ const ENTITY_RENDERERS = {
       ctx.strokeRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
       // Exit label
       ctx.font = "bold 10px monospace"; ctx.fillStyle = '#e0e0e8'; ctx.textAlign = "center";
+      ctx.fillText("ENTER DINER", ex + cw / 2, ey + ch + 10);
+      ctx.textAlign = "left";
+  },
+
+  diner_customer_exit: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      const t = Date.now() / 1000;
+      // Dark doorway
+      ctx.fillStyle = '#1a1008';
+      ctx.fillRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
+      ctx.fillStyle = '#2a1810';
+      ctx.fillRect(ex + cw * 0.15, ey + 2, cw * 0.7, ch * 0.85);
+      // Daylight glow
+      ctx.fillStyle = `rgba(200,220,255,${0.15 + 0.05 * Math.sin(t)})`;
+      ctx.fillRect(ex + cw * 0.2, ey + 4, cw * 0.6, ch * 0.6);
+      // Frame (chrome)
+      ctx.strokeStyle = '#c0c0c8'; ctx.lineWidth = 3;
+      ctx.strokeRect(ex + cw * 0.1, ey, cw * 0.8, ch * 0.9);
+      // Exit label
+      ctx.font = "bold 10px monospace"; ctx.fillStyle = '#e0e0e8'; ctx.textAlign = "center";
       ctx.fillText("EXIT DINER", ex + cw / 2, ey + ch + 10);
       ctx.textAlign = "left";
   },
@@ -1530,21 +1550,55 @@ const ENTITY_RENDERERS = {
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
       ctx.fillRect(ex + 8, by + 4, cw - 16, rowH * 0.3);
 
-      // Booth number badge — derive index from position
+      // Dynamic table number badge — find party claiming this booth
       const _boothPositions = [[27,2],[27,6],[27,10],[38,2],[38,6],[38,10]];
-      let _boothNum = 0;
+      let _boothIdx = -1;
       for (let _bi = 0; _bi < _boothPositions.length; _bi++) {
-        if (e.tx === _boothPositions[_bi][0] && e.ty === _boothPositions[_bi][1]) { _boothNum = _bi + 1; break; }
+        if (e.tx === _boothPositions[_bi][0] && e.ty === _boothPositions[_bi][1]) { _boothIdx = _bi; break; }
       }
-      if (_boothNum > 0) {
-        const badgeX = ex + cw / 2, badgeY = ey + rowH + rowH / 2;
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.beginPath(); ctx.arc(badgeX, badgeY, 10, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#ffd700';
-        ctx.beginPath(); ctx.arc(badgeX, badgeY, 8, 0, Math.PI * 2); ctx.fill();
-        ctx.font = "bold 11px monospace"; ctx.fillStyle = '#1a1a1a'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(String(_boothNum), badgeX, badgeY);
-        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      if (_boothIdx >= 0) {
+        // Find party claiming this booth for dynamic table number
+        let _tableNum = null;
+        let _tableTimerPct = -1;
+        if (typeof dinerParties !== 'undefined') {
+          for (const _dp of dinerParties) {
+            if (_dp.boothId === _boothIdx && _dp.state !== 'done') {
+              _tableNum = _dp.tableNumber;
+              if (_dp._tableTimerActive && _dp._tableDuration > 0) {
+                _tableTimerPct = Math.max(0, 1.0 - (_dp._tableTimer / _dp._tableDuration));
+              }
+              break;
+            }
+          }
+        }
+        if (_tableNum) {
+          const badgeX = ex + cw / 2, badgeY = ey + rowH + rowH / 2;
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.beginPath(); ctx.arc(badgeX, badgeY, 10, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ffd700';
+          ctx.beginPath(); ctx.arc(badgeX, badgeY, 8, 0, Math.PI * 2); ctx.fill();
+          ctx.font = "bold 11px monospace"; ctx.fillStyle = '#1a1a1a'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(_tableNum), badgeX, badgeY);
+          ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+
+          // Timer bar on table (green→yellow→red)
+          if (_tableTimerPct >= 0) {
+            const barW = cw - 30, barH = 4;
+            const barX = ex + 15, barY = ey + rowH + rowH - 6;
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.fillRect(barX, barY, barW, barH);
+            let tbR, tbG;
+            if (_tableTimerPct > 0.5) {
+              const t2 = (_tableTimerPct - 0.5) / 0.5;
+              tbR = Math.round(255 * (1 - t2)); tbG = 200;
+            } else {
+              const t2 = _tableTimerPct / 0.5;
+              tbR = 255; tbG = Math.round(200 * t2);
+            }
+            ctx.fillStyle = 'rgb(' + tbR + ',' + tbG + ',40)';
+            ctx.fillRect(barX, barY, barW * _tableTimerPct, barH);
+          }
+        }
       }
   },
 
@@ -1584,6 +1638,27 @@ const ENTITY_RENDERERS = {
       for (let sl = 0; sl < 5; sl++) {
         ctx.fillStyle = 'rgba(0,0,0,0.15)';
         ctx.fillRect(sx + 2, sy + 4 + sl * (sh / 5), sw - 4, 1);
+      }
+      // Active player detection — show game animation
+      let _arcadePlaying = false;
+      if (typeof DINER_ARCADE_SPOTS !== 'undefined') {
+        for (const spot of DINER_ARCADE_SPOTS) {
+          if (spot.claimedBy && Math.abs(spot.tx - e.tx) <= 1 && Math.abs(spot.ty - (e.ty + 2)) <= 1) {
+            _arcadePlaying = true; break;
+          }
+        }
+      }
+      if (_arcadePlaying) {
+        // Animated pixel patterns when NPC is playing
+        const seed = Math.floor(t * 8);
+        for (let _py = 0; _py < 4; _py++) {
+          for (let _px = 0; _px < 3; _px++) {
+            const hash = (seed + _py * 7 + _px * 13) % 6;
+            const pColors = ['#ff4040','#40ff40','#4040ff','#ffff40','#ff40ff','#40ffff'];
+            ctx.fillStyle = pColors[hash];
+            ctx.fillRect(sx + 3 + _px * ((sw - 6) / 3), sy + 3 + _py * ((sh - 6) / 4), (sw - 6) / 3 - 1, (sh - 6) / 4 - 1);
+          }
+        }
       }
       // Joystick bump
       ctx.fillStyle = '#333';
@@ -1687,6 +1762,58 @@ const ENTITY_RENDERERS = {
       ctx.textAlign = "left";
   },
 
+  diner_tv: (e, ctx, ex, ey, w, h) => {
+      const cw = w * TILE, ch = h * TILE;
+      // TV frame (dark)
+      ctx.fillStyle = '#1a1a2a';
+      ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+      // Screen
+      ctx.fillStyle = '#0a0a1a';
+      ctx.fillRect(ex + 6, ey + 6, cw - 12, ch - 20);
+      // Screen glow
+      ctx.fillStyle = 'rgba(0,100,200,0.15)';
+      ctx.fillRect(ex + 6, ey + 6, cw - 12, ch - 20);
+
+      // Order queue display
+      if (typeof _dinerTVQueue !== 'undefined' && _dinerTVQueue.length > 0) {
+        const screenX = ex + 8, screenY = ey + 10;
+        const screenW = cw - 16;
+        // Header
+        ctx.font = "bold 7px monospace"; ctx.fillStyle = '#40a0ff'; ctx.textAlign = "center";
+        ctx.fillText("ORDER QUEUE", ex + cw / 2, screenY + 4);
+        // Orders
+        const maxShow = Math.min(_dinerTVQueue.length, 3);
+        for (let qi = 0; qi < maxShow; qi++) {
+          const entry = _dinerTVQueue[qi];
+          const oy = screenY + 12 + qi * 14;
+          if (entry.status === 'ready') {
+            ctx.fillStyle = '#40ff40';
+            ctx.font = "bold 6px monospace";
+            ctx.fillText("READY: " + entry.name + " T" + entry.tableNumber, ex + cw / 2, oy);
+          } else {
+            ctx.fillStyle = '#c0c0c0';
+            ctx.font = "6px monospace";
+            ctx.fillText(entry.name + " - Table " + entry.tableNumber, ex + cw / 2, oy);
+          }
+        }
+        ctx.textAlign = "left";
+      } else {
+        // No orders — idle screen
+        const t = Date.now() / 1000;
+        ctx.font = "bold 7px monospace"; ctx.fillStyle = `rgba(100,150,255,${0.4 + 0.2 * Math.sin(t * 2)})`;
+        ctx.textAlign = "center";
+        ctx.fillText("DINER TV", ex + cw / 2, ey + ch / 2 - 4);
+        ctx.textAlign = "left";
+      }
+
+      // Stand/mount
+      ctx.fillStyle = '#2a2a3a';
+      ctx.fillRect(ex + cw / 2 - 4, ey + ch - 16, 8, 14);
+      // Base
+      ctx.fillStyle = '#3a3a4a';
+      ctx.fillRect(ex + cw / 2 - 12, ey + ch - 4, 24, 4);
+  },
+
   diner_pickup_counter: (e, ctx, ex, ey, w, h) => {
       const cw = w * TILE, ch = h * TILE;
       const t = Date.now() / 1000;
@@ -1730,8 +1857,8 @@ const ENTITY_RENDERERS = {
           const foodColor = ing && ing.length > 0 ? '#d4a040' : '#c08030';
           ctx.fillStyle = foodColor;
           ctx.beginPath(); ctx.arc(px, py - 1, 5, 0, Math.PI * 2); ctx.fill();
-          // Booth number on plate
-          const bNum = _dinerPendingServe[pi].boothId + 1;
+          // Table number on plate
+          const bNum = _dinerPendingServe[pi].tableNumber || (_dinerPendingServe[pi].boothId + 1);
           ctx.font = "bold 7px monospace"; ctx.fillStyle = '#1a1a1a'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(String(bNum), px, py + 4);
           ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
