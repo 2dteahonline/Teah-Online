@@ -1517,6 +1517,7 @@ const SparSystem = {
         _escapeStartQuality: 0,
         _escapeBestQuality: 0,
         _escapeLaneShape: null,
+        _escapeCooldown: 0,            // frames until escape can re-open
         _lastEscapePolicy: null,
         _lastEscapeFamily: null,
         // v10: shot timing policy state
@@ -1783,6 +1784,7 @@ const SparSystem = {
         m.ai._gunSidePolicy = null;
         m.ai._gunSideCooldown = 0;
         m.ai._escapePolicy = null;
+        m.ai._escapeCooldown = 0;
         m.ai._midPressurePolicy = null;
         m.ai._midPressureCooldown = 0;
         m.ai._wallPressurePolicy = null;
@@ -3756,13 +3758,16 @@ const SparSystem = {
         ai._gunSideCooldown = 20;
       }
     }
+    if (ai._escapeCooldown > 0) ai._escapeCooldown--;
     if (ai._escapePolicy) {
       ai._escapeFrames++;
       ai._escapeBestQuality = Math.max(ai._escapeBestQuality || laneQuality, laneQuality);
-      if (!topCornerTrapped && laneQuality > 0.56 && (!enemyHasBottom || !badGunSide)) {
+      if (ai._escapeFrames >= 20 && !topCornerTrapped && laneQuality > 0.56 && (!enemyHasBottom || !badGunSide)) {
         this._finalizeEscapeEngagement(ai, true);
+        ai._escapeCooldown = 20;
       } else if (ai._escapeFrames > 210) {
         this._finalizeEscapeEngagement(ai, false);
+        ai._escapeCooldown = 20;
       }
     }
 
@@ -3777,7 +3782,7 @@ const SparSystem = {
         this._finalizeGunSideEngagement(ai, false);
         ai._gunSideCooldown = 20;
       }
-      if (!ai._escapePolicy) {
+      if (!ai._escapePolicy && !(ai._escapeCooldown > 0)) {
         const chosenEscape = this._pickEscapePolicy(pm, laneInfo);
         ai._escapePolicy = chosenEscape;
         ai._escapeFamily = (typeof SPAR_ESCAPE_FAMILY_MAP !== 'undefined') ? SPAR_ESCAPE_FAMILY_MAP[chosenEscape] : 'break';
