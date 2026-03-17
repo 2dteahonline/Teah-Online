@@ -108,6 +108,22 @@ const SPAR_ESCAPE_FAMILY_MAP = {
   highReset: 'reset',
   baitPullout: 'bait',
 };
+const SPAR_SHOT_TIMING_KEYS = ['shootImmediate', 'delayShot', 'baitShot'];
+const SPAR_SHOT_TIMING_FAMILY_KEYS = ['aggressive', 'patient'];
+const SPAR_SHOT_TIMING_FAMILY_MAP = {
+  shootImmediate: 'aggressive',
+  delayShot: 'patient',
+  baitShot: 'patient',
+};
+
+const SPAR_RELOAD_BEHAVIOR_KEYS = ['hardReloadPunish', 'safeReloadPunish', 'reloadBait'];
+const SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS = ['punish', 'bait'];
+const SPAR_RELOAD_BEHAVIOR_FAMILY_MAP = {
+  hardReloadPunish: 'punish',
+  safeReloadPunish: 'punish',
+  reloadBait: 'bait',
+};
+
 const SPAR_LANE_SHAPE_KEYS = ['center', 'left', 'right', 'topLeft', 'topRight'];
 
 function createSparRewardBuckets(keys) {
@@ -246,6 +262,15 @@ function createDefaultSparLearning() {
     afterHit: { pressesAdvantage: 0.5, retreatsOnDamage: 0.5 },
     lowHpExpanded: { fleesPct: 0.5, killAttemptPct: 0.5 },
     chasePatterns: { giveUpFrames: 90 },
+    rhythm: {
+      avgShotDelay: 8,         // avg frames from gaining LOS to firing (lower = faster shooter)
+      avgRetreatDelay: 12,     // avg frames after firing before retreating
+      avgReEngageDelay: 30,    // avg frames after retreating before re-approaching
+      shootsEarlyPct: 0.5,     // tendency to fire before good alignment (0=patient, 1=spray)
+      crossesAfterBottomLoss: 0.5,  // tendency to change horizontal side after losing bottom
+      repeeksQuickly: 0.5,     // tendency to re-peek quickly after disengaging
+      retreatsSameSide: 0.5,   // tendency to retreat in same direction vs crossing
+    },
     nearWall: { cornerStuckPct: 0.5 },
     positionValue: { bottomWinCorrelation: 0.65, topPenalty: 0.4 },
     general1v1: {
@@ -280,6 +305,10 @@ function createDefaultSparLearning() {
         gunSideFamily: createSparRewardBuckets(SPAR_GUN_SIDE_FAMILY_KEYS),
         escapePolicy: createSparRewardBuckets(SPAR_ESCAPE_POLICY_KEYS),
         escapeFamily: createSparRewardBuckets(SPAR_ESCAPE_FAMILY_KEYS),
+        shotTimingPolicy: createSparRewardBuckets(SPAR_SHOT_TIMING_KEYS),
+        shotTimingFamily: createSparRewardBuckets(SPAR_SHOT_TIMING_FAMILY_KEYS),
+        reloadPolicy: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_KEYS),
+        reloadFamily: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS),
       },
       player: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -291,6 +320,10 @@ function createDefaultSparLearning() {
         gunSideFamily: createSparRewardBuckets(SPAR_GUN_SIDE_FAMILY_KEYS),
         escapePolicy: createSparRewardBuckets(SPAR_ESCAPE_POLICY_KEYS),
         escapeFamily: createSparRewardBuckets(SPAR_ESCAPE_FAMILY_KEYS),
+        shotTimingPolicy: createSparRewardBuckets(SPAR_SHOT_TIMING_KEYS),
+        shotTimingFamily: createSparRewardBuckets(SPAR_SHOT_TIMING_FAMILY_KEYS),
+        reloadPolicy: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_KEYS),
+        reloadFamily: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS),
       },
       selfPlay: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -302,6 +335,10 @@ function createDefaultSparLearning() {
         gunSideFamily: createSparRewardBuckets(SPAR_GUN_SIDE_FAMILY_KEYS),
         escapePolicy: createSparRewardBuckets(SPAR_ESCAPE_POLICY_KEYS),
         escapeFamily: createSparRewardBuckets(SPAR_ESCAPE_FAMILY_KEYS),
+        shotTimingPolicy: createSparRewardBuckets(SPAR_SHOT_TIMING_KEYS),
+        shotTimingFamily: createSparRewardBuckets(SPAR_SHOT_TIMING_FAMILY_KEYS),
+        reloadPolicy: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_KEYS),
+        reloadFamily: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS),
       },
     },
     tactical: {
@@ -338,6 +375,14 @@ function createDefaultSparLearning() {
       },
       escapeFailStreaks: {
         cornerBreak: 0, highReset: 0, wideDisengage: 0, baitPullout: 0,
+      },
+      shotTimingOutcomes: {
+        attempts: 0, hitsDuring: 0,
+        avgDmgDealt: 0, avgDuration: 0,
+      },
+      reloadPunishOutcomes: {
+        attempts: 0, punished: 0,
+        avgDmgDealt: 0, avgDuration: 0,
       },
     },
     gunSide: {

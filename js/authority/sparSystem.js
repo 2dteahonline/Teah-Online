@@ -164,6 +164,15 @@ const SparSystem = {
       if (!scope.gunSideFamily) scope.gunSideFamily = createSparRewardBuckets(gunSideFamilies);
       if (!scope.escapePolicy) scope.escapePolicy = createSparRewardBuckets(escapeKeys);
       if (!scope.escapeFamily) scope.escapeFamily = createSparRewardBuckets(escapeFamilies);
+      // v10: shot timing + reload behavior buckets
+      const shotTimingKeys = typeof SPAR_SHOT_TIMING_KEYS !== 'undefined' ? SPAR_SHOT_TIMING_KEYS : ['shootImmediate', 'delayShot', 'baitShot'];
+      const shotTimingFamilyKeys = typeof SPAR_SHOT_TIMING_FAMILY_KEYS !== 'undefined' ? SPAR_SHOT_TIMING_FAMILY_KEYS : ['aggressive', 'patient'];
+      const reloadKeys = typeof SPAR_RELOAD_BEHAVIOR_KEYS !== 'undefined' ? SPAR_RELOAD_BEHAVIOR_KEYS : ['hardReloadPunish', 'safeReloadPunish', 'reloadBait'];
+      const reloadFamilyKeys = typeof SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS !== 'undefined' ? SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS : ['punish', 'bait'];
+      if (!scope.shotTimingPolicy) scope.shotTimingPolicy = createSparRewardBuckets(shotTimingKeys);
+      if (!scope.shotTimingFamily) scope.shotTimingFamily = createSparRewardBuckets(shotTimingFamilyKeys);
+      if (!scope.reloadPolicy) scope.reloadPolicy = createSparRewardBuckets(reloadKeys);
+      if (!scope.reloadFamily) scope.reloadFamily = createSparRewardBuckets(reloadFamilyKeys);
     }
     if (!sl.tactical) {
       sl.tactical = {
@@ -178,6 +187,9 @@ const SparSystem = {
     if (!sl.tactical.gunSidePunish) sl.tactical.gunSidePunish = { attempts: 0, punished: 0, avgDmgTaken: 0 };
     if (!sl.tactical.repeekFailStreaks) sl.tactical.repeekFailStreaks = { center: 0, left: 0, right: 0, topLeft: 0, topRight: 0 };
     if (!sl.tactical.escapeFailStreaks) sl.tactical.escapeFailStreaks = { cornerBreak: 0, highReset: 0, wideDisengage: 0, baitPullout: 0 };
+    // v10: shot timing + reload behavior tactical tracking
+    if (!sl.tactical.shotTimingOutcomes) sl.tactical.shotTimingOutcomes = { attempts: 0, hitsDuring: 0, avgDmgDealt: 0, avgDuration: 0 };
+    if (!sl.tactical.reloadPunishOutcomes) sl.tactical.reloadPunishOutcomes = { attempts: 0, punished: 0, avgDmgDealt: 0, avgDuration: 0 };
     return sl.reinforcement1v1;
   },
 
@@ -353,6 +365,10 @@ const SparSystem = {
     const antiBottomReward = this._clamp01(baseReward * 0.62 + retakeShare * 0.2 + underReward * 0.1 + gunReward * 0.08);
     const gunSideReward = this._clamp01(baseReward * 0.55 + gunReward * 0.3 + underReward * 0.15);
     const escapeReward = this._clamp01(baseReward * 0.6 + (1 - Math.min(1, collector.nearWall_cornerStuckFrames / Math.max(1, collector.nearWall_frames || 1))) * 0.2 + gunReward * 0.2);
+    // v10: shot timing + reload behavior rewards
+    const botHitRate = enemyBot.ai._matchDmgDealt > 0 ? 0.7 : 0.3; // rough proxy
+    const shotTimingReward = this._clamp01(baseReward * 0.6 + botHitRate * 0.4);
+    const reloadReward = this._clamp01(baseReward * 0.7 + dmgReward * 0.3);
     const scopeList = Array.isArray(scopes) ? scopes : [];
     for (const scopeName of scopeList) {
       const scope = rf[scopeName];
@@ -392,6 +408,24 @@ const SparSystem = {
       }
       if (escapeFamily && scope.escapeFamily && scope.escapeFamily[escapeFamily]) {
         this._updateRewardBucket(scope.escapeFamily[escapeFamily], escapeReward);
+      }
+      // v10: shot timing policy match-end update
+      const stPolicy = enemyBot.ai._shotTimingPolicy || null;
+      const stFamily = enemyBot.ai._shotTimingFamily || null;
+      if (stPolicy && scope.shotTimingPolicy && scope.shotTimingPolicy[stPolicy]) {
+        this._updateRewardBucket(scope.shotTimingPolicy[stPolicy], shotTimingReward);
+      }
+      if (stFamily && scope.shotTimingFamily && scope.shotTimingFamily[stFamily]) {
+        this._updateRewardBucket(scope.shotTimingFamily[stFamily], shotTimingReward);
+      }
+      // v10: reload behavior match-end update
+      const rlPolicy = enemyBot.ai._reloadPolicy || null;
+      const rlFamily = enemyBot.ai._reloadFamily || null;
+      if (rlPolicy && scope.reloadPolicy && scope.reloadPolicy[rlPolicy]) {
+        this._updateRewardBucket(scope.reloadPolicy[rlPolicy], reloadReward);
+      }
+      if (rlFamily && scope.reloadFamily && scope.reloadFamily[rlFamily]) {
+        this._updateRewardBucket(scope.reloadFamily[rlFamily], reloadReward);
       }
     }
   },
@@ -718,6 +752,169 @@ const SparSystem = {
     ai._escapeStartDmg = 0;
     ai._escapeStartQuality = 0;
     ai._escapeBestQuality = 0;
+  },
+
+  // v10: Shot timing policy picker — same pattern as _pickGunSidePolicy
+  _pickShotTimingPolicy(pm, duelContext) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const rf = this._ensureReinforcementProfile(sl);
+    const policies = typeof SPAR_SHOT_TIMING_KEYS !== 'undefined' ? SPAR_SHOT_TIMING_KEYS : ['shootImmediate', 'delayShot', 'baitShot'];
+    const familyMap = typeof SPAR_SHOT_TIMING_FAMILY_MAP !== 'undefined' ? SPAR_SHOT_TIMING_FAMILY_MAP : { shootImmediate: 'aggressive', delayShot: 'patient', baitShot: 'patient' };
+    const pPolicy = rf && rf.player ? rf.player.shotTimingPolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.shotTimingPolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.shotTimingPolicy : null;
+    const pFamily = rf && rf.player ? rf.player.shotTimingFamily : null;
+    const gFamily = rf && rf.general ? rf.general.shotTimingFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.shotTimingFamily : null;
+    const totalPP = this._sumBucketPlays(pPolicy);
+    const totalGP = this._sumBucketPlays(gPolicy);
+    const totalSP = this._sumBucketPlays(sPolicy);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+
+    const baseScores = {};
+    for (const p of policies) baseScores[p] = 5;
+
+    // Context-based scoring
+    if (duelContext) {
+      if (duelContext.dist < 150) baseScores.shootImmediate += 4;        // close range = fire fast
+      if (duelContext.hasBottom) baseScores.delayShot += 3;              // advantage = be patient
+      if (duelContext.recentHit) baseScores.shootImmediate += 3;         // momentum = keep firing
+      if (duelContext.recentTookHit) baseScores.baitShot += 3;           // damaged = bait mistakes
+      if (duelContext.laneQuality > 0.6) baseScores.shootImmediate += 2; // good lane = fire
+      if (duelContext.laneQuality < 0.4) baseScores.delayShot += 3;     // bad lane = wait
+    }
+
+    // Rhythm-based scoring
+    if (pm) {
+      if (pm.playerShootsFast) {
+        baseScores.shootImmediate += 2;  // match aggression
+        baseScores.baitShot += 3;        // or bait their impatience
+      }
+      if (pm.playerShootsEarly) baseScores.delayShot += 3;  // patient vs sprayer
+      if (pm.playerRepeeksQuickly) baseScores.baitShot += 3; // bait the re-peek
+    }
+
+    return this._pickHierarchicalPolicy({
+      keys: policies, familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores,
+      familyBiases: {},
+      failStreaks: null,
+      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.16, generalExplore: 0.08, selfPlayExplore: 0.06,
+      noise: 2.5,
+    });
+  },
+
+  // v10: Finalize shot timing engagement — fires when policy is re-evaluated
+  _finalizeShotTimingEngagement(ai, hitsDuring, dmgDealt) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    if (!sl || !ai._shotTimingPolicy) return;
+    const policy = ai._shotTimingPolicy;
+    const family = ai._shotTimingFamily;
+    // Phase reward: 50% hits + 50% damage efficiency
+    const phaseReward = this._clamp01(
+      (hitsDuring > 0 ? 0.5 : 0) * 0.5 +
+      this._computeDamageReward(dmgDealt) * 0.5
+    );
+    const rf = this._ensureReinforcementProfile(sl);
+    if (rf) {
+      for (const scopeName of this._getPhaseScopes()) {
+        const scope = rf[scopeName];
+        if (!scope) continue;
+        if (scope.shotTimingPolicy && scope.shotTimingPolicy[policy]) this._updateRewardBucket(scope.shotTimingPolicy[policy], phaseReward);
+        if (scope.shotTimingFamily && scope.shotTimingFamily[family]) this._updateRewardBucket(scope.shotTimingFamily[family], phaseReward);
+      }
+    }
+    // Track outcomes
+    if (sl.tactical && sl.tactical.shotTimingOutcomes) {
+      const so = sl.tactical.shotTimingOutcomes;
+      so.attempts++;
+      if (hitsDuring > 0) so.hitsDuring++;
+      so.avgDmgDealt = so.attempts > 1 ? so.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
+    }
+    ai._shotTimingPolicy = null;
+    ai._shotTimingFamily = null;
+  },
+
+  // v10: Reload behavior policy picker
+  _pickReloadBehavior(pm, duelContext) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const rf = this._ensureReinforcementProfile(sl);
+    const policies = typeof SPAR_RELOAD_BEHAVIOR_KEYS !== 'undefined' ? SPAR_RELOAD_BEHAVIOR_KEYS : ['hardReloadPunish', 'safeReloadPunish', 'reloadBait'];
+    const familyMap = typeof SPAR_RELOAD_BEHAVIOR_FAMILY_MAP !== 'undefined' ? SPAR_RELOAD_BEHAVIOR_FAMILY_MAP : { hardReloadPunish: 'punish', safeReloadPunish: 'punish', reloadBait: 'bait' };
+    const pPolicy = rf && rf.player ? rf.player.reloadPolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.reloadPolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.reloadPolicy : null;
+    const pFamily = rf && rf.player ? rf.player.reloadFamily : null;
+    const gFamily = rf && rf.general ? rf.general.reloadFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.reloadFamily : null;
+    const totalPP = this._sumBucketPlays(pPolicy);
+    const totalGP = this._sumBucketPlays(gPolicy);
+    const totalSP = this._sumBucketPlays(sPolicy);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+
+    const baseScores = {};
+    for (const p of policies) baseScores[p] = 5;
+
+    // Context-based
+    if (duelContext) {
+      if (duelContext.dist < 200) baseScores.hardReloadPunish += 4;     // close = rush
+      if (duelContext.dist > 250) baseScores.safeReloadPunish += 3;     // far = safe poke
+      if (duelContext.hasBottom) baseScores.hardReloadPunish += 3;       // advantage = press
+      if (duelContext.enemyHasBottom) baseScores.safeReloadPunish += 2;  // disadvantage = careful
+    }
+
+    // Rhythm-based
+    if (pm) {
+      if (pm.playerShootsFast) baseScores.reloadBait += 4;            // fast shooter = bait the reload
+      if (pm.playerRetreatsSameSide > 0.6) baseScores.hardReloadPunish += 3; // predictable = chase
+      if (pm.playerReEngageDelay > 40) baseScores.hardReloadPunish += 2;     // slow re-engage = free push
+      if (pm.playerReEngageDelay < 20) baseScores.safeReloadPunish += 3;     // fast re-engage = be careful
+    }
+
+    return this._pickHierarchicalPolicy({
+      keys: policies, familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores,
+      familyBiases: {},
+      failStreaks: null,
+      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.16, generalExplore: 0.08, selfPlayExplore: 0.06,
+      noise: 2.5,
+    });
+  },
+
+  // v10: Finalize reload behavior — fires when enemy finishes reloading or bot disengages
+  _finalizeReloadBehavior(ai, dmgDealt) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    if (!sl || !ai._reloadPolicy) return;
+    const policy = ai._reloadPolicy;
+    const family = ai._reloadFamily;
+    const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
+    const rf = this._ensureReinforcementProfile(sl);
+    if (rf) {
+      for (const scopeName of this._getPhaseScopes()) {
+        const scope = rf[scopeName];
+        if (!scope) continue;
+        if (scope.reloadPolicy && scope.reloadPolicy[policy]) this._updateRewardBucket(scope.reloadPolicy[policy], phaseReward);
+        if (scope.reloadFamily && scope.reloadFamily[family]) this._updateRewardBucket(scope.reloadFamily[family], phaseReward);
+      }
+    }
+    if (sl.tactical && sl.tactical.reloadPunishOutcomes) {
+      const ro = sl.tactical.reloadPunishOutcomes;
+      ro.attempts++;
+      if (dmgDealt > 0) ro.punished++;
+      ro.avgDmgDealt = ro.attempts > 1 ? ro.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
+    }
+    ai._reloadPolicy = null;
+    ai._reloadFamily = null;
   },
 
   // Phase reward: fires when an anti-bottom engagement ends
@@ -1061,6 +1258,17 @@ const SparSystem = {
         _escapeLaneShape: null,
         _lastEscapePolicy: null,
         _lastEscapeFamily: null,
+        // v10: shot timing policy state
+        _shotTimingPolicy: null,
+        _shotTimingFamily: null,
+        _shotTimingStartDmg: 0,
+        _shotTimingStartHits: 0,
+        _shotTimingFrames: 0,
+        // v10: reload behavior policy state
+        _reloadPolicy: null,
+        _reloadFamily: null,
+        _reloadStartDmg: 0,
+        _reloadFrames: 0,
         _cornerFrames: 0,         // consecutive frames stuck in a corner
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
       },
@@ -1599,6 +1807,10 @@ const SparSystem = {
     g.ammo--;
     // Fire rate: match player's actual cooldown (fireRate * 4, same as gunSystem.js)
     member.ai.shootCD = Math.round((g.fireRate || 5) * 4);
+    // v10: baitShot adds 50% more cooldown between shots to feign hesitation
+    if (member.ai._shotTimingPolicy === 'baitShot') {
+      member.ai.shootCD = Math.round(member.ai.shootCD * 1.5);
+    }
 
     // Freeze penalty after shooting — same as player (gunSystem.js shoot())
     member.ai._freezeTimer = g.freezeDuration || 15;
@@ -1755,6 +1967,27 @@ const SparSystem = {
         trapZoneHits:   { center: 0, near: 0, wide: 0 },
         trapZoneFrames: { center: 0, near: 0, wide: 0 },
         openingBottomLostDir: null,  // 'left'|'right'|'center'
+        // Rhythm tracking (v10)
+        rhythm_losGainFrames: [],      // frames when player gains line-of-sight
+        rhythm_shotAfterLos: [],       // frames between LOS gain and first shot
+        rhythm_postShotRetreat: [],    // frames after shot before player retreats
+        rhythm_reEngageDelays: [],     // frames after retreat before re-approaching
+        rhythm_shotAlignQuality: [],   // alignment quality (0-1) at time of shot
+        rhythm_bottomLostCrosses: 0,   // times player changed side after losing bottom
+        rhythm_bottomLostTotal: 0,     // total bottom losses
+        rhythm_retreatSameSide: 0,     // retreats in same horizontal direction
+        rhythm_retreatCrossSide: 0,    // retreats crossing to other side
+        rhythm_peekReEngageFrames: [], // frames between disengage and re-peek
+        // State for tracking
+        _lastLosFrame: -1,             // frame when player last gained LOS
+        _lastShotFrame: -1,            // frame when player last fired
+        _lastShotCount: 0,             // total shots at last check
+        _lastRetreatFrame: -1,         // frame when player last started retreating
+        _lastRetreatDir: 0,            // last retreat horizontal direction
+        _playerWasRetreating: false,   // was player retreating last frame
+        _playerHadLos: false,          // did player have LOS last frame
+        _playerSideAtBottomLoss: 0,    // x offset when player lost bottom
+        _playerHadBottom: false,       // did player have bottom last frame
       };
     }
 
@@ -1829,6 +2062,79 @@ const SparSystem = {
         if (pVy < -1) c.dodgeUpCount++;
         else if (pVy > 1) c.dodgeDownCount++;
       }
+    }
+
+    // --- Rhythm tracking (v10) ---
+    const botEntity = SparState.teamB[0] && SparState.teamB[0].alive ? SparState.teamB[0].entity : null;
+    if (botEntity && typeof this._hasLOS === 'function') {
+      const hasLos = this._hasLOS(player.x, player.y - 20, botEntity.x, botEntity.y - 20);
+      const rpVx = player.vx || 0, rpVy = player.vy || 0;
+      const rpSpeed = Math.sqrt(rpVx * rpVx + rpVy * rpVy);
+      const rdx = botEntity.x - player.x, rdy = botEntity.y - player.y;
+      const rDist = Math.sqrt(rdx * rdx + rdy * rdy);
+      const isApproaching = rDist > 30 && (rdx * rpVx + rdy * rpVy) > rpSpeed * 0.3;
+      const isRetreating = rDist > 30 && (rdx * rpVx + rdy * rpVy) < -rpSpeed * 0.3;
+
+      // LOS transition: gained LOS
+      if (hasLos && !c._playerHadLos) {
+        c._lastLosFrame = SparState.matchTimer;
+      }
+      c._playerHadLos = hasLos;
+
+      // Shot delay: player fires after gaining LOS
+      if (c.shotDirs && c._lastLosFrame > 0) {
+        const totalShots = c.shotDirs.up + c.shotDirs.down + c.shotDirs.left + c.shotDirs.right;
+        if (totalShots > (c._lastShotCount || 0)) {
+          const delay = SparState.matchTimer - c._lastLosFrame;
+          if (delay > 0 && delay < 120) c.rhythm_shotAfterLos.push(delay);
+          c._lastShotCount = totalShots;
+          c._lastShotFrame = SparState.matchTimer;
+        }
+      }
+
+      // Retreat delay: player retreats after shooting
+      if (isRetreating && !c._playerWasRetreating && c._lastShotFrame > 0) {
+        const delay = SparState.matchTimer - c._lastShotFrame;
+        if (delay > 0 && delay < 120) c.rhythm_postShotRetreat.push(delay);
+        c._lastRetreatFrame = SparState.matchTimer;
+        // Track retreat direction: same side vs cross
+        if (rpVx !== 0) {
+          const prevSide = c._lastRetreatDir || 0;
+          const curSide = Math.sign(rpVx);
+          if (prevSide !== 0 && curSide !== 0) {
+            if (curSide === prevSide) c.rhythm_retreatSameSide++;
+            else c.rhythm_retreatCrossSide++;
+          }
+          c._lastRetreatDir = curSide;
+        }
+      }
+      c._playerWasRetreating = isRetreating;
+
+      // Re-engage delay: player approaches after retreating
+      if (isApproaching && c._lastRetreatFrame > 0) {
+        const delay = SparState.matchTimer - c._lastRetreatFrame;
+        if (delay > 0 && delay < 300) {
+          c.rhythm_reEngageDelays.push(delay);
+          c._lastRetreatFrame = -1; // only count once per retreat
+        }
+      }
+
+      // Bottom loss tracking: player changes side after losing bottom
+      const bg = this._getSparBottomGap();
+      const playerHadBottom = player.y > botEntity.y + bg;
+      if (!playerHadBottom && c._playerHadBottom) {
+        // Player just lost bottom
+        c.rhythm_bottomLostTotal++;
+        if (c._playerSideAtBottomLoss !== 0) {
+          const oldSide = c._playerSideAtBottomLoss > 0 ? 1 : -1;
+          const newSide = player.x > botEntity.x ? 1 : -1;
+          if (oldSide !== newSide) c.rhythm_bottomLostCrosses++;
+        }
+      }
+      if (playerHadBottom) {
+        c._playerSideAtBottomLoss = player.x - botEntity.x;
+      }
+      c._playerHadBottom = playerHadBottom;
     }
 
     // Reload position tracking
@@ -2427,6 +2733,36 @@ const SparSystem = {
     if (bhDir.vert.total > 2) sl.hitboxAwareness.botVertHitRate = ema(sl.hitboxAwareness.botVertHitRate, bhDir.vert.hits / bhDir.vert.total);
     if (c.peekAttempts > 2) sl.hitboxAwareness.peekSuccessRate = ema(sl.hitboxAwareness.peekSuccessRate, c.peekHits / c.peekAttempts);
 
+    // --- Rhythm profile updates (v10) ---
+    if (!sl.rhythm) sl.rhythm = { avgShotDelay: 8, avgRetreatDelay: 12, avgReEngageDelay: 30, shootsEarlyPct: 0.5, crossesAfterBottomLoss: 0.5, repeeksQuickly: 0.5, retreatsSameSide: 0.5 };
+    if (c.rhythm_shotAfterLos && c.rhythm_shotAfterLos.length > 2) {
+      const avgDelay = c.rhythm_shotAfterLos.reduce((a, b) => a + b, 0) / c.rhythm_shotAfterLos.length;
+      sl.rhythm.avgShotDelay = ema(sl.rhythm.avgShotDelay, avgDelay);
+    }
+    if (c.rhythm_postShotRetreat && c.rhythm_postShotRetreat.length > 2) {
+      const avgDelay = c.rhythm_postShotRetreat.reduce((a, b) => a + b, 0) / c.rhythm_postShotRetreat.length;
+      sl.rhythm.avgRetreatDelay = ema(sl.rhythm.avgRetreatDelay, avgDelay);
+    }
+    if (c.rhythm_reEngageDelays && c.rhythm_reEngageDelays.length > 1) {
+      const avgDelay = c.rhythm_reEngageDelays.reduce((a, b) => a + b, 0) / c.rhythm_reEngageDelays.length;
+      sl.rhythm.avgReEngageDelay = ema(sl.rhythm.avgReEngageDelay, avgDelay);
+    }
+    if (c.rhythm_shotAlignQuality && c.rhythm_shotAlignQuality.length > 3) {
+      const earlyPct = c.rhythm_shotAlignQuality.filter(q => q < 0.4).length / c.rhythm_shotAlignQuality.length;
+      sl.rhythm.shootsEarlyPct = ema(sl.rhythm.shootsEarlyPct, earlyPct);
+    }
+    if (c.rhythm_bottomLostTotal > 0) {
+      sl.rhythm.crossesAfterBottomLoss = ema(sl.rhythm.crossesAfterBottomLoss, c.rhythm_bottomLostCrosses / c.rhythm_bottomLostTotal);
+    }
+    const totalRetreats = c.rhythm_retreatSameSide + c.rhythm_retreatCrossSide;
+    if (totalRetreats > 1) {
+      sl.rhythm.retreatsSameSide = ema(sl.rhythm.retreatsSameSide, c.rhythm_retreatSameSide / totalRetreats);
+    }
+    if (c.rhythm_peekReEngageFrames && c.rhythm_peekReEngageFrames.length > 1) {
+      const quickPeeks = c.rhythm_peekReEngageFrames.filter(f => f < 30).length;
+      sl.rhythm.repeeksQuickly = ema(sl.rhythm.repeeksQuickly, quickPeeks / c.rhythm_peekReEngageFrames.length);
+    }
+
     // --- Win rate ---
     sl.winRate = ema(sl.winRate, won ? 1 : 0);
 
@@ -2669,6 +3005,15 @@ const SparSystem = {
       horizShotAdvantage: hasShootingData && sl.hitboxAwareness ?
         (sl.hitboxAwareness.botHorizHitRate || 0.1) / Math.max(0.01, sl.hitboxAwareness.botVertHitRate || 0.05) : 1.0,
       peekEffective: hasShootingData && sl.hitboxAwareness ? sl.hitboxAwareness.peekSuccessRate > 0.3 : true,
+      // Rhythm modifiers (v10)
+      playerShootsFast: sl.rhythm ? sl.rhythm.avgShotDelay < 6 : false,
+      playerShotDelay: sl.rhythm ? sl.rhythm.avgShotDelay : 8,
+      playerRetreatDelay: sl.rhythm ? sl.rhythm.avgRetreatDelay : 12,
+      playerReEngageDelay: sl.rhythm ? sl.rhythm.avgReEngageDelay : 30,
+      playerShootsEarly: sl.rhythm ? sl.rhythm.shootsEarlyPct > 0.5 : false,
+      playerCrossesAfterBottomLoss: sl.rhythm ? sl.rhythm.crossesAfterBottomLoss : 0.5,
+      playerRepeeksQuickly: sl.rhythm ? sl.rhythm.repeeksQuickly > 0.5 : false,
+      playerRetreatsSameSide: sl.rhythm ? sl.rhythm.retreatsSameSide : 0.5,
       // v8 trap zone danger rates
       trapZoneDanger: sl.tactical && sl.tactical.trapZones ? (() => {
         const tz = sl.tactical.trapZones;
@@ -3000,6 +3345,12 @@ const SparSystem = {
     const enemyMember = target.member;
     const enemyReloading = enemyMember ? enemyMember.gun.reloading : false;
 
+    // v10: Finalize reload behavior when enemy stops reloading
+    if (!enemyReloading && ai._reloadPolicy) {
+      const rlDmg = (ai._matchDmgDealt || 0) - (ai._reloadStartDmg || 0);
+      this._finalizeReloadBehavior(ai, rlDmg);
+    }
+
     // --- Situational awareness ---
     const hpPct = bot.hp / bot.maxHp;
     const hasAmmo = !member.gun.reloading && member.gun.ammo > 0;
@@ -3195,25 +3546,76 @@ const SparSystem = {
       }
 
     } else if (enemyReloading) {
-      // === PUNISH: enemy reloading — close in aggressively ===
-      const punishAggr = pm ? pm.aggressionMult : 1.1;
-      if (dist > 80 && dist > 1) {
-        moveX = (dx / dist) * speed * 0.65 * punishAggr;
-        moveY = (dy / dist) * speed * 0.65 * punishAggr;
+      // === PUNISH: enemy reloading — v10 policy-driven ===
+      // Pick reload behavior policy if not active
+      if (!ai._reloadPolicy) {
+        const duelCtx = {
+          dist: dist,
+          hasBottom: hasBottom,
+          enemyHasBottom: enemyHasBottom,
+        };
+        const rlPolicy = this._pickReloadBehavior(pm, duelCtx);
+        const rlFamilyMap = typeof SPAR_RELOAD_BEHAVIOR_FAMILY_MAP !== 'undefined' ? SPAR_RELOAD_BEHAVIOR_FAMILY_MAP : { hardReloadPunish: 'punish', safeReloadPunish: 'punish', reloadBait: 'bait' };
+        ai._reloadPolicy = rlPolicy;
+        ai._reloadFamily = rlFamilyMap[rlPolicy] || 'punish';
+        ai._reloadStartDmg = ai._matchDmgDealt || 0;
+        ai._reloadFrames = 0;
       }
-      moveX += ai.strafeDir * speed * 0.25;
+      ai._reloadFrames++;
+
+      const punishAggr = pm ? pm.aggressionMult : 1.1;
+      if (ai._reloadPolicy === 'hardReloadPunish') {
+        // Aggressive close-in at 75% speed, tight approach
+        if (dist > 80 && dist > 1) {
+          moveX = (dx / dist) * speed * 0.75 * punishAggr;
+          moveY = (dy / dist) * speed * 0.75 * punishAggr;
+        }
+        moveX += ai.strafeDir * speed * 0.15;
+      } else if (ai._reloadPolicy === 'safeReloadPunish') {
+        // Approach at 45% speed, wider strafe, maintain distance >120
+        if (dist > 120 && dist > 1) {
+          moveX = (dx / dist) * speed * 0.45 * punishAggr;
+          moveY = (dy / dist) * speed * 0.45 * punishAggr;
+        } else if (dist < 120 && dist > 1) {
+          // Back off slightly to stay at range
+          moveX = -(dx / dist) * speed * 0.2;
+          moveY = -(dy / dist) * speed * 0.2;
+        }
+        moveX += ai.strafeDir * speed * 0.85;
+      } else if (ai._reloadPolicy === 'reloadBait') {
+        // Fake approach for 20 frames, then retreat to bait them out of reload position
+        if (ai._reloadFrames <= 20) {
+          // Fake approach
+          if (dist > 80 && dist > 1) {
+            moveX = (dx / dist) * speed * 0.5;
+            moveY = (dy / dist) * speed * 0.5;
+          }
+        } else {
+          // Retreat to bait
+          if (dist > 1) {
+            moveX = -(dx / dist) * speed * 0.55;
+            moveY = -(dy / dist) * speed * 0.55;
+          }
+          moveX += ai.strafeDir * speed * 0.4;
+        }
+      } else {
+        // Fallback: original behavior
+        if (dist > 80 && dist > 1) {
+          moveX = (dx / dist) * speed * 0.65 * punishAggr;
+          moveY = (dy / dist) * speed * 0.65 * punishAggr;
+        }
+        moveX += ai.strafeDir * speed * 0.25;
+      }
       // Learning v2: if player holds ground on approach, commit harder
       // If player sidesteps, match their lateral direction
-      if (pm) {
+      if (pm && ai._reloadPolicy !== 'reloadBait') {
         if (pm.playerHoldsOnApproach > 0.4) {
-          // They stand and fight — push straight in, they won't dodge
           if (dist > 1) {
             moveX = (dx / dist) * speed * 0.75 * punishAggr;
             moveY = (dy / dist) * speed * 0.75 * punishAggr;
           }
         }
         if (pm.playerSidesteps > 0.4) {
-          // They'll dodge sideways — lead toward their dodge direction
           moveX += pm.dodgePredictBiasX * speed * 0.25;
         }
       }
@@ -3968,23 +4370,54 @@ const SparSystem = {
       bot.dir = moveY > 0 ? 0 : 1;
     }
 
-    // --- Shooting with shot timing modes ---
+    // --- Shooting with shot timing modes (v10: policy-driven) ---
     // Re-evaluate shot mode every 90 frames or on context change
     if (SparState.matchTimer % 90 === 0 || (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 2)) {
-      // Pick mode based on context
+      // Finalize previous shot timing engagement if active
+      if (ai._shotTimingPolicy) {
+        const stHits = (ai._matchDmgDealt || 0) - (ai._shotTimingStartHits || 0);
+        const stDmg = (ai._matchDmgDealt || 0) - (ai._shotTimingStartDmg || 0);
+        this._finalizeShotTimingEngagement(ai, stHits > 0 ? 1 : 0, stDmg);
+      }
+      // Pick mode based on context — escape/wall overrides take priority
       if (ai._escapePolicy || suppressPeekShots) {
         ai._shotMode = 'held';
+        ai._shotTimingPolicy = null;
+        ai._shotTimingFamily = null;
       } else if (nearAnyWall && !this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
         ai._shotMode = 'prefire';
-      } else if (dist < 150) {
-        ai._shotMode = 'immediate';
-      } else if (ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30) {
-        ai._shotMode = 'immediate'; // momentum — shoot fast after landing hits
-      } else if (dist > 250) {
-        ai._shotMode = 'held';
+        ai._shotTimingPolicy = null;
+        ai._shotTimingFamily = null;
       } else {
-        ai._shotMode = Math.random() < 0.3 ? 'held' : 'immediate';
+        // v10: Use policy picker for normal combat
+        const duelCtx = {
+          dist: dist,
+          hasBottom: hasBottom,
+          enemyHasBottom: enemyHasBottom,
+          recentHit: ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30,
+          recentTookHit: ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 30,
+          laneQuality: laneQuality,
+        };
+        const stPolicy = this._pickShotTimingPolicy(pm, duelCtx);
+        const stFamilyMap = typeof SPAR_SHOT_TIMING_FAMILY_MAP !== 'undefined' ? SPAR_SHOT_TIMING_FAMILY_MAP : { shootImmediate: 'aggressive', delayShot: 'patient', baitShot: 'patient' };
+        ai._shotTimingPolicy = stPolicy;
+        ai._shotTimingFamily = stFamilyMap[stPolicy] || 'aggressive';
+        ai._shotTimingStartDmg = ai._matchDmgDealt || 0;
+        ai._shotTimingStartHits = ai._matchDmgDealt || 0;
+        ai._shotTimingFrames = 0;
+        // Map policy to shot mode
+        if (stPolicy === 'shootImmediate') {
+          ai._shotMode = 'immediate';
+        } else if (stPolicy === 'delayShot') {
+          ai._shotMode = 'held';
+        } else if (stPolicy === 'baitShot') {
+          ai._shotMode = 'held'; // baitShot uses held + extra cooldown (applied below)
+        }
       }
+    }
+    // v10: baitShot adds 50% more cooldown between shots
+    if (ai._shotTimingPolicy === 'baitShot' && member.ai.shootCD > 0) {
+      ai._shotTimingFrames++;
     }
 
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
