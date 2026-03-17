@@ -225,6 +225,15 @@ function pickDinerRecipe() {
   return DINER_RECIPES[Math.floor(Math.random() * DINER_RECIPES.length)];
 }
 
+// ===================== DINER NAME POOL =====================
+const DINER_NAME_POOL = [
+  'John', 'Fred', 'Jenny', 'Maria', 'Dave', 'Sarah', 'Mike', 'Lisa',
+  'Carlos', 'Amy', 'Jake', 'Emma', 'Tom', 'Mia', 'Ben', 'Zoe',
+  'Nick', 'Kate', 'Ryan', 'Lily', 'Alex', 'Nora', 'Dan', 'Ruby',
+  'Sam', 'Ella', 'Max', 'Gina', 'Leo', 'Ivy', 'Roy', 'Faye',
+  'Joe', 'Tina', 'Ray', 'Beth', 'Tim', 'Dawn', 'Bob', 'Eva',
+];
+
 // ===================== FINE DINING INGREDIENTS =====================
 const FINE_DINING_INGREDIENTS = {
   fd_steak:        { id: 'fd_steak',        name: 'Steak',        color: '#8a3020', entity: 'fding_steak' },
