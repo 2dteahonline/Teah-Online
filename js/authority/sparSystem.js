@@ -4256,7 +4256,10 @@ const SparSystem = {
         this._finalizeGunSideEngagement(ai, false);
         ai._gunSideCooldown = 20;
       }
-      if (!ai._escapePolicy && !(ai._escapeCooldown > 0)) {
+      // Only open escape if CR is not active and won't immediately take over
+      // centerTrapped states are owned by CR, not escape — don't fight for ownership
+      if (!ai._escapePolicy && !(ai._escapeCooldown > 0) &&
+          !ai._centerRecoveryPolicy && !centerTrapped && !centerOscillating) {
         const chosenEscape = this._pickEscapePolicy(pm, laneInfo);
         ai._escapePolicy = chosenEscape;
         ai._escapeFamily = (typeof SPAR_ESCAPE_FAMILY_MAP !== 'undefined') ? SPAR_ESCAPE_FAMILY_MAP[chosenEscape] : 'break';
@@ -4337,12 +4340,11 @@ const SparSystem = {
           ai._centerRecoveryCommitDir = nearLeftWallBase ? 1 : -1;
         }
       }
-      // Also finalize if we entered a higher-priority state
-      if (ai._centerRecoveryPolicy && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
-        if (ai._centerRecoveryFrames >= 10) {
-          this._finalizeCenterRecovery(ai, false, false, false);
-          ai._centerRecoveryCooldown = 15;
-        }
+      // Only abort CR for a true corner trap (physically stuck in corner with enemy blocking exit)
+      // Do NOT abort for noAdvantageState or lostBottomAndNoLane — those are the states CR fixes
+      if (ai._centerRecoveryPolicy && topCornerTrapped && ai._centerRecoveryFrames >= 15) {
+        this._finalizeCenterRecovery(ai, false, false, false);
+        ai._centerRecoveryCooldown = 15;
       }
     }
     // Open center recovery if center-trapped — preempts antiBottom AND escape
