@@ -259,17 +259,16 @@ const SaveLoad = {
       // Spar learning profile (v9+)
       if (data.sparLearning && typeof sparLearning !== 'undefined') {
         const saved = data.sparLearning;
-        // v1-v6 predate the latest spar mechanics reset. Player speed, bullet/body
-        // geometry, RoF, and reload timing all changed, so older spar learning
-        // would teach the bot against the wrong ruleset.
-        if (!saved.version || saved.version < 7) {
+        // v1-v7: wipe — v8 adds hierarchical anti-bottom tactics, trap zones,
+        // and phase rewards that are structurally incompatible with older data.
+        if (!saved.version || saved.version < 8) {
           if (typeof createDefaultSparLearning === 'function') {
             const fresh = createDefaultSparLearning();
             Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
             Object.assign(sparLearning, fresh);
           }
         } else {
-          // v7+ spar data matches the current mechanics — deep merge
+          // v8+ spar data matches the current mechanics — deep merge
           const _deepMerge = (target, source) => {
             for (const key of Object.keys(source)) {
               if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])
@@ -282,7 +281,7 @@ const SaveLoad = {
           };
           _deepMerge(sparLearning, saved);
         }
-        sparLearning.version = 7;
+        sparLearning.version = 8;
         if (sparLearning.history && sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
       }
 

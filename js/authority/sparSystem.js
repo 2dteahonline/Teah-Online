@@ -136,10 +136,26 @@ const SparSystem = {
     if (!sl.reinforcement1v1.player) sl.reinforcement1v1.player = {};
     if (!sl.reinforcement1v1.selfPlay) sl.reinforcement1v1.selfPlay = {};
     const scopes = [sl.reinforcement1v1.general, sl.reinforcement1v1.player, sl.reinforcement1v1.selfPlay];
+    const tacticKeys = typeof SPAR_ANTI_BOTTOM_TACTIC_KEYS !== 'undefined'
+      ? SPAR_ANTI_BOTTOM_TACTIC_KEYS
+      : ['contestDirect', 'contestSprint', 'flankWide', 'flankTight', 'baitRetreat', 'baitFake'];
+    const familyKeys = typeof SPAR_ANTI_BOTTOM_FAMILY_KEYS !== 'undefined'
+      ? SPAR_ANTI_BOTTOM_FAMILY_KEYS
+      : ['contest', 'flank', 'bait'];
     for (const scope of scopes) {
       if (!scope.style) scope.style = createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES || {}));
       if (!scope.opening) scope.opening = createSparRewardBuckets(routeKeys);
       if (!scope.antiBottom) scope.antiBottom = createSparRewardBuckets(antiBottomKeys);
+      if (!scope.antiBottomFamily) scope.antiBottomFamily = createSparRewardBuckets(familyKeys);
+      if (!scope.antiBottomTactic) scope.antiBottomTactic = createSparRewardBuckets(tacticKeys);
+    }
+    if (!sl.tactical) {
+      sl.tactical = {
+        tacticFailStreaks: { contestDirect: 0, contestSprint: 0, flankWide: 0, flankTight: 0, baitRetreat: 0, baitFake: 0 },
+        trapZones: { center: { hits: 0, frames: 0 }, near: { hits: 0, frames: 0 }, wide: { hits: 0, frames: 0 } },
+        antiBottomOutcomes: { attempts: 0, regainedBottom: 0, avgDmgTakenDuring: 0, avgDuration: 0 },
+        openingLostBottom: { fromLeft: 0, fromRight: 0, fromCenter: 0, totalLosses: 0 },
+      };
     }
     return sl.reinforcement1v1;
   },
@@ -265,57 +281,196 @@ const SparSystem = {
       if (SparState._botOpeningRoute && scope.opening && scope.opening[SparState._botOpeningRoute]) {
         this._updateRewardBucket(scope.opening[SparState._botOpeningRoute], routeReward);
       }
+      // Legacy anti-bottom bucket (backward compat)
       if (enemyBot.ai._antiBottomResponse && enemyBot.ai._antiBottomFrames > 20 &&
           scope.antiBottom && scope.antiBottom[enemyBot.ai._antiBottomResponse]) {
         this._updateRewardBucket(scope.antiBottom[enemyBot.ai._antiBottomResponse], antiBottomReward);
       }
+      // v8 tactic/family buckets — updated from match-end signal
+      if (enemyBot.ai._antiBottomTactic && enemyBot.ai._antiBottomFrames > 20) {
+        if (scope.antiBottomTactic && scope.antiBottomTactic[enemyBot.ai._antiBottomTactic]) {
+          this._updateRewardBucket(scope.antiBottomTactic[enemyBot.ai._antiBottomTactic], antiBottomReward);
+        }
+        if (enemyBot.ai._antiBottomFamily && scope.antiBottomFamily && scope.antiBottomFamily[enemyBot.ai._antiBottomFamily]) {
+          this._updateRewardBucket(scope.antiBottomFamily[enemyBot.ai._antiBottomFamily], antiBottomReward);
+        }
+      }
     }
   },
 
+  // Legacy picker — kept for backward compat (training harness may call it)
   _pickAntiBottomResponse(pm) {
+    return this._pickAntiBottomTactic(pm);
+  },
+
+  // v8 hierarchical anti-bottom tactic selector
+  // Scores 6 tactics in 3 families. Uses family-level stats until tactic has 3+ plays.
+  _pickAntiBottomTactic(pm, openingLostDir) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
-    const responses = typeof SPAR_ANTI_BOTTOM_RESPONSE_KEYS !== 'undefined'
-      ? SPAR_ANTI_BOTTOM_RESPONSE_KEYS
-      : ['directContest', 'sideFlank', 'baitPull'];
-    if (!sl) {
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
+    const tactics = typeof SPAR_ANTI_BOTTOM_TACTIC_KEYS !== 'undefined'
+      ? SPAR_ANTI_BOTTOM_TACTIC_KEYS
+      : ['contestDirect', 'contestSprint', 'flankWide', 'flankTight', 'baitRetreat', 'baitFake'];
+    const familyMap = typeof SPAR_ANTI_BOTTOM_FAMILY_MAP !== 'undefined'
+      ? SPAR_ANTI_BOTTOM_FAMILY_MAP
+      : { contestDirect: 'contest', contestSprint: 'contest', flankWide: 'flank', flankTight: 'flank', baitRetreat: 'bait', baitFake: 'bait' };
+    if (!sl) return tactics[Math.floor(Math.random() * tactics.length)];
+
     const rf = this._ensureReinforcementProfile(sl);
-    const pBuckets = rf && rf.player ? rf.player.antiBottom : null;
-    const gBuckets = rf && rf.general ? rf.general.antiBottom : null;
-    const sBuckets = rf && rf.selfPlay ? rf.selfPlay.antiBottom : null;
-    const totalPlayer = this._sumBucketPlays(pBuckets);
-    const totalGeneral = this._sumBucketPlays(gBuckets);
-    const totalSelfPlay = this._sumBucketPlays(sBuckets);
-    let best = 'sideFlank';
+    const pTactic = rf && rf.player ? rf.player.antiBottomTactic : null;
+    const gTactic = rf && rf.general ? rf.general.antiBottomTactic : null;
+    const sTactic = rf && rf.selfPlay ? rf.selfPlay.antiBottomTactic : null;
+    const pFamily = rf && rf.player ? rf.player.antiBottomFamily : null;
+    const gFamily = rf && rf.general ? rf.general.antiBottomFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.antiBottomFamily : null;
+    const totalPT = this._sumBucketPlays(pTactic);
+    const totalGT = this._sumBucketPlays(gTactic);
+    const totalST = this._sumBucketPlays(sTactic);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+    const failStreaks = sl.tactical ? sl.tactical.tacticFailStreaks : null;
+
+    let best = 'flankWide';
     let bestScore = -Infinity;
-    for (const name of responses) {
-      let score = name === 'sideFlank' ? 7 : (name === 'directContest' ? 6 : 5);
+
+    for (const tactic of tactics) {
+      const family = familyMap[tactic];
+      // Base score by family
+      let score = family === 'flank' ? 7 : (family === 'contest' ? 6 : 5);
+
+      // Profile bonuses (mapped to family)
       if (pm) {
-        if (name === 'sideFlank') {
+        if (family === 'flank') {
           if (pm.playerWallsFromBottom > 0.45) score += 10;
           if (pm.playerHoldsBottom > 0.55) score += 6;
-        } else if (name === 'directContest') {
+        } else if (family === 'contest') {
           if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.35) score += 10;
           if (pm.playerPushesFromBottom > 0.45) score -= 4;
-        } else if (name === 'baitPull') {
+        } else if (family === 'bait') {
           if (pm.playerPushesFromBottom > 0.45) score += 11;
           if (pm.playerWallsFromBottom > 0.55) score += 3;
         }
       }
-      const pScore = this._scoreRewardBucket(pBuckets && pBuckets[name], totalPlayer, 0.24);
-      const gScore = this._scoreRewardBucket(gBuckets && gBuckets[name], totalGeneral, 0.12);
-      const sScore = this._scoreRewardBucket(sBuckets && sBuckets[name], totalSelfPlay, 0.08);
+
+      // Hierarchical reinforcement: use tactic-level if 3+ plays, else family-level
+      const pTacticPlays = pTactic && pTactic[tactic] ? pTactic[tactic].plays || 0 : 0;
+      let pScore, gScore, sScore;
+      if (pTacticPlays >= 3) {
+        pScore = this._scoreRewardBucket(pTactic && pTactic[tactic], totalPT, 0.24);
+      } else {
+        pScore = this._scoreRewardBucket(pFamily && pFamily[family], totalPF, 0.24);
+      }
+      const gTacticPlays = gTactic && gTactic[tactic] ? gTactic[tactic].plays || 0 : 0;
+      if (gTacticPlays >= 3) {
+        gScore = this._scoreRewardBucket(gTactic && gTactic[tactic], totalGT, 0.12);
+      } else {
+        gScore = this._scoreRewardBucket(gFamily && gFamily[family], totalGF, 0.12);
+      }
+      const sTacticPlays = sTactic && sTactic[tactic] ? sTactic[tactic].plays || 0 : 0;
+      if (sTacticPlays >= 3) {
+        sScore = this._scoreRewardBucket(sTactic && sTactic[tactic], totalST, 0.08);
+      } else {
+        sScore = this._scoreRewardBucket(sFamily && sFamily[family], totalSF, 0.08);
+      }
       score += (pScore - 0.5) * 28;
       score += (gScore - 0.5) * 14;
       score += (sScore - 0.5) * 10;
+
+      // Fail-streak suppression (tactic-specific, not family)
+      if (failStreaks && failStreaks[tactic]) {
+        const fs = failStreaks[tactic];
+        if (fs >= 5) score -= 15;
+        else if (fs >= 4) score -= 10;
+        else if (fs >= 3) score -= 5;
+      }
+
+      // Opening context bonus: if we know how player took bottom, prefer counter-side
+      if (openingLostDir) {
+        if (openingLostDir === 'left' && (tactic === 'flankWide' || tactic === 'flankTight' || tactic === 'contestSprint')) score += 4;
+        if (openingLostDir === 'right' && (tactic === 'flankWide' || tactic === 'flankTight' || tactic === 'contestSprint')) score += 4;
+        if (openingLostDir === 'center' && (tactic === 'flankWide' || tactic === 'baitRetreat')) score += 4;
+      }
+
+      // Noise
       score += Math.random() * 3;
+
       if (score > bestScore) {
         bestScore = score;
-        best = name;
+        best = tactic;
       }
     }
     return best;
+  },
+
+  // Phase reward: fires when an anti-bottom engagement ends
+  _finalizeAntiBottomEngagement(ai, regainedBottom, collector) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const tactic = ai._antiBottomTactic;
+    const family = ai._antiBottomFamily;
+    const frames = ai._antiBottomFrames;
+    const dmgTaken = (ai._matchDmgTaken || 0) - (ai._antiBottomDmgAtStart || 0);
+
+    // Record engagement in collector
+    if (collector) {
+      collector.antiBottomEngagements.push({
+        tactic, family, frames, regained: regainedBottom, dmgTaken,
+      });
+    }
+
+    // Phase reward: 40% regained, 35% damage efficiency, 25% speed
+    const hpBase = SPAR_CONFIG.HP_BASELINE || 100;
+    const regainR = regainedBottom ? 1 : 0;
+    const dmgR = Math.max(0, Math.min(1, 1 - dmgTaken / (hpBase * 0.5)));
+    const speedR = Math.max(0, Math.min(1, 1 - frames / 300));
+    const phaseReward = regainR * 0.4 + dmgR * 0.35 + speedR * 0.25;
+
+    // Update reinforcement buckets
+    if (sl) {
+      const rf = this._ensureReinforcementProfile(sl);
+      if (rf) {
+        for (const scopeName of ['player', 'general']) {
+          const scope = rf[scopeName];
+          if (!scope) continue;
+          if (scope.antiBottomTactic && scope.antiBottomTactic[tactic]) {
+            this._updateRewardBucket(scope.antiBottomTactic[tactic], phaseReward);
+          }
+          if (scope.antiBottomFamily && scope.antiBottomFamily[family]) {
+            this._updateRewardBucket(scope.antiBottomFamily[family], phaseReward);
+          }
+        }
+      }
+
+      // Update fail streaks
+      if (sl.tactical && sl.tactical.tacticFailStreaks) {
+        if (!regainedBottom) {
+          sl.tactical.tacticFailStreaks[tactic] = (sl.tactical.tacticFailStreaks[tactic] || 0) + 1;
+        } else {
+          sl.tactical.tacticFailStreaks[tactic] = 0;
+        }
+      }
+
+      // Update outcome stats
+      if (sl.tactical && sl.tactical.antiBottomOutcomes) {
+        const ao = sl.tactical.antiBottomOutcomes;
+        ao.attempts++;
+        if (regainedBottom) ao.regainedBottom++;
+        ao.avgDmgTakenDuring = ao.attempts > 1
+          ? ao.avgDmgTakenDuring * 0.8 + dmgTaken * 0.2
+          : dmgTaken;
+        ao.avgDuration = ao.attempts > 1
+          ? ao.avgDuration * 0.8 + frames * 0.2
+          : frames;
+      }
+    }
+
+    // Reset engagement state
+    ai._antiBottomTactic = null;
+    ai._antiBottomFamily = null;
+    ai._antiBottomFrames = 0;
+    ai._antiBottomPhase = 0;
+    ai._antiBottomPhaseFrames = 0;
+    ai._antiBottomHysteresisFrames = 0;
+    ai._antiBottomResponse = null;
   },
 
   joinRoom(roomId) {
@@ -554,8 +709,17 @@ const SparSystem = {
         _styleSwitchEvaluated: false,
         _matchDmgDealt: 0,
         _matchDmgTaken: 0,
-        _antiBottomResponse: null,
+        _antiBottomResponse: null,    // legacy — kept for match-end reinforcement compat
+        _antiBottomTactic: null,      // v8 tactic key
+        _antiBottomFamily: null,      // v8 family key
         _antiBottomFrames: 0,
+        _antiBottomPhase: 0,          // sub-phase within tactic (0,1,2)
+        _antiBottomPhaseFrames: 0,
+        _antiBottomOffsetDir: 0,      // chosen side: -1 or 1
+        _antiBottomDmgAtStart: 0,     // bot dmgTaken when engagement started
+        _antiBottomStartFrame: 0,
+        _antiBottomHysteresisFrames: 0, // hysteresis counter for engagement start/end
+        _openingLostBottomDir: null,  // direction player came from when taking bottom
         _cornerFrames: 0,         // consecutive frames stuck in a corner
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
       },
@@ -1245,6 +1409,11 @@ const SparSystem = {
         // Peek tracking: bot has bottom + shooting horizontal (v4)
         peekAttempts: 0,
         peekHits: 0,
+        // v8 anti-bottom tactical tracking
+        antiBottomEngagements: [],   // [{tactic, family, frames, regained, dmgTaken}]
+        trapZoneHits:   { center: 0, near: 0, wide: 0 },
+        trapZoneFrames: { center: 0, near: 0, wide: 0 },
+        openingBottomLostDir: null,  // 'left'|'right'|'center'
       };
     }
 
@@ -1280,6 +1449,22 @@ const SparSystem = {
       c.playerYAtOpeningEnd = player.y;
       const botE = SparState.teamB[0] && SparState.teamB[0].alive ? SparState.teamB[0].entity : null;
       if (botE) c.botYAtOpeningEnd = botE.y;
+      // v8: detect if player secured bottom during opening and from which direction
+      if (c.playerYAtOpeningEnd > 0 && c.botYAtOpeningEnd > 0 && !c.openingBottomLostDir) {
+        const bg = this._getSparBottomGap();
+        if (c.playerYAtOpeningEnd > c.botYAtOpeningEnd + bg) {
+          // Player got bottom — record approach direction
+          const arenaMidX = (typeof LEVELS !== 'undefined' && SparState.activeRoom)
+            ? (LEVELS[SparState.activeRoom.arenaLevel] ? LEVELS[SparState.activeRoom.arenaLevel].W * TILE / 2 : 576)
+            : 576;
+          c.openingBottomLostDir = player.x < arenaMidX - 50 ? 'left'
+            : (player.x > arenaMidX + 50 ? 'right' : 'center');
+          // Feed to all bots on team B for tactic selection
+          for (const m of SparState.teamB) {
+            if (m && m.ai) m.ai._openingLostBottomDir = c.openingBottomLostDir;
+          }
+        }
+      }
     }
 
     // Dodge direction tracking — check if player is moving away from nearby bullets
@@ -1944,6 +2129,40 @@ const SparSystem = {
 
     this._updateMatchReinforcement(won, c, enemyBot1v1, ['general', 'player']);
 
+    // v8: persist trap zone data with decay
+    if (c.trapZoneFrames && sl.tactical && sl.tactical.trapZones) {
+      for (const zone of ['center', 'near', 'wide']) {
+        const tz = sl.tactical.trapZones[zone];
+        // Decay old data to weight recent matches (0.95 per match)
+        tz.hits *= 0.95;
+        tz.frames *= 0.95;
+        // Add this match's data
+        tz.hits += c.trapZoneHits[zone] || 0;
+        tz.frames += c.trapZoneFrames[zone] || 0;
+      }
+    }
+
+    // v8: persist opening-lost-bottom direction
+    if (c.openingBottomLostDir && sl.tactical && sl.tactical.openingLostBottom) {
+      const olb = sl.tactical.openingLostBottom;
+      olb.totalLosses++;
+      if (c.openingBottomLostDir === 'left') olb.fromLeft++;
+      else if (c.openingBottomLostDir === 'right') olb.fromRight++;
+      else olb.fromCenter++;
+    }
+
+    // v8: decay all tactic fail streaks by 1 per match (prevent permanent lockout)
+    if (sl.tactical && sl.tactical.tacticFailStreaks) {
+      const tKeys = typeof SPAR_ANTI_BOTTOM_TACTIC_KEYS !== 'undefined'
+        ? SPAR_ANTI_BOTTOM_TACTIC_KEYS
+        : Object.keys(sl.tactical.tacticFailStreaks);
+      for (const key of tKeys) {
+        if (sl.tactical.tacticFailStreaks[key] > 0) {
+          sl.tactical.tacticFailStreaks[key]--;
+        }
+      }
+    }
+
     SparState._matchCollector = null;
   },
 
@@ -2098,6 +2317,16 @@ const SparSystem = {
       horizShotAdvantage: hasShootingData && sl.hitboxAwareness ?
         (sl.hitboxAwareness.botHorizHitRate || 0.1) / Math.max(0.01, sl.hitboxAwareness.botVertHitRate || 0.05) : 1.0,
       peekEffective: hasShootingData && sl.hitboxAwareness ? sl.hitboxAwareness.peekSuccessRate > 0.3 : true,
+      // v8 trap zone danger rates
+      trapZoneDanger: sl.tactical && sl.tactical.trapZones ? (() => {
+        const tz = sl.tactical.trapZones;
+        const danger = {};
+        for (const zone of ['center', 'near', 'wide']) {
+          const z = tz[zone];
+          danger[zone] = z && z.frames > 30 ? z.hits / z.frames : 0;
+        }
+        return danger;
+      })() : { center: 0, near: 0, wide: 0 },
     };
   },
 
@@ -2428,7 +2657,22 @@ const SparSystem = {
     const enemyMovingLeft = tgt.vx < -1;
     const enemyMovingRight = tgt.vx > 1;
     const isOpening = SparState.matchTimer < 180;  // first 3 seconds
-    if (!enemyHasBottom) ai._antiBottomFrames = 0;
+    // --- v8 anti-bottom engagement lifecycle (hysteresis) ---
+    const c = SparState._matchCollector;
+    if (enemyHasBottom) {
+      ai._antiBottomHysteresisFrames = (ai._antiBottomHysteresisFrames || 0) + 1;
+    } else {
+      // Enemy lost bottom — check if engagement should end
+      if (ai._antiBottomTactic && ai._antiBottomFrames > 0) {
+        ai._antiBottomHysteresisFrames = (ai._antiBottomHysteresisFrames || 0) - 1;
+        if (ai._antiBottomHysteresisFrames <= -15) {
+          // Engagement ended — fire phase reward
+          this._finalizeAntiBottomEngagement(ai, hasBottom, c);
+        }
+      } else {
+        ai._antiBottomHysteresisFrames = 0;
+      }
+    }
 
     // --- Strafe helper (used by all behaviors) ---
     ai.strafeTimer--;
@@ -2594,69 +2838,153 @@ const SparSystem = {
       }
       if (bot.y > arenaH - TILE * 2) moveY -= speed * 0.3;
 
-    } else if (enemyHasBottom) {
-      // === ENEMY HAS BOTTOM — choose a retake response instead of hovering above ===
-      if (!ai._antiBottomResponse) ai._antiBottomResponse = this._pickAntiBottomResponse(pm);
-      ai._antiBottomFrames = (ai._antiBottomFrames || 0) + 1;
-
-      const response = ai._antiBottomResponse;
-      const alignX = Math.abs(dx);
+    } else if (enemyHasBottom && ai._antiBottomHysteresisFrames >= 20) {
+      // === ENEMY HAS BOTTOM — v8 tactical retake system ===
+      const aimSlack = this._getSparAimSlack();
       const sideOffsetNear = this._getSparSideOffsetNear();
       const sideOffsetWide = this._getSparSideOffsetWide();
-      const aboveTrapLine = bot.y < tgt.y - this._getSparAimSlack();
-      let approachAggr = 0.45;
-      let strafeAggr = 0.65;
+      const alignX = Math.abs(dx);
 
-      if (pm) {
-        if (pm.playerWallsFromBottom > 0.5) {
-          strafeAggr = 0.85;
-          approachAggr = 0.22;
-        }
-        if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.3) {
-          approachAggr = Math.max(approachAggr, 0.5);
-        }
+      // Initialize engagement if not started
+      if (!ai._antiBottomTactic) {
+        const chosen = this._pickAntiBottomTactic(pm, ai._openingLostBottomDir);
+        ai._antiBottomTactic = chosen;
+        ai._antiBottomFamily = (typeof SPAR_ANTI_BOTTOM_FAMILY_MAP !== 'undefined')
+          ? SPAR_ANTI_BOTTOM_FAMILY_MAP[chosen] : 'flank';
+        ai._antiBottomResponse = chosen; // legacy compat for match-end reinforcement
+        ai._antiBottomPhase = 0;
+        ai._antiBottomPhaseFrames = 0;
+        ai._antiBottomDmgAtStart = ai._matchDmgTaken || 0;
+        ai._antiBottomStartFrame = SparState.matchTimer;
+        ai._antiBottomOffsetDir = (bot.x < midX) ? 1 : -1;
       }
+      ai._antiBottomFrames++;
+      ai._antiBottomPhaseFrames++;
 
-      if (response === 'sideFlank') {
-        const flankDir = alignX < sideOffsetWide ? ai.strafeDir : Math.sign(dx);
-        moveX = flankDir * speed * Math.max(0.8, strafeAggr + 0.15);
-        moveY = speed * (alignX < sideOffsetWide ? 0.18 : 0.5);
-        if (aboveTrapLine && alignX < sideOffsetNear) moveY = Math.min(moveY, 0.12 * speed);
-        if (pm && pm.playerWallsFromBottom > 0.45) {
-          moveX = flankDir * speed * 0.95;
+      const tactic = ai._antiBottomTactic;
+      const phase = ai._antiBottomPhase;
+      const phaseF = ai._antiBottomPhaseFrames;
+      const offDir = ai._antiBottomOffsetDir;
+
+      // --- Tactic-specific movement ---
+      if (tactic === 'contestDirect') {
+        // Descend diagonally with lateral offset — never on centerline
+        const vertPush = 0.35 + 0.2 * Math.min(1, dist / 300);
+        moveX = offDir * speed * 0.55;
+        moveY = speed * vertPush;
+        // Closer → more horizontal, less vertical
+        if (dist < 150) { moveX = offDir * speed * 0.65; moveY = speed * 0.3; }
+
+      } else if (tactic === 'contestSprint') {
+        // Full-speed diagonal dive to below+beside target
+        const goalX = tgt.x + offDir * 75;
+        const goalY = tgt.y + bottomGap + 30;
+        const gdx = goalX - bot.x, gdy = goalY - bot.y;
+        const gd = Math.sqrt(gdx * gdx + gdy * gdy);
+        if (gd > 15) {
+          moveX = (gdx / gd) * speed;
+          moveY = (gdy / gd) * speed;
+        } else {
+          // Arrived — hold position briefly, will transition to hasBottom
+          moveX = ai.strafeDir * speed * 0.6;
+          moveY = speed * 0.1;
+        }
+
+      } else if (tactic === 'flankWide') {
+        // Phase 0: wide lateral displacement
+        if (phase === 0) {
+          moveX = offDir * speed * 0.95;
+          moveY = speed * 0.08;
+          if (alignX > sideOffsetWide * 1.5) {
+            ai._antiBottomPhase = 1;
+            ai._antiBottomPhaseFrames = 0;
+          }
+        } else {
+          // Phase 1: diagonal descent from wide position
+          moveX = offDir * speed * 0.4;
+          moveY = speed * 0.65;
+        }
+
+      } else if (tactic === 'flankTight') {
+        // Phase 0: quick lateral to just outside aim slack
+        if (phase === 0) {
+          moveX = offDir * speed * 0.85;
           moveY = speed * 0.15;
-        }
-      } else if (response === 'baitPull') {
-        if (dist < 240) {
-          moveY = -speed * 0.35;
-          moveX = ai.strafeDir * speed * 0.8;
+          if (alignX > sideOffsetNear) {
+            ai._antiBottomPhase = 1;
+            ai._antiBottomPhaseFrames = 0;
+          }
         } else {
-          moveX = Math.sign(dx || ai.strafeDir) * speed * 0.55;
-          moveY = speed * 0.35;
+          // Phase 1: cut in diagonally
+          moveX = Math.sign(dx || offDir) * speed * 0.45;
+          moveY = speed * 0.55;
         }
-        if (pm && pm.playerPushesFromBottom > 0.45) {
-          moveX += Math.sign(dx || ai.strafeDir) * speed * 0.15;
-        }
-      } else {
-        // directContest
-        if (dist > 300) {
-          moveX = ai.strafeDir * speed * strafeAggr;
-          moveY = speed * Math.max(0.5, approachAggr);
-        } else if (dist > 150) {
-          moveX = ai.strafeDir * speed * Math.min(0.95, strafeAggr + 0.15);
-          moveY = speed * Math.min(0.58, approachAggr + 0.18);
+
+      } else if (tactic === 'baitRetreat') {
+        // Phase 0: pull upward to create distance
+        if (phase === 0) {
+          moveY = -speed * 0.4;
+          moveX = ai.strafeDir * speed * 0.7;
+          if (phaseF > 75 || dist > 280) {
+            ai._antiBottomPhase = 1;
+            ai._antiBottomPhaseFrames = 0;
+          }
         } else {
-          moveX = ai.strafeDir * speed * 0.55;
+          // Phase 1: re-enter from the side
+          moveX = offDir * speed * 0.6;
+          moveY = speed * 0.55;
+        }
+
+      } else if (tactic === 'baitFake') {
+        // Phase 0: fake direct approach
+        if (phase === 0) {
+          moveY = speed * 0.4;
+          moveX = ai.strafeDir * speed * 0.3;
+          if (phaseF > 30) {
+            ai._antiBottomPhase = 1;
+            ai._antiBottomPhaseFrames = 0;
+          }
+        } else if (phase === 1) {
+          // Phase 1: hard lateral juke
+          moveX = offDir * speed * 0.95;
+          moveY = speed * 0.05;
+          if (phaseF > 30) {
+            ai._antiBottomPhase = 2;
+            ai._antiBottomPhaseFrames = 0;
+          }
+        } else {
+          // Phase 2: descend from new angle
+          moveX = Math.sign(dx || offDir) * speed * 0.45;
           moveY = speed * 0.55;
         }
       }
 
-      // Shared anti-bottom adjustments: offset from their best peek line instead of
-      // sitting directly above them, then descend once we have lateral separation.
-      if (alignX < sideOffsetNear) {
-        moveX += ai.strafeDir * speed * 0.25;
-        if (aboveTrapLine) moveY = Math.min(moveY, speed * 0.15);
+      // --- Shared: trap zone awareness ---
+      const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+      if (sl && sl.tactical && sl.tactical.trapZones) {
+        const tz = sl.tactical.trapZones;
+        const currentZone = alignX < aimSlack ? 'center' : (alignX < sideOffsetNear ? 'near' : 'wide');
+        const zoneData = tz[currentZone];
+        const zoneHitRate = zoneData && zoneData.frames > 30
+          ? zoneData.hits / zoneData.frames : 0;
+        // If current zone is dangerous, push laterally out of it
+        if (zoneHitRate > 0.15) {
+          const escapeDir = alignX < sideOffsetNear
+            ? (offDir || ai.strafeDir)
+            : Math.sign(bot.x - tgt.x);
+          moveX += escapeDir * speed * Math.min(0.4, zoneHitRate);
+          moveY = Math.min(moveY, speed * 0.1);
+        }
+        // Track exposure in collector
+        if (c) {
+          c.trapZoneFrames[currentZone]++;
+          if (ai._lastTookHitFrame === SparState.matchTimer) {
+            c.trapZoneHits[currentZone]++;
+          }
+        }
       }
+
+      // --- Shared: profile-based adjustments ---
       if (pm) {
         if (pm.preferredOffsetX > 0.1) {
           moveX += Math.sign(bot.x - tgt.x || ai.strafeDir) * speed * pm.preferredOffsetX * 0.25;
@@ -2664,13 +2992,26 @@ const SparSystem = {
         if (pm.belowShootsUp > 0.6) {
           moveX += Math.sign(bot.x - tgt.x || ai.strafeDir) * speed * 0.2;
         }
-        if (pm.playerPushesFromBottom > 0.45 && response !== 'baitPull' && dist < 220) {
+        if (pm.playerPushesFromBottom > 0.45 && tactic !== 'baitRetreat' && tactic !== 'baitFake' && dist < 220) {
           moveY -= speed * 0.12;
         }
       }
 
+      // --- Timeout: force re-pick after 300 frames ---
+      if (ai._antiBottomFrames > 300) {
+        this._finalizeAntiBottomEngagement(ai, false, c);
+        // Will re-pick next frame
+      }
+
+    } else if (enemyHasBottom) {
+      // Hysteresis not yet met — waiting for 20+ frames to confirm enemy has bottom
+      // Strafe and avoid descending into a trap
+      moveX = ai.strafeDir * speed * 0.7;
+      if (bot.y < tgt.y) moveY = speed * 0.15; // slight drift toward bottom
+
     } else {
-      ai._antiBottomFrames = 0;
+      // Reset engagement if enemy lost bottom (handled by hysteresis above)
+      if (!ai._antiBottomTactic) ai._antiBottomFrames = 0;
       // === NEUTRAL — neither has clear bottom, actively contest ===
       moveX = ai.strafeDir * speed * 0.7;
       // Stay at preferred engagement distance + actively contest bottom

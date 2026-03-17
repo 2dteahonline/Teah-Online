@@ -78,7 +78,20 @@ const SPAR_DUEL_STYLES = {
 };
 
 const SPAR_OPENING_ROUTE_KEYS = ['bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midFlank', 'mirrorPlayer'];
-const SPAR_ANTI_BOTTOM_RESPONSE_KEYS = ['directContest', 'sideFlank', 'baitPull'];
+const SPAR_ANTI_BOTTOM_RESPONSE_KEYS = ['directContest', 'sideFlank', 'baitPull']; // legacy — kept for migration
+
+// v8 anti-bottom tactical system: 6 tactics in 3 families
+const SPAR_ANTI_BOTTOM_TACTIC_KEYS = [
+  'contestDirect', 'contestSprint',
+  'flankWide', 'flankTight',
+  'baitRetreat', 'baitFake',
+];
+const SPAR_ANTI_BOTTOM_FAMILY_KEYS = ['contest', 'flank', 'bait'];
+const SPAR_ANTI_BOTTOM_FAMILY_MAP = {
+  contestDirect: 'contest', contestSprint: 'contest',
+  flankWide: 'flank', flankTight: 'flank',
+  baitRetreat: 'bait', baitFake: 'bait',
+};
 
 function createSparRewardBuckets(keys) {
   const buckets = {};
@@ -113,12 +126,12 @@ let sparProgress = {
   },
 };
 
-// v7 neutral factory — creates a clean learning profile with no bias
+// v8 neutral factory — creates a clean learning profile with no bias
 // All percentages start at 0.5 (neutral), all counts at 0
 // Called on first load and on mechanics resets that invalidate old spar data
 function createDefaultSparLearning() {
   return {
-    version: 7,
+    version: 8,
     matchCount: 0,
     opening: {
       rushBottom: 0.5,
@@ -244,16 +257,41 @@ function createDefaultSparLearning() {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
         opening: createSparRewardBuckets(SPAR_OPENING_ROUTE_KEYS),
         antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
+        antiBottomFamily: createSparRewardBuckets(SPAR_ANTI_BOTTOM_FAMILY_KEYS),
+        antiBottomTactic: createSparRewardBuckets(SPAR_ANTI_BOTTOM_TACTIC_KEYS),
       },
       player: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
         opening: createSparRewardBuckets(SPAR_OPENING_ROUTE_KEYS),
         antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
+        antiBottomFamily: createSparRewardBuckets(SPAR_ANTI_BOTTOM_FAMILY_KEYS),
+        antiBottomTactic: createSparRewardBuckets(SPAR_ANTI_BOTTOM_TACTIC_KEYS),
       },
       selfPlay: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
         opening: createSparRewardBuckets(SPAR_OPENING_ROUTE_KEYS),
         antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
+        antiBottomFamily: createSparRewardBuckets(SPAR_ANTI_BOTTOM_FAMILY_KEYS),
+        antiBottomTactic: createSparRewardBuckets(SPAR_ANTI_BOTTOM_TACTIC_KEYS),
+      },
+    },
+    tactical: {
+      tacticFailStreaks: {
+        contestDirect: 0, contestSprint: 0,
+        flankWide: 0, flankTight: 0,
+        baitRetreat: 0, baitFake: 0,
+      },
+      trapZones: {
+        center: { hits: 0, frames: 0 },
+        near:   { hits: 0, frames: 0 },
+        wide:   { hits: 0, frames: 0 },
+      },
+      antiBottomOutcomes: {
+        attempts: 0, regainedBottom: 0,
+        avgDmgTakenDuring: 0, avgDuration: 0,
+      },
+      openingLostBottom: {
+        fromLeft: 0, fromRight: 0, fromCenter: 0, totalLosses: 0,
       },
     },
     gunSide: {
@@ -297,6 +335,54 @@ function resetSparLearning() {
   Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
   Object.assign(sparLearning, fresh);
   if (typeof SaveLoad !== 'undefined') SaveLoad.save();
-  console.log('[Spar] Learning profile wiped to neutral v7 defaults');
+  console.log('[Spar] Learning profile wiped to neutral v8 defaults');
   return sparLearning;
+}
+
+// Console helper — compact summary of Jeff-specific anti-bottom learning
+function sparSummary() {
+  const sl = sparLearning;
+  const t = sl.tactical || {};
+  const rf = sl.reinforcement1v1 || {};
+  const pTactic = rf.player && rf.player.antiBottomTactic || {};
+  const pFamily = rf.player && rf.player.antiBottomFamily || {};
+
+  console.log('=== Spar Bot v8 Summary ===');
+  console.log(`Matches: ${sl.matchCount}, Win Rate: ${(sl.winRate * 100).toFixed(1)}%`);
+
+  // Fail streaks
+  const fs = t.tacticFailStreaks || {};
+  const worstFS = Object.entries(fs).sort((a, b) => b[1] - a[1]);
+  console.log('\n--- Fail Streaks (highest first) ---');
+  for (const [k, v] of worstFS) console.log(`  ${k}: ${v}`);
+
+  // Tactic rewards
+  console.log('\n--- Player Anti-Bottom Tactic Rewards ---');
+  for (const [k, v] of Object.entries(pTactic)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+
+  // Family rewards
+  console.log('\n--- Player Anti-Bottom Family Rewards ---');
+  for (const [k, v] of Object.entries(pFamily)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+
+  // Trap zones
+  const tz = t.trapZones || {};
+  console.log('\n--- Trap Zone Danger ---');
+  for (const zone of ['center', 'near', 'wide']) {
+    const z = tz[zone] || { hits: 0, frames: 0 };
+    const rate = z.frames > 30 ? (z.hits / z.frames * 100).toFixed(1) + '%' : 'n/a';
+    console.log(`  ${zone}: ${rate} (${Math.round(z.frames)} frames)`);
+  }
+
+  // Anti-bottom outcomes
+  const ao = t.antiBottomOutcomes || {};
+  const regainPct = ao.attempts > 0 ? (ao.regainedBottom / ao.attempts * 100).toFixed(1) + '%' : 'n/a';
+  console.log(`\n--- Anti-Bottom Outcomes ---`);
+  console.log(`  Attempts: ${ao.attempts}, Regain Rate: ${regainPct}`);
+  console.log(`  Avg Dmg Taken: ${(ao.avgDmgTakenDuring || 0).toFixed(1)}, Avg Duration: ${Math.round(ao.avgDuration || 0)} frames`);
+
+  return 'Done';
 }
