@@ -924,21 +924,26 @@ function drawKatanaSwing(camX, camY) {
 }
 
 function updateBullets() {
-  // === ELLIPTICAL HITBOXES (Graal-style, centered 20px above feet) ===
-  // Entity hitbox: 25px wide × 15px tall ellipse (wider than tall)
-  // Bullet: radius 5px → hit ellipse: 30px wide × 20px tall
-  // Vertical positioning matters — bullets pass over/under like Graal Online Era
+  // === GRAAL-STYLE COLLISION: rectangular bullet + circular entity hitbox ===
+  // Bullet collision is a rectangle aligned to travel direction (long × short).
+  // Entity hitbox is a circle. Hit test = closest point on bullet rect to entity
+  // center, check if distance < entity radius.
+  // Vertical peeks are harder (bullet narrow perpendicular), same as Graal.
+  const B_LONG = GAME_CONFIG.BULLET_HALF_LONG;   // half-length along travel
+  const B_SHORT = GAME_CONFIG.BULLET_HALF_SHORT;  // half-width perpendicular
+  const ENTITY_R = GAME_CONFIG.ENTITY_R;           // entity circle radius
+  const ENTITY_R_SQ = ENTITY_R * ENTITY_R;
 
-  const BULLET_R = GAME_CONFIG.BULLET_R;
-  const ENTITY_RX = GAME_CONFIG.ENTITY_RX;
-  const ENTITY_RY = GAME_CONFIG.ENTITY_RY;
-  // Ellipse hit zone: bullet (circle) vs entity (ellipse) → Minkowski sum ellipse
-  const HIT_RX = BULLET_R + ENTITY_RX;  // 30 horizontal
-  const HIT_RY = BULLET_R + ENTITY_RY;  // 20 vertical
-  const HIT_RX_SQ = HIT_RX * HIT_RX;
-  const HIT_RY_SQ = HIT_RY * HIT_RY;
-  // Ellipse containment: (dx/rx)^2 + (dy/ry)^2 < 1  ↔  dx^2*ry^2 + dy^2*rx^2 < rx^2*ry^2
-  const HIT_CROSS = HIT_RX_SQ * HIT_RY_SQ; // precompute for default hitbox
+  // Rectangle-circle hit test: bullet rect vs entity circle
+  function _bulletHitsCircle(bx, by, bvx, bvy, ex, ey, eR) {
+    const isH = Math.abs(bvx) > Math.abs(bvy);
+    const hw = isH ? B_LONG : B_SHORT;
+    const hh = isH ? B_SHORT : B_LONG;
+    // Distance from entity center to closest point on bullet rect
+    const cdx = Math.max(0, Math.abs(bx - ex) - hw);
+    const cdy = Math.max(0, Math.abs(by - ey) - hh);
+    return cdx * cdx + cdy * cdy < eR * eR;
+  }
 
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
@@ -1044,9 +1049,7 @@ function updateBullets() {
       for (const p of opponents) {
         if (!p.alive) continue;
         const ent = p.entity;
-        const sdx = b.x - ent.x;
-        const sdy = b.y - (ent.y + 5); // hitbox below feet (Graal-style, biased down)
-        if (sdx * sdx * HIT_RY_SQ + sdy * sdy * HIT_RX_SQ < HIT_CROSS) {
+        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, ent.x, ent.y + 5, ENTITY_R)) {
           const dmg = b.damage || (typeof CT_X_GUN !== 'undefined' ? CT_X_GUN.damage : 20);
           ent.hp -= dmg;
           hitEffects.push({ x: b.x, y: b.y - 10, life: 19, type: "hit", dmg: dmg });
@@ -1076,12 +1079,9 @@ function updateBullets() {
         // Pierce: skip mobs already hit by this bullet
         if (b.pierce && b.hitMobs && b.hitMobs.indexOf(m._mobId !== undefined ? m._mobId : mobs.indexOf(m)) >= 0) continue;
 
-        const dx = b.x - m.x;
-        const dy = b.y - (m.y - 20);
-        // Per-mob ellipse: hitboxR overrides X radius, Y scales proportionally
-        const mRX = BULLET_R + (m.hitboxRX ?? m.hitboxR ?? ENTITY_RX);
-        const mRY = BULLET_R + (m.hitboxRY ?? (m.hitboxR ? Math.round(m.hitboxR * ENTITY_RY / ENTITY_RX) : ENTITY_RY));
-        if (dx * dx * mRY * mRY + dy * dy * mRX * mRX < mRX * mRX * mRY * mRY) {
+        // Per-mob circle hitbox: hitboxR overrides default ENTITY_R
+        const mR = m.hitboxR ?? ENTITY_R;
+        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, m.x, m.y - 20, mR)) {
           // Per-bullet stats (bot bullets carry their own, player bullets fall through to global)
           const _bDmg = b.damage || gun.damage;
           const _bSpecial = b.special !== undefined ? b.special : gun.special;
@@ -1138,9 +1138,7 @@ function updateBullets() {
         const _arrowTargets = PartySystem.getAliveEntities();
         let _arrowHit = false;
         for (const _at of _arrowTargets) {
-          const dxA = b.x - _at.x;
-          const dyA = b.y - (_at.y + 5); // hitbox below feet (Graal-style, biased down)
-          if (dxA * dxA * HIT_RY_SQ + dyA * dyA * HIT_RX_SQ < HIT_CROSS && !(_at === player && playerDead) && !_at._isDead) {
+          if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, _at.x, _at.y + 5, ENTITY_R) && !(_at === player && playerDead) && !_at._isDead) {
             dealDamageToPlayer(b.damage, "projectile", null, _at);
             // Apply/reset poison — 20 seconds (all entities via _currentDamageTarget)
             _currentDamageTarget = _at;
@@ -1182,9 +1180,7 @@ function updateBullets() {
       const _genTargets = PartySystem.getAliveEntities();
       let _genHit = false;
       for (const _gt of _genTargets) {
-        const dx = b.x - _gt.x;
-        const dy = b.y - (_gt.y + 5); // hitbox below feet (Graal-style, biased down)
-        if (dx * dx * HIT_RY_SQ + dy * dy * HIT_RX_SQ < HIT_CROSS && !(_gt === player && playerDead) && !_gt._isDead) {
+        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, _gt.x, _gt.y + 5, ENTITY_R) && !(_gt === player && playerDead) && !_gt._isDead) {
           const bDmg = b.damage || gun.damage;
           const dmgDealt = dealDamageToPlayer(bDmg, "projectile", null, _gt);
           hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: dmgDealt });

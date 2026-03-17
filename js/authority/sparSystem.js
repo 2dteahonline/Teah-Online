@@ -1077,10 +1077,10 @@ const SparSystem = {
   _getIncomingBulletDodge(bot, team) {
     let dodgeX = 0, dodgeY = 0;
     const botHitY = bot.y + 5; // hitbox at feet level (entity.y + 5)
-    // Elliptical hit zones: horizontal 45px wide, vertical 20px tall
-    // Detect earlier on the wider axis, tighter on the narrow axis
-    const dodgeLaneX = 55; // vertical bullets: detect 55px (hit zone is 45px wide)
-    const dodgeLaneY = 30; // horizontal bullets: detect 30px (hit zone is only 20px tall)
+    // Circular entity hitbox (R=27 effective zone with bullet perpendicular)
+    // Both axes have equal hit zone, but bullet is narrow perpendicular to travel
+    // so dodging perpendicular is always the right move
+    const dodgeLane = 35; // detect within 35px (effective zone ~27px, early warning)
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
@@ -1092,21 +1092,21 @@ const SparSystem = {
       const urgency = Math.max(0.5, 1.2 - bDist / 350);
 
       if (Math.abs(b.vy) > Math.abs(b.vx)) {
-        // Vertical bullet — dodge LEFT or RIGHT (wide 45px hit zone = must dodge harder)
+        // Vertical bullet — dodge LEFT or RIGHT (perpendicular to travel)
         const isApproaching = (b.vy > 0 && b.y < botHitY) || (b.vy < 0 && b.y > botHitY);
         if (!isApproaching) continue;
-        if (Math.abs(dbx) > dodgeLaneX) continue;
+        if (Math.abs(dbx) > dodgeLane) continue;
         const dodgeDir = dbx >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0.3, 1 - Math.abs(dbx) / dodgeLaneX);
-        dodgeX += dodgeDir * urgency * laneProximity * 3.5; // stronger: wide hit zone
+        const laneProximity = Math.max(0.3, 1 - Math.abs(dbx) / dodgeLane);
+        dodgeX += dodgeDir * urgency * laneProximity * 3.0;
       } else {
-        // Horizontal bullet — dodge UP or DOWN (narrow 20px hit zone = easier to escape)
+        // Horizontal bullet — dodge UP or DOWN (perpendicular to travel)
         const isApproaching = (b.vx > 0 && b.x < bot.x) || (b.vx < 0 && b.x > bot.x);
         if (!isApproaching) continue;
-        if (Math.abs(dby) > dodgeLaneY) continue;
+        if (Math.abs(dby) > dodgeLane) continue;
         const dodgeDir = dby >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0.3, 1 - Math.abs(dby) / dodgeLaneY);
-        dodgeY += dodgeDir * urgency * laneProximity * 2.5; // weaker: narrow hit zone
+        const laneProximity = Math.max(0.3, 1 - Math.abs(dby) / dodgeLane);
+        dodgeY += dodgeDir * urgency * laneProximity * 3.0;
       }
     }
 
@@ -1201,7 +1201,7 @@ const SparSystem = {
         botGunDisadv_frames: 0,
         // Gun side tracking (v4)
         playerGunSideSamples: { left: 0, right: 0 },
-        // Directional hit rates — elliptical hitbox awareness (v4)
+        // Directional hit rates — hitbox awareness (v4)
         hitsByBulletDir: { horiz: { hits: 0, total: 0 }, vert: { hits: 0, total: 0 } },
         botHitsByBulletDir: { horiz: { hits: 0, total: 0 }, vert: { hits: 0, total: 0 } },
         // Peek tracking: bot has bottom + shooting horizontal (v4)
@@ -2265,7 +2265,7 @@ const SparSystem = {
       } else {
         c.playerMisses.push(record);
       }
-      // Directional hit tracking (v4 — elliptical hitbox awareness)
+      // Directional hit tracking (v4 — hitbox awareness)
       c.hitsByBulletDir[bulletDir].total++;
       if (wasHit) c.hitsByBulletDir[bulletDir].hits++;
     } else {
@@ -2941,32 +2941,29 @@ const SparSystem = {
         moveY += (Math.random() < 0.5 ? 1 : -1) * speed * 0.15 * horizShootPct;
       }
 
-      // ELLIPTICAL HITBOX AWARENESS: hit zone is 45px wide, only 20px tall
-      // Vertical offset is 2.25x more evasive than horizontal offset
+      // CIRCULAR HITBOX + RECTANGULAR BULLET AWARENESS
+      // Bullet is narrow perpendicular to travel (4px half-width) — dodge perpendicular
+      // Both directions equally evasive with circular hitbox
       if (tgt.dir === 2 || tgt.dir === 3) {
-        // Enemy shooting horizontally — maximize VERTICAL offset (exploit narrow 20px zone)
+        // Enemy shooting horizontally — dodge VERTICALLY (perpendicular to bullet)
         const vertOffset = bot.y - tgt.y;
         if (Math.abs(vertOffset) < 30) {
-          // Too close to horizontal shot axis — push perpendicular urgently
-          moveY += (vertOffset >= 0 ? 1 : -1) * speed * 0.25;
+          moveY += (vertOffset >= 0 ? 1 : -1) * speed * 0.2;
         }
         // Gun side muzzle offset: bullet spawns ±20px from body center
-        // Left gun shooting right = muzzle high (-20), left gun shooting left = muzzle low (+20)
-        // Right gun shooting right = muzzle low (+20), right gun shooting left = muzzle high (-20)
         const enemyIsRight = enemyGunSide === 'right';
         const shootingRight = tgt.dir === 3;
         const muzzleHigh = (enemyIsRight && !shootingRight) || (!enemyIsRight && shootingRight);
-        // If muzzle is high (bullet spawns above center), be BELOW. If low, be ABOVE.
         const preferBelow = muzzleHigh;
         const currentBelow = bot.y > tgt.y;
         if (preferBelow !== currentBelow) {
           moveY += (preferBelow ? 1 : -1) * speed * 0.12;
         }
       } else if (tgt.dir === 0 || tgt.dir === 1) {
-        // Enemy shooting vertically — maximize horizontal offset (45px zone, harder)
+        // Enemy shooting vertically — dodge HORIZONTALLY (perpendicular to bullet)
         const horizOffset = bot.x - tgt.x;
-        if (Math.abs(horizOffset) < 50) {
-          moveX += (horizOffset >= 0 ? 1 : -1) * speed * 0.15;
+        if (Math.abs(horizOffset) < 30) {
+          moveX += (horizOffset >= 0 ? 1 : -1) * speed * 0.2;
         }
       }
 
@@ -3116,10 +3113,9 @@ const SparSystem = {
         // Wait for better alignment: target about to cross our shot axis
         const alignX = Math.abs(tgt.x - bot.x);
         const alignY = Math.abs(tgt.y - bot.y);
-        let aligned = Math.min(alignX, alignY) < 40; // close to axis
-        // Elliptical peek: if we have vertical offset, horizontal alignment is valuable
-        // Horizontal shots through 45px hit zone are much more likely to land
-        if ((hasBottom || enemyHasBottom) && alignX < 50) aligned = true;
+        let aligned = Math.min(alignX, alignY) < 35; // close to axis (circular hitbox)
+        // With vertical offset, horizontal alignment still valuable for perpendicular shot
+        if ((hasBottom || enemyHasBottom) && alignX < 40) aligned = true;
         if (aligned) {
           this._sparBotShoot(member, tgt);
         } else if (member.ai.shootCD <= -10) {

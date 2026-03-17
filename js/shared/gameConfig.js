@@ -15,11 +15,11 @@ const GAME_CONFIG = {
   POS_HW: 10,                   // spawn/position clearance half-width
   MOB_CROWD_RADIUS: 46,         // crowding detection radius
 
-  // --- Projectiles ---
-  BULLET_SPEED: 9,             // default bullet speed (px/frame)
-  BULLET_R: 9,                  // projectile collision radius (bigger bullets)
-  ENTITY_RX: 41,                // entity hitbox horizontal half-width (-10%)
-  ENTITY_RY: 14,                // entity hitbox vertical half-height (-10%, flat — Graal-style ground ellipse)
+  // --- Projectiles (Graal-style: rectangular bullet + circular entity hitbox) ---
+  BULLET_SPEED: 9,              // default bullet speed (px/frame)
+  BULLET_HALF_LONG: 15,         // bullet collision half-length along travel direction
+  BULLET_HALF_SHORT: 4,         // bullet collision half-width perpendicular to travel
+  ENTITY_R: 23,                 // entity hitbox circle radius
 
   // --- Mining ---
   ORE_COLLISION_RADIUS: 17,     // ore node collision circle
@@ -30,9 +30,8 @@ const GAME_CONFIG = {
   KNOCKBACK_THRESHOLD: 0.5,     // min velocity before clearing
 
   // --- Hitbox Indicator ---
-  DEFAULT_HITBOX_RX: 50,        // hitbox visual horizontal (BULLET_R + ENTITY_RX = 50)
-  DEFAULT_HITBOX_RY: 23,        // hitbox visual vertical (BULLET_R + ENTITY_RY = 23)
+  DEFAULT_HITBOX_R: 27,         // hitbox visual radius (BULLET_HALF_SHORT + ENTITY_R)
 
   // --- Version ---
-  GAME_UPDATE: 292,             // increment each deploy — shown on lobby version sign
+  GAME_UPDATE: 293,             // increment each deploy — shown on lobby version sign
 };

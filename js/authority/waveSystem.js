@@ -386,7 +386,7 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     // Physics / collision (per-mob with GAME_CONFIG fallbacks)
     radius: mt.radius ?? GAME_CONFIG.MOB_RADIUS,
     wallHW: mt.wallHW ?? GAME_CONFIG.MOB_WALL_HW,
-    hitboxR: mt.hitboxR ?? GAME_CONFIG.ENTITY_RX,
+    hitboxR: mt.hitboxR ?? GAME_CONFIG.ENTITY_R,
     ai: mt.ai || null,
     kiteRange: mt.kiteRange || 160,
     // Visual

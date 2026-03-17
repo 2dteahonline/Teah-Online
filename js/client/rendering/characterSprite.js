@@ -231,8 +231,7 @@ let useSpriteMode = false;
 
 // ===================== BIG CHARACTER (~96px tall) =====================
 const CHAR_SCALE = 1.1;
-const DEFAULT_HITBOX_RX = GAME_CONFIG.DEFAULT_HITBOX_RX;
-const DEFAULT_HITBOX_RY = GAME_CONFIG.DEFAULT_HITBOX_RY;
+const DEFAULT_HITBOX_R = GAME_CONFIG.DEFAULT_HITBOX_R;
 
 // ===================== AMONG US CREWMATE (game world) =====================
 // Draws a full-size crewmate sprite at world position (sx, sy).
@@ -385,8 +384,7 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
   const showHitbox = isPlayer ? gameSettings.showOwnHitbox : gameSettings.showOtherHitbox;
   if (showHitbox && mobType !== 'deliNPC') {
     const mobR = (!isPlayer && mobType && mobType !== 'partyBot' && MOB_TYPES[mobType] && MOB_TYPES[mobType].radius) || 0;
-    const hitboxRX = mobR || DEFAULT_HITBOX_RX;
-    const hitboxRY = mobR || DEFAULT_HITBOX_RY;
+    const hitboxR = mobR || DEFAULT_HITBOX_R;
     if (_inSpar) {
       // Spar: green = ally, red = enemy
       if (isAlly) {
@@ -408,10 +406,10 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
     const hitboxCY = _isMobHitbox ? (sy - 20) : (sy + 5);
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.ellipse(sx, hitboxCY, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);
+    ctx.arc(sx, hitboxCY, hitboxR, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(sx, hitboxCY, hitboxRX, hitboxRY, 0, 0, Math.PI * 2);
+    ctx.arc(sx, hitboxCY, hitboxR, 0, Math.PI * 2);
     ctx.fill();
   }
 
