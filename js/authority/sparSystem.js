@@ -135,21 +135,14 @@ const SparSystem = {
     return Math.max(0, Math.min(1, v));
   },
 
-  // vNext: Stable center direction — avoids Math.sign(0)=0 and hard-flip jitter at midX
-  // Uses a deadzone: within ±16px of midX, returns the stored sticky side bias.
-  // Outside the deadzone, updates the bias and returns the real direction.
+  // vNext: Stable center direction — avoids Math.sign(0)=0 at exact midX
+  // Simply returns -1 or 1, never 0. Uses strafeDir as tiebreaker at exact overlap.
   _getStableCenterDir(ai, botX, midX) {
-    const DEADZONE = 16;
     const diff = midX - botX;
-    if (Math.abs(diff) > DEADZONE) {
-      // Outside deadzone — update sticky bias and return real direction
-      ai._centerSideBias = diff > 0 ? 1 : -1;
-      return ai._centerSideBias;
-    }
-    // Inside deadzone — use sticky bias (or strafe dir as last resort)
-    if (ai._centerSideBias) return ai._centerSideBias;
-    ai._centerSideBias = ai.strafeDir || 1;
-    return ai._centerSideBias;
+    if (diff > 0.5) return 1;
+    if (diff < -0.5) return -1;
+    // Exact overlap (within 0.5px) — use strafe dir as tiebreaker
+    return ai.strafeDir || 1;
   },
 
   _getSparPerpHitRadius() {
@@ -4143,35 +4136,30 @@ const SparSystem = {
     };
 
     // --- vNext: Oscillation detection (horizontal jitter without progress) ---
-    if (!ai._centerMoveHistory) ai._centerMoveHistory = [];
-    // Record move sign each frame (will be filled after movement calc, but we track X position delta)
+    // Lightweight: track sign flips and net displacement with counters, no array
     const prevCenterX = typeof ai._prevCenterX === 'number' ? ai._prevCenterX : bot.x;
     const frameDeltaX = bot.x - prevCenterX;
     ai._prevCenterX = bot.x;
-    ai._centerMoveHistory.push(frameDeltaX);
-    if (ai._centerMoveHistory.length > 16) ai._centerMoveHistory.shift();
-    // Detect oscillation: many sign flips with tiny net displacement
+    const curSign = frameDeltaX > 0.3 ? 1 : (frameDeltaX < -0.3 ? -1 : 0);
+    if (curSign !== 0 && typeof ai._prevMoveSign === 'number' && ai._prevMoveSign !== 0 && curSign !== ai._prevMoveSign) {
+      ai._oscSignFlips = (ai._oscSignFlips || 0) + 1;
+    }
+    if (curSign !== 0) ai._prevMoveSign = curSign;
+    ai._oscNetDisp = (ai._oscNetDisp || 0) + frameDeltaX;
+    ai._oscWindow = (ai._oscWindow || 0) + 1;
+    // Every 16 frames, evaluate and reset
     let centerOscillating = false;
-    if (ai._centerMoveHistory.length >= 10) {
-      let signFlips = 0;
-      let netDisp = 0;
-      for (let i = 0; i < ai._centerMoveHistory.length; i++) {
-        netDisp += ai._centerMoveHistory[i];
-        if (i > 0 && Math.sign(ai._centerMoveHistory[i]) !== 0 &&
-            Math.sign(ai._centerMoveHistory[i]) !== Math.sign(ai._centerMoveHistory[i - 1]) &&
-            Math.sign(ai._centerMoveHistory[i - 1]) !== 0) {
-          signFlips++;
-        }
-      }
-      // Oscillating: 4+ sign flips and net displacement under 15px over 10-16 frames
-      if (signFlips >= 4 && Math.abs(netDisp) < 15) {
+    if (ai._oscWindow >= 16) {
+      if ((ai._oscSignFlips || 0) >= 4 && Math.abs(ai._oscNetDisp || 0) < 15) {
         centerOscillating = true;
         if (sl && sl.tactical) {
           if (typeof sl.tactical.centerOscillationCount !== 'number') sl.tactical.centerOscillationCount = 0;
-          // Only count once per oscillation burst (every 16 frames)
-          if (ai._centerMoveHistory.length >= 16) sl.tactical.centerOscillationCount++;
+          sl.tactical.centerOscillationCount++;
         }
       }
+      ai._oscSignFlips = 0;
+      ai._oscNetDisp = 0;
+      ai._oscWindow = 0;
     }
 
     // --- vNext: Center-trapped state detection ---
@@ -4280,6 +4268,11 @@ const SparSystem = {
         this._finalizeCenterRecovery(ai, false, hasBottom, !badGunSide && laneQuality > 0.55);
         ai._centerRecoveryCooldown = 25;
       }
+      // Finalize if bot reached a wall (recovery drove it there)
+      if (ai._centerRecoveryPolicy && ai._centerRecoveryFrames >= 5 && (nearLeftWallBase || nearRightWallBase)) {
+        this._finalizeCenterRecovery(ai, !inCenterBand, hasBottom, !badGunSide && laneQuality > 0.55);
+        ai._centerRecoveryCooldown = 30;
+      }
       // Also finalize if we entered a higher-priority state
       if (ai._centerRecoveryPolicy && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
         if (ai._centerRecoveryFrames >= 10) {
@@ -4317,12 +4310,16 @@ const SparSystem = {
       ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
       ai._centerRecoveryFrames = 0;
       ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
-      // Pick commit direction: toward better lane recovery side
-      // Prefer side away from enemy's gun side for cleaner crossing
-      const awayFromEnemy = -Math.sign(dx || 1);
-      ai._centerRecoveryCommitDir = awayFromEnemy || (Math.random() < 0.5 ? -1 : 1);
-      // Clear oscillation history on engagement start
-      ai._centerMoveHistory = [];
+      // Pick commit direction: away from enemy, but NEVER toward a nearby wall
+      const awayFromEnemy = -Math.sign(dx || 1) || (Math.random() < 0.5 ? -1 : 1);
+      // Wall safety: if committing toward a wall within 4 tiles, flip direction
+      if (awayFromEnemy < 0 && bot.x < TILE * 4) {
+        ai._centerRecoveryCommitDir = 1;
+      } else if (awayFromEnemy > 0 && bot.x > arenaW - TILE * 4) {
+        ai._centerRecoveryCommitDir = -1;
+      } else {
+        ai._centerRecoveryCommitDir = awayFromEnemy;
+      }
     }
     // Oscillation rescue: if oscillating without a recovery policy, force one immediately
     if (centerOscillating && !ai._centerRecoveryPolicy && !ai._escapePolicy &&
@@ -4337,8 +4334,9 @@ const SparSystem = {
       ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
       ai._centerRecoveryFrames = 0;
       ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
-      ai._centerRecoveryCommitDir = (Math.random() < 0.5 ? -1 : 1);
-      ai._centerMoveHistory = [];
+      // Wall safety: pick direction away from nearest wall
+      const oscDir = bot.x < midX ? 1 : -1;
+      ai._centerRecoveryCommitDir = (bot.x < TILE * 4) ? 1 : (bot.x > arenaW - TILE * 4) ? -1 : oscDir;
     }
 
     // --- Strafe helper (used by all behaviors) ---
@@ -5112,14 +5110,17 @@ const SparSystem = {
     } else if (!isOpening && ai._centerRecoveryPolicy) {
       // === CENTER RECOVERY — committed geometry change to escape losing center ===
       suppressPeekShots = true;
-      const crDir = ai._centerRecoveryCommitDir || (Math.random() < 0.5 ? -1 : 1);
+      let crDir = ai._centerRecoveryCommitDir || (Math.random() < 0.5 ? -1 : 1);
       const crPolicy = ai._centerRecoveryPolicy;
+
+      // Wall safety: if heading toward a wall, flip commit direction immediately
+      if (crDir < 0 && bot.x < TILE * 3) { crDir = 1; ai._centerRecoveryCommitDir = 1; }
+      else if (crDir > 0 && bot.x > arenaW - TILE * 3) { crDir = -1; ai._centerRecoveryCommitDir = -1; }
 
       if (crPolicy === 'crossCommit') {
         // Committed lateral crossing — full speed to one side, slight descent allowed
         moveX = crDir * speed * 0.9;
         moveY = (bot.y < tgt.y) ? speed * 0.2 : speed * 0.05;
-        // Suppress any corrective strafing during commitment
       } else if (crPolicy === 'fakeCrossBreak') {
         // Phase 1 (first 12 frames): show one direction
         // Phase 2 (after): reverse sharply and break the other way
@@ -5127,7 +5128,11 @@ const SparSystem = {
           moveX = crDir * speed * 0.7;
           moveY = speed * 0.1;
         } else {
-          moveX = -crDir * speed * 0.95;
+          // Reverse direction — also wall-check the reverse
+          let revDir = -crDir;
+          if (revDir < 0 && bot.x < TILE * 3) revDir = 1;
+          else if (revDir > 0 && bot.x > arenaW - TILE * 3) revDir = -1;
+          moveX = revDir * speed * 0.95;
           moveY = (bot.y < tgt.y) ? speed * 0.25 : speed * 0.05;
         }
       } else if (crPolicy === 'baitShotDrop') {
