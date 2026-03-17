@@ -4608,22 +4608,24 @@ const SparSystem = {
         // Cut off player's favored bottom side before descending
         const _sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
         const playerFavSide = (_sl && _sl.opening && _sl.opening.strafeLeft > 0.55) ? -1 : 1;
-        const denyX = midX + playerFavSide * arenaW * 0.25;
-        if (SparState.matchTimer < 60) {
-          // Phase 1: move laterally to deny lane
-          moveX = Math.sign(denyX - bot.x) * speed * 0.7;
-          moveY = speed * 0.4; // still descend, just slower
+        // Clamp deny target to arena bounds so we don't run into walls
+        const denyX = Math.max(TILE * 5, Math.min(arenaW - TILE * 5, midX + playerFavSide * arenaW * 0.2));
+        if (SparState.matchTimer < 45) {
+          // Phase 1: move laterally to deny lane while descending meaningfully
+          moveX = Math.sign(denyX - bot.x) * speed * 0.55;
+          moveY = speed * 0.55; // descend faster — bottom is the priority, not just lateral deny
         } else {
           // Phase 2: now race to bottom from deny position
           if (bot.y < routeGoalY - 10) moveY = speed * 0.95;
           moveX = Math.sign(routeGoalX - bot.x) * speed * 0.35;
         }
       } else if (contest === 'delayedDrop') {
-        // Stay high briefly (avoid early shot line), then drop opposite player
-        if (SparState.matchTimer < 50) {
-          // Hold high, strafe to avoid early shots
-          moveX = ai.strafeDir * speed * 0.8;
-          moveY = speed * 0.15;
+        // Brief lateral shift (avoid early shot line), then drop opposite player
+        // Don't waste too long — bottom is the priority
+        if (SparState.matchTimer < 30) {
+          // Short lateral phase — still descend meaningfully
+          moveX = ai.strafeDir * speed * 0.65;
+          moveY = speed * 0.45;
         } else {
           // Fast drop to bottom, opposite side of player
           const oppSide = tgt.x < midX ? arenaW * 0.7 : arenaW * 0.3;
@@ -5613,13 +5615,15 @@ const SparSystem = {
 
     // === CIRCUMSTANCE LAYERS (Phase 1c) ===
 
-    // After-hit momentum: within 30 frames of landing a hit, push harder
+    // After-hit momentum: within 30 frames of landing a hit, press advantage
+    // Only approach if far enough — don't blindly rush in after every hit
     if (ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30 && !isOpening && modifierLevel < 2) {
-      if (dist > 1) {
-        moveX += (dx / dist) * speed * 0.2;
-        moveY += (dy / dist) * speed * 0.2;
+      const hasHitAdvantage = hasBottom || (!badGunSide && laneQuality > 0.6);
+      if (dist > 1 && (dist > 200 || hasHitAdvantage)) {
+        const hitPush = dist > 200 ? 0.2 : 0.1; // weaker push when closer
+        moveX += (dx / dist) * speed * hitPush;
+        moveY += (dy / dist) * speed * hitPush;
       }
-      // Reduce shot timing hesitation (handled in shooting section)
     }
 
     // After-taking-hit defense: within 30 frames of taking a hit, strafe harder and back off
@@ -5715,9 +5719,13 @@ const SparSystem = {
           }
         } else if (ai._wallPressurePolicy === 'pressureWiden') {
           // Push toward enemy but offset wide to cut off escape
-          if (dist > 100 && dist > 1) {
+          // Wall pressure is deliberate advantage pressing — but don't stack on top
+          if (dist > 150 && dist > 1) {
             moveX += (dx / dist) * speed * 0.35;
             moveY += (dy / dist) * speed * 0.35;
+          } else if (dist < 100 && dist > 1) {
+            moveX -= (dx / dist) * speed * 0.15;
+            moveY -= (dy / dist) * speed * 0.1;
           }
           // Offset wide: move perpendicular to cut escape
           const perpDir = (tgt.x < midX) ? 1 : -1;
@@ -5751,9 +5759,9 @@ const SparSystem = {
         const topUrgency = Math.min(0.65, ai._topStuckFrames / 70) * posValueMult; // faster ramp
         // Push downward toward bottom position — strong base push
         moveY += speed * (0.3 + topUrgency);
-        // Push toward enemy X to not drift into a corner
-        if (Math.abs(dx) > 30) {
-          moveX += Math.sign(dx) * speed * 0.2;
+        // Push toward center (not toward enemy) to avoid corners — but only if far from center
+        if (Math.abs(bot.x - midX) > arenaW * 0.25) {
+          moveX += Math.sign(midX - bot.x) * speed * 0.15;
         }
       }
     }
