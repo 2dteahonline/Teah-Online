@@ -1451,6 +1451,7 @@ const SparSystem = {
     ai._centerRecoveryFrames = 0;
     ai._centerRecoveryStartDmg = 0;
     ai._centerRecoveryCommitDir = 0;
+    ai._crWallRedirects = 0;
   },
 
   // v11: Wall pressure policy picker
@@ -4314,16 +4315,27 @@ const SparSystem = {
         }
         ai._centerRecoveryFrames = 0;
         ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
+        ai._crWallRedirects = 0;
         // Flip commit direction on escalation
         ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
         // Wall safety check on new direction
         if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
         else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
       }
-      // Wall contact during recovery = ALWAYS FAILURE — wall is not an exit, it's another trap
+      // Wall contact during recovery = REDIRECT, not kill
+      // The bot hit a wall — flip commit direction and keep going (wall is not an exit)
+      // Only truly fail if bot has been wall-stuck for multiple redirect attempts
       if (ai._centerRecoveryPolicy && ai._centerRecoveryFrames >= 5 && (nearLeftWallBase || nearRightWallBase)) {
-        this._finalizeCenterRecovery(ai, false, false, false);
-        ai._centerRecoveryCooldown = 30;
+        ai._crWallRedirects = (ai._crWallRedirects || 0) + 1;
+        if (ai._crWallRedirects >= 3) {
+          // 3+ wall contacts — this recovery is truly stuck, finalize as failure
+          this._finalizeCenterRecovery(ai, false, false, false);
+          ai._centerRecoveryCooldown = 30;
+          ai._crWallRedirects = 0;
+        } else {
+          // Flip direction and continue — wall is a bounce, not a stop
+          ai._centerRecoveryCommitDir = nearLeftWallBase ? 1 : -1;
+        }
       }
       // Also finalize if we entered a higher-priority state
       if (ai._centerRecoveryPolicy && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
@@ -4333,10 +4345,15 @@ const SparSystem = {
         }
       }
     }
-    // Open center recovery if center-trapped — preempts antiBottom
+    // Open center recovery if center-trapped — preempts antiBottom AND escape
     // The "center-trapped with enemy having bottom" state is exactly when CR should fire
-    if (centerTrapped && !ai._centerRecoveryPolicy && !(ai._centerRecoveryCooldown > 0) &&
-        !ai._escapePolicy) {
+    // Escape is too generic for this specific positional problem — CR targets winning lanes
+    if (centerTrapped && !ai._centerRecoveryPolicy && !(ai._centerRecoveryCooldown > 0)) {
+      // Finalize active escape — CR is the specific fix for this state
+      if (ai._escapePolicy && ai._escapeFrames >= 5) {
+        this._finalizeEscapeEngagement(ai, false);
+        ai._escapeCooldown = 0; // no cooldown — CR takes over immediately
+      }
       // Finalize active antiBottom — centerRecovery owns the center-trapped state
       if (ai._antiBottomTactic && ai._antiBottomFrames >= 5) {
         this._finalizeAntiBottomEngagement(ai, false, SparState._matchCollector);
@@ -4369,6 +4386,7 @@ const SparSystem = {
       ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
       ai._centerRecoveryFrames = 0;
       ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
+      ai._crWallRedirects = 0;
       // Pick commit direction: away from enemy, but NEVER toward a nearby wall
       const awayFromEnemy = -Math.sign(dx || 1) || (Math.random() < 0.5 ? -1 : 1);
       // Wall safety: if committing toward a wall within 4 tiles, flip direction
@@ -4381,10 +4399,15 @@ const SparSystem = {
       }
     }
     // Oscillation rescue: if oscillating without a recovery policy, force one immediately
-    // centerRecovery preempts antiBottom — the exact state CR is designed to fix
-    if (centerOscillating && !ai._centerRecoveryPolicy && !ai._escapePolicy &&
+    // centerRecovery preempts antiBottom AND escape — the exact state CR is designed to fix
+    if (centerOscillating && !ai._centerRecoveryPolicy &&
         !isOpening && !(ai._centerRecoveryCooldown > 0) &&
         SparState.phase === 'fighting') {
+      // Finalize active escape — CR is the specific fix for oscillation
+      if (ai._escapePolicy && ai._escapeFrames >= 5) {
+        this._finalizeEscapeEngagement(ai, false);
+        ai._escapeCooldown = 0;
+      }
       // Finalize active antiBottom if present — centerRecovery owns this state
       if (ai._antiBottomTactic && ai._antiBottomFrames >= 5) {
         this._finalizeAntiBottomEngagement(ai, false, SparState._matchCollector);
@@ -4400,6 +4423,7 @@ const SparSystem = {
       ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
       ai._centerRecoveryFrames = 0;
       ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
+      ai._crWallRedirects = 0;
       // Wall safety: pick direction away from nearest wall
       const oscDir = bot.x < midX ? 1 : -1;
       ai._centerRecoveryCommitDir = (bot.x < TILE * 4) ? 1 : (bot.x > arenaW - TILE * 4) ? -1 : oscDir;
@@ -5208,9 +5232,13 @@ const SparSystem = {
         moveX = awayDir * speed * 0.65 + ai.strafeDir * speed * 0.25;
         moveY = (pm && pm.playerChases > 0.45 ? 0.45 : 0.2) * speed;
       }
+      // Wall avoidance inside escape — prevent drifting into dead wall states
+      if (bot.x < TILE * 4) moveX = Math.max(moveX, speed * 0.3);
+      else if (bot.x > arenaW - TILE * 4) moveX = Math.min(moveX, -speed * 0.3);
+      if (bot.y < TILE * 3) moveY = Math.max(moveY, speed * 0.1);
       if (!topCornerTrapped && laneQuality > 0.62 && !badGunSide && dist < 165) suppressPeekShots = false;
     } else if (!isOpening && ai._centerRecoveryPolicy) {
-      // === CENTER RECOVERY — committed geometry change to escape losing center ===
+      // === CENTER RECOVERY — target-lane movement to reach a winning position ===
       suppressPeekShots = true;
       let crDir = ai._centerRecoveryCommitDir || (Math.random() < 0.5 ? -1 : 1);
       const crPolicy = ai._centerRecoveryPolicy;
@@ -5219,40 +5247,94 @@ const SparSystem = {
       if (crDir < 0 && bot.x < TILE * 3) { crDir = 1; ai._centerRecoveryCommitDir = 1; }
       else if (crDir > 0 && bot.x > arenaW - TILE * 3) { crDir = -1; ai._centerRecoveryCommitDir = -1; }
 
+      // --- TARGET-LANE COMPUTATION ---
+      // Cross policies: target the X that restores favorable gun-side
+      // Bottom policies: target the position under the opponent with lateral offset
+      const botGunSide = this._getEntityGunSide(bot);
+      // Right gun side → muzzle shoots from left → bot should be RIGHT of enemy
+      // Left gun side → muzzle shoots from right → bot should be LEFT of enemy
+      const favorableGunSideDir = (botGunSide === 'right') ? 1 : -1;
+      const sideOffsetWide = this._getSparSideOffsetWide();
+      const crossTargetX = tgt.x + favorableGunSideDir * sideOffsetWide;
+      const bottomTargetX = tgt.x + favorableGunSideDir * sideOffsetNear;
+      const bottomTargetY = tgt.y + bottomGap + 20;
+
+      // Clamp targets to arena bounds (avoid steering into walls)
+      const clampedCrossX = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, crossTargetX));
+      const clampedBottomX = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, bottomTargetX));
+      const clampedBottomY = Math.min(arenaH - TILE * 3, bottomTargetY);
+
       if (crPolicy === 'crossCommit') {
-        // Committed lateral crossing — full speed to one side, slight descent allowed
-        moveX = crDir * speed * 0.9;
-        moveY = (bot.y < tgt.y) ? speed * 0.2 : speed * 0.05;
+        // Steer toward the favorable gun-side position
+        const goalDx = clampedCrossX - bot.x;
+        const goalDy = (bot.y < tgt.y ? speed * 0.2 : speed * 0.05); // slight descent if above
+        const goalDist = Math.abs(goalDx);
+        if (goalDist > 10) {
+          moveX = Math.sign(goalDx) * speed * 0.9;
+          moveY = goalDy;
+        } else {
+          // Arrived at target — hold with strafe
+          moveX = ai.strafeDir * speed * 0.5;
+          moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
+        }
       } else if (crPolicy === 'fakeCrossBreak') {
-        // Phase 1 (first 12 frames): show one direction
-        // Phase 2 (after): reverse sharply and break the other way
+        // Phase 1 (first 12 frames): show one direction (opposite of real target)
         if (ai._centerRecoveryFrames < 12) {
-          moveX = crDir * speed * 0.7;
+          moveX = -Math.sign(clampedCrossX - bot.x || crDir) * speed * 0.7;
           moveY = speed * 0.1;
         } else {
-          // Reverse direction — also wall-check the reverse
-          let revDir = -crDir;
-          if (revDir < 0 && bot.x < TILE * 3) revDir = 1;
-          else if (revDir > 0 && bot.x > arenaW - TILE * 3) revDir = -1;
-          moveX = revDir * speed * 0.95;
-          moveY = (bot.y < tgt.y) ? speed * 0.25 : speed * 0.05;
+          // Phase 2: reverse and steer toward actual favorable gun-side position
+          const goalDx = clampedCrossX - bot.x;
+          if (Math.abs(goalDx) > 10) {
+            moveX = Math.sign(goalDx) * speed * 0.95;
+            moveY = (bot.y < tgt.y) ? speed * 0.25 : speed * 0.05;
+          } else {
+            moveX = ai.strafeDir * speed * 0.5;
+            moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
+          }
         }
       } else if (crPolicy === 'baitShotDrop') {
         // Phase 1 (first 15 frames): hold position to bait upward shot
-        // Phase 2: sharp descent / under-entry
         if (ai._centerRecoveryFrames < 15) {
           moveX = ai.strafeDir * speed * 0.35;
-          moveY = speed * 0.05; // minimal movement — bait
+          moveY = speed * 0.05;
         } else {
-          moveX = crDir * speed * 0.4;
-          moveY = speed * 0.75; // hard descent
+          // Phase 2: steer toward bottom target position (under opponent)
+          const goalDx = clampedBottomX - bot.x;
+          const goalDy = clampedBottomY - bot.y;
+          const goalDist = Math.sqrt(goalDx * goalDx + goalDy * goalDy);
+          if (goalDist > 15) {
+            moveX = (goalDx / goalDist) * speed * 0.55;
+            moveY = (goalDy / goalDist) * speed * 0.75;
+          } else {
+            moveX = ai.strafeDir * speed * 0.4;
+            moveY = speed * 0.1;
+          }
         }
       } else if (crPolicy === 'wideUnderEntry') {
-        // Give up center pressure entirely — widen out and descend to RECOVER BOTTOM
-        // Bottom recovery is the primary goal — push hard downward
-        moveX = crDir * speed * 0.5;
-        moveY = speed * 0.7;
+        // Steer toward bottom target: get under opponent from a wide angle
+        const goalDx = clampedBottomX - bot.x;
+        const goalDy = clampedBottomY - bot.y;
+        const goalDist = Math.sqrt(goalDx * goalDx + goalDy * goalDy);
+        if (goalDist > 15) {
+          // Weight vertical more heavily — bottom is the primary goal
+          moveX = (goalDx / goalDist) * speed * 0.5;
+          moveY = (goalDy / goalDist) * speed * 0.8;
+          // Normalize to full speed
+          const len = Math.sqrt(moveX * moveX + moveY * moveY);
+          if (len > 0.1) { moveX = (moveX / len) * speed; moveY = (moveY / len) * speed; }
+        } else {
+          moveX = ai.strafeDir * speed * 0.4;
+          moveY = speed * 0.1;
+        }
       }
+
+      // --- WALL AVOIDANCE INSIDE CR ---
+      // CR movement must not drift into walls — apply nudge away from nearby walls
+      if (bot.x < TILE * 4) moveX = Math.max(moveX, speed * 0.3);
+      else if (bot.x > arenaW - TILE * 4) moveX = Math.min(moveX, -speed * 0.3);
+      if (bot.y < TILE * 3) moveY = Math.max(moveY, speed * 0.1);
+      else if (bot.y > arenaH - TILE * 3) moveY = Math.min(moveY, -speed * 0.1);
 
       // Allow shots during center recovery if lane is briefly clean
       if (laneQuality > 0.62 && !badGunSide && dist < 160) suppressPeekShots = false;
