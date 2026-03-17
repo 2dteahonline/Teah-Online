@@ -1006,8 +1006,11 @@ const LEVELS = {
       // === WORK COUNTER (clear plate) ===
       { type: 'diner_counter', tx: 17, ty: 7, w: 4, h: 2, solid: true },
 
-      // === TV ===
-      { type: 'diner_tv', tx: 21, ty: 7, w: 2, h: 3, solid: true },
+      // === TV (3 wide to cover red service counter block at tx:23) ===
+      { type: 'diner_tv', tx: 21, ty: 7, w: 3, h: 3, solid: true },
+
+      // === KITCHEN WALKWAY FLOOR (covers area below service counter) ===
+      { type: 'diner_kitchen_floor', tx: 1, ty: 16, w: 22, h: 5, solid: false },
 
       // === DINING AREA FLOOR ===
       { type: 'diner_floor', tx: 25, ty: 1, w: 22, h: 20, solid: false },
@@ -1093,12 +1096,12 @@ const LEVELS = {
       "#..........................................#",  // ty:16
       "#..........................................#",  // ty:17
       "#..........................................#",  // ty:18 (kitchen floor ends)
-      "####################.......................#",  // ty:19 — kitchen corner wall, dining open
-      "####################.......................#",  // ty:20 — NPC walkway (dining side)
-      "####################.......................#",  // ty:21
-      "####################.......................#",  // ty:22
-      "####################.......................#",  // ty:23 — exit area (dining side)
-      "####################.......................#",  // ty:24
+      "#..........................................#",  // ty:19 — widened walkway
+      "#..........................................#",  // ty:20 — NPC walkway
+      "#..........................................#",  // ty:21
+      "#..........................................#",  // ty:22
+      "#..........................................#",  // ty:23 — exit area
+      "#..........................................#",  // ty:24
       "############################################"
     ],
     entities: [
@@ -1108,6 +1111,7 @@ const LEVELS = {
       // === FLOOR TILES ===
       { type: 'fd_floor_kitchen', tx: 1, ty: 1, w: 17, h: 18, solid: false },
       { type: 'fd_floor_dining', tx: 20, ty: 1, w: 23, h: 24, solid: false },
+      { type: 'fd_floor_dining', tx: 1, ty: 19, w: 19, h: 6, solid: false },  // widened left walkway
 
       // === SERVICE WALL (tx 18-19, solid with door gap at ty 14-15) ===
       { type: 'fd_service_wall', tx: 18, ty: 1, w: 2, h: 13, solid: true },

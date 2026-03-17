@@ -20,8 +20,8 @@ const DINER_NPC_NAMES = typeof DINER_NAME_POOL !== 'undefined' ? DINER_NAME_POOL
 
 // ===================== DEFINED SPOTS =====================
 const DINER_SPOTS = {
-  exit:        { tx: 27, ty: 21 },
-  customerExit: { tx: 45, ty: 21 },
+  exit:        { tx: 45, ty: 21 },   // NPCs enter/exit through right door
+  customerExit: { tx: 45, ty: 21 },  // same as exit — single NPC door
   passWindow:  { tx: 23, ty: 14 },
   counterWait: { tx: 12, ty: 16 }, // waitress idle spot — dining side, south of pickup counter
 };
@@ -159,15 +159,16 @@ function _routeDinerSeatToBoothEntry(boothId, seatIdx) {
 
 function _routeDinerExitToBooth(boothId, corridorTX) {
   const booth = DINER_BOOTHS[boothId];
-  const cx = corridorTX || 27;
   const route = [];
-  route.push({ tx: cx, ty: 14 });           // north to main corridor
+  // NPCs enter from right door (tx:45, ty:21)
+  // Walk north to main corridor, then west to booth
+  route.push({ tx: 44, ty: 14 });           // north to main corridor via east side
   if (booth.tx >= 38) {
-    // Right column booth — go east through gap
+    // Right column booth — go west to gap column
     route.push({ tx: 36, ty: 14 });
     route.push({ tx: 36, ty: booth.ty + 1 });
   } else {
-    // Left column booth — go to tx:26 corridor then north
+    // Left column booth — go west through gap to left corridor
     route.push({ tx: 26, ty: 14 });
     route.push({ tx: 26, ty: booth.ty + 1 });
   }
@@ -276,9 +277,8 @@ function _routeBoothToPass(boothId) { return _routeBoothToCounter(boothId); }
 function _routeDinerExitToArcade(arcadeIdx, corridorTX) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  const cx = corridorTX || 27;
+  // NPCs enter from right door (tx:45) — arcade is nearby, just walk north
   return _cConcatRoutes(
-    [_cWP(cx, 14)],
     [_cWP(44, 14)],
     [_cWP(44, spot.ty)],
     [_cWP(spot.tx, spot.ty)]
@@ -371,7 +371,8 @@ function moveDinerNPC(npc) {
 
 // ===================== SPAWN =====================
 function _spawnDinerNPC(partyId, isLeader, corridorTX, extraOverrides) {
-  const spawnTX = corridorTX || DINER_SPOTS.exit.tx;
+  // NPCs always spawn at the right door (customer exit)
+  const spawnTX = DINER_SPOTS.exit.tx;
   const npc = _cCreateNPC(_dinerIdCounter, { tx: spawnTX, ty: DINER_SPOTS.exit.ty }, DINER_NPC_APPEARANCES, DINER_NPC_NAMES, DINER_NPC_CONFIG, {
     partyId: partyId,
     isLeader: isLeader,
