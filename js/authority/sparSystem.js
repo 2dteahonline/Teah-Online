@@ -1069,7 +1069,7 @@ const SparSystem = {
       g.reloading = true;
       // Same reload formula as player: getReloadTime() = Math.round(20 + firerate * 0.25)
       // Bot's firerate stat is derived from rof points, use same calculation
-      g.reloadTimer = g.reloadSpeed || Math.round(20 + (g._sparRof || 50) * 0.25);
+      g.reloadTimer = g.reloadSpeed || Math.round((20 + (g._sparRof || 50) * 0.25) * 1.2);
     }
   },
 

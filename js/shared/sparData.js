@@ -22,13 +22,15 @@ const SPAR_CTX_STATS = {
   freezeToStat(pts) {
     return { freezePenalty: 0.90 - pts * 0.009, freezeDuration: 15 };
   },
-  // RoF: slider → fireRate frames. Piecewise: below 50 slower, above 50 faster
+  // RoF: slider → fireRate frames. Piecewise curve, stretched so old 60→new 50.
+  // Input rescaled by 1.2x then fed through the base curve (costs more pts for same RoF).
   rofToStat(pts) {
+    const p = Math.min(100, pts * 1.2); // stretch: 50 new pts = 60 old pts
     let frames;
-    if (pts <= 50) {
-      frames = 11.025 - pts * 0.1125; // 0→11, 50→5.4
+    if (p <= 50) {
+      frames = 11.025 - p * 0.1125; // 0→11, ~42→5.4
     } else {
-      frames = 5.4 - (pts - 50) * 0.0375; // 50→5.4, 100→3.5
+      frames = 5.4 - (p - 50) * 0.0375; // ~42→5.4, 100→3.5
     }
     return frames;
   },

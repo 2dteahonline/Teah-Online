@@ -43,7 +43,10 @@ function getFreezePenalty() {
 // firerate 0 = 20 frames (0.33sec), firerate 100 = 45 frames (~0.75sec). At 50: ~33 frames (~0.55sec)
 function getReloadTime() {
   if (playerEquip.gun && playerEquip.gun.reloadSpeed) return playerEquip.gun.reloadSpeed;
-  return Math.round(20 + gunStats.firerate * 0.25);
+  const base = Math.round(20 + gunStats.firerate * 0.25);
+  // CT-X gets 20% longer reload
+  if (playerEquip.gun && playerEquip.gun.id === 'ct_x') return Math.round(base * 1.2);
+  return base;
 }
 
 // gun → js/authority/gameState.js
