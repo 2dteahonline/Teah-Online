@@ -23,6 +23,7 @@ const SPAR_TRAINING_TIMING = {
   useTimeoutScheduler: true,
   logEveryMatches: 100,
   saveEveryMatches: 50,
+  snapshotRefreshEvery: 500,
 };
 
 const SPAR_TRAINING_ARCHETYPES = {
@@ -785,6 +786,13 @@ function _sparTrainOnMatchEnd(won) {
     if (won) sr.losses++; else sr.wins++;
     const dmgDelta = (enemyBot.ai._matchDmgDealt || 0) - (enemyBot.ai._matchDmgTaken || 0);
     sr.avgDmgDelta = sr.total > 1 ? (0.5 * sr.avgDmgDelta + 0.5 * dmgDelta) : dmgDelta;
+  }
+
+  // Refresh snapshot every N matches so opponent difficulty scales with bot improvement
+  const refreshEvery = SPAR_TRAINING_TIMING.snapshotRefreshEvery || 500;
+  if (_sparTrainState.mode === 'selfplay' && _sparTrainState.completedMatches % refreshEvery === 0) {
+    _sparTrainState.snapshotPolicy = _cloneTrainingPolicy(typeof sparLearning !== 'undefined' ? sparLearning : null);
+    console.log(`[SparTrain] Snapshot refreshed at match ${_sparTrainState.completedMatches} — opponent now uses latest learned policy`);
   }
 
   const saveEvery = SPAR_TRAINING_TIMING.saveEveryMatches || 1;
