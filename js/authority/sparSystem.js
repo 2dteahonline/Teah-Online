@@ -4823,6 +4823,23 @@ const SparSystem = {
       }
       if (bot.y > arenaH - TILE * 2) moveY -= speed * 0.3;
 
+      // --- BOTTOM RETENTION: dodge incoming bullets while maintaining bottom ---
+      // When we have bottom and bullets are incoming, dodge to preserve position
+      // rather than standing still and eating hits. Re-stabilize after dodge.
+      const bottomDodge = this._getIncomingBulletDodge(bot, team);
+      const bottomDodgeMag = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
+      if (bottomDodgeMag > 0.5) {
+        // Dodge laterally to preserve bottom — don't dodge upward (would lose bottom)
+        moveX += bottomDodge.x * speed * 0.75;
+        // Only allow downward or minimal vertical dodge — never dodge up significantly
+        if (bottomDodge.y > 0) moveY += bottomDodge.y * speed * 0.3; // downward dodge OK
+        // else: suppress upward dodge to keep bottom position
+      }
+      // If recently took a hit, increase strafe speed to be harder to hit
+      if (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 20) {
+        moveX *= 1.2; // faster strafe after getting hit
+      }
+
     } else if (enemyHasBottom && ai._antiBottomHysteresisFrames >= 20 && !(ai._antiBottomCooldown > 0)) {
       // === ENEMY HAS BOTTOM — v8 tactical retake system ===
       const aimSlack = this._getSparAimSlack();
@@ -5266,22 +5283,41 @@ const SparSystem = {
       const clampedBottomX = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, bottomTargetX));
       const clampedBottomY = Math.min(arenaH - TILE * 3, bottomTargetY);
 
+      // --- CROSS PATH SAFETY ---
+      // If too close to enemy, crossing directly is predictable and dangerous.
+      // Create space first before committing to the cross.
+      const crossUnsafe = dist < 160 && (crPolicy === 'crossCommit' || crPolicy === 'fakeCrossBreak');
+      // "Safe enough" = bullet travel distance makes dodge realistic
+      const needsSpace = crossUnsafe && ai._centerRecoveryFrames < 20;
+
       if (crPolicy === 'crossCommit') {
-        // Steer toward the favorable gun-side position
-        const goalDx = clampedCrossX - bot.x;
-        const goalDy = (bot.y < tgt.y ? speed * 0.2 : speed * 0.05); // slight descent if above
-        const goalDist = Math.abs(goalDx);
-        if (goalDist > 10) {
-          moveX = Math.sign(goalDx) * speed * 0.9;
-          moveY = goalDy;
+        if (needsSpace) {
+          // Too close — create space first: back away laterally while widening
+          const awayDir = -Math.sign(dy || 1); // vertical away from enemy
+          moveX = crDir * speed * 0.5;          // still drift toward target side
+          moveY = awayDir * speed * 0.6;         // but back off to create distance
         } else {
-          // Arrived at target — hold with strafe
-          moveX = ai.strafeDir * speed * 0.5;
-          moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
+          // Safe distance or enough frames passed — commit to cross
+          const goalDx = clampedCrossX - bot.x;
+          const goalDy = (bot.y < tgt.y ? speed * 0.2 : speed * 0.05);
+          const goalDist = Math.abs(goalDx);
+          if (goalDist > 10) {
+            moveX = Math.sign(goalDx) * speed * 0.9;
+            moveY = goalDy;
+          } else {
+            // Arrived at target — hold with strafe
+            moveX = ai.strafeDir * speed * 0.5;
+            moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
+          }
         }
       } else if (crPolicy === 'fakeCrossBreak') {
-        // Phase 1 (first 12 frames): show one direction (opposite of real target)
-        if (ai._centerRecoveryFrames < 12) {
+        if (needsSpace) {
+          // Too close — create space before the fake-then-break
+          const awayDir = -Math.sign(dy || 1);
+          moveX = -Math.sign(clampedCrossX - bot.x || crDir) * speed * 0.4;
+          moveY = awayDir * speed * 0.55;
+        } else if (ai._centerRecoveryFrames < 12) {
+          // Phase 1: show one direction (opposite of real target)
           moveX = -Math.sign(clampedCrossX - bot.x || crDir) * speed * 0.7;
           moveY = speed * 0.1;
         } else {
@@ -5891,18 +5927,68 @@ const SparSystem = {
       ai._momentumBreakFrames--;
     }
 
-    // vNext: Anti-passivity — detect low-motion in open neutral and force movement
-    const isInNeutralOpen = !isOpening && !member.gun.reloading && !enemyReloading &&
-      !ai._escapePolicy && !ai._wallPressurePolicy && !ai._centerRecoveryPolicy &&
-      !hasBottom && !enemyHasBottom &&
-      SparState.phase === 'fighting' && modifierLevel < 2;
+    // === OWNER-AWARE STALL DETECTOR ===
+    // Works in ALL states (not just neutral) — detects when an owner is active but
+    // the bot is barely moving or not improving geometry. Forces action to prevent
+    // the "stand still in a bad state" problem.
     const moveMag = Math.sqrt(moveX * moveX + moveY * moveY);
-    if (isInNeutralOpen && moveMag < speed * 0.15 && ai._momentumBreakFrames <= 0) {
-      ai._lowMotionFrames++;
-    } else {
-      ai._lowMotionFrames = 0;
+    const hasActiveOwner = !!(ai._escapePolicy || ai._centerRecoveryPolicy || ai._antiBottomTactic || ai._gunSidePolicy);
+
+    // Track displacement over rolling window
+    ai._stallDispX = (ai._stallDispX || 0) + moveX;
+    ai._stallDispY = (ai._stallDispY || 0) + moveY;
+    ai._stallWindow = (ai._stallWindow || 0) + 1;
+
+    if (ai._stallWindow >= 10) {
+      const netDisp = Math.sqrt(ai._stallDispX * ai._stallDispX + ai._stallDispY * ai._stallDispY);
+      const isStalled = netDisp < speed * 2.5; // less than 2.5 frames worth of movement in 10 frames
+
+      if (isStalled && hasActiveOwner && ai._momentumBreakFrames <= 0 && SparState.phase === 'fighting') {
+        ai._ownerStallFrames = (ai._ownerStallFrames || 0) + 10;
+        // After 10 frames of stalling in an owner state, force action
+        if (ai._ownerStallFrames >= 10) {
+          // Repick the current owner or force a strong break
+          if (ai._centerRecoveryPolicy) {
+            // CR is stalled — escalate: flip direction and force movement
+            ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
+            if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
+            else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
+          }
+          // Force momentum break regardless of owner
+          const breakDir = (bot.x < midX) ? 1 : -1;
+          const breakDirY = (bot.y < tgt.y) ? 0.4 : -0.15;
+          moveX = breakDir * speed * 0.8;
+          moveY = breakDirY * speed;
+          ai.strafeDir = breakDir;
+          ai.strafeTimer = 15 + Math.floor(Math.random() * 15);
+          ai._momentumBreakFrames = 15 + Math.floor(Math.random() * 10);
+          ai._momentumBreakDirX = breakDir * 0.8;
+          ai._momentumBreakDirY = breakDirY;
+          ai._ownerStallFrames = 0;
+          // Allow shooting during stall break (see shot suppression fail-safe below)
+          ai._stallBreakActive = true;
+        }
+      } else {
+        ai._ownerStallFrames = 0;
+        ai._stallBreakActive = false;
+      }
+
+      // Also detect stalling in neutral (existing low-motion rescue)
+      const isInNeutralOpen = !hasActiveOwner && !isOpening && !member.gun.reloading &&
+        !enemyReloading && !ai._wallPressurePolicy && SparState.phase === 'fighting';
+      if (isInNeutralOpen && isStalled && ai._momentumBreakFrames <= 0) {
+        ai._lowMotionFrames = (ai._lowMotionFrames || 0) + 10;
+      } else if (!hasActiveOwner) {
+        ai._lowMotionFrames = 0;
+      }
+
+      // Reset window
+      ai._stallDispX = 0;
+      ai._stallDispY = 0;
+      ai._stallWindow = 0;
     }
-    if (ai._lowMotionFrames >= 12) {
+
+    if ((ai._lowMotionFrames || 0) >= 12) {
       // Force lateral break with momentum commitment
       const breakDir = (Math.random() < 0.5 ? -1 : 1);
       const breakDirY = (bot.y < tgt.y) ? 0.3 : ((Math.random() < 0.5 ? -1 : 1) * 0.2);
@@ -5911,11 +5997,9 @@ const SparSystem = {
       ai.strafeDir = breakDir;
       ai.strafeTimer = 15 + Math.floor(Math.random() * 20);
       ai._lowMotionFrames = 0;
-      // Commit to this break direction for 25-35 frames
       ai._momentumBreakFrames = 25 + Math.floor(Math.random() * 10);
       ai._momentumBreakDirX = breakDir * 0.7;
       ai._momentumBreakDirY = breakDirY;
-      // Track diagnostics
       if (sl && sl.tactical) {
         if (typeof sl.tactical.lowMotionRescues !== 'number') sl.tactical.lowMotionRescues = 0;
         sl.tactical.lowMotionRescues++;
@@ -5964,8 +6048,9 @@ const SparSystem = {
     } else {
       ai._idleFrames = 0;
     }
-    // After 20 idle frames, if not escaping or self reloading, force a lateral break with momentum
-    if (ai._idleFrames >= 20 && !ai._escapePolicy && !ai._centerRecoveryPolicy && !(member && member.gun.reloading) && modifierLevel < 2) {
+    // After 20 idle frames, force a lateral break — works in ALL states including owner states
+    // The bot should NEVER visibly stand still for 20+ frames regardless of owner
+    if (ai._idleFrames >= 20 && !(member && member.gun.reloading)) {
       const breakDir = (Math.random() < 0.5 ? -1 : 1);
       const breakDirY = (bot.y < tgt.y) ? 0.3 : ((Math.random() < 0.5 ? -1 : 1) * 0.25);
       moveX = breakDir * speed * 0.7;
@@ -6061,9 +6146,24 @@ const SparSystem = {
 
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
       const hasLOS = this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20);
-      const policyShotAllowed = (!ai._escapePolicy && !suppressPeekShots)
-        || (laneQuality > 0.62 && !badGunSide)
-        || (dist < 130 && botLaneScore >= enemyLaneScore);
+      // --- OPENING FIRE GATE ---
+      // During the bottom race (first ~90 frames), only shoot if truly free:
+      // - bot already reached bottom (y > 80% of arena)
+      // - target is very close and aligned (free shot doesn't cost bottom race time)
+      // - bot is clearly not going to win the bottom race anyway (topHold route)
+      // This prevents burning 5+ opening shots that just delay the bottom contest.
+      const openingFireGated = isOpening && SparState.matchTimer < 90 &&
+        bot.y < arenaH * 0.75 && // haven't reached bottom yet
+        ai._openingRoute !== 'topHold' && // topHold routes don't race for bottom
+        !(dist < 120 && Math.min(Math.abs(tgt.x - bot.x), Math.abs(tgt.y - bot.y)) < aimSlack); // not a free close shot
+
+      const policyShotAllowed = (!ai._escapePolicy && !suppressPeekShots && !openingFireGated)
+        || (laneQuality > 0.62 && !badGunSide && !openingFireGated)
+        || (dist < 130 && botLaneScore >= enemyLaneScore)
+        // Stall-break fail-safe: if bot is stalled in an owner state, allow defensive firing
+        || (ai._stallBreakActive && laneQuality > 0.35)
+        // Long-stall fail-safe: if suppressPeekShots has been active 30+ frames without progress
+        || (ai._ownerStallFrames >= 20 && laneQuality > 0.40);
 
       if (!policyShotAllowed) {
         // Hold fire while escaping or re-angling out of a bad lane.
