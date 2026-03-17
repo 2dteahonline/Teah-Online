@@ -689,7 +689,7 @@ const SparSystem = {
     const rf = this._ensureReinforcementProfile(sl);
     const familyMap = typeof SPAR_GUN_SIDE_FAMILY_MAP !== 'undefined'
       ? SPAR_GUN_SIDE_FAMILY_MAP
-      : { forcePeek: 'hold', holdAngle: 'hold', reAngleWide: 'reposition', yieldLane: 'reposition' };
+      : { forcePeek: 'hold', holdAngle: 'hold', reAngleWide: 'reposition', yieldLane: 'reposition', peekPressure: 'pressure' };
     const pPolicy = rf && rf.player ? rf.player.gunSidePolicy : null;
     const gPolicy = rf && rf.general ? rf.general.gunSidePolicy : null;
     const sPolicy = rf && rf.selfPlay ? rf.selfPlay.gunSidePolicy : null;
@@ -710,6 +710,7 @@ const SparSystem = {
       preAimLaneHold: Math.max(0, laneFail - 1),
       reAngleWide: 0,
       yieldLane: 0,
+      peekPressure: 0,
     };
     const baseScores = {
       forcePeek: laneInfo && laneInfo.score > 0.56 ? 7 : 3,
@@ -717,8 +718,9 @@ const SparSystem = {
       preAimLaneHold: laneInfo && laneInfo.score > 0.52 ? 7 : 4,
       reAngleWide: 7,
       yieldLane: 6,
+      peekPressure: laneInfo && laneInfo.score > 0.55 ? 8 : 4,
     };
-    const familyBiases = { hold: 0, reposition: 0 };
+    const familyBiases = { hold: 0, reposition: 0, pressure: 0 };
     if (laneInfo) {
       if (laneInfo.badGunSide) familyBiases.reposition += 4;
       if (laneInfo.repeekedBadLane) familyBiases.reposition += 5;
@@ -2438,6 +2440,53 @@ const SparSystem = {
     const e = member.entity;
     const g = member.gun;
     const bspd = GAME_CONFIG.BULLET_SPEED;
+    const ai = member.ai;
+
+    // --- WALLING MODE ---
+    // When walling, shoot in a fixed horizontal direction (toward opponent's side)
+    // instead of aiming at the opponent. The bot's diagonal strafing creates the
+    // Y-stagger between consecutive bullets, forming an undodgable wall.
+    if (ai._wallMode) {
+      const wallDir = (target.x > e.x) ? 3 : 2; // shoot toward opponent's side
+      e.dir = wallDir;
+      // Compute muzzle position for this aim direction
+      const bx = e.x - 20, by = e.y - 68;
+      const bodyL = bx + 2, bodyR = bx + 36;
+      const armY = by + 35;
+      const isRight = e._gunSide === 'right';
+      let mx, my;
+      if (wallDir === 2) { mx = bodyL + 2 - 49; my = isRight ? (armY - 20) : (armY + 20); }
+      else { mx = bodyR + 9 + 49; my = isRight ? (armY + 20) : (armY - 20); }
+      const bvx = wallDir === 3 ? bspd : -bspd;
+      // Apply spread
+      let fvx = bvx, fvy = 0;
+      const spreadDeg = g.spread || 0;
+      if (spreadDeg > 0) {
+        const spreadRad = spreadDeg * Math.PI / 180;
+        const randOffset = (Math.random() - 0.5) * spreadRad;
+        fvx = Math.cos(randOffset) * bspd * Math.sign(bvx);
+        fvy = Math.sin(randOffset) * bspd;
+      }
+      // Fire the wall bullet — skip predictive aiming entirely
+      bullets.push({
+        id: typeof nextBulletId !== 'undefined' ? nextBulletId++ : Date.now() + Math.random(),
+        x: mx, y: my, vx: fvx, vy: fvy,
+        fromPlayer: true, sparTeam: member._sparTeam,
+        damage: g.damage, special: g.special, ownerId: member.id,
+        _botBullet: true, bulletColor: g.bulletColor || null,
+        startX: mx, startY: my, _sparDir: e.dir,
+      });
+      g.ammo--;
+      ai.shootCD = Math.round((g.fireRate || 5) * 4);
+      ai._freezeTimer = g.freezeDuration || 15;
+      ai._freezePenalty = g.freezePenalty != null ? g.freezePenalty : 0.54;
+      g.recoilTimer = 6;
+      if (g.ammo <= 0) {
+        g.reloading = true;
+        g.reloadTimer = this._getSparReloadFrames(g);
+      }
+      return;
+    }
 
     // PREDICTIVE AIMING: lead the target based on velocity and distance
     const tVx = target.vx || 0, tVy = target.vy || 0;
@@ -2613,6 +2662,60 @@ const SparSystem = {
       dodgeY = (dodgeY / dodgeLen) * maxDodge;
     }
     return { x: dodgeX, y: dodgeY };
+  },
+
+  // --- BULLET GAP READING: scan live bullet field for safe crossing corridors ---
+  // Returns { vertClear, horizClear, gapQuality (0-1), bestCrossDir (-1 or 1) }
+  // vertClear = safe to descend/ascend through vertical corridor
+  // horizClear = safe to cross laterally
+  // gapQuality = overall safety of the best crossing path (1 = totally clear)
+  _findSafeCrossWindow(bot, tgt, team) {
+    const bspd = GAME_CONFIG.BULLET_SPEED || 9;
+    const hitR = this._getSparPerpHitRadius();
+    const lookAheadFrames = 20; // how far ahead to project bullet trajectories
+    const corridorWidth = hitR * 2.5; // width of the crossing corridor to check
+    let vertThreats = 0, horizThreats = 0;
+    let leftThreats = 0, rightThreats = 0;
+
+    for (const b of bullets) {
+      if (!b.sparTeam || b.sparTeam === team) continue;
+      const dbx = bot.x - b.x, dby = bot.y - b.y;
+      const bDist = Math.sqrt(dbx * dbx + dby * dby);
+      if (bDist > bspd * lookAheadFrames * 1.5) continue; // too far to matter
+
+      // Project bullet position over the next lookAheadFrames
+      for (let f = 0; f <= lookAheadFrames; f += 4) {
+        const projX = b.x + b.vx * f;
+        const projY = b.y + b.vy * f;
+
+        // Check vertical corridor (bot descending/ascending toward tgt.y)
+        // Corridor: horizontal band centered on bot.x, extending from bot.y toward tgt.y
+        if (Math.abs(projX - bot.x) < corridorWidth) {
+          const minY = Math.min(bot.y, tgt.y) - hitR;
+          const maxY = Math.max(bot.y, tgt.y) + hitR;
+          if (projY > minY && projY < maxY) {
+            vertThreats++;
+          }
+        }
+
+        // Check horizontal corridor (bot crossing left or right)
+        if (Math.abs(projY - bot.y) < corridorWidth) {
+          // Left crossing corridor
+          if (projX < bot.x && projX > bot.x - 200) leftThreats++;
+          // Right crossing corridor
+          if (projX > bot.x && projX < bot.x + 200) rightThreats++;
+          horizThreats++;
+        }
+      }
+    }
+
+    const vertClear = vertThreats <= 1;
+    const horizClear = Math.min(leftThreats, rightThreats) <= 1;
+    const bestCrossDir = leftThreats <= rightThreats ? -1 : 1;
+    const totalThreats = Math.min(vertThreats, Math.min(leftThreats, rightThreats));
+    const gapQuality = this._clamp01(1 - totalThreats / 5);
+
+    return { vertClear, horizClear, gapQuality, bestCrossDir };
   },
 
   // ---- LEARNING: collect player data each frame during fighting ----
@@ -4227,8 +4330,18 @@ const SparSystem = {
     if (ai._gunSidePolicy) {
       ai._gunSideFrames++;
       ai._gunSideBestQuality = Math.max(ai._gunSideBestQuality || laneQuality, laneQuality);
+      if (ai._gunSidePolicy === 'peekPressure') {
+        // peekPressure success: gained bottom through gun-side pressure (advantage chain complete)
+        if (ai._gunSideFrames >= 20 && hasBottom) {
+          this._finalizeGunSideEngagement(ai, true);
+          ai._gunSideCooldown = 20;
+        } else if (ai._gunSideFrames > 180 || badGunSide || (ai._gunSideFrames >= 20 && noAdvantageState)) {
+          // Failed: lost gun-side, timed out, or no advantage left
+          this._finalizeGunSideEngagement(ai, false);
+          ai._gunSideCooldown = 20;
+        }
       // Require minimum 20 frames before success-finalize to avoid lane flicker
-      if (ai._gunSideFrames >= 20 && ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom))) {
+      } else if (ai._gunSideFrames >= 20 && ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom))) {
         this._finalizeGunSideEngagement(ai, true);
         ai._gunSideCooldown = 20;
       } else if (ai._gunSideFrames > 150 || (ai._gunSideFrames >= 20 && noAdvantageState)) {
@@ -4283,6 +4396,20 @@ const SparSystem = {
         ai._gunSideStartQuality = laneQuality;
         ai._gunSideBestQuality = laneQuality;
         ai._gunSideLaneShape = laneShape;
+      }
+    // --- Advantage chaining: peekPressure activation ---
+    // When bot HAS gun-side but NOT bottom, use gun-side peek to pressure opponent into losing bottom
+    } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic && !ai._centerRecoveryPolicy
+      && !badGunSide && laneQuality > 0.55 && !hasBottom && enemyHasBottom) {
+      if (!ai._gunSidePolicy && !(ai._gunSideCooldown > 0)) {
+        ai._gunSidePolicy = 'peekPressure';
+        ai._gunSideFamily = 'pressure';
+        ai._gunSideFrames = 0;
+        ai._gunSideStartDmg = ai._matchDmgTaken || 0;
+        ai._gunSideStartQuality = laneQuality;
+        ai._gunSideBestQuality = laneQuality;
+        ai._gunSideLaneShape = laneShape;
+        ai._peekPressureStartBottom = false;
       }
     }
 
@@ -4542,6 +4669,9 @@ const SparSystem = {
     const modifierLevel = (movementOwner === 'escape' || movementOwner === 'centerRecovery' || movementOwner === 'antiBottom') ? 2
       : (movementOwner === 'gunSide' || movementOwner === 'wallPressure') ? 1
       : 0;
+
+    // Clear wall mode — only hasBottom section activates it
+    ai._wallMode = false;
 
     if (isOpening) {
       // === PHASE 1: Opening — choose a route + contest policy and commit ===
@@ -4805,6 +4935,22 @@ const SparSystem = {
 
     } else if (hasBottom) {
       // === WE HAVE BOTTOM — use it actively, don't just camp ===
+
+      // --- WALLING: strafe diagonally while shooting horizontally to create bullet walls ---
+      // Activate wall mode when we have bottom and opponent is above us.
+      // The bot's diagonal strafe movement + fixed horizontal shot direction creates
+      // a staggered line of bullets that's harder to dodge (each bullet at different Y).
+      // Wall up = shoot toward opponent while strafing up-diagonally (blocks them from descending)
+      const shouldWall = bot.y > tgt.y && // we're below them (have bottom)
+        Math.abs(dx) < arenaW * 0.6 && // they're not way off to the side
+        !member.gun.reloading && member.gun.ammo > 0;
+      ai._wallMode = shouldWall;
+
+      // When walling, add vertical oscillation to create Y-stagger between bullets
+      if (shouldWall) {
+        // Strafe with slight upward bias to create the rising wall pattern
+        moveY -= speed * 0.15;
+      }
 
       // CRITICAL: if player hits strafing bot more than retreating/still, use stop-start movement
       const playerHitsStrafe = pm && pm.botMoveEffectiveness &&
@@ -5386,19 +5532,40 @@ const SparSystem = {
       // If BOTH sides clamp invalid (enemy centered in arena), force space-making
       const bothSidesInvalid = Math.abs(clampedCrossX - tgt.x) < aimSlack && Math.abs(clampedBottomX - tgt.x) < aimSlack;
 
+      // --- BULLET GAP READING ---
+      // Check if the crossing/recovery path is actually clear of bullets
+      const crossGap = this._findSafeCrossWindow(bot, tgt, team);
+      // Use gap info to decide: commit through gap, or wait/arc for a better window
+      const pathIsClear = crIsCrossPolicy ? crossGap.horizClear : crossGap.vertClear;
+      // Distance confidence: farther = more time to cross, opponent can't react
+      const distConfidence = this._clamp01((dist - 100) / 200); // 0 at 100px, 1 at 300px
+      const effectiveGapQuality = crossGap.gapQuality * distConfidence;
+      // Use gap reading to pick better cross direction
+      if (crIsCrossPolicy && crossGap.bestCrossDir !== 0 && ai._centerRecoveryFrames < 5) {
+        // Early in CR — if gap reading disagrees with current commit dir, consider flipping
+        if (crossGap.bestCrossDir !== crDir && crossGap.gapQuality > 0.6) {
+          crDir = crossGap.bestCrossDir;
+          ai._centerRecoveryCommitDir = crDir;
+        }
+      }
+
       // --- PATH SAFETY ---
-      // Close range must be EARNED (rush, punish, corner pressure) — not drifted into.
-      // During recovery, the bot should arc AROUND the enemy at safe distance, not oscillate
-      // toward/away. Use lateral (perpendicular) displacement when too close, not radial push.
-      const safeRecoveryDist = 180;
-      const tooClose = dist < safeRecoveryDist;
-      const needsSpace = tooClose || bothSidesInvalid;
+      // Close range must be EARNED — not drifted into during recovery.
+      // Also: even if a gap exists, if too close the opponent reacts to the cross.
+      // Policy-specific safe distances (cross needs more room than bait/fake)
+      const policySafeDist = crIsCrossPolicy ? 200
+        : (crPolicy === 'wideUnderEntry') ? 210
+        : (crPolicy === 'fakeCrossBreak') ? 160
+        : 150; // baitShotDrop works at shorter range
+      const tooClose = dist < policySafeDist;
+      // needsSpace: too close OR both sides invalid OR path is blocked by bullets AND close
+      const needsSpace = tooClose || bothSidesInvalid ||
+        (!pathIsClear && dist < policySafeDist * 1.3);
 
       // --- ARC-AROUND STEERING ---
       // When too close during CR, move LATERALLY (perpendicular to enemy direction)
       // toward the target side. This arcs around the enemy instead of oscillating.
-      // arcDir: lateral direction that moves us toward our CR target
-      const arcDir = crDir; // crDir already points toward the target side
+      const arcDir = crDir;
 
       if (crPolicy === 'crossCommit') {
         if (needsSpace) {
@@ -5534,6 +5701,23 @@ const SparSystem = {
         suppressPeekShots = true;
         moveX = awayDir * speed * 0.7 + this._getStableCenterDir(ai, bot.x, midX) * speed * 0.25;
         moveY += (enemyHasBottom ? 0.25 : -0.05) * speed;
+      } else if (ai._gunSidePolicy === 'peekPressure') {
+        // Advantage chaining: use gun-side peek to pressure opponent into losing bottom
+        // Strafe to maintain gun-side angle, gradually descend toward bottom, keep shooting
+        suppressPeekShots = false; // the pressure IS shooting from favorable angle
+        moveX += ai.strafeDir * speed * 0.25; // maintain gun-side with lateral movement
+        // Gradually descend — the goal is to take bottom while pressuring with shots
+        if (bot.y < tgt.y) {
+          moveY += speed * 0.2; // descend toward bottom when above opponent
+        } else {
+          moveY += speed * 0.08; // slight downward drift when near same height
+        }
+        // Don't get too close — pressure works from distance where opponent can't react easily
+        if (dist < 160 && dist > 1) {
+          const sepStr = (160 - dist) / 160;
+          moveX -= (dx / dist) * speed * sepStr * 0.3;
+          moveY -= (dy / dist) * speed * sepStr * 0.2;
+        }
       }
       if (laneQuality > 0.62 && !badGunSide && !repeekedBadLane) suppressPeekShots = false;
     }

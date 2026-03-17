@@ -92,14 +92,15 @@ const SPAR_ANTI_BOTTOM_FAMILY_MAP = {
   flankWide: 'flank', flankTight: 'flank', forceMirrorThenBreak: 'flank',
   baitRetreat: 'bait', baitFake: 'bait', doubleFakeRetreat: 'bait',
 };
-const SPAR_GUN_SIDE_POLICY_KEYS = ['forcePeek', 'holdAngle', 'preAimLaneHold', 'reAngleWide', 'yieldLane'];
-const SPAR_GUN_SIDE_FAMILY_KEYS = ['hold', 'reposition'];
+const SPAR_GUN_SIDE_POLICY_KEYS = ['forcePeek', 'holdAngle', 'preAimLaneHold', 'reAngleWide', 'yieldLane', 'peekPressure'];
+const SPAR_GUN_SIDE_FAMILY_KEYS = ['hold', 'reposition', 'pressure'];
 const SPAR_GUN_SIDE_FAMILY_MAP = {
   forcePeek: 'hold',
   holdAngle: 'hold',
   preAimLaneHold: 'hold',
   reAngleWide: 'reposition',
   yieldLane: 'reposition',
+  peekPressure: 'pressure',
 };
 const SPAR_ESCAPE_POLICY_KEYS = ['cornerBreak', 'highReset', 'wideDisengage', 'baitPullout'];
 const SPAR_ESCAPE_FAMILY_KEYS = ['break', 'reset', 'bait'];
