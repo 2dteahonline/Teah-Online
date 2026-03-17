@@ -871,7 +871,7 @@ const LEVELS = {
       // === INGREDIENT SECTIONS (organized by category, 2 tile gap between each) ===
       // -- BREADS section (top-left, row 1) --
       { type: 'ing_bread', tx: 1, ty: 1, w: 2, h: 2, solid: true },
-      { type: 'ing_bagel', tx: 6, ty: 1, w: 2, h: 2, solid: true },
+      { type: 'ing_bagel', tx: 5, ty: 1, w: 2, h: 2, solid: true },
 
       // -- MEATS section (top-right, row 1) --
       { type: 'ing_turkey',  tx: 10, ty: 1, w: 2, h: 2, solid: true },
@@ -925,8 +925,8 @@ const LEVELS = {
       // 1 row of 2 shelves
       { type: 'deli_shelf_frozen',    tx: 27, ty: 24, w: 5, h: 2, solid: true },
       { type: 'deli_shelf_snacks',    tx: 34, ty: 24, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_candy',     tx: 27, ty: 30, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_drinks',    tx: 34, ty: 30, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_candy',     tx: 27, ty: 32, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_drinks',    tx: 34, ty: 32, w: 5, h: 2, solid: true },
     ]
   },
   diner_01: {

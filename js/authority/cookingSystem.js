@@ -721,25 +721,17 @@ function applyOrderResult(result) {
         partyId: cookingState.currentOrder._fdPartyId,
         recipeIngredients: recipeIngredients,
       });
-    } else if (cookingState.activeRestaurantId === 'street_deli' && cookingState.currentOrder._deliCustomerNumber) {
-      // Deli: push to counter for NPC pickup
+    } else if (cookingState.activeRestaurantId === 'street_deli') {
+      // Deli: push completed order to counter — any seated NPC picks it up
       if (!cookingState.counterOrders) cookingState.counterOrders = [];
       const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
         ? cookingState.currentOrder.recipe.ingredients.slice()
         : null;
       cookingState.counterOrders.push({
-        customerNumber: cookingState.currentOrder._deliCustomerNumber,
         recipe: cookingState.currentOrder.recipe,
         recipeIngredients: recipeIngredients,
-        npcId: cookingState.currentOrder.npcId,
+        _claimedByNpc: null,
       });
-      // Notify the NPC that food is ready
-      const activeNPCs = _getActiveNPCs();
-      const npc = activeNPCs.find(n => n.id === cookingState.currentOrder.npcId);
-      if (npc) {
-        npc._foodReady = true;
-        npc.linkedOrderId = null;
-      }
     } else if (cookingState.currentOrder.npcId) {
       // Generic NPC pickup (fallback)
       const activeNPCs = _getActiveNPCs();
@@ -828,9 +820,7 @@ function drawCookingHUD() {
     // Customer type + timer type label
     ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = order.customer.color || '#80a0c0';
-    const customerLabel = order._deliCustomerNumber
-      ? 'Customer ' + order._deliCustomerNumber + ' \u2014 ' + (order.customer.name || order.customer.type || '')
-      : (order.customer.name || order.customer.type || 'Customer');
+    const customerLabel = order.customer.name || order.customer.type || 'Customer';
     ctx.fillText(customerLabel, panelX + 8, panelY + 14);
     // (Timer type label removed — bar color communicates urgency)
 
