@@ -433,7 +433,6 @@ function updateCooking() {
       xp: Math.round(order.recipe.baseXP * COOKING_GRADES.F.xpMult),
       recipe: order.recipe,
       customer: order.customer,
-      reason: 'Customer left!',
     };
     applyOrderResult(result);
     return;

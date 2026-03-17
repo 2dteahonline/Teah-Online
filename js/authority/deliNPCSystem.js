@@ -28,39 +28,42 @@ const DELI_NPC_NAMES = [
 ];
 
 // ===================== DEFINED SPOTS =====================
+// Door is 4 tiles wide (tx:12-15). Left side = enter, right side = exit.
 const DELI_SPOTS = {
-  exit:        { tx: 13, ty: 34 },   // entrance/exit door
+  enterDoor:   { tx: 13, ty: 34 },   // left side of door — NPCs enter here
+  exitDoor:    { tx: 14, ty: 34 },   // right side of door — NPCs exit here
   counterArea: { tx: 13, ty: 22 },   // corridor in front of counter
   corridorE:   { tx: 25, ty: 22 },   // east end — past the counter wall
   diningEntry: { tx: 26, ty: 20 },   // gap into dining area
 };
 
-// Pickup spots along the brown service counter (ty:22, south of counter wall)
+// Pickup spots along the brown service counter (ty:22, south of counter wall at ty:21)
+// NPC must be at ty:22 facing north (dir:1) to pick up food
 const DELI_PICKUP_SPOTS = [
   { tx: 15, ty: 22 }, { tx: 16, ty: 22 }, { tx: 17, ty: 22 }, { tx: 18, ty: 22 },
 ];
 
-// Chairs (NPCs sit here) — 2 per side × 4 sides × 2 tables = 16 seats
+// Chairs (NPCs sit here) — LEFT and RIGHT sides only (no top/bottom corners)
 const DELI_CHAIRS = [
-  // Table 1 (28,4)
+  // Table 1 (28,4) — side chairs only
   { tx: 27, ty: 4,  sitDir: 3 },  { tx: 27, ty: 5,  sitDir: 3 },   // left ×2
   { tx: 31, ty: 4,  sitDir: 2 },  { tx: 31, ty: 5,  sitDir: 2 },   // right ×2
-  { tx: 28, ty: 3,  sitDir: 0 },  { tx: 30, ty: 3,  sitDir: 0 },   // top ×2
-  { tx: 28, ty: 6,  sitDir: 1 },  { tx: 30, ty: 6,  sitDir: 1 },   // bottom ×2
-  // Table 2 (28,17)
+  // Table 2 (28,17) — side chairs only
   { tx: 27, ty: 17, sitDir: 3 },  { tx: 27, ty: 18, sitDir: 3 },
   { tx: 31, ty: 17, sitDir: 2 },  { tx: 31, ty: 18, sitDir: 2 },
-  { tx: 28, ty: 16, sitDir: 0 },  { tx: 30, ty: 16, sitDir: 0 },
-  { tx: 28, ty: 19, sitDir: 1 },  { tx: 30, ty: 19, sitDir: 1 },
 ];
 
-// Aisle browse spots — 4 shelves in 2 rows, NPCs stand below each shelf
-const DELI_AISLES = [
-  { name: 'Frozen',    price: 4, tx: 29, ty: 26 },   // shelf ty:24-25, browse ty:26
-  { name: 'Snacks',    price: 3, tx: 36, ty: 26 },
-  { name: 'Candy',     price: 2, tx: 29, ty: 32 },   // shelf ty:30-31, browse ty:32
-  { name: 'Beverages', price: 3, tx: 36, ty: 32 },
+// Aisle shelves — each has 2 browse spots (not corners, 1-tile gap between).
+// NPCs stand 1 tile below shelf and face north to browse. Max 2 NPCs per shelf.
+const DELI_SHELVES = [
+  { name: 'Frozen',    price: 4, spots: [{ tx: 28, ty: 26 }, { tx: 30, ty: 26 }] },
+  { name: 'Snacks',    price: 3, spots: [{ tx: 35, ty: 26 }, { tx: 37, ty: 26 }] },
+  { name: 'Candy',     price: 2, spots: [{ tx: 28, ty: 32 }, { tx: 30, ty: 32 }] },
+  { name: 'Beverages', price: 3, spots: [{ tx: 35, ty: 32 }, { tx: 37, ty: 32 }] },
 ];
+
+// Backward-compat alias (referenced by entity renderer for plate rendering)
+const DELI_AISLES = DELI_SHELVES;
 
 // Cashier spot for retail shoppers (tx:37 keeps NPC body off right wall)
 const DELI_CASHIER = { tx: 37, ty: 24 };
@@ -94,27 +97,28 @@ function _isKitchenZone(px, py) {
   return false;
 }
 
-// Pick an aisle spot that no other NPC is currently browsing at
-function _pickFreeAisle() {
+// Pick a free shelf spot — returns { name, price, tx, ty } or null
+// Tracks NPCs already browsing OR walking toward a shelf spot
+function _pickFreeShelfSpot(excludeSpot) {
   const occupied = new Set();
   for (const n of deliNPCs) {
-    if (n.state === 'browsing_shelf') {
-      const ntx = Math.floor(n.x / TILE);
-      const nty = Math.floor(n.y / TILE);
-      for (let i = 0; i < DELI_AISLES.length; i++) {
-        if (DELI_AISLES[i].tx === ntx && DELI_AISLES[i].ty === nty) {
-          occupied.add(i);
-          break;
-        }
+    if (n._browseSpot && (n.state === 'browsing_shelf' ||
+        (n.state === 'walking' && n._nextState === 'browsing_shelf'))) {
+      occupied.add(n._browseSpot.tx + ',' + n._browseSpot.ty);
+    }
+  }
+  if (excludeSpot) occupied.add(excludeSpot.tx + ',' + excludeSpot.ty);
+
+  const free = [];
+  for (const shelf of DELI_SHELVES) {
+    for (const spot of shelf.spots) {
+      if (!occupied.has(spot.tx + ',' + spot.ty)) {
+        free.push({ name: shelf.name, price: shelf.price, tx: spot.tx, ty: spot.ty });
       }
     }
   }
-  const free = [];
-  for (let i = 0; i < DELI_AISLES.length; i++) {
-    if (!occupied.has(i)) free.push(i);
-  }
-  if (free.length === 0) return _cRandFromArray(DELI_AISLES);
-  return DELI_AISLES[free[Math.floor(Math.random() * free.length)]];
+  if (free.length === 0) return null;
+  return free[Math.floor(Math.random() * free.length)];
 }
 
 // Claim a free chair
@@ -134,17 +138,12 @@ function _hasUnclaimedCounterOrders() {
 
 // ===================== ROUTE BUILDERS =====================
 // TRAFFIC LANES:
-//   tx:13  — ENTRY lane (NPCs walking north)
-//   tx:16  — EXIT lane (NPCs leaving)
-//   tx:18  — AISLE ENTRY lane
+//   tx:13  — ENTRY lane (NPCs entering deli, left side of door)
+//   tx:14  — EXIT lane (NPCs leaving deli, right side of door)
 //   tx:26  — MAIN N/S corridor (east of kitchen wall)
 //   ty:22  — E/W corridor south of counter wall
-//   ty:20  — E/W corridor below dining tables
-// AISLE AREA (tx:27+):
-//   Shelf row 1: ty:24-25, Browse row 1: ty:26
-//   Walkway: ty:27-29
-//   Shelf row 2: ty:30-31, Browse row 2: ty:32
-//   Gaps: tx:26 (west), tx:32 (between shelf columns)
+//   ty:20  — E/W corridor for dining area access
+// LOBBY AREA (ty:22-34): Open space — NPCs can route freely, multiple paths
 
 function _nearestAisleGap(tx) {
   const gaps = [26, 32];
@@ -157,8 +156,8 @@ function _nearestAisleGap(tx) {
   return best;
 }
 
-// Route from exit to pickup counter (Order NPCs go straight to counter)
-function _routeExitToPickup(pickupSpotIdx) {
+// Route from enter door to pickup counter (Order NPCs)
+function _routeEnterToPickup(pickupSpotIdx) {
   const spot = DELI_PICKUP_SPOTS[pickupSpotIdx];
   return [
     { tx: 13, ty: 22 },             // north along entry lane to counter row
@@ -167,90 +166,90 @@ function _routeExitToPickup(pickupSpotIdx) {
 }
 
 // Route from pickup spot to a chair (Order NPCs carry food to seat)
-function _routePickupToChair(pickupSpotIdx, chairIdx) {
+function _routePickupToChair(chairIdx) {
   const ch = DELI_CHAIRS[chairIdx];
   return [
     { tx: 26, ty: 22 },             // east along corridor
     { tx: 26, ty: 20 },             // north to safe horizontal corridor
-    { tx: ch.tx, ty: 20 },          // east to chair's column
-    { tx: ch.tx, ty: ch.ty },       // to chair
+    { tx: ch.tx, ty: 20 },          // east/west to chair's column
+    { tx: ch.tx, ty: ch.ty },       // north/south to chair
   ];
 }
 
-// Route from chair to exit (Order NPCs leave after eating)
+// Route from chair to exit door (right side of door)
 function _routeChairToExit(chairIdx) {
   const ch = DELI_CHAIRS[chairIdx];
   return [
     { tx: ch.tx, ty: 20 },          // to safe corridor
     { tx: 26, ty: 20 },             // west to main corridor
     { tx: 26, ty: 22 },             // south past counter wall
-    { tx: 13, ty: 22 },             // west to entry lane
-    { tx: 13, ty: 34 },             // south to exit
+    { tx: 14, ty: 22 },             // west to exit lane
+    { tx: 14, ty: 34 },             // south to exit door
   ];
 }
 
-// Route from exit to shelf (Aisle NPCs)
-function _routeExitToShelf(shelf) {
-  const gap = _nearestAisleGap(shelf.tx);
+// Route from enter door to shelf spot (Aisle NPCs)
+function _routeEnterToShelf(spot) {
+  const gap = _nearestAisleGap(spot.tx);
   if (gap <= 26) {
     return [
-      { tx: 18, ty: 22 },
+      { tx: 13, ty: 22 },
       { tx: 26, ty: 22 },
-      { tx: 26, ty: shelf.ty },
-      { tx: shelf.tx, ty: shelf.ty },
+      { tx: 26, ty: spot.ty },
+      { tx: spot.tx, ty: spot.ty },
     ];
   }
   return [
-    { tx: 18, ty: 22 },
+    { tx: 13, ty: 22 },
     { tx: 26, ty: 22 },
     { tx: 26, ty: 28 },
     { tx: gap, ty: 28 },
-    { tx: gap, ty: shelf.ty },
-    { tx: shelf.tx, ty: shelf.ty },
+    { tx: gap, ty: spot.ty },
+    { tx: spot.tx, ty: spot.ty },
   ];
 }
 
-function _routeAisleToAisle(fromTX, fromTY, toAisle) {
+// Route between shelf spots
+function _routeShelfToShelf(fromTX, fromTY, toSpot) {
   const gap = _nearestAisleGap(fromTX);
-  const toGap = _nearestAisleGap(toAisle.tx);
+  const toGap = _nearestAisleGap(toSpot.tx);
   const route = [];
-  if (fromTY === toAisle.ty) {
+  if (fromTY === toSpot.ty) {
     route.push({ tx: gap, ty: fromTY });
     if (gap !== toGap) route.push({ tx: toGap, ty: fromTY });
-    route.push({ tx: toAisle.tx, ty: toAisle.ty });
+    route.push({ tx: toSpot.tx, ty: toSpot.ty });
   } else {
     route.push({ tx: gap, ty: fromTY });
-    route.push({ tx: gap, ty: toAisle.ty });
-    route.push({ tx: toAisle.tx, ty: toAisle.ty });
+    route.push({ tx: gap, ty: toSpot.ty });
+    route.push({ tx: toSpot.tx, ty: toSpot.ty });
   }
   return route;
 }
 
-function _routeToExit(fromTX, fromTY) {
+// Route to exit door — direct paths, no mandatory counter visit
+function _routeToExitDoor(fromTX, fromTY) {
   const route = [];
   if (fromTX >= 25) {
-    if (fromTY < 20) {
-      route.push({ tx: fromTX, ty: 20 });
-    } else if (fromTY >= 22) {
+    if (fromTY < 22) {
+      // Above corridor — go south to corridor
+      route.push({ tx: 26, ty: 22 });
+    } else if (fromTY >= 24) {
+      // In aisle area — move to nearest gap then south
       const gap = _nearestAisleGap(fromTX);
       route.push({ tx: gap, ty: fromTY });
-      if (gap !== 26) {
-        route.push({ tx: gap, ty: 20 });
-        route.push({ tx: 26, ty: 20 });
-      } else {
-        route.push({ tx: 26, ty: 20 });
-      }
+      route.push({ tx: gap, ty: 22 });
     }
-    route.push({ tx: 26, ty: 22 });
-    route.push({ tx: 13, ty: 22 });
+    // Walk west through lobby to exit lane
+    route.push({ tx: 14, ty: 22 });
   }
-  route.push({ tx: 13, ty: 34 });
+  route.push({ tx: 14, ty: 34 });
   return route;
 }
 
 // ===================== MOVEMENT =====================
-const _deliMoveSkipStates = new Set(['eating', 'spawn_wait', '_despawn']);
-const _deliMoveLaneDisable = new Set(['picking_up']);
+// Browsing NPCs are locked in place — skip them for avoidance
+const _deliMoveSkipStates = new Set(['eating', 'spawn_wait', '_despawn', 'browsing_shelf']);
+const _deliMoveLaneDisable = new Set(['picking_up', 'browsing_shelf']);
 
 function moveDeliNPC(npc) {
   _cMoveNPC(npc, {
@@ -258,7 +257,7 @@ function moveDeliNPC(npc) {
     skipStates: _deliMoveSkipStates,
     kitchenCheck: _isKitchenZone,
     kitchenSafe: { tx: 26, ty: 22 },
-    kitchenFallback: [{ tx: 13, ty: 23 }, { tx: 13, ty: 34 }],
+    kitchenFallback: [{ tx: 14, ty: 23 }, { tx: 14, ty: 34 }],
     laneMode: 'checked',
     laneDisableStates: _deliMoveLaneDisable,
     pairBehavior: () => 'yield',
@@ -273,7 +272,7 @@ function _spawnOrderNPC() {
   const order = cookingState.counterOrders.find(o => !o._claimedByNpc);
   if (!order) return null;
 
-  const npc = _cCreateNPC(_deliIdCounter, DELI_SPOTS.exit, DELI_NPC_APPEARANCES,
+  const npc = _cCreateNPC(_deliIdCounter, DELI_SPOTS.enterDoor, DELI_NPC_APPEARANCES,
     DELI_NPC_NAMES, DELI_NPC_CONFIG, {
     purchasedExtras: [],
     claimedChair: null,
@@ -285,6 +284,8 @@ function _spawnOrderNPC() {
     _pickupSpotIdx: -1,
     hasBag: false,
     _bagItems: [],
+    _browseSpot: null,
+    _tableFood: false,
     isDeliNPC: true,
   });
 
@@ -298,7 +299,7 @@ function _spawnOrderNPC() {
 
 // Spawn an Aisle NPC (enters anytime)
 function _spawnAisleNPC() {
-  const npc = _cCreateNPC(_deliIdCounter, DELI_SPOTS.exit, DELI_NPC_APPEARANCES,
+  const npc = _cCreateNPC(_deliIdCounter, DELI_SPOTS.enterDoor, DELI_NPC_APPEARANCES,
     DELI_NPC_NAMES, DELI_NPC_CONFIG, {
     purchasedExtras: [],
     claimedChair: null,
@@ -310,8 +311,10 @@ function _spawnAisleNPC() {
     _pickupSpotIdx: -1,
     _aisleVisits: 0,
     _pendingPurchase: null,
+    _browseSpot: null,
     hasBag: true,     // Aisle NPCs carry a shopping bag
     _bagItems: [],    // Items in the bag (for visual fill)
+    _tableFood: false,
     isDeliNPC: true,
   });
   deliNPCs.push(npc);
@@ -346,14 +349,20 @@ const DELI_NPC_AI = {
       // Order NPC — walk straight to pickup counter
       const spotIdx = Math.floor(Math.random() * DELI_PICKUP_SPOTS.length);
       npc._pickupSpotIdx = spotIdx;
-      _cStartRoute(npc, _routeExitToPickup(spotIdx), 'picking_up', 30);
+      _cStartRoute(npc, _routeEnterToPickup(spotIdx), 'picking_up', 30);
       return;
     }
 
-    // Aisle NPC — walk to first shelf
-    const shelf = _pickFreeAisle();
-    npc._pendingPurchase = shelf;
-    _cStartRoute(npc, _routeExitToShelf(shelf),
+    // Aisle NPC — walk to first shelf spot
+    const spot = _pickFreeShelfSpot(null);
+    if (!spot) {
+      // All spots full — leave immediately
+      _cStartRoute(npc, [{ tx: 14, ty: 34 }], '_despawn', 0);
+      return;
+    }
+    npc._pendingPurchase = spot;
+    npc._browseSpot = { tx: spot.tx, ty: spot.ty };
+    _cStartRoute(npc, _routeEnterToShelf(spot),
       'browsing_shelf', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
   },
 
@@ -364,23 +373,30 @@ const DELI_NPC_AI = {
     npc.stateTimer = npc._nextTimer || 0;
   },
 
-  // ─── PICKING UP: At counter, brief pause, grab food ───
+  // ─── PICKING UP: At counter, face plate, grab food ────
   picking_up: (npc) => {
     npc.moving = false;
-    npc.dir = 1; // face north toward counter
+    npc.dir = 1; // face north toward counter — MUST face plate to pick it up
 
-    // Snap to pickup spot
+    // Snap to pickup spot on south side of counter
     if (npc._pickupSpotIdx >= 0 && npc._pickupSpotIdx < DELI_PICKUP_SPOTS.length) {
       const spot = DELI_PICKUP_SPOTS[npc._pickupSpotIdx];
       npc.x = spot.tx * TILE + TILE / 2;
       npc.y = spot.ty * TILE + TILE / 2;
     }
 
+    // Verify NPC is on south side of counter (ty >= 22) — cannot grab from other side
+    const npcTY = Math.floor(npc.y / TILE);
+    if (npcTY < 22) {
+      _cStartRoute(npc, [{ tx: Math.floor(npc.x / TILE), ty: 22 }], 'picking_up', 30);
+      return;
+    }
+
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
 
-    // Pick up food from counter
-    npc.hasFood = true;
-    if (npc._claimedOrder) {
+    // Pick up food from counter (only once)
+    if (!npc.hasFood && npc._claimedOrder) {
+      npc.hasFood = true;
       if (npc._claimedOrder.recipeIngredients) {
         npc._recipeIngredients = npc._claimedOrder.recipeIngredients;
       }
@@ -392,22 +408,22 @@ const DELI_NPC_AI = {
       npc._claimedOrder = null;
     }
 
-    // Now find a seat to eat at
+    // Now find a RED SEAT to eat at — must always go to a table
     const chairIdx = _claimChair(npc);
     if (chairIdx < 0) {
-      // No seats — just exit with food
-      npc._pickupSpotIdx = -1;
-      _cStartRoute(npc, _routeToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0);
+      // No seats right now — wait and retry (NPC holds food at counter)
+      npc.stateTimer = 60; // retry in 1 second
       return;
     }
     npc.claimedChair = chairIdx;
     npc._pickupSpotIdx = -1;
-    _cStartRoute(npc, _routePickupToChair(0, chairIdx), 'eating', DELI_NPC_CONFIG.eatDuration[0]);
+    _cStartRoute(npc, _routePickupToChair(chairIdx), 'eating', DELI_NPC_CONFIG.eatDuration[0]);
   },
 
-  // ─── EATING: Sitting at table with food, 15 sec ───────
+  // ─── EATING: Sitting at red seat with food, plate on table ───
   eating: (npc) => {
     npc.moving = false;
+    npc._tableFood = true; // flag for draw.js to render plate on table
     if (npc.claimedChair !== null && npc.claimedChair >= 0) {
       const ch = DELI_CHAIRS[npc.claimedChair];
       npc.x = ch.tx * TILE + TILE / 2;
@@ -418,20 +434,28 @@ const DELI_NPC_AI = {
 
     // Done eating — leave
     npc.hasFood = false;
+    npc._tableFood = false;
     npc._recipeIngredients = null;
     const chairIdx = npc.claimedChair;
     npc.claimedChair = null;
     if (chairIdx !== null && chairIdx >= 0) {
       _cStartRoute(npc, _routeChairToExit(chairIdx), '_despawn', 0);
     } else {
-      _cStartRoute(npc, _routeToExit(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0);
+      _cStartRoute(npc, _routeToExitDoor(Math.floor(npc.x / TILE), Math.floor(npc.y / TILE)), '_despawn', 0);
     }
   },
 
-  // ─── BROWSING SHELF: Aisle NPC standing at shelf ──────
+  // ─── BROWSING SHELF: Aisle NPC locked at spot facing north ──
   browsing_shelf: (npc) => {
     npc.moving = false;
-    npc.dir = 1; // face shelves (north)
+    npc.dir = 1; // face north toward shelf — must face shelf to buy
+
+    // Lock NPC to browse spot (no drifting or corner-sitting)
+    if (npc._browseSpot) {
+      npc.x = npc._browseSpot.tx * TILE + TILE / 2;
+      npc.y = npc._browseSpot.ty * TILE + TILE / 2;
+    }
+
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
 
     // Purchase item and add to bag
@@ -453,19 +477,22 @@ const DELI_NPC_AI = {
     if (npc._aisleVisits === undefined) npc._aisleVisits = 0;
     npc._aisleVisits++;
     if (npc._aisleVisits < 3 && Math.random() < 0.6) {
-      const aisle = _pickFreeAisle();
-      npc._pendingPurchase = aisle;
-      const curTX = Math.floor(npc.x / TILE);
-      const curTY = Math.floor(npc.y / TILE);
-      _cStartRoute(npc, _routeAisleToAisle(curTX, curTY, aisle),
-        'browsing_shelf', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
-      return;
+      const spot = _pickFreeShelfSpot(npc._browseSpot);
+      if (spot) {
+        npc._pendingPurchase = spot;
+        const oldSpot = npc._browseSpot;
+        npc._browseSpot = { tx: spot.tx, ty: spot.ty };
+        _cStartRoute(npc, _routeShelfToShelf(oldSpot.tx, oldSpot.ty, spot),
+          'browsing_shelf', _cRandRange(DELI_NPC_CONFIG.browseDuration[0], DELI_NPC_CONFIG.browseDuration[1]));
+        return;
+      }
     }
 
-    // Done shopping — exit
+    // Done shopping — exit via right side of door
+    npc._browseSpot = null;
     const aTX = Math.floor(npc.x / TILE);
     const aTY = Math.floor(npc.y / TILE);
-    _cStartRoute(npc, _routeToExit(aTX, aTY), '_despawn', 0);
+    _cStartRoute(npc, _routeToExitDoor(aTX, aTY), '_despawn', 0);
   },
 
   // ─── DESPAWN WALK: Walking to exit then despawn ────────
@@ -537,7 +564,9 @@ function updateDeliNPCs() {
         }
       }
       npc.hasFood = false;
+      npc._tableFood = false;
       npc._recipeIngredients = null;
+      npc._browseSpot = null;
       deliNPCs.splice(i, 1);
       continue;
     }
@@ -549,13 +578,15 @@ function updateDeliNPCs() {
     const handler = DELI_NPC_AI[npc.state];
     if (handler) handler(npc);
 
-    // Stuck detection
+    // Stuck detection — 10 sec stuck → force exit
     if (npc.moving && npc.route && npc.route.length > 0) {
       npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-      if (npc._stuckFrames > 600) { // 10 sec stuck
+      if (npc._stuckFrames > 600) {
         npc._stuckFrames = 0;
         npc.hasFood = false;
+        npc._tableFood = false;
         npc._recipeIngredients = null;
+        npc._browseSpot = null;
         if (npc.claimedChair !== null) npc.claimedChair = null;
         if (npc._claimedOrder) {
           npc._claimedOrder._claimedByNpc = null;
@@ -567,7 +598,7 @@ function updateDeliNPCs() {
         }
         const curTX = Math.floor(npc.x / TILE);
         const curTY = Math.floor(npc.y / TILE);
-        _cStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
+        _cStartRoute(npc, _routeToExitDoor(curTX, curTY), '_despawn', 0);
       }
     } else {
       npc._stuckFrames = 0;
@@ -579,7 +610,9 @@ function updateDeliNPCs() {
       if (npc._idleTime > 3600) { // 60 sec idle
         npc._idleTime = 0;
         npc.hasFood = false;
+        npc._tableFood = false;
         npc._recipeIngredients = null;
+        npc._browseSpot = null;
         if (npc.claimedChair !== null) npc.claimedChair = null;
         if (npc._claimedOrder) {
           npc._claimedOrder._claimedByNpc = null;
@@ -587,7 +620,7 @@ function updateDeliNPCs() {
         }
         const curTX = Math.floor(npc.x / TILE);
         const curTY = Math.floor(npc.y / TILE);
-        _cStartRoute(npc, _routeToExit(curTX, curTY), '_despawn', 0);
+        _cStartRoute(npc, _routeToExitDoor(curTX, curTY), '_despawn', 0);
       }
     } else {
       npc._idleTime = 0;

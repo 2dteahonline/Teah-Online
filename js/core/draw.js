@@ -840,6 +840,36 @@ function draw() {
           }
         }
       }
+      // Food plate on table when NPC is eating at a red seat
+      if (npc._tableFood && npc.state === 'eating') {
+        // Plate goes on table surface: 1 tile toward the table from the chair
+        // Left chairs (dir:3) → plate 1 tile to the right; Right chairs (dir:2) → plate 1 tile to the left
+        const plateX = npc.dir === 3 ? npc.x + TILE : npc.dir === 2 ? npc.x - TILE : npc.x;
+        const plateY = npc.y - 4;
+        // Plate shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.beginPath(); ctx.ellipse(plateX, plateY + 4, 13, 6, 0, 0, Math.PI * 2); ctx.fill();
+        // Plate
+        ctx.fillStyle = '#e0d8c8';
+        ctx.beginPath(); ctx.ellipse(plateX, plateY, 12, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#a09880'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(plateX, plateY, 12, 7, 0, 0, Math.PI * 2); ctx.stroke();
+        // Food layers on plate
+        if (npc._recipeIngredients && typeof DELI_INGREDIENTS !== 'undefined') {
+          const maxLayers = Math.min(npc._recipeIngredients.length, 4);
+          for (let li = 0; li < maxLayers; li++) {
+            const ing = DELI_INGREDIENTS[npc._recipeIngredients[li]];
+            ctx.fillStyle = ing ? ing.color : '#c0a060';
+            ctx.fillRect(plateX - 7, plateY - 3 - li * 3, 14, 3);
+          }
+        } else {
+          // Fallback generic food
+          ctx.fillStyle = '#c8a050';
+          ctx.fillRect(plateX - 6, plateY - 3, 12, 3);
+          ctx.fillStyle = '#60c040';
+          ctx.fillRect(plateX - 5, plateY - 6, 10, 3);
+        }
+      }
       // Shopping bag for Aisle NPCs
       if (npc.hasBag) {
         let bOffX = 0, bOffY = -28;
