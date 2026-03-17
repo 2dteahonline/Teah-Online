@@ -207,28 +207,61 @@ function _pickSnapshotStyle(policy) {
   return best;
 }
 
+function _pickWeightedSnapshotChoice(scores) {
+  let minScore = Infinity;
+  for (const value of Object.values(scores)) {
+    if (value < minScore) minScore = value;
+  }
+  let total = 0;
+  const weights = {};
+  for (const [key, value] of Object.entries(scores)) {
+    const weight = Math.max(0.05, value - minScore + 0.05);
+    weights[key] = weight;
+    total += weight;
+  }
+  let roll = Math.random() * total;
+  for (const [key, weight] of Object.entries(weights)) {
+    roll -= weight;
+    if (roll <= 0) return key;
+  }
+  return Object.keys(scores)[0];
+}
+
 function _pickSnapshotRoute(policy) {
   const routes = typeof SPAR_OPENING_ROUTE_KEYS !== 'undefined'
     ? SPAR_OPENING_ROUTE_KEYS
     : ['bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midFlank', 'mirrorPlayer'];
-  let best = 'bottomCenter', bestScore = -Infinity;
   const rr = policy && policy.botOpenings ? policy.botOpenings.routeResults : null;
   const rf = policy && policy.reinforcement1v1 ? policy.reinforcement1v1 : null;
+  const scores = {};
   for (const name of routes) {
-    let score = name.indexOf('bottom') === 0 ? 0.58 : 0.45;
+    let score = name.indexOf('bottom') === 0 ? 0.54 : 0.5;
     const route = rr && rr[name] ? rr[name] : null;
     if (route && route.total > 0) {
       score += (route.wins / route.total) * 0.22;
       score += (route.gotBottom / route.total) * 0.12;
+    } else {
+      score += 0.14; // push untested routes into circulation
     }
     const gBucket = rf && rf.general && rf.general.opening ? rf.general.opening[name] : null;
     const sBucket = rf && rf.selfPlay && rf.selfPlay.opening ? rf.selfPlay.opening[name] : null;
     score += ((gBucket && gBucket.reward) || 0.5) * 0.05;
     score += ((sBucket && sBucket.reward) || 0.5) * 0.08;
-    score += Math.random() * 0.02;
-    if (score > bestScore) { bestScore = score; best = name; }
+    if (name === 'topHold') score += 0.04;
+    if (name === 'midFlank') score += 0.05;
+    if (name === 'mirrorPlayer') score += 0.05;
+    if (policy && policy.opening) {
+      if (policy.opening.route === 'bottomCenter' && name === 'midFlank') score += 0.08;
+      if (policy.opening.route === 'bottomLeft' && name === 'bottomRight') score += 0.08;
+      if (policy.opening.route === 'bottomRight' && name === 'bottomLeft') score += 0.08;
+      if (policy.opening.rushBottom > 0.6 && name === 'mirrorPlayer') score += 0.05;
+    }
+    scores[name] = score + Math.random() * 0.03;
   }
-  return best;
+  if (Math.random() < 0.22) {
+    return routes[Math.floor(Math.random() * routes.length)];
+  }
+  return _pickWeightedSnapshotChoice(scores);
 }
 
 function _pickSnapshotAntiBottom(policy) {
@@ -270,47 +303,51 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
   const hasBottom = p.y > tgt.y + 30;
   const enemyHasBottom = tgt.y > p.y + 30;
   const alignX = Math.abs(dx), alignY = Math.abs(dy);
+  const incomingDodge = (typeof SparSystem !== 'undefined' && typeof SparSystem._getIncomingBulletDodge === 'function')
+    ? SparSystem._getIncomingBulletDodge(p, 'teamA')
+    : { x: 0, y: 0 };
   let mx = 0, my = 0;
 
   if (isOpening) {
     const route = rt.selfPlayRoute;
     if (route === 'bottomCenter') {
-      const goalY = arenaH * 0.84;
+      const goalY = arenaH * 0.89;
       if (p.y < goalY - 10) my = speed;
       mx = rt.strafeDir * speed * 0.15;
     } else if (route === 'bottomLeft') {
-      const goalY = arenaH * 0.84, goalX = arenaW * 0.25;
-      if (p.y < goalY - 10) my = speed * 0.92;
+      const goalY = arenaH * 0.89, goalX = arenaW * 0.23;
+      if (p.y < goalY - 10) my = speed * 0.95;
       mx = Math.sign(goalX - p.x) * speed * 0.42;
     } else if (route === 'bottomRight') {
-      const goalY = arenaH * 0.84, goalX = arenaW * 0.75;
-      if (p.y < goalY - 10) my = speed * 0.92;
+      const goalY = arenaH * 0.89, goalX = arenaW * 0.77;
+      if (p.y < goalY - 10) my = speed * 0.95;
       mx = Math.sign(goalX - p.x) * speed * 0.42;
     } else if (route === 'topHold') {
       const goalY = arenaH * 0.3;
       my = Math.sign(goalY - p.y) * speed * 0.5;
       mx = rt.strafeDir * speed * 0.8;
     } else if (route === 'midFlank') {
-      const goalY = arenaH * 0.8;
+      const goalY = arenaH * 0.86;
       const flankSide = tgt.x < midX ? arenaW * 0.7 : arenaW * 0.3;
       if (p.y < goalY - 10) my = speed * 0.85;
       mx = Math.sign(flankSide - p.x) * speed * 0.45;
     } else {
       mx = (tgt.vx || 0) * 0.85;
       my = (tgt.vy || 0) * 0.85;
-      if (p.y < arenaH * 0.8) my = Math.max(my, speed * 0.7);
+      if (p.y < arenaH * 0.86) my = Math.max(my, speed * 0.78);
     }
   } else if (enemyReloading && dist > 1) {
     mx = (dx / dist) * speed * 0.7 * style.approachMult;
     my = (dy / dist) * speed * 0.7 * style.approachMult;
     mx += rt.strafeDir * speed * 0.2;
   } else if (hasBottom) {
-    mx = rt.strafeDir * speed * (0.55 + 0.18 * style.strafeMult);
-    if (Math.abs(dy) > 40) my *= 0.3;
+    mx = rt.strafeDir * speed * (0.62 + 0.2 * style.strafeMult);
+    if (Math.abs(dy) > 40) my *= 0.25;
     if (dist > style.preferredDist + 40 && dist > 1) {
-      mx += (dx / dist) * speed * 0.24;
-      my += (dy / dist) * speed * 0.24;
+      mx += (dx / dist) * speed * 0.28;
+      my += (dy / dist) * speed * 0.22;
     }
+    if (alignX < 70) mx += rt.strafeDir * speed * 0.3;
   } else if (enemyHasBottom) {
     const response = rt.selfPlayAntiBottom;
     const aboveTrapLine = p.y < tgt.y - 35;
@@ -336,18 +373,27 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
       if (aboveTrapLine) my = Math.min(my, speed * 0.15);
     }
   } else {
-    mx = rt.strafeDir * speed * (0.6 + 0.15 * style.strafeMult);
+    mx = rt.strafeDir * speed * (0.68 + 0.18 * style.strafeMult);
     if (dist > style.preferredDist + 40 && dist > 1) {
-      mx += (dx / dist) * speed * 0.3;
-      my += (dy / dist) * speed * 0.3;
+      mx += (dx / dist) * speed * 0.34;
+      my += (dy / dist) * speed * 0.34;
     } else if (dist < style.preferredDist - 40 && dist > 1) {
-      mx -= (dx / dist) * speed * 0.22;
-      my -= (dy / dist) * speed * 0.22;
+      mx -= (dx / dist) * speed * 0.24;
+      my -= (dy / dist) * speed * 0.24;
     } else if (p.y < tgt.y) {
-      my = speed * 0.35;
+      my = speed * 0.42;
     } else {
       my = speed * 0.1;
     }
+  }
+
+  const dodgeMag = Math.sqrt(incomingDodge.x * incomingDodge.x + incomingDodge.y * incomingDodge.y);
+  if (dodgeMag > 0.35) {
+    mx += incomingDodge.x * speed * 0.5;
+    my += incomingDodge.y * speed * 0.42;
+  }
+  if (Math.random() < 0.015) {
+    rt.strafeDir *= -1;
   }
 
   let shouldShoot = false;
