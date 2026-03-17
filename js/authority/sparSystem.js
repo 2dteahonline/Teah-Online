@@ -1563,6 +1563,7 @@ const SparSystem = {
         _wallPressureCooldown: 0,      // frames until wall-pressure can re-open
         _cornerFrames: 0,         // consecutive frames stuck in a corner
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
+        _idleFrames: 0,           // consecutive frames with near-zero movement (idle guard)
       },
     };
 
@@ -1824,6 +1825,7 @@ const SparSystem = {
         m.ai._chaseFrames = 0;
         m.ai._retreatFrames = 0;
         m.ai._cornerFrames = 0;
+        m.ai._idleFrames = 0;
         m.ai._profileMods = null;
       }
     }
@@ -4940,6 +4942,24 @@ const SparSystem = {
     moveY = ai.smoothVy * smoothFactor + moveY * (1 - smoothFactor);
     ai.smoothVx = moveX;
     ai.smoothVy = moveY;
+
+    // --- Idle guard: if near-stationary too long, force a lateral break ---
+    const idleThreshold = 0.4;
+    if (Math.abs(moveX) < idleThreshold && Math.abs(moveY) < idleThreshold) {
+      ai._idleFrames++;
+    } else {
+      ai._idleFrames = 0;
+    }
+    // After 30 idle frames, if not escaping or reloading, force a lateral break
+    if (ai._idleFrames >= 30 && !ai._escapePolicy && !(bot === tgt ? false : (member && member.gun.reloading))) {
+      const breakDir = (Math.random() < 0.5 ? -1 : 1);
+      moveX = breakDir * speed * 0.7;
+      // Also nudge vertically toward bottom if above enemy, else random
+      moveY = (bot.y < tgt.y) ? speed * 0.3 : ((Math.random() < 0.5 ? -1 : 1) * speed * 0.25);
+      ai._idleFrames = 0;
+      ai.strafeDir = breakDir; // commit to this direction for the next strafe cycle
+      ai.strafeTimer = 20 + Math.floor(Math.random() * 20);
+    }
 
     // Collision — use player wall size, not mob (bots = future players)
     const hw = GAME_CONFIG.PLAYER_WALL_HW;
