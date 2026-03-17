@@ -4882,11 +4882,14 @@ const SparSystem = {
         const vertPush = 0.35 + 0.2 * Math.min(1, dist / 300);
         moveX = offDir * speed * 0.55;
         moveY = speed * vertPush;
-        // Closer → more horizontal, less vertical
-        if (dist < 150) { moveX = offDir * speed * 0.65; moveY = speed * 0.3; }
+        // Close range: widen laterally to avoid stacking on enemy — don't rush straight in
+        if (dist < 150) {
+          moveX = offDir * speed * 0.75;
+          moveY = speed * 0.2;
+        }
 
       } else if (tactic === 'contestSprint') {
-        // Full-speed diagonal dive to below+beside target
+        // Diagonal dive to below+beside target — but from a WIDE angle, not through them
         const goalX = tgt.x + offDir * 75;
         const goalY = tgt.y + bottomGap + 30;
         const gdx = goalX - bot.x, gdy = goalY - bot.y;
@@ -4894,6 +4897,13 @@ const SparSystem = {
         if (gd > 15) {
           moveX = (gdx / gd) * speed;
           moveY = (gdy / gd) * speed;
+          // If path passes too close to enemy, add lateral separation
+          if (dist < 160 && dist > 1) {
+            const sepX = (bot.x - tgt.x) / dist;
+            const sepY = (bot.y - tgt.y) / dist;
+            moveX += sepX * speed * 0.3;
+            moveY += sepY * speed * 0.15;
+          }
         } else {
           // Arrived — hold position briefly, will transition to hasBottom
           moveX = ai.strafeDir * speed * 0.6;
@@ -5135,14 +5145,18 @@ const SparSystem = {
 
       // Policy-driven neutral movement
       if (ai._midPressurePolicy === 'pressureHard') {
-        // Aggressive close-in: 50% approach, 50% strafe, push toward bottom
-        moveX = ai.strafeDir * speed * 0.5;
-        if (dist > 120 && dist > 1) {
-          moveX += (dx / dist) * speed * 0.5;
-          moveY += (dy / dist) * speed * 0.5;
+        // Pressure with lateral dominance — close in only to safe distance, not into their face
+        moveX = ai.strafeDir * speed * 0.55;
+        if (dist > 180 && dist > 1) {
+          moveX += (dx / dist) * speed * 0.4;
+          moveY += (dy / dist) * speed * 0.35;
+        } else if (dist < 140 && dist > 1) {
+          // Too close — back off slightly while maintaining lateral pressure
+          moveX -= (dx / dist) * speed * 0.15;
+          moveY -= (dy / dist) * speed * 0.1;
         }
         // Push toward bottom position — bottom is the primary objective
-        if (bot.y < tgt.y) moveY += speed * 0.4;
+        if (bot.y < tgt.y) moveY += speed * 0.35;
         else moveY += speed * 0.1;
       } else if (ai._midPressurePolicy === 'pressureSoft') {
         // Moderate: 70% strafe, 30% approach when far, don't chase close
@@ -5199,10 +5213,12 @@ const SparSystem = {
         moveX = ai.strafeDir * speed * 0.35;
       }
 
-      // Maintain fighting distance — don't stack on top of enemy
-      if (dist < 100 && dist > 1) {
-        moveX -= (dx / dist) * speed * 0.25;
-        moveY -= (dy / dist) * speed * 0.2;
+      // Maintain fighting distance — close range must be earned, not drifted into
+      // In neutral, there's no deliberate close-range purpose, so always maintain space
+      if (dist < 160 && dist > 1) {
+        const sepStrength = (160 - dist) / 160; // stronger as we get closer (0→1)
+        moveX -= (dx / dist) * speed * (0.15 + sepStrength * 0.25);
+        moveY -= (dy / dist) * speed * (0.10 + sepStrength * 0.20);
       }
       // Learning v2: use approach/retreat knowledge in neutral
       if (pm) {
@@ -5272,8 +5288,30 @@ const SparSystem = {
       const botGunSide = this._getEntityGunSide(bot);
       // Right gun side → muzzle shoots from left → bot should be RIGHT of enemy
       // Left gun side → muzzle shoots from right → bot should be LEFT of enemy
-      const favorableGunSideDir = (botGunSide === 'right') ? 1 : -1;
+      let favorableGunSideDir = (botGunSide === 'right') ? 1 : -1;
       const sideOffsetWide = this._getSparSideOffsetWide();
+
+      // --- CORNER-AWARE TARGET VALIDATION ---
+      // If the favorable side clamps to a position too close to the enemy (within aimSlack),
+      // the target is tactically invalid — it would steer us straight into the opponent near a wall.
+      // In that case, use the OTHER side (unfavorable gun-side but valid geometry).
+      const rawCrossX = tgt.x + favorableGunSideDir * sideOffsetWide;
+      const rawBottomX = tgt.x + favorableGunSideDir * sideOffsetNear;
+      const testClampCross = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, rawCrossX));
+      const testClampBottom = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, rawBottomX));
+
+      // Target is invalid if clamping ate most of the offset (target within aimSlack of enemy X)
+      const crossClamped = Math.abs(testClampCross - tgt.x) < aimSlack;
+      const bottomClamped = Math.abs(testClampBottom - tgt.x) < aimSlack;
+      const crIsCrossPolicy = (crPolicy === 'crossCommit' || crPolicy === 'fakeCrossBreak');
+      const targetInvalid = crIsCrossPolicy ? crossClamped : bottomClamped;
+
+      if (targetInvalid) {
+        // Flip to opposite side — unfavorable gun-side but at least valid geometry
+        favorableGunSideDir = -favorableGunSideDir;
+        ai._centerRecoveryCommitDir = favorableGunSideDir;
+      }
+
       const crossTargetX = tgt.x + favorableGunSideDir * sideOffsetWide;
       const bottomTargetX = tgt.x + favorableGunSideDir * sideOffsetNear;
       const bottomTargetY = tgt.y + bottomGap + 20;
@@ -5283,21 +5321,32 @@ const SparSystem = {
       const clampedBottomX = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, bottomTargetX));
       const clampedBottomY = Math.min(arenaH - TILE * 3, bottomTargetY);
 
+      // If BOTH sides clamp invalid (enemy centered in arena), force space-making
+      const bothSidesInvalid = Math.abs(clampedCrossX - tgt.x) < aimSlack && Math.abs(clampedBottomX - tgt.x) < aimSlack;
+
       // --- PATH SAFETY ---
-      // If too close to enemy, rushing directly is predictable and dangerous.
-      // Create space first before committing to cross OR bottom recovery.
-      // Applies to ALL CR policies, not just cross.
-      const tooClose = dist < 160;
-      const needsSpace = tooClose && ai._centerRecoveryFrames < 20;
+      // Close range must be EARNED (rush, punish, corner pressure) — not drifted into.
+      // During recovery/repositioning, the bot should maintain survivable distance.
+      // If too close, create space FIRST. No frame cap — space-making continues until safe.
+      // Also force space-making if both target sides are wall-clamped (invalid geometry).
+      const safeRecoveryDist = 200; // minimum distance for safe repositioning
+      const tooClose = dist < safeRecoveryDist;
+      const needsSpace = tooClose || bothSidesInvalid;
+
+      // --- DISTANCE-AWARE STEERING ---
+      // Helper: when steering toward a goal, check if the path brings us too close to enemy.
+      // If so, add separation force to keep distance survivable.
+      // "awayFromEnemy" = unit vector from enemy to bot (used for separation).
+      const awayFromEnemyX = dist > 1 ? -dx / dist : 0;
+      const awayFromEnemyY = dist > 1 ? -dy / dist : 0;
 
       if (crPolicy === 'crossCommit') {
         if (needsSpace) {
-          // Too close — create space first: back away laterally while widening
-          const awayDir = -Math.sign(dy || 1); // vertical away from enemy
-          moveX = crDir * speed * 0.5;          // still drift toward target side
-          moveY = awayDir * speed * 0.6;         // but back off to create distance
+          // Too close or invalid target — create space first
+          moveX = awayFromEnemyX * speed * 0.4 + crDir * speed * 0.5;
+          moveY = awayFromEnemyY * speed * 0.5;
         } else {
-          // Safe distance or enough frames passed — commit to cross
+          // Safe distance — commit to cross
           const goalDx = clampedCrossX - bot.x;
           const goalDy = (bot.y < tgt.y ? speed * 0.2 : speed * 0.05);
           const goalDist = Math.abs(goalDx);
@@ -5305,21 +5354,29 @@ const SparSystem = {
             moveX = Math.sign(goalDx) * speed * 0.9;
             moveY = goalDy;
           } else {
-            // Arrived at target — hold with strafe
             moveX = ai.strafeDir * speed * 0.5;
             moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
+          }
+          // Distance maintenance: if steering brings us closer than safe, add separation
+          if (dist < safeRecoveryDist) {
+            moveX += awayFromEnemyX * speed * 0.3;
+            moveY += awayFromEnemyY * speed * 0.25;
           }
         }
       } else if (crPolicy === 'fakeCrossBreak') {
         if (needsSpace) {
-          // Too close — create space before the fake-then-break
-          const awayDir = -Math.sign(dy || 1);
-          moveX = -Math.sign(clampedCrossX - bot.x || crDir) * speed * 0.4;
-          moveY = awayDir * speed * 0.55;
+          // Too close or invalid — create space before the fake-then-break
+          moveX = awayFromEnemyX * speed * 0.35 + (-Math.sign(clampedCrossX - bot.x || crDir)) * speed * 0.4;
+          moveY = awayFromEnemyY * speed * 0.5;
         } else if (ai._centerRecoveryFrames < 12) {
           // Phase 1: show one direction (opposite of real target)
           moveX = -Math.sign(clampedCrossX - bot.x || crDir) * speed * 0.7;
           moveY = speed * 0.1;
+          // Don't let the fake drift us closer
+          if (dist < safeRecoveryDist) {
+            moveX += awayFromEnemyX * speed * 0.25;
+            moveY += awayFromEnemyY * speed * 0.2;
+          }
         } else {
           // Phase 2: reverse and steer toward actual favorable gun-side position
           const goalDx = clampedCrossX - bot.x;
@@ -5330,17 +5387,25 @@ const SparSystem = {
             moveX = ai.strafeDir * speed * 0.5;
             moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
           }
+          if (dist < safeRecoveryDist) {
+            moveX += awayFromEnemyX * speed * 0.3;
+            moveY += awayFromEnemyY * speed * 0.25;
+          }
         }
       } else if (crPolicy === 'baitShotDrop') {
         if (needsSpace) {
-          // Too close — create lateral space while maintaining strafe (don't just sit)
-          const awayDir = -Math.sign(dy || 1);
-          moveX = crDir * speed * 0.55;
-          moveY = awayDir * speed * 0.45;
+          // Too close or invalid — create lateral space while maintaining strafe
+          moveX = awayFromEnemyX * speed * 0.35 + crDir * speed * 0.45;
+          moveY = awayFromEnemyY * speed * 0.45;
         } else if (ai._centerRecoveryFrames < 15) {
           // Phase 1: bait — active strafe, not standing still
           moveX = ai.strafeDir * speed * 0.55;
           moveY = (bot.y < tgt.y) ? speed * 0.1 : -speed * 0.05;
+          // Bait phase must not drift closer
+          if (dist < safeRecoveryDist) {
+            moveX += awayFromEnemyX * speed * 0.2;
+            moveY += awayFromEnemyY * speed * 0.2;
+          }
         } else {
           // Phase 2: steer toward bottom target position (under opponent)
           const goalDx = clampedBottomX - bot.x;
@@ -5353,13 +5418,16 @@ const SparSystem = {
             moveX = ai.strafeDir * speed * 0.4;
             moveY = speed * 0.1;
           }
+          if (dist < safeRecoveryDist) {
+            moveX += awayFromEnemyX * speed * 0.25;
+            moveY += awayFromEnemyY * speed * 0.2;
+          }
         }
       } else if (crPolicy === 'wideUnderEntry') {
         if (needsSpace) {
-          // Too close — widen out laterally first, then descend once safe
-          const awayDir = -Math.sign(dy || 1);
-          moveX = crDir * speed * 0.7;          // strong lateral displacement
-          moveY = awayDir * speed * 0.35;        // back off vertically
+          // Too close or invalid — widen out laterally first
+          moveX = awayFromEnemyX * speed * 0.3 + crDir * speed * 0.6;
+          moveY = awayFromEnemyY * speed * 0.35;
         } else {
           // Safe distance — steer toward bottom target from wide angle
           const goalDx = clampedBottomX - bot.x;
@@ -5373,6 +5441,11 @@ const SparSystem = {
           } else {
             moveX = ai.strafeDir * speed * 0.4;
             moveY = speed * 0.1;
+          }
+          // Wide under entry still must not drift too close on the approach path
+          if (dist < safeRecoveryDist) {
+            moveX += awayFromEnemyX * speed * 0.25;
+            moveY += awayFromEnemyY * speed * 0.2;
           }
         }
       }
@@ -5946,85 +6019,15 @@ const SparSystem = {
     // Works in ALL states (not just neutral) — detects when an owner is active but
     // the bot is barely moving or not improving geometry. Forces action to prevent
     // the "stand still in a bad state" problem.
-    const moveMag = Math.sqrt(moveX * moveX + moveY * moveY);
+    // IMPORTANT: Uses ACTUAL position (post-collision) snapshots, not intended moveX/moveY.
+    // The old approach missed body-block/wall stalls because intended movement looked fine.
     const hasActiveOwner = !!(ai._escapePolicy || ai._centerRecoveryPolicy || ai._antiBottomTactic || ai._gunSidePolicy);
 
-    // Track displacement over rolling window
-    ai._stallDispX = (ai._stallDispX || 0) + moveX;
-    ai._stallDispY = (ai._stallDispY || 0) + moveY;
-    ai._stallWindow = (ai._stallWindow || 0) + 1;
+    // Snapshot position BEFORE collision for this frame (we'll compare after collision below)
+    ai._stallPreX = bot.x;
+    ai._stallPreY = bot.y;
 
-    if (ai._stallWindow >= 10) {
-      const netDisp = Math.sqrt(ai._stallDispX * ai._stallDispX + ai._stallDispY * ai._stallDispY);
-      const isStalled = netDisp < speed * 2.5; // less than 2.5 frames worth of movement in 10 frames
-
-      if (isStalled && hasActiveOwner && ai._momentumBreakFrames <= 0 && SparState.phase === 'fighting') {
-        ai._ownerStallFrames = (ai._ownerStallFrames || 0) + 10;
-        // After 10 frames of stalling in an owner state, force action
-        if (ai._ownerStallFrames >= 10) {
-          // Repick the current owner or force a strong break
-          if (ai._centerRecoveryPolicy) {
-            // CR is stalled — escalate: flip direction and force movement
-            ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
-            if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
-            else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
-          }
-          // Force momentum break regardless of owner
-          const breakDir = (bot.x < midX) ? 1 : -1;
-          const breakDirY = (bot.y < tgt.y) ? 0.4 : -0.15;
-          moveX = breakDir * speed * 0.8;
-          moveY = breakDirY * speed;
-          ai.strafeDir = breakDir;
-          ai.strafeTimer = 15 + Math.floor(Math.random() * 15);
-          ai._momentumBreakFrames = 15 + Math.floor(Math.random() * 10);
-          ai._momentumBreakDirX = breakDir * 0.8;
-          ai._momentumBreakDirY = breakDirY;
-          ai._ownerStallFrames = 0;
-          // Allow shooting during stall break (see shot suppression fail-safe below)
-          ai._stallBreakActive = true;
-          // Track diagnostic
-          if (sl && sl.tactical) {
-            if (typeof sl.tactical.ownerStallBreaks !== 'number') sl.tactical.ownerStallBreaks = 0;
-            sl.tactical.ownerStallBreaks++;
-          }
-        }
-      } else {
-        ai._ownerStallFrames = 0;
-        ai._stallBreakActive = false;
-      }
-
-      // Also detect stalling in neutral (existing low-motion rescue)
-      const isInNeutralOpen = !hasActiveOwner && !isOpening && !member.gun.reloading &&
-        !enemyReloading && !ai._wallPressurePolicy && SparState.phase === 'fighting';
-      if (isInNeutralOpen && isStalled && ai._momentumBreakFrames <= 0) {
-        ai._lowMotionFrames = (ai._lowMotionFrames || 0) + 10;
-      } else if (!hasActiveOwner) {
-        ai._lowMotionFrames = 0;
-      }
-
-      // Reset window
-      ai._stallDispX = 0;
-      ai._stallDispY = 0;
-      ai._stallWindow = 0;
-    }
-
-    if ((ai._lowMotionFrames || 0) >= 12) {
-      // Force lateral break with momentum commitment
-      const breakDir = (Math.random() < 0.5 ? -1 : 1);
-      const breakDirY = (bot.y < tgt.y) ? 0.3 : ((Math.random() < 0.5 ? -1 : 1) * 0.2);
-      moveX = breakDir * speed * 0.7;
-      moveY = breakDirY * speed;
-      ai.strafeDir = breakDir;
-      ai.strafeTimer = 15 + Math.floor(Math.random() * 20);
-      ai._lowMotionFrames = 0;
-      ai._momentumBreakFrames = 25 + Math.floor(Math.random() * 10);
-      ai._momentumBreakDirX = breakDir * 0.7;
-      ai._momentumBreakDirY = breakDirY;
-      if (sl && sl.tactical) {
-        if (typeof sl.tactical.lowMotionRescues !== 'number') sl.tactical.lowMotionRescues = 0;
-        sl.tactical.lowMotionRescues++;
-      }
-    }
+    // (Old pre-collision stall logic removed — now runs post-collision below)
 
     // Learning: apply strafe speed multiplier (win-rate based)
     // Skip during anti-bottom — bot must move at full speed to contest vertical control
@@ -6098,6 +6101,64 @@ const SparSystem = {
     const hw = GAME_CONFIG.PLAYER_WALL_HW;
     if (positionClear(bot.x + moveX, bot.y, hw)) bot.x += moveX;
     if (positionClear(bot.x, bot.y + moveY, hw)) bot.y += moveY;
+
+    // === POST-COLLISION STALL MEASUREMENT ===
+    // Now that collision is applied, measure ACTUAL displacement this frame
+    const actualDispX = bot.x - (ai._stallPreX || bot.x);
+    const actualDispY = bot.y - (ai._stallPreY || bot.y);
+    ai._stallAccumX = (ai._stallAccumX || 0) + actualDispX;
+    ai._stallAccumY = (ai._stallAccumY || 0) + actualDispY;
+    ai._stallWindow = (ai._stallWindow || 0) + 1;
+
+    if (ai._stallWindow >= 10) {
+      const netDisp = Math.sqrt(ai._stallAccumX * ai._stallAccumX + ai._stallAccumY * ai._stallAccumY);
+      const isStalled = netDisp < speed * 2.5; // less than 2.5 frames of movement in 10 frames
+
+      if (isStalled && hasActiveOwner && ai._momentumBreakFrames <= 0 && SparState.phase === 'fighting') {
+        ai._ownerStallFrames = (ai._ownerStallFrames || 0) + 10;
+        if (ai._ownerStallFrames >= 10) {
+          if (ai._centerRecoveryPolicy) {
+            ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
+            if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
+            else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
+          }
+          const breakDir = (bot.x < midX) ? 1 : -1;
+          const breakDirY = (bot.y < tgt.y) ? 0.4 : -0.15;
+          ai._stallBreakActive = true;
+          ai._ownerStallFrames = 0;
+          // Apply momentum break on NEXT frame via flag
+          ai._momentumBreakFrames = 15 + Math.floor(Math.random() * 10);
+          ai._momentumBreakDirX = breakDir * 0.8;
+          ai._momentumBreakDirY = breakDirY;
+          if (sl && sl.tactical) {
+            if (typeof sl.tactical.ownerStallBreaks !== 'number') sl.tactical.ownerStallBreaks = 0;
+            sl.tactical.ownerStallBreaks++;
+          }
+        }
+      } else {
+        ai._ownerStallFrames = 0;
+        ai._stallBreakActive = false;
+      }
+
+      // Neutral stall detection (existing low-motion rescue)
+      const isInNeutralOpen = !hasActiveOwner && !isOpening && !member.gun.reloading &&
+        !enemyReloading && !ai._wallPressurePolicy && SparState.phase === 'fighting';
+      if (isInNeutralOpen && isStalled && ai._momentumBreakFrames <= 0) {
+        const breakDir2 = (bot.x < midX) ? 1 : -1;
+        ai.strafeDir = breakDir2;
+        ai.strafeTimer = 20 + Math.floor(Math.random() * 20);
+        const sl2 = typeof sparLearning !== 'undefined' ? sparLearning : null;
+        if (sl2 && sl2.tactical) {
+          if (typeof sl2.tactical.idleBreaks !== 'number') sl2.tactical.idleBreaks = 0;
+          sl2.tactical.idleBreaks++;
+        }
+      }
+
+      // Reset window
+      ai._stallAccumX = 0;
+      ai._stallAccumY = 0;
+      ai._stallWindow = 0;
+    }
 
     bot.vx = moveX; bot.vy = moveY;
     bot.moving = Math.abs(moveX) > 0.5 || Math.abs(moveY) > 0.5;
