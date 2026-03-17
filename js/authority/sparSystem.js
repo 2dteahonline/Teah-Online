@@ -81,6 +81,132 @@ const SparSystem = {
     return this._META_BUILDS[Math.floor(Math.random() * this._META_BUILDS.length)];
   },
 
+  _clamp01(v) {
+    return Math.max(0, Math.min(1, v));
+  },
+
+  _ensureReinforcementProfile(sl) {
+    if (!sl) return null;
+    const routeKeys = typeof SPAR_OPENING_ROUTE_KEYS !== 'undefined'
+      ? SPAR_OPENING_ROUTE_KEYS
+      : ['bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midFlank', 'mirrorPlayer'];
+    const antiBottomKeys = typeof SPAR_ANTI_BOTTOM_RESPONSE_KEYS !== 'undefined'
+      ? SPAR_ANTI_BOTTOM_RESPONSE_KEYS
+      : ['directContest', 'sideFlank', 'baitPull'];
+    if (!sl.reinforcement1v1) sl.reinforcement1v1 = {};
+    if (!sl.reinforcement1v1.general) sl.reinforcement1v1.general = {};
+    if (!sl.reinforcement1v1.player) sl.reinforcement1v1.player = {};
+    const scopes = [sl.reinforcement1v1.general, sl.reinforcement1v1.player];
+    for (const scope of scopes) {
+      if (!scope.style) scope.style = createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES || {}));
+      if (!scope.opening) scope.opening = createSparRewardBuckets(routeKeys);
+      if (!scope.antiBottom) scope.antiBottom = createSparRewardBuckets(antiBottomKeys);
+    }
+    return sl.reinforcement1v1;
+  },
+
+  _sumBucketPlays(bucketMap) {
+    let total = 0;
+    if (!bucketMap) return total;
+    for (const bucket of Object.values(bucketMap)) total += (bucket && bucket.plays) || 0;
+    return total;
+  },
+
+  _scoreRewardBucket(bucket, totalPlays, exploreWeight) {
+    const plays = bucket && bucket.plays ? bucket.plays : 0;
+    const reward = bucket && typeof bucket.reward === 'number' ? bucket.reward : 0.5;
+    const bonus = exploreWeight * Math.sqrt(Math.log((totalPlays || 0) + 2) / (plays + 1));
+    return reward + bonus;
+  },
+
+  _updateRewardBucket(bucket, reward) {
+    if (!bucket) return;
+    const clamped = this._clamp01(reward);
+    const plays = bucket.plays || 0;
+    bucket.reward = plays > 0 ? ((bucket.reward * plays) + clamped) / (plays + 1) : clamped;
+    bucket.plays = plays + 1;
+  },
+
+  _computeDamageReward(dmgDelta) {
+    return this._clamp01(0.5 + dmgDelta / (SPAR_CONFIG.HP_BASELINE * 1.5));
+  },
+
+  _updateMatchReinforcement(won, collector, enemyBot, scopes) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    if (!sl || !collector || !enemyBot || !enemyBot.ai) return;
+    const rf = this._ensureReinforcementProfile(sl);
+    if (!rf) return;
+
+    const botWon = !won;
+    const dmgDelta = (enemyBot.ai._matchDmgDealt || 0) - (enemyBot.ai._matchDmgTaken || 0);
+    const dmgReward = this._computeDamageReward(dmgDelta);
+    const gotBottomAtOpening = collector.botYAtOpeningEnd > 0 && collector.playerYAtOpeningEnd > 0
+      ? (collector.botYAtOpeningEnd > collector.playerYAtOpeningEnd + 20 ? 1 : 0)
+      : 0.5;
+    const totalBottomFrames = collector.botHasBottom_frames + collector.hasBottom_frames;
+    const retakeShare = totalBottomFrames > 0 ? (collector.botHasBottom_frames / totalBottomFrames) : 0.5;
+    const styleReward = this._clamp01((botWon ? 0.62 : 0) + dmgReward * 0.38);
+    const routeReward = this._clamp01((botWon ? 0.5 : 0) + dmgReward * 0.25 + gotBottomAtOpening * 0.25);
+    const antiBottomReward = this._clamp01((botWon ? 0.4 : 0) + dmgReward * 0.25 + retakeShare * 0.35);
+    const scopeList = Array.isArray(scopes) ? scopes : [];
+    for (const scopeName of scopeList) {
+      const scope = rf[scopeName];
+      if (!scope) continue;
+      if (enemyBot.ai._duelStyle && scope.style && scope.style[enemyBot.ai._duelStyle]) {
+        this._updateRewardBucket(scope.style[enemyBot.ai._duelStyle], styleReward);
+      }
+      if (SparState._botOpeningRoute && scope.opening && scope.opening[SparState._botOpeningRoute]) {
+        this._updateRewardBucket(scope.opening[SparState._botOpeningRoute], routeReward);
+      }
+      if (enemyBot.ai._antiBottomResponse && enemyBot.ai._antiBottomFrames > 20 &&
+          scope.antiBottom && scope.antiBottom[enemyBot.ai._antiBottomResponse]) {
+        this._updateRewardBucket(scope.antiBottom[enemyBot.ai._antiBottomResponse], antiBottomReward);
+      }
+    }
+  },
+
+  _pickAntiBottomResponse(pm) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const responses = typeof SPAR_ANTI_BOTTOM_RESPONSE_KEYS !== 'undefined'
+      ? SPAR_ANTI_BOTTOM_RESPONSE_KEYS
+      : ['directContest', 'sideFlank', 'baitPull'];
+    if (!sl) {
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+    const rf = this._ensureReinforcementProfile(sl);
+    const pBuckets = rf && rf.player ? rf.player.antiBottom : null;
+    const gBuckets = rf && rf.general ? rf.general.antiBottom : null;
+    const totalPlayer = this._sumBucketPlays(pBuckets);
+    const totalGeneral = this._sumBucketPlays(gBuckets);
+    let best = 'sideFlank';
+    let bestScore = -Infinity;
+    for (const name of responses) {
+      let score = name === 'sideFlank' ? 7 : (name === 'directContest' ? 6 : 5);
+      if (pm) {
+        if (name === 'sideFlank') {
+          if (pm.playerWallsFromBottom > 0.45) score += 10;
+          if (pm.playerHoldsBottom > 0.55) score += 6;
+        } else if (name === 'directContest') {
+          if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.35) score += 10;
+          if (pm.playerPushesFromBottom > 0.45) score -= 4;
+        } else if (name === 'baitPull') {
+          if (pm.playerPushesFromBottom > 0.45) score += 11;
+          if (pm.playerWallsFromBottom > 0.55) score += 3;
+        }
+      }
+      const pScore = this._scoreRewardBucket(pBuckets && pBuckets[name], totalPlayer, 0.24);
+      const gScore = this._scoreRewardBucket(gBuckets && gBuckets[name], totalGeneral, 0.12);
+      score += (pScore - 0.5) * 28;
+      score += (gScore - 0.5) * 14;
+      score += Math.random() * 3;
+      if (score > bestScore) {
+        bestScore = score;
+        best = name;
+      }
+    }
+    return best;
+  },
+
   joinRoom(roomId) {
     // CT-X must be equipped to enter spar
     if (!playerEquip.gun || playerEquip.gun.id !== 'ct_x') {
@@ -218,8 +344,10 @@ const SparSystem = {
     }
 
     // 5. Start countdown
+    SparState._botOpeningRoute = null;
+    const trainTiming = typeof _getSparTrainingTiming === 'function' ? _getSparTrainingTiming() : null;
     SparState.phase = 'countdown';
-    SparState.countdown = SPAR_CONFIG.COUNTDOWN_FRAMES;
+    SparState.countdown = trainTiming ? trainTiming.countdownFrames : SPAR_CONFIG.COUNTDOWN_FRAMES;
     SparState.matchTimer = 0;
     SparState.lastResult = null;
     SparState.postMatchTimer = 0;
@@ -315,6 +443,8 @@ const SparSystem = {
         _styleSwitchEvaluated: false,
         _matchDmgDealt: 0,
         _matchDmgTaken: 0,
+        _antiBottomResponse: null,
+        _antiBottomFrames: 0,
         _cornerFrames: 0,         // consecutive frames stuck in a corner
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
       },
@@ -326,6 +456,11 @@ const SparSystem = {
       let style = 'pressure'; // default
 
       if (sl && sl.general1v1 && sl.general1v1.styleResults) {
+        const rf = this._ensureReinforcementProfile(sl);
+        const pStyleBuckets = rf && rf.player ? rf.player.style : null;
+        const gStyleBuckets = rf && rf.general ? rf.general.style : null;
+        const totalPlayerStylePlays = this._sumBucketPlays(pStyleBuckets);
+        const totalGeneralStylePlays = this._sumBucketPlays(gStyleBuckets);
         // Pick style with best win rate, 10% exploration
         if (Math.random() < 0.1) {
           const styleNames = Object.keys(SPAR_DUEL_STYLES);
@@ -362,6 +497,23 @@ const SparSystem = {
             } else {
               // No personal data — use general
               score = sr && sr.total > 0 ? sr.wins / sr.total : 0.5;
+            }
+            const playerRewardScore = this._scoreRewardBucket(
+              pStyleBuckets && pStyleBuckets[name],
+              totalPlayerStylePlays,
+              0.18
+            );
+            const generalRewardScore = this._scoreRewardBucket(
+              gStyleBuckets && gStyleBuckets[name],
+              totalGeneralStylePlays,
+              0.1
+            );
+            if (jr && jr.total >= 3) {
+              score = score * 0.72 + playerRewardScore * 0.22 + generalRewardScore * 0.06;
+            } else if (jr && jr.total > 0) {
+              score = score * 0.75 + playerRewardScore * 0.15 + generalRewardScore * 0.10;
+            } else {
+              score = score * 0.8 + generalRewardScore * 0.2;
             }
             if (score > bestScore) { bestScore = score; style = name; }
           }
@@ -402,7 +554,8 @@ const SparSystem = {
       if (aAlive <= 0 || bAlive <= 0) {
         SparState.lastResult = aAlive > 0 ? 'teamA' : 'teamB';
         SparState.phase = 'post_match';
-        SparState.postMatchTimer = SPAR_CONFIG.POST_MATCH_FRAMES;
+        const trainTiming = typeof _getSparTrainingTiming === 'function' ? _getSparTrainingTiming() : null;
+        SparState.postMatchTimer = trainTiming ? trainTiming.postMatchFrames : SPAR_CONFIG.POST_MATCH_FRAMES;
 
         // Record results
         const won = SparState.lastResult === 'teamA';
@@ -520,8 +673,10 @@ const SparSystem = {
     // Restart countdown
     bullets.length = 0;
     hitEffects.length = 0;
+    SparState._botOpeningRoute = null;
+    const trainTiming = typeof _getSparTrainingTiming === 'function' ? _getSparTrainingTiming() : null;
     SparState.phase = 'countdown';
-    SparState.countdown = SPAR_CONFIG.COUNTDOWN_FRAMES;
+    SparState.countdown = trainTiming ? trainTiming.countdownFrames : SPAR_CONFIG.COUNTDOWN_FRAMES;
     SparState.lastResult = null;
   },
 
@@ -554,6 +709,7 @@ const SparSystem = {
     this._restoreSnapshot();
     this._cleanupBots();
     SparState._matchCollector = null;
+    SparState._botOpeningRoute = null;
     SparState.phase = 'hub';
     SparState.activeRoom = null;
     SparState.lastResult = null;
@@ -565,6 +721,7 @@ const SparSystem = {
     this._restoreSnapshot();
     this._cleanupBots();
     SparState._matchCollector = null;
+    SparState._botOpeningRoute = null;
     SparState.phase = 'idle';
     SparState.activeRoom = null;
     SparState.lastResult = null;
@@ -1244,9 +1401,14 @@ const SparSystem = {
     if (!c || c.samples < 3) { SparState._matchCollector = null; return; }
     if (typeof sparLearning === 'undefined') { SparState._matchCollector = null; return; }
 
+    const enemyBot1v1 = SparState.teamB[0] && SparState.teamB[0].member;
+
     // Skip player profile learning during automated training — training bots
-    // have scripted behavior that would pollute human-player telemetry
+    // have scripted behavior that would pollute human-player telemetry.
+    // We still update the general reinforcement buckets so bulk sims keep
+    // teaching the bot broad meta/style preferences.
     if (typeof _isSparTraining === 'function' && _isSparTraining()) {
+      this._updateMatchReinforcement(won, c, enemyBot1v1, ['general']);
       SparState._matchCollector = null;
       return;
     }
@@ -1596,7 +1758,6 @@ const SparSystem = {
 
     // --- Phase 2e: Style result tracking ---
     // Find the enemy bot's duel style for this match
-    const enemyBot1v1 = SparState.teamB[0] && SparState.teamB[0].member;
     if (enemyBot1v1 && enemyBot1v1.ai._duelStyle) {
       const style = enemyBot1v1.ai._duelStyle;
       // Ensure structure exists
@@ -1623,6 +1784,8 @@ const SparSystem = {
       if (won) jr.losses++; else jr.wins++;
       jr.avgDmgDelta = jr.total > 1 ? ema(jr.avgDmgDelta, dmgDelta) : dmgDelta;
     }
+
+    this._updateMatchReinforcement(won, c, enemyBot1v1, ['general', 'player']);
 
     SparState._matchCollector = null;
   },
@@ -1798,6 +1961,11 @@ const SparSystem = {
     // Score each route — WIN RATE IS EVERYTHING
     const scores = {};
     for (const r of routes) scores[r] = 0;
+    const rf = sl ? this._ensureReinforcementProfile(sl) : null;
+    const pOpeningBuckets = rf && rf.player ? rf.player.opening : null;
+    const gOpeningBuckets = rf && rf.general ? rf.general.opening : null;
+    const totalPlayerOpening = this._sumBucketPlays(pOpeningBuckets);
+    const totalGeneralOpening = this._sumBucketPlays(gOpeningBuckets);
 
     // Base bonus for bottom routes — bottom is meta
     scores['bottomCenter'] += 5;
@@ -1831,6 +1999,19 @@ const SparSystem = {
           scores[r] -= rr[r].total * 3;
         }
       }
+
+      const playerRewardScore = this._scoreRewardBucket(
+        pOpeningBuckets && pOpeningBuckets[r],
+        totalPlayerOpening,
+        0.25
+      );
+      const generalRewardScore = this._scoreRewardBucket(
+        gOpeningBuckets && gOpeningBuckets[r],
+        totalGeneralOpening,
+        0.14
+      );
+      scores[r] += (playerRewardScore - 0.5) * 26;
+      scores[r] += (generalRewardScore - 0.5) * 14;
     }
 
     // Counter player's specific route — STRONG counter
@@ -2046,6 +2227,7 @@ const SparSystem = {
     const enemyMovingLeft = tgt.vx < -1;
     const enemyMovingRight = tgt.vx > 1;
     const isOpening = SparState.matchTimer < 180;  // first 3 seconds
+    if (!enemyHasBottom) ai._antiBottomFrames = 0;
 
     // --- Strafe helper (used by all behaviors) ---
     ai.strafeTimer--;
@@ -2212,59 +2394,80 @@ const SparSystem = {
       if (bot.y > arenaH - TILE * 2) moveY -= speed * 0.3;
 
     } else if (enemyHasBottom) {
-      // === ENEMY HAS BOTTOM — retake aggressively ===
+      // === ENEMY HAS BOTTOM — choose a retake response instead of hovering above ===
+      if (!ai._antiBottomResponse) ai._antiBottomResponse = this._pickAntiBottomResponse(pm);
+      ai._antiBottomFrames = (ai._antiBottomFrames || 0) + 1;
 
-      // Learning v2: counter their bottom-holding style
-      let approachAggr = 0.45;  // default downward push (was 0.35)
-      let strafeAggr = 0.65;    // default strafe speed (was 0.6)
+      const response = ai._antiBottomResponse;
+      const alignX = Math.abs(dx);
+      const aboveTrapLine = bot.y < tgt.y - 35;
+      let approachAggr = 0.45;
+      let strafeAggr = 0.65;
 
       if (pm) {
-        // If player walls bullets from bottom (high shot freq), be more evasive
         if (pm.playerWallsFromBottom > 0.5) {
-          strafeAggr = 0.85; // wider strafes to dodge bullet walls
-          approachAggr = 0.2; // approach slower to not run into walls
+          strafeAggr = 0.85;
+          approachAggr = 0.22;
         }
-        // If player holds position (passive bottom), we can be bolder approaching
         if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.3) {
-          approachAggr = 0.5; // they won't push, so commit more
-        }
-        // If player pushes from bottom, we can bait them out and steal position
-        if (pm.playerPushesFromBottom > 0.4) {
-          // Fake retreating to draw them out, then cut behind
-          if (dist < 250) {
-            moveY = -speed * 0.3; // back off to bait
-            moveX = ai.strafeDir * speed * 0.7;
-            // Skip normal approach logic below
-            approachAggr = -0.1;
-          }
-        }
-        // Stay off their dominant shot axis
-        if (pm.preferredOffsetX > 0.1) {
-          moveX += Math.sign(bot.x - tgt.x) * speed * pm.preferredOffsetX * 0.25;
-        }
-        // If they shoot up a lot from below, stay offset
-        if (pm.belowShootsUp > 0.6) {
-          moveX += Math.sign(bot.x - tgt.x) * speed * 0.2;
+          approachAggr = Math.max(approachAggr, 0.5);
         }
       }
 
-      if (dist > 300) {
-        moveX = ai.strafeDir * speed * strafeAggr;
-        moveY = speed * approachAggr;
-      } else if (dist > 150) {
-        moveX = ai.strafeDir * speed * (strafeAggr + 0.1);
-        if (tgt.dir === 1) {
-          // Enemy facing up — they're walling. Strafe wider.
-          moveX = ai.strafeDir * speed * Math.min(0.95, strafeAggr + 0.25);
+      if (response === 'sideFlank') {
+        const flankDir = alignX < 110 ? ai.strafeDir : Math.sign(dx);
+        moveX = flankDir * speed * Math.max(0.8, strafeAggr + 0.15);
+        moveY = speed * (alignX < 110 ? 0.18 : 0.5);
+        if (aboveTrapLine && alignX < 90) moveY = Math.min(moveY, 0.12 * speed);
+        if (pm && pm.playerWallsFromBottom > 0.45) {
+          moveX = flankDir * speed * 0.95;
+          moveY = speed * 0.15;
+        }
+      } else if (response === 'baitPull') {
+        if (dist < 240) {
+          moveY = -speed * 0.35;
+          moveX = ai.strafeDir * speed * 0.8;
         } else {
-          moveY = speed * Math.min(0.5, approachAggr + 0.15);
+          moveX = Math.sign(dx || ai.strafeDir) * speed * 0.55;
+          moveY = speed * 0.35;
+        }
+        if (pm && pm.playerPushesFromBottom > 0.45) {
+          moveX += Math.sign(dx || ai.strafeDir) * speed * 0.15;
         }
       } else {
-        moveX = ai.strafeDir * speed * 0.5;
-        moveY = speed * 0.5;
+        // directContest
+        if (dist > 300) {
+          moveX = ai.strafeDir * speed * strafeAggr;
+          moveY = speed * Math.max(0.5, approachAggr);
+        } else if (dist > 150) {
+          moveX = ai.strafeDir * speed * Math.min(0.95, strafeAggr + 0.15);
+          moveY = speed * Math.min(0.58, approachAggr + 0.18);
+        } else {
+          moveX = ai.strafeDir * speed * 0.55;
+          moveY = speed * 0.55;
+        }
+      }
+
+      // Shared anti-bottom adjustments: offset from their best peek line instead of
+      // sitting directly above them, then descend once we have lateral separation.
+      if (alignX < 80) {
+        moveX += ai.strafeDir * speed * 0.25;
+        if (aboveTrapLine) moveY = Math.min(moveY, speed * 0.15);
+      }
+      if (pm) {
+        if (pm.preferredOffsetX > 0.1) {
+          moveX += Math.sign(bot.x - tgt.x || ai.strafeDir) * speed * pm.preferredOffsetX * 0.25;
+        }
+        if (pm.belowShootsUp > 0.6) {
+          moveX += Math.sign(bot.x - tgt.x || ai.strafeDir) * speed * 0.2;
+        }
+        if (pm.playerPushesFromBottom > 0.45 && response !== 'baitPull' && dist < 220) {
+          moveY -= speed * 0.12;
+        }
       }
 
     } else {
+      ai._antiBottomFrames = 0;
       // === NEUTRAL — neither has clear bottom, actively contest ===
       moveX = ai.strafeDir * speed * 0.7;
       // Stay at preferred engagement distance + actively contest bottom
@@ -2353,9 +2556,25 @@ const SparSystem = {
       const noHitsRecently = (SparState.matchTimer - ai._lastHitFrame) > 180;
       if (hpDiff <= -30 || noHitsRecently) {
         ai._styleSwitchEvaluated = true;
-        const switchMap = { pressure: 'control', control: 'pressure', bait: 'pressure' };
-        const newStyle = switchMap[ai._duelStyle];
-        if (newStyle && typeof SPAR_DUEL_STYLES !== 'undefined') {
+        const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+        const rf = sl ? this._ensureReinforcementProfile(sl) : null;
+        const pStyleBuckets = rf && rf.player ? rf.player.style : null;
+        const totalPlayerStylePlays = this._sumBucketPlays(pStyleBuckets);
+        let newStyle = ai._duelStyle;
+        let bestScore = -Infinity;
+        for (const candidate of Object.keys(SPAR_DUEL_STYLES || {})) {
+          if (candidate === ai._duelStyle) continue;
+          const score = this._scoreRewardBucket(
+            pStyleBuckets && pStyleBuckets[candidate],
+            totalPlayerStylePlays,
+            0.12
+          );
+          if (score > bestScore) {
+            bestScore = score;
+            newStyle = candidate;
+          }
+        }
+        if (newStyle && newStyle !== ai._duelStyle && typeof SPAR_DUEL_STYLES !== 'undefined') {
           ai._duelStyle = newStyle;
           styleWeights = SPAR_DUEL_STYLES[newStyle];
         }

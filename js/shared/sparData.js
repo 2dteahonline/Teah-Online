@@ -69,6 +69,15 @@ const SPAR_DUEL_STYLES = {
   },
 };
 
+const SPAR_OPENING_ROUTE_KEYS = ['bottomLeft', 'bottomRight', 'bottomCenter', 'topHold', 'midFlank', 'mirrorPlayer'];
+const SPAR_ANTI_BOTTOM_RESPONSE_KEYS = ['directContest', 'sideFlank', 'baitPull'];
+
+function createSparRewardBuckets(keys) {
+  const buckets = {};
+  for (const key of keys) buckets[key] = { plays: 0, reward: 0.5 };
+  return buckets;
+}
+
 const SPAR_ROOMS = [
   { id: 'spar_1v1',        label: '1v1',        teamSize: 1, streakMode: false, arenaLevel: 'spar_1v1_01',   column: 'left' },
   { id: 'spar_2v2',        label: '2v2',        teamSize: 2, streakMode: false, arenaLevel: 'spar_2v2_01',   column: 'left' },
@@ -213,6 +222,18 @@ function createDefaultSparLearning() {
         pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
         control: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
         bait: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
+      },
+    },
+    reinforcement1v1: {
+      general: {
+        style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
+        opening: createSparRewardBuckets(SPAR_OPENING_ROUTE_KEYS),
+        antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
+      },
+      player: {
+        style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
+        opening: createSparRewardBuckets(SPAR_OPENING_ROUTE_KEYS),
+        antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
       },
     },
     gunSide: {

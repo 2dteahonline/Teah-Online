@@ -9,6 +9,13 @@
 // The enemy bot (teamB) keeps its real duel style AI — results feed
 // general1v1.styleResults.{pressure,control,bait} for the style selector.
 
+const SPAR_TRAINING_TIMING = {
+  countdownFrames: 20,
+  postMatchFrames: 12,
+  joinPollMs: 50,
+  nextMatchDelayMs: 100,
+};
+
 const SPAR_TRAINING_ARCHETYPES = {
   rusher: {
     label: 'Rusher',
@@ -153,7 +160,7 @@ function _sparTrainJoinWhenReady() {
     } else {
       _sparTrainJoinWhenReady();
     }
-  }, 100);
+  }, SPAR_TRAINING_TIMING.joinPollMs);
 }
 
 function _sparTrainStartNext() {
@@ -314,7 +321,7 @@ function _sparTrainOnMatchEnd(won) {
   console.log(`[SparTrain] Match ${_sparTrainState.completedMatches}/${_sparTrainState.totalMatches}: Bot ${won ? 'LOST' : 'WON'} (${type})`);
 
   if (_sparTrainState.queue.length > 0) {
-    setTimeout(() => _sparTrainStartNext(), 500);
+    setTimeout(() => _sparTrainStartNext(), SPAR_TRAINING_TIMING.nextMatchDelayMs);
   } else {
     _sparTrainPrintSummary();
     _sparTrainState = null;
@@ -367,6 +374,10 @@ function sparTrainStop() {
 
 function _isSparTraining() {
   return _sparTrainState && _sparTrainState.active;
+}
+
+function _getSparTrainingTiming() {
+  return _isSparTraining() ? SPAR_TRAINING_TIMING : null;
 }
 
 // Clear held InputIntent fields that training wrote. Training override
