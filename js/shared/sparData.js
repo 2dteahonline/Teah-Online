@@ -162,6 +162,16 @@ const SPAR_PUNISH_WINDOW_FAMILY_MAP = {
   baitConvert: 'bait',
 };
 
+// vNext: center-trap recovery policies — how to escape losing center exposure
+const SPAR_CENTER_RECOVERY_KEYS = ['crossCommit', 'fakeCrossBreak', 'baitShotDrop', 'wideUnderEntry'];
+const SPAR_CENTER_RECOVERY_FAMILY_KEYS = ['cross', 'bait', 'under'];
+const SPAR_CENTER_RECOVERY_FAMILY_MAP = {
+  crossCommit: 'cross',
+  fakeCrossBreak: 'cross',
+  baitShotDrop: 'bait',
+  wideUnderEntry: 'under',
+};
+
 const SPAR_LANE_SHAPE_KEYS = ['center', 'left', 'right', 'topLeft', 'topRight'];
 
 function createSparRewardBuckets(keys) {
@@ -355,6 +365,8 @@ function createDefaultSparLearning() {
         openingContestFamily: createSparRewardBuckets(SPAR_OPENING_CONTEST_FAMILY_KEYS),
         punishWindowPolicy: createSparRewardBuckets(SPAR_PUNISH_WINDOW_KEYS),
         punishWindowFamily: createSparRewardBuckets(SPAR_PUNISH_WINDOW_FAMILY_KEYS),
+        centerRecoveryPolicy: createSparRewardBuckets(SPAR_CENTER_RECOVERY_KEYS),
+        centerRecoveryFamily: createSparRewardBuckets(SPAR_CENTER_RECOVERY_FAMILY_KEYS),
       },
       player: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -378,6 +390,8 @@ function createDefaultSparLearning() {
         openingContestFamily: createSparRewardBuckets(SPAR_OPENING_CONTEST_FAMILY_KEYS),
         punishWindowPolicy: createSparRewardBuckets(SPAR_PUNISH_WINDOW_KEYS),
         punishWindowFamily: createSparRewardBuckets(SPAR_PUNISH_WINDOW_FAMILY_KEYS),
+        centerRecoveryPolicy: createSparRewardBuckets(SPAR_CENTER_RECOVERY_KEYS),
+        centerRecoveryFamily: createSparRewardBuckets(SPAR_CENTER_RECOVERY_FAMILY_KEYS),
       },
       selfPlay: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -401,6 +415,8 @@ function createDefaultSparLearning() {
         openingContestFamily: createSparRewardBuckets(SPAR_OPENING_CONTEST_FAMILY_KEYS),
         punishWindowPolicy: createSparRewardBuckets(SPAR_PUNISH_WINDOW_KEYS),
         punishWindowFamily: createSparRewardBuckets(SPAR_PUNISH_WINDOW_FAMILY_KEYS),
+        centerRecoveryPolicy: createSparRewardBuckets(SPAR_CENTER_RECOVERY_KEYS),
+        centerRecoveryFamily: createSparRewardBuckets(SPAR_CENTER_RECOVERY_FAMILY_KEYS),
       },
     },
     tactical: {
@@ -462,6 +478,14 @@ function createDefaultSparLearning() {
         attempts: 0, converted: 0,
         avgDmgDealt: 0, avgReturnDmg: 0, avgDuration: 0,
       },
+      centerRecoveryOutcomes: {
+        attempts: 0, escapedCenter: 0, regainedBottom: 0,
+        regainedGunSide: 0, avgDmgTakenDuring: 0, avgDuration: 0,
+      },
+      centerRecoveryFailStreaks: {
+        crossCommit: 0, fakeCrossBreak: 0, baitShotDrop: 0, wideUnderEntry: 0,
+      },
+      centerOscillationCount: 0,
       idleBreaks: 0,
       lowMotionRescues: 0,
     },
@@ -651,6 +675,21 @@ function sparSummary() {
     const convertPct = (pwo.converted / pwo.attempts * 100).toFixed(1);
     console.log(`  Outcomes: ${pwo.attempts} attempts, converted=${convertPct}%, avgDmg=${(pwo.avgDmgDealt || 0).toFixed(1)}, avgReturnDmg=${(pwo.avgReturnDmg || 0).toFixed(1)}, avgDur=${Math.round(pwo.avgDuration || 0)}f`);
   }
+
+  // Center recovery rewards
+  const pCenterRecovery = rf.player && rf.player.centerRecoveryPolicy || {};
+  console.log('\n--- Player Center Recovery Rewards ---');
+  for (const [k, v] of Object.entries(pCenterRecovery)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+  const cro = t.centerRecoveryOutcomes || {};
+  if (cro.attempts > 0) {
+    const escapedPct = (cro.escapedCenter / cro.attempts * 100).toFixed(1);
+    const bottomPct = (cro.regainedBottom / cro.attempts * 100).toFixed(1);
+    const gunSidePct = (cro.regainedGunSide / cro.attempts * 100).toFixed(1);
+    console.log(`  Outcomes: ${cro.attempts} attempts, escaped=${escapedPct}%, bottom=${bottomPct}%, gunSide=${gunSidePct}%, avgDmg=${(cro.avgDmgTakenDuring || 0).toFixed(1)}, avgDur=${Math.round(cro.avgDuration || 0)}f`);
+  }
+  console.log(`  Center oscillations: ${t.centerOscillationCount || 0}`);
 
   // Anti-stall diagnostics
   console.log('\n--- Anti-Stall ---');

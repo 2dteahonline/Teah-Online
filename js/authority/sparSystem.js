@@ -38,6 +38,7 @@ function _resetEngagementLog() {
     reload:       { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
     midPressure:  { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
     wallPressure: { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
+    centerRecovery: { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
   };
 }
 
@@ -236,6 +237,11 @@ const SparSystem = {
       if (!scope.openingContestFamily) scope.openingContestFamily = createSparRewardBuckets(openContestFamilyKeys);
       if (!scope.punishWindowPolicy) scope.punishWindowPolicy = createSparRewardBuckets(punishWindowKeys);
       if (!scope.punishWindowFamily) scope.punishWindowFamily = createSparRewardBuckets(punishWindowFamilyKeys);
+      // vNext: center recovery buckets
+      const centerRecoveryKeys = typeof SPAR_CENTER_RECOVERY_KEYS !== 'undefined' ? SPAR_CENTER_RECOVERY_KEYS : ['crossCommit', 'fakeCrossBreak', 'baitShotDrop', 'wideUnderEntry'];
+      const centerRecoveryFamilyKeys = typeof SPAR_CENTER_RECOVERY_FAMILY_KEYS !== 'undefined' ? SPAR_CENTER_RECOVERY_FAMILY_KEYS : ['cross', 'bait', 'under'];
+      if (!scope.centerRecoveryPolicy) scope.centerRecoveryPolicy = createSparRewardBuckets(centerRecoveryKeys);
+      if (!scope.centerRecoveryFamily) scope.centerRecoveryFamily = createSparRewardBuckets(centerRecoveryFamilyKeys);
     }
     if (!sl.tactical) {
       sl.tactical = {
@@ -258,6 +264,10 @@ const SparSystem = {
     if (!sl.tactical.wallPressureOutcomes) sl.tactical.wallPressureOutcomes = { attempts: 0, pinned: 0, avgDmgDealt: 0, avgDuration: 0 };
     if (!sl.tactical.openingContestOutcomes) sl.tactical.openingContestOutcomes = { attempts: 0, securedBottom: 0, deniedBottom: 0, avgDmgDealt: 0, avgDuration: 0 };
     if (!sl.tactical.punishWindowOutcomes) sl.tactical.punishWindowOutcomes = { attempts: 0, converted: 0, avgDmgDealt: 0, avgReturnDmg: 0, avgDuration: 0 };
+    // vNext: center recovery tactical tracking
+    if (!sl.tactical.centerRecoveryOutcomes) sl.tactical.centerRecoveryOutcomes = { attempts: 0, escapedCenter: 0, regainedBottom: 0, regainedGunSide: 0, avgDmgTakenDuring: 0, avgDuration: 0 };
+    if (!sl.tactical.centerRecoveryFailStreaks) sl.tactical.centerRecoveryFailStreaks = { crossCommit: 0, fakeCrossBreak: 0, baitShotDrop: 0, wideUnderEntry: 0 };
+    if (typeof sl.tactical.centerOscillationCount !== 'number') sl.tactical.centerOscillationCount = 0;
     if (typeof sl.tactical.idleBreaks !== 'number') sl.tactical.idleBreaks = 0;
     if (typeof sl.tactical.lowMotionRescues !== 'number') sl.tactical.lowMotionRescues = 0;
     return sl.reinforcement1v1;
@@ -1296,6 +1306,117 @@ const SparSystem = {
     ai._midPressurePolicy = null;
     ai._midPressureFamily = null;
     ai._midPressureFrames = 0;
+  },
+
+  // vNext: center recovery policy picker — how to escape center-trapped state
+  _pickCenterRecoveryPolicy(pm, duelContext) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const rf = this._ensureReinforcementProfile(sl);
+    const policies = typeof SPAR_CENTER_RECOVERY_KEYS !== 'undefined' ? SPAR_CENTER_RECOVERY_KEYS : ['crossCommit', 'fakeCrossBreak', 'baitShotDrop', 'wideUnderEntry'];
+    const familyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined' ? SPAR_CENTER_RECOVERY_FAMILY_MAP : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
+    const pPolicy = rf && rf.player ? rf.player.centerRecoveryPolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.centerRecoveryPolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.centerRecoveryPolicy : null;
+    const pFamily = rf && rf.player ? rf.player.centerRecoveryFamily : null;
+    const gFamily = rf && rf.general ? rf.general.centerRecoveryFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.centerRecoveryFamily : null;
+    const totalPP = this._sumBucketPlays(pPolicy);
+    const totalGP = this._sumBucketPlays(gPolicy);
+    const totalSP = this._sumBucketPlays(sPolicy);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+
+    const baseScores = {};
+    for (const p of policies) baseScores[p] = 5;
+
+    // Context-based biases
+    if (duelContext) {
+      // If player shoots fast, baitShotDrop works well
+      if (duelContext.playerShootsFast) baseScores.baitShotDrop += 4;
+      // If player has strong bottom, wideUnderEntry to give up center pressure
+      if (duelContext.enemyHasStrongBottom) baseScores.wideUnderEntry += 4;
+      // If bot is close to a wall exit already, crossCommit is faster
+      if (duelContext.nearWallExit) baseScores.crossCommit += 3;
+      // If lane quality is very poor, wide under entry is safer
+      if (duelContext.laneQuality < 0.35) baseScores.wideUnderEntry += 3;
+      // If oscillating, favor stronger commitment policies
+      if (duelContext.oscillating) {
+        baseScores.crossCommit += 3;
+        baseScores.wideUnderEntry += 2;
+      }
+    }
+
+    // Rhythm-based from player model
+    if (pm) {
+      if (pm.playerShootsFast) baseScores.baitShotDrop += 3;
+      if (pm.playerCrossesAfterBottomLoss > 0.5) baseScores.fakeCrossBreak += 3;
+      if (pm.playerRetreatsSameSide > 0.6) baseScores.crossCommit += 2;
+    }
+
+    // Fail streak suppression
+    const failStreaks = sl && sl.tactical && sl.tactical.centerRecoveryFailStreaks ? sl.tactical.centerRecoveryFailStreaks : null;
+
+    return this._pickHierarchicalPolicy({
+      keys: policies, familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores,
+      familyBiases: {},
+      failStreaks,
+      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.18, generalExplore: 0.1, selfPlayExplore: 0.08,
+      noise: 2.5,
+    });
+  },
+
+  // vNext: Finalize center recovery engagement
+  _finalizeCenterRecovery(ai, escaped, regainedBottom, regainedGunSide) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    if (!sl || !ai._centerRecoveryPolicy) return;
+    const policy = ai._centerRecoveryPolicy;
+    const family = ai._centerRecoveryFamily;
+    const frames = ai._centerRecoveryFrames || 0;
+    if (frames <= 0) return;
+    const dmgTaken = (ai._matchDmgTaken || 0) - (ai._centerRecoveryStartDmg || 0);
+    _logEngagement('centerRecovery', frames, dmgTaken);
+    const dmgR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.35));
+    const speedR = this._clamp01(1 - frames / 180);
+    // Center recovery: escaping is the key objective, regaining position is bonus
+    const escapeR = escaped ? 1 : 0;
+    const positionR = (regainedBottom ? 0.5 : 0) + (regainedGunSide ? 0.5 : 0);
+    const phaseReward = this._clamp01(escapeR * 0.40 + positionR * 0.25 + dmgR * 0.20 + speedR * 0.15);
+    const rf = this._ensureReinforcementProfile(sl);
+    if (rf) {
+      for (const scopeName of this._getPhaseScopes()) {
+        const scope = rf[scopeName];
+        if (!scope) continue;
+        if (scope.centerRecoveryPolicy && scope.centerRecoveryPolicy[policy]) this._updateRewardBucket(scope.centerRecoveryPolicy[policy], phaseReward);
+        if (scope.centerRecoveryFamily && scope.centerRecoveryFamily[family]) this._updateRewardBucket(scope.centerRecoveryFamily[family], phaseReward);
+      }
+    }
+    if (sl.tactical) {
+      const cro = sl.tactical.centerRecoveryOutcomes;
+      if (cro) {
+        cro.attempts++;
+        if (escaped) cro.escapedCenter++;
+        if (regainedBottom) cro.regainedBottom++;
+        if (regainedGunSide) cro.regainedGunSide++;
+        cro.avgDmgTakenDuring = cro.attempts > 1 ? cro.avgDmgTakenDuring * 0.8 + dmgTaken * 0.2 : dmgTaken;
+        cro.avgDuration = cro.attempts > 1 ? cro.avgDuration * 0.8 + frames * 0.2 : frames;
+      }
+      if (sl.tactical.centerRecoveryFailStreaks && policy in sl.tactical.centerRecoveryFailStreaks) {
+        if (!escaped) sl.tactical.centerRecoveryFailStreaks[policy] = (sl.tactical.centerRecoveryFailStreaks[policy] || 0) + 1;
+        else sl.tactical.centerRecoveryFailStreaks[policy] = 0;
+      }
+    }
+    ai._lastCenterRecoveryPolicy = policy;
+    ai._lastCenterRecoveryFamily = family;
+    ai._centerRecoveryPolicy = null;
+    ai._centerRecoveryFamily = null;
+    ai._centerRecoveryFrames = 0;
+    ai._centerRecoveryStartDmg = 0;
+    ai._centerRecoveryCommitDir = 0;
   },
 
   // v11: Wall pressure policy picker
@@ -4003,6 +4124,48 @@ const SparSystem = {
       lostBottomAndNoLane,
       noAdvantageState,
     };
+
+    // --- vNext: Oscillation detection (horizontal jitter without progress) ---
+    if (!ai._centerMoveHistory) ai._centerMoveHistory = [];
+    // Record move sign each frame (will be filled after movement calc, but we track X position delta)
+    const prevCenterX = typeof ai._prevCenterX === 'number' ? ai._prevCenterX : bot.x;
+    const frameDeltaX = bot.x - prevCenterX;
+    ai._prevCenterX = bot.x;
+    ai._centerMoveHistory.push(frameDeltaX);
+    if (ai._centerMoveHistory.length > 16) ai._centerMoveHistory.shift();
+    // Detect oscillation: many sign flips with tiny net displacement
+    let centerOscillating = false;
+    if (ai._centerMoveHistory.length >= 10) {
+      let signFlips = 0;
+      let netDisp = 0;
+      for (let i = 0; i < ai._centerMoveHistory.length; i++) {
+        netDisp += ai._centerMoveHistory[i];
+        if (i > 0 && Math.sign(ai._centerMoveHistory[i]) !== 0 &&
+            Math.sign(ai._centerMoveHistory[i]) !== Math.sign(ai._centerMoveHistory[i - 1]) &&
+            Math.sign(ai._centerMoveHistory[i - 1]) !== 0) {
+          signFlips++;
+        }
+      }
+      // Oscillating: 4+ sign flips and net displacement under 15px over 10-16 frames
+      if (signFlips >= 4 && Math.abs(netDisp) < 15) {
+        centerOscillating = true;
+        if (sl && sl.tactical) {
+          if (typeof sl.tactical.centerOscillationCount !== 'number') sl.tactical.centerOscillationCount = 0;
+          // Only count once per oscillation burst (every 16 frames)
+          if (ai._centerMoveHistory.length >= 16) sl.tactical.centerOscillationCount++;
+        }
+      }
+    }
+
+    // --- vNext: Center-trapped state detection ---
+    const inCenterBand = Math.abs(bot.x - midX) < arenaW * 0.18;
+    const centerTrapped = !isOpening && !hasBottom &&
+      (enemyHasBottom || verticalLane < 0.45) &&
+      (badGunSide || laneQuality < 0.5) &&
+      inCenterBand &&
+      !ai._escapePolicy && !member.gun.reloading &&
+      SparState.phase === 'fighting';
+
     // --- v8 anti-bottom engagement lifecycle (hysteresis + cooldown) ---
     const c = SparState._matchCollector;
     // Cooldown: prevent re-open for 30 frames after finalize
@@ -4083,6 +4246,82 @@ const SparSystem = {
         ai._gunSideBestQuality = laneQuality;
         ai._gunSideLaneShape = laneShape;
       }
+    }
+
+    // --- vNext: Center recovery engagement lifecycle ---
+    if (ai._centerRecoveryCooldown > 0) ai._centerRecoveryCooldown--;
+    if (ai._centerRecoveryPolicy) {
+      ai._centerRecoveryFrames++;
+      // Success: escaped center band OR regained bottom OR regained gun-side
+      const escaped = !inCenterBand || hasBottom || (!badGunSide && laneQuality > 0.58);
+      const crMinFrames = 20;
+      if (ai._centerRecoveryFrames >= crMinFrames && escaped) {
+        this._finalizeCenterRecovery(ai, true, hasBottom, !badGunSide && laneQuality > 0.55);
+        ai._centerRecoveryCooldown = 25;
+      } else if (ai._centerRecoveryFrames > 180) {
+        // Timeout — failed to escape
+        this._finalizeCenterRecovery(ai, false, hasBottom, !badGunSide && laneQuality > 0.55);
+        ai._centerRecoveryCooldown = 25;
+      }
+      // Also finalize if we entered a higher-priority state
+      if (ai._centerRecoveryPolicy && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
+        if (ai._centerRecoveryFrames >= 10) {
+          this._finalizeCenterRecovery(ai, false, false, false);
+          ai._centerRecoveryCooldown = 15;
+        }
+      }
+    }
+    // Open center recovery if center-trapped and no active higher-priority engagement
+    if (centerTrapped && !ai._centerRecoveryPolicy && !(ai._centerRecoveryCooldown > 0) &&
+        !ai._escapePolicy && !ai._antiBottomTactic) {
+      // Finalize gunSide if active (center recovery takes priority)
+      if (ai._gunSidePolicy && ai._gunSideFrames >= 15) {
+        this._finalizeGunSideEngagement(ai, false);
+        ai._gunSideCooldown = 15;
+      }
+      // Finalize midPressure if active
+      if (ai._midPressurePolicy && (ai._midPressureFrames || 0) >= 15) {
+        const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
+        this._finalizeMidFightPressure(ai, mpDmg);
+        ai._midPressureCooldown = 15;
+      }
+      const crCtx = {
+        laneQuality,
+        enemyHasStrongBottom: enemyHasBottom && verticalLane < 0.3,
+        playerShootsFast: pm && pm.playerShootsFast,
+        nearWallExit: nearLeftWallBase || nearRightWallBase,
+        oscillating: centerOscillating,
+      };
+      const crPolicy = this._pickCenterRecoveryPolicy(pm, crCtx);
+      const crFamilyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
+        ? SPAR_CENTER_RECOVERY_FAMILY_MAP
+        : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
+      ai._centerRecoveryPolicy = crPolicy;
+      ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
+      ai._centerRecoveryFrames = 0;
+      ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
+      // Pick commit direction: toward better lane recovery side
+      // Prefer side away from enemy's gun side for cleaner crossing
+      const awayFromEnemy = -Math.sign(dx || 1);
+      ai._centerRecoveryCommitDir = awayFromEnemy || (Math.random() < 0.5 ? -1 : 1);
+      // Clear oscillation history on engagement start
+      ai._centerMoveHistory = [];
+    }
+    // Oscillation rescue: if oscillating without a recovery policy, force one immediately
+    if (centerOscillating && !ai._centerRecoveryPolicy && !ai._escapePolicy &&
+        !ai._antiBottomTactic && !isOpening && !(ai._centerRecoveryCooldown > 0) &&
+        SparState.phase === 'fighting') {
+      const crCtx = { laneQuality, oscillating: true, nearWallExit: nearLeftWallBase || nearRightWallBase };
+      const crPolicy = this._pickCenterRecoveryPolicy(pm, crCtx);
+      const crFamilyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
+        ? SPAR_CENTER_RECOVERY_FAMILY_MAP
+        : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
+      ai._centerRecoveryPolicy = crPolicy;
+      ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
+      ai._centerRecoveryFrames = 0;
+      ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
+      ai._centerRecoveryCommitDir = (Math.random() < 0.5 ? -1 : 1);
+      ai._centerMoveHistory = [];
     }
 
     // --- Strafe helper (used by all behaviors) ---
@@ -4713,6 +4952,12 @@ const SparSystem = {
       // Reset engagement if enemy lost bottom (handled by hysteresis above)
       if (!ai._antiBottomTactic) ai._antiBottomFrames = 0;
       // === NEUTRAL — neither has clear bottom, actively contest ===
+      // vNext: Skip mid-fight pressure if center recovery is active (handled in overlay section)
+      if (ai._centerRecoveryPolicy) {
+        // Minimal placeholder movement — real movement applied in center recovery overlay
+        moveX = ai.strafeDir * speed * 0.2;
+        moveY = speed * 0.05;
+      } else
       // v11: Pick mid-fight pressure policy if not active (respect cooldown)
       if (!ai._midPressurePolicy && !(ai._midPressureCooldown > 0)) {
         const mpCtx = {
@@ -4847,6 +5092,45 @@ const SparSystem = {
         moveY = (pm && pm.playerChases > 0.45 ? 0.45 : 0.2) * speed;
       }
       if (!topCornerTrapped && laneQuality > 0.62 && !badGunSide && dist < 165) suppressPeekShots = false;
+    } else if (!isOpening && ai._centerRecoveryPolicy) {
+      // === CENTER RECOVERY — committed geometry change to escape losing center ===
+      suppressPeekShots = true;
+      const crDir = ai._centerRecoveryCommitDir || (Math.random() < 0.5 ? -1 : 1);
+      const crPolicy = ai._centerRecoveryPolicy;
+
+      if (crPolicy === 'crossCommit') {
+        // Committed lateral crossing — full speed to one side, slight descent allowed
+        moveX = crDir * speed * 0.9;
+        moveY = (bot.y < tgt.y) ? speed * 0.2 : speed * 0.05;
+        // Suppress any corrective strafing during commitment
+      } else if (crPolicy === 'fakeCrossBreak') {
+        // Phase 1 (first 12 frames): show one direction
+        // Phase 2 (after): reverse sharply and break the other way
+        if (ai._centerRecoveryFrames < 12) {
+          moveX = crDir * speed * 0.7;
+          moveY = speed * 0.1;
+        } else {
+          moveX = -crDir * speed * 0.95;
+          moveY = (bot.y < tgt.y) ? speed * 0.25 : speed * 0.05;
+        }
+      } else if (crPolicy === 'baitShotDrop') {
+        // Phase 1 (first 15 frames): hold position to bait upward shot
+        // Phase 2: sharp descent / under-entry
+        if (ai._centerRecoveryFrames < 15) {
+          moveX = ai.strafeDir * speed * 0.35;
+          moveY = speed * 0.05; // minimal movement — bait
+        } else {
+          moveX = crDir * speed * 0.4;
+          moveY = speed * 0.75; // hard descent
+        }
+      } else if (crPolicy === 'wideUnderEntry') {
+        // Give up center pressure entirely — widen out and descend to recover bottom
+        moveX = crDir * speed * 0.6;
+        moveY = speed * 0.55;
+      }
+
+      // Allow shots during center recovery if lane is briefly clean
+      if (laneQuality > 0.62 && !badGunSide && dist < 160) suppressPeekShots = false;
     } else if (!isOpening && ai._gunSidePolicy) {
       const awayDir = -Math.sign(dx || ai.strafeDir);
       const reAngleDir = Math.sign(bot.x - tgt.x || ai.strafeDir);
@@ -5272,8 +5556,9 @@ const SparSystem = {
     // --- Bullet dodging (reactive, OVERRIDES movement when urgent) ---
     const dodge = this._getIncomingBulletDodge(bot, team);
     const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
-    // During anti-bottom, reduce dodge override so bot keeps descending
-    const maxDodgeOverride = inActiveAntiBottom ? 0.45 : 0.85;
+    // During anti-bottom or center recovery, reduce dodge override so bot keeps committed
+    const inActiveCenterRecovery = !!ai._centerRecoveryPolicy;
+    const maxDodgeOverride = (inActiveAntiBottom || inActiveCenterRecovery) ? 0.45 : 0.85;
     if (dodgeMag > 1.5) {
       // Strong dodge signal — override movement (reduced during anti-bottom)
       const overridePct = Math.min(maxDodgeOverride, dodgeMag / 4);
@@ -5305,8 +5590,8 @@ const SparSystem = {
     else if (bot.y > arenaH - wallMargin) moveY -= speed * 0.3;
 
     // --- Baiting: occasionally fake a direction then snap back ---
-    // Skip during active anti-bottom — don't fake directions while trying to retake
-    if (ai.baitTimer > 0 && !inActiveAntiBottom) {
+    // Skip during active anti-bottom / center recovery — don't fake directions while committed
+    if (ai.baitTimer > 0 && !inActiveAntiBottom && !inActiveCenterRecovery) {
       ai.baitTimer--;
       if (ai.baitTimer > 8) {
         // Fake phase — move in bait direction
@@ -5316,7 +5601,7 @@ const SparSystem = {
       // else: snap back (use the real moveX/moveY calculated above)
     } else {
       ai.baitCooldown--;
-      if (ai.baitCooldown <= 0 && !isOpening && !inActiveAntiBottom && dist < 350 && dist > 100) {
+      if (ai.baitCooldown <= 0 && !isOpening && !inActiveAntiBottom && !inActiveCenterRecovery && dist < 350 && dist > 100) {
         // Start a bait — fake going one direction
         ai.baitTimer = 18; // 12 frames fake + 6 frames real snap
         // Fake toward enemy then pull back, or fake a strafe direction
@@ -5388,7 +5673,7 @@ const SparSystem = {
 
     // --- Momentum break: if active, override movement to prevent re-sticking ---
     // Cancel momentum break if an active engagement started (anti-bottom, escape, etc.)
-    if (ai._momentumBreakFrames > 0 && (ai._antiBottomTactic || ai._escapePolicy)) {
+    if (ai._momentumBreakFrames > 0 && (ai._antiBottomTactic || ai._escapePolicy || ai._centerRecoveryPolicy)) {
       ai._momentumBreakFrames = 0;
     }
     if (ai._momentumBreakFrames > 0) {
@@ -5399,7 +5684,8 @@ const SparSystem = {
 
     // vNext: Anti-passivity — detect low-motion in open neutral and force movement
     const isInNeutralOpen = !isOpening && !member.gun.reloading && !enemyReloading &&
-      !ai._escapePolicy && !ai._wallPressurePolicy && !hasBottom && !enemyHasBottom &&
+      !ai._escapePolicy && !ai._wallPressurePolicy && !ai._centerRecoveryPolicy &&
+      !hasBottom && !enemyHasBottom &&
       SparState.phase === 'fighting';
     const moveMag = Math.sqrt(moveX * moveX + moveY * moveY);
     if (isInNeutralOpen && moveMag < speed * 0.15 && ai._momentumBreakFrames <= 0) {
@@ -5470,7 +5756,7 @@ const SparSystem = {
       ai._idleFrames = 0;
     }
     // After 20 idle frames, if not escaping or self reloading, force a lateral break with momentum
-    if (ai._idleFrames >= 20 && !ai._escapePolicy && !(member && member.gun.reloading)) {
+    if (ai._idleFrames >= 20 && !ai._escapePolicy && !ai._centerRecoveryPolicy && !(member && member.gun.reloading)) {
       const breakDir = (Math.random() < 0.5 ? -1 : 1);
       const breakDirY = (bot.y < tgt.y) ? 0.3 : ((Math.random() < 0.5 ? -1 : 1) * 0.25);
       moveX = breakDir * speed * 0.7;
