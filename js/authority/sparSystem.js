@@ -436,8 +436,8 @@ const SparSystem = {
     const gunSideReward = this._clamp01(baseReward * 0.55 + gunReward * 0.3 + underReward * 0.15);
     const escapeReward = this._clamp01(baseReward * 0.6 + (1 - Math.min(1, collector.nearWall_cornerStuckFrames / Math.max(1, collector.nearWall_frames || 1))) * 0.2 + gunReward * 0.2);
     // v10: shot timing + reload behavior rewards
-    const botHitRate = enemyBot.ai._matchDmgDealt > 0 ? 0.7 : 0.3; // rough proxy
-    const shotTimingReward = this._clamp01(baseReward * 0.6 + botHitRate * 0.4);
+    // Use normalized damage delta instead of binary "any damage" — phase reward handles per-engagement
+    const shotTimingReward = this._clamp01(baseReward * 0.6 + dmgReward * 0.25 + gunReward * 0.15);
     const reloadReward = this._clamp01(baseReward * 0.7 + dmgReward * 0.3);
     // v11: mid-fight pressure + wall pressure rewards
     const midPressureReward = this._clamp01(baseReward * 0.65 + dmgReward * 0.35);
@@ -2052,6 +2052,13 @@ const SparSystem = {
         m.ai._punishWindowPolicy = null;
         m.ai._punishWindowCooldown = 0;
         m.ai._profileMods = null;
+        // Reset stale frame stamps — prevent negative deltas after matchTimer resets
+        m.ai._lastHitFrame = 0;
+        m.ai._lastTookHitFrame = 0;
+        m.ai._lastEnemyShotFrame = 0;
+        m.ai._prevEnemyShotFrame = 0;
+        m.ai._lastEnemyWhiffFrame = 0;
+        m.ai._losBlockedFrames = 0;
       }
     }
 
@@ -3859,8 +3866,10 @@ const SparSystem = {
     const ai = member.ai;
 
     // --- Cache learning profile modifiers (once per match) ---
+    // During training/self-play, opponent is synthetic — don't bias with human profile
     if (!ai._profileMods && team === 'teamB') {
-      ai._profileMods = this._getProfileModifiers(); // null if <3 matches
+      const isTrainingRun = typeof _isSparTraining === 'function' && _isSparTraining();
+      ai._profileMods = isTrainingRun ? null : this._getProfileModifiers();
     }
     const pm = ai._profileMods; // may be null
 
