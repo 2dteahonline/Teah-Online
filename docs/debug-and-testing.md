@@ -67,13 +67,16 @@ All commands are entered in the chat input (Tab to open, type command, Enter to 
 | `/grunt` | -- | Legacy: spawn a test grunt |
 | `/ghost` | -- | Toggle alive/dead (ghost mode) in Mafia |
 | `/role` | `<impostor\|crewmate>` | Change Mafia role (debug, must be in Skeld) |
+| `/sabo` | `<reactor\|o2\|lights>` | Trigger a sabotage event (must be in Skeld, playing phase) |
+| `/fix` | -- | Instantly resolve the active sabotage |
+| `/party` | `<1-4\|reset>` | Set party size (2-4 spawns bots), or reset to solo. No args shows status |
 
 ### Test Mob Panel
 
 Opened via `/testmob`. A full GUI panel for spawning and testing any mob in the game.
 
 **Features**:
-- Left sidebar: select dungeon (Cave, Azurine City) and floor (1-5)
+- Left sidebar: select dungeon (Cave, Azurine City, Vortalis, Earth-205, Wagashi, Earth-216) and floor (1-5)
 - Right grid: shows all mobs on that floor as cards with name, stats, boss badge
 - Each card has two buttons: FROZEN (spawns mob with speed=0 and abilities disabled) and LIVE (spawns mob with full AI)
 - Right-click any mob card to see a detailed mob info card with stats and ability descriptions
@@ -83,7 +86,9 @@ Opened via `/testmob`. A full GUI panel for spawning and testing any mob in the 
 **Data structures**:
 - `TESTMOB_DUNGEONS` -- maps dungeon key -> floor -> mob type list
 - `MOB_ABILITY_DESCRIPTIONS` -- human-readable descriptions for all 100+ mob special abilities
+- `TESTMOB_DUNGEONS` -- maps 7 dungeons to floor/mob lists
 - Panel validates floor counts against `DUNGEON_REGISTRY` at load time
+- When adding new dungeons/mobs, always update both `TESTMOB_DUNGEONS` and `MOB_ABILITY_DESCRIPTIONS`
 
 ### Snapshots System
 

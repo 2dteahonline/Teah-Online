@@ -2,30 +2,30 @@
 
 ## Overview
 
-Teah Online is a top-down dungeon crawler built with vanilla JS and HTML5 Canvas 2D. There are no frameworks, no build tools, and no npm dependencies. The entire game loads from a single `index.html` that pulls in 55+ script files, and all game logic is organized around a future-multiplayer authority/client split.
+Teah Online is a top-down dungeon crawler built with vanilla JS and HTML5 Canvas 2D. There are no frameworks, no build tools, and no npm dependencies. The entire game loads from a single `index.html` that pulls in 83 script files, and all game logic is organized around a future-multiplayer authority/client split. The codebase totals ~84,400 lines of JavaScript.
 
 ## Files
 
 - `index.html` -- entry point; loads all scripts in dependency order with cache-busting query params
-- `js/shared/` -- pure data registries (no logic); loaded first
-- `js/authority/` -- server-authoritative systems: combat, damage, waves, mobs, inventory, game state
-- `js/client/rendering/` -- canvas drawing: sprites, entities, effects, FOV
-- `js/client/input/` -- mouse/keyboard capture, InputIntent flags, command translation
-- `js/client/ui/` -- panel system: inventory, gunsmith, settings, shop, customization
-- `js/core/` -- bridge layer: save/load, scene management, weapons, interactables, draw loop
-- `js/testing/` -- test harness for automated checks
+- `js/shared/` -- pure data registries (no logic); loaded first (19 files)
+- `js/authority/` -- server-authoritative systems: combat, damage, waves, mobs, inventory, party, bots, casino, cooking (36 files)
+- `js/client/rendering/` -- canvas drawing: sprites, entities, effects, FOV (5 files)
+- `js/client/input/` -- mouse/keyboard capture, InputIntent flags, command translation (2 files)
+- `js/client/ui/` -- panel system: inventory, gunsmith, settings, shop, customization, casino (10 files)
+- `js/core/` -- bridge layer: save/load, scene management, weapons, interactables, camera, draw loop (10 files)
+- `js/testing/` -- test harness for automated checks (1 file)
 
 ## Project Structure
 
 ```
 Teah Online/
-  index.html              -- entry point, canvas setup, script loading
+  index.html              -- entry point, canvas setup, script loading (83 scripts)
   assets/
     manifest.json          -- sprite asset manifest
     sprites/               -- body/head/hat sprite templates
   js/
-    shared/                -- data registries (loaded first, no logic)
-      gameConfig.js          physics & collision constants
+    shared/                -- data registries (loaded first, no logic) — 19 files
+      gameConfig.js          physics & collision constants, GAME_UPDATE version
       levelData.js           tile maps, room definitions, TILE constant
       mobTypes.js            mob type definitions
       floorConfig.js         dungeon floor configs
@@ -41,13 +41,24 @@ Teah Online/
       skillRegistry.js       skill XP categories
       hideSeekData.js        Hide & Seek mode data
       mafiaGameData.js       Mafia mode data + per-map configs
-    authority/               -- server-authoritative game logic
+      mafiaRoleData.js       Mafia role definitions (impostor abilities, etc.)
+      casinoData.js          casino game configs, payouts, house edge
+      partyData.js           party system constants, bot equipment data
+    authority/               -- server-authoritative game logic — 36 files
       eventBus.js            Events pub/sub
       gameState.js           GameState + global aliases
-      combatSystem.js        MOB_AI, MOB_SPECIALS registries
+      combatSystem.js        StatusFX, MOB_AI (13 patterns), MOB_SPECIALS (91 base abilities)
+      vortalisSpecials.js    MOB_SPECIALS for Vortalis dungeon (106 abilities)
       attackShapes.js        attack shape geometry
       telegraphSystem.js     telegraph/warning indicators
       hazardSystem.js        environmental hazards
+      earth205Specials.js    MOB_SPECIALS for Earth-205 dungeon (98 abilities)
+      wagashiSpecials.js     MOB_SPECIALS for Wagashi dungeon part 1 (28 abilities)
+      wagashiSpecials2.js    MOB_SPECIALS for Wagashi dungeon part 2 (28 abilities)
+      wagashiSpecials3.js    MOB_SPECIALS for Wagashi dungeon part 3 (14 abilities)
+      earth216Specials.js    MOB_SPECIALS for Earth-216 dungeon part 1 (28 abilities)
+      earth216Specials2.js   MOB_SPECIALS for Earth-216 dungeon part 2 (28 abilities)
+      earth216Specials3.js   MOB_SPECIALS for Earth-216 dungeon part 3 (14 abilities)
       waveSystem.js          wave spawning, createMob()
       damageSystem.js        damage calc, mob death, event emission
       inventorySystem.js     inventory management
@@ -56,24 +67,31 @@ Teah Online/
       miningSystem.js        ore mining logic
       fishingSystem.js       fishing minigame logic
       farmingSystem.js       farming plot logic
+      partySystem.js         always-on party system, bot member management
+      botAI.js               bot combat/movement AI, equipment buying, auto-respawn
       snapshots.js           game state serialization
       commands.js            debug slash commands
       authorityTick.js       per-frame authority simulation wrapper
       hideSeekSystem.js      Hide & Seek game mode
       mafiaSystem.js         Mafia (Among Us-style) game mode
+      casinoSystem.js        casino game logic (10 games, 5% house edge)
       cookingSystem.js       cooking logic
+      cookingNPCBase.js      shared base module for all restaurant NPC systems
       deliNPCSystem.js       deli NPC interaction
+      dinerNPCSystem.js      diner NPC interaction
+      fineDiningNPCSystem.js fine dining NPC system
+      fineDiningGrill.js     fine dining teppanyaki grill minigame
     client/
-      rendering/
-        hitEffects.js          HIT_EFFECT_RENDERERS (38 effect types)
-        entityRenderers.js     ENTITY_RENDERERS (54 entity types)
+      rendering/             -- 5 files
+        hitEffects.js          HIT_EFFECT_RENDERERS (73 effect types)
+        entityRenderers.js     ENTITY_RENDERERS (143 entity types)
         characterSprite.js     player/NPC sprite drawing (Graal-style layers)
         hideSeekFOV.js         Hide & Seek FOV rendering
         mafiaFOV.js            Mafia FOV + HUD rendering
-      input/
+      input/                 -- 2 files
         inputIntent.js         InputIntent flag object
         input.js               keyboard/mouse listeners, command translation
-      ui/
+      ui/                    -- 10 files
         panelManager.js        panel open/close state machine
         chatProfile.js         chat and profile UI
         toolbox.js             toolbox icon grid
@@ -83,17 +101,19 @@ Teah Online/
         customize.js           character customization panel
         inventory.js           inventory panel + game loop host
         testMobPanel.js        debug mob spawning panel
-    core/
+        casinoUI.js            casino game UI (all 10 games)
+    core/                    -- 10 files
       assetLoader.js         AssetLoader (sprite loading from manifest)
-      sceneManager.js        Scene state machine (lobby, dungeon, mine, skeld, etc.)
+      sceneManager.js        Scene state machine (17 scenes)
       tileRenderer.js        tile map rendering
       gunSystem.js           gun firing, reloading, bullet logic
       meleeSystem.js         melee swing, dash, hit detection
       saveLoad.js            localStorage persistence (schema v7)
       skeldTasks.js          Skeld map task minigames
+      cameraSystem.js        camera follow, shake, zoom
       interactable.js        entity interaction, death handling
       draw.js                main draw loop, gameLoop(), HUD
-    testing/
+    testing/                 -- 1 file
       testHarness.js         automated test utilities
 ```
 
@@ -124,8 +144,11 @@ Pure data registries with no logic. These define constants and lookup tables tha
 | `js/shared/skillRegistry.js` | skill XP categories |
 | `js/shared/hideSeekData.js` | Hide & Seek mode constants |
 | `js/shared/mafiaGameData.js` | `MAFIA_GAME` |
+| `js/shared/mafiaRoleData.js` | Mafia role definitions |
+| `js/shared/casinoData.js` | casino game configs, payouts |
+| `js/shared/partyData.js` | party/bot constants |
 
-### Phase B: Authority Systems
+### Phase B: Authority Systems (Part 1)
 
 Server-authoritative logic. Runs the simulation that would live on a server in multiplayer.
 
@@ -133,10 +156,20 @@ Server-authoritative logic. Runs the simulation that would live on a server in m
 |------|-----------|
 | `js/authority/eventBus.js` | `Events` |
 | `js/authority/gameState.js` | `GameState`, global aliases |
-| `js/authority/combatSystem.js` | `MOB_AI`, `MOB_SPECIALS` |
+| `js/authority/combatSystem.js` | `StatusFX`, `MOB_AI`, `MOB_SPECIALS` |
+| `js/authority/vortalisSpecials.js` | Vortalis dungeon MOB_SPECIALS (106) |
 | `js/authority/attackShapes.js` | attack geometry |
 | `js/authority/telegraphSystem.js` | telegraph rendering |
 | `js/authority/hazardSystem.js` | hazard logic |
+
+### Phase C: Client Rendering (Part 1)
+
+Hit effects and entity renderers load here because dungeon specials files (Phase B Part 2) need `ENTITY_RENDERERS` and `HIT_EFFECT_RENDERERS` to exist.
+
+| File | Key Export |
+|------|-----------|
+| `js/client/rendering/hitEffects.js` | `HIT_EFFECT_RENDERERS` (73 types) |
+| `js/client/rendering/entityRenderers.js` | `ENTITY_RENDERERS` (143 types) |
 
 ### Phase A.5: Core Scene Management
 
@@ -144,13 +177,22 @@ Depends on Phase A data + eventBus. Inserted between Phase B halves.
 
 | File | Key Export |
 |------|-----------|
-| `js/core/sceneManager.js` | `Scene` |
+| `js/core/sceneManager.js` | `Scene` (17 scene types) |
 | `js/core/tileRenderer.js` | tile drawing |
 
-### Phase B (continued): Authority Systems
+### Phase B (continued): Authority Systems (Part 2)
+
+Dungeon-specific specials, wave spawning, damage, inventory, mob movement, and game mode systems.
 
 | File | Key Export |
 |------|-----------|
+| `js/authority/earth205Specials.js` | Earth-205 MOB_SPECIALS (98) |
+| `js/authority/wagashiSpecials.js` | Wagashi MOB_SPECIALS part 1 (28) |
+| `js/authority/wagashiSpecials2.js` | Wagashi MOB_SPECIALS part 2 (28) |
+| `js/authority/wagashiSpecials3.js` | Wagashi MOB_SPECIALS part 3 (14) |
+| `js/authority/earth216Specials.js` | Earth-216 MOB_SPECIALS part 1 (28) |
+| `js/authority/earth216Specials2.js` | Earth-216 MOB_SPECIALS part 2 (28) |
+| `js/authority/earth216Specials3.js` | Earth-216 MOB_SPECIALS part 3 (14) |
 | `js/authority/waveSystem.js` | `createMob()`, wave spawning |
 | `js/authority/damageSystem.js` | damage calculation, mob death |
 | `js/authority/inventorySystem.js` | inventory management |
@@ -159,20 +201,19 @@ Depends on Phase A data + eventBus. Inserted between Phase B halves.
 | `js/authority/miningSystem.js` | mining logic |
 | `js/authority/fishingSystem.js` | fishing logic |
 | `js/authority/farmingSystem.js` | farming logic |
+| `js/authority/partySystem.js` | `PartySystem` (always-on party management) |
+| `js/authority/botAI.js` | `BotAI` (bot combat/movement AI) |
 | `js/authority/snapshots.js` | `serializeGameState()` |
 | `js/authority/commands.js` | debug commands |
 | `js/authority/authorityTick.js` | `authorityTick()` |
 | `js/authority/hideSeekSystem.js` | `HideSeekSystem` |
 | `js/authority/mafiaSystem.js` | `MafiaSystem` |
+| `js/authority/casinoSystem.js` | `CasinoSystem` (10 games, 5% house edge) |
 
-### Phase C: Client Rendering
-
-Presentation-only layer. Draws what the authority layer computed.
+### Phase C (continued): Client Rendering (Part 2)
 
 | File | Key Export |
 |------|-----------|
-| `js/client/rendering/hitEffects.js` | `HIT_EFFECT_RENDERERS` |
-| `js/client/rendering/entityRenderers.js` | `ENTITY_RENDERERS` |
 | `js/client/rendering/characterSprite.js` | character sprite drawing |
 | `js/client/rendering/hideSeekFOV.js` | Hide & Seek FOV |
 | `js/client/rendering/mafiaFOV.js` | Mafia FOV + HUD |
@@ -193,6 +234,7 @@ Panel system and input handling.
 | `js/client/ui/customize.js` | character customization |
 | `js/client/ui/inventory.js` | inventory panel |
 | `js/client/ui/testMobPanel.js` | debug mob panel |
+| `js/client/ui/casinoUI.js` | casino game UI |
 
 ### Phase E: Input + Core Loop
 
@@ -205,9 +247,14 @@ Final phase. Wires input, weapon systems, persistence, and the main draw loop.
 | `js/core/meleeSystem.js` | melee combat logic |
 | `js/core/saveLoad.js` | localStorage save/load |
 | `js/core/skeldTasks.js` | Skeld task minigames |
+| `js/core/cameraSystem.js` | camera follow, shake, zoom |
 | `js/core/interactable.js` | entity interactions |
 | `js/authority/cookingSystem.js` | cooking logic |
+| `js/authority/cookingNPCBase.js` | shared NPC base for all restaurants |
 | `js/authority/deliNPCSystem.js` | deli NPC |
+| `js/authority/dinerNPCSystem.js` | diner NPC |
+| `js/authority/fineDiningNPCSystem.js` | fine dining NPC |
+| `js/authority/fineDiningGrill.js` | teppanyaki grill minigame |
 | `js/core/draw.js` | `gameLoop()`, `draw()` |
 | `js/testing/testHarness.js` | test utilities |
 
@@ -215,11 +262,11 @@ Final phase. Wires input, weapon systems, persistence, and the main draw loop.
 
 The codebase is organized for future multiplayer. All game logic runs through an authority layer; the client only renders and captures input.
 
-**Authority** (`js/authority/`): Owns all mutable game state. Computes mob movement, damage, wave spawning, inventory changes, and collision. In singleplayer this runs locally in the browser. In multiplayer, this code would run on the server.
+**Authority** (`js/authority/`): Owns all mutable game state. Computes mob movement, damage, wave spawning, inventory changes, collision, party management, bot AI, and casino game logic. In singleplayer this runs locally in the browser. In multiplayer, this code would run on the server.
 
 **Client** (`js/client/`): Captures keyboard/mouse input and translates it into `InputIntent` flags. The rendering layer reads `GameState` and draws everything to the canvas. The client never mutates game state directly.
 
-**Core** (`js/core/`): Bridge layer that connects authority and client. Manages scene transitions, weapon firing, save/load, and the main draw loop.
+**Core** (`js/core/`): Bridge layer that connects authority and client. Manages scene transitions, weapon firing, save/load, camera, and the main draw loop.
 
 **Data flow per frame:**
 
@@ -288,17 +335,20 @@ Key constants:
 | `gun` | `object` | alias for `GameState.gun` | Gun state: ammo, cooldown, damage |
 | `melee` | `object` | alias for `GameState.melee` | Melee state: cooldown, swing, dash |
 | `inventory` | `array` | alias for `GameState.inventory` | Player inventory items |
-| `Scene` | `object` | `js/core/sceneManager.js` | Scene state machine with flags like `inDungeon`, `inSkeld`, `inHideSeek` |
+| `Scene` | `object` | `js/core/sceneManager.js` | Scene state machine with 17 scene types |
 | `GAME_CONFIG` | `object` | `js/shared/gameConfig.js` | Physics and collision constants |
 | `MOB_TYPES` | `object` | `js/shared/mobTypes.js` | Mob type definitions (hp, speed, damage, AI pattern) |
-| `MOB_AI` | `object` | `js/authority/combatSystem.js` | 11 mob AI movement patterns |
-| `MOB_SPECIALS` | `object` | `js/authority/combatSystem.js` | 38 mob special ability definitions |
+| `MOB_AI` | `object` | `js/authority/combatSystem.js` | 13 mob AI movement patterns |
+| `MOB_SPECIALS` | `object` | `combatSystem.js` + 8 specials files | 435 mob special ability definitions |
 | `Events` | `object` | `js/authority/eventBus.js` | Pub/sub event bus |
 | `levelEntities` | `array` | `js/core/sceneManager.js` | Current level's interactive entity array |
 | `InputIntent` | `object` | `js/client/input/inputIntent.js` | Per-frame input flags (moveX, moveY, shootHeld, etc.) |
 | `CommandQueue` | `array` | `js/client/input/input.js` | Queued commands for authorityTick to consume |
 | `LEVELS` | `object` | `js/shared/levelData.js` | Level/map definitions (tile grids, entity spawn points) |
 | `PROG_ITEMS` | `object` | `js/shared/progressionData.js` | Unified 5-tier x 25-level weapon progression data |
+| `PartySystem` | `object` | `js/authority/partySystem.js` | Always-on party management (player + bots) |
+| `BotAI` | `object` | `js/authority/botAI.js` | Bot combat/movement AI |
+| `CasinoSystem` | `object` | `js/authority/casinoSystem.js` | Casino game logic (10 games) |
 
 Global aliases are created in `gameState.js` using `Object.defineProperty` on `window`. Every key of `GameState` (player, mobs, gold, bullets, etc.) gets a getter/setter so that `player.x = 5` transparently reads/writes `GameState.player.x`.
 
@@ -356,11 +406,15 @@ All physics and collision tuning lives in `js/shared/gameConfig.js`. Every syste
 - **Progression**: `PROG_ITEMS` feeds into gunsmith panels and `getProgressedStats()` for weapon scaling
 - **Sprite Pipeline**: `AssetLoader` loads sprites from `assets/manifest.json`; renderers check `AssetLoader.get(key)` first, fall back to procedural drawing
 - **Mafia/Hide & Seek**: `authorityTick()` checks for mode-specific freezes (meetings, voting, ejection) and weapon restrictions before running `update()`
+- **Party System**: `PartySystem` manages player + bot party members; `BotAI` provides combat/movement intelligence for bots
+- **Casino**: `CasinoSystem` runs 10 gambling games with 5% house edge; separate scene with dedicated UI
 
 ## Gotchas & Rules
 
-- **Script order is load-bearing.** Moving a `<script>` tag to a different position will cause undefined reference errors. Always respect the phase order (A -> B -> A.5 -> B cont. -> C -> D -> E).
+- **Script order is load-bearing.** Moving a `<script>` tag to a different position will cause undefined reference errors. Always respect the phase order (A -> B1 -> C1 -> A.5 -> B2 -> C2 -> D -> E).
 - **GameState aliases use `defineProperty`.** Writing `player = {...}` replaces the `GameState.player` reference. Writing `player.x = 5` modifies the existing object. Both work, but understand the difference.
 - **Fixed timestep matters.** The game runs exactly 60 physics ticks/sec. On 120Hz+ displays, the fixed timestep prevents double-speed physics. Max 4 steps per frame prevents spiral of death.
 - **`DEBUG_pauseAuthority`** freezes the entire simulation. Commands are discarded while paused. Set via debug tools.
 - **`_gameSpeed`** multiplier affects elapsed time before accumulation. Values: 0.25, 0.5, 1, 2.
+- **MOB_SPECIALS span 9 files.** The base 91 abilities live in `combatSystem.js`. Dungeon-specific abilities are in separate files (`vortalisSpecials.js`, `earth205Specials.js`, `wagashiSpecials1-3.js`, `earth216Specials1-3.js`) that append to the same `MOB_SPECIALS` object.
+- **Party system is always-on.** Every player is a party member. Bots are future multiplayer users -- never special-case bot vs player in system design.

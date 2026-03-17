@@ -40,6 +40,9 @@ UI.active                 -- getter for current panel id string (or null)
 | `fishVendor`  | panelManager.js     | Resets fishVendorTab to 0                     | --                                                         |
 | `gunsmith`    | panelManager.js     | Resets _gunsmithSelected to 0                 | --                                                         |
 | `testmob`     | testMobPanel.js     | --                                            | Clears testMobAbilityPopup                                 |
+| `casino`      | panelManager.js     | --                                            | Resets bet editing state, calls casinoReset()               |
+| `farmVendor`  | panelManager.js     | Resets farmVendorTab to 0                     | --                                                         |
+| `miningShop`  | panelManager.js     | --                                            | --                                                         |
 | `skeldTask`   | skeldTasks.js       | --                                            | Task-specific cleanup                                      |
 
 ### Panel Drawing Functions
@@ -54,6 +57,7 @@ UI.active                 -- getter for current panel id string (or null)
 - `drawChatPanel()` -- chat message display and input
 - `drawProfilePanel()` -- player status card
 - `drawTestMobPanel()` -- mob spawner/tester GUI (opened via `/testmob` command)
+- `drawCasinoPanel()` -- casino game interface (6 games: Slots, Blackjack, Keno, Cases, Roulette, Hi-Lo)
 
 ### Icon Buttons
 - `drawIconButton(x, y, active, drawContent)` -- base rounded square icon (48x48, dark bg, highlight border when active)
@@ -152,10 +156,12 @@ Each panel has intentionally different styling -- different title bar heights, c
 
 ### Test Mob Panel
 - Debug panel opened via `/testmob` command
-- State: `testMobDungeon` (cave/azurine), `testMobFloor` (1-5), `testMobScroll`
+- State: `testMobDungeon` (cave/azurine/vortalis/earth205/wagashi/earth216), `testMobFloor` (1-5), `testMobScroll`
 - Lists all mobs for the selected dungeon and floor
 - Click a mob to spawn it; shows ability descriptions in popup (`testMobAbilityPopup`)
-- `MOB_ABILITY_DESCRIPTIONS` contains human-readable descriptions for every mob special ability (40+ entries covering all 5 floors of Azurine City and Junkyard/Waste Planet dungeons)
+- `MOB_ABILITY_DESCRIPTIONS` contains human-readable descriptions for every mob special ability (100+ entries covering all dungeons)
+- `TESTMOB_DUNGEONS` maps 7 dungeons (Cave, Azurine City, Vortalis, Earth-205, Wagashi, Earth-216) to floor/mob lists
+- Validates floor counts against `DUNGEON_REGISTRY` at load time
 
 ## Connections to Other Systems
 - **Input System** (`input.js`) -- `UI.anyOpen()` blocks player movement (except when toolbox is open). Chat panel sets `InputIntent.chatActive` to redirect keyboard input to chat.

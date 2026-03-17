@@ -1,192 +1,319 @@
-# Spar Bot Learning Profile
+# Spar Learning Notes
 
-This document tracks what the spar bot has learned about the player's tendencies.
-Updated after spar sessions. The bot uses this data to adapt its strategy each match.
+## Overview
 
----
+This document is the living reference for the spar bot's learning system and a place to record human observations after testing.
 
-## Current Profile (Match Count: 24 — Win Rate: 49%)
+Use it for two things:
+- understanding what the bot currently learns and where that data lives
+- writing down what you see from your perspective so tuning is guided by both telemetry and actual spar feel
 
-Bot has won 2 matches. Player dominance dropping from 97% → 49%.
+## Files
 
----
+- `js/shared/sparData.js` -- default spar learning profile, persistent data shape
+- `js/authority/sparSystem.js` -- live spar telemetry, reinforcement rewards, bot decision logic
+- `js/testing/sparTraining.js` -- `sparTrain(...)`, `sparSelfPlay(...)`, fast automated spar modes
+- `js/core/draw.js` -- turbo loop support for automated spar modes
 
-### Opening Habits
-- **Rush Bottom**: 96% (LOCKED IN — player always rushes bottom)
-- **Strafe Bias**: 42% left / 58% right (slight right preference)
+## Current Learning Sources
 
-### Position Tendencies
-- **Bottom Bias**: 76% (STRONG — player lives in the bottom zone)
-- **Left Bias**: 53% (centered)
+There are now 3 distinct data sources:
 
-### Shooting Patterns
-- **Up**: 5% | **Down**: 49% | **Left**: 43% | **Right**: 3%
-- Still 92% down+left. Almost never shoots up or right.
+### 1. `player1v1`
 
-### Dodge Patterns
-- **Left vs Right**: 44% left / 56% right (slight right dodge bias emerging)
-- **Up vs Down**: 46% up / 54% down (slight down dodge bias)
+This is the personal layer.
 
-### Aggression
-- **Overall**: 0.50 (moved from 0.35 to neutral — player getting more aggressive)
-- **On Enemy Reload**: 0.20 (VERY LOW — still doesn't punish reloads)
-- **When Low HP**: 0.31 (LOW — plays passive when hurt)
+It learns from:
+- real 1v1 spars against you
 
-### Reload Behavior
-- **Average Y Position**: 0.63 (reloads in bottom zone, slightly less deep than before)
+It should answer:
+- what do you specifically do a lot?
+- which duel styles work best against you?
+- what counters have already worked on you?
 
----
+This is the most important layer for live adaptation against you.
 
-## Situational Behavior (What Player Does Based on Game State)
+### 2. `general1v1`
 
-### When Player Has Bottom
-- **Holds position**: 49% (half the time holds, half pushes or repositions)
-- **Shot frequency**: 95% (VERY HIGH — walls bullets constantly from bottom)
-- **Pushes toward bot**: 19% (rarely pushes — prefers to hold and shoot)
+This is the broad archetype layer.
 
-**Bot counter**: Player is a turret when they have bottom. Spam bullets but don't push. Bot should strafe wide, approach at angles, don't walk into the wall.
+It learns from:
+- `sparTrain(...)`
+- automated matches against scripted archetypes like `rusher`, `waller`, `strafer`, `retreater`, `corner`
 
-### When Bot Has Bottom
-- **Tries to retake**: 27% (LOW — usually doesn't fight for bottom back)
-- **Flanks sideways**: 26% (sometimes tries horizontal approach)
-- **Retreats**: 54% (MORE THAN HALF THE TIME gives up and backs off)
+It should answer:
+- what styles/routes/counters are broadly strong against repeatable opponent patterns?
 
-**Bot counter**: Player gives up bottom easily. Bot should hold it aggressively — player won't challenge hard.
+This is the bot's general baseline knowledge.
 
-### When Bot Approaches Player
-- **Holds ground**: 14% (VERY LOW — almost always runs)
-- **Counter-pushes**: 34% (sometimes fights back)
-- **Sidesteps**: 65% (PRIMARY RESPONSE — dodges sideways)
+### 3. `selfPlay1v1`
 
-**Bot counter**: Player sidesteps on approach. Bot should lead shots toward dodge direction, use approach baits to trigger sidestep then shoot where they dodge TO.
+This is the self-play layer.
 
-### When Bot Retreats
-- **Chases**: 68% (HIGH — player chases retreating bot)
-- **Shoots while chasing**: 81% (HIGH — aggressively shoots during chase)
+It learns from:
+- `sparSelfPlay(...)`
+- current bot fighting a frozen snapshot of an earlier/current policy
 
-**Bot counter**: Player chases hard. Bot can use retreats as BAIT — fake retreat, let player overextend chasing, then reverse and punish.
+It should answer:
+- what tends to win in bot-vs-bot meta play?
+- what policies survive against stronger automated opponents?
 
----
+This is useful for broad strength, but should not override your personal layer when real `player1v1` data exists.
 
-## Shot Direction by Position
+## Reinforcement Buckets
 
-### When Player Is ABOVE Bot
-- **Shoots down**: 30% | **Shoots sideways**: 70%
-- Player prefers side-shots even from above. Doesn't commit to shooting straight down.
+In addition to win-rate/style summaries, the bot now keeps reward buckets in:
 
-### When Player Is BELOW Bot (has bottom)
-- **Shoots up**: 18% | **Shoots sideways**: 82%
-- Even from bottom advantage, player shoots left/right way more than up. Bot is safer staying directly above than to the side.
+- `reinforcement1v1.player`
+- `reinforcement1v1.general`
+- `reinforcement1v1.selfPlay`
 
-### When Level (same height)
-- **Shoots left**: 44% | **Shoots right**: 4%
-- Heavily favors shooting left. Bot should stay to player's RIGHT side when level.
+Each scope tracks rewards for:
+- `style`
+- `opening`
+- `antiBottom`
 
----
+This means the bot is not only learning "what the player does." It is also learning:
+- which style choice actually paid off
+- which opening route actually paid off
+- which anti-bottom response actually paid off
 
-## Combat Outcomes (Cause & Effect)
+## What The Bot Is Learning
 
-### Player Accuracy
-- **Overall hit rate**: 20%
-- **Close range (<150px)**: 25% — best range
-- **Mid range (150-300px)**: 19%
-- **Far range (300+px)**: 22%
+The live telemetry and reward model currently care most about:
 
-**By bot movement:**
-- **Bot strafing**: 39% hit rate (WORST for bot — player tracks strafes well)
-- **Bot standing still**: 24%
-- **Bot approaching**: 12% (player struggles to hit incoming bot)
-- **Bot retreating**: 10% (player can't hit retreating bot either)
+### Match Result
 
-**Key insight**: Player is BEST at hitting strafing targets (39%) and WORST at hitting approaching/retreating targets (10-12%). Bot should approach/retreat more, strafe less.
+Biggest signal:
+- winning is the largest reward
+- losing is the largest punishment
 
-### Bot Accuracy
-- **Overall hit rate**: 13%
-- **Player dodge rate**: 83% (player is very evasive)
-- **vs strafing player**: 8% (almost impossible to hit)
-- **vs still player**: 35% (much easier when player stops)
-- **vs approaching player**: 18%
+### Damage Trade
 
-### Combat Patterns
-- **Player's best hit distance**: 217px (mid range)
-- **Bot's best hit distance**: 156px (close range)
-- **Player damage from bottom**: 8% (LOW — having bottom doesn't translate to damage?)
-- **Bot damage from bottom**: 16%
-- **Trade ratio**: 50/50 (even in mutual exchanges)
+Strong signal:
+- dealing damage without taking return damage is heavily rewarded
+- taking damage while doing little or none back is punished
 
----
+### Vertical Control
 
-## Match History (last 20)
+Important positional signal:
+- being under the opponent is rewarded
+- being above the opponent is punished
 
-| # | Result | Duration | Shots | Bottom % | Date |
-|---|--------|----------|-------|----------|------|
-| 5 | Player Win | 15.3s | 24 | 82% | 2026-03-16 |
-| 6 | Player Win | 12.4s | 17 | 79% | 2026-03-16 |
-| 7 | Player Win | 23.5s | 41 | 76% | 2026-03-16 |
-| 8 | Player Win | 7.9s | 14 | 85% | 2026-03-16 |
-| 9 | Player Win | 16.9s | 27 | 82% | 2026-03-16 |
-| 10 | Player Win | 29.9s | 49 | 77% | 2026-03-16 |
-| 11 | Player Win | 22.2s | 22 | 71% | 2026-03-16 |
-| 12 | Player Win | 17.7s | 25 | 81% | 2026-03-16 |
-| 13 | Player Win | 13.8s | 12 | 66% | 2026-03-16 |
-| 14 | Player Win | 11.2s | 19 | 83% | 2026-03-16 |
-| 15 | Player Win | 12.4s | 21 | 82% | 2026-03-16 |
-| 16 | Player Win | 21.8s | 35 | 68% | 2026-03-16 |
-| 17 | Player Win | 24.2s | 43 | 76% | 2026-03-16 |
-| 18 | Player Win | 12.2s | 22 | 83% | 2026-03-16 |
-| 19 | **Bot Win** | 38.2s | 68 | 64% | 2026-03-16 |
-| 20 | **Bot Win** | 10.8s | 17 | 82% | 2026-03-16 |
+This is broader than literal bottom-of-map control.
+The real idea is:
+- can the bot stay in the stronger "under them" relationship?
 
-**Trend**: Bot won the last 2 matches. Match 19 was a long grind (38s, 68 shots). Match 20 was a quick kill (10.8s).
+### Gun-Side Lane Advantage
 
----
+Important angle signal:
+- if the bot's muzzle/shot lane is more favorable than the opponent's, that is rewarded
+- if the opponent has the cleaner lane, that is punished
 
-## What's Missing — Data We Should Still Track
+This uses spar muzzle geometry rather than a fake left/right heuristic.
 
-The current system tracks WHERE you are and WHAT you do, but it's missing:
+### Opening Results
 
-1. **Timing/rhythm patterns**: When do you peek? Do you burst-fire or single-shot? What's your shot cadence? Do you shoot immediately after dodging?
-2. **Action chains**: After getting hit → do you retreat, counter-shoot, or panic? After landing a hit → do you push or stay? After dodging → do you counter?
-3. **Peek patterns**: How long do you expose yourself before shooting? Do you strafe-peek left or right?
-4. **Reload timing**: Do you reload early (half mag) or empty? Do you reload at safe times or risky times?
-5. **Kill conditions**: What was the exact state when kills happened? Distance, who had bottom, movement, recent actions
-6. **Adaptation detection**: Does your playstyle change mid-match? Do you play differently in the first 10s vs later?
-7. **Response to specific bot actions**: When bot walls bullets → what do you do? When bot baits → do you fall for it?
+The bot also learns:
+- which openings get bottom early
+- which openings convert into wins
+- which openings repeatedly fail
 
----
+### Anti-Bottom Responses
 
-## How It Works
+The bot now tracks which of these works better against bottom holders:
+- `directContest`
+- `sideFlank`
+- `baitPull`
 
-- **Data collected every match**: position, movement, dodge dirs, shot patterns, aggression, combat outcomes
-- **Exponential moving average (alpha=0.3)**: recent matches weighted 3x more than older
-- **v2 additions**: situational behavior, shot context, hit/miss tracking with full game state
-- **Adapts if you change**: switch playstyle and the bot adjusts within 3-4 matches
+## Automated Modes
 
-## How to Update This Doc
+### `sparTrain(type, count)`
 
-After a spar session, run in the browser console:
+Examples:
+
 ```js
-console.log(JSON.stringify(sparLearning, null, 2));
+sparTrain('rusher', 50)
+sparTrain('all', 100)
 ```
 
-To reset the bot's memory:
+Use this for:
+- scripted archetype testing
+- broad generalization
+- learning counters to repeatable patterns
+
+Writes mainly to:
+- `general1v1`
+- `reinforcement1v1.general`
+
+### `sparSelfPlay(count)`
+
+Example:
+
 ```js
-Object.assign(sparLearning, {
-  version: 2, matchCount: 0,
-  opening: { rushBottom: 0.5, strafeLeft: 0.5 },
-  position: { bottomBias: 0.5, leftBias: 0.5 },
-  shooting: { upPct: 0.25, downPct: 0.25, leftPct: 0.25, rightPct: 0.25 },
-  dodging: { leftBias: 0.5, upBias: 0.5 },
-  aggression: { overall: 0.5, onEnemyReload: 0.5, whenLowHp: 0.5 },
-  reload: { avgNormalizedY: 0.5 },
-  whenHasBottom: { holdsPct: 0.5, shotFreq: 0.5, pushPct: 0.5 },
-  whenBotHasBottom: { retakePct: 0.5, flankPct: 0.5, retreatPct: 0.5 },
-  whenBotApproaches: { holdGroundPct: 0.5, counterPushPct: 0.5, sidestepPct: 0.5 },
-  whenBotRetreats: { chasePct: 0.5, shotFreq: 0.5 },
-  shotByPosition: { whenAbove: { downPct: 0.5, sidePct: 0.5 }, whenBelow: { upPct: 0.5, sidePct: 0.5 }, whenLevel: { leftPct: 0.5, rightPct: 0.5 } },
-  playerShots: { hitRate: 0.5, hitRateClose: 0.5, hitRateMid: 0.5, hitRateFar: 0.5, hitWhenBotStrafing: 0.5, hitWhenBotStill: 0.5, hitWhenBotApproach: 0.5, hitWhenBotRetreat: 0.5 },
-  botShots: { hitRate: 0.5, dodgedRate: 0.5, hitWhenPlayerStrafing: 0.5, hitWhenPlayerStill: 0.5, hitWhenPlayerApproach: 0.5 },
-  combatPatterns: { playerHitDist: 250, botHitDist: 250, playerDmgWhenHasBottom: 0.5, botDmgWhenHasBottom: 0.5, tradeRatio: 0.5 },
-  winRate: 0.5, history: [],
-});
+sparSelfPlay(100)
 ```
+
+Use this for:
+- bot-vs-bot broad strength
+- current bot vs frozen previous policy
+- building general competitive difficulty
+
+Writes mainly to:
+- `selfPlay1v1`
+- `reinforcement1v1.selfPlay`
+
+### Fast Sim Support
+
+Both automated modes now run faster than normal live spar by:
+- shortening countdown
+- shortening post-match delay
+- restarting matches faster
+- advancing more fixed-timestep updates per rendered frame
+
+This speeds up training without changing per-tick spar logic.
+
+## Recommended Training Loop
+
+Use this cycle:
+
+1. `sparTrain('all', 50-100)`
+2. `sparSelfPlay(50-100)`
+3. real spars against yourself
+4. write down what still feels weak
+5. repeat
+
+This gives:
+- archetype learning
+- self-play learning
+- human-specific learning
+
+## What To Record From Your Perspective
+
+Numbers alone are not enough. The best notes are concrete behavior notes like:
+
+- bot gives up bottom too easily
+- bot sits directly above me and feeds my peek
+- bot contests bottom well now
+- bot side-flanked me more after 8 matches
+- bot still overchases when I fake retreat
+- bot punishes reloads better
+- bot keeps choosing the same weak opening
+- bot got stronger after self-play but still weak vs human baiting
+
+## Manual Notes Template
+
+Copy this section and fill it in after a test set.
+
+### Session
+
+- Date:
+- Build:
+- Test type:
+- Matches:
+
+### Automated Training Run
+
+- `sparTrain(...)` used:
+- `sparSelfPlay(...)` used:
+- Did training look faster:
+- Did openings vary:
+- Did anti-bottom choices vary:
+
+### Real Spar Notes
+
+- What I repeated:
+- Did the bot notice:
+- After how many matches did it adapt:
+- Strongest improvement:
+- Biggest remaining mistake:
+
+### Position / Bottom Control
+
+- Contesting bottom:
+- Staying under me:
+- Avoiding the "sit above peek trap" mistake:
+- Re-entry quality:
+
+### Gun-Side / Angle Notes
+
+- Did it seek better shot lanes:
+- Did it avoid bad lane disadvantages:
+- Did it misuse top-left/top-right angles:
+
+### Damage / Punish Notes
+
+- Reload punish:
+- Trade quality:
+- Damage pressure:
+- Did it feed free hits:
+
+### Overall Feel
+
+- Baseline strength:
+- Adaptation speed:
+- Felt smarter because of `sparTrain`:
+- Felt stronger because of `sparSelfPlay`:
+- Felt more personal because of `player1v1`:
+
+## Useful Console Commands
+
+View current spar data:
+
+```js
+sparData()
+```
+
+Reset spar learning:
+
+```js
+resetSparLearning()
+```
+
+Run archetype training:
+
+```js
+sparTrain('all', 100)
+```
+
+Run self-play:
+
+```js
+sparSelfPlay(100)
+```
+
+Stop automated training:
+
+```js
+sparTrainStop()
+```
+
+## Persistence Check
+
+To make sure learning persisted:
+
+1. run `sparData()`
+2. refresh
+3. run `sparData()` again
+
+You should still see:
+- `player1v1`
+- `general1v1`
+- `selfPlay1v1`
+- `reinforcement1v1.player`
+- `reinforcement1v1.general`
+- `reinforcement1v1.selfPlay`
+
+## Current Design Intent
+
+High-level priority:
+
+1. `player1v1` should matter most once enough real human matches exist
+2. `general1v1` should provide strong broad defaults
+3. `selfPlay1v1` should raise the bot's general ceiling
+4. reinforcement buckets should make it learn faster at exact decision points
+
+If the bot gets stronger in automation but still feels dumb against you, note that explicitly.
+That usually means:
+- the broad policy improved
+- but the human-specific adaptation or behavior logic still needs work

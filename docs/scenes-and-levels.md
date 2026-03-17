@@ -45,13 +45,18 @@ The scene system controls which level the player is in and what gameplay rules a
 | `'dungeon'` | _(default)_ | Wave-based combat rooms |
 | `'test_arena'` | `isTestArena` | Dev testing arena |
 | `'mine'` | `isMine` | Mining minigame (4 mine rooms) |
-| `'cooking'` | `isCooking` | Deli cooking station |
+| `'cooking'` | `isCooking` | Restaurant cooking (deli, diner, fine dining) |
 | `'farm'` | `isFarm` | Farming area |
 | `'azurine'` | `isAzurine` | Azurine City hub (separate dungeon queue) |
 | `'gunsmith'` | `isGunsmith` | Gunsmith shop interior |
 | `'hideseek'` | `isHideSeek` | Hide & Seek game mode |
 | `'mafia_lobby'` | `isMafiaLobby` | Pre-game lobby for Mafia (Among Us-style) |
 | `'skeld'` | `isSkeld` | The Skeld map (Mafia game in-progress) |
+| `'vortalis'` | `isVortalis` | Vortalis dungeon hub |
+| `'earth205'` | `isEarth205` | Earth-205 dungeon hub |
+| `'wagashi'` | `isWagashi` | Wagashi dungeon hub |
+| `'earth216'` | `isEarth216` | Earth-216 dungeon hub |
+| `'casino'` | `isCasino` | Casino interior (6 minigames) |
 
 **Scene flags:** Each value has a corresponding getter (`Scene.inDungeon`, `Scene.inLobby`, `Scene.inCave`, etc.) for convenient boolean checks.
 
@@ -84,7 +89,7 @@ Each entry in `LEVELS` is an object with:
 - `.` (dot) = floor (0) -- walkable
 - `#` or `@` = wall (1) -- solid, blocks movement
 
-**All level IDs in `LEVELS`:** `lobby_01`, `house_01`, `cave_01`, `azurine_01`, `warehouse_01`, `mine_01` through `mine_04`, `deli_01`, `test_arena`, `gunsmith_01`, `hide_01`, `skeld_01`, `mafia_lobby`
+**All level IDs in `LEVELS`:** `lobby_01`, `house_01`, `cave_01`, `azurine_01`, `warehouse_01`, `mine_01` through `mine_04`, `deli_01`, `diner_01`, `fine_dining_01`, `test_arena`, `gunsmith_01`, `hide_01`, `skeld_01`, `mafia_lobby`, `casino_01`
 
 ### Portal System
 
@@ -94,11 +99,19 @@ Portals are level entities with a `target` (level ID), `spawnTX`, and `spawnTY`.
 cave_entrance: 'lobby',   cave_exit: 'cave',
 mine_entrance: 'lobby',   mine_exit: 'mine',    mine_door: 'mine',
 deli_entrance: 'lobby',   deli_exit: 'cooking',
+diner_entrance: 'lobby',  diner_exit: 'cooking',
+fine_dining_entrance: 'lobby', fine_dining_exit: 'cooking',
 house_entrance: 'lobby',  house_exit: 'farm',
 azurine_entrance: 'lobby', azurine_exit: 'azurine',
 gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
 hideseek_entrance: 'lobby',
 skeld_entrance: 'lobby',
+mafia_lobby_exit: 'mafia_lobby',
+vortalis_entrance: 'lobby', vortalis_exit: 'vortalis',
+earth205_entrance: 'lobby', earth205_exit: 'earth205',
+wagashi_entrance: 'lobby',  wagashi_exit: 'wagashi',
+earth216_entrance: 'lobby', earth216_exit: 'earth216',
+casino_entrance: 'lobby',   casino_exit: 'casino',
 ```
 
 `checkPortals()` runs every frame, scanning `levelEntities` for portal overlap. When the player's tile position falls inside a portal zone and the current scene matches `PORTAL_SCENES[type]`, it calls `startTransition()`.
@@ -156,7 +169,11 @@ This is the foundation for all movement collision -- player AABB checks, mob `po
 3. `startTransition()` to the return level (if provided)
 4. Push system chat message
 
-Scenes with `/leave` support: `dungeon`, `hideseek`, `mafia_lobby`, `skeld`.
+Scenes with `/leave` support: `test_arena`, `mine`, `cooking`, `farm`, `cave`, `azurine`, `vortalis`, `earth205`, `wagashi`, `earth216`, `gunsmith`, `casino`, `dungeon`, `hideseek`, `mafia_lobby`, `skeld`.
+
+### LEAVE_HANDLER Auto-Cleanup
+
+`enterLevel()` now automatically runs the current scene's `LEAVE_HANDLER.cleanup()` before transitioning to a new level. This means portal transitions get the same cleanup (closing panels, resetting state) that `/leave` provides. You do not need to manually call cleanup on portal exits -- it happens automatically.
 
 ### Dungeon Floor Progression
 
@@ -180,6 +197,6 @@ Scenes with `/leave` support: `dungeon`, `hideseek`, `mafia_lobby`, `skeld`.
 - **Script load order matters.** `levelData.js` (Phase A) must load before `sceneManager.js` (Phase E) because `setLevel(LEVELS.lobby_01)` runs at parse time.
 - **The Skeld map coordinates use a virtual offset.** All Skeld coordinates have `XO=4` applied. Minimap labels in `draw.js` use actual grid coordinates (virtual + XO). See CLAUDE.md for mandatory Skeld editing rules.
 - **Portal re-teleport loops.** Spawn coordinates must not overlap the portal entrance zone, or the player will immediately re-teleport. Always verify return coordinates are outside the portal trigger area.
-- **`LOBBY_RESET_SCENES`** is a Set controlling which scenes get the lobby-style full inventory reset: `lobby`, `cave`, `azurine`, `gunsmith`, `skeld`, `mafia_lobby`.
+- **`LOBBY_RESET_SCENES`** is a Set controlling which scenes get the lobby-style full inventory reset: `lobby`, `cave`, `azurine`, `gunsmith`, `skeld`, `mafia_lobby`, `vortalis`, `earth205`, `wagashi`, `earth216`, `casino`.
 - **Dungeon type and return level** flow through pending variables (`pendingDungeonFloor`, `pendingDungeonType`, `pendingReturnLevel`), set by the queue system and consumed by `resetCombatState('dungeon')`.
 - **`isSolid` checks entities too**, not just the collision grid. A 7x8 solid building entity will block movement even though the underlying collision grid tiles are floor.

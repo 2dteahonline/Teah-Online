@@ -80,7 +80,7 @@ If you call `positionClear(px, py)` without the third argument, it uses `POS_HW`
 
 ## Adding Mobs Checklist
 
-When adding a new mob type, you must update four registries:
+When adding a new mob type, you must update four registries plus two flag lists:
 
 1. **`MOB_TYPES`** in `js/shared/mobTypes.js`
    - Define hp, speed, damage, contactRange, AI pattern, color, special abilities
@@ -97,6 +97,12 @@ When adding a new mob type, you must update four registries:
 4. **`ENTITY_RENDERERS`** in `js/client/rendering/entityRenderers.js`
    - Add a renderer function if the mob needs custom visuals (54 renderers exist)
    - If omitted, the mob uses the default procedural renderer
+
+5. **`stillActive` and `isMultiFrame`** in `js/authority/mobSystem.js`
+   - If the mob has ANY boss ability flags (telegraphs, multi-frame attacks, channeled abilities), add ALL flags to BOTH the `stillActive` check and the `isMultiFrame` check
+   - Missing flags cause bosses to abort abilities mid-animation -- this bug has occurred in multiple dungeons
+
+6. **Summoned mobs** must have `ai: 'grunt'` (or appropriate AI) in their `MOB_TYPES` entry, or they will stand still. Despawn timers must tick in the global `updateMobs()` loop, not inside the ability handler.
 
 ### Common Pitfall: `createMob` Parameters
 
@@ -119,6 +125,8 @@ When adding a new interactive entity (chest, NPC, door, etc.):
 
 3. **Interaction logic** in `js/core/interactable.js` (if the entity is interactive)
    - Add handling for the entity type in the interaction system
+
+4. **Persistent entities** that need per-frame updates (NPCs, animated objects) must have their tick function called from the appropriate update loop -- not just rendered. Missing ticks cause entities to appear static.
 
 ## File Modification Checklist
 
@@ -195,9 +203,28 @@ When adding any new player/character animation (new skill, emote, action):
 Current body rows: 32 (4 cols x 32 rows = 128x1280)
 Current head/hat rows: 5 (4 cols x 5 rows = 128x160 for head, 5 cols x 5 rows = 160x160 for hat)
 
+## Party System Conventions
+
+The party system (`js/authority/partySystem.js`) follows entity-agnostic design principles:
+
+- **Bots = future multiplayer users.** Every system must treat bots and the player identically. Never special-case "bot" vs "player" -- use `PartySystem.resolveKiller(id)` which returns the same shape for any participant.
+- **Independent state.** Each party member has their own gun, melee, equipment, gold, potions, and status effects. Do not share state between members.
+- **Equipment sync.** When the player buys equipment (armor, weapons), bot members must also receive equivalent gear. Use the equip sync API rather than duplicating player state.
+- **Scaling.** HP/damage scaling should use total party size (not alive count) to avoid difficulty fluctuation during a run.
+
+## Lessons Learned (Common Mistakes)
+
+These 5 rules prevent the most frequently repeated bugs:
+
+1. **READ before WRITE.** Always read the current file/state before modifying it. Never assume what a value is -- another terminal or session may have changed it.
+2. **GREP all touchpoints.** Before modifying shared state, search the entire codebase for all consumers. Shared renderers, reset functions, and dispatch loops are commonly missed.
+3. **USE what exists.** Before creating utility functions, check if an equivalent already exists (`getTierColor`, `shopBuy`, `positionClear`, etc.). Duplicate utilities cause divergent behavior.
+4. **THINK entity-agnostic.** Every system that touches the player should work for any participant (bot or player). Use `resolveKiller()`, not `player` directly.
+5. **VERIFY the full picture.** After implementation, check all 5 categories: code logic, map/layout, NPC physical behavior, integration with other systems, and visual/UX.
+
 ## Connections to Other Systems
 
 - **Architecture** (`docs/architecture.md`): Script loading order, authority/client split, game loop, key globals
-- **Save/Load**: Schema version 7 in `js/core/saveLoad.js`; adding new saved fields requires a migration
+- **Save/Load**: Schema version 8 in `js/core/saveLoad.js`; adding new saved fields requires a migration
 - **Progression**: 5 tiers x 25 levels in `PROG_ITEMS`; gun upgrades use `[gunId][tier][level]` recipe structure
-- **Debug Commands**: `/gun`, `/tp`, `/heal`, `/mob`, `/freeze`, `/god`, `/nofire`, `/speed` in `js/authority/commands.js`
+- **Debug Commands**: `/gold`, `/heal`, `/gun`, `/freeze`, `/god`, `/nofire`, `/speed`, `/party`, `/sabo`, `/fix` in `js/client/ui/panelManager.js`

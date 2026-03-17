@@ -283,6 +283,15 @@ All drawing uses `ctx` (global Canvas 2D context) and `PALETTE` colors. Hit test
 - **UI Panel Manager** (`panels.js`) -- Shop, gunsmith, and vendor UIs are opened via `UI.open()` from interactable callbacks
 - **Character Rendering** (`characterSprite.js`) -- Reads `playerEquip` to draw equipped armor using `ARMOR_VISUALS` colors
 
+## Party Member Equipment
+
+When the party system is active (`PartySystem`), bot members need independent equipment state:
+
+- Each bot has its own gun, melee, and armor stats -- they do not share the player's `playerEquip`.
+- When the player purchases equipment from the dungeon shop, bot members must also receive equivalent gear via the equip sync mechanism.
+- Bot equipment uses default weapons at party init, not copies of the player's current gun (copying the player's leveled gun makes bots overpowered).
+- Bot fire rate and melee cooldown should use their own weapon stats, not hardcoded values.
+
 ## Gotchas & Rules
 
 - **Armor is session-scoped**: All dungeon shop gear (boots, pants, chest, helmet, session guns, session melee) resets when leaving the dungeon. This is intentional roguelike design.

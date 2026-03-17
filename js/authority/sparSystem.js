@@ -45,12 +45,16 @@ const SparSystem = {
   _buildCtxGun(freezePts, rofPts, spreadPts) {
     const frzStat = SPAR_CTX_STATS.freezeToStat(freezePts);
     const fireRate = SPAR_CTX_STATS.rofToStat(rofPts);
+    const reloadSpeed = typeof SPAR_CTX_STATS.reloadToStat === 'function'
+      ? SPAR_CTX_STATS.reloadToStat(rofPts)
+      : this._getSparReloadFrames({ _sparRof: rofPts });
     const spread = SPAR_CTX_STATS.spreadToStat(spreadPts);
     return {
       id: 'ct_x',
       name: 'CT-X',
       damage: CT_X_GUN.damage,          // 20
       fireRate: fireRate,
+      reloadSpeed: reloadSpeed,
       magSize: CT_X_GUN.magSize,         // 30
       ammo: CT_X_GUN.magSize,
       reloading: false,
@@ -83,6 +87,24 @@ const SparSystem = {
 
   _clamp01(v) {
     return Math.max(0, Math.min(1, v));
+  },
+
+  _getSparPerpHitRadius() {
+    const entityR = GAME_CONFIG.ENTITY_R || 25;
+    const bulletHalfShort = GAME_CONFIG.BULLET_HALF_SHORT || 4;
+    return GAME_CONFIG.DEFAULT_HITBOX_R || (entityR + bulletHalfShort);
+  },
+
+  _getSparAimSlack() {
+    return this._getSparPerpHitRadius() + Math.max(4, GAME_CONFIG.BULLET_HALF_SHORT || 4);
+  },
+
+  _getSparReloadFrames(gun) {
+    if (gun && typeof gun.reloadSpeed === 'number') return gun.reloadSpeed;
+    const rofPts = gun && typeof gun._sparRof === 'number' ? gun._sparRof : 50;
+    if (typeof _sparCtxReloadFromRof === 'function') return _sparCtxReloadFromRof(rofPts);
+    const base = Math.round(20 + Math.min(100, rofPts * 1.2) * 0.25);
+    return Math.round(base * 1.2);
   },
 
   _ensureReinforcementProfile(sl) {
@@ -975,9 +997,8 @@ const SparSystem = {
 
     // Pick best cardinal direction
     // dir: 0=down, 1=up, 2=left, 3=right
-    // Elliptical hitbox bias: vertical shots (up/down) hit through 53px wide zone,
-    // horizontal shots (left/right) hit through only 23px tall zone.
-    // Scale aimDy to prefer vertical when hitbox data shows it works better.
+    // Cardinal bullets care about perpendicular lane width, so keep the learned
+    // horizontal-vs-vertical bias but ground it in the current live bullet/body setup.
     let effectiveDx = Math.abs(aimDx);
     let effectiveDy = Math.abs(aimDy);
     const pm2 = member.ai._profileMods;
@@ -1067,29 +1088,29 @@ const SparSystem = {
 
     if (g.ammo <= 0) {
       g.reloading = true;
-      // Same reload formula as player: getReloadTime() = Math.round(20 + firerate * 0.25)
-      // Bot's firerate stat is derived from rof points, use same calculation
-      g.reloadTimer = g.reloadSpeed || Math.round((20 + (g._sparRof || 50) * 0.25) * 1.2);
+      // Keep reload timing on the exact same spar CT-X curve used for the player.
+      g.reloadTimer = this._getSparReloadFrames(g);
     }
   },
 
   // Dodge incoming enemy bullets — optimized for 4-cardinal bullet paths
   _getIncomingBulletDodge(bot, team) {
     let dodgeX = 0, dodgeY = 0;
+    const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
     const botHitY = bot.y + 5; // hitbox at feet level (entity.y + 5)
-    // Circular entity hitbox (R=27 effective zone with bullet perpendicular)
-    // Both axes have equal hit zone, but bullet is narrow perpendicular to travel
-    // so dodging perpendicular is always the right move
-    const dodgeLane = 35; // detect within 35px (effective zone ~27px, early warning)
+    const hitRadius = this._getSparPerpHitRadius();
+    const reactionMargin = Math.max(speed * 2, (GAME_CONFIG.BULLET_SPEED || 9) * 1.5);
+    const dodgeLane = hitRadius + reactionMargin;
+    const maxThreatDist = Math.max(320, (GAME_CONFIG.BULLET_SPEED || 9) * 36);
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
       const dbx = bot.x - b.x, dby = botHitY - b.y;
       const bDist = Math.sqrt(dbx * dbx + dby * dby);
-      if (bDist > 400 || bDist < 8) continue;
+      if (bDist > maxThreatDist || bDist < 8) continue;
 
       // Urgency: closer = stronger dodge
-      const urgency = Math.max(0.5, 1.2 - bDist / 350);
+      const urgency = Math.max(0.45, 1.35 - bDist / Math.max(260, maxThreatDist));
 
       if (Math.abs(b.vy) > Math.abs(b.vx)) {
         // Vertical bullet — dodge LEFT or RIGHT (perpendicular to travel)
@@ -1097,7 +1118,7 @@ const SparSystem = {
         if (!isApproaching) continue;
         if (Math.abs(dbx) > dodgeLane) continue;
         const dodgeDir = dbx >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0.3, 1 - Math.abs(dbx) / dodgeLane);
+        const laneProximity = Math.max(0.2, 1 - Math.abs(dbx) / dodgeLane);
         dodgeX += dodgeDir * urgency * laneProximity * 3.0;
       } else {
         // Horizontal bullet — dodge UP or DOWN (perpendicular to travel)
@@ -1105,16 +1126,17 @@ const SparSystem = {
         if (!isApproaching) continue;
         if (Math.abs(dby) > dodgeLane) continue;
         const dodgeDir = dby >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0.3, 1 - Math.abs(dby) / dodgeLane);
+        const laneProximity = Math.max(0.2, 1 - Math.abs(dby) / dodgeLane);
         dodgeY += dodgeDir * urgency * laneProximity * 3.0;
       }
     }
 
     // Clamp total dodge so it doesn't exceed reasonable movement
     const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
-    if (dodgeLen > 4) {
-      dodgeX = (dodgeX / dodgeLen) * 4;
-      dodgeY = (dodgeY / dodgeLen) * 4;
+    const maxDodge = Math.max(3.5, speed * 0.95);
+    if (dodgeLen > maxDodge) {
+      dodgeX = (dodgeX / dodgeLen) * maxDodge;
+      dodgeY = (dodgeY / dodgeLen) * maxDodge;
     }
     return { x: dodgeX, y: dodgeY };
   },
@@ -3113,9 +3135,10 @@ const SparSystem = {
         // Wait for better alignment: target about to cross our shot axis
         const alignX = Math.abs(tgt.x - bot.x);
         const alignY = Math.abs(tgt.y - bot.y);
-        let aligned = Math.min(alignX, alignY) < 35; // close to axis (circular hitbox)
+        const axisSlack = this._getSparAimSlack();
+        let aligned = Math.min(alignX, alignY) < axisSlack;
         // With vertical offset, horizontal alignment still valuable for perpendicular shot
-        if ((hasBottom || enemyHasBottom) && alignX < 40) aligned = true;
+        if ((hasBottom || enemyHasBottom) && alignX < axisSlack + Math.max(4, GAME_CONFIG.BULLET_HALF_SHORT || 4)) aligned = true;
         if (aligned) {
           this._sparBotShoot(member, tgt);
         } else if (member.ai.shootCD <= -10) {

@@ -1,156 +1,120 @@
 # Cooking System
 
 ## Overview
-A timed shift-based minigame where the player runs a deli, assembling sandwich orders for NPC customers by swinging a spatula at ingredient stations. Orders are graded on ingredient accuracy and speed (S/A/B/C/F), awarding gold, tips, and Cooking XP. Customer NPCs autonomously walk in, queue up, order food, sit down to eat, browse store aisles, tip, and leave. A 5-minute shift timer and optional rush hour mode add pressure. Currently only the Street Deli (tier 1) is implemented; 4 higher-tier restaurants are defined for future use.
+
+A continuous restaurant minigame where the player assembles orders for NPC customers by swinging a spatula at ingredient stations. Orders are graded on ingredient accuracy and speed (S/A/B/C/F), awarding gold, tips, and Cooking XP. The system supports three restaurant tiers, each with unique mechanics, customer types, and NPC behaviors. Sessions run continuously until the player leaves the scene (no shift timer).
+
+### Restaurant Tiers
+
+| Shop ID | Name | Tier | Level Req | Orders Req | Cost Req | Max Orders | Status |
+|---------|------|------|-----------|-----------|----------|-----------|--------|
+| `street_deli` | Street Deli | 1 | 1 | 0 | 0 | 20 | Implemented |
+| `diner` | Diner | 2 | 10 | 500 | 5,000 | 35 | Implemented |
+| `fine_dining` | Fine Dining | 3 | 20 | 2,000 | 25,000 | 75 | Implemented |
+| `luxury` | Luxury Restaurant | 4 | 35 | 5,000 | 100,000 | 100 | Future |
+| `five_star` | 5 Star Elite | 5 | 50 | 10,000 | 500,000 | 150 | Future |
 
 ## Files
-- `js/shared/cookingData.js` — Shop definitions (5 tiers), 14 ingredients, 11 recipes, 3 customer types, mood stages, grade thresholds, timing config, spatula weapon definition, helper functions
-- `js/authority/cookingSystem.js` — Shift lifecycle, order spawning, station interaction (spatula-based), grading formula, result application, combo tracking, HUD rendering, shift-end overlay
-- `js/authority/deliNPCSystem.js` — Customer NPC AI: appearance pool, waypoint routing, queue management, 15+ AI states, emoji mood bubbles, spawn/despawn lifecycle
 
-## Key Functions & Globals
+- `js/shared/cookingData.js` — Shop definitions (5 tiers), all ingredients/recipes/customer types for all 3 restaurants, service timer types, grade thresholds, cooking config, spatula weapon, helper functions.
+- `js/authority/cookingSystem.js` — Session lifecycle, ticket queue, order spawning, station interaction (spatula-based), grading formula, result application, combo tracking, HUD rendering.
+- `js/authority/cookingNPCBase.js` — Shared NPC utilities for all restaurants: NPC factory, movement with avoidance, route system, recovery, spawn timers, update loop, party utilities.
+- `js/authority/deliNPCSystem.js` — Deli customer NPC AI: queue-based ordering, two roles (meal/retail), 4 dining tables, 4 aisle shelves, cashier.
+- `js/authority/dinerNPCSystem.js` — Diner NPC AI: party-based booth seating, persistent waitress NPC, arcade spots, ticket queue integration.
+- `js/authority/fineDiningNPCSystem.js` — Fine dining NPC AI: party-based teppanyaki table seating, persistent waiter NPC, cover fees, order visibility gating.
+- `js/authority/fineDiningGrill.js` — Teppanyaki grill QTE timing bar mini-game, trick scoring, VIP/Critic grade overrides.
 
-### Cooking State
-- `cookingState` — Global state object:
-  - `active` — Whether a shift is in progress.
-  - `shopId` — Currently `'street_deli'`.
-  - `shiftTimer` / `shiftDuration` — Current frame count vs. max (18000 frames / 5 min).
-  - `assembly[]` — Ingredient IDs the player has added so far for the current order.
-  - `currentOrder` — `{ id, recipe, customer, moodTimer, mood, moodStageIdx, moodThresholds, npcId }`.
-  - `comboCount` / `comboMultiplier` — Consecutive S/A grades boost tip multiplier.
-  - `rushActive` — True after 15 completed orders; speeds up mood decay and order spawning.
-  - `shiftEnded` / `shiftComplete` — End-of-shift overlay flags.
-  - `tipJar` — Accumulated tips the player must collect by swinging at the tip jar entity.
-  - `stats` — Per-shift: `{ ordersCompleted, perfectDishes, totalEarned, totalTips, totalXP, grades: { S, A, B, C, F } }`.
-  - `lastResult` / `lastResultTimer` — Last graded order for popup display.
-- `_savedMeleeEquip` / `_savedActiveSlot` — Saved weapon state restored when leaving the deli.
+## Shared NPC Base Module (cookingNPCBase.js)
 
-### Deli NPC State
-- `deliNPCs[]` — Array of active customer NPC objects.
-- `DELI_NPC_AI` — Object of 15+ state handler functions (entering, in_queue, ordering, waiting_food, pickup_food, eating, shopping_aisle, tipping, etc.).
-- `QUEUE_SPOTS` — 6-slot queue line (vertical at tx:11, ty:22-27).
-- `DELI_CHAIRS` — 32 chair positions across 4 dining tables.
-- `DELI_AISLES` — 6 aisle browse spots with purchasable items (Frozen, Snacks, Drinks, Cookies, Soups, Dairy).
-- `DELI_SPOTS` — Named waypoints (exit, counter, tipJar, corridorE, diningEntry, condiments).
+All three restaurant NPC systems delegate common functionality to `cookingNPCBase.js`, which is loaded before any per-restaurant script. Each restaurant provides a config object to these shared functions rather than re-implementing boilerplate.
 
-### Data Constants
-- `COOKING_SHOPS` — 5 shop tiers: Street Deli (Lv.1), Family Restaurant (Lv.10), Fine Dining (Lv.20), Luxury (Lv.35), 5 Star Elite (Lv.50). Only Street Deli has a `levelId`.
-- `DELI_INGREDIENTS` — 14 ingredients: bread, bagel, turkey, chicken, ham, salami, lettuce, tomato, cheese, onion, mayo, ketchup, mustard, ranch. Each maps to an entity type (`ing_bread`, etc.).
-- `ENTITY_TO_INGREDIENT` — Reverse lookup: entity type string to ingredient ID.
-- `DELI_RECIPES` — 11 sandwich recipes with ordered ingredient lists, basePay (10-22g), baseXP (12-32), difficulty (1-3).
-- `CUSTOMER_TYPES` — 3 types: Regular (55% weight, 1.0x tip, 0.7x mood speed, 1.2x patience), Generous (30%, 1.8x tip, 0.5x speed, 1.5x patience), Impatient (15%, 0.6x tip, 1.0x speed, 0.9x patience).
-- `MOOD_STAGES` — 3 stages: Patient (60s), Concerned (+40s), Furious (+50s). Thresholds scaled by customer patience.
-- `COOKING_GRADES` — S/A/B/C/F with quality and time thresholds, pay/tip/XP multipliers.
-- `COOKING_CONFIG` — Shift duration (18000 frames/5 min), order spawn delay (180 frames/3s), combo threshold (3), rush starts after 15 orders, rush mood speed mult (1.15x), rush order delay mult (0.75x).
-- `SPATULA_WEAPON` — `{ id: 'spatula', damage: 1, range: 80, cooldown: 20, special: 'spatula' }`.
+### What It Provides
 
-### Core Functions (cookingSystem.js)
-- `startCookingShift()` — Saves current weapon, equips spatula (auto-added to inventory if needed), resets all shift state.
-- `endCookingShift()` — Sets `shiftEnded` and `shiftComplete`, clears order/assembly.
-- `resetCookingState()` — Called on scene exit. Removes spatula, re-equips saved weapon, resets all state.
-- `spawnOrder()` — Picks random recipe and customer type, creates order object with mood thresholds, links to a waiting NPC at the counter.
-- `updateCooking()` — Per-frame update. Auto-starts shift on deli entry. Advances shift timer, checks rush mode, ticks mood timer (customer gets angrier over time), handles spatula hit detection against ingredient entities and station entities, auto-fails order if customer leaves.
-- `handleStationInteract(entityType)` — Routes interactions:
-  - Ingredient entity (`ing_*`) -> adds ingredient to assembly (if recipe needs more of it).
-  - `deli_counter` -> clears assembly (reset plate).
-  - `pickup_counter` -> submits order for grading.
-  - `tip_jar` -> collects accumulated tips.
-- `gradeOrder()` — Scoring formula: quality score (correct ingredients in correct order, penalized for extras) and time score (% of total mood time remaining). Maps to S/A/B/C/F grade.
-- `applyOrderResult(result)` — Updates stats, awards gold (pay directly, tips to jar), awards Cooking XP, updates combo, notifies linked NPC, schedules next order.
+**Utility functions:**
+- `_cRandRange(min, max)`, `_cRandFromArray(arr)` — random helpers
+- `_cTilePx(tx, ty)` — tile coords to pixel center
+- `_cWP(tx, ty)` — create a waypoint object
+- `_cCloneRoute(route)` — safely clone a route array
+- `_cConcatRoutes(...)` — concatenate multiple route segments
 
-### Core Functions (deliNPCSystem.js)
-- `spawnDeliNPC()` — Creates NPC with random appearance, name, speed variance, patience range. Spawns at exit tile.
-- `initDeliNPCs()` — Clears all NPCs and resets spawn timer.
-- `updateDeliNPCs()` — Per-frame: manages spawn intervals (5-15s between customers, max 12 NPCs), runs each NPC's state handler from `DELI_NPC_AI`, updates emoji mood bubbles, handles route-based movement, despawns NPCs.
-- `moveDeliNPC(npc)` — Route-following movement: walks toward `route[0]` waypoint, snaps when close, advances to next. Includes NPC-NPC separation push (queue NPCs only push vertically to stay in line).
-- `_advanceQueue()` — When front-of-line NPC leaves, all queued NPCs move forward one slot.
+**NPC factory:**
+- `_cCreateNPC(idCounter, spawnPos, appearances, names, config, extraFields)` — creates a base NPC with all shared fields (id, position, direction, frame, movement state, appearance, name, state machine fields). Per-restaurant fields are merged via `extraFields`.
 
-### Route Builders (deliNPCSystem.js)
-Pre-built route generators return arrays of `{tx, ty}` waypoints for straight-line walking:
-- `_routeCounterToChair(chairIdx)` — Counter to dining chair via safe corridors.
-- `_routeCounterToCondiments()` — Counter to condiment station.
-- `_routeChairToAisle(chairIdx, aisle)` — Chair to shopping aisle via nearest gap.
-- `_routeCounterToAisle(aisle)` — Counter to aisle, routing around shelf rows.
-- `_routeAisleToAisle(fromTX, fromTY, toAisle)` — Between aisles using nearest shelf gap.
-- `_routeToExit(fromTX, fromTY)` — Any position to exit, via safe corridors.
-- `_routeToTipJar(fromTX, fromTY)` — Any position to tip jar.
+**Route system:**
+- `_cStartRoute(npc, route, nextState, nextTimer, intent)` — starts an NPC walking along a cloned route, with transition state and optional route intent for recovery.
 
-## How It Works
+**Movement:**
+- `_cMoveNPC(npc, cfg)` — route-following movement with NPC-NPC avoidance (lower-ID priority), kitchen zone restriction, wall collision checks, lane offsets, and configurable pair behaviors (`skip`, `slow`, `yield`). Config includes: `npcList`, `skipStates`, `kitchenCheck`, `kitchenSafe`, `kitchenFallback`, `laneMode`, `selfAvoidSkip`, `pairBehavior`.
 
-### Shift Flow
-1. Player enters the deli scene (`Scene.inCooking` becomes true).
-2. `startCookingShift()` auto-fires: saves weapon, equips spatula, starts 5-minute timer.
-3. First customer NPC walks in from exit, joins queue, reaches counter -> `spawnOrder()` creates order.
-4. Player runs between ingredient stations swinging spatula to collect ingredients in order.
-5. Player swings at `pickup_counter` to submit -> `gradeOrder()` scores it -> gold/tips/XP awarded.
-6. Next customer orders. Cycle repeats until shift timer expires.
-7. `endCookingShift()` triggers -> shift-end overlay shows stats. Press interact to dismiss.
-8. On scene exit, `resetCookingState()` restores original weapon.
+**Recovery:**
+- `_cRecoverNPC(npc, cfg)` — attempts to recover a stuck NPC by rebuilding its route from saved intent. Teleports to anchor position and restarts walking.
 
-### Order Assembly
-- Each recipe has an ordered ingredient list (e.g., Classic Sub = bread, turkey, lettuce, tomato, mayo).
-- Player swings spatula at ingredient entities (`ing_bread`, `ing_turkey`, etc.) placed in the deli level.
-- Each swing adds the ingredient to `cookingState.assembly[]`.
-- If the player already has enough of that ingredient for the recipe, swing shows "Don't need X!".
-- Swinging at `deli_counter` clears the assembly (starts over).
-- Swinging at `pickup_counter` submits for grading.
+**Spawn timer:**
+- `_cSpawnTick(timerState, intervalRange, canSpawn)` — generic spawn interval management.
 
-### Grading Formula
-```
-qualityScore = (correctInOrder / totalRequired) - (extraWrong * 0.1)
-timeScore    = 1.0 - (moodTimer / totalMoodTime)
+**Update loop:**
+- `_cUpdateNPCLoop(loopCfg)` — per-frame update loop shared by all restaurants. Handles spawn timing, state handler dispatch, movement, 60-second idle timeout, stuck detection (1+ second blocked), despawn. Config includes: `restaurantId`, `stateHandlers`, `exemptIdleStates`, `onIdleTimeout`, `onStuckTimeout`, `onDespawn`, `postLoop`.
 
-S: quality >= 1.0  AND  time >= 0.5   -> 1.0x pay, 1.5x tip, 2.0x XP
-A: quality >= 0.85 AND  time >= 0.3   -> 0.9x pay, 1.3x tip, 1.5x XP
-B: quality >= 0.6  AND  time >= 0.15  -> 0.75x pay, 1.0x tip, 1.0x XP
-C: quality >= 0.4                     -> 0.5x pay, 0.5x tip, 0.5x XP
-F: anything else (or customer left)   -> 0.25x pay, 0x tip, 0.25x XP
-```
+**Party utilities** (used by diner and fine dining):
+- `_cFindNPCById()`, `_cFindParty()`, `_cGetPartyLeader()`, `_cGetPartyMembers()`
+- `_cCleanupParties(partyList, npcList, releaseResource)` — removes parties where all members have despawned, releasing booths/tables.
 
-Quality scoring checks ingredients in order -- `assembly[i] === recipe.ingredients[i]`. Extra wrong ingredients penalize by -10% each.
+### How Restaurants Delegate
 
-### Combo System
-- Consecutive S or A grades increment `comboCount`.
-- Tip multiplier: `1.0 + min(comboCount * 0.2, 1.0)` (max 2x tips at 5+ combo).
-- An F grade resets the combo to 0.
+Each restaurant defines its own:
+1. **Appearance pool** and **name pool** (passed to `_cCreateNPC`)
+2. **Config object** with spawn intervals, speeds, durations (passed to spawn/update functions)
+3. **State handler map** (e.g., `DELI_NPC_AI`, `DINER_NPC_AI`, `FD_NPC_AI`) — passed to `_cUpdateNPCLoop`
+4. **Move function** wrapping `_cMoveNPC` with restaurant-specific config (kitchen zones, lane modes, pair behaviors)
+5. **Route builders** — per-restaurant waypoint routes
+6. **Kitchen zone check** function
 
-### Rush Hour
-- Triggers after 15 completed orders.
-- Mood decays 15% faster (`rushMoodSpeedMult: 1.15`).
-- Orders spawn 25% faster (`rushOrderDelayMult: 0.75`).
-- "RUSH HOUR!" indicator appears on HUD.
+## Cooking State
 
-### Customer NPC Lifecycle
-1. **Spawn** at exit tile (tx:13, ty:27), walk north.
-2. **Pre-queue browse** (30% chance): browse an aisle before joining queue.
-3. **Queue** at next available slot (6 max). Face north. May leave mid-queue if stuck at position 3+.
-4. **Order** when reaching front of line. `spawnOrder()` links NPC to cooking order.
-5. **Wait for food**. Gets increasingly impatient (emoji mood bubbles based on wait/patience ratio).
-6. **Pick up food** when `applyOrderResult()` fires. Advance queue for others.
-7. **Condiments** (50% chance): visit condiment station (5-8s).
-8. **Eat** at claimed dining chair (30-50s).
-9. **Browse aisles** (70% chance after eating): visit 1-3 aisle spots, may purchase items ($3-4 each).
-10. **Tip** (40% chance): walk to tip jar, add $1-5 to `cookingState.tipJar`.
-11. **Leave**: walk to exit, despawn.
+`cookingState` — global state object shared across all restaurants:
 
-### NPC Mood Bubbles
-Based on `waitFrames / patienceMax` ratio while in queue:
-- < 0.3: S grade (happy, no bubble)
-- 0.3-0.6: A/B (mild, occasional smiley every 8-12s)
-- 0.6-0.8: C (annoyed face every 6-8s)
-- 0.8-0.9: near-F (angry face every 3-5s)
-- > 0.9: F (furious face every 2-4s)
+| Field | Description |
+|-------|-------------|
+| `active` | Whether a session is in progress |
+| `activeRestaurantId` | `'street_deli'`, `'diner'`, or `'fine_dining'` |
+| `assembly[]` | Ingredient IDs the player has added so far |
+| `currentOrder` | Active order with recipe, customer, service timer, timer type, linked NPC/table/party IDs |
+| `ticket` | Multi-item ticket: `{ items, completedCount }` (diner orders can have 1-3 items) |
+| `ticketQueue[]` | Pre-generated orders waiting to activate (max 3) |
+| `ticketSpawnTimer` | Frames until next ticket auto-generation |
+| `comboCount` / `comboMultiplier` | Consecutive S/A grades boost tip multiplier |
+| `missedOrders` | Count of timed-out/missed orders |
+| `stagingPlates[]` | Plate staging for multi-item tickets |
+| `stats` | Per-session: ordersCompleted, perfectDishes, totalEarned, totalTips, totalXP, grades |
+| `lastResult` / `lastResultTimer` | Last graded order for popup display |
 
-### Customer Mood Stages (Order Timer)
-| Stage | Duration | Effect |
-|-------|----------|--------|
-| Patient | 60s * patience | Green mood bar |
-| Concerned | +40s * patience | Yellow mood bar |
-| Furious | +50s * patience | Red mood bar, then customer leaves (auto F) |
+Multi-restaurant routing helpers select the correct ingredients, recipes, entity maps, NPC lists, and timer types based on `activeRestaurantId`: `_getActiveIngredients()`, `_getActiveEntityToIngredient()`, `_pickActiveRecipe()`, `_getActiveNPCs()`, `_getActiveTimerTypes()`.
 
-Customer patience multipliers: Regular 1.2x, Generous 1.5x, Impatient 0.9x.
+## Session Lifecycle
 
-### Recipes (11 total)
+1. Player enters a restaurant scene (`Scene.inCooking` becomes true).
+2. `startCookingShift(restaurantId)` auto-fires: saves current weapon, equips spatula, resets all state.
+3. Ticket queue auto-generates orders on a timer (every 60 frames / 1 second, max 3 queued).
+4. When no active order exists, next ticket activates as `currentOrder`.
+5. Player assembles ingredients by swinging spatula at ingredient stations.
+6. Player submits at pickup counter (or grill auto-submits for fine dining).
+7. `gradeOrder()` scores it, `applyOrderResult()` awards gold + tips + XP.
+8. Cycle repeats continuously until player leaves.
+9. On scene exit, `resetCookingState()` restores original weapon, removes spatula, resets all state.
+
+There is no shift timer or end-of-shift overlay. Sessions are continuous.
+
+## Per-Restaurant Details
+
+---
+
+### Street Deli (Tier 1)
+
+**Concept:** Quick-service sandwich counter with dining area and grocery aisles.
+
+**14 Ingredients:** bread, bagel, turkey, chicken, ham, salami, lettuce, tomato, cheese, onion, mayo, ketchup, mustard, ranch. Entity prefix: `ing_*`.
+
+**11 Recipes:**
 
 | Recipe | Ingredients | Pay | XP | Difficulty |
 |--------|-------------|-----|-----|-----------|
@@ -166,26 +130,428 @@ Customer patience multipliers: Regular 1.2x, Generous 1.5x, Impatient 0.9x.
 | Chicken Ranch | bread, chicken, cheese, lettuce, onion, ranch | 18 | 25 | 2 |
 | Chicken Deluxe | bagel, chicken, ham, cheese, lettuce, tomato, mayo, mustard | 22 | 32 | 3 |
 
+Pay formula override: `8 + (ingredientCount * 2)` (replaces static basePay).
+
+**3 Customer Types:**
+
+| Type | Weight | Tip Mult | Mood Speed | Patience |
+|------|--------|----------|-----------|----------|
+| Regular | 55% | 1.0x | 0.7x | 1.2x |
+| Generous | 30% | 1.8x | 0.5x | 1.5x |
+| Impatient | 15% | 0.6x | 1.0x | 0.9x |
+
+**Service Timer Types:** Patient (60s, 50%), Busy (30s, 35%), Urgent (15s, 15%).
+
+**NPC Roles:** 70% meal customers (queue, order, eat, browse, leave), 30% retail shoppers (browse shelves, cashier, leave).
+
+**Layout:** Kitchen (tx 0-23, ty 0-20), queue line (4 spots at tx:11), 2 dining tables (16 chairs), 4 aisle shelves (Frozen, Snacks, Candy, Bevs), cashier at tx:40.
+
+**Config:** Max 4 NPCs, spawn every 3-9 sec, eat 15 sec, browse 8-15 sec, 50% condiment visit chance, 70% post-meal aisle browse chance.
+
+**NPC States:** `spawn_wait`, `entering`, `walking`, `in_queue`, `ordering`, `waiting_food`, `pickup_food`, `at_condiments`, `eating`, `shopping_aisle`, `browsing_shelf`, `at_cashier`, `_despawn_walk`, `_despawn`.
+
+---
+
+### Diner (Tier 2)
+
+**Concept:** Retro 50s diner with booth seating, a waitress NPC, and an arcade corner.
+
+**18 Ingredients:** eggs, bacon, pancake_batter, waffle_batter, hash_browns, toast, butter, syrup, burger_patty, bun, fries, hot_dog, d_cheese, d_lettuce, d_tomato, d_onion, milkshake_base, coffee. Entity prefix: `ding_*`.
+
+**12 Recipes:**
+
+| Recipe | Ingredients | Pay | XP | Difficulty |
+|--------|-------------|-----|-----|-----------|
+| Pancakes | pancake_batter, butter, syrup | 18 | 22 | 1 |
+| Waffles | waffle_batter, butter, syrup | 18 | 22 | 1 |
+| Eggs & Bacon | eggs, bacon, toast | 16 | 20 | 1 |
+| Hash Brown Plate | hash_browns, eggs, d_cheese | 16 | 20 | 1 |
+| Full Breakfast | eggs, bacon, hash_browns, toast, butter | 28 | 38 | 3 |
+| Toast & Eggs | toast, eggs, butter | 14 | 18 | 1 |
+| Classic Burger | burger_patty, bun, d_lettuce, d_tomato | 20 | 25 | 1 |
+| Cheeseburger | burger_patty, bun, d_cheese, d_lettuce, d_tomato | 24 | 30 | 2 |
+| Hot Dog | hot_dog, bun, d_onion | 16 | 20 | 1 |
+| Fries | fries | 10 | 12 | 1 |
+| Milkshake | milkshake_base | 12 | 15 | 1 |
+| Coffee | coffee | 10 | 12 | 1 |
+
+**5 Customer Types:**
+
+| Type | Party Size | Tip Mult | Mood Speed | Patience | Weight |
+|------|-----------|----------|-----------|----------|--------|
+| Regular | 1-2 | 1.0x | 0.7x | 1.2x | 35% |
+| Family | 2-3 | 1.2x | 0.5x | 1.5x | 25% |
+| Couple | 2 | 1.3x | 0.6x | 1.3x | 15% |
+| Business | 1 | 1.5x | 0.9x | 1.0x | 15% |
+| Kids | 2-3 | 0.8x | 1.0x | 0.9x | 10% |
+
+**Service Timer Types:** Calm (90s, 40%), Feisty (60s, 40%), Rowdy (45s, 20%).
+
+**Unique Mechanics:**
+
+- **Party system:** Customers arrive in groups of 1-3, share a booth.
+- **Ticket queue:** Diner orders can contain 1-3 items per ticket (multi-item). Player must complete all items before the ticket is done.
+- **Persistent waitress NPC:** Walks between booths and pass window. Takes orders from parties that finish reading menus, generates tickets via `_generateTicket()`, tags tickets with booth/party info, delivers completed plates from a pending serve queue (`_dinerPendingServe`).
+- **Waitress priority:** Serve completed orders first, then take new orders from waiting parties.
+- **6 booths:** 3 left column (tx:27-32), 3 right column (tx:38-43), 4 seats each.
+- **Arcade corner:** 2 arcade spots. 20% of spawns are arcade-only visitors who pay a fee (5 gold) and leave. Post-meal parties have a 20% chance to send 1-2 members to play.
+- **20% arcade-only visitors:** Single NPCs who walk to the arcade, play, pay 5 gold, and leave without ordering food.
+
+**Config:** Max 5 parties, max 8 customer NPCs, spawn every 5-12 sec, eat 15-20 sec, menu read 3-5 sec.
+
+**NPC States (customers):** `spawn_wait`, `entering`, `walking`, `seating`, `menu_reading`, `waiting_at_booth`, `eating`, `post_meal`, `post_meal_wait`, `go_arcade`, `arcade_playing`, `arcade_done`, `go_arcade_only`, `arcade_only_playing`, `leaving`, `_despawn_walk`, `_despawn`.
+
+**Waitress States:** `idle`, `walking`, `taking_order`, `submitting_ticket`, `serving`.
+
+---
+
+### Fine Dining (Tier 3)
+
+**Concept:** Teppanyaki-style Japanese restaurant with table-side grilling and a trick timing mini-game.
+
+**12 Ingredients:** fd_steak, fd_shrimp, fd_chicken, fd_rice, fd_onion, fd_egg, fd_mushroom, fd_zucchini, fd_garlic_butter, fd_soy_sauce, fd_sesame_oil, fd_miso. Entity prefix: `fding_*`.
+
+**10 Recipes:**
+
+| Recipe | Ingredients | Pay | XP | Diff | Tricks | Trick Diff |
+|--------|-------------|-----|-----|------|--------|-----------|
+| Hibachi Steak | steak, onion, garlic butter, soy sauce | 45 | 55 | 2 | 4 | 2 |
+| Shrimp Teppanyaki | shrimp, garlic butter, soy sauce | 40 | 50 | 1 | 3 | 1 |
+| Chicken Teriyaki | chicken, soy sauce, sesame oil | 35 | 45 | 1 | 3 | 1 |
+| Volcano Fried Rice | rice, egg, onion, soy sauce, sesame oil | 50 | 65 | 2 | 5 | 2 |
+| Miso Glazed Salmon | shrimp, miso, garlic butter, sesame oil | 55 | 70 | 3 | 4 | 3 |
+| Garlic Butter Mushrooms | mushroom, garlic butter, soy sauce | 30 | 40 | 1 | 3 | 1 |
+| Teppanyaki Combo Platter | steak, shrimp, chicken, rice, onion, garlic butter | 60 | 80 | 3 | 6 | 3 |
+| Onion Volcano Special | onion, egg, rice, sesame oil | 40 | 50 | 2 | 4 | 2 |
+| Steak & Zucchini | steak, zucchini, garlic butter, soy sauce | 48 | 60 | 2 | 4 | 2 |
+| Mushroom Fried Rice | rice, mushroom, egg, soy sauce, sesame oil | 42 | 55 | 2 | 5 | 2 |
+
+**3 Customer Types:**
+
+| Type | Party Size | Tip Mult | Mood Speed | Patience | Cover Fee | Weight |
+|------|-----------|----------|-----------|----------|----------|--------|
+| Regular | 1-3 | 1.0x | 0.6x | 1.3x | $10 | 50% |
+| VIP | 1-3 | 1.8x | 0.5x | 1.3x | $25 | 35% |
+| Critic | 1-2 | 2.0x | 0.7x | 1.0x | $40 | 15% |
+
+**Service Timer Types:** Calm (60s, 40%), Feisty (45s, 35%), Rowdy (30s, 25%).
+
+**Unique Mechanics:**
+
+- **Cover fee:** Each party pays a cover fee on seating (Regular $10, VIP $25, Critic $40), added directly to player gold.
+- **Party system:** Customers arrive in groups of 1-4, assigned to a teppanyaki table.
+- **4 teppanyaki tables:** Each with a grill entity and 4 seats. Tables have state tracking (`empty`, `seated`, `cooking`, `eating`).
+- **Persistent waiter NPC:** Escorts parties from host stand to tables, takes orders, delivers food. Manages a waiter queue for multiple waiting parties.
+- **Order visibility gating:** The order HUD shows "Waiter taking order..." until the waiter returns to the pass window. Controlled by `_fdOrderVisible` flag.
+- **Grill station mini-game:** After collecting all ingredients, the player swings at the correct table's teppanyaki grill to start a QTE timing bar. Swing during trick zones to score Perfect/Good/Miss. See "Grill Station Mini-Game" section below.
+- **Table validation:** Player must swing at the grill matching the current order's `_fdTableId`. Swinging at the wrong table shows "Wrong table! Check order."
+- **Grill auto-submit:** After the grill bar completes, the order is automatically submitted for grading (no need to swing at the pickup counter).
+- **Exclamation marks:** Tables show exclamation marks when waiting for the player to cook.
+
+**Config:** Max 4 parties, spawn every 5-10 sec, eat 10-15 sec, waiter order taking 15 sec.
+
+**NPC States (customers):** `spawn_wait`, `entering`, `at_host`, `walking_to_table`, `seated`, `waiting_cook`, `watching_cook`, `eating`, `leaving`, `walking`, `_despawn_walk`, `_despawn`.
+
+**Waiter States:** `idle`, `walking`, `greeting`, `escorting`, `order_taking`, `submitting_ticket`, `serving`.
+
+## Grill Station Mini-Game (Fine Dining)
+
+The teppanyaki grill is a timing bar QTE unique to fine dining. It replaces the normal pickup counter submission.
+
+### Flow
+
+1. Player collects all ingredients for the current order.
+2. Player swings spatula at the correct table's grill entity (`fd_teppanyaki_grill_N`).
+3. `startGrillSequence(tableId, recipe)` kicks off: a timing bar appears in the HUD.
+4. A cursor moves left-to-right across the bar. Colored trick zones are placed at intervals.
+5. Player swings spatula while cursor is inside a trick zone.
+6. **Perfect** (within 2.5% of zone center): full score for that trick.
+7. **Good** (within 6% of zone center): 0.6x score for that trick.
+8. **Miss** (cursor passes zone, or swing outside any zone): 0x score, combo reset.
+9. After bar completes, `endGrillSequence()` calculates `trickScore` (0.0-1.0).
+10. 1-second finishing pause, then auto-submits the order.
+
+### Trick Scoring
+
+- 6 trick types (cosmetic labels): Spatula Spin, Onion Volcano, Shrimp Toss, Egg Crack, Flame Burst, Rice Flip.
+- Trick count: determined by recipe (`trickCount: 3-6`) or forced to 5 for VIP/Critic.
+- Zone width: base 8% of bar, scaled by difficulty (1.0x/0.8x/0.6x for difficulty 1/2/3).
+- Bar duration: 480 frames (diff 1) to 300 frames (diff 3). VIP/Critic fixed at 300 frames.
+- Combo: consecutive hits give +15% per hit, max 2.5x multiplier. Miss resets combo.
+
+### Customer Type Overrides
+
+- **VIP:** Needs 3+ of 5 hits for bonus. If met: +50% tips, +20% pay on top of normal grade.
+- **Critic:** ALL tricks must be Perfect or Good. Any miss = automatic F grade, party leaves immediately, counts as missed order.
+
+### Grade Blending
+
+For fine dining orders, the final grade uses a blended score:
+```
+blendedScore = quality * 0.4 + trickScore * 0.4 + timeScore * 0.2
+```
+Both quality and time thresholds use this blended value.
+
+### Config (FD_GRILL_CONFIG)
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `barDuration` | [300, 480] | Frame range for bar speed (by difficulty) |
+| `perfectWindow` | 0.025 | +/-2.5% of bar for Perfect |
+| `goodWindow` | 0.06 | +/-6% of bar for Good |
+| `trickZoneWidth` | 0.08 | Each zone is 8% of bar width (before difficulty scaling) |
+| `comboBonus` | 0.15 | +15% per consecutive hit |
+| `maxComboMult` | 2.5 | Maximum combo multiplier |
+| `missComboReset` | true | Miss resets combo to 0 |
+| `finishDelay` | 60 | 1 sec pause after bar ends |
+| `vipCriticBarDuration` | 300 | Fixed 5 sec for VIP/Critic |
+| `vipCriticTrickCount` | 5 | Always 5 tricks for VIP/Critic |
+
+## Order Assembly
+
+1. Each recipe has an ingredient list (e.g., Classic Sub = bread, turkey, lettuce, tomato, mayo).
+2. Player swings spatula at ingredient entities placed in the level.
+3. Each swing adds the ingredient to `cookingState.assembly[]`.
+4. If the player already has enough of that ingredient for the recipe, swing shows "Don't need X!".
+5. Swinging at the counter entity (`deli_counter`, `diner_counter`, `fd_counter`) clears the assembly.
+6. Swinging at the pickup counter (`pickup_counter`, `diner_pickup_counter`, `fd_pickup_counter`) submits for grading.
+7. Fine dining: swinging at a teppanyaki grill with full assembly starts the grill QTE instead of manual submission.
+
+## Grading Formula
+
+```
+qualityScore = (correctIngredients / totalRequired) - (extraWrong * 0.1)
+timeScore    = 1.0 - (serviceTimer / serviceDuration)
+```
+
+Quality uses **set-based matching** (ingredient order does NOT matter). Counts how many of each ingredient match, penalizes extras at -10% each.
+
+For fine dining, scoring is blended with trickScore (see "Grill Station Mini-Game" above).
+
+### Grade Thresholds
+
+| Grade | Min Quality | Min Time | Pay Mult | Tip Mult | XP Mult | Color |
+|-------|------------|----------|----------|----------|---------|-------|
+| S | 1.0 | 0.5 | 1.0x | 1.5x | 2.0x | Gold |
+| A | 0.85 | 0.3 | 0.9x | 1.3x | 1.5x | Green |
+| B | 0.6 | 0.15 | 0.75x | 1.0x | 1.0x | Blue |
+| C | 0.4 | 0.0 | 0.5x | 0.5x | 0.5x | Gray |
+| F | 0.0 | 0.0 | 0.25x | 0.0x | 0.25x | Red |
+
+### Tip Calculation
+
+```
+rawTip = pay * 0.2 * grade.tipMult * customer.tipMult * comboMultiplier
+```
+
+Gold (pay + tips combined) is awarded directly on submission. No separate tip jar collection.
+
+## Combo System
+
+- Consecutive S or A grades increment `comboCount`.
+- Tip bonus: `1.0 + min(comboCount * 0.2, 1.0)` (max 2x tips at 5+ combo).
+- An F grade resets the combo to 0.
+- B and C grades do NOT reset the combo (they just don't increment it).
+
+## Ticket Queue System
+
+Orders auto-generate independently of NPC behavior via a ticket queue:
+
+- `ticketSpawnInterval`: 60 frames (1 second) between ticket generations.
+- `ticketQueueMax`: 3 maximum queued tickets.
+- When no active order exists, the next ticket pops from the queue and becomes the current order.
+- Diner tickets contain 1-3 items; deli and fine dining tickets contain 1 item each.
+- Diner and fine dining tickets are tagged with booth/table and party IDs so that completed orders are routed to the correct waitress/waiter for delivery.
+
+## Service Timer Types
+
+Each restaurant has its own timer type pool. A timer type is randomly assigned when a ticket is generated. The timer determines how long the player has to complete the order before it auto-fails.
+
+| Restaurant | Timer Type | Duration | Weight |
+|-----------|-----------|----------|--------|
+| Deli | Patient | 60s | 50% |
+| Deli | Busy | 30s | 35% |
+| Deli | Urgent | 15s | 15% |
+| Diner | Calm | 90s | 40% |
+| Diner | Feisty | 60s | 40% |
+| Diner | Rowdy | 45s | 20% |
+| Fine Dining | Calm | 60s | 40% |
+| Fine Dining | Feisty | 45s | 35% |
+| Fine Dining | Rowdy | 30s | 25% |
+
+The HUD shows a green-to-yellow-to-red timer bar that interpolates based on remaining time.
+
+## NPC Lifecycle (Shared States)
+
+All restaurants share these base states via `cookingNPCBase.js`:
+
+| State | Description |
+|-------|-------------|
+| `spawn_wait` | Staggered delay before entering |
+| `entering` | Walking from spawn/exit to first destination |
+| `walking` | Following a route, transitions to `_nextState` when done |
+| `_despawn_walk` | Walking to exit, then despawn |
+| `_despawn` | Remove NPC from list |
+
+### Deli-Specific States
+
+| State | Description |
+|-------|-------------|
+| `in_queue` | Standing in queue line, waiting for turn |
+| `ordering` | At counter (queue spot 0), waiting for order to be linked |
+| `waiting_food` | Order linked, waiting for player to cook |
+| `pickup_food` | Got food, brief pause before going to eat |
+| `at_condiments` | Using condiment station (5-8 sec) |
+| `eating` | Sitting at dining chair eating (15 sec) |
+| `shopping_aisle` | Browsing grocery aisle (meal customers post-eat) |
+| `browsing_shelf` | Retail shopper at shelf (8-15 sec) |
+| `at_cashier` | Retail shopper paying at cashier |
+
+### Diner-Specific States
+
+| State | Description |
+|-------|-------------|
+| `seating` | Walking to individual booth seat |
+| `menu_reading` | Reading menu at seat (3-5 sec), sets party flag for waitress |
+| `waiting_at_booth` | Waiting for waitress to take order / for food |
+| `eating` | Eating at booth (15-20 sec) |
+| `post_meal` | Deciding post-meal behavior (leader decides for party) |
+| `post_meal_wait` | Waiting at booth for arcade players to return |
+| `go_arcade` | Walking to arcade cabinet (post-meal) |
+| `arcade_playing` | Playing arcade (5-10 sec) |
+| `arcade_done` | Finished arcade, rejoining party |
+| `go_arcade_only` | Arcade-only visitor walking to arcade |
+| `arcade_only_playing` | Arcade-only visitor playing |
+| `leaving` | Walking to exit |
+
+### Fine Dining-Specific States
+
+| State | Description |
+|-------|-------------|
+| `at_host` | Pausing at host stand, cover fee charged |
+| `walking_to_table` | Walking to assigned teppanyaki table seat |
+| `seated` | At seat, waiting for waiter to take order |
+| `waiting_cook` | Order active, waiting for player to cook at their table |
+| `watching_cook` | Player is actively cooking at their table's grill |
+| `eating` | Eating at seat (10-15 sec) |
+| `leaving` | Walking to exit |
+
+## Cooking Skill XP
+
+Orders award Cooking XP via `addSkillXP('Cooking', xp)`. XP is calculated as `recipe.baseXP * grade.xpMult`. Lifetime cooking stats are tracked separately in `skillData['Cooking']`. Per-session stats are in `cookingState.stats` and reset on exit.
+
+## Key Functions & Entry Points
+
+### cookingSystem.js
+
+| Function | Description |
+|----------|-------------|
+| `startCookingShift(restaurantId)` | Save weapon, equip spatula, reset state, set active |
+| `endCookingShift()` | Deactivate session, clear orders, reset grill state |
+| `resetCookingState()` | Full cleanup: remove spatula, restore weapon, reset all state |
+| `updateCooking()` | Per-frame: auto-start, ticket generation, order activation, mood/timer updates, spatula hit detection, timeout handling |
+| `handleStationInteract(entityType)` | Routes spatula hits: ingredient add, counter clear, pickup submit, grill start |
+| `gradeOrder()` | Calculate quality + time scores, determine grade, compute pay/tip/xp |
+| `applyOrderResult(result)` | Update stats, award gold/xp, combo tracking, route to waitress/waiter/NPC |
+| `drawCookingHUD()` | Render order panel, timer bar, combo counter, stats line, result popup |
+
+### cookingNPCBase.js
+
+| Function | Description |
+|----------|-------------|
+| `_cCreateNPC(...)` | Factory for base NPC with shared fields |
+| `_cStartRoute(...)` | Begin route-following with transition state |
+| `_cMoveNPC(npc, cfg)` | Movement with avoidance, kitchen restriction, wall checks |
+| `_cRecoverNPC(npc, cfg)` | Attempt stuck NPC recovery from saved route intent |
+| `_cSpawnTick(...)` | Generic spawn interval management |
+| `_cUpdateNPCLoop(loopCfg)` | Shared per-frame update loop |
+| `_cCleanupParties(...)` | Remove parties with all members despawned |
+
+### Per-Restaurant Init/Update
+
+| Restaurant | Init | Update | NPC Array |
+|-----------|------|--------|-----------|
+| Deli | `initDeliNPCs()` | `updateDeliNPCs()` | `deliNPCs[]` |
+| Diner | `initDinerNPCs()` | `updateDinerNPCs()` | `dinerNPCs[]`, `dinerParties[]` |
+| Fine Dining | `initFineDiningNPCs()` | `updateFineDiningNPCs()` | `fineDiningNPCs[]`, `fineDiningParties[]` |
+
+### fineDiningGrill.js
+
+| Function | Description |
+|----------|-------------|
+| `startGrillSequence(tableId, recipe)` | Begin QTE timing bar |
+| `updateGrill()` | Per-frame cursor advance, auto-miss detection |
+| `_checkTrickHit()` | Evaluate spatula swing during active grill |
+| `endGrillSequence()` | Calculate final trick score, enter finishing phase |
+| `resetGrillState()` | Full grill state reset |
+| `drawGrillHUD()` | Render timing bar, trick zones, cursor, stats |
+
+## Data Structures
+
+### COOKING_SHOPS
+```js
+{ id, name, tier, levelReq, ordersReq, costReq, maxOrderBase, levelId }
+```
+
+### Recipe
+```js
+{ id, name, ingredients: string[], basePay, baseXP, difficulty }
+// Fine dining adds: trickCount, trickDifficulty
+```
+
+### Customer Type (varies by restaurant)
+```js
+// Deli:
+{ id, name, tipMult, moodSpeed, patience, color, weight }
+
+// Diner:
+{ type, partySize: [min, max], tipMult, moodSpeed, patience, weight }
+
+// Fine Dining:
+{ type, partySize: [min, max], tipMult, moodSpeed, patience, coverFee, weight }
+```
+
+### NPC Config
+```js
+{
+  maxNPCs/maxParties, spawnInterval: [min, max],
+  baseSpeed, speedVariance,
+  eatDuration: [min, max], browseDuration: [min, max],
+  // Restaurant-specific fields...
+}
+```
+
+### Service Timer Type
+```js
+{ id, label, duration, weight }
+```
+
 ## Connections to Other Systems
-- **Melee System** — The spatula is auto-equipped as a melee weapon (`special: 'spatula'`). Station interaction is detected via `melee.swinging` during `updateCooking()`. The player's original weapon is saved/restored on shift start/end.
+
+- **Melee System** — The spatula is auto-equipped as a melee weapon (`special: 'spatula'`). Station interaction is detected via `melee.swinging` during `updateCooking()`. The player's original weapon is saved/restored on session start/end.
 - **Inventory System** — Spatula is added/removed from inventory. Uses `createItem()`, `addToInventory()`, `equipItem()`, `isInInventory()`.
-- **Input System** — Reads `InputIntent.interactPressed` to dismiss shift-end overlay. Melee swing input triggers station detection.
+- **Input System** — Melee swing input triggers station/grill detection. Grill QTE intercepts swings during active grill sequences.
 - **Skill XP** — Awards Cooking XP via `addSkillXP('Cooking', xp)`.
-- **Scene System** — Auto-starts shift when `Scene.inCooking` becomes true. `resetCookingState()` called on scene exit.
-- **Level Entities** — Ingredient and station entities (`ing_bread`, `deli_counter`, `pickup_counter`, `tip_jar`) are placed in the deli level and detected by proximity during spatula swings.
-- **Draw System** — `drawCookingHUD()` renders shift timer, order panel, combo counter, rush indicator, last result popup, and stats bar. `drawShiftEndOverlay()` shows the end-of-shift summary.
-- **Gold System** — Order pay goes directly to `gold`. Tips go to `cookingState.tipJar` (collected by swinging at tip jar). Aisle purchases by NPCs also add to `gold`.
+- **Scene System** — Auto-starts session when `Scene.inCooking` becomes true. `resetCookingState()` called on scene exit.
+- **Level Entities** — Ingredient and station entities are placed in each restaurant's level and detected by proximity during spatula swings.
+- **Draw System** — `drawCookingHUD()` renders order panel, timer bar, combo counter, stats bar. `drawGrillHUD()` renders the grill timing bar (fine dining).
+- **Gold System** — Pay + tips combined go directly to `gold`. Cover fees (fine dining) also go directly to `gold`. Aisle purchases (deli) add to `gold`.
+- **Cooking Progress** — `cookingProgress.lifetimeOrdersTotal` and `cookingProgress.lifetimeOrdersByShop[shopId]` track lifetime stats for unlocking higher-tier restaurants.
 
 ## Gotchas & Rules
-- The spatula is a real melee weapon (1 damage, 80 range) that gets added to inventory and equipped. Leaving the deli without going through `resetCookingState()` would leave the player holding a spatula.
-- Ingredient order matters for grading. The assembly is compared position-by-position against the recipe's ingredient list. Out-of-order ingredients count as wrong.
-- Tips accumulate in `cookingState.tipJar` and are NOT auto-collected. The player must swing at the `tip_jar` entity to collect them.
-- NPC customers can also generate revenue by purchasing aisle items ($3-4 each). This gold goes directly to the player, not the tip jar.
-- The shift auto-starts when entering the deli. There is no manual start -- `startCookingShift()` fires automatically on the first frame `Scene.inCooking` is true (and shift hasn't already ended).
-- If the customer's mood runs out completely (all three stages expire), the order auto-fails with an F grade.
-- NPC routing uses pre-defined waypoints and straight-line movement -- there is no pathfinding. All routes follow safe corridors to avoid clipping through walls and shelves.
-- Queue management: NPCs at position 3+ in line have a small per-frame chance (0.1%) to leave and browse aisles instead, then rejoin later.
-- Max 12 NPCs in the deli at once. New customers spawn every 5-15 seconds.
-- `cookingState.stats` is per-shift only and resets on `resetCookingState()`. Lifetime cooking stats are tracked in `skillData['Cooking']`.
-- The `_swingHandled` flag ensures each melee swing only triggers one station interaction (prevents double-hits from a single swing animation).
-- Four higher-tier restaurants (Family Restaurant through 5 Star Elite) are defined in `COOKING_SHOPS` but have `levelId: null` -- they are not yet implemented.
+
+- **`tipMult` not `tipMultiplier`**: Customer type objects use the field name `tipMult`. Grade thresholds also use `tipMult`. Using `tipMultiplier` anywhere will silently produce `undefined`. Always check field name consistency.
+- **Equip sync**: The spatula is a real melee weapon (1 damage, 80 range) added to inventory. Leaving a restaurant without `resetCookingState()` would leave the player holding a spatula. The system saves/restores `_savedMeleeEquip` and `_savedActiveSlot`.
+- **Grill auto-submit**: Fine dining orders auto-submit after the grill bar finishes. The player does NOT need to swing at the pickup counter. Swinging at `fd_pickup_counter` also works as a fallback.
+- **Grill trick score bleed**: `grillState.trickScore` is reset to 0 after `applyOrderResult()` to prevent the previous order's trick score from affecting the next order's grade.
+- **Table validation**: In fine dining, swinging at a grill entity checks `_fdTableId` on the current order. Wrong table shows an error message.
+- **Order visibility gating**: Fine dining hides the order HUD until the waiter returns to the pass window (`_fdOrderVisible`). Shows "Waiter taking order..." placeholder instead.
+- **Multi-item tickets (diner)**: Diner tickets can have 1-3 items. `cookingState.ticket.completedCount` tracks progress. The order is not finished until all items are served.
+- **Pending serve queues**: Diner and fine dining use `_dinerPendingServe` and `_fdPendingServe` arrays. Completed orders are pushed here for the waitress/waiter to pick up and deliver.
+- **Waitress/waiter are never despawned**: The persistent NPCs have special-case handling in `onIdleTimeout`, `onStuckTimeout`, and `onDespawn` to prevent removal.
+- **Kitchen zone restriction**: Each restaurant defines its own kitchen zone check function. NPCs that enter the kitchen are teleported to a safe position.
+- **Route intent system**: Diner and fine dining NPCs save a `_routeIntent` object when starting routes. If the NPC gets stuck, `_cRecoverNPC()` can rebuild the route from the saved intent.
+- **Set-based ingredient matching**: Quality scoring counts ingredients by type (order does NOT matter). This is a change from the original position-based matching documented in earlier versions.
+- **Continuous sessions**: There is no shift timer. Sessions run until the player leaves. The old shift-based system with `shiftTimer`, `shiftDuration`, and end-of-shift overlay has been removed.
+- **`_swingHandled` flag**: Ensures each melee swing only triggers one station interaction per swing animation, preventing double-hits.
+- **`resetGrillState()`**: Called both in `endCookingShift()` and `resetCookingState()` to ensure no grill state bleeds between sessions.

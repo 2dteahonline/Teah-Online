@@ -259,16 +259,17 @@ const SaveLoad = {
       // Spar learning profile (v9+)
       if (data.sparLearning && typeof sparLearning !== 'undefined') {
         const saved = data.sparLearning;
-        // v1-v5 all had corrupted telemetry or broken confidence gating — full wipe
-        // v5 was shipped in update 269 with ungated neutral priors crossing thresholds
-        if (!saved.version || saved.version < 6) {
+        // v1-v6 predate the latest spar mechanics reset. Player speed, bullet/body
+        // geometry, RoF, and reload timing all changed, so older spar learning
+        // would teach the bot against the wrong ruleset.
+        if (!saved.version || saved.version < 7) {
           if (typeof createDefaultSparLearning === 'function') {
             const fresh = createDefaultSparLearning();
             Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
             Object.assign(sparLearning, fresh);
           }
         } else {
-          // v6+ saved data is clean — deep merge
+          // v7+ spar data matches the current mechanics — deep merge
           const _deepMerge = (target, source) => {
             for (const key of Object.keys(source)) {
               if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])
@@ -281,7 +282,7 @@ const SaveLoad = {
           };
           _deepMerge(sparLearning, saved);
         }
-        sparLearning.version = 6;
+        sparLearning.version = 7;
         if (sparLearning.history && sparLearning.history.length > 20) sparLearning.history = sparLearning.history.slice(-20);
       }
 

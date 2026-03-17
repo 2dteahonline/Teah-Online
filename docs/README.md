@@ -19,13 +19,15 @@
 | 10 | [fishing.md](fishing.md) | Fishing minigame — cast/reel flow, 6 fish, rod tiers, bait, XP |
 | 11 | [mining.md](mining.md) | Mining — 4 rooms, 15 ore types, pickaxe tiers, ore spawning |
 | 12 | [farming.md](farming.md) | Farming — crops, growth stages, land levels, hoe tiers |
-| 13 | [cooking.md](cooking.md) | Cooking/Deli — customer orders, recipe assembly, grading, rush hour, deli NPCs |
+| 13 | [cooking.md](cooking.md) | Cooking — 3 restaurants (deli, diner, fine dining), customer orders, recipe assembly, grading, NPCs, ticket queues |
 | 14 | [rendering.md](rendering.md) | Draw loop, tile renderer, entity renderers, character sprites, asset loader, minimap, camera |
 | 15 | [ui-panels.md](ui-panels.md) | Panel manager, inventory panel, gunsmith, identity, settings, customize, toolbox, shops |
 | 16 | [input.md](input.md) | Keyboard/mouse capture, InputIntent flags, command queue, drag systems, keybinds |
 | 17 | [save-load.md](save-load.md) | localStorage persistence, schema v7, migrations v1-6, what's saved vs session-only |
 | 18 | [debug-and-testing.md](debug-and-testing.md) | Debug slash commands, test mob panel, dev flags, snapshots |
 | 19 | [conventions.md](conventions.md) | Coding conventions, gotchas, adding-new-content checklists, backup rules, Skeld map rules |
+| 20 | [casino.md](casino.md) | Casino system — 6 games (Slots, Blackjack, Keno, Cases, Roulette, Hi-Lo), betting, 5% house edge |
+| 21 | [party-system.md](party-system.md) | Party system — bot AI, entity-agnostic design, independent state, equip sync |
 
 ## I want to change X — read Y
 
@@ -44,6 +46,8 @@
 | Add a new hazard type | [waves-and-dungeons.md](waves-and-dungeons.md) |
 | Add a new ore/fish/crop | [mining.md](mining.md) / [fishing.md](fishing.md) / [farming.md](farming.md) |
 | Add a cooking recipe | [cooking.md](cooking.md) |
+| Add a casino game | [casino.md](casino.md) |
+| Modify party/bot system | [party-system.md](party-system.md), [conventions.md](conventions.md) |
 | Modify save data | [save-load.md](save-load.md) |
 | Add a debug command | [debug-and-testing.md](debug-and-testing.md) |
 | Change input/keybinds | [input.md](input.md) |

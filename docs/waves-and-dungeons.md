@@ -2,16 +2,21 @@
 
 ## Overview
 
-The wave system drives all dungeon combat. Each dungeon floor runs 10 waves of increasing difficulty, with a 3-phase spawning model that staggers mob reinforcements as the player clears enemies. Floor configurations define mob pools, boss encounters, and hazard zones per dungeon type and floor number. Telegraphs warn players before high-damage attacks land.
+The wave system drives all dungeon combat. Each dungeon floor runs 10 waves of increasing difficulty, with a 3-phase spawning model that staggers mob reinforcements as the player clears enemies. Floor configurations define mob pools, boss encounters, and hazard zones per dungeon type and floor number. Telegraphs warn players before high-damage attacks land. Party scaling increases mob count and HP based on total party size, with bosses exempt from HP scaling.
 
 ## Files
 
 - `js/authority/waveSystem.js` -- Wave state machine, phase logic, mob factory, scaling functions, medpacks, gold rewards
 - `js/shared/floorConfig.js` -- Per-dungeon per-floor wave compositions, wave templates, subfloor blueprints, builder functions
-- `js/shared/dungeonRegistry.js` -- Single source of truth for all dungeon types (name, max floors, return level, spawn position)
-- `js/shared/mobTypes.js` -- `MOB_TYPES` definitions and `MOB_CAPS` per-type limits
+- `js/shared/dungeonRegistry.js` -- Single source of truth for all 6 dungeon types (name, max floors, return level, spawn position)
+- `js/shared/mobTypes.js` -- `MOB_TYPES` definitions (334 entries) and `MOB_CAPS` per-type limits
 - `js/authority/hazardSystem.js` -- Zone-based damage areas (poison clouds, sticky bombs)
 - `js/authority/telegraphSystem.js` -- Ground warning markers before attacks resolve
+- `js/authority/combatSystem.js` -- 91 base ability handlers in `MOB_SPECIALS`
+- `js/authority/vortalisSpecials.js` -- 106 Vortalis ability handlers
+- `js/authority/earth205Specials.js` -- 98 Earth-205 ability handlers
+- `js/authority/wagashiSpecials.js` / `wagashiSpecials2.js` / `wagashiSpecials3.js` -- 70 Wagashi ability handlers
+- `js/authority/earth216Specials.js` / `earth216Specials2.js` / `earth216Specials3.js` -- 70 Earth-216 ability handlers
 
 ## Key Functions & Globals
 
@@ -24,8 +29,8 @@ The wave system drives all dungeon combat. Each dungeon floor runs 10 waves of i
 | `checkPhaseAdvance(deadMobPhase)` | Called on mob death; triggers next phase when 75% of current phase killed |
 | `createMob(typeKey, x, y, hpMult, spdMult, opts)` | Factory that builds a fully initialized mob object from `MOB_TYPES` |
 | `getWaveComposition(w)` | Looks up `FLOOR_CONFIG[currentDungeon][dungeonFloor]` for the wave's mob mix |
-| `getMobCountForWave(w)` | Base 5-14 mobs scaling with wave number, +2 per floor, cap 22 |
-| `getWaveHPMultiplier(w)` | Exponential floor scaling (floor 1 = 1x, floor 5 = 25x) + 12% per wave |
+| `getMobCountForWave(w)` | Base 5-14 mobs scaling with wave number, +2 per floor, cap 22. Multiplied by party mob count scale. |
+| `getWaveHPMultiplier(w)` | Exponential floor scaling (floor 1 = 1x, floor 5 = 25x) + 12% per wave. Multiplied by party HP scale. |
 | `getWaveSpeedMultiplier(w)` | Floor speed scaling + 6% per wave |
 | `getMobDamageMultiplier()` | Floor 1 = 1x, scales up to ~4.5x on floor 5 |
 | `capMobSpeed(type, speed)` | Runners capped at 1.1x player speed, everything else at 0.85x |
@@ -51,10 +56,10 @@ The wave system drives all dungeon combat. Each dungeon floor runs 10 waves of i
 
 | Item | Purpose |
 |---|---|
-| `DUNGEON_REGISTRY` | Object keyed by dungeon ID (`cave`, `azurine`, `dungeon_3`, etc.) |
+| `DUNGEON_REGISTRY` | Object keyed by dungeon ID (`cave`, `azurine`, `vortalis`, `earth205`, `wagashi`, `earth216`) |
 | `validateDungeonType(key)` | Returns the key if valid, falls back to `'cave'` |
 
-Each entry contains: `name`, `maxFloors`, `returnLevel`, `hasHazards`, `spawnTX/TY`, `requiredLevel`, `rewardMult`, `tileset`, `difficulty`, `music`.
+Each entry contains: `name`, `combatLevelId`, `maxFloors`, `returnLevel`, `hasHazards`, `spawnTX/TY`, `requiredLevel`, `rewardMult`, `tileset`, `difficulty`, `music`.
 
 ## How It Works
 
@@ -81,6 +86,27 @@ Each non-boss wave spawns mobs in up to 3 phases:
 Boss waves bypass phasing entirely -- all mobs spawn at once and all three phases are marked as triggered.
 
 Each phase also spawns 2 medpacks at random walkable tiles. Medpacks heal 30 HP on pickup (range 40px).
+
+### Party Wave Scaling
+
+When playing with a party (2+ members), waves scale to maintain difficulty:
+
+**Mob count scaling:**
+```
+scale = 1 + (totalMembers - 1) * MOB_COUNT_SCALE_PER_MEMBER
+```
+`MOB_COUNT_SCALE_PER_MEMBER = 1.0` means: duo = 2x mobs, trio = 3x, quad = 4x.
+
+**Mob HP scaling:**
+```
+scale = 1 + (totalMembers - 1) * MOB_HP_SCALE_PER_MEMBER
+```
+`MOB_HP_SCALE_PER_MEMBER = 0.5` means: duo = 1.5x HP, trio = 2x, quad = 2.5x.
+
+**Key design decisions:**
+- Both scales use **total** party size, not alive count. Rates don't change when someone dies.
+- **Bosses are excluded from party HP scaling.** Boss HP uses `getWaveHPMultiplier(wave) * farmHPMult * phaseHPMult` with no party multiplier. This prevents bosses from becoming impossibly tanky with large parties.
+- Mob count scaling applies to `getMobCountForWave()` and HP scaling applies to `getWaveHPMultiplier()`.
 
 ### createMob() Factory
 
@@ -150,17 +176,38 @@ Each dungeon type defines a config per floor. A floor contains:
 
 ### Dungeon Registry
 
-Currently 5 dungeon slots:
+6 dungeon entries:
 
-| Key | Name | Max Floors | Status |
-|---|---|---|---|
-| `cave` | Cave Dungeon | 5 | Fully configured |
-| `azurine` | Azurine City | 5 | Fully configured |
-| `dungeon_3` | Dungeon 3 | 5 | Placeholder |
-| `dungeon_4` | Dungeon 4 | 5 | Placeholder |
-| `dungeon_5` | Dungeon 5 | 5 | Placeholder |
+| Key | Name | Max Floors | Difficulty | Required Level | Reward Mult | Status |
+|---|---|---|---|---|---|---|
+| `cave` | Cave Dungeon | 5 | 1 | 0 | 1.0x | Fully configured |
+| `azurine` | Azurine City | 5 | 2 | 10 | 1.5x | Fully configured |
+| `vortalis` | Vortalis | 5 | 3 | 20 | 2.0x | Fully configured |
+| `earth205` | Earth-205: Marble City | 5 | 4 | 30 | 2.8x | Fully configured |
+| `wagashi` | Wagashi: Heavenly Realm | 5 | 5 | 40 | 3.5x | Fully configured |
+| `earth216` | Earth-216: Sin City | 5 | 5 | 50 | 4.5x | Fully configured |
 
-To add a new dungeon: add an entry to `DUNGEON_REGISTRY` and a corresponding config in `FLOOR_CONFIG`.
+Each dungeon has a `combatLevelId` for the combat arena map, a `returnLevel` for where the player exits to, and spawn coordinates (`spawnTX`/`spawnTY`).
+
+To add a new dungeon: add an entry to `DUNGEON_REGISTRY`, a corresponding config in `FLOOR_CONFIG`, mob types in `MOB_TYPES`, and specials in a new `*Specials.js` file.
+
+### Specials File Organization
+
+Ability handlers are split across multiple files due to codebase size:
+
+| File | Abilities | Dungeon |
+|---|---|---|
+| `combatSystem.js` | 91 | Cave + Azurine + Tech/Corporate + Junkyard/Swamp + Trap House/REGIME + Waste/Slime |
+| `vortalisSpecials.js` | 106 | Vortalis (pirate/ocean themed) |
+| `earth205Specials.js` | 98 | Earth-205: Marble City (urban/gangster themed) |
+| `wagashiSpecials.js` | 28 | Wagashi floors 1-2 (feudal Japan) |
+| `wagashiSpecials2.js` | 28 | Wagashi floors 3-4 (samurai/elemental) |
+| `wagashiSpecials3.js` | 14 | Wagashi floor 5 (void/corruption boss) |
+| `earth216Specials.js` | 28 | Earth-216 floors 1-2 (casino/underworld) |
+| `earth216Specials2.js` | 28 | Earth-216 floors 3-4 (Day of Dead/racing) |
+| `earth216Specials3.js` | 14 | Earth-216 floor 5 (occult boss) |
+
+The base file (`combatSystem.js`) defines `MOB_SPECIALS` as an object literal. External files append to it via `MOB_SPECIALS.abilityName = function(m, ctx) { ... }`. Script load order ensures the base object exists before external files run.
 
 ### Hazard System (`hazardSystem.js`)
 
@@ -221,15 +268,18 @@ TelegraphSystem.create({
 - **Combat System** (`combatSystem.js`) -- `MOB_AI` patterns, `MOB_SPECIALS` abilities drive mob behavior; specials create telegraphs and hazard zones
 - **Game State** (`gameState.js`) -- `wave`, `waveState`, `mobs`, `medpacks`, `dungeonFloor`, `currentDungeon`, `gold`, `kills` are all GameState properties
 - **Mob Types** (`mobTypes.js`) -- `MOB_TYPES` defines base stats, `MOB_CAPS` limits spawning
+- **Mob System** (`mobSystem.js`) -- `updateMobs()` dispatches specials, manages `stillActive`/`isMultiFrame` for boss abilities
+- **Party System** (`partySystem.js`) -- `PartySystem.getMobCountScale()` and `getMobHPScale()` for wave scaling
 - **Inventory System** (`inventorySystem.js`) -- Shop is accessible between waves; armor/weapons are session-scoped to dungeon runs
 - **Save/Load** (`saveLoad.js`) -- Dungeon progress is not saved mid-run (roguelike); only permanent progression persists
 - **Event Bus** (`eventBus.js`) -- `wave_started` and `player_died` events emitted
 
 ## Gotchas & Rules
 
-- **Script load order matters**: `floorConfig.js` and `dungeonRegistry.js` (Phase A shared) must load before `waveSystem.js` (Phase B authority)
+- **Script load order matters**: `floorConfig.js` and `dungeonRegistry.js` (Phase A shared) must load before `waveSystem.js` (Phase B authority). External specials files must load after `combatSystem.js`.
 - **FLOOR_CONFIG templates are deep-cloned** at load time to prevent cross-floor mutation. Inline `waveComps` override templates for the same wave number.
 - **Boss waves have no phases** -- `phaseTriggered` is set to `[true, true, true]` immediately
+- **Boss HP is exempt from party scaling** -- `bossHpMult` is calculated without `PartySystem.getMobHPScale()` to prevent impossibly tanky bosses in large parties
 - **Farm waves** (legacy composition only) get 1.6x mob count but 0.7x HP -- more targets, less individual threat
 - **`getSpawnPos()` tries edge spawns first** (20 attempts), then falls back to scanning all walkable tiles at least 200px from the player
 - **Speed is hard-capped** regardless of scaling: runners at 1.1x player speed, everything else at 0.85x
@@ -237,3 +287,4 @@ TelegraphSystem.create({
 - **Floor hazard types were removed** from HazardSystem -- only `createZone()` remains (used by mob abilities)
 - **Telegraph `onResolve` callbacks are try/caught** to prevent a bad callback from breaking the update loop
 - **`nextMobId`** is a global incrementing counter -- never reset it during a session
+- **New dungeons require entries in multiple places**: `DUNGEON_REGISTRY`, `FLOOR_CONFIG`, `MOB_TYPES` (all mobs), `MOB_SPECIALS` (all abilities), and both `stillActive`/`isMultiFrame` lists in `mobSystem.js`

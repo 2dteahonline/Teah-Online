@@ -2,16 +2,20 @@
 
 ## Overview
 
-Combat in Teah Online revolves around three weapon classes (guns, melee, potions) and a centralized damage pipeline that handles armor reduction, status effects, lifesteal, kill rewards, and visual hit effects. Guns fire projectile bullets with per-gun stats. Melee weapons (4 types) have unique specials and ultimates. The damage system tracks 10+ status effects on mobs and 8 player-targeted status effects. A registry of 38+ hit effect renderers provides visual feedback for every combat interaction.
+Combat in Teah Online revolves around three weapon classes (guns, melee, potions) and a centralized damage pipeline that handles armor reduction, status effects, lifesteal, kill rewards, and visual hit effects. Guns fire projectile bullets with per-gun stats. Melee weapons (4 types) have unique specials and ultimates. The damage system tracks 13 player-targeted status effects and 7 mob-targeted status effects. A registry of 73 hit effect renderers provides visual feedback for every combat interaction. Party-aware damage routing lets mobs target and deal damage to any party member via `_currentDamageTarget`.
 
 ## Files
 
 - `js/core/gunSystem.js` -- Gun firing, reloading, bullet spawning, CT-X stat sliders, death effects, mob ambient particles
 - `js/core/meleeSystem.js` -- Melee swing, dash, specials (ninja/storm/cleave), ultimates (Malevolent Shrine, Godspeed)
 - `js/authority/damageSystem.js` -- `dealDamageToMob()`, `dealDamageToPlayer()`, `processKill()`, `GUN_BEHAVIORS` registry, kill event subscribers
-- `js/authority/combatSystem.js` -- `StatusFX` system (mob + player effects), `MOB_AI`, `MOB_SPECIALS`
+- `js/authority/combatSystem.js` -- `StatusFX` system (mob + player effects), `MOB_AI` (13 patterns), `MOB_SPECIALS` (91 abilities in this file)
+- `js/authority/vortalisSpecials.js` -- 106 Vortalis dungeon ability handlers
+- `js/authority/earth205Specials.js` -- 98 Earth-205 dungeon ability handlers
+- `js/authority/wagashiSpecials.js` / `wagashiSpecials2.js` / `wagashiSpecials3.js` -- 70 Wagashi dungeon ability handlers
+- `js/authority/earth216Specials.js` / `earth216Specials2.js` / `earth216Specials3.js` -- 70 Earth-216 dungeon ability handlers
 - `js/shared/gunData.js` -- `MAIN_GUNS` definitions (5 progression guns), stat interpolation, upgrade recipes
-- `js/client/rendering/hitEffects.js` -- `HIT_EFFECT_RENDERERS` registry (38+ visual effect types)
+- `js/client/rendering/hitEffects.js` -- `HIT_EFFECT_RENDERERS` registry (73 visual effect types)
 
 ## Key Functions & Globals
 
@@ -20,8 +24,8 @@ Combat in Teah Online revolves around three weapon classes (guns, melee, potions
 | `shoot()` | Creates bullets from the player's gun muzzle, handles ammo/reload |
 | `updateGun()` | Ticks cooldowns, continuous fire check, routes to `shoot()` or `meleeSwing()` |
 | `meleeSwing()` | Melee attack with arc detection, knockback, special effects per weapon type |
-| `dealDamageToMob(mob, amount, source)` | Subtract HP, handle shields, split mechanic, call `processKill()` on death. Returns true if mob died. |
-| `dealDamageToPlayer(rawDmg, source, attacker)` | Apply armor/proj reduction, thorns, death check. Returns final damage dealt. |
+| `dealDamageToMob(mob, amount, source)` | Subtract HP, handle shields/frontal shields/counter stance/invulnerability/damage reduction, split mechanic, call `processKill()` on death. Returns true if mob died. |
+| `dealDamageToPlayer(rawDmg, source, attacker, targetEntity)` | Apply armor/proj reduction, thorns, death check. Routes to correct party member via `targetEntity` or `_currentDamageTarget`. Returns final damage dealt. |
 | `processKill(mob, source)` | Awards gold, XP, kill heal (with source multiplier), ammo refill, emits `mob_killed` event |
 | `calcLifesteal(dmg)` | Returns `Math.min(Math.round(dmg * 0.15), 20)` -- 15% of damage, capped at 20 HP |
 | `StatusFX` | Central status effect manager with mob registry (tick/apply per effect) and player effects |
@@ -30,6 +34,7 @@ Combat in Teah Online revolves around three weapon classes (guns, melee, potions
 | `getFreezeDuration()` | Post-shot movement freeze duration |
 | `getFreezePenalty()` | Speed reduction multiplier during freeze |
 | `getGunStatsAtLevel(gunId, level)` | Linearly interpolates gun stats between `base` (L1) and `max` (L25) |
+| `_currentDamageTarget` | Global reference set per-mob-per-frame by `PartySystem.getMobTarget()`, used by `dealDamageToPlayer` and `StatusFX` calls in specials |
 
 ## How It Works
 
@@ -93,13 +98,17 @@ Stats interpolated linearly: `stat(level) = Math.round(base + (max - base) * (le
 
 ### Damage Pipeline
 
-#### Damage to Mobs: `dealDamageToMob(mob, amount, source)`
+#### Damage to Mobs: `dealDamageToMob(mob, amount, source, attackerEntity)`
 
 1. Check `mob._invulnerable` (mud_dive, nano_armor) -- if true, return false
-2. Shield absorb: if `mob._shieldHp > 0`, damage hits shield first, remainder passes through
-3. Subtract HP
-4. **Split mechanic:** Core Guardian splits into 2 smaller blobs at 50% HP (`_canSplit` flag)
-5. If HP <= 0: call `processKill(mob, source)`, return true
+2. **Active shield** (`mob._shielded`): if true and source is not DOT/thorns, block all damage with `shield_block` visual
+3. **Frontal shield** (`mob._frontalShield`): negate damage from within 60-degree arc of mob's facing direction
+4. **Counter stance** (`mob._counterStance`): melee attacks are reflected back to the attacker via `dealDamageToPlayer`
+5. **Passive damage reduction** (`mob._damageReduction`): percentage-based reduction (e.g. 0.3 = 30% less damage, min 1)
+6. **Shield absorb**: if `mob._shieldHp > 0`, damage hits shield first, remainder passes through
+7. Subtract HP
+8. **Split mechanic:** Core Guardian splits into 2 smaller blobs at 50% HP (`_canSplit` flag)
+9. If HP <= 0: call `processKill(mob, source)`, return true
 
 **Kill sources** (determines heal multiplier and behavior):
 
@@ -118,15 +127,18 @@ Stats interpolated linearly: `stat(level) = Math.round(base + (max - base) * (le
 | `"thorns"` | 1.0x | Thorns reflect damage |
 | `"witch_skeleton"` | flat 1 HP | Auto-kill skeletons when witch dies |
 
-#### Damage to Player: `dealDamageToPlayer(rawDmg, source, attacker)`
+#### Damage to Player: `dealDamageToPlayer(rawDmg, source, attacker, targetEntity)`
 
-1. Check `playerDead` and `_godMode`
-2. **Armor reduction** (all sources except `"dot"`): `reduced *= (1 - getArmorReduction())`
-3. **Projectile/AOE reduction** (for `"projectile"` and `"aoe"` sources): `reduced *= (1 - getProjReduction())`
-4. Round and subtract HP
-5. **Thorns** (on `"contact"` source): reflect `finalDmg * thornsRate` back to attacker, apply stagger
-6. Death check
-7. Emit `player_damaged` event
+1. **Target resolution**: `targetEntity` param > `_currentDamageTarget` > global `player`. This routes damage to the correct party member.
+2. Check `playerDead` and `_godMode`
+3. **Armor reduction** (all sources except `"dot"`): `reduced *= (1 - getArmorReduction())`
+4. **Projectile/AOE reduction** (for `"projectile"` and `"aoe"` sources): `reduced *= (1 - getProjReduction())`
+5. Round and subtract HP
+6. **Thorns** (on `"contact"` source): reflect `finalDmg * thornsRate` back to attacker, apply stagger
+7. Death check
+8. Emit `player_damaged` event
+
+**Party damage routing:** `_currentDamageTarget` is set per-mob-per-frame in `updateMobs()` via `PartySystem.getMobTarget(m)`. All `dealDamageToPlayer` calls within mob specials and contact damage automatically route to the correct party member. `processKill` also resolves the killer via `_currentDamageTarget` for proper gold/XP credit.
 
 #### Kill Rewards: `processKill(mob, source)`
 
@@ -184,12 +196,18 @@ Data-driven registry -- each gun special defines `onHit` and `onKill` callbacks:
 | `bleed` | 240 frames (4s) | DOT: 3 damage every 60 frames |
 | `confuse` | 72 frames (1.2s) | Swap movement directions |
 | `disorient` | 60 frames (1s) | Random drift added to movement |
+| `fear` | 90 frames (1.5s) | Override movement with random walk (cannot control character) |
+| `blind` | 120 frames (2s) | Black or white vignette overlay (mode: `'darken'` or `'flash'`) |
+| `mobility_lock` | 120 frames (2s) | Disables dash/sprint but not attacks |
+| `armor_break` | 180 frames (3s) | Reduces armor effectiveness |
+| `tether` | 180 frames (3s) | Linked to a mob with heavy slow (60% speed reduction via `_tetherSlow`) |
+| `poison` | 180 frames (3s) | DOT: configurable damage per tick |
 
 ### Hit Effects Registry
 
 `HIT_EFFECT_RENDERERS` maps effect type strings to renderer functions `(h, ctx, alpha) => { ... }`.
 
-**All 38+ registered effect types:**
+**All 73 registered effect types:**
 
 | Category | Types |
 |----------|-------|
@@ -198,10 +216,12 @@ Data-driven registry -- each gun special defines `onHit` and `onKill` callbacks:
 | Melee: Ninja | `ninja_dash`, `ninja_activate`, `ninja_aoe`, `ninja_slash`, `ninja_dash_end` |
 | Melee: Storm | `shockwave`, `lightning`, `godspeed_activate`, `ground_lightning` |
 | Melee: Cleave | `cleave_hit`, `blood_slash_hit`, `blood_slash_arc`, `shrine_activate`, `shrine_slash` |
-| Mob combat | `poison_hit`, `poison_tick`, `mummy_explode`, `explosion`, `stomp` |
-| Mob support | `heal_zone`, `heal_beam`, `mob_heal`, `summon` |
+| Mob combat | `poison_hit`, `poison_tick`, `mummy_explode`, `explosion`, `stomp`, `stun` |
+| Mob support | `heal_zone`, `heal_beam`, `mob_heal`, `summon`, `cast`, `smoke`, `buff` |
 | Equipment | `thorns` |
 | Projectile | `arrow_bounce`, `arrow_fade` |
+| Vortalis | `water_geyser`, `anchor_sweep`, `ink_splash`, `coral_spike`, `fear_swirl`, `tether_chain`, `shield_block`, `reflect_spark`, `ghost_ship`, `kraken_tentacle`, `whirlpool`, `trident_slash`, `poison_puddle`, `cannon_explosion`, `blood_slash` |
+| Earth-205 | `pipe_hit`, `slingshot_impact`, `flamethrower_tick`, `nail_pin`, `glass_slash`, `sledgehammer_shockwave`, `cleaver_slash`, `chain_hit`, `flare_burst`, `grenade_explosion`, `pin_pop`, `sandbag_drop`, `sonic_wave`, `stiletto_stab`, `chemical_beam`, `meltdown_pulse` |
 | UI | `grab` |
 | Fallback | `_default` |
 
@@ -214,6 +234,7 @@ Each renderer receives the hit effect object `h` (with `x`, `y`, `life`, `maxLif
 - **Wave system** (`waveSystem.js`) -- `wave` count drives HP/speed/damage multipliers for spawned mobs
 - **Event bus** (`eventBus.js`) -- `mob_killed`, `player_damaged` events drive kill rewards, ultimate charges, gun specials
 - **Mob system** (`mobSystem.js`) -- bullet-mob collision, contact damage, special ability dispatch
+- **Party system** (`partySystem.js`) -- `PartySystem.getMobTarget()` sets `_currentDamageTarget` for party-aware damage routing
 - **Game state** (`gameState.js`) -- `gun`, `melee`, `player`, `mobs`, `bullets`, `hitEffects` globals
 
 ## Gotchas & Rules
@@ -221,7 +242,9 @@ Each renderer receives the hit effect object `h` (with `x`, `y`, `life`, `maxLif
 - **Ammo refills on non-skeleton kills.** Any kill (except skeleton and witch_skeleton) instantly refills the gun magazine. This is a deliberate design choice, not a bug.
 - **Lifesteal is per-hit, not per-swing.** A cleave hitting 5 mobs calculates lifesteal independently for each one, each capped at 20 HP.
 - **Witch death cascade is recursive.** Killing a witch calls `processKill` on each skeleton, which in turn emits `mob_killed` for each -- all within the same frame.
-- **`dealDamageToMob` handles shields before HP.** If `mob._shieldHp > 0`, damage is absorbed by the shield first. Only the remainder passes through to HP.
+- **`dealDamageToMob` has a 6-layer defense pipeline.** Checked in order: invulnerability > active shield > frontal shield > counter stance > damage reduction > shield HP. Only if all layers pass does damage reach mob HP.
 - **Freeze timer reduces movement speed, not fire rate.** The post-shot freeze only affects player movement. Higher-tier guns and main guns get reduced freeze multipliers (0.3x-0.5x).
 - **Gun behaviors are additive with kill events.** The `GUN_BEHAVIORS.onKill` callback fires inside a `mob_killed` event subscriber, which means it runs alongside ammo refill and ultimate charge callbacks.
 - **Bullet collision is checked in `mobSystem.js`**, not in `gunSystem.js`. The gun system only creates bullets; the mob system handles hit detection per-frame.
+- **Party damage routing is implicit.** `_currentDamageTarget` is set once per mob per frame. All `dealDamageToPlayer` calls within that mob's specials automatically target the correct party member without explicit parameter passing.
+- **Counter stance reflects melee only.** Gun and DOT damage bypass counter stance entirely -- only `source === 'melee'` triggers the reflect.

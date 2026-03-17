@@ -41,6 +41,12 @@ const SPAR_CTX_STATS = {
 };
 
 // Duel style definitions — weight multipliers for bot behavior in 1v1
+function _sparCtxReloadFromRof(pts) {
+  const p = Math.min(100, pts * 1.2);
+  const base = Math.round(20 + p * 0.25);
+  return Math.round(base * 1.2);
+}
+
 const SPAR_DUEL_STYLES = {
   pressure: {
     label: 'Pressure',
@@ -107,12 +113,12 @@ let sparProgress = {
   },
 };
 
-// v5 neutral factory — creates a clean learning profile with no bias
+// v7 neutral factory — creates a clean learning profile with no bias
 // All percentages start at 0.5 (neutral), all counts at 0
-// Called on first load and on v4→v5 migration (v4 data was corrupted)
+// Called on first load and on mechanics resets that invalidate old spar data
 function createDefaultSparLearning() {
   return {
-    version: 6,
+    version: 7,
     matchCount: 0,
     opening: {
       rushBottom: 0.5,
@@ -291,6 +297,6 @@ function resetSparLearning() {
   Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
   Object.assign(sparLearning, fresh);
   if (typeof SaveLoad !== 'undefined') SaveLoad.save();
-  console.log('[Spar] Learning profile wiped to neutral v5 defaults');
+  console.log('[Spar] Learning profile wiped to neutral v7 defaults');
   return sparLearning;
 }

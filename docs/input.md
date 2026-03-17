@@ -187,6 +187,6 @@ Rebinding: In the Settings panel Keybinds tab, clicking a key button sets `rebin
 - **One-frame vs. held**: Pressed flags are only true for a single frame. If you read `meleePressed` after `clearOneFrameIntents()` has run, it will always be false. Authority must consume intents before they are cleared.
 - **Chat blocks gameplay**: When `InputIntent.chatActive` is true, `translateIntentsToCommands()` zeros movement and skips all action commands. Name editing (`nameEditActive`) has the same effect.
 - **Panels block movement**: When any UI panel is open (except toolbox), movement intents are zeroed. Shooting and other actions are still blocked at the typing level, not the panel level.
-- **Authority freezes override input**: `authorityTick()` can zero out intents for Mafia meetings, Hide & Seek frozen states, and lobby panels regardless of what the client sent.
+- **Authority freezes override input**: `authorityTick()` can zero out intents for Mafia meetings, Hide & Seek frozen states, casino games, and lobby panels regardless of what the client sent.
 - **`_authorityDriven` flag**: When true (during `authorityTick -> update()`), the `update()` function skips its own keysDown -> InputIntent translation to avoid double-processing.
 - **Command history**: `enqueueCommand()` also pushes to a 200-entry ring buffer (`_cmdHistory`) accessible via `DEBUG_dumpCommands(n)` for debugging.

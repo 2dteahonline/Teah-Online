@@ -2,7 +2,7 @@
 
 ## Overview
 
-The save/load system persists player identity, cosmetics, settings, keybinds, and permanent progression to `localStorage`. It uses a versioned schema (currently v7) with backward-compatible migrations from v1 through v6. Gold, inventory, equipment, and dungeon progress are intentionally NOT saved -- the game follows a session-based roguelike design where each run starts fresh.
+The save/load system persists player identity, cosmetics, settings, keybinds, and permanent progression to `localStorage`. It uses a versioned schema (currently v8) with backward-compatible migrations from v1 through v7. Gold, inventory, equipment, and dungeon progress are intentionally NOT saved -- the game follows a session-based roguelike design where each run starts fresh.
 
 ## Files
 
@@ -13,7 +13,7 @@ The save/load system persists player identity, cosmetics, settings, keybinds, an
 | Name | Type | Description |
 |------|------|-------------|
 | `SAVE_KEY` | const `'dungeon_game_save'` | localStorage key |
-| `SAVE_VERSION` | const `7` | Current schema version |
+| `SAVE_VERSION` | const `8` | Current schema version |
 | `SaveLoad.save()` | method | Serializes all persistent data to localStorage |
 | `SaveLoad.load()` | method | Reads from localStorage, applies migrations, restores state. Returns `true` on success |
 | `SaveLoad.clear()` | method | Removes the save key from localStorage |
@@ -21,13 +21,13 @@ The save/load system persists player identity, cosmetics, settings, keybinds, an
 
 ## How It Works
 
-### Save Schema (v7)
+### Save Schema (v8)
 
 The save data is a single JSON object stored at `localStorage['dungeon_game_save']`:
 
 ```
 {
-  version: 7,
+  version: 8,
 
   keybinds: {
     moveUp, moveDown, moveLeft, moveRight,
@@ -82,12 +82,19 @@ The save data is a single JSON object stored at `localStorage['dungeon_game_save
 
   farming: {
     landLevel,       // farm land upgrade level
+    equippedHoe,     // current hoe tier
     stats: {
       totalHarvested,
       totalEarned,
       bestCrop,
       bestCropValue
     }
+  },
+
+  cookingProgress: {
+    lifetimeOrdersTotal,     // total orders completed across all restaurants
+    lifetimeOrdersByShop,    // { shopId: count } per-restaurant totals
+    purchasedShops,          // array of unlocked restaurant IDs (starts with 'street_deli')
   }
 }
 ```
@@ -126,6 +133,7 @@ On load, owned guns/pickaxes are re-created as inventory items via `createMainGu
 | v5 | Added `farming` block (landLevel, stats) |
 | v6 | Added `gunLevels` to progression (permanent gun progression with tier/level objects) |
 | v7 | Added `pickaxeLevels` and `discoveredOres` to progression |
+| v8 | Added `cookingProgress` block (lifetimeOrdersTotal, lifetimeOrdersByShop, purchasedShops) |
 
 Migration is implicit: the `load()` method checks for each block's existence and applies defaults for missing fields. The v3-to-v4 fishing rod migration explicitly checks `data.version < 4` and converts old `rodTier` to an inventory item.
 

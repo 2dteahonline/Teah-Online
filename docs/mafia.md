@@ -2,32 +2,36 @@
 
 ## Overview
 
-"Mafia" is the game mode; "Skeld" is one map within it -- the same relationship as Among Us has with its maps (Skeld, Polus, Mira HQ). The mode features impostor/crewmate roles, kill/report/meeting/voting mechanics, sabotage systems, a full task mini-game suite, FOV-limited vision, and bot AI. Currently one map (`skeld_01`) is implemented with room for future maps under `MAFIA_GAME.MAPS`.
+"Mafia" is the game mode; "Skeld" is one map within it -- the same relationship as Among Us has with its maps (Skeld, Polus, Mira HQ). The mode features impostor/crewmate roles with specialized subroles, kill/report/meeting/voting mechanics, sabotage systems, a full task mini-game suite, FOV-limited vision via wall-aware raycasting, security cameras, and bot AI. Currently one map (`skeld_01`) is implemented with room for future maps under `MAFIA_GAME.MAPS`.
 
 ## Files
 
-- `js/authority/mafiaSystem.js` -- State machine, bot AI, role assignment, kill/body/ghost, meeting/voting, sabotage tick, match lifecycle. 1117 lines.
+- `js/authority/mafiaSystem.js` -- State machine, bot AI, role assignment, kill/body/ghost, meeting/voting, sabotage tick, role ability ticking, match lifecycle.
 - `js/shared/mafiaGameData.js` -- Mode-level constants, color palette, sabotage types, per-map data (spawn, room centers), lobby settings defaults. 144 lines.
+- `js/shared/mafiaRoleData.js` -- Role definitions (`MAFIA_ROLES`), role assignment logic (`assignRoles()`), weighted subrole distribution. Loaded in Phase A (shared data).
 - `js/core/skeldTasks.js` -- Task state tracker (`SkeldTasks`), vent system (`VentSystem`), task list side panel, and 14 task mini-game implementations via `TASK_HANDLERS` registry. Also handles task categories (common/short/long). 2694 lines.
-- `js/client/rendering/mafiaFOV.js` -- FOV overlay, dead body rendering, HUD buttons (kill/report/sabotage), meeting UI with voting/chat, sabotage fix panels (reactor hand scanner, O2 keypad, lights switches), emergency popup, vote results reveal, ejection screen, vent HUD arrows, task list panel. 2564 lines.
+- `js/client/rendering/mafiaFOV.js` -- FOV overlay (wall-aware raycasting), dead body rendering, HUD buttons (kill/report/sabotage/role abilities), meeting UI with voting/chat, sabotage fix panels (reactor hand scanner, O2 keypad, lights switches), emergency popup, vote results reveal, ejection screen, vent HUD arrows, task list panel, role ability HUD (tracker/shapeshifter/phantom buttons).
+- `js/core/cameraSystem.js` -- Among Us-style security cameras: 4 live feeds (2x2 grid), scan lines + REC indicator, wall-mounted camera blink state. Player is locked in place while viewing.
 
 ## Key Functions & Globals
 
 ### State Objects
 
 - **`MafiaState`** (window global) -- The single source of truth for all match state:
-  - `phase`: `'idle'` | `'playing'` | `'meeting'` | `'voting'` | `'vote_results'` | `'ejecting'` | `'post_match'`
+  - `phase`: `'idle'` | `'role_reveal'` | `'playing'` | `'report_splash'` | `'meeting'` | `'voting'` | `'vote_results'` | `'ejecting'` | `'post_match'`
   - `playerRole`: `'crewmate'` | `'impostor'`
-  - `participants[]`: Array of participant objects with `{ id, name, role, entity, isBot, isLocal, alive, votedFor, emergenciesUsed, color, _aiState }`
-  - `bodies[]`: `{ x, y, color, name, id }` -- dead bodies on the ground
+  - `playerSubrole`: role id (`'engineer'`, `'tracker'`, `'scientist'`, `'noisemaker'`, `'shapeshifter'`, `'phantom'`, `'viper'`) or `null`
+  - `participants[]`: Array of participant objects with `{ id, name, role, subrole, entity, isBot, isLocal, alive, votedFor, emergenciesUsed, color, _aiState }`
+  - `bodies[]`: `{ x, y, color, name, id, dissolveTimer?, dissolveMax? }` -- dead bodies on the ground (dissolveTimer used by Viper subrole)
   - `killCooldown`: Frames remaining before impostor can kill again
   - `sabotage`: `{ active, timer, cooldown, fixers, fixedPanels }` -- active sabotage tracking
-  - `meeting`: `{ caller, type, votes, discussionTimer, votingTimer }` -- meeting/voting state
+  - `meeting`: `{ caller, type, votes, discussionTimer, votingTimer, splashTimer }` -- meeting/voting state
   - `ejection`: `{ name, wasImpostor, timer, message }` -- ejection animation state
   - `taskProgress`: `{ done, total }` -- global crew task progress
   - `playerIsGhost`: true after local player dies
   - `lastMeetingEndFrame`: for emergency cooldown tracking
   - `_settings`: Snapshot of lobby settings for the current match
+  - `_roleState`: Per-role ability state (tracker, scientist, shapeshifter, phantom, noisemaker timers/cooldowns)
 
 - **`MAFIA_GAME`** (const) -- Mode-level constants and per-map data:
   - `BOT_COUNT` (8), `IMPOSTOR_COUNT` (1), `BOT_SPEED` (6.25)
@@ -39,7 +43,11 @@
   - `SETTINGS_DEFAULTS`: Full lobby settings defaults
   - `MAPS.skeld_01`: `SPAWN` and `ROOM_CENTERS` (14 rooms)
 
-- **`MAFIA_SETTINGS`** (let) -- Runtime copy of settings, modified by lobby UI, cloned from `SETTINGS_DEFAULTS`.
+- **`MAFIA_ROLES`** (const, `mafiaRoleData.js`) -- Role definitions registry with `id`, `name`, `team`, `description`, `color`, and per-role `settings`.
+
+- **`MAFIA_ROLE_SETTINGS`** (const) -- Runtime role settings initialized from `MAFIA_ROLE_DEFAULTS` (percentage chances) and each role's specific setting defaults. Modified by lobby UI.
+
+- **`MAFIA_SETTINGS`** (let) -- Runtime copy of general match settings, modified by lobby UI, cloned from `SETTINGS_DEFAULTS`.
 
 - **`mafiaPlayerColorIdx`** (let) -- Player's chosen color index (0-9), persists across lobby visits.
 
@@ -47,13 +55,13 @@
 
 | Method | Purpose |
 |--------|---------|
-| `startMatch()` | Spawns bots, assigns colors, initializes all state, resets tasks |
-| `setRole(roleName)` | Debug: `/role impostor` or `/role crewmate` |
+| `startMatch()` | Spawns bots, assigns colors, calls `assignRoles()`, initializes all state, resets tasks, enters `role_reveal` phase |
+| `setRole(roleName)` | Debug: `/role impostor`, `/role crewmate`, `/role engineer`, `/role shapeshifter`, etc. Resets `_roleState` |
 | `getNearestKillTarget()` | Find nearest alive crewmate within kill range (impostor only) |
-| `kill(targetId)` | Execute kill: mark dead, spawn body, teleport to victim, reset cooldown |
+| `kill(targetId)` | Execute kill: mark dead, spawn body, teleport to victim, reset cooldown. Triggers Noisemaker alert if victim has that subrole |
 | `tryKill()` | Wrapper: find nearest + kill |
 | `getNearestReportableBody()` | Find nearest body within `REPORT_RANGE` |
-| `report(bodyId)` | Report body -> start meeting |
+| `report(bodyId)` | Report body -> start report splash -> meeting |
 | `tryReport()` | Wrapper: find nearest body + report |
 | `canCallEmergency()` | Checks phase, ghost, sabotage block, uses left, cooldown |
 | `callEmergencyMeeting()` | Call emergency -> start meeting |
@@ -62,7 +70,9 @@
 | `tryFixSabotage(panelKey, participantId)` | Register fixer at panel (reactor: hold; O2: permanent fix) |
 | `releaseSabotagePanel(panelKey)` | Release reactor hold (walked away) |
 | `tick()` | Main per-frame tick, delegates to phase-specific tick |
-| `isPlayerFrozen()` | Returns true during meeting/voting/ejecting/popup phases |
+| `_tickRoleAbilities()` | Ticks tracker/scientist/shapeshifter/phantom/noisemaker timers, Viper body dissolve |
+| `_checkWinConditions()` | Checks impostor/crewmate/task victory conditions |
+| `isPlayerFrozen()` | Returns true during role_reveal, report_splash, meeting, voting, vote_results, or ejecting phases |
 | `endMatch()` | Reset all state, return to `mafia_lobby` |
 
 ### SkeldTasks
@@ -87,16 +97,65 @@
 | `tick()` | Animate enter/exit transitions |
 | `reset()` | Clear all vent state |
 
+### CameraSystem
+
+| Method | Purpose |
+|--------|---------|
+| `enter()` | Activate camera view, set blinking flag |
+| `exit()` | Deactivate camera view |
+| `isActive()` | Returns true if player is viewing cameras |
+| `drawOverlay()` | Renders 2x2 camera feed grid with tiles, entities, participants, bodies |
+| `handleClick(mx, my)` | Close button click detection |
+| `handleKey(key)` | Escape/X to close |
+
+4 camera feeds defined in `SKELD_CAMERAS`: Medbay Hallway, Security Hallway, Admin Hallway, Comms Hallway.
+
 ### Rendering Functions
 
 | Function | Purpose |
 |----------|---------|
 | `drawMafiaFOV()` | Wall-aware raycasted FOV overlay; lights sabotage dimming; O2 fog effect |
 | `drawMafiaBodies()` | Draw dead bodies in world space (colored crewmate shapes with cracked visors) |
-| `drawMafiaHUD()` | KILL/REPORT/SABOTAGE buttons, meeting UI, vote results, ejection screen |
+| `drawMafiaHUD()` | KILL/REPORT/SABOTAGE/role ability buttons, meeting UI, vote results, ejection screen |
 | `drawSabFixPanel()` | Reactor hand scanner, O2 keypad, lights switch panel |
 | `drawVentHUD()` | Directional arrows to connected vents while in vent |
 | `drawSkeldTaskList()` | Task list side panel with progress bar |
+
+## Role System (`mafiaRoleData.js`)
+
+Roles are split into base team (`crewmate`/`impostor`) and optional subroles that grant special abilities. Subroles are assigned probabilistically at match start via `assignRoles()` using weighted random picks based on `MAFIA_ROLE_SETTINGS` chance percentages.
+
+### Crewmate Subroles
+
+| Role | Description | Key Settings |
+|------|-------------|-------------|
+| **Engineer** | Can use vents to move around the map (normally impostor-only). | `ventCooldown` (15s), `ventDuration` (30s max time in vent) |
+| **Tracker** | Can track a player and see their position on the map via a ping/arrow indicator. | `trackDuration` (15s), `trackCooldown` (30s) |
+| **Noisemaker** | Triggers a visible alert on the map when killed, notifying all crewmates of the kill location. | `alertDuration` (10s) |
+| **Scientist** | Can check the vitals panel from anywhere on the map (remotely view who is alive/dead). | `vitalsDuration` (15s), `vitalsCooldown` (30s) |
+
+### Impostor Subroles
+
+| Role | Description | Key Settings |
+|------|-------------|-------------|
+| **Shapeshifter** | Can disguise as another player (color/name swap). Can kill while shifted. Shift animation plays during transformation. | `shiftDuration` (20s), `shiftCooldown` (30s) |
+| **Phantom** | Can turn fully invisible. Cannot kill while invisible. | `invisDuration` (10s), `invisCooldown` (25s) |
+| **Viper** | Bodies dissolve shortly after a kill, removing evidence. Bodies have a `dissolveTimer` that ticks down. | `dissolveTime` (30s) |
+
+### Role Assignment
+
+Default chance percentages (`MAFIA_ROLE_DEFAULTS`): Engineer 30%, Tracker 20%, Noisemaker 20%, Scientist 20%, Shapeshifter 30%, Phantom 20%, Viper 20%. Chance values are configurable from the lobby settings panel. A roll against total chance determines whether a participant gets any subrole vs. staying base crewmate/impostor.
+
+### Role State (`MafiaState._roleState`)
+
+All role ability timers and state are stored in `_roleState`:
+- **Tracker**: `trackedTarget`, `trackTimer`, `trackCooldown`
+- **Scientist**: `vitalsOpen`, `vitalsTimer`, `vitalsCooldown`
+- **Shapeshifter**: `shiftedAs`, `shiftTimer`, `shiftCooldown`, `shiftAnim` (animation state with `fromColor`/`toColor`)
+- **Phantom**: `invisible`, `invisTimer`, `invisCooldown`
+- **Noisemaker**: `deathAlert` (`{ x, y, timer, color }`)
+
+Role abilities are ticked every frame via `MafiaSystem._tickRoleAbilities()`.
 
 ## How It Works
 
@@ -106,38 +165,45 @@
 idle
   |
   v  (Scene enters Skeld map)
-playing ----> meeting ----> voting ----> vote_results ----> ejecting
-  ^                                                           |
-  |___________________________________________________________|
+role_reveal (phaseTimer countdown)
+  |
+  v
+playing ----> report_splash ----> meeting ----> voting ----> vote_results ----> ejecting
+  ^                                                                               |
+  |_______________________________________________________________________________|
   |
   v  (all impostors dead OR all tasks done OR sabotage timer expires)
 post_match / endMatch() -> return to mafia_lobby
 ```
 
 1. **idle**: `tick()` auto-calls `startMatch()` when entering the Skeld scene.
-2. **playing**: Kill cooldown ticks, sabotage system ticks, bot AI moves bots between rooms, tasks are playable.
-3. **meeting**: Discussion phase -- all players teleported to cafeteria spawn, discussion timer counts down, bots send random chat messages. No voting allowed yet.
-4. **voting**: Players and bots cast votes. Bots vote randomly (80% for random player, 20% skip). Timer forces remaining votes as skip.
-5. **vote_results**: Votes revealed one by one (shuffled order, 0.75s per reveal) then held briefly. After reveal + hold time, ejection occurs.
-6. **ejecting**: Ejection message displayed for `EJECTION_TIME` (5s). Bodies cleared, cooldown reset, then back to playing.
+2. **role_reveal**: Brief screen showing the player their assigned role and subrole. Timer counts down, then transitions to playing.
+3. **playing**: Kill cooldown ticks, sabotage system ticks, bot AI moves bots between rooms, tasks are playable, role abilities tick (tracker/shapeshifter/phantom/viper/noisemaker timers). Win conditions checked every frame.
+4. **report_splash**: 2-second splash screen ("DEAD BODY REPORTED" or "EMERGENCY MEETING") before the meeting UI appears.
+5. **meeting**: Discussion phase -- all players teleported to cafeteria spawn, discussion timer counts down, bots send random chat messages. No voting allowed yet.
+6. **voting**: Players and bots cast votes. Bots vote randomly (80% for random player, 20% skip). Timer forces remaining votes as skip.
+7. **vote_results**: Votes revealed one by one (shuffled order, 0.75s per reveal) then held briefly. After reveal + hold time, ejection occurs.
+8. **ejecting**: Ejection message displayed for `EJECTION_TIME` (5s). Bodies cleared, cooldown reset, then back to playing.
 
 ### Roles
 
-- **Crewmate**: Complete tasks, report bodies, call emergency meetings, fix sabotages. Vision = `crewVision` multiplier.
-- **Impostor**: Kill crewmates (Q key or KILL button), sabotage systems, use vents. Vision = `impostorVision` multiplier. Currently assigned via `/role impostor` debug command (player starts as crewmate by default).
+- **Crewmate**: Complete tasks, report bodies, call emergency meetings, fix sabotages. Vision = `crewVision` multiplier. May have a subrole (Engineer, Tracker, Noisemaker, Scientist).
+- **Impostor**: Kill crewmates (Q key or KILL button), sabotage systems, use vents. Vision = `impostorVision` multiplier. May have a subrole (Shapeshifter, Phantom, Viper). Use `/role <subrole>` to test specific roles.
 
 ### Kill Mechanics
 
 - Impostor must be within `killDistance` (Short: 80px, Medium: 120px, Long: 180px) of an alive crewmate.
 - Kill cooldown resets to `killCooldown` seconds (default 30s) after each kill.
 - On kill: victim marked dead, body spawned at their location, impostor teleported to victim (Among Us snap), blood_slash hit effect shown.
+- If victim has the Noisemaker subrole, a death alert ping is triggered at the kill location visible to all players for `alertDuration` seconds.
+- If killer has the Viper subrole, a `dissolveTimer` is set on the body so it disappears after `dissolveTime` seconds.
 - Dead players become ghosts (semi-transparent blue tint, "GHOST" label, can still observe but not interact).
 
 ### Report & Meeting
 
 - **Report**: Player must be within `REPORT_RANGE` (150px) of a body. Press R or click REPORT button.
 - **Emergency**: Player presses E at cafeteria table interactable. Requires: no active sabotage, emergencies remaining, cooldown elapsed. Shows confirmation popup before calling.
-- Meeting starts -> everyone teleported to spawn, active sabotage cleared, chat reset.
+- Report/emergency triggers `report_splash` phase (2s) then `meeting` phase. Everyone teleported to spawn, active sabotage cleared, chat reset.
 
 ### Voting
 
@@ -196,7 +262,7 @@ Task bar updates setting: `'Always'` (always visible), `'Meetings'` (only during
 
 ### Vent System
 
-Impostor-only traversal network with 5 vent networks:
+Impostor-only traversal network (Engineers can also use vents) with 4 vent networks:
 
 | Network | Vents (bidirectional) |
 |---------|----------------------|
@@ -211,19 +277,32 @@ Impostor-only traversal network with 5 vent networks:
 
 ### FOV Rendering (Wall-Aware Raycasting)
 
-- **Cached wall-boundary vertex FOV** — visibility polygon computed from pre-extracted wall-boundary vertices, not a dense ray sweep.
-- `buildFOVOccluderCache()`: builds flat collision grid + extracts boundary vertices (grid corners where wall meets open space). Cached per level.
-- `getFOVCandidateAngles()`: filters boundary vertices within FOV range, generates 3 rays per vertex (center ± epsilon) + 72 fill rays (every 5°).
-- `computeVisibilityPolygon()`: sorts angles, DDA-casts each ray, returns screen-space polygon.
-- **Raycast origin lerped** toward player position (0.35 blend factor) for smooth shadow movement without per-pixel jitter.
-- Dark overlay (`rgba(0,0,0,0.93)`) with blurred polygon cutout (`blur(12px)`) for soft shadow edges.
-- Performance: cached `Uint8Array` flat grid + boundary vertex list (rebuilt per level), pre-allocated offscreen buffer. ~200-500 rays/frame vs prior ~1500-3000.
-- Vision radius = `FOV_BASE_RADIUS * visionMultiplier * lightsMult * TILE`.
-- Vision multiplier differs by role: crewmates use `crewVision` (default 1x), impostors use `impostorVision` (default 1.5x).
-- **Lights sabotage dimming**: crewmate FOV smoothly shrinks to 35% of normal radius over 3 seconds (`_lightsDimProgress` 0→1). Fades back up over 3 seconds when fixed. Impostors completely unaffected.
-- Ghost players see full map (no FOV overlay).
-- During O2 sabotage: additional progressive fog overlay for crewmates (shrinking clear radius as timer runs down).
-- **Only wall tiles block FOV** — solid entities (crates, tables, etc.) do NOT block vision (tried and reverted — didn't look good).
+The FOV system creates Among Us-style fog-of-war using wall-boundary vertex raycasting, not a simple circle gradient.
+
+- **`buildFOVOccluderCache()`**: Builds a flat `Uint8Array` collision grid + extracts boundary vertices (grid corners where wall meets open space). Cached per level via `_fovGridLevelId`.
+- **Boundary vertex extraction**: Each grid point `(gx, gy)` is checked against its 4 adjacent tiles. Points where at least one tile is solid AND at least one is empty become boundary vertices.
+- **`getFOVCandidateAngles()`**: Filters boundary vertices within FOV range, generates 3 rays per vertex (center +/- epsilon) + 72 fill rays (every 5 degrees).
+- **`computeVisibilityPolygon()`**: Sorts angles, DDA-casts each ray through the collision grid, returns a screen-space polygon defining the visible area.
+- **Raycast origin is lerped** (0.35 blend factor) toward player position for smooth shadow movement without per-pixel jitter.
+- **Dark overlay** (`rgba(0,0,0,0.93)`) with blurred polygon cutout (`blur(12px)`) for soft shadow edges.
+- **Performance**: Cached `Uint8Array` flat grid + boundary vertex list (rebuilt per level), pre-allocated offscreen buffer. ~200-500 rays/frame.
+- **Vision radius** = `FOV_BASE_RADIUS * visionMultiplier * lightsMult * TILE`.
+- **Vision multiplier**: Crewmates use `crewVision` (default 1x), impostors use `impostorVision` (default 1.5x).
+- **Lights sabotage dimming**: Crewmate FOV smoothly shrinks to 35% of normal radius over 3 seconds (`_lightsDimProgress` 0 to 1, `_LIGHTS_FADE_FRAMES = 180`). Fades back up over 3 seconds when fixed. Impostors completely unaffected.
+- **Ghost players** see full map (no FOV overlay).
+- **O2 sabotage**: Additional progressive fog overlay for crewmates (shrinking clear radius as timer runs down).
+- **Only wall tiles block FOV** -- solid entities (crates, tables, etc.) do NOT block vision (tried and reverted).
+- **`isMafiaWorldPointVisible()`**: Gates gameplay objects (bots, bodies, tasks, sabotage panels) while environment stays softly readable through the darkness.
+
+### Security Camera System (`cameraSystem.js`)
+
+- Player interacts with the camera console entity to enter camera view.
+- 4 simultaneous live feeds displayed in a 2x2 grid (60% of screen size).
+- Each feed renders tiles, entities, other participants (via `drawChar()`), and dead bodies from its fixed camera position.
+- Camera positions defined in `SKELD_CAMERAS`: Medbay Hallway (40,10), Security Hallway (20,34), Admin Hallway (76,44), Comms Hallway (87,62).
+- Visual effects: green security tint, scan lines, static noise, blinking REC indicator, camera name labels, real-time timestamps.
+- Wall-mounted camera entities (`skeld_camera_mount`) blink red when `CameraState.blinking` is true (someone is watching).
+- Player is frozen in place while viewing. Close with X, Escape, or close button.
 
 ### Bot AI
 
@@ -267,6 +346,8 @@ All settings are configurable from the pre-game lobby UI and stored in `MAFIA_SE
 | `map` | skeld_01 | Map ID |
 | `maxPlayers` | 10 | Count |
 
+Role-specific settings are also configurable per subrole (e.g., vent cooldown for Engineer, shift duration for Shapeshifter). These are stored in `MAFIA_ROLE_SETTINGS` alongside percentage chances for each subrole.
+
 ## Connections to Other Systems
 
 - **Scene Manager** (`sceneManager.js`): `Scene.inSkeld` gates all Mafia rendering/logic. `enterLevel()` used for match start and return to lobby.
@@ -275,36 +356,36 @@ All settings are configurable from the pre-game lobby UI and stored in `MAFIA_SE
 - **Input** (`input.js`): Q for kill, R for report, E for interact (emergency/tasks/vents). Click detection on canvas for all HUD buttons.
 - **Level Data** (`levelData.js`): Skeld map tiles, entity definitions (tasks, vents, sabotage panels) defined as level entities.
 - **Hit Effects** (`hitEffects.js`): `blood_slash` effect on kill.
-- **Entity Renderers** (`entityRenderers.js`): Skeld-specific entity types (tasks, vents, sabotage panels) rendered in world space.
+- **Entity Renderers** (`entityRenderers.js`): Skeld-specific entity types (tasks, vents, sabotage panels, camera mounts) rendered in world space.
 - **Save/Load** (`saveLoad.js`): Lobby settings and color choice are not persisted to localStorage (session-only).
 - **Game Config** (`gameConfig.js`): `PLAYER_BASE_SPEED` and `PLAYER_WALL_HW` used for bot movement.
 
 ### Character Rendering (Among Us Crewmate Sprites)
 
 - In Mafia mode (Skeld + Mafia Lobby), ALL characters render as colored Among Us crewmates instead of normal character sprites.
-- Handled by `_drawCrewmateWorld()` in `characterSprite.js` — intercepts at the top of `drawChar()` when `Scene.inSkeld || Scene.inMafiaLobby`.
+- Handled by `_drawCrewmateWorld()` in `characterSprite.js` -- intercepts at the top of `drawChar()` when `Scene.inSkeld || Scene.inMafiaLobby`.
 - Direction-aware: visor faces movement direction, hidden when facing away (shows back of helmet).
 - Walk animation: legs alternate when moving.
 - Ghost mode: dead player renders at 35% opacity.
 - Player color: from `MafiaState.participants` (in-game) or `mafiaPlayerColorIdx` (lobby).
 - Bot colors: stored as `skin = color.body`, `hair = color.dark` in the entity.
-- **No clothing/armor/hair/skin** is shown — only the solid color crewmate body.
+- **No clothing/armor/hair/skin** is shown -- only the solid color crewmate body.
 
 ### Lobby
 
-- Physical EXIT door at bottom-center of mafia lobby (5-tile gap in collision wall) — walk south to return to main lobby. No need to use `/leave`.
+- Physical EXIT door at bottom-center of mafia lobby (5-tile gap in collision wall) -- walk south to return to main lobby. No need to use `/leave`.
 - `/leave` also works as a fallback.
 - Combat (melee + shooting) is disabled in both the main lobby and mafia lobby.
 
 ### Debug Commands
 
-- `/sabo <reactor|o2|lights>` — trigger a sabotage for testing.
-- `/fix` — instantly fix the active sabotage.
-- `/role impostor` / `/role crewmate` — switch roles.
+- `/role <roleName>` -- switch to any role or subrole: `impostor`, `crewmate`, `engineer`, `tracker`, `scientist`, `noisemaker`, `shapeshifter`, `phantom`, `viper`. Resets role ability state.
+- `/sabo <reactor|o2|lights>` -- trigger a sabotage for testing.
+- `/fix` -- instantly fix the active sabotage.
 
 ## Gotchas & Rules
 
-- Player always starts as crewmate. Use `/role impostor` to test impostor features.
+- Player always starts as crewmate (with possible subrole from weighted random assignment). Use `/role impostor` or `/role <subrole>` to test.
 - Bots are NOT in the `mobs[]` array -- they are tracked in `MafiaState.participants[].entity`. This means standard mob rendering/collision does not apply; they have custom rendering.
 - Bot `hp` is set to `-1` so HP bars are skipped by the standard draw pipeline.
 - Kill cooldown and sabotage cooldown are stored in frames (multiply seconds by 60).
@@ -318,8 +399,10 @@ All settings are configurable from the pre-game lobby UI and stored in `MAFIA_SE
 - The `_getKillRange()` method reads from `MafiaState._settings.killDistance`, not the constant `MAFIA_GAME.KILL_RANGE`.
 - All Skeld coordinates use virtual space with `XO=4` offset. Minimap labels use actual grid coordinates.
 - **FOV raycast origin is lerped** (0.35 blend) toward player position for smooth shadow movement. Do NOT use exact player position (causes jitter) or tile-center snapping (causes jumps).
-- **Solid entities do NOT block FOV** — this was tried and reverted because it looked bad. Only wall tiles (`collisionGrid`) block vision.
+- **Solid entities do NOT block FOV** -- this was tried and reverted because it looked bad. Only wall tiles (`collisionGrid`) block vision.
 - **Impostors are unaffected by ALL sabotage visual effects** (lights dimming, O2 fog). Check `MafiaState.playerRole` before applying.
 - `_fovGridLevelId` caches the FOV grid per level. It auto-rebuilds when `level.id` changes.
 - Task entities in `levelData.js` have `taskId`, `taskStep`, `room`, and `label` fields that link to the `TASK_HANDLERS` registry.
 - Vent networks are hardcoded per map in `VENT_NETWORK` (not data-driven from `MAFIA_GAME.MAPS`).
+- **Viper body dissolve** is ticked in `_tickRoleAbilities()`, not per-body. Bodies with `dissolveTimer <= 0` are filtered out of `mk.bodies`.
+- **Shapeshifter animation** (`shiftAnim`) plays during transformation with `fromColor`/`toColor` interpolation. The actual color swap happens in `_completeShapeshift()` when the animation timer reaches zero.

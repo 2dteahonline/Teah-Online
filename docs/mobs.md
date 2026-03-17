@@ -2,23 +2,27 @@
 
 ## Overview
 
-Mobs are the enemy combatants in Teah Online's dungeon system. They are defined data-first in `MOB_TYPES`, with AI movement patterns in `MOB_AI` (11 patterns), special attacks in `MOB_SPECIALS` (60+ abilities), and per-frame logic in `updateMobs()`. The system supports legacy mobs (Floor 0 cave dungeon), 5 themed dungeon floors with 4 mob types each, mini-bosses, and final bosses -- including duo boss fights. Mobs use BFS pathfinding, body-blocking separation, AABB wall collision with wall-sliding, and a stuck-detection safety net.
+Mobs are the enemy combatants in Teah Online's dungeon system. They are defined data-first in `MOB_TYPES` (334 entries), with AI movement patterns in `MOB_AI` (13 patterns), special attacks in `MOB_SPECIALS` (434 unique abilities across 9 files), and per-frame logic in `updateMobs()`. The system supports legacy mobs (Floor 0 cave dungeon), 8 themed dungeon sets across 6 dungeons with 4 mob types per subfloor, mini-bosses, and final bosses -- including duo boss fights. Mobs use BFS pathfinding, body-blocking separation, AABB wall collision with wall-sliding, and a stuck-detection safety net.
 
 ## Files
 
-- `js/shared/mobTypes.js` -- `MOB_TYPES` registry (all mob stat definitions), `MOB_CAPS`, `CROWD_EXEMPT_TYPES`, `MOB_ENTITY_ARRAYS`
-- `js/authority/combatSystem.js` -- `StatusFX`, `MOB_AI` (11 movement patterns), `MOB_SPECIALS` (60+ ability handlers), `clampDashTarget()`, `findClearPosition()`, `sanitizeAITarget()`
-- `js/authority/mobSystem.js` -- `updateMobs()` main loop, `positionClear()`, `bfsPath()`, mob separation, collision, contact damage, special dispatch
+- `js/shared/mobTypes.js` -- `MOB_TYPES` registry (334 mob stat definitions), `MOB_CAPS`, `CROWD_EXEMPT_TYPES`, `MOB_ENTITY_ARRAYS`
+- `js/authority/combatSystem.js` -- `StatusFX`, `MOB_AI` (13 movement patterns), `MOB_SPECIALS` (91 base + cave/azurine/tech/junkyard/traphouse/waste ability handlers)
+- `js/authority/vortalisSpecials.js` -- 106 Vortalis dungeon ability handlers
+- `js/authority/earth205Specials.js` -- 98 Earth-205 dungeon ability handlers
+- `js/authority/wagashiSpecials.js` / `wagashiSpecials2.js` / `wagashiSpecials3.js` -- 70 Wagashi dungeon ability handlers (split across 3 files for size)
+- `js/authority/earth216Specials.js` / `earth216Specials2.js` / `earth216Specials3.js` -- 70 Earth-216 dungeon ability handlers (split across 3 files for size)
+- `js/authority/mobSystem.js` -- `updateMobs()` main loop, `positionClear()`, `bfsPath()`, mob separation, collision, contact damage, special dispatch, `stillActive`/`isMultiFrame` tracking
 
 ## Key Functions & Globals
 
 | Symbol | Purpose |
 |--------|---------|
-| `MOB_TYPES` | Registry of all mob definitions (stats, AI type, specials, per-type physics) |
+| `MOB_TYPES` | Registry of all 334 mob definitions (stats, AI type, specials, per-type physics) |
 | `MOB_CAPS` | Per-type max count per wave (e.g., grunt: 12, golem: 1) |
 | `CROWD_EXEMPT_TYPES` | Set of types that skip crowded-AI override (ranged/special mobs) |
-| `MOB_AI` | Registry of 11 movement targeting functions |
-| `MOB_SPECIALS` | Registry of 60+ special ability update functions |
+| `MOB_AI` | Registry of 13 movement targeting functions |
+| `MOB_SPECIALS` | Registry of 434 special ability update functions (across 9 files) |
 | `MOB_ENTITY_ARRAYS` | List of sub-array keys on mobs (`_bombs`, `_mines`, `_turrets`, etc.) for cleanup |
 | `updateMobs()` | Per-frame mob logic: separation, movement, collision, specials, contact damage |
 | `positionClear(px, py, hw)` | AABB wall-free check at pixel position (4-corner tile test) |
@@ -214,7 +218,23 @@ Direct `MOB_AI` and `MOB_SPECIALS` entries keyed by type name:
 
 **Level 50 Duo Boss:** `malric` (HP 3600, tank AI: `ooze_blade_arc`, `slime_rampart`, `melt_floor`, `summon_elite`) + `vale` (HP 2600, witch AI: `shadow_teleport`, `puppet_shot`, `abyss_grasp`, `regen_veil`)
 
-### 11 AI Patterns (MOB_AI)
+#### Vortalis Dungeon (106 unique specials)
+
+5 floors of pirate/ocean-themed mobs. Specials defined in `js/authority/vortalisSpecials.js`. Features nautical combat mechanics: anchor sweeps, tidal surges, tentacle grabs, ghost ships, kraken calls, ink blasts, coral barriers, spectral crew summons, and leviathan attacks. Includes dual boss encounters with golden gilded reef and wrath of sea mechanics.
+
+#### Earth-205: Marble City (98 unique specials)
+
+5 floors of urban/gangster-themed mobs. Specials defined in `js/authority/earth205Specials.js`. Features street combat: pipe swings, slingshot snipes, hairspray flamethrowers, stiletto stabs, chemical flasks, glass flurries, crowbar hooks, boomerang cleaves, and theatrical parries. Includes construction site, backstage, and reactor-themed encounters.
+
+#### Wagashi: Heavenly Realm (70 unique specials)
+
+5 floors of Japanese mythology-themed mobs. Specials split across `js/authority/wagashiSpecials.js`, `wagashiSpecials2.js`, `wagashiSpecials3.js`. Features feudal combat: silk needle fans, jade flashes, serpent swarms, boar fury charges, titan charges, war stomps, demon cleavers, shadow steps, tidal waves, gravity wells, and divine form shifts. Includes a void/corruption final boss phase.
+
+#### Earth-216: Sin City (70 unique specials)
+
+5 floors of casino/underworld-themed mobs. Specials split across `js/authority/earth216Specials.js`, `earth216Specials2.js`, `earth216Specials3.js`. Features gambling/dark mechanics: chip tosses, jackpot blooms, velvet slashes, vault leaps, bone walls, funeral rings, ghost mariachis, neon shrieks, phantom splitstreams, card flicks, oracle curses, and unsealing maw attacks. Includes Day of the Dead and occult-themed encounters.
+
+### 13 AI Patterns (MOB_AI)
 
 Each AI function receives `(m, ctx)` where `ctx` contains `{ player, dist, dx, dy, playerVelX, playerVelY, mapCenterX, mapCenterY, amBetween, isCrowded, mobs }`. Returns `{ targetX, targetY }`.
 
@@ -231,6 +251,8 @@ Each AI function receives `(m, ctx)` where `ctx` contains `{ player, dist, dx, d
 | `mini_golem` | Same as golem but slightly less predictive (0.3x, max 40px). |
 | `healer` | Prioritizes fleeing player if within 160px. Otherwise positions behind nearest non-healer/non-skeleton ally at 60px offset. Retreats if < idealDist (300px). |
 | `archer` | Maintains 350px ideal distance. Retreats hard if < 180px. Circle-strafes at ideal range. Approaches with velocity prediction if too far (>490px). |
+| `stationary` | Returns mob's current position. Mob does not move. Used for turret-style mobs. |
+| `hover` | Flies directly toward player, ignoring wall pathfinding. Used for flying mobs. |
 
 **Dispatch priority:**
 1. If crowded (2+ allies nearby) and type not in `CROWD_EXEMPT_TYPES` and dist > 60 --> use `crowded` AI
@@ -243,23 +265,23 @@ The per-mob-per-frame flow in `updateMobs()` is a 10-step pipeline:
 
 1. **Mob separation** -- Push overlapping mobs apart (body-blocking). Uses `MOB_RADIUS * 2` as minimum separation distance. For exact overlaps, tries 8 random angles.
 
-2. **Freeze/status check** -- If `_mobsFrozen`, set speed to 0 and skip. Tick all status effects via `StatusFX.tickMob(m)`. If result has `skip: true` (stagger/stun/root), skip this mob's movement.
+2. **Freeze/status check** -- If `_mobsFrozen`, set speed to 0 and skip. Tick despawn timers for summoned minions. Tick all status effects via `StatusFX.tickMob(m)`. If result has `skip: true` (stagger/stun/root), skip this mob's movement.
 
-3. **Distance calculation** -- Compute `dx`, `dy`, `dist` from mob to player.
+3. **Party-aware targeting** -- `PartySystem.getMobTarget(m)` selects the mob's assigned party target. Sets `_currentDamageTarget` for damage routing in specials.
 
-4. **AI targeting** -- Crowding detection (count allies within `MOB_CROWD_RADIUS`). Dispatch to appropriate `MOB_AI` function. Sanitize result against walls.
+4. **Distance calculation** -- Compute `dx`, `dy`, `dist` from mob to its target.
 
-5. **Speed calculation** -- Cap effective speed based on player base speed (runners: 1.1x, others: 0.85x). Apply frost slow multiplier from status effects.
+5. **AI targeting** -- Crowding detection (count allies within `MOB_CROWD_RADIUS`). Dispatch to appropriate `MOB_AI` function. Sanitize result against walls.
 
-6. **Pathfinding** -- Line-of-sight check by sampling tiles along the direct path. If any tile is solid, use BFS pathfinding. BFS cache refreshes every 12 frames (5 frames if near a wall). If BFS fails (600-tile cap), fall back to best-direction neighbor search.
+6. **Speed calculation** -- Cap effective speed based on player base speed (runners: 1.1x, others: 0.85x). Apply frost slow multiplier from status effects.
 
-7. **Movement application** -- AABB tile collision with independent X/Y axis testing. If blocked on one axis, try sliding along the other with a 1.5px nudge. If blocked on both, try half-speed on each axis independently.
+7. **Pathfinding** -- Line-of-sight check by sampling tiles along the direct path. If any tile is solid, use BFS pathfinding. BFS cache refreshes every 12 frames (5 frames if near a wall). If BFS fails (600-tile cap), fall back to best-direction neighbor search.
 
-8. **Wall repulsion** -- If mob overlaps a wall after movement, sample 8 directions to find open space and push outward at 2.5px/frame. If still stuck, spiral-search for nearest clear tile.
+8. **Movement application** -- AABB tile collision with independent X/Y axis testing. If blocked on one axis, try sliding along the other with a 1.5px nudge. If blocked on both, try half-speed on each axis independently.
 
-9. **Stuck detection** -- If mob hasn't moved > 2px in 90 frames (~1.5s), teleport to nearest clear tile (spiral search radius 1-3 tiles).
+9. **Wall repulsion** -- If mob overlaps a wall after movement, sample 8 directions to find open space and push outward at 2.5px/frame. If still stuck, spiral-search for nearest clear tile.
 
-10. **Animation** -- Frame counter advances proportional to effective speed: `m.frame = (m.frame + 0.015 * effSpeed + 0.01) % 4`.
+10. **Stuck detection** -- If mob hasn't moved > 2px in 90 frames (~1.5s), teleport to nearest clear tile (spiral search radius 1-3 tiles).
 
 After movement, the system handles:
 - **Ranged attacks** (shooters): fire bullets at player if within range and cooldown expired
@@ -285,7 +307,21 @@ After movement, the system handles:
 | `findClearPosition(targetX, targetY, fallbackX, fallbackY)` | Tries target, then 8 compass offsets at 1-tile distance, then fallback. For teleport/spawn validation. |
 | `sanitizeAITarget(m, targetX, targetY)` | 1-tile wall check in target direction. If blocked, tries perpendicular slide (both directions). Cost: 1-3 `positionClear` calls. |
 
-### MOB_SPECIALS: All ~60 Abilities by Floor
+### MOB_SPECIALS: 434 Abilities Across 9 Files
+
+**Specials file organization:**
+
+| File | Count | Dungeon / Content |
+|------|-------|-------------------|
+| `combatSystem.js` | 91 | Cave legacy + Azurine + Tech/Corporate + Junkyard/Swamp + Trap House/REGIME + Waste/Slime |
+| `vortalisSpecials.js` | 106 | Vortalis (pirate/ocean) |
+| `earth205Specials.js` | 98 | Earth-205: Marble City (urban/gangster) |
+| `wagashiSpecials.js` | 28 | Wagashi floors 1-2 (feudal Japan) |
+| `wagashiSpecials2.js` | 28 | Wagashi floors 3-4 (samurai/elemental) |
+| `wagashiSpecials3.js` | 14 | Wagashi floor 5 (void/corruption boss) |
+| `earth216Specials.js` | 28 | Earth-216 floors 1-2 (casino/underworld) |
+| `earth216Specials2.js` | 28 | Earth-216 floors 3-4 (Day of Dead/racing) |
+| `earth216Specials3.js` | 14 | Earth-216 floor 5 (occult boss) |
 
 **Legacy mobs (keyed by type name in MOB_SPECIALS):**
 
@@ -298,40 +334,51 @@ After movement, the system handles:
 | `healer` | Healer | Heal nearest ally within 220px for 10 HP, visual heal beam |
 | `mummy` | Mummy | Arm fuse on approach, explode for 28 damage in 140px radius |
 
-**Floor 1: Azurine City:**
-`swipe_blink`, `stun_baton`, `spot_mark`, `gas_canister`, `ground_pound`, `cloak_backstab`, `sticky_bomb`, `ricochet_round`, `laser_snipe`, `tommy_burst`, `smart_mine`, `smoke_screen`, `phase_dash`, `bullet_time_field`, `afterimage_barrage`, `summon_renegades`
-
-**Floor 2: Tech District / Corporate Core:**
-`overload_drain`, `weld_beam`, `charge_pop`, `tesla_trail`, `chain_lightning`, `emp_pulse`, `tesla_pillars`, `magnet_snap`, `briefcase_turret`, `red_tape_lines`, `penalty_mark`, `drone_swarm`, `dividend_barrage`, `hostile_takeover`, `nda_field`, `golden_parachute`
-
-**Floor 3: Junkyard / Swamp:**
-`scavenge_shield`, `mag_pull`, `saw_line`, `oil_spill_ignite`, `pile_driver`, `grab_toss`, `rebuild`, `scrap_minions`, `latch_drain`, `mud_dive`, `acid_spit_arc`, `siphon_beam`, `spore_cloud`, `burrow_surge`, `toxic_nursery`, `regrowth`
-
-**Floor 4: Trap House / R.E.G.I.M.E:**
-`tripwire`, `seek_mine`, `fake_wall`, `rewind_tag`, `trap_roulette`, `puzzle_lasers`, `loot_bait`, `remote_hack`, `suppress_cone`, `barrier_build`, `rocket_dash`, `emp_dome`, `pulse_override`, `repulsor_beam`, `nano_armor`, `drone_court`
-
-**Floor 5: Waste Planet / Slime Dusk:**
-`bleed_maul`, `gore_spore_burst`, `pounce_pin`, `screech_ring`, `symbiote_lash`, `toxic_spikes`, `adrenal_surge`, `absorb_barrier`, `static_orbs`, `overcharge_dump`, `slime_wave_slash`, `sticky_field`, `split_response`, `glow_mark`, `ooze_blade_arc`, `slime_rampart`, `melt_floor`, `summon_elite`, `shadow_teleport`, `puppet_shot`, `abyss_grasp`, `regen_veil`
-
 ### Multi-Ability Boss System
 
 Bosses and mini-bosses have multiple abilities in their `_specials` array. The dispatch system works differently based on count:
 
 **Single-special mobs** (most regular mobs): The named handler is called every frame with internal cooldown management.
 
-**Multi-special bosses** (4+ abilities): Round-robin ability rotation:
-1. `m._specialTimer` counts down from `specialCD` (per-boss, typically 360-720 frames)
-2. When timer expires, the next ability in the `_specials` array is selected (`m._abilityIndex` cycles)
-3. The ability handler is called, setting `m._activeAbility` during execution
-4. After the ability completes, the timer resets and the index advances
+**Multi-special bosses** (4+ abilities): Round-robin ability rotation with per-ability cooldowns:
+1. Each ability has its own cooldown tracked in `m._abilityCDs` (initialized to random 120-240 frames)
+2. All cooldowns tick down every frame
+3. When no ability is active, the system scans from `m._abilityIndex` for the next ready ability
+4. When found, the handler fires, its CD resets to `m._specialCD`, and the index advances
+5. The ability handler sets `m._activeAbility` during execution
 
-**Persistent entity ticking:** Some abilities spawn persistent objects (mines, turrets, pillars, drones, oil puddles). These are ticked every frame regardless of which ability is currently active. All are tracked in `MOB_ENTITY_ARRAYS` for cleanup on death/floor transition.
+### stillActive / isMultiFrame System (CRITICAL)
+
+Multi-frame abilities (dashes, telegraphs, channeled attacks) need two flag checks in `mobSystem.js`:
+
+1. **`stillActive`** -- Checked every frame while `m._activeAbility` is set. A massive boolean OR of all possible "ability in progress" flags (telegraph timers > 0, dash flags, firing flags, etc.). If false, `m._activeAbility` is cleared so the boss can start its next ability.
+
+2. **`isMultiFrame`** -- Checked immediately after a new ability fires. Same boolean OR list. If true, sets `m._activeAbility = abilKey` to lock the boss into that ability until it completes.
+
+**Why this is critical:** If a new boss ability's flags are missing from both lists, the ability will fire but `_activeAbility` won't be set. The boss will immediately try to fire another ability next frame, causing broken behavior -- abilities overlapping, animations cutting short, or the boss doing nothing. Every new dungeon MUST update BOTH lists with ALL new boss flags.
+
+The lists are duplicated (same checks in both `stillActive` and `isMultiFrame` blocks) and organized by dungeon with comments. Currently covers flags for all 6 dungeons: Cave/Azurine/Tech/Junkyard/Trap House/Waste (base), Vortalis, Wagashi, and Earth-216.
+
+### Summoned Mob Rules
+
+Mobs that summon other mobs (e.g. Victor Graves' thugs, Macabre's skeletons) must follow these rules:
+
+1. **Summoned mobs need `ai: 'grunt'`** in their `MOB_TYPES` entry. Without an `ai` field, the dispatch system won't find a movement pattern and the mob will stand still.
+
+2. **Despawn timers must tick in the global `updateMobs()` loop**, not inside the summoning ability handler. The `_despawnTimer` is decremented at the top of the mob loop (before status effects) so it runs every frame regardless of which ability is active.
+
+3. Summoned mobs inherit wave scaling (HP/speed/damage multipliers) from `createMob()` at spawn time.
+
+### Persistent Entity Ticking
+
+Some abilities spawn persistent objects (mines, turrets, pillars, drones, oil puddles, orb sentinels). These are stored in mob sub-arrays (`m._mines`, `m._turrets`, `m._pillars`, etc.) and must be ticked every frame regardless of which ability the boss is currently executing. The specials dispatch system handles this by calling every handler in `_specials` when `m._activeAbility` is set -- the active ability does its work while other handlers just tick their persistent entities. All persistent arrays are tracked in `MOB_ENTITY_ARRAYS` for cleanup on death/floor transition.
 
 ## Connections to Other Systems
 
 - **Wave system** (`waveSystem.js`) -- spawns mobs by type/count per wave, applies HP/speed/damage multipliers
-- **Damage system** (`damageSystem.js`) -- `dealDamageToMob()`, `dealDamageToPlayer()`, `processKill()`
+- **Damage system** (`damageSystem.js`) -- `dealDamageToMob()`, `dealDamageToPlayer()`, `processKill()`; handles shields, frontal shields, counter stance, damage reduction
 - **Combat system** (`combatSystem.js`) -- `StatusFX` for effect ticking, `MOB_AI` + `MOB_SPECIALS` registries
+- **Party system** (`partySystem.js`) -- `PartySystem.getMobTarget()` for party-aware targeting, mob count/HP scaling
 - **Gun system** (`gunSystem.js`) -- bullet creation, death effects, ambient mob particles
 - **Entity renderers** (`entityRenderers.js`) -- `ENTITY_RENDERERS` for visual rendering of each mob type
 - **Telegraph/Hazard systems** -- visual indicators for boss telegraphs and floor hazards
@@ -339,6 +386,8 @@ Bosses and mini-bosses have multiple abilities in their `_specials` array. The d
 ## Gotchas & Rules
 
 - **Adding a new mob requires entries in multiple registries:** define in `MOB_TYPES`, add AI pattern or set `ai` field, add specials to `MOB_SPECIALS`, add renderer entry if custom visuals, add cap in `MOB_CAPS`, add to `CROWD_EXEMPT_TYPES` if ranged/special.
+- **Adding a new dungeon boss requires updating `stillActive` AND `isMultiFrame`** in `mobSystem.js` with ALL new boss flags. Missing flags = broken boss behavior.
+- **Summoned mobs need `ai: 'grunt'`** and their `_despawnTimer` must tick in the global `updateMobs()` loop, not inside the ability handler.
 - **`MOB_CAPS` is per-type per-wave**, not global. Having 12 grunts and 8 runners simultaneously is valid.
 - **Speed capping is relative to player base speed.** Runners are capped at 1.1x `PLAYER_BASE_SPEED`, all others at 0.85x. This prevents mobs from being uncatchable or trivially outrunnable regardless of wave multipliers.
 - **BFS failure is common on large maps.** The 600-tile cap means mobs on the opposite side of a complex maze may not find a path. The fallback (best-direction neighbor) keeps them moving instead of standing still.
@@ -346,3 +395,4 @@ Bosses and mini-bosses have multiple abilities in their `_specials` array. The d
 - **Mob entity sub-arrays must be cleaned up.** `MOB_ENTITY_ARRAYS` lists all possible sub-arrays (`_bombs`, `_mines`, `_turrets`, etc.). `resetCombatState()` iterates these and clears them before zeroing the mobs array, preventing orphaned references.
 - **Skeleton kill source is `"witch_skeleton"`** -- this gives only flat 1 HP heal and 0 gold, by design. Golem mini-golem deaths also use this source.
 - **`positionClear` has two half-width modes.** Default `POS_HW` is used for spawn validation (larger). Pass `MOB_WALL_HW` explicitly for movement collision checks (tighter).
+- **Specials files are split for size.** Wagashi and Earth-216 each use 3 files because a single file would exceed reasonable sizes. All files append to the global `MOB_SPECIALS` object via `MOB_SPECIALS.xxx = function(m, ctx) { ... }` syntax.

@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Teah Online is a top-down dungeon crawler (inspired by GraalOnline Era) built with vanilla JS + HTML5 Canvas 2D. No frameworks, no build tools, no npm dependencies.
 
-- **Entry point**: `index.html` loads 55+ JS files via `<script>` tags with cache-busting (`?v=70`)
+- **Entry point**: `index.html` loads 83 JS files via `<script>` tags with cache-busting (`?v=70` to `?v=137`)
 - **Dev server**: `python -m http.server 8080` (configured in `.claude/launch.json`)
-- **Total codebase**: ~48,800 lines of JavaScript
+- **Total codebase**: ~84,400 lines of JavaScript across 83 non-backup files
 - **Comprehensive reference**: `docs/README.md` — modular docs index (one file per system)
 
 ## Architecture: Authority/Client Split
@@ -17,13 +17,14 @@ The codebase is organized for future multiplayer. All game logic runs through an
 
 ```
 js/
-├── shared/       # Pure data registries (loaded first) — no logic
-├── authority/    # Server-authoritative: combat, damage, waves, mobs, inventory
-├── client/       # Presentation only: rendering, input, UI panels
+├── shared/       # Pure data registries (loaded first) — no logic (19 files)
+├── authority/    # Server-authoritative: combat, damage, waves, mobs, inventory, party, bots, casino (36 files)
+├── client/       # Presentation only: rendering, input, UI panels (17 files)
 │   ├── rendering/  # Canvas drawing (sprites, entities, effects)
 │   ├── input/      # Mouse/keyboard → InputIntent flags
-│   └── ui/         # Panel system (inventory, gunsmith, settings)
-└── core/         # Bridge layer: save/load, scene management, weapons, interactables
+│   └── ui/         # Panel system (inventory, gunsmith, settings, casino)
+├── core/         # Bridge layer: save/load, scene management, weapons, interactables, camera (10 files)
+└── testing/      # Test harness (1 file)
 ```
 
 **Script loading order matters** — phases A (shared) → B (authority) → C (rendering) → D (UI) → E (core loop). See `index.html` for exact order.
@@ -33,16 +34,27 @@ js/
 - `ctx` — global Canvas 2D rendering context
 - `TILE` — constant tile size (48px)
 - `player`, `mobs`, `bullets`, `gold` — GameState properties aliased to `window` via defineProperty
-- `Scene` — scene state machine (lobby, dungeon, mine, skeld, hideseek, etc.)
+- `Scene` — scene state machine (lobby, dungeon, cave, mine, cooking, farm, azurine, gunsmith, test_arena, hideseek, mafia_lobby, skeld, vortalis, earth205, wagashi, earth216, casino)
 - `Events.on()/emit()` — pub/sub event bus (`js/authority/eventBus.js`)
 - `GAME_CONFIG` — physics & collision constants (`js/shared/gameConfig.js`)
+- `PartySystem` — always-on party system for player + bots (`js/authority/partySystem.js`)
+- `BotAI` — bot combat/movement AI for party members (`js/authority/botAI.js`)
+- `CasinoSystem` — casino game logic with 10 games, 5% house edge (`js/authority/casinoSystem.js`)
 
 **Registries** (data-driven, replace large if/else chains):
-- `MOB_AI` (11 patterns), `MOB_SPECIALS` (38 abilities) — `combatSystem.js`
-- `ENTITY_RENDERERS` (54 types) — `entityRenderers.js`
-- `HIT_EFFECT_RENDERERS` (38 types) — `hitEffects.js`
+- `MOB_AI` (13 patterns), `MOB_SPECIALS` (435 abilities across 9 files) — `combatSystem.js` + `vortalisSpecials.js` + `earth205Specials.js` + `wagashiSpecials1-3.js` + `earth216Specials1-3.js`
+- `ENTITY_RENDERERS` (143 types) — `entityRenderers.js`
+- `HIT_EFFECT_RENDERERS` (73 types) — `hitEffects.js`
 - `MOB_TYPES` — `mobTypes.js`, `LEVELS` — `levelData.js`
 - `PROG_ITEMS` — unified 5-tier × 25-level progression — `progressionData.js`
+
+## Party System & Bot AI
+
+`PartySystem` (`js/authority/partySystem.js`) is always-on — the player is always a member. Bots can be added as party members with independent state (gun, melee, equip, gold, potions, statusFX). `BotAI` (`js/authority/botAI.js`) handles combat targeting, movement, weapon usage, equipment buying, and auto-respawn. Design principle: bots = future multiplayer users; every system must be player-agnostic.
+
+## Casino
+
+`CasinoSystem` (`js/authority/casinoSystem.js`) provides 10 gambling games (Blackjack, Roulette, Coinflip, Cases, Mines, Dice, RPS, Baccarat, Slots, Keno) with a uniform 5% house edge. Data in `js/shared/casinoData.js`, UI in `js/client/ui/casinoUI.js`. Casino is a separate scene (`Scene.inCasino`).
 
 ## Game Loop
 
