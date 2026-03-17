@@ -10,12 +10,13 @@
 // general1v1.styleResults.{pressure,control,bait} for the style selector.
 
 const SPAR_TRAINING_TIMING = {
-  countdownFrames: 20,
-  postMatchFrames: 12,
-  joinPollMs: 50,
-  nextMatchDelayMs: 100,
-  speedMultiplier: 6,
-  maxUpdatesPerFrame: 24,
+  countdownFrames: 12,
+  postMatchFrames: 8,
+  joinPollMs: 25,
+  nextMatchDelayMs: 50,
+  speedMultiplier: 8,
+  maxUpdatesPerFrame: 32,
+  renderEveryUpdates: 6,
 };
 
 const SPAR_TRAINING_ARCHETYPES = {

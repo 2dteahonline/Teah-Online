@@ -2867,6 +2867,7 @@ function drawSparHUD() {
 const FIXED_DT = 1000 / 60;
 let lastTime = 0;
 let accumulator = 0;
+let trainingRenderDebt = 0;
 function gameLoop(timestamp) {
   if (!lastTime) lastTime = timestamp;
   let elapsed = timestamp - lastTime;
@@ -2901,7 +2902,20 @@ function gameLoop(timestamp) {
     accumulator -= FIXED_DT; updates++;
   }
   // Only draw when physics actually updated — caps everything to 60 FPS
-  if (updates > 0) draw();
+  if (updates > 0) {
+    if (trainingLoop && trainingLoop.renderEveryUpdates && trainingLoop.renderEveryUpdates > 1) {
+      trainingRenderDebt += updates;
+      if (trainingRenderDebt >= trainingLoop.renderEveryUpdates) {
+        draw();
+        trainingRenderDebt = 0;
+      }
+    } else {
+      draw();
+      trainingRenderDebt = 0;
+    }
+  } else if (!trainingLoop) {
+    trainingRenderDebt = 0;
+  }
   requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);
