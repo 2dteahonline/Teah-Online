@@ -142,12 +142,28 @@ const SparSystem = {
     const familyKeys = typeof SPAR_ANTI_BOTTOM_FAMILY_KEYS !== 'undefined'
       ? SPAR_ANTI_BOTTOM_FAMILY_KEYS
       : ['contest', 'flank', 'bait'];
+    const gunSideKeys = typeof SPAR_GUN_SIDE_POLICY_KEYS !== 'undefined'
+      ? SPAR_GUN_SIDE_POLICY_KEYS
+      : ['forcePeek', 'holdAngle', 'reAngleWide', 'yieldLane'];
+    const gunSideFamilies = typeof SPAR_GUN_SIDE_FAMILY_KEYS !== 'undefined'
+      ? SPAR_GUN_SIDE_FAMILY_KEYS
+      : ['hold', 'reposition'];
+    const escapeKeys = typeof SPAR_ESCAPE_POLICY_KEYS !== 'undefined'
+      ? SPAR_ESCAPE_POLICY_KEYS
+      : ['cornerBreak', 'highReset', 'wideDisengage', 'baitPullout'];
+    const escapeFamilies = typeof SPAR_ESCAPE_FAMILY_KEYS !== 'undefined'
+      ? SPAR_ESCAPE_FAMILY_KEYS
+      : ['break', 'reset', 'bait'];
     for (const scope of scopes) {
       if (!scope.style) scope.style = createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES || {}));
       if (!scope.opening) scope.opening = createSparRewardBuckets(routeKeys);
       if (!scope.antiBottom) scope.antiBottom = createSparRewardBuckets(antiBottomKeys);
       if (!scope.antiBottomFamily) scope.antiBottomFamily = createSparRewardBuckets(familyKeys);
       if (!scope.antiBottomTactic) scope.antiBottomTactic = createSparRewardBuckets(tacticKeys);
+      if (!scope.gunSidePolicy) scope.gunSidePolicy = createSparRewardBuckets(gunSideKeys);
+      if (!scope.gunSideFamily) scope.gunSideFamily = createSparRewardBuckets(gunSideFamilies);
+      if (!scope.escapePolicy) scope.escapePolicy = createSparRewardBuckets(escapeKeys);
+      if (!scope.escapeFamily) scope.escapeFamily = createSparRewardBuckets(escapeFamilies);
     }
     if (!sl.tactical) {
       sl.tactical = {
@@ -157,6 +173,11 @@ const SparSystem = {
         openingLostBottom: { fromLeft: 0, fromRight: 0, fromCenter: 0, totalLosses: 0 },
       };
     }
+    if (!sl.tactical.badLaneOutcomes) sl.tactical.badLaneOutcomes = { attempts: 0, resolved: 0, avgDmgTakenDuring: 0, avgDuration: 0 };
+    if (!sl.tactical.escapeOutcomes) sl.tactical.escapeOutcomes = { attempts: 0, resolved: 0, avgDmgTakenDuring: 0, avgDuration: 0 };
+    if (!sl.tactical.gunSidePunish) sl.tactical.gunSidePunish = { attempts: 0, punished: 0, avgDmgTaken: 0 };
+    if (!sl.tactical.repeekFailStreaks) sl.tactical.repeekFailStreaks = { center: 0, left: 0, right: 0, topLeft: 0, topRight: 0 };
+    if (!sl.tactical.escapeFailStreaks) sl.tactical.escapeFailStreaks = { cornerBreak: 0, highReset: 0, wideDisengage: 0, baitPullout: 0 };
     return sl.reinforcement1v1;
   },
 
@@ -192,6 +213,14 @@ const SparSystem = {
       if (roll <= 0) return key;
     }
     return Object.keys(scores)[0];
+  },
+
+  _getPhaseScopes() {
+    const isTraining = typeof _isSparTraining === 'function' && _isSparTraining();
+    const isSelfPlay = typeof _isSparSelfPlay === 'function' && _isSparSelfPlay();
+    return isTraining
+      ? (isSelfPlay ? ['general', 'selfPlay'] : ['general'])
+      : ['general', 'player'];
   },
 
   _updateRewardBucket(bucket, reward) {
@@ -242,6 +271,57 @@ const SparSystem = {
     return this._clamp01(1 - Math.abs(target.y - muzzle.y) / 55);
   },
 
+  _getLaneShape(bot, tgt, bottomGap, aimSlack) {
+    const dx = bot.x - tgt.x;
+    const above = bot.y < tgt.y - bottomGap;
+    if (Math.abs(dx) < aimSlack * 1.2) return 'center';
+    if (!above) return dx < 0 ? 'left' : 'right';
+    return dx < 0 ? 'topLeft' : 'topRight';
+  },
+
+  _pickHierarchicalPolicy(config) {
+    const {
+      keys, familyMap, pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores, familyBiases, failStreaks,
+      playerWeight = 24, generalWeight = 12, selfPlayWeight = 8,
+      playerExplore = 0.18, generalExplore = 0.1, selfPlayExplore = 0.08,
+      noise = 2.5,
+    } = config;
+    let best = keys[0];
+    let bestScore = -Infinity;
+    for (const key of keys) {
+      const family = familyMap[key];
+      let score = baseScores[key] || 0;
+      if (familyBiases && familyBiases[family]) score += familyBiases[family];
+      const pPlays = pPolicy && pPolicy[key] ? pPolicy[key].plays || 0 : 0;
+      const gPlays = gPolicy && gPolicy[key] ? gPolicy[key].plays || 0 : 0;
+      const sPlays = sPolicy && sPolicy[key] ? sPolicy[key].plays || 0 : 0;
+      const pScore = pPlays >= 3
+        ? this._scoreRewardBucket(pPolicy && pPolicy[key], totalPP, playerExplore)
+        : this._scoreRewardBucket(pFamily && pFamily[family], totalPF, playerExplore);
+      const gScore = gPlays >= 3
+        ? this._scoreRewardBucket(gPolicy && gPolicy[key], totalGP, generalExplore)
+        : this._scoreRewardBucket(gFamily && gFamily[family], totalGF, generalExplore);
+      const sScore = sPlays >= 3
+        ? this._scoreRewardBucket(sPolicy && sPolicy[key], totalSP, selfPlayExplore)
+        : this._scoreRewardBucket(sFamily && sFamily[family], totalSF, selfPlayExplore);
+      score += (pScore - 0.5) * playerWeight;
+      score += (gScore - 0.5) * generalWeight;
+      score += (sScore - 0.5) * selfPlayWeight;
+      const fs = failStreaks && failStreaks[key] ? failStreaks[key] : 0;
+      if (fs >= 5) score -= 15;
+      else if (fs >= 4) score -= 10;
+      else if (fs >= 3) score -= 5;
+      score += Math.random() * noise;
+      if (score > bestScore) {
+        bestScore = score;
+        best = key;
+      }
+    }
+    return best;
+  },
+
   _updateMatchReinforcement(won, collector, enemyBot, scopes) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
     if (!sl || !collector || !enemyBot || !enemyBot.ai) return;
@@ -271,6 +351,8 @@ const SparSystem = {
     const styleReward = baseReward;
     const routeReward = this._clamp01(baseReward * 0.7 + gotBottomAtOpening * 0.2 + underReward * 0.1);
     const antiBottomReward = this._clamp01(baseReward * 0.62 + retakeShare * 0.2 + underReward * 0.1 + gunReward * 0.08);
+    const gunSideReward = this._clamp01(baseReward * 0.55 + gunReward * 0.3 + underReward * 0.15);
+    const escapeReward = this._clamp01(baseReward * 0.6 + (1 - Math.min(1, collector.nearWall_cornerStuckFrames / Math.max(1, collector.nearWall_frames || 1))) * 0.2 + gunReward * 0.2);
     const scopeList = Array.isArray(scopes) ? scopes : [];
     for (const scopeName of scopeList) {
       const scope = rf[scopeName];
@@ -294,6 +376,22 @@ const SparSystem = {
         if (enemyBot.ai._antiBottomFamily && scope.antiBottomFamily && scope.antiBottomFamily[enemyBot.ai._antiBottomFamily]) {
           this._updateRewardBucket(scope.antiBottomFamily[enemyBot.ai._antiBottomFamily], antiBottomReward);
         }
+      }
+      const gunPolicy = enemyBot.ai._gunSidePolicy || enemyBot.ai._lastGunSidePolicy;
+      const gunFamily = enemyBot.ai._gunSideFamily || enemyBot.ai._lastGunSideFamily;
+      if (gunPolicy && scope.gunSidePolicy && scope.gunSidePolicy[gunPolicy]) {
+        this._updateRewardBucket(scope.gunSidePolicy[gunPolicy], gunSideReward);
+      }
+      if (gunFamily && scope.gunSideFamily && scope.gunSideFamily[gunFamily]) {
+        this._updateRewardBucket(scope.gunSideFamily[gunFamily], gunSideReward);
+      }
+      const escapePolicy = enemyBot.ai._escapePolicy || enemyBot.ai._lastEscapePolicy;
+      const escapeFamily = enemyBot.ai._escapeFamily || enemyBot.ai._lastEscapeFamily;
+      if (escapePolicy && scope.escapePolicy && scope.escapePolicy[escapePolicy]) {
+        this._updateRewardBucket(scope.escapePolicy[escapePolicy], escapeReward);
+      }
+      if (escapeFamily && scope.escapeFamily && scope.escapeFamily[escapeFamily]) {
+        this._updateRewardBucket(scope.escapeFamily[escapeFamily], escapeReward);
       }
     }
   },
@@ -414,6 +512,214 @@ const SparSystem = {
     return best;
   },
 
+  _pickGunSidePolicy(pm, laneInfo) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const rf = this._ensureReinforcementProfile(sl);
+    const familyMap = typeof SPAR_GUN_SIDE_FAMILY_MAP !== 'undefined'
+      ? SPAR_GUN_SIDE_FAMILY_MAP
+      : { forcePeek: 'hold', holdAngle: 'hold', reAngleWide: 'reposition', yieldLane: 'reposition' };
+    const pPolicy = rf && rf.player ? rf.player.gunSidePolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.gunSidePolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.gunSidePolicy : null;
+    const pFamily = rf && rf.player ? rf.player.gunSideFamily : null;
+    const gFamily = rf && rf.general ? rf.general.gunSideFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.gunSideFamily : null;
+    const totalPP = this._sumBucketPlays(pPolicy);
+    const totalGP = this._sumBucketPlays(gPolicy);
+    const totalSP = this._sumBucketPlays(sPolicy);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+    const laneFail = sl && sl.tactical && sl.tactical.repeekFailStreaks && laneInfo
+      ? sl.tactical.repeekFailStreaks[laneInfo.laneShape] || 0 : 0;
+    const failStreaks = {
+      forcePeek: laneFail,
+      holdAngle: Math.max(0, laneFail - 1),
+      reAngleWide: 0,
+      yieldLane: 0,
+    };
+    const baseScores = {
+      forcePeek: laneInfo && laneInfo.score > 0.56 ? 7 : 3,
+      holdAngle: 6,
+      reAngleWide: 7,
+      yieldLane: 6,
+    };
+    const familyBiases = { hold: 0, reposition: 0 };
+    if (laneInfo) {
+      if (laneInfo.badGunSide) familyBiases.reposition += 4;
+      if (laneInfo.repeekedBadLane) familyBiases.reposition += 5;
+      if (laneInfo.score < 0.38) familyBiases.reposition += 4;
+    }
+    if (pm) {
+      if (pm.playerHitRate > 0.55) familyBiases.reposition += 2;
+      if (pm.peekEffective === false) familyBiases.reposition += 3;
+      if (pm.bestEvasion === 'retreat') baseScores.yieldLane += 2;
+      if (pm.playerChases > 0.45) baseScores.yieldLane += 2;
+    }
+    return this._pickHierarchicalPolicy({
+      keys: typeof SPAR_GUN_SIDE_POLICY_KEYS !== 'undefined'
+        ? SPAR_GUN_SIDE_POLICY_KEYS : ['forcePeek', 'holdAngle', 'reAngleWide', 'yieldLane'],
+      familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores, familyBiases, failStreaks,
+      playerWeight: 26, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.18, generalExplore: 0.1, selfPlayExplore: 0.08,
+      noise: 2.2,
+    });
+  },
+
+  _pickEscapePolicy(pm, laneInfo) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const rf = this._ensureReinforcementProfile(sl);
+    const familyMap = typeof SPAR_ESCAPE_FAMILY_MAP !== 'undefined'
+      ? SPAR_ESCAPE_FAMILY_MAP
+      : { cornerBreak: 'break', highReset: 'reset', wideDisengage: 'break', baitPullout: 'bait' };
+    const pPolicy = rf && rf.player ? rf.player.escapePolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.escapePolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.escapePolicy : null;
+    const pFamily = rf && rf.player ? rf.player.escapeFamily : null;
+    const gFamily = rf && rf.general ? rf.general.escapeFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.escapeFamily : null;
+    const totalPP = this._sumBucketPlays(pPolicy);
+    const totalGP = this._sumBucketPlays(gPolicy);
+    const totalSP = this._sumBucketPlays(sPolicy);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+    const failStreaks = sl && sl.tactical ? sl.tactical.escapeFailStreaks : null;
+    const baseScores = {
+      cornerBreak: laneInfo && laneInfo.topCornerTrapped ? 10 : 6,
+      highReset: 6,
+      wideDisengage: 8,
+      baitPullout: 5,
+    };
+    const familyBiases = { break: 0, reset: 0, bait: 0 };
+    if (laneInfo) {
+      if (laneInfo.topCornerTrapped) familyBiases.break += 5;
+      if (laneInfo.noAdvantageState) familyBiases.break += 3;
+      if (laneInfo.lostBottomAndNoLane) familyBiases.reset += 2;
+    }
+    if (pm) {
+      if (pm.playerChases > 0.5) baseScores.baitPullout += 5;
+      if (pm.playerWallsFromBottom > 0.55) baseScores.wideDisengage += 3;
+      if (pm.playerHitRate > 0.55) familyBiases.break += 2;
+    }
+    return this._pickHierarchicalPolicy({
+      keys: typeof SPAR_ESCAPE_POLICY_KEYS !== 'undefined'
+        ? SPAR_ESCAPE_POLICY_KEYS : ['cornerBreak', 'highReset', 'wideDisengage', 'baitPullout'],
+      familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores, familyBiases, failStreaks,
+      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.16, generalExplore: 0.08, selfPlayExplore: 0.06,
+      noise: 2.0,
+    });
+  },
+
+  _finalizeGunSideEngagement(ai, resolved) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const policy = ai._gunSidePolicy;
+    const family = ai._gunSideFamily;
+    const frames = ai._gunSideFrames || 0;
+    if (!policy || frames <= 0) return;
+    const dmgTaken = (ai._matchDmgTaken || 0) - (ai._gunSideStartDmg || 0);
+    const startQuality = typeof ai._gunSideStartQuality === 'number' ? ai._gunSideStartQuality : 0.35;
+    const endQuality = typeof ai._gunSideBestQuality === 'number' ? ai._gunSideBestQuality : startQuality;
+    const qualityGain = this._clamp01(0.5 + (endQuality - startQuality));
+    const dmgR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.35));
+    const phaseReward = this._clamp01((resolved ? 1 : 0) * 0.45 + dmgR * 0.3 + qualityGain * 0.25);
+    if (sl) {
+      const rf = this._ensureReinforcementProfile(sl);
+      if (rf) {
+        for (const scopeName of this._getPhaseScopes()) {
+          const scope = rf[scopeName];
+          if (!scope) continue;
+          if (scope.gunSidePolicy && scope.gunSidePolicy[policy]) this._updateRewardBucket(scope.gunSidePolicy[policy], phaseReward);
+          if (scope.gunSideFamily && scope.gunSideFamily[family]) this._updateRewardBucket(scope.gunSideFamily[family], phaseReward);
+        }
+      }
+      if (sl.tactical) {
+        const bo = sl.tactical.badLaneOutcomes;
+        if (bo) {
+          bo.attempts++;
+          if (resolved) bo.resolved++;
+          bo.avgDmgTakenDuring = bo.attempts > 1 ? bo.avgDmgTakenDuring * 0.8 + dmgTaken * 0.2 : dmgTaken;
+          bo.avgDuration = bo.attempts > 1 ? bo.avgDuration * 0.8 + frames * 0.2 : frames;
+        }
+        const gp = sl.tactical.gunSidePunish;
+        if (gp) {
+          gp.attempts++;
+          if (!resolved && dmgTaken > 0) gp.punished++;
+          gp.avgDmgTaken = gp.attempts > 1 ? gp.avgDmgTaken * 0.8 + dmgTaken * 0.2 : dmgTaken;
+        }
+        const laneShape = ai._gunSideLaneShape || 'center';
+        if (sl.tactical.repeekFailStreaks && laneShape in sl.tactical.repeekFailStreaks) {
+          if (!resolved) sl.tactical.repeekFailStreaks[laneShape] = (sl.tactical.repeekFailStreaks[laneShape] || 0) + 1;
+          else sl.tactical.repeekFailStreaks[laneShape] = 0;
+        }
+      }
+    }
+    ai._lastGunSidePolicy = policy;
+    ai._lastGunSideFamily = family;
+    ai._gunSidePolicy = null;
+    ai._gunSideFamily = null;
+    ai._gunSideFrames = 0;
+    ai._gunSideLaneShape = null;
+    ai._gunSideStartDmg = 0;
+    ai._gunSideStartQuality = 0;
+    ai._gunSideBestQuality = 0;
+  },
+
+  _finalizeEscapeEngagement(ai, resolved) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const policy = ai._escapePolicy;
+    const family = ai._escapeFamily;
+    const frames = ai._escapeFrames || 0;
+    if (!policy || frames <= 0) return;
+    const dmgTaken = (ai._matchDmgTaken || 0) - (ai._escapeStartDmg || 0);
+    const startQuality = typeof ai._escapeStartQuality === 'number' ? ai._escapeStartQuality : 0.25;
+    const endQuality = typeof ai._escapeBestQuality === 'number' ? ai._escapeBestQuality : startQuality;
+    const qualityGain = this._clamp01(0.5 + (endQuality - startQuality));
+    const dmgR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.4));
+    const speedR = this._clamp01(1 - frames / 220);
+    const phaseReward = this._clamp01((resolved ? 1 : 0) * 0.45 + dmgR * 0.3 + speedR * 0.15 + qualityGain * 0.1);
+    if (sl) {
+      const rf = this._ensureReinforcementProfile(sl);
+      if (rf) {
+        for (const scopeName of this._getPhaseScopes()) {
+          const scope = rf[scopeName];
+          if (!scope) continue;
+          if (scope.escapePolicy && scope.escapePolicy[policy]) this._updateRewardBucket(scope.escapePolicy[policy], phaseReward);
+          if (scope.escapeFamily && scope.escapeFamily[family]) this._updateRewardBucket(scope.escapeFamily[family], phaseReward);
+        }
+      }
+      if (sl.tactical) {
+        const eo = sl.tactical.escapeOutcomes;
+        if (eo) {
+          eo.attempts++;
+          if (resolved) eo.resolved++;
+          eo.avgDmgTakenDuring = eo.attempts > 1 ? eo.avgDmgTakenDuring * 0.8 + dmgTaken * 0.2 : dmgTaken;
+          eo.avgDuration = eo.attempts > 1 ? eo.avgDuration * 0.8 + frames * 0.2 : frames;
+        }
+        if (sl.tactical.escapeFailStreaks && policy in sl.tactical.escapeFailStreaks) {
+          if (!resolved) sl.tactical.escapeFailStreaks[policy] = (sl.tactical.escapeFailStreaks[policy] || 0) + 1;
+          else sl.tactical.escapeFailStreaks[policy] = 0;
+        }
+      }
+    }
+    ai._lastEscapePolicy = policy;
+    ai._lastEscapeFamily = family;
+    ai._escapePolicy = null;
+    ai._escapeFamily = null;
+    ai._escapeFrames = 0;
+    ai._escapeLaneShape = null;
+    ai._escapeStartDmg = 0;
+    ai._escapeStartQuality = 0;
+    ai._escapeBestQuality = 0;
+  },
+
   // Phase reward: fires when an anti-bottom engagement ends
   _finalizeAntiBottomEngagement(ai, regainedBottom, collector) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
@@ -439,13 +745,7 @@ const SparSystem = {
     // Update reinforcement buckets — respect training/self-play data separation
     if (sl) {
       const rf = this._ensureReinforcementProfile(sl);
-      const isTraining = typeof _isSparTraining === 'function' && _isSparTraining();
-      const isSelfPlay = typeof _isSparSelfPlay === 'function' && _isSparSelfPlay();
-      // Same scope rules as match-end reinforcement: training→general only,
-      // self-play→general+selfPlay, real matches→general+player
-      const phaseScopes = isTraining
-        ? (isSelfPlay ? ['general', 'selfPlay'] : ['general'])
-        : ['general', 'player'];
+      const phaseScopes = this._getPhaseScopes();
       if (rf) {
         for (const scopeName of phaseScopes) {
           const scope = rf[scopeName];
@@ -490,6 +790,8 @@ const SparSystem = {
     ai._antiBottomPhaseFrames = 0;
     ai._antiBottomHysteresisFrames = 0;
     ai._antiBottomResponse = null;
+    ai._lastAntiBottomTactic = tactic;
+    ai._lastAntiBottomFamily = family;
   },
 
   joinRoom(roomId) {
@@ -739,6 +1041,26 @@ const SparSystem = {
         _antiBottomStartFrame: 0,
         _antiBottomHysteresisFrames: 0, // hysteresis counter for engagement start/end
         _openingLostBottomDir: null,  // direction player came from when taking bottom
+        _lastAntiBottomTactic: null,
+        _lastAntiBottomFamily: null,
+        _gunSidePolicy: null,
+        _gunSideFamily: null,
+        _gunSideFrames: 0,
+        _gunSideStartDmg: 0,
+        _gunSideStartQuality: 0,
+        _gunSideBestQuality: 0,
+        _gunSideLaneShape: null,
+        _lastGunSidePolicy: null,
+        _lastGunSideFamily: null,
+        _escapePolicy: null,
+        _escapeFamily: null,
+        _escapeFrames: 0,
+        _escapeStartDmg: 0,
+        _escapeStartQuality: 0,
+        _escapeBestQuality: 0,
+        _escapeLaneShape: null,
+        _lastEscapePolicy: null,
+        _lastEscapeFamily: null,
         _cornerFrames: 0,         // consecutive frames stuck in a corner
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
       },
@@ -2182,6 +2504,16 @@ const SparSystem = {
         }
       }
     }
+    if (sl.tactical && sl.tactical.repeekFailStreaks) {
+      for (const key of Object.keys(sl.tactical.repeekFailStreaks)) {
+        if (sl.tactical.repeekFailStreaks[key] > 0) sl.tactical.repeekFailStreaks[key]--;
+      }
+    }
+    if (sl.tactical && sl.tactical.escapeFailStreaks) {
+      for (const key of Object.keys(sl.tactical.escapeFailStreaks)) {
+        if (sl.tactical.escapeFailStreaks[key] > 0) sl.tactical.escapeFailStreaks[key]--;
+      }
+    }
 
     SparState._matchCollector = null;
   },
@@ -2347,6 +2679,12 @@ const SparSystem = {
         }
         return danger;
       })() : { center: 0, near: 0, wide: 0 },
+      badLanePunishRate: sl.tactical && sl.tactical.gunSidePunish && sl.tactical.gunSidePunish.attempts > 0
+        ? sl.tactical.gunSidePunish.punished / sl.tactical.gunSidePunish.attempts : 0,
+      escapeSuccessRate: sl.tactical && sl.tactical.escapeOutcomes && sl.tactical.escapeOutcomes.attempts > 0
+        ? sl.tactical.escapeOutcomes.resolved / sl.tactical.escapeOutcomes.attempts : 0,
+      laneFailStreaks: sl.tactical && sl.tactical.repeekFailStreaks ? sl.tactical.repeekFailStreaks
+        : { center: 0, left: 0, right: 0, topLeft: 0, topRight: 0 },
     };
   },
 
@@ -2677,6 +3015,47 @@ const SparSystem = {
     const enemyMovingLeft = tgt.vx < -1;
     const enemyMovingRight = tgt.vx > 1;
     const isOpening = SparState.matchTimer < 180;  // first 3 seconds
+    const aimSlack = this._getSparAimSlack();
+    const sideOffsetNear = this._getSparSideOffsetNear();
+    const alignX = Math.abs(tgt.x - bot.x);
+    const nearLeftWallBase = bot.x < TILE * 3;
+    const nearRightWallBase = bot.x > arenaW - TILE * 3;
+    const nearTopWallBase = bot.y < TILE * 3;
+    const nearBottomWallBase = bot.y > arenaH - TILE * 3;
+    const nearAnyWallBase = nearLeftWallBase || nearRightWallBase || nearTopWallBase || nearBottomWallBase;
+    const inCornerBase = (nearLeftWallBase || nearRightWallBase) && (nearTopWallBase || nearBottomWallBase);
+    const botLaneScore = this._getGunSideLaneScore(bot, tgt);
+    const enemyLaneScore = this._getGunSideLaneScore(tgt, bot);
+    const laneShape = this._getLaneShape(bot, tgt, bottomGap, aimSlack);
+    const trapZone = alignX < aimSlack ? 'center' : (alignX < sideOffsetNear ? 'near' : 'wide');
+    const trapDanger = pm && pm.trapZoneDanger ? (pm.trapZoneDanger[trapZone] || 0) : 0;
+    const laneRepeatStreak = pm && pm.laneFailStreaks ? (pm.laneFailStreaks[laneShape] || 0) : 0;
+    const verticalLane = hasBottom ? 1 : (enemyHasBottom ? 0 : (bot.y >= tgt.y ? 0.62 : 0.38));
+    const wallRisk = Math.min(1, (nearTopWallBase ? 0.35 : 0) + (inCornerBase ? 0.45 : 0) + (nearAnyWallBase && enemyHasBottom ? 0.15 : 0));
+    const laneQuality = this._clamp01(
+      verticalLane * 0.34 +
+      botLaneScore * 0.36 +
+      (1 - wallRisk) * 0.18 +
+      (1 - Math.min(1, trapDanger + laneRepeatStreak * 0.08)) * 0.12
+    );
+    const badGunSide = enemyLaneScore > botLaneScore + 0.1 || (botLaneScore < 0.46 && enemyLaneScore > 0.55);
+    const repeekedBadLane = laneRepeatStreak >= 2 || (!!ai._gunSideLaneShape && ai._gunSideLaneShape === laneShape && badGunSide && ai._gunSideFrames > 24);
+    const topCornerTrapped = !hasBottom && enemyHasBottom && (inCornerBase || (nearTopWallBase && (nearLeftWallBase || nearRightWallBase)));
+    const lostBottomAndNoLane = !hasBottom && enemyHasBottom && laneQuality < 0.42;
+    const noAdvantageState = !hasBottom && badGunSide && (nearTopWallBase || inCornerBase);
+    const laneInfo = {
+      score: laneQuality,
+      laneShape,
+      trapZone,
+      trapDanger,
+      botLaneScore,
+      enemyLaneScore,
+      badGunSide,
+      repeekedBadLane,
+      topCornerTrapped,
+      lostBottomAndNoLane,
+      noAdvantageState,
+    };
     // --- v8 anti-bottom engagement lifecycle (hysteresis) ---
     const c = SparState._matchCollector;
     if (enemyHasBottom) {
@@ -2691,6 +3070,51 @@ const SparSystem = {
         }
       } else {
         ai._antiBottomHysteresisFrames = 0;
+      }
+    }
+
+    if (ai._gunSidePolicy) {
+      ai._gunSideFrames++;
+      ai._gunSideBestQuality = Math.max(ai._gunSideBestQuality || laneQuality, laneQuality);
+      if ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom)) {
+        this._finalizeGunSideEngagement(ai, true);
+      } else if (ai._gunSideFrames > 150 || noAdvantageState) {
+        this._finalizeGunSideEngagement(ai, false);
+      }
+    }
+    if (ai._escapePolicy) {
+      ai._escapeFrames++;
+      ai._escapeBestQuality = Math.max(ai._escapeBestQuality || laneQuality, laneQuality);
+      if (!topCornerTrapped && laneQuality > 0.56 && (!enemyHasBottom || !badGunSide)) {
+        this._finalizeEscapeEngagement(ai, true);
+      } else if (ai._escapeFrames > 210) {
+        this._finalizeEscapeEngagement(ai, false);
+      }
+    }
+
+    if (!isOpening && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
+      if (ai._antiBottomTactic) this._finalizeAntiBottomEngagement(ai, false, c);
+      if (ai._gunSidePolicy) this._finalizeGunSideEngagement(ai, false);
+      if (!ai._escapePolicy) {
+        const chosenEscape = this._pickEscapePolicy(pm, laneInfo);
+        ai._escapePolicy = chosenEscape;
+        ai._escapeFamily = (typeof SPAR_ESCAPE_FAMILY_MAP !== 'undefined') ? SPAR_ESCAPE_FAMILY_MAP[chosenEscape] : 'break';
+        ai._escapeFrames = 0;
+        ai._escapeStartDmg = ai._matchDmgTaken || 0;
+        ai._escapeStartQuality = laneQuality;
+        ai._escapeBestQuality = laneQuality;
+        ai._escapeLaneShape = laneShape;
+      }
+    } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic && (badGunSide || repeekedBadLane) && laneQuality < 0.58) {
+      if (!ai._gunSidePolicy) {
+        const chosenGunSide = this._pickGunSidePolicy(pm, laneInfo);
+        ai._gunSidePolicy = chosenGunSide;
+        ai._gunSideFamily = (typeof SPAR_GUN_SIDE_FAMILY_MAP !== 'undefined') ? SPAR_GUN_SIDE_FAMILY_MAP[chosenGunSide] : 'reposition';
+        ai._gunSideFrames = 0;
+        ai._gunSideStartDmg = ai._matchDmgTaken || 0;
+        ai._gunSideStartQuality = laneQuality;
+        ai._gunSideBestQuality = laneQuality;
+        ai._gunSideLaneShape = laneShape;
       }
     }
 
@@ -3087,6 +3511,47 @@ const SparSystem = {
           if (ai.baitCooldown > 25) ai.baitCooldown = 25;
         }
       }
+    }
+
+    let suppressPeekShots = false;
+    if (!isOpening && ai._escapePolicy) {
+      suppressPeekShots = true;
+      const centerDir = Math.sign(midX - bot.x) || ai.strafeDir;
+      const awayDir = -Math.sign(dx || ai.strafeDir);
+      const descendDir = bot.y < arenaH * 0.6 ? 1 : -0.2;
+      if (ai._escapePolicy === 'cornerBreak') {
+        moveX = centerDir * speed * 0.95;
+        moveY = Math.sign(midY - bot.y) * speed * 0.75;
+      } else if (ai._escapePolicy === 'highReset') {
+        moveX = centerDir * speed * 0.7;
+        moveY = (nearTopWallBase ? 0.35 : -0.25) * speed;
+      } else if (ai._escapePolicy === 'wideDisengage') {
+        moveX = awayDir * speed * 0.95;
+        moveY = descendDir * speed * 0.55;
+      } else if (ai._escapePolicy === 'baitPullout') {
+        moveX = awayDir * speed * 0.65 + ai.strafeDir * speed * 0.25;
+        moveY = (pm && pm.playerChases > 0.45 ? 0.45 : 0.2) * speed;
+      }
+      if (!topCornerTrapped && laneQuality > 0.62 && !badGunSide && dist < 165) suppressPeekShots = false;
+    } else if (!isOpening && ai._gunSidePolicy) {
+      const awayDir = -Math.sign(dx || ai.strafeDir);
+      const reAngleDir = Math.sign(bot.x - tgt.x || ai.strafeDir);
+      if (ai._gunSidePolicy === 'forcePeek') {
+        moveX += ai.strafeDir * speed * 0.15;
+      } else if (ai._gunSidePolicy === 'holdAngle') {
+        suppressPeekShots = laneQuality < 0.5;
+        moveX += ai.strafeDir * speed * 0.18;
+        moveY += (badGunSide ? 0.08 : 0) * speed;
+      } else if (ai._gunSidePolicy === 'reAngleWide') {
+        suppressPeekShots = true;
+        moveX = reAngleDir * speed * 0.9;
+        moveY += (!hasBottom ? 0.18 : 0.05) * speed;
+      } else if (ai._gunSidePolicy === 'yieldLane') {
+        suppressPeekShots = true;
+        moveX = awayDir * speed * 0.7 + Math.sign(midX - bot.x) * speed * 0.25;
+        moveY += (enemyHasBottom ? 0.25 : -0.05) * speed;
+      }
+      if (laneQuality > 0.62 && !badGunSide && !repeekedBadLane) suppressPeekShots = false;
     }
 
     // === DUEL STYLE WEIGHT APPLICATION ===
@@ -3507,7 +3972,9 @@ const SparSystem = {
     // Re-evaluate shot mode every 90 frames or on context change
     if (SparState.matchTimer % 90 === 0 || (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 2)) {
       // Pick mode based on context
-      if (nearAnyWall && !this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
+      if (ai._escapePolicy || suppressPeekShots) {
+        ai._shotMode = 'held';
+      } else if (nearAnyWall && !this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
         ai._shotMode = 'prefire';
       } else if (dist < 150) {
         ai._shotMode = 'immediate';
@@ -3522,8 +3989,13 @@ const SparSystem = {
 
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
       const hasLOS = this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20);
+      const policyShotAllowed = (!ai._escapePolicy && !suppressPeekShots)
+        || (laneQuality > 0.62 && !badGunSide)
+        || (dist < 130 && botLaneScore >= enemyLaneScore);
 
-      if (ai._shotMode === 'immediate' && hasLOS) {
+      if (!policyShotAllowed) {
+        // Hold fire while escaping or re-angling out of a bad lane.
+      } else if (ai._shotMode === 'immediate' && hasLOS) {
         this._sparBotShoot(member, tgt);
       } else if (ai._shotMode === 'held' && hasLOS) {
         // Wait for better alignment: target about to cross our shot axis

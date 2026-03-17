@@ -92,6 +92,23 @@ const SPAR_ANTI_BOTTOM_FAMILY_MAP = {
   flankWide: 'flank', flankTight: 'flank',
   baitRetreat: 'bait', baitFake: 'bait',
 };
+const SPAR_GUN_SIDE_POLICY_KEYS = ['forcePeek', 'holdAngle', 'reAngleWide', 'yieldLane'];
+const SPAR_GUN_SIDE_FAMILY_KEYS = ['hold', 'reposition'];
+const SPAR_GUN_SIDE_FAMILY_MAP = {
+  forcePeek: 'hold',
+  holdAngle: 'hold',
+  reAngleWide: 'reposition',
+  yieldLane: 'reposition',
+};
+const SPAR_ESCAPE_POLICY_KEYS = ['cornerBreak', 'highReset', 'wideDisengage', 'baitPullout'];
+const SPAR_ESCAPE_FAMILY_KEYS = ['break', 'reset', 'bait'];
+const SPAR_ESCAPE_FAMILY_MAP = {
+  cornerBreak: 'break',
+  wideDisengage: 'break',
+  highReset: 'reset',
+  baitPullout: 'bait',
+};
+const SPAR_LANE_SHAPE_KEYS = ['center', 'left', 'right', 'topLeft', 'topRight'];
 
 function createSparRewardBuckets(keys) {
   const buckets = {};
@@ -259,6 +276,10 @@ function createDefaultSparLearning() {
         antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
         antiBottomFamily: createSparRewardBuckets(SPAR_ANTI_BOTTOM_FAMILY_KEYS),
         antiBottomTactic: createSparRewardBuckets(SPAR_ANTI_BOTTOM_TACTIC_KEYS),
+        gunSidePolicy: createSparRewardBuckets(SPAR_GUN_SIDE_POLICY_KEYS),
+        gunSideFamily: createSparRewardBuckets(SPAR_GUN_SIDE_FAMILY_KEYS),
+        escapePolicy: createSparRewardBuckets(SPAR_ESCAPE_POLICY_KEYS),
+        escapeFamily: createSparRewardBuckets(SPAR_ESCAPE_FAMILY_KEYS),
       },
       player: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -266,6 +287,10 @@ function createDefaultSparLearning() {
         antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
         antiBottomFamily: createSparRewardBuckets(SPAR_ANTI_BOTTOM_FAMILY_KEYS),
         antiBottomTactic: createSparRewardBuckets(SPAR_ANTI_BOTTOM_TACTIC_KEYS),
+        gunSidePolicy: createSparRewardBuckets(SPAR_GUN_SIDE_POLICY_KEYS),
+        gunSideFamily: createSparRewardBuckets(SPAR_GUN_SIDE_FAMILY_KEYS),
+        escapePolicy: createSparRewardBuckets(SPAR_ESCAPE_POLICY_KEYS),
+        escapeFamily: createSparRewardBuckets(SPAR_ESCAPE_FAMILY_KEYS),
       },
       selfPlay: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -273,6 +298,10 @@ function createDefaultSparLearning() {
         antiBottom: createSparRewardBuckets(SPAR_ANTI_BOTTOM_RESPONSE_KEYS),
         antiBottomFamily: createSparRewardBuckets(SPAR_ANTI_BOTTOM_FAMILY_KEYS),
         antiBottomTactic: createSparRewardBuckets(SPAR_ANTI_BOTTOM_TACTIC_KEYS),
+        gunSidePolicy: createSparRewardBuckets(SPAR_GUN_SIDE_POLICY_KEYS),
+        gunSideFamily: createSparRewardBuckets(SPAR_GUN_SIDE_FAMILY_KEYS),
+        escapePolicy: createSparRewardBuckets(SPAR_ESCAPE_POLICY_KEYS),
+        escapeFamily: createSparRewardBuckets(SPAR_ESCAPE_FAMILY_KEYS),
       },
     },
     tactical: {
@@ -292,6 +321,23 @@ function createDefaultSparLearning() {
       },
       openingLostBottom: {
         fromLeft: 0, fromRight: 0, fromCenter: 0, totalLosses: 0,
+      },
+      badLaneOutcomes: {
+        attempts: 0, resolved: 0,
+        avgDmgTakenDuring: 0, avgDuration: 0,
+      },
+      escapeOutcomes: {
+        attempts: 0, resolved: 0,
+        avgDmgTakenDuring: 0, avgDuration: 0,
+      },
+      gunSidePunish: {
+        attempts: 0, punished: 0, avgDmgTaken: 0,
+      },
+      repeekFailStreaks: {
+        center: 0, left: 0, right: 0, topLeft: 0, topRight: 0,
+      },
+      escapeFailStreaks: {
+        cornerBreak: 0, highReset: 0, wideDisengage: 0, baitPullout: 0,
       },
     },
     gunSide: {
@@ -335,7 +381,7 @@ function resetSparLearning() {
   Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
   Object.assign(sparLearning, fresh);
   if (typeof SaveLoad !== 'undefined') SaveLoad.save();
-  console.log('[Spar] Learning profile wiped to neutral v8 defaults');
+  console.log('[Spar] Learning profile wiped to neutral v8-compatible defaults');
   return sparLearning;
 }
 
@@ -346,8 +392,10 @@ function sparSummary() {
   const rf = sl.reinforcement1v1 || {};
   const pTactic = rf.player && rf.player.antiBottomTactic || {};
   const pFamily = rf.player && rf.player.antiBottomFamily || {};
+  const pGunSide = rf.player && rf.player.gunSidePolicy || {};
+  const pEscape = rf.player && rf.player.escapePolicy || {};
 
-  console.log('=== Spar Bot v8 Summary ===');
+  console.log('=== Spar Bot v9 Summary ===');
   console.log(`Matches: ${sl.matchCount}, Win Rate: ${(sl.winRate * 100).toFixed(1)}%`);
 
   // Fail streaks
@@ -383,6 +431,32 @@ function sparSummary() {
   console.log(`\n--- Anti-Bottom Outcomes ---`);
   console.log(`  Attempts: ${ao.attempts}, Regain Rate: ${regainPct}`);
   console.log(`  Avg Dmg Taken: ${(ao.avgDmgTakenDuring || 0).toFixed(1)}, Avg Duration: ${Math.round(ao.avgDuration || 0)} frames`);
+
+  // Gun-side policy rewards
+  console.log('\n--- Player Gun-Side Policy Rewards ---');
+  for (const [k, v] of Object.entries(pGunSide)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+
+  // Escape policy rewards
+  console.log('\n--- Player Escape Policy Rewards ---');
+  for (const [k, v] of Object.entries(pEscape)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+
+  const bo = t.badLaneOutcomes || {};
+  const eo = t.escapeOutcomes || {};
+  const gp = t.gunSidePunish || {};
+  const repeek = t.repeekFailStreaks || {};
+  const worstLane = Object.entries(repeek).sort((a, b) => b[1] - a[1])[0] || ['none', 0];
+  const badLaneResolve = bo.attempts > 0 ? (bo.resolved / bo.attempts * 100).toFixed(1) + '%' : 'n/a';
+  const escapeResolve = eo.attempts > 0 ? (eo.resolved / eo.attempts * 100).toFixed(1) + '%' : 'n/a';
+  const punishRate = gp.attempts > 0 ? (gp.punished / gp.attempts * 100).toFixed(1) + '%' : 'n/a';
+  console.log('\n--- Lane / Escape Outcomes ---');
+  console.log(`  Bad lane resolve: ${badLaneResolve}, avg dmg=${(bo.avgDmgTakenDuring || 0).toFixed(1)}, avg duration=${Math.round(bo.avgDuration || 0)}f`);
+  console.log(`  Escape success: ${escapeResolve}, avg dmg=${(eo.avgDmgTakenDuring || 0).toFixed(1)}, avg duration=${Math.round(eo.avgDuration || 0)}f`);
+  console.log(`  Gun-side punish rate: ${punishRate}, avg dmg taken=${(gp.avgDmgTaken || 0).toFixed(1)}`);
+  console.log(`  Worst repeated lane shape: ${worstLane[0]} (${worstLane[1]})`);
 
   return 'Done';
 }
