@@ -4307,9 +4307,10 @@ const SparSystem = {
       // --- CR END-REASON TRACKING ---
       // Track WHY each CR ended for telemetry (success/escalation/wall/abort/timeout)
       const crEndReason = (reason) => {
-        if (sl && sl.tactical) {
-          if (!sl.tactical.crEndReasons) sl.tactical.crEndReasons = {};
-          sl.tactical.crEndReasons[reason] = (sl.tactical.crEndReasons[reason] || 0) + 1;
+        const _sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+        if (_sl && _sl.tactical) {
+          if (!_sl.tactical.crEndReasons) _sl.tactical.crEndReasons = {};
+          _sl.tactical.crEndReasons[reason] = (_sl.tactical.crEndReasons[reason] || 0) + 1;
         }
       };
 
@@ -6159,9 +6160,10 @@ const SparSystem = {
           ai._momentumBreakFrames = 15 + Math.floor(Math.random() * 10);
           ai._momentumBreakDirX = breakDir * 0.8;
           ai._momentumBreakDirY = breakDirY;
-          if (sl && sl.tactical) {
-            if (typeof sl.tactical.ownerStallBreaks !== 'number') sl.tactical.ownerStallBreaks = 0;
-            sl.tactical.ownerStallBreaks++;
+          const _sl2 = typeof sparLearning !== 'undefined' ? sparLearning : null;
+          if (_sl2 && _sl2.tactical) {
+            if (typeof _sl2.tactical.ownerStallBreaks !== 'number') _sl2.tactical.ownerStallBreaks = 0;
+            _sl2.tactical.ownerStallBreaks++;
           }
         }
       } else {
