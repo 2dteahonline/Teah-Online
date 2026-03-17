@@ -478,7 +478,7 @@ function sparSummary() {
   const pGunSide = rf.player && rf.player.gunSidePolicy || {};
   const pEscape = rf.player && rf.player.escapePolicy || {};
 
-  console.log('=== Spar Bot v9 Summary ===');
+  console.log('=== Spar Bot v11 Summary ===');
   console.log(`Matches: ${sl.matchCount}, Win Rate: ${(sl.winRate * 100).toFixed(1)}%`);
 
   // Fail streaks
@@ -540,6 +540,50 @@ function sparSummary() {
   console.log(`  Escape success: ${escapeResolve}, avg dmg=${(eo.avgDmgTakenDuring || 0).toFixed(1)}, avg duration=${Math.round(eo.avgDuration || 0)}f`);
   console.log(`  Gun-side punish rate: ${punishRate}, avg dmg taken=${(gp.avgDmgTaken || 0).toFixed(1)}`);
   console.log(`  Worst repeated lane shape: ${worstLane[0]} (${worstLane[1]})`);
+
+  // Shot timing rewards
+  const pShotTiming = rf.player && rf.player.shotTimingPolicy || {};
+  console.log('\n--- Player Shot Timing Rewards ---');
+  for (const [k, v] of Object.entries(pShotTiming)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+  const sto = t.shotTimingOutcomes || {};
+  if (sto.attempts > 0) {
+    console.log(`  Outcomes: ${sto.attempts} attempts, hits=${sto.hitsDuring || 0}, avgDmg=${(sto.avgDmgDealt || 0).toFixed(1)}, avgDuration=${Math.round(sto.avgDuration || 0)}f`);
+  }
+
+  // Reload behavior rewards
+  const pReload = rf.player && rf.player.reloadPolicy || {};
+  console.log('\n--- Player Reload Behavior Rewards ---');
+  for (const [k, v] of Object.entries(pReload)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+  const rpo = t.reloadPunishOutcomes || {};
+  if (rpo.attempts > 0) {
+    console.log(`  Outcomes: ${rpo.attempts} attempts, punished=${rpo.punished || 0}, avgDmg=${(rpo.avgDmgDealt || 0).toFixed(1)}, avgDuration=${Math.round(rpo.avgDuration || 0)}f`);
+  }
+
+  // Mid-fight pressure rewards
+  const pMidPress = rf.player && rf.player.midPressurePolicy || {};
+  console.log('\n--- Player Mid-Pressure Rewards ---');
+  for (const [k, v] of Object.entries(pMidPress)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+  const mpo = t.midPressureOutcomes || {};
+  if (mpo.attempts > 0) {
+    console.log(`  Outcomes: ${mpo.attempts} attempts, avgDmg=${(mpo.avgDmgDealt || 0).toFixed(1)}, avgDuration=${Math.round(mpo.avgDuration || 0)}f`);
+  }
+
+  // Wall pressure rewards
+  const pWallPress = rf.player && rf.player.wallPressurePolicy || {};
+  console.log('\n--- Player Wall Pressure Rewards ---');
+  for (const [k, v] of Object.entries(pWallPress)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+  const wpo = t.wallPressureOutcomes || {};
+  if (wpo.attempts > 0) {
+    console.log(`  Outcomes: ${wpo.attempts} attempts, pinned=${wpo.pinned || 0}, avgDmg=${(wpo.avgDmgDealt || 0).toFixed(1)}, avgDuration=${Math.round(wpo.avgDuration || 0)}f`);
+  }
 
   return 'Done';
 }

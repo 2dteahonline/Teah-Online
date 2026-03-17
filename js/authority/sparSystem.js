@@ -444,13 +444,15 @@ const SparSystem = {
           scope.antiBottom && scope.antiBottom[enemyBot.ai._antiBottomResponse]) {
         this._updateRewardBucket(scope.antiBottom[enemyBot.ai._antiBottomResponse], antiBottomReward);
       }
-      // v8 tactic/family buckets — updated from match-end signal
-      if (enemyBot.ai._antiBottomTactic && enemyBot.ai._antiBottomFrames > 20) {
-        if (scope.antiBottomTactic && scope.antiBottomTactic[enemyBot.ai._antiBottomTactic]) {
-          this._updateRewardBucket(scope.antiBottomTactic[enemyBot.ai._antiBottomTactic], antiBottomReward);
+      // v8 tactic/family buckets — fall back to _last fields if engagement already finalized
+      const abTactic = enemyBot.ai._antiBottomTactic || enemyBot.ai._lastAntiBottomTactic || null;
+      const abFamily = enemyBot.ai._antiBottomFamily || enemyBot.ai._lastAntiBottomFamily || null;
+      if (abTactic) {
+        if (scope.antiBottomTactic && scope.antiBottomTactic[abTactic]) {
+          this._updateRewardBucket(scope.antiBottomTactic[abTactic], antiBottomReward);
         }
-        if (enemyBot.ai._antiBottomFamily && scope.antiBottomFamily && scope.antiBottomFamily[enemyBot.ai._antiBottomFamily]) {
-          this._updateRewardBucket(scope.antiBottomFamily[enemyBot.ai._antiBottomFamily], antiBottomReward);
+        if (abFamily && scope.antiBottomFamily && scope.antiBottomFamily[abFamily]) {
+          this._updateRewardBucket(scope.antiBottomFamily[abFamily], antiBottomReward);
         }
       }
       const gunPolicy = enemyBot.ai._gunSidePolicy || enemyBot.ai._lastGunSidePolicy;
@@ -469,18 +471,18 @@ const SparSystem = {
       if (escapeFamily && scope.escapeFamily && scope.escapeFamily[escapeFamily]) {
         this._updateRewardBucket(scope.escapeFamily[escapeFamily], escapeReward);
       }
-      // v10: shot timing policy match-end update
-      const stPolicy = enemyBot.ai._shotTimingPolicy || null;
-      const stFamily = enemyBot.ai._shotTimingFamily || null;
+      // v10: shot timing policy match-end update (fall back to _last fields)
+      const stPolicy = enemyBot.ai._shotTimingPolicy || enemyBot.ai._lastShotTimingPolicy || null;
+      const stFamily = enemyBot.ai._shotTimingFamily || enemyBot.ai._lastShotTimingFamily || null;
       if (stPolicy && scope.shotTimingPolicy && scope.shotTimingPolicy[stPolicy]) {
         this._updateRewardBucket(scope.shotTimingPolicy[stPolicy], shotTimingReward);
       }
       if (stFamily && scope.shotTimingFamily && scope.shotTimingFamily[stFamily]) {
         this._updateRewardBucket(scope.shotTimingFamily[stFamily], shotTimingReward);
       }
-      // v10: reload behavior match-end update
-      const rlPolicy = enemyBot.ai._reloadPolicy || null;
-      const rlFamily = enemyBot.ai._reloadFamily || null;
+      // v10: reload behavior match-end update (fall back to _last fields)
+      const rlPolicy = enemyBot.ai._reloadPolicy || enemyBot.ai._lastReloadPolicy || null;
+      const rlFamily = enemyBot.ai._reloadFamily || enemyBot.ai._lastReloadFamily || null;
       if (rlPolicy && scope.reloadPolicy && scope.reloadPolicy[rlPolicy]) {
         this._updateRewardBucket(scope.reloadPolicy[rlPolicy], reloadReward);
       }
@@ -919,12 +921,16 @@ const SparSystem = {
       }
     }
     // Track outcomes
+    const stFrames = ai._shotTimingFrames || 0;
     if (sl.tactical && sl.tactical.shotTimingOutcomes) {
       const so = sl.tactical.shotTimingOutcomes;
       so.attempts++;
       if (hitsDuring > 0) so.hitsDuring++;
       so.avgDmgDealt = so.attempts > 1 ? so.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
+      so.avgDuration = so.attempts > 1 ? so.avgDuration * 0.8 + stFrames * 0.2 : stFrames;
     }
+    ai._lastShotTimingPolicy = policy;
+    ai._lastShotTimingFamily = family;
     ai._shotTimingPolicy = null;
     ai._shotTimingFamily = null;
   },
@@ -1000,12 +1006,16 @@ const SparSystem = {
         if (scope.reloadFamily && scope.reloadFamily[family]) this._updateRewardBucket(scope.reloadFamily[family], phaseReward);
       }
     }
+    const rlFrames = ai._reloadFrames || 0;
     if (sl.tactical && sl.tactical.reloadPunishOutcomes) {
       const ro = sl.tactical.reloadPunishOutcomes;
       ro.attempts++;
       if (dmgDealt > 0) ro.punished++;
       ro.avgDmgDealt = ro.attempts > 1 ? ro.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
+      ro.avgDuration = ro.attempts > 1 ? ro.avgDuration * 0.8 + rlFrames * 0.2 : rlFrames;
     }
+    ai._lastReloadPolicy = policy;
+    ai._lastReloadFamily = family;
     ai._reloadPolicy = null;
     ai._reloadFamily = null;
   },
@@ -1526,11 +1536,15 @@ const SparSystem = {
         _shotTimingStartDmg: 0,
         _shotTimingStartHits: 0,
         _shotTimingFrames: 0,
+        _lastShotTimingPolicy: null,
+        _lastShotTimingFamily: null,
         // v10: reload behavior policy state
         _reloadPolicy: null,
         _reloadFamily: null,
         _reloadStartDmg: 0,
         _reloadFrames: 0,
+        _lastReloadPolicy: null,
+        _lastReloadFamily: null,
         // v11: mid-fight pressure policy state
         _midPressurePolicy: null,
         _midPressureFamily: null,
