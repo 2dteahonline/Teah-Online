@@ -1893,8 +1893,8 @@ const SparSystem = {
       const aAlive = SparState.teamA.filter(p => p.alive).length;
       const bAlive = SparState.teamB.filter(p => p.alive).length;
 
-      // Hard timeout: prevent stalled matches (1200f = 20 seconds at 60fps)
-      const MAX_MATCH_FRAMES = 1200;
+      // Hard timeout: prevent stalled matches (3600f = 60 seconds at 60fps)
+      const MAX_MATCH_FRAMES = 3600;
       const matchTimedOut = aAlive > 0 && bAlive > 0 && SparState.matchTimer >= MAX_MATCH_FRAMES;
       if (matchTimedOut) {
         // Force resolve by remaining HP
@@ -4617,17 +4617,16 @@ const SparSystem = {
         const zoneHitRate = zoneData && zoneData.frames > 30
           ? zoneData.hits / zoneData.frames : 0;
         // If current zone is dangerous, push laterally out of it
+        // but NEVER cap descent speed — the bot MUST keep descending to retake bottom
         if (zoneHitRate > 0.15) {
           const escapeDir = alignX < sideOffsetNear
             ? (offDir || ai.strafeDir)
             : Math.sign(bot.x - tgt.x);
           moveX += escapeDir * speed * Math.min(0.4, zoneHitRate);
-          moveY = Math.min(moveY, speed * 0.1);
+          // Only reduce descent slightly in dangerous zones, never cap or reverse it
+          moveY *= Math.max(0.6, 1.0 - zoneHitRate);
         }
         // Track exposure in collector
-        // Note: movement runs BEFORE collision detection in the game loop,
-        // so a hit this tick sets _lastTookHitFrame = matchTimer AFTER this code.
-        // Check matchTimer-1 to catch hits from the previous tick's collision pass.
         if (c) {
           c.trapZoneFrames[currentZone]++;
           const lastHit = ai._lastTookHitFrame || 0;
@@ -4645,8 +4644,10 @@ const SparSystem = {
         if (pm.belowShootsUp > 0.6) {
           moveX += Math.sign(bot.x - tgt.x || ai.strafeDir) * speed * 0.2;
         }
+        // Reduce vertical penalty during anti-bottom — bot needs to descend
+        // Only apply a small penalty, not enough to reverse descent direction
         if (pm.playerPushesFromBottom > 0.45 && tactic !== 'baitRetreat' && tactic !== 'baitFake' && tactic !== 'doubleFakeRetreat' && dist < 220) {
-          moveY -= speed * 0.12;
+          moveY -= speed * 0.04;
         }
       }
 
@@ -5332,6 +5333,10 @@ const SparSystem = {
     }
 
     // --- Momentum break: if active, override movement to prevent re-sticking ---
+    // Cancel momentum break if an active engagement started (anti-bottom, escape, etc.)
+    if (ai._momentumBreakFrames > 0 && (ai._antiBottomTactic || ai._escapePolicy)) {
+      ai._momentumBreakFrames = 0;
+    }
     if (ai._momentumBreakFrames > 0) {
       moveX = ai._momentumBreakDirX * speed;
       moveY = ai._momentumBreakDirY * speed;
