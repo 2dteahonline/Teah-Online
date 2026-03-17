@@ -488,6 +488,7 @@ function createDefaultSparLearning() {
       centerOscillationCount: 0,
       idleBreaks: 0,
       lowMotionRescues: 0,
+      ownerStallBreaks: 0,
     },
     gunSide: {
       playerPreference: 'left',
@@ -776,7 +777,7 @@ function sparSummary() {
 
   // Anti-stall diagnostics
   console.log('\n--- Anti-Stall ---');
-  console.log(`  Idle breaks: ${t.idleBreaks || 0}, Low motion rescues: ${t.lowMotionRescues || 0}`);
+  console.log(`  Idle breaks: ${t.idleBreaks || 0}, Low motion rescues: ${t.lowMotionRescues || 0}, Owner stall breaks: ${t.ownerStallBreaks || 0}`);
 
   // Timeout info
   console.log('\n--- Timeouts ---');

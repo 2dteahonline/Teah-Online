@@ -5283,12 +5283,12 @@ const SparSystem = {
       const clampedBottomX = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, bottomTargetX));
       const clampedBottomY = Math.min(arenaH - TILE * 3, bottomTargetY);
 
-      // --- CROSS PATH SAFETY ---
-      // If too close to enemy, crossing directly is predictable and dangerous.
-      // Create space first before committing to the cross.
-      const crossUnsafe = dist < 160 && (crPolicy === 'crossCommit' || crPolicy === 'fakeCrossBreak');
-      // "Safe enough" = bullet travel distance makes dodge realistic
-      const needsSpace = crossUnsafe && ai._centerRecoveryFrames < 20;
+      // --- PATH SAFETY ---
+      // If too close to enemy, rushing directly is predictable and dangerous.
+      // Create space first before committing to cross OR bottom recovery.
+      // Applies to ALL CR policies, not just cross.
+      const tooClose = dist < 160;
+      const needsSpace = tooClose && ai._centerRecoveryFrames < 20;
 
       if (crPolicy === 'crossCommit') {
         if (needsSpace) {
@@ -5332,10 +5332,15 @@ const SparSystem = {
           }
         }
       } else if (crPolicy === 'baitShotDrop') {
-        // Phase 1 (first 15 frames): hold position to bait upward shot
-        if (ai._centerRecoveryFrames < 15) {
-          moveX = ai.strafeDir * speed * 0.35;
-          moveY = speed * 0.05;
+        if (needsSpace) {
+          // Too close — create lateral space while maintaining strafe (don't just sit)
+          const awayDir = -Math.sign(dy || 1);
+          moveX = crDir * speed * 0.55;
+          moveY = awayDir * speed * 0.45;
+        } else if (ai._centerRecoveryFrames < 15) {
+          // Phase 1: bait — active strafe, not standing still
+          moveX = ai.strafeDir * speed * 0.55;
+          moveY = (bot.y < tgt.y) ? speed * 0.1 : -speed * 0.05;
         } else {
           // Phase 2: steer toward bottom target position (under opponent)
           const goalDx = clampedBottomX - bot.x;
@@ -5350,20 +5355,25 @@ const SparSystem = {
           }
         }
       } else if (crPolicy === 'wideUnderEntry') {
-        // Steer toward bottom target: get under opponent from a wide angle
-        const goalDx = clampedBottomX - bot.x;
-        const goalDy = clampedBottomY - bot.y;
-        const goalDist = Math.sqrt(goalDx * goalDx + goalDy * goalDy);
-        if (goalDist > 15) {
-          // Weight vertical more heavily — bottom is the primary goal
-          moveX = (goalDx / goalDist) * speed * 0.5;
-          moveY = (goalDy / goalDist) * speed * 0.8;
-          // Normalize to full speed
-          const len = Math.sqrt(moveX * moveX + moveY * moveY);
-          if (len > 0.1) { moveX = (moveX / len) * speed; moveY = (moveY / len) * speed; }
+        if (needsSpace) {
+          // Too close — widen out laterally first, then descend once safe
+          const awayDir = -Math.sign(dy || 1);
+          moveX = crDir * speed * 0.7;          // strong lateral displacement
+          moveY = awayDir * speed * 0.35;        // back off vertically
         } else {
-          moveX = ai.strafeDir * speed * 0.4;
-          moveY = speed * 0.1;
+          // Safe distance — steer toward bottom target from wide angle
+          const goalDx = clampedBottomX - bot.x;
+          const goalDy = clampedBottomY - bot.y;
+          const goalDist = Math.sqrt(goalDx * goalDx + goalDy * goalDy);
+          if (goalDist > 15) {
+            moveX = (goalDx / goalDist) * speed * 0.5;
+            moveY = (goalDy / goalDist) * speed * 0.8;
+            const len = Math.sqrt(moveX * moveX + moveY * moveY);
+            if (len > 0.1) { moveX = (moveX / len) * speed; moveY = (moveY / len) * speed; }
+          } else {
+            moveX = ai.strafeDir * speed * 0.4;
+            moveY = speed * 0.1;
+          }
         }
       }
 
@@ -5374,8 +5384,13 @@ const SparSystem = {
       if (bot.y < TILE * 3) moveY = Math.max(moveY, speed * 0.1);
       else if (bot.y > arenaH - TILE * 3) moveY = Math.min(moveY, -speed * 0.1);
 
-      // Allow shots during center recovery if lane is briefly clean
+      // Allow shots during center recovery:
+      // - lane is briefly clean (original condition)
+      // - OR close-range defensive firing (dist < 130, any non-terrible lane)
+      // - OR space-making phase (needsSpace = actively creating distance, can shoot defensively)
       if (laneQuality > 0.62 && !badGunSide && dist < 160) suppressPeekShots = false;
+      if (dist < 130 && laneQuality > 0.35) suppressPeekShots = false;
+      if (needsSpace && laneQuality > 0.30) suppressPeekShots = false;
     } else if (!isOpening && ai._gunSidePolicy) {
       const awayDir = -Math.sign(dx || ai.strafeDir);
       const reAngleDir = Math.sign(bot.x - tgt.x || ai.strafeDir);
@@ -5967,6 +5982,11 @@ const SparSystem = {
           ai._ownerStallFrames = 0;
           // Allow shooting during stall break (see shot suppression fail-safe below)
           ai._stallBreakActive = true;
+          // Track diagnostic
+          if (sl && sl.tactical) {
+            if (typeof sl.tactical.ownerStallBreaks !== 'number') sl.tactical.ownerStallBreaks = 0;
+            sl.tactical.ownerStallBreaks++;
+          }
         }
       } else {
         ai._ownerStallFrames = 0;
