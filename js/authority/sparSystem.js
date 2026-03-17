@@ -1452,6 +1452,10 @@ const SparSystem = {
     ai._centerRecoveryStartDmg = 0;
     ai._centerRecoveryCommitDir = 0;
     ai._crWallRedirects = 0;
+    ai._crStartLaneQuality = undefined;
+    ai._crBestLaneQuality = undefined;
+    ai._crStartX = undefined;
+    ai._crStartY = undefined;
   },
 
   // v11: Wall pressure policy picker
@@ -4286,44 +4290,81 @@ const SparSystem = {
     if (ai._centerRecoveryCooldown > 0) ai._centerRecoveryCooldown--;
     if (ai._centerRecoveryPolicy) {
       ai._centerRecoveryFrames++;
+      // Track best lane quality achieved during this CR engagement
+      if (typeof ai._crStartLaneQuality === 'undefined') ai._crStartLaneQuality = laneQuality;
+      if (typeof ai._crBestLaneQuality === 'undefined') ai._crBestLaneQuality = laneQuality;
+      if (laneQuality > ai._crBestLaneQuality) ai._crBestLaneQuality = laneQuality;
+      // Track position progress: how much lateral displacement toward target
+      if (typeof ai._crStartX === 'undefined') ai._crStartX = bot.x;
+      if (typeof ai._crStartY === 'undefined') ai._crStartY = bot.y;
+
       // Success: regained bottom OR regained favorable gun-side (not just "left center band")
       // Bottom is the primary win condition. Gun-side recovery only counts if also out of center.
       const regainedRealPosition = hasBottom || (!badGunSide && laneQuality > 0.58 && !inCenterBand);
       const escaped = regainedRealPosition;
       const crMinFrames = 25;
+
+      // --- CR END-REASON TRACKING ---
+      // Track WHY each CR ended for telemetry (success/escalation/wall/abort/timeout)
+      const crEndReason = (reason) => {
+        if (sl && sl.tactical) {
+          if (!sl.tactical.crEndReasons) sl.tactical.crEndReasons = {};
+          sl.tactical.crEndReasons[reason] = (sl.tactical.crEndReasons[reason] || 0) + 1;
+        }
+      };
+
       if (ai._centerRecoveryFrames >= crMinFrames && escaped) {
+        crEndReason('success');
         this._finalizeCenterRecovery(ai, true, hasBottom, !badGunSide && laneQuality > 0.55);
         ai._centerRecoveryCooldown = 25;
       } else if (ai._centerRecoveryFrames > 180) {
         // Timeout — failed to escape
+        crEndReason('timeout');
         this._finalizeCenterRecovery(ai, false, hasBottom, !badGunSide && laneQuality > 0.55);
         ai._centerRecoveryCooldown = 25;
       } else if (ai._centerRecoveryFrames > 0 && ai._centerRecoveryFrames % 40 === 0 && !escaped) {
-        // Progress-based escalation: every 40 frames without escape, consider switching policy
-        // Escalate within family: cross→cross (re-pick), bait→under
-        const crFamily = ai._centerRecoveryFamily;
-        const crFamilyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
-          ? SPAR_CENTER_RECOVERY_FAMILY_MAP
-          : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
-        // Finalize current, pick new with escalation bias
-        this._finalizeCenterRecovery(ai, false, false, false);
-        ai._centerRecoveryCooldown = 0; // immediate re-open (escalation, not failure cooldown)
-        // Force wideUnderEntry if bait family failed, or re-pick cross with opposite dir
-        if (crFamily === 'bait') {
-          ai._centerRecoveryPolicy = 'wideUnderEntry';
-          ai._centerRecoveryFamily = 'under';
+        // Progress check: is the bot making real progress toward its goal?
+        // Measure lane quality improvement AND positional displacement since CR started
+        const laneImproved = (ai._crBestLaneQuality || 0) > (ai._crStartLaneQuality || 0) + 0.08;
+        const posDisp = Math.sqrt(
+          (bot.x - (ai._crStartX || bot.x)) ** 2 +
+          (bot.y - (ai._crStartY || bot.y)) ** 2
+        );
+        const hasMadeProgress = laneImproved || posDisp > 60;
+
+        if (hasMadeProgress) {
+          // Making real progress — DON'T escalate, just reset the progress baseline
+          // and let it continue working toward the goal
+          ai._crStartLaneQuality = laneQuality;
+          ai._crStartX = bot.x;
+          ai._crStartY = bot.y;
         } else {
-          ai._centerRecoveryPolicy = 'crossCommit';
-          ai._centerRecoveryFamily = 'cross';
+          // No real progress in 40f — escalate: switch policy and direction
+          crEndReason('escalation');
+          const crFamily = ai._centerRecoveryFamily;
+          this._finalizeCenterRecovery(ai, false, false, false);
+          ai._centerRecoveryCooldown = 0; // immediate re-open (escalation, not failure cooldown)
+          // Force wideUnderEntry if bait family failed, or re-pick cross with opposite dir
+          if (crFamily === 'bait') {
+            ai._centerRecoveryPolicy = 'wideUnderEntry';
+            ai._centerRecoveryFamily = 'under';
+          } else {
+            ai._centerRecoveryPolicy = 'crossCommit';
+            ai._centerRecoveryFamily = 'cross';
+          }
+          ai._centerRecoveryFrames = 0;
+          ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
+          ai._crWallRedirects = 0;
+          ai._crStartLaneQuality = laneQuality;
+          ai._crBestLaneQuality = laneQuality;
+          ai._crStartX = bot.x;
+          ai._crStartY = bot.y;
+          // Flip commit direction on escalation
+          ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
+          // Wall safety check on new direction
+          if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
+          else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
         }
-        ai._centerRecoveryFrames = 0;
-        ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
-        ai._crWallRedirects = 0;
-        // Flip commit direction on escalation
-        ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
-        // Wall safety check on new direction
-        if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
-        else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
       }
       // Wall contact during recovery = REDIRECT, not kill
       // The bot hit a wall — flip commit direction and keep going (wall is not an exit)
@@ -4332,6 +4373,7 @@ const SparSystem = {
         ai._crWallRedirects = (ai._crWallRedirects || 0) + 1;
         if (ai._crWallRedirects >= 3) {
           // 3+ wall contacts — this recovery is truly stuck, finalize as failure
+          crEndReason('wallFail');
           this._finalizeCenterRecovery(ai, false, false, false);
           ai._centerRecoveryCooldown = 30;
           ai._crWallRedirects = 0;
@@ -4343,6 +4385,7 @@ const SparSystem = {
       // Only abort CR for a true corner trap (physically stuck in corner with enemy blocking exit)
       // Do NOT abort for noAdvantageState or lostBottomAndNoLane — those are the states CR fixes
       if (ai._centerRecoveryPolicy && topCornerTrapped && ai._centerRecoveryFrames >= 15) {
+        crEndReason('cornerAbort');
         this._finalizeCenterRecovery(ai, false, false, false);
         ai._centerRecoveryCooldown = 15;
       }
@@ -5342,25 +5385,23 @@ const SparSystem = {
 
       // --- PATH SAFETY ---
       // Close range must be EARNED (rush, punish, corner pressure) — not drifted into.
-      // During recovery/repositioning, the bot should maintain survivable distance.
-      // If too close, create space FIRST. No frame cap — space-making continues until safe.
-      // Also force space-making if both target sides are wall-clamped (invalid geometry).
-      const safeRecoveryDist = 200; // minimum distance for safe repositioning
+      // During recovery, the bot should arc AROUND the enemy at safe distance, not oscillate
+      // toward/away. Use lateral (perpendicular) displacement when too close, not radial push.
+      const safeRecoveryDist = 180;
       const tooClose = dist < safeRecoveryDist;
       const needsSpace = tooClose || bothSidesInvalid;
 
-      // --- DISTANCE-AWARE STEERING ---
-      // Helper: when steering toward a goal, check if the path brings us too close to enemy.
-      // If so, add separation force to keep distance survivable.
-      // "awayFromEnemy" = unit vector from enemy to bot (used for separation).
-      const awayFromEnemyX = dist > 1 ? -dx / dist : 0;
-      const awayFromEnemyY = dist > 1 ? -dy / dist : 0;
+      // --- ARC-AROUND STEERING ---
+      // When too close during CR, move LATERALLY (perpendicular to enemy direction)
+      // toward the target side. This arcs around the enemy instead of oscillating.
+      // arcDir: lateral direction that moves us toward our CR target
+      const arcDir = crDir; // crDir already points toward the target side
 
       if (crPolicy === 'crossCommit') {
         if (needsSpace) {
-          // Too close or invalid target — create space first
-          moveX = awayFromEnemyX * speed * 0.4 + crDir * speed * 0.5;
-          moveY = awayFromEnemyY * speed * 0.5;
+          // Too close — arc laterally toward target side while backing off slightly
+          moveX = arcDir * speed * 0.75;
+          moveY = (bot.y < tgt.y) ? -speed * 0.3 : speed * 0.15; // prefer backing up if above
         } else {
           // Safe distance — commit to cross
           const goalDx = clampedCrossX - bot.x;
@@ -5373,26 +5414,16 @@ const SparSystem = {
             moveX = ai.strafeDir * speed * 0.5;
             moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
           }
-          // Distance maintenance: if steering brings us closer than safe, add separation
-          if (dist < safeRecoveryDist) {
-            moveX += awayFromEnemyX * speed * 0.3;
-            moveY += awayFromEnemyY * speed * 0.25;
-          }
         }
       } else if (crPolicy === 'fakeCrossBreak') {
         if (needsSpace) {
-          // Too close or invalid — create space before the fake-then-break
-          moveX = awayFromEnemyX * speed * 0.35 + (-Math.sign(clampedCrossX - bot.x || crDir)) * speed * 0.4;
-          moveY = awayFromEnemyY * speed * 0.5;
+          // Too close — arc in the fake direction first
+          moveX = (-Math.sign(clampedCrossX - bot.x || crDir)) * speed * 0.7;
+          moveY = (bot.y < tgt.y) ? -speed * 0.35 : speed * 0.1;
         } else if (ai._centerRecoveryFrames < 12) {
           // Phase 1: show one direction (opposite of real target)
           moveX = -Math.sign(clampedCrossX - bot.x || crDir) * speed * 0.7;
           moveY = speed * 0.1;
-          // Don't let the fake drift us closer
-          if (dist < safeRecoveryDist) {
-            moveX += awayFromEnemyX * speed * 0.25;
-            moveY += awayFromEnemyY * speed * 0.2;
-          }
         } else {
           // Phase 2: reverse and steer toward actual favorable gun-side position
           const goalDx = clampedCrossX - bot.x;
@@ -5403,25 +5434,16 @@ const SparSystem = {
             moveX = ai.strafeDir * speed * 0.5;
             moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
           }
-          if (dist < safeRecoveryDist) {
-            moveX += awayFromEnemyX * speed * 0.3;
-            moveY += awayFromEnemyY * speed * 0.25;
-          }
         }
       } else if (crPolicy === 'baitShotDrop') {
         if (needsSpace) {
-          // Too close or invalid — create lateral space while maintaining strafe
-          moveX = awayFromEnemyX * speed * 0.35 + crDir * speed * 0.45;
-          moveY = awayFromEnemyY * speed * 0.45;
+          // Too close — arc laterally with active strafe
+          moveX = arcDir * speed * 0.65;
+          moveY = (bot.y < tgt.y) ? -speed * 0.25 : speed * 0.15;
         } else if (ai._centerRecoveryFrames < 15) {
           // Phase 1: bait — active strafe, not standing still
           moveX = ai.strafeDir * speed * 0.55;
           moveY = (bot.y < tgt.y) ? speed * 0.1 : -speed * 0.05;
-          // Bait phase must not drift closer
-          if (dist < safeRecoveryDist) {
-            moveX += awayFromEnemyX * speed * 0.2;
-            moveY += awayFromEnemyY * speed * 0.2;
-          }
         } else {
           // Phase 2: steer toward bottom target position (under opponent)
           const goalDx = clampedBottomX - bot.x;
@@ -5434,16 +5456,12 @@ const SparSystem = {
             moveX = ai.strafeDir * speed * 0.4;
             moveY = speed * 0.1;
           }
-          if (dist < safeRecoveryDist) {
-            moveX += awayFromEnemyX * speed * 0.25;
-            moveY += awayFromEnemyY * speed * 0.2;
-          }
         }
       } else if (crPolicy === 'wideUnderEntry') {
         if (needsSpace) {
-          // Too close or invalid — widen out laterally first
-          moveX = awayFromEnemyX * speed * 0.3 + crDir * speed * 0.6;
-          moveY = awayFromEnemyY * speed * 0.35;
+          // Too close — arc wide laterally before descending
+          moveX = arcDir * speed * 0.8;
+          moveY = (bot.y < tgt.y) ? -speed * 0.2 : speed * 0.1;
         } else {
           // Safe distance — steer toward bottom target from wide angle
           const goalDx = clampedBottomX - bot.x;
@@ -5457,11 +5475,6 @@ const SparSystem = {
           } else {
             moveX = ai.strafeDir * speed * 0.4;
             moveY = speed * 0.1;
-          }
-          // Wide under entry still must not drift too close on the approach path
-          if (dist < safeRecoveryDist) {
-            moveX += awayFromEnemyX * speed * 0.25;
-            moveY += awayFromEnemyY * speed * 0.2;
           }
         }
       }

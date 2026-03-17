@@ -778,6 +778,10 @@ function sparSummary() {
   // Anti-stall diagnostics
   console.log('\n--- Anti-Stall ---');
   console.log(`  Idle breaks: ${t.idleBreaks || 0}, Low motion rescues: ${t.lowMotionRescues || 0}, Owner stall breaks: ${t.ownerStallBreaks || 0}`);
+  if (t.crEndReasons) {
+    const r = t.crEndReasons;
+    console.log(`  CR end reasons: success=${r.success||0}, escalation=${r.escalation||0}, wallFail=${r.wallFail||0}, cornerAbort=${r.cornerAbort||0}, timeout=${r.timeout||0}`);
+  }
 
   // Timeout info
   console.log('\n--- Timeouts ---');
