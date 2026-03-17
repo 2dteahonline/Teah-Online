@@ -1724,7 +1724,6 @@ const SparSystem = {
         _shotTimingPolicy: null,
         _shotTimingFamily: null,
         _shotTimingStartDmg: 0,
-        _shotTimingStartHits: 0,
         _shotTimingFrames: 0,
         _lastShotTimingPolicy: null,
         _lastShotTimingFamily: null,
@@ -2244,8 +2243,9 @@ const SparSystem = {
           const bxNew = b.x - nx * overlap;
           const byNew = b.y - ny * overlap;
           if (typeof positionClear === 'function') {
-            if (positionClear(axNew, ayNew)) { a.x = axNew; a.y = ayNew; }
-            if (positionClear(bxNew, byNew)) { b.x = bxNew; b.y = byNew; }
+            const bbHw = GAME_CONFIG.PLAYER_WALL_HW;
+            if (positionClear(axNew, ayNew, bbHw)) { a.x = axNew; a.y = ayNew; }
+            if (positionClear(bxNew, byNew, bbHw)) { b.x = bxNew; b.y = byNew; }
           } else {
             a.x = axNew; a.y = ayNew;
             b.x = bxNew; b.y = byNew;
@@ -5411,7 +5411,8 @@ const SparSystem = {
     }
 
     // Learning: apply strafe speed multiplier (win-rate based)
-    if (pm && pm.strafeSpeedMult !== 1.0) {
+    // Skip during anti-bottom — bot must move at full speed to contest vertical control
+    if (pm && pm.strafeSpeedMult !== 1.0 && !ai._antiBottomTactic) {
       moveX *= pm.strafeSpeedMult;
       moveY *= pm.strafeSpeedMult;
     }
@@ -5432,11 +5433,17 @@ const SparSystem = {
     }
 
     // --- Smooth movement (blend toward target velocity) ---
-    const smoothFactor = 0.3; // 0 = instant snap, 1 = no change
-    moveX = ai.smoothVx * smoothFactor + moveX * (1 - smoothFactor);
-    moveY = ai.smoothVy * smoothFactor + moveY * (1 - smoothFactor);
-    ai.smoothVx = moveX;
-    ai.smoothVy = moveY;
+    // Skip smoothing during momentum breaks — anti-stall must snap immediately
+    if (ai._momentumBreakFrames > 0) {
+      ai.smoothVx = moveX;
+      ai.smoothVy = moveY;
+    } else {
+      const smoothFactor = 0.3; // 0 = instant snap, 1 = no change
+      moveX = ai.smoothVx * smoothFactor + moveX * (1 - smoothFactor);
+      moveY = ai.smoothVy * smoothFactor + moveY * (1 - smoothFactor);
+      ai.smoothVx = moveX;
+      ai.smoothVy = moveY;
+    }
 
     // --- Idle guard: if near-stationary too long, force a lateral break ---
     const idleThreshold = 0.4;
@@ -5445,8 +5452,8 @@ const SparSystem = {
     } else {
       ai._idleFrames = 0;
     }
-    // After 20 idle frames, if not escaping or reloading, force a lateral break with momentum
-    if (ai._idleFrames >= 20 && !ai._escapePolicy && !(bot === tgt ? false : (member && member.gun.reloading))) {
+    // After 20 idle frames, if not escaping or self reloading, force a lateral break with momentum
+    if (ai._idleFrames >= 20 && !ai._escapePolicy && !(member && member.gun.reloading)) {
       const breakDir = (Math.random() < 0.5 ? -1 : 1);
       const breakDirY = (bot.y < tgt.y) ? 0.3 : ((Math.random() < 0.5 ? -1 : 1) * 0.25);
       moveX = breakDir * speed * 0.7;
@@ -5493,9 +5500,8 @@ const SparSystem = {
     if (SparState.matchTimer % 90 === 0 || (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 2)) {
       // Finalize previous shot timing engagement if active
       if (ai._shotTimingPolicy) {
-        const stHits = (ai._matchDmgDealt || 0) - (ai._shotTimingStartHits || 0);
         const stDmg = (ai._matchDmgDealt || 0) - (ai._shotTimingStartDmg || 0);
-        this._finalizeShotTimingEngagement(ai, stHits > 0 ? 1 : 0, stDmg);
+        this._finalizeShotTimingEngagement(ai, stDmg > 0 ? 1 : 0, stDmg);
       }
       // Pick mode based on context — escape/wall overrides take priority
       if (ai._escapePolicy || suppressPeekShots) {
@@ -5521,7 +5527,6 @@ const SparSystem = {
         ai._shotTimingPolicy = stPolicy;
         ai._shotTimingFamily = stFamilyMap[stPolicy] || 'aggressive';
         ai._shotTimingStartDmg = ai._matchDmgDealt || 0;
-        ai._shotTimingStartHits = ai._matchDmgDealt || 0;
         ai._shotTimingFrames = 0;
         // Map policy to shot mode
         if (stPolicy === 'shootImmediate') {
