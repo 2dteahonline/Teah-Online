@@ -384,11 +384,23 @@ const SparSystem = {
         else if (fs >= 3) score -= 5;
       }
 
-      // Opening context bonus: if we know how player took bottom, prefer counter-side
+      // Opening context bonus: if player took bottom from one side, prefer approaching
+      // from the OPPOSITE side. Flank tactics naturally use offDir, so they benefit most.
       if (openingLostDir) {
-        if (openingLostDir === 'left' && (tactic === 'flankWide' || tactic === 'flankTight' || tactic === 'contestSprint')) score += 4;
-        if (openingLostDir === 'right' && (tactic === 'flankWide' || tactic === 'flankTight' || tactic === 'contestSprint')) score += 4;
-        if (openingLostDir === 'center' && (tactic === 'flankWide' || tactic === 'baitRetreat')) score += 4;
+        if (openingLostDir === 'left') {
+          // Player went left → flank/contest from the right side
+          if (tactic === 'flankWide' || tactic === 'flankTight') score += 5;
+          if (tactic === 'contestSprint') score += 3;
+          // Bait less useful since player is already committed to a side
+        } else if (openingLostDir === 'right') {
+          // Player went right → flank/contest from the left side
+          if (tactic === 'flankWide' || tactic === 'flankTight') score += 5;
+          if (tactic === 'contestSprint') score += 3;
+        } else {
+          // Player went center → wide flanks or bait to pull them out
+          if (tactic === 'flankWide') score += 4;
+          if (tactic === 'baitRetreat') score += 4;
+        }
       }
 
       // Noise
@@ -424,11 +436,18 @@ const SparSystem = {
     const speedR = Math.max(0, Math.min(1, 1 - frames / 300));
     const phaseReward = regainR * 0.4 + dmgR * 0.35 + speedR * 0.25;
 
-    // Update reinforcement buckets
+    // Update reinforcement buckets — respect training/self-play data separation
     if (sl) {
       const rf = this._ensureReinforcementProfile(sl);
+      const isTraining = typeof _isSparTraining === 'function' && _isSparTraining();
+      const isSelfPlay = typeof _isSparSelfPlay === 'function' && _isSparSelfPlay();
+      // Same scope rules as match-end reinforcement: training→general only,
+      // self-play→general+selfPlay, real matches→general+player
+      const phaseScopes = isTraining
+        ? (isSelfPlay ? ['general', 'selfPlay'] : ['general'])
+        : ['general', 'player'];
       if (rf) {
-        for (const scopeName of ['player', 'general']) {
+        for (const scopeName of phaseScopes) {
           const scope = rf[scopeName];
           if (!scope) continue;
           if (scope.antiBottomTactic && scope.antiBottomTactic[tactic]) {
@@ -1453,15 +1472,16 @@ const SparSystem = {
       if (c.playerYAtOpeningEnd > 0 && c.botYAtOpeningEnd > 0 && !c.openingBottomLostDir) {
         const bg = this._getSparBottomGap();
         if (c.playerYAtOpeningEnd > c.botYAtOpeningEnd + bg) {
-          // Player got bottom — record approach direction
-          const arenaMidX = (typeof LEVELS !== 'undefined' && SparState.activeRoom)
-            ? (LEVELS[SparState.activeRoom.arenaLevel] ? LEVELS[SparState.activeRoom.arenaLevel].W * TILE / 2 : 576)
-            : 576;
+          // Player got bottom — record approach direction using widthTiles (same as rest of file)
+          const arenaLvl = (typeof LEVELS !== 'undefined' && SparState.activeRoom)
+            ? LEVELS[SparState.activeRoom.arenaLevel] : null;
+          const arenaMidX = arenaLvl && arenaLvl.widthTiles
+            ? arenaLvl.widthTiles * TILE / 2 : 576;
           c.openingBottomLostDir = player.x < arenaMidX - 50 ? 'left'
             : (player.x > arenaMidX + 50 ? 'right' : 'center');
           // Feed to all bots on team B for tactic selection
           for (const m of SparState.teamB) {
-            if (m && m.ai) m.ai._openingLostBottomDir = c.openingBottomLostDir;
+            if (m && m.member && m.member.ai) m.member.ai._openingLostBottomDir = c.openingBottomLostDir;
           }
         }
       }
@@ -2856,7 +2876,15 @@ const SparSystem = {
         ai._antiBottomPhaseFrames = 0;
         ai._antiBottomDmgAtStart = ai._matchDmgTaken || 0;
         ai._antiBottomStartFrame = SparState.matchTimer;
-        ai._antiBottomOffsetDir = (bot.x < midX) ? 1 : -1;
+        // Pick offset direction: if we know which side player approached from,
+        // go to the OPPOSITE side. Otherwise, pick based on available space.
+        if (ai._openingLostBottomDir === 'left') {
+          ai._antiBottomOffsetDir = 1;   // player went left → we go right
+        } else if (ai._openingLostBottomDir === 'right') {
+          ai._antiBottomOffsetDir = -1;  // player went right → we go left
+        } else {
+          ai._antiBottomOffsetDir = (bot.x < midX) ? 1 : -1;
+        }
       }
       ai._antiBottomFrames++;
       ai._antiBottomPhaseFrames++;
@@ -2976,9 +3004,13 @@ const SparSystem = {
           moveY = Math.min(moveY, speed * 0.1);
         }
         // Track exposure in collector
+        // Note: movement runs BEFORE collision detection in the game loop,
+        // so a hit this tick sets _lastTookHitFrame = matchTimer AFTER this code.
+        // Check matchTimer-1 to catch hits from the previous tick's collision pass.
         if (c) {
           c.trapZoneFrames[currentZone]++;
-          if (ai._lastTookHitFrame === SparState.matchTimer) {
+          const lastHit = ai._lastTookHitFrame || 0;
+          if (lastHit >= SparState.matchTimer - 1 && lastHit <= SparState.matchTimer) {
             c.trapZoneHits[currentZone]++;
           }
         }
