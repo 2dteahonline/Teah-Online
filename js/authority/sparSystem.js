@@ -1682,7 +1682,22 @@ const SparSystem = {
       const aAlive = SparState.teamA.filter(p => p.alive).length;
       const bAlive = SparState.teamB.filter(p => p.alive).length;
 
-      if (aAlive <= 0 || bAlive <= 0) {
+      // Hard timeout: prevent infinite matches (3600f = 60 seconds at 60fps)
+      const MAX_MATCH_FRAMES = 3600;
+      const matchTimedOut = aAlive > 0 && bAlive > 0 && SparState.matchTimer >= MAX_MATCH_FRAMES;
+      if (matchTimedOut) {
+        // Force resolve by remaining HP
+        const aHP = SparState.teamA.reduce((sum, p) => sum + (p.alive ? (p.entity.hp || 0) : 0), 0);
+        const bHP = SparState.teamB.reduce((sum, p) => sum + (p.alive ? (p.entity.hp || 0) : 0), 0);
+        SparState.lastResult = aHP >= bHP ? 'teamA' : 'teamB';
+        const isTraining = typeof _isSparTraining === 'function' && _isSparTraining();
+        if (!isTraining) {
+          console.log(`[Spar] Match timeout at ${MAX_MATCH_FRAMES}f — resolved by HP (A:${aHP} B:${bHP})`);
+        }
+      }
+
+      if (matchTimedOut || aAlive <= 0 || bAlive <= 0) {
+        if (!matchTimedOut) SparState.lastResult = aAlive > 0 ? 'teamA' : 'teamB';
         SparState.lastResult = aAlive > 0 ? 'teamA' : 'teamB';
         SparState.phase = 'post_match';
         // Auto-print engagement telemetry (skip during bulk training for cleaner logs)

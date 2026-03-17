@@ -545,10 +545,21 @@ function _getSparSelfPlayIntent(p, tgt, dist, dx, dy, speed, rt, policy) {
   return { mx, my, shouldShoot, dx, dy };
 }
 
-function _sparTrainJoinWhenReady() {
+function _sparTrainJoinWhenReady(retries) {
+  const maxRetries = 200; // ~1 second at 5ms poll
+  const attempt = retries || 0;
   setTimeout(() => {
     if (!_sparTrainState) return;
-    if (typeof SparState === 'undefined' || typeof SparSystem === 'undefined') return;
+    if (typeof SparState === 'undefined' || typeof SparSystem === 'undefined') {
+      if (attempt >= maxRetries) {
+        console.warn('[SparTrain] Join failed: SparState/SparSystem unavailable after ' + maxRetries + ' retries, skipping match');
+        _sparTrainState.completedMatches++;
+        _sparTrainStartNext();
+        return;
+      }
+      _sparTrainJoinWhenReady(attempt + 1);
+      return;
+    }
     if (SparState.phase === 'hub') {
       // (c) Apply CT-X stat allocation variant before joining
       if (_sparTrainState.mode === 'selfplay' && _sparTrainState._selfPlayCtxAlloc) {
@@ -559,7 +570,13 @@ function _sparTrainJoinWhenReady() {
       }
       SparSystem.joinRoom('spar_1v1');
     } else {
-      _sparTrainJoinWhenReady();
+      if (attempt >= maxRetries) {
+        console.warn('[SparTrain] Join failed: not in hub after ' + maxRetries + ' retries, skipping match');
+        _sparTrainState.completedMatches++;
+        _sparTrainStartNext();
+        return;
+      }
+      _sparTrainJoinWhenReady(attempt + 1);
     }
   }, SPAR_TRAINING_TIMING.joinPollMs);
 }
@@ -612,7 +629,12 @@ function _sparTrainStartNext() {
     console.log(`[SparTrain] Match ${nextMatchNum}/${_sparTrainState.totalMatches}: vs ${nextType}${variantInfo}`);
   }
 
-  if (typeof SparSystem === 'undefined') return;
+  if (typeof SparSystem === 'undefined') {
+    console.warn('[SparTrain] SparSystem unavailable, skipping match');
+    _sparTrainState.completedMatches++;
+    setTimeout(() => _sparTrainStartNext(), SPAR_TRAINING_TIMING.nextMatchDelayMs);
+    return;
+  }
 
   if (SparState.phase !== 'hub') {
     if (SparState.phase !== 'idle') {
