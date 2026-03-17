@@ -1675,6 +1675,7 @@ const SparSystem = {
         _lastHitFrame: 0,
         _lastTookHitFrame: 0,
         _lastEnemyShotFrame: 0,   // frame when player last fired at this bot (hit or miss)
+        _prevEnemyShotFrame: 0,   // frame of the shot BEFORE _lastEnemyShotFrame (for gap calc)
         _lastEnemyWhiffFrame: 0,  // frame when player last missed this bot
         _losBlockedFrames: 0,
         _chaseFrames: 0,
@@ -3822,6 +3823,7 @@ const SparSystem = {
       // Track when player fires at this bot (hit or miss) for whiff/repeek detection
       for (const m of SparState._sparBots) {
         if (m.entity === target || (m.entity.x === target.x && m.entity.y === target.y)) {
+          m.ai._prevEnemyShotFrame = m.ai._lastEnemyShotFrame;
           m.ai._lastEnemyShotFrame = SparState.matchTimer;
           if (!wasHit) m.ai._lastEnemyWhiffFrame = SparState.matchTimer;
           if (wasHit) {
@@ -5285,9 +5287,12 @@ const SparSystem = {
         (SparState.matchTimer - ai._lastEnemyWhiffFrame) < 18 &&
         // Only count as whiff if bot wasn't ALSO hit in the same window
         (ai._lastTookHitFrame === 0 || (SparState.matchTimer - ai._lastTookHitFrame) > 12);
-      // Quick re-peek: enemy fired (hit or miss) very recently after a gap
+      // Quick re-peek: enemy fired recently AND there was a meaningful gap before it
+      // (gap = time between previous shot and this shot was 20+ frames, then this shot came fast)
+      const shotGap = ai._prevEnemyShotFrame > 0 ? (ai._lastEnemyShotFrame - ai._prevEnemyShotFrame) : 999;
       const quickRepeek = sl && sl.rhythm && sl.rhythm.repeeksQuickly > 0.55 &&
-        ai._lastEnemyShotFrame > 0 && (SparState.matchTimer - ai._lastEnemyShotFrame) < 10;
+        ai._lastEnemyShotFrame > 0 && (SparState.matchTimer - ai._lastEnemyShotFrame) < 10 &&
+        shotGap >= 20; // there was a real disengage before this shot = a re-peek
       const trigger = quickRepeek ? 'repeek' : (enemyWhiffed ? 'whiff' : null);
       if (trigger && Math.random() < 0.35) { // don't trigger every time
         const pwPolicy = this._pickPunishWindowPolicy(pm, trigger);
