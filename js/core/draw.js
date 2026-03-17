@@ -840,6 +840,29 @@ function draw() {
           }
         }
       }
+      // Shopping bag for Aisle NPCs
+      if (npc.hasBag) {
+        let bOffX = 0, bOffY = -28;
+        if (npc.dir === 2) bOffX = 14;         // bag on opposite side of facing
+        else if (npc.dir === 3) bOffX = -14;
+        else if (npc.dir === 0) bOffX = 12;
+        else if (npc.dir === 1) bOffX = -12;
+        const bobB = npc.moving ? Math.sin(npc.frame * Math.PI / 2) * 1 : 0;
+        const bx = npc.x + bOffX, by = npc.y + bOffY + bobB;
+        // Paper bag
+        ctx.fillStyle = '#c8a060';
+        ctx.fillRect(bx - 8, by - 12, 16, 20);
+        ctx.fillStyle = '#b08848';
+        ctx.fillRect(bx - 8, by - 12, 16, 3); // bag top fold
+        ctx.strokeStyle = '#8a6830'; ctx.lineWidth = 1;
+        ctx.strokeRect(bx - 8, by - 12, 16, 20);
+        // Items in bag (colored rectangles sticking out)
+        const items = npc._bagItems || [];
+        for (let bi = 0; bi < Math.min(items.length, 3); bi++) {
+          ctx.fillStyle = items[bi].color || '#c0a080';
+          ctx.fillRect(bx - 5 + bi * 4, by - 14 - bi * 3, 6, 5);
+        }
+      }
 
     } else if (e.type === "dinerNPC") {
       // Diner customer NPC rendering — same as deli but with plate food visual

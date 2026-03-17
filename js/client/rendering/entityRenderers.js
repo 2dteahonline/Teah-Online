@@ -1840,28 +1840,57 @@ const ENTITY_RENDERERS = {
       ctx.fillText("SERVE", ex + cw / 2, ey + ch - 4);
       ctx.textAlign = "left";
 
-      // Pending plates — show completed orders waiting for waitress pickup
-      if (typeof _dinerPendingServe !== 'undefined' && _dinerPendingServe.length > 0) {
+      // === Tray with order progress (multi-part orders) ===
+      // Show tray that fills as order parts are completed
+      if (typeof cookingState !== 'undefined' && cookingState.ticket && cookingState.ticket.items &&
+          cookingState.ticket.items.length > 1 && cookingState.activeRestaurantId === 'diner') {
+        const completed = cookingState.ticket.completedCount || 0;
+        const total = cookingState.ticket.items.length;
+        const tableNum = cookingState.currentOrder && cookingState.currentOrder._dinerTableNumber
+          ? cookingState.currentOrder._dinerTableNumber : 0;
+        const trayX = ex + cw / 2, trayY = ey - 22;
+        // Tray base
+        ctx.fillStyle = '#8a7050';
+        ctx.beginPath(); ctx.ellipse(trayX, trayY + 4, cw * 0.35, 8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#a08860';
+        ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, cw * 0.33, 6, 0, 0, Math.PI * 2); ctx.fill();
+        // Food items on tray (one per completed part)
+        for (let fi = 0; fi < completed; fi++) {
+          const fx = trayX - (completed - 1) * 5 + fi * 10;
+          ctx.fillStyle = '#d4a040';
+          ctx.beginPath(); ctx.arc(fx, trayY - 2, 4, 0, Math.PI * 2); ctx.fill();
+        }
+        // Progress text above tray (e.g., "2/6")
+        ctx.font = "bold 9px monospace"; ctx.fillStyle = '#ffffff'; ctx.textAlign = "center";
+        ctx.fillText(completed + "/" + total, trayX, trayY - 12);
+        // Table number below tray in gold
+        if (tableNum > 0) {
+          ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffd700';
+          ctx.fillText("Table " + tableNum, trayX, trayY + 16);
+        }
+        ctx.textAlign = "left";
+      }
+      // Completed trays waiting for waitress pickup
+      else if (typeof _dinerPendingServe !== 'undefined' && _dinerPendingServe.length > 0) {
         const maxPlates = Math.min(_dinerPendingServe.length, 6);
         const plateSpacing = cw / (maxPlates + 1);
         for (let pi = 0; pi < maxPlates; pi++) {
           const px = ex + plateSpacing * (pi + 1);
           const py = ey - 18;
-          // Plate circle
-          ctx.fillStyle = '#f0ece0';
-          ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#c0b8a0'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.stroke();
-          // Food blob
-          const ing = _dinerPendingServe[pi].recipeIngredients;
-          const foodColor = ing && ing.length > 0 ? '#d4a040' : '#c08030';
-          ctx.fillStyle = foodColor;
-          ctx.beginPath(); ctx.arc(px, py - 1, 5, 0, Math.PI * 2); ctx.fill();
-          // Table number on plate
+          // Tray
+          ctx.fillStyle = '#8a7050';
+          ctx.beginPath(); ctx.ellipse(px, py + 2, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#a08860';
+          ctx.beginPath(); ctx.ellipse(px, py, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
+          // Food on tray
+          ctx.fillStyle = '#d4a040';
+          ctx.beginPath(); ctx.arc(px - 3, py - 2, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(px + 3, py - 2, 4, 0, Math.PI * 2); ctx.fill();
+          // Table number below in gold
           const bNum = _dinerPendingServe[pi].tableNumber || (_dinerPendingServe[pi].boothId + 1);
-          ctx.font = "bold 7px monospace"; ctx.fillStyle = '#1a1a1a'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.fillText(String(bNum), px, py + 4);
-          ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+          ctx.font = "bold 7px monospace"; ctx.fillStyle = '#ffd700'; ctx.textAlign = "center";
+          ctx.fillText("T" + bNum, px, py + 12);
+          ctx.textAlign = "left";
         }
       }
   },
@@ -1876,8 +1905,8 @@ const ENTITY_RENDERERS = {
       // Shiny highlight on top
       ctx.fillStyle = '#e0e0e8';
       ctx.fillRect(ex + 2, ey + 2, cw - 4, 3);
-      // Red accent strip
-      ctx.fillStyle = '#cc2020';
+      // Gray accent strip (matches counter color)
+      ctx.fillStyle = '#a0a0a8';
       ctx.fillRect(ex, ey + ch * 0.45, cw, ch * 0.1);
   },
 
@@ -2357,9 +2386,10 @@ const ENTITY_RENDERERS = {
           typeof cookingState !== 'undefined' && cookingState.counterOrders && cookingState.counterOrders.length > 0) {
         const orders = cookingState.counterOrders;
         const maxPlates = Math.min(orders.length, 4);
-        const spacing = cw / (maxPlates + 1);
+        const spacing = TILE; // 1 tile apart between plates
+        const startX = ex + TILE * 0.5; // start half-tile in from left edge
         for (let i = 0; i < maxPlates; i++) {
-          const px = ex + spacing * (i + 1);
+          const px = startX + i * spacing;
           const py = ey + ch * 0.4;
           // Plate
           ctx.fillStyle = '#e0d8c8';

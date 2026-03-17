@@ -865,6 +865,8 @@ const LEVELS = {
       { type: 'deli_service_counter', tx: 14, ty: 21, w: 11, h: 1, solid: true }, // right segment
       // Service counter — vertical bar on right side (rows 1-18, door at 19-20)
       { type: 'deli_service_counter', tx: 24, ty: 1, w: 1, h: 17, solid: true },
+      // Brown block above kitchen door (fills empty space at ty:18)
+      { type: 'deli_service_counter', tx: 24, ty: 18, w: 1, h: 1, solid: true },
       // Kitchen door (right side)
       { type: 'kitchen_door', tx: 24, ty: 19, w: 1, h: 2, solid: false },
 
@@ -925,8 +927,8 @@ const LEVELS = {
       // 1 row of 2 shelves
       { type: 'deli_shelf_frozen',    tx: 27, ty: 24, w: 5, h: 2, solid: true },
       { type: 'deli_shelf_snacks',    tx: 34, ty: 24, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_candy',     tx: 27, ty: 32, w: 5, h: 2, solid: true },
-      { type: 'deli_shelf_drinks',    tx: 34, ty: 32, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_candy',     tx: 27, ty: 30, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_drinks',    tx: 34, ty: 30, w: 5, h: 2, solid: true },
     ]
   },
   diner_01: {
@@ -1006,8 +1008,8 @@ const LEVELS = {
       // === WORK COUNTER (clear plate) ===
       { type: 'diner_counter', tx: 17, ty: 7, w: 4, h: 2, solid: true },
 
-      // === TV (3 wide to cover red service counter block at tx:23) ===
-      { type: 'diner_tv', tx: 21, ty: 7, w: 3, h: 3, solid: true },
+      // === TV (moved 2 up, 1 right from original position) ===
+      { type: 'diner_tv', tx: 22, ty: 5, w: 3, h: 3, solid: true },
 
       // === KITCHEN WALKWAY FLOOR (covers area below service counter) ===
       { type: 'diner_kitchen_floor', tx: 1, ty: 16, w: 22, h: 5, solid: false },
@@ -1061,9 +1063,9 @@ const LEVELS = {
       { type: 'diner_booth_seat', tx: 39, ty: 12, solid: false },
       { type: 'diner_booth_seat', tx: 41, ty: 12, solid: false },
 
-      // === ARCADE CORNER ===
-      { type: 'arcade_cabinet', tx: 44, ty: 17, w: 1, h: 2, solid: true },
-      { type: 'arcade_cabinet', tx: 46, ty: 17, w: 1, h: 2, solid: true },
+      // === ARCADE MACHINES (centered in dining area, below booths) ===
+      { type: 'arcade_cabinet', tx: 34, ty: 16, w: 1, h: 2, solid: true },
+      { type: 'arcade_cabinet', tx: 36, ty: 16, w: 1, h: 2, solid: true },
 
       // === CUSTOMER EXIT ===
       { type: 'diner_customer_exit', tx: 44, ty: 21, w: 3, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },

@@ -824,10 +824,17 @@ function drawCookingHUD() {
     ctx.fillText(customerLabel, panelX + 8, panelY + 14);
     // (Timer type label removed — bar color communicates urgency)
 
-    // === Service timer bar (green→yellow→red) — skip for diner (timer is on table) ===
+    // === Table number in gold (top-right of panel) — diner only ===
+    if (cookingState.activeRestaurantId === 'diner' && order._dinerTableNumber) {
+      ctx.font = "bold 12px monospace"; ctx.fillStyle = '#ffd700'; ctx.textAlign = "right";
+      ctx.fillText("Table " + order._dinerTableNumber, panelX + panelW - 8, panelY + 14);
+      ctx.textAlign = "left";
+    }
+
+    // === Service timer bar (green→yellow→red) ===
     const isDiner = cookingState.activeRestaurantId === 'diner';
     const sTimerPct = Math.max(0, 1.0 - (order.serviceTimer / order.serviceDuration));
-    if (!isDiner) {
+    {
       const sBarW = panelW - 16, sBarH = 8;
       const sBarX = panelX + 8, sBarY = panelY + 20;
       // Background
@@ -856,10 +863,7 @@ function drawCookingHUD() {
     if (cookingState.ticket && cookingState.ticket.items.length > 1) {
       orderLabel = "Item " + (cookingState.ticket.completedCount + 1) + "/" + cookingState.ticket.items.length + ": " + order.recipe.name;
     }
-    // Prepend table number for diner orders
-    if (order._dinerTableNumber) {
-      orderLabel = "Table " + order._dinerTableNumber + " \u2014 " + orderLabel;
-    }
+    // Diner: table number is shown in gold at top-right, don't repeat in label
     ctx.fillText(orderLabel, panelX + 8, panelY + 42);
 
     // Recipe ingredients — check off based on how many collected vs how many needed
