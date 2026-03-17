@@ -5075,7 +5075,9 @@ const SparSystem = {
     }
 
     // Chase/retreat reset: track consecutive chase and retreat frames
-    if (!isOpening && dist > 1) {
+    // Skip during active anti-bottom — tactic handles its own approach
+    const inActiveAntiBottom = !!ai._antiBottomTactic && enemyHasBottom;
+    if (!isOpening && !inActiveAntiBottom && dist > 1) {
       const movingToward = (moveX * dx + moveY * dy) / dist;
       if (movingToward > speed * 0.3) {
         ai._chaseFrames++;
@@ -5102,7 +5104,8 @@ const SparSystem = {
     }
 
     // === Expanded Low HP behavior (below 25%) ===
-    if (hpPct < 0.25 && !isOpening) {
+    // Skip during active anti-bottom engagement — tactic handles its own movement
+    if (hpPct < 0.25 && !isOpening && !inActiveAntiBottom) {
       const tgtHpPct = tgt.hp / tgt.maxHp;
       // Estimate shots to kill each other
       const botDmg = member.gun.damage || 20;
@@ -5133,7 +5136,8 @@ const SparSystem = {
     }
 
     // --- Combat-informed adjustments (STRONG — override base behaviors) ---
-    if (pm && !isOpening) {
+    // Skip during active anti-bottom engagement — tactic handles positioning
+    if (pm && !isOpening && !inActiveAntiBottom) {
       // DISTANCE MANAGEMENT: aggressively push toward preferred engagement range
       if (pm.preferredDist && dist > 1) {
         const distDiff = dist - pm.preferredDist;
@@ -5223,15 +5227,18 @@ const SparSystem = {
     // --- Bullet dodging (reactive, OVERRIDES movement when urgent) ---
     const dodge = this._getIncomingBulletDodge(bot, team);
     const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
+    // During anti-bottom, reduce dodge override so bot keeps descending
+    const maxDodgeOverride = inActiveAntiBottom ? 0.45 : 0.85;
     if (dodgeMag > 1.5) {
-      // Strong dodge signal — override most of current movement
-      const overridePct = Math.min(0.85, dodgeMag / 4); // up to 85% override
+      // Strong dodge signal — override movement (reduced during anti-bottom)
+      const overridePct = Math.min(maxDodgeOverride, dodgeMag / 4);
       moveX = moveX * (1 - overridePct) + dodge.x * speed * overridePct * 1.5;
       moveY = moveY * (1 - overridePct) + dodge.y * speed * overridePct * 1.5;
     } else if (dodgeMag > 0.1) {
-      // Mild dodge — additive
-      moveX += dodge.x * speed;
-      moveY += dodge.y * speed;
+      // Mild dodge — additive (reduced during anti-bottom)
+      const dodgeScale = inActiveAntiBottom ? 0.5 : 1.0;
+      moveX += dodge.x * speed * dodgeScale;
+      moveY += dodge.y * speed * dodgeScale;
     }
 
     // Separation from allies
@@ -5253,7 +5260,8 @@ const SparSystem = {
     else if (bot.y > arenaH - wallMargin) moveY -= speed * 0.3;
 
     // --- Baiting: occasionally fake a direction then snap back ---
-    if (ai.baitTimer > 0) {
+    // Skip during active anti-bottom — don't fake directions while trying to retake
+    if (ai.baitTimer > 0 && !inActiveAntiBottom) {
       ai.baitTimer--;
       if (ai.baitTimer > 8) {
         // Fake phase — move in bait direction
@@ -5263,7 +5271,7 @@ const SparSystem = {
       // else: snap back (use the real moveX/moveY calculated above)
     } else {
       ai.baitCooldown--;
-      if (ai.baitCooldown <= 0 && !isOpening && dist < 350 && dist > 100) {
+      if (ai.baitCooldown <= 0 && !isOpening && !inActiveAntiBottom && dist < 350 && dist > 100) {
         // Start a bait — fake going one direction
         ai.baitTimer = 18; // 12 frames fake + 6 frames real snap
         // Fake toward enemy then pull back, or fake a strafe direction
