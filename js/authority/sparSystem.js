@@ -1340,28 +1340,50 @@ const SparSystem = {
     const baseScores = {};
     for (const p of policies) baseScores[p] = 5;
 
+    // === CROSS-VS-BAIT-BOTTOM FORK ===
+    // The player cannot fully cover both:
+    //   1. Cross to restore favorable gun-side for shooting down
+    //   2. Bait the cross defense and retake bottom
+    // If player over-defends bottom → cross is open
+    // If player over-defends the cross → take bottom
+
     // Context-based biases
     if (duelContext) {
-      // If player shoots fast, baitShotDrop works well
+      // If player shoots fast, baitShotDrop exploits their trigger-happy shots
       if (duelContext.playerShootsFast) baseScores.baitShotDrop += 4;
-      // If player has strong bottom, wideUnderEntry to give up center pressure
-      if (duelContext.enemyHasStrongBottom) baseScores.wideUnderEntry += 4;
-      // If bot is close to a wall exit already, crossCommit is faster
+      // If player has strong bottom, wideUnderEntry to recover bottom from wide angle
+      if (duelContext.enemyHasStrongBottom) {
+        baseScores.wideUnderEntry += 5; // bottom recovery is primary
+        baseScores.baitShotDrop += 3;   // bait into bottom recovery
+      }
+      // If bot is close to a wall exit, crossCommit is faster
       if (duelContext.nearWallExit) baseScores.crossCommit += 3;
-      // If lane quality is very poor, wide under entry is safer
-      if (duelContext.laneQuality < 0.35) baseScores.wideUnderEntry += 3;
-      // If oscillating, favor stronger commitment policies
+      // If lane quality is very poor, wideUnderEntry to recover bottom
+      if (duelContext.laneQuality < 0.35) baseScores.wideUnderEntry += 4;
+      // If oscillating, favor strong commitment (cross or under)
       if (duelContext.oscillating) {
         baseScores.crossCommit += 3;
-        baseScores.wideUnderEntry += 2;
+        baseScores.wideUnderEntry += 3;
       }
     }
 
-    // Rhythm-based from player model
+    // Rhythm-based: player behavior reveals which fork to exploit
     if (pm) {
       if (pm.playerShootsFast) baseScores.baitShotDrop += 3;
-      if (pm.playerCrossesAfterBottomLoss > 0.5) baseScores.fakeCrossBreak += 3;
+      // Player defends bottom → cross is open (they can't cover both)
+      if (pm.playerPushesFromBottom > 0.5) {
+        baseScores.crossCommit += 4;
+        baseScores.fakeCrossBreak += 3;
+      }
+      // Player covers the cross → bottom retake is open
+      if (pm.playerCrossesAfterBottomLoss > 0.5) {
+        baseScores.wideUnderEntry += 4;
+        baseScores.baitShotDrop += 3;
+        baseScores.fakeCrossBreak += 2; // fake the cross they expect, break other way
+      }
       if (pm.playerRetreatsSameSide > 0.6) baseScores.crossCommit += 2;
+      // If player chases retreats, bait exploits that
+      if (pm.playerChases > 0.45) baseScores.baitShotDrop += 3;
     }
 
     // Fail streak suppression
@@ -1392,10 +1414,12 @@ const SparSystem = {
     _logEngagement('centerRecovery', frames, dmgTaken);
     const dmgR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.35));
     const speedR = this._clamp01(1 - frames / 180);
-    // Center recovery: escaping is the key objective, regaining position is bonus
-    const escapeR = escaped ? 1 : 0;
-    const positionR = (regainedBottom ? 0.5 : 0) + (regainedGunSide ? 0.5 : 0);
-    const phaseReward = this._clamp01(escapeR * 0.40 + positionR * 0.25 + dmgR * 0.20 + speedR * 0.15);
+    // Center recovery: bottom is the primary objective, gun-side is secondary
+    // "Escaped center" alone is not valuable — position must actually improve
+    const bottomR = regainedBottom ? 1 : 0;
+    const gunSideR = regainedGunSide ? 1 : 0;
+    const escapeBonus = (escaped && !regainedBottom && !regainedGunSide) ? 0.3 : 0; // small bonus for escape-only
+    const phaseReward = this._clamp01(bottomR * 0.35 + gunSideR * 0.15 + escapeBonus * 0.10 + dmgR * 0.25 + speedR * 0.15);
     const rf = this._ensureReinforcementProfile(sl);
     if (rf) {
       for (const scopeName of this._getPhaseScopes()) {
@@ -4258,8 +4282,10 @@ const SparSystem = {
     if (ai._centerRecoveryCooldown > 0) ai._centerRecoveryCooldown--;
     if (ai._centerRecoveryPolicy) {
       ai._centerRecoveryFrames++;
-      // Success: escaped center band OR regained bottom OR regained gun-side
-      const escaped = !inCenterBand || hasBottom || (!badGunSide && laneQuality > 0.58);
+      // Success: regained bottom OR regained favorable gun-side (not just "left center band")
+      // Bottom is the primary win condition. Gun-side recovery only counts if also out of center.
+      const regainedRealPosition = hasBottom || (!badGunSide && laneQuality > 0.58 && !inCenterBand);
+      const escaped = regainedRealPosition;
       const crMinFrames = 25;
       if (ai._centerRecoveryFrames >= crMinFrames && escaped) {
         this._finalizeCenterRecovery(ai, true, hasBottom, !badGunSide && laneQuality > 0.55);
@@ -4294,11 +4320,9 @@ const SparSystem = {
         if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
         else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
       }
-      // Wall contact during recovery = FAILURE, not success (wall is not an exit)
-      // Only exception: if we also regained bottom or gun-side, that's partial success
+      // Wall contact during recovery = ALWAYS FAILURE — wall is not an exit, it's another trap
       if (ai._centerRecoveryPolicy && ai._centerRecoveryFrames >= 5 && (nearLeftWallBase || nearRightWallBase)) {
-        const wallSuccess = hasBottom || (!badGunSide && laneQuality > 0.55);
-        this._finalizeCenterRecovery(ai, wallSuccess, hasBottom, !badGunSide && laneQuality > 0.55);
+        this._finalizeCenterRecovery(ai, false, false, false);
         ai._centerRecoveryCooldown = 30;
       }
       // Also finalize if we entered a higher-priority state
@@ -4309,9 +4333,16 @@ const SparSystem = {
         }
       }
     }
-    // Open center recovery if center-trapped and no active higher-priority engagement
+    // Open center recovery if center-trapped — preempts antiBottom
+    // The "center-trapped with enemy having bottom" state is exactly when CR should fire
     if (centerTrapped && !ai._centerRecoveryPolicy && !(ai._centerRecoveryCooldown > 0) &&
-        !ai._escapePolicy && !ai._antiBottomTactic) {
+        !ai._escapePolicy) {
+      // Finalize active antiBottom — centerRecovery owns the center-trapped state
+      if (ai._antiBottomTactic && ai._antiBottomFrames >= 5) {
+        this._finalizeAntiBottomEngagement(ai, false, SparState._matchCollector);
+        ai._antiBottomCooldown = 0; // no cooldown — CR takes over immediately
+        ai._antiBottomHysteresisFrames = 0;
+      }
       // Finalize gunSide if active (center recovery takes priority)
       if (ai._gunSidePolicy && ai._gunSideFrames >= 15) {
         this._finalizeGunSideEngagement(ai, false);
@@ -4350,9 +4381,16 @@ const SparSystem = {
       }
     }
     // Oscillation rescue: if oscillating without a recovery policy, force one immediately
+    // centerRecovery preempts antiBottom — the exact state CR is designed to fix
     if (centerOscillating && !ai._centerRecoveryPolicy && !ai._escapePolicy &&
-        !ai._antiBottomTactic && !isOpening && !(ai._centerRecoveryCooldown > 0) &&
+        !isOpening && !(ai._centerRecoveryCooldown > 0) &&
         SparState.phase === 'fighting') {
+      // Finalize active antiBottom if present — centerRecovery owns this state
+      if (ai._antiBottomTactic && ai._antiBottomFrames >= 5) {
+        this._finalizeAntiBottomEngagement(ai, false, SparState._matchCollector);
+        ai._antiBottomCooldown = 0; // no cooldown — CR takes over immediately
+        ai._antiBottomHysteresisFrames = 0;
+      }
       const crCtx = { laneQuality, oscillating: true, nearWallExit: nearLeftWallBase || nearRightWallBase };
       const crPolicy = this._pickCenterRecoveryPolicy(pm, crCtx);
       const crFamilyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
@@ -5060,8 +5098,8 @@ const SparSystem = {
           moveX += (dx / dist) * speed * 0.5;
           moveY += (dy / dist) * speed * 0.5;
         }
-        // Push toward bottom position
-        if (bot.y < tgt.y) moveY += speed * 0.3;
+        // Push toward bottom position — bottom is the primary objective
+        if (bot.y < tgt.y) moveY += speed * 0.4;
         else moveY += speed * 0.1;
       } else if (ai._midPressurePolicy === 'pressureSoft') {
         // Moderate: 70% strafe, 30% approach when far, don't chase close
@@ -5075,8 +5113,8 @@ const SparSystem = {
           moveX -= (dx / dist) * speed * 0.15;
           moveY -= (dy / dist) * speed * 0.15;
         }
-        // Moderate bottom push
-        if (bot.y < tgt.y) moveY += speed * 0.2;
+        // Moderate bottom push — still prioritize getting below enemy
+        if (bot.y < tgt.y) moveY += speed * 0.25;
         else moveY += speed * 0.05;
       } else {
         // holdLane: 80% strafe, no vertical push unless losing position, maintain distance
@@ -5102,16 +5140,20 @@ const SparSystem = {
         if (bot.y < tgt.y - 40) moveY += speed * 0.15;
       }
 
-      // vNext: Anti-passivity — ALL neutral policies must maintain minimum lateral drift in open center
-      // Prevents planting in mid-map where no positional reason exists to hold still
+      // === BOTTOM IS THE PRIMARY OBJECTIVE IN NEUTRAL ===
+      // If bot is above enemy, always push toward bottom — this is the main win condition
+      // Stronger push the further above we are
+      const vertGap = tgt.y - bot.y; // positive = bot is above enemy (needs to descend)
+      if (vertGap > 20) {
+        // Scale bottom push by distance — stronger when far above
+        const bottomPush = Math.min(0.4, 0.15 + (vertGap / arenaH) * 0.5);
+        if (moveY < speed * bottomPush) moveY = Math.max(moveY, speed * bottomPush);
+      }
+      // Anti-passivity — maintain minimum lateral drift in open center
       const botInOpenCenter = bot.x > arenaW * 0.2 && bot.x < arenaW * 0.8 &&
         bot.y > arenaH * 0.25 && bot.y < arenaH * 0.75;
       if (botInOpenCenter && Math.abs(moveX) < speed * 0.3) {
-        moveX = ai.strafeDir * speed * 0.35; // minimum lateral drift
-      }
-      // Always push toward bottom in neutral if above enemy
-      if (botInOpenCenter && bot.y < tgt.y - 20 && moveY < speed * 0.1) {
-        moveY += speed * 0.15;
+        moveX = ai.strafeDir * speed * 0.35;
       }
 
       // Maintain fighting distance — don't stack on top of enemy
@@ -5206,9 +5248,10 @@ const SparSystem = {
           moveY = speed * 0.75; // hard descent
         }
       } else if (crPolicy === 'wideUnderEntry') {
-        // Give up center pressure entirely — widen out and descend to recover bottom
-        moveX = crDir * speed * 0.6;
-        moveY = speed * 0.55;
+        // Give up center pressure entirely — widen out and descend to RECOVER BOTTOM
+        // Bottom recovery is the primary goal — push hard downward
+        moveX = crDir * speed * 0.5;
+        moveY = speed * 0.7;
       }
 
       // Allow shots during center recovery if lane is briefly clean

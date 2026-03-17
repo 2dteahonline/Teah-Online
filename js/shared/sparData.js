@@ -534,6 +534,89 @@ function resetSparLearning() {
   return sparLearning;
 }
 
+// Targeted geometry learning reset — resets policy buckets whose success criteria changed
+// Keeps: descriptive player data, shooting/hit/dodge observational stats, raw telemetry
+// Resets: geometry-policy reinforcement buckets, tactic fail streaks, route results
+function resetGeometryLearning() {
+  const sl = sparLearning;
+  if (!sl || !sl.reinforcement1v1) {
+    console.log('[Spar] No reinforcement data to reset');
+    return sl;
+  }
+
+  // Buckets to reset in all 3 scopes
+  const bucketsToReset = [
+    'opening', 'antiBottomFamily', 'antiBottomTactic',
+    'gunSidePolicy', 'gunSideFamily',
+    'escapePolicy', 'escapeFamily',
+    'openingContestPolicy', 'openingContestFamily',
+    'centerRecoveryPolicy', 'centerRecoveryFamily',
+  ];
+
+  const scopes = ['general', 'player', 'selfPlay'];
+  let resetCount = 0;
+  for (const scopeName of scopes) {
+    const scope = sl.reinforcement1v1[scopeName];
+    if (!scope) continue;
+    for (const bucketName of bucketsToReset) {
+      if (scope[bucketName]) {
+        for (const key of Object.keys(scope[bucketName])) {
+          scope[bucketName][key] = { plays: 0, reward: 0.5 };
+          resetCount++;
+        }
+      }
+    }
+  }
+
+  // Reset tactical fail streaks
+  if (sl.tactical) {
+    if (sl.tactical.tacticFailStreaks) {
+      for (const k of Object.keys(sl.tactical.tacticFailStreaks)) {
+        sl.tactical.tacticFailStreaks[k] = 0;
+      }
+    }
+    if (sl.tactical.escapeFailStreaks) {
+      for (const k of Object.keys(sl.tactical.escapeFailStreaks)) {
+        sl.tactical.escapeFailStreaks[k] = 0;
+      }
+    }
+    if (sl.tactical.centerRecoveryFailStreaks) {
+      for (const k of Object.keys(sl.tactical.centerRecoveryFailStreaks)) {
+        sl.tactical.centerRecoveryFailStreaks[k] = 0;
+      }
+    }
+    // Reset outcome counters for systems whose reward meaning changed
+    if (sl.tactical.antiBottomOutcomes) {
+      sl.tactical.antiBottomOutcomes = { attempts: 0, regainedBottom: 0, avgDmgTakenDuring: 0, avgDuration: 0 };
+    }
+    if (sl.tactical.centerRecoveryOutcomes) {
+      sl.tactical.centerRecoveryOutcomes = { attempts: 0, escapedCenter: 0, regainedBottom: 0, regainedGunSide: 0, avgDmgTakenDuring: 0, avgDuration: 0 };
+    }
+    if (sl.tactical.escapeOutcomes) {
+      sl.tactical.escapeOutcomes = { attempts: 0, resolved: 0, avgDmgTakenDuring: 0, avgDuration: 0 };
+    }
+    if (sl.tactical.badLaneOutcomes) {
+      sl.tactical.badLaneOutcomes = { attempts: 0, resolved: 0, avgDmgTakenDuring: 0, avgDuration: 0 };
+    }
+    // Reset opening route results (opening success criteria changed)
+    if (sl.tactical.openingContestOutcomes) {
+      sl.tactical.openingContestOutcomes = { attempts: 0, securedBottom: 0, deniedBottom: 0, avgDmgDealt: 0, avgDuration: 0 };
+    }
+  }
+
+  // Reset opening route results
+  if (sl.botOpenings && sl.botOpenings.routeResults) {
+    for (const key of Object.keys(sl.botOpenings.routeResults)) {
+      sl.botOpenings.routeResults[key] = { wins: 0, losses: 0, gotBottom: 0, total: 0, failStreak: 0 };
+    }
+  }
+
+  if (typeof SaveLoad !== 'undefined') SaveLoad.save();
+  console.log(`[Spar] Geometry learning reset: ${resetCount} buckets reset to neutral, fail streaks cleared`);
+  console.log('[Spar] Kept: player descriptive profile, shooting/hit/dodge stats, combat patterns');
+  return sl;
+}
+
 // Console helper — compact summary of Jeff-specific anti-bottom learning
 function sparSummary() {
   const sl = sparLearning;
