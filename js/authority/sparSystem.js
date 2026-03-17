@@ -29,6 +29,10 @@ const SparState = {
 // ---- SPAR SYSTEM ----
 const SparSystem = {
   enterHub() {
+    playerDead = false;
+    deathTimer = 0;
+    if (typeof respawnTimer !== 'undefined') respawnTimer = 0;
+    deathGameOver = false;
     SparState.phase = 'hub';
     SparState.activeRoom = null;
     SparState._sparBots.length = 0;
@@ -322,26 +326,36 @@ const SparSystem = {
       let style = 'pressure'; // default
 
       if (sl && sl.general1v1 && sl.general1v1.styleResults) {
-        // Pick style with best win rate, but 20% exploration
-        if (Math.random() < 0.2) {
+        // Pick style with best win rate, 10% exploration
+        if (Math.random() < 0.1) {
           const styleNames = Object.keys(SPAR_DUEL_STYLES);
           style = styleNames[Math.floor(Math.random() * styleNames.length)];
         } else {
           let bestScore = -Infinity;
+          const hasPersonal = sl.player1v1 && sl.player1v1.styleResults;
           for (const [name, _] of Object.entries(SPAR_DUEL_STYLES)) {
             const sr = sl.general1v1.styleResults[name];
-            if (!sr || sr.total < 1) {
-              style = name; break; // try untested styles first
+            const jr = hasPersonal ? sl.player1v1.styleResults[name] : null;
+            // Try untested styles first
+            if ((!sr || sr.total < 1) && (!jr || jr.total < 1)) {
+              style = name; break;
             }
-            const score = sr.wins / sr.total;
-            // Jeff-specific adjustment
-            if (sl.player1v1 && sl.player1v1.styleResults && sl.player1v1.styleResults[name]) {
-              const jr = sl.player1v1.styleResults[name];
-              if (jr.total > 0) {
-                const jeffAdj = (jr.wins / jr.total - 0.5) * 0.2;
-                if (score + jeffAdj > bestScore) { bestScore = score + jeffAdj; style = name; }
-                continue;
+            let score;
+            if (jr && jr.total >= 3) {
+              // Player1v1 has enough data — use it as PRIMARY
+              score = jr.wins / jr.total;
+              // General1v1 as small tiebreaker
+              if (sr && sr.total > 0) {
+                score += (sr.wins / sr.total - 0.5) * 0.15;
               }
+            } else if (jr && jr.total > 0) {
+              // Some personal data — blend 60/40 personal/general
+              const pScore = jr.wins / jr.total;
+              const gScore = sr && sr.total > 0 ? sr.wins / sr.total : 0.5;
+              score = pScore * 0.6 + gScore * 0.4;
+            } else {
+              // No personal data — use general
+              score = sr && sr.total > 0 ? sr.wins / sr.total : 0.5;
             }
             if (score > bestScore) { bestScore = score; style = name; }
           }
@@ -518,6 +532,7 @@ const SparSystem = {
     if (entity === player) {
       playerDead = true;
       deathTimer = 60;
+      if (typeof respawnTimer !== 'undefined') respawnTimer = 0;
       deathX = player.x;
       deathY = player.y;
       deathRotation = 0;
@@ -1230,7 +1245,7 @@ const SparSystem = {
       return;
     }
 
-    const alpha = 0.65; // EMA weight for new data — aggressive adaptation
+    const alpha = 0.72; // EMA weight for new data — fast personal adaptation
     const ema = (oldVal, newVal) => alpha * newVal + (1 - alpha) * oldVal;
     const sl = sparLearning;
 
@@ -1608,16 +1623,17 @@ const SparSystem = {
 
   // ---- LEARNING: compute bot behavior modifiers from player profile ----
   _getProfileModifiers() {
-    if (typeof sparLearning === 'undefined' || sparLearning.matchCount < 3) {
+    if (typeof sparLearning === 'undefined' || sparLearning.matchCount < 2) {
       return null; // not enough data yet — bot stays fully neutral
     }
     const sl = sparLearning;
     const mc = sl.matchCount;
 
-    // Confidence gating: need minimum matches before using learned biases
-    const hasShootingData = mc >= 5;   // shooting direction bias
-    const hasPositionData = mc >= 5;   // bottom/position modifiers
-    const hasOpeningData = mc >= 3;    // opening route selection
+    // Confidence gating: lower thresholds for fast adaptation
+    const hasShootingData = mc >= 3;   // shooting direction bias (high signal)
+    const hasPositionData = mc >= 3;   // bottom/position modifiers
+    const hasOpeningData = mc >= 2;    // opening route selection (very high signal)
+    const hasCombatData = mc >= 4;     // combat outcomes (needs more samples)
 
     // Opening goal Y: if player rushes bottom, bot should also rush bottom harder
     const openingGoalY = hasOpeningData && sl.opening.rushBottom > 0.6 ? 0.82 : 0.72;
@@ -1625,8 +1641,8 @@ const SparSystem = {
     // Counter player's opening strafe
     const openingStrafeDir = hasOpeningData ? (sl.opening.strafeLeft > 0.6 ? 1 : (sl.opening.strafeLeft < 0.4 ? -1 : 0)) : 0;
 
-    // Aggression multiplier: counter-play
-    const aggressionMult = mc >= 3 ? (1.3 - sl.aggression.overall * 0.6) : 1.0; // 0.7 to 1.3
+    // Aggression multiplier: counter-play (wider range for faster felt impact)
+    const aggressionMult = mc >= 2 ? (1.5 - sl.aggression.overall * 1.0) : 1.0; // 0.5 to 1.5
 
     // Dodge prediction bias
     const dodgePredictBiasX = mc >= 3 ? (sl.dodging.leftBias - 0.5) * 2 : 0; // -1 to 1
@@ -1636,12 +1652,12 @@ const SparSystem = {
     const horizShotPct = sl.shooting.leftPct + sl.shooting.rightPct;
     const preferredOffsetX = hasShootingData ? (vertShotPct - horizShotPct) * 0.5 : 0; // -0.5 to 0.5
 
-    // Strafe speed: based on win rate (losing = speed up, but NEVER exceed player speed)
-    const strafeSpeedMult = Math.min(1.0, 1.15 - sl.winRate * 0.3); // 0.85 to 1.0
+    // Strafe speed: based on win rate (losing = speed up, NEVER exceed player speed)
+    const strafeSpeedMult = Math.min(1.0, 1.25 - sl.winRate * 0.5); // 0.75 to 1.0
 
     // --- Situational modifiers (v2) ---
 
-    // Situational modifiers — gated to avoid neutral 0.5 crossing live thresholds
+    // Situational modifiers — gated until position data available
     // When we have bottom and player tries to retake:
     const playerRetakes = hasPositionData ? sl.whenBotHasBottom.retakePct : 0;
     const playerFlanks = hasPositionData ? sl.whenBotHasBottom.flankPct : 0;
@@ -1649,7 +1665,7 @@ const SparSystem = {
 
     // When player has bottom:
     const playerHoldsBottom = hasPositionData ? sl.whenHasBottom.holdsPct : 0;
-    const playerWallsFromBottom = hasPositionData ? sl.whenHasBottom.shotFreq : 0.5;
+    const playerWallsFromBottom = hasPositionData ? sl.whenHasBottom.shotFreq : 0;
     const playerPushesFromBottom = hasPositionData ? sl.whenHasBottom.pushPct : 0;
 
     // When bot approaches: does player stand or run?
@@ -1669,7 +1685,7 @@ const SparSystem = {
     const ps = sl.playerShots;
     const bs = sl.botShots;
     const cp = sl.combatPatterns;
-    const hasCombatData = mc >= 5; // need real combat data before deriving preferences
+    // hasCombatData already set above in confidence gating
 
     // Player's best range: where they're most accurate → bot should avoid that distance
     let bestRange = 'mid';
@@ -1747,9 +1763,9 @@ const SparSystem = {
       playerRetreatsOnDamage: hasPositionData && sl.afterHit ? sl.afterHit.retreatsOnDamage : 0.5,
       playerFleesLowHp: hasPositionData && sl.lowHpExpanded ? sl.lowHpExpanded.fleesPct : 0.5,
       playerChaseEndurance: hasPositionData && sl.chasePatterns ? sl.chasePatterns.giveUpFrames : 90,
-      // Position value — how important is bottom?
-      bottomWinCorrelation: hasPositionData && sl.positionValue ? sl.positionValue.bottomWinCorrelation : 0.6,
-      topPenalty: hasPositionData && sl.positionValue ? sl.positionValue.topPenalty : 0.3,
+      // Position value — how important is bottom? (defaults favor bottom)
+      bottomWinCorrelation: hasPositionData && sl.positionValue ? sl.positionValue.bottomWinCorrelation : 0.7,
+      topPenalty: hasPositionData && sl.positionValue ? sl.positionValue.topPenalty : 0.4,
       // Gun side + hitbox awareness (v4) — need 5+ matches for reliable data
       playerGunSide: hasShootingData && sl.gunSide ? sl.gunSide.playerPreference : 'left',
       playerLeftPct: hasShootingData && sl.gunSide ? sl.gunSide.leftPct : 0.5,
@@ -1767,8 +1783,8 @@ const SparSystem = {
     // Available routes — bottom is meta, so bottom routes are default
     const routes = ['bottomCenter', 'bottomLeft', 'bottomRight', 'topHold', 'midFlank', 'mirrorPlayer'];
 
-    // Not enough data — rush bottom (need 3+ matches before using learned routes)
-    if (!sl || sl.matchCount < 3) {
+    // Not enough data — rush bottom (need 2+ matches before using learned routes)
+    if (!sl || sl.matchCount < 2) {
       const starters = ['bottomCenter', 'bottomLeft', 'bottomRight'];
       return starters[Math.floor(Math.random() * starters.length)];
     }
@@ -1777,12 +1793,12 @@ const SparSystem = {
     const scores = {};
     for (const r of routes) scores[r] = 0;
 
-    // Small base bonus for bottom routes (but not dominant)
-    scores['bottomCenter'] += 3;
-    scores['bottomLeft'] += 3;
-    scores['bottomRight'] += 3;
-    scores['mirrorPlayer'] += 2;
-    scores['midFlank'] += 2;
+    // Base bonus for bottom routes — bottom is meta
+    scores['bottomCenter'] += 5;
+    scores['bottomLeft'] += 5;
+    scores['bottomRight'] += 5;
+    scores['mirrorPlayer'] += 3;
+    scores['midFlank'] += 3;
     scores['topHold'] += 1;
 
     const rr = sl.botOpenings.routeResults;
@@ -1798,30 +1814,34 @@ const SparSystem = {
 
         // Penalize routes that consistently LOSE — HARD
         const lossRate = rr[r].losses / rr[r].total;
-        scores[r] -= lossRate * 25;
+        scores[r] -= lossRate * 30;
 
         // Routes with no wins and many attempts: massive penalty
         if (rr[r].wins === 0 && rr[r].total >= 3) {
-          scores[r] -= 30;
+          scores[r] -= 35;
         }
         // Additional scaling penalty for high-sample losers
         if (rr[r].wins === 0 && rr[r].total >= 5) {
-          scores[r] -= rr[r].total * 2;
+          scores[r] -= rr[r].total * 3;
         }
       }
     }
 
-    // Counter player's specific route
+    // Counter player's specific route — STRONG counter
     const playerRoute = sl.opening.route;
     if (playerRoute === 'bottomLeft') {
-      scores['bottomRight'] += 6;
+      scores['bottomRight'] += 12;
     } else if (playerRoute === 'bottomRight') {
+      scores['bottomLeft'] += 12;
+    } else if (playerRoute === 'bottomCenter') {
+      // Counter center by flanking to a side
       scores['bottomLeft'] += 6;
+      scores['bottomRight'] += 6;
     }
 
-    // Small variety bonus — don't repeat same route more than twice
+    // Variety bonus — don't repeat same route more than twice
     const lastRoute = sl.botOpenings.lastRoute;
-    if (lastRoute) scores[lastRoute] -= 4;
+    if (lastRoute) scores[lastRoute] -= 5;
 
     // Small randomness for unpredictability
     for (const r of routes) scores[r] += Math.random() * 8;
@@ -2099,25 +2119,25 @@ const SparSystem = {
 
     } else if (enemyReloading) {
       // === PUNISH: enemy reloading — close in aggressively ===
-      const punishAggr = pm ? pm.aggressionMult : 1.0;
+      const punishAggr = pm ? pm.aggressionMult : 1.1;
       if (dist > 80 && dist > 1) {
-        moveX = (dx / dist) * speed * 0.55 * punishAggr;
-        moveY = (dy / dist) * speed * 0.55 * punishAggr;
+        moveX = (dx / dist) * speed * 0.65 * punishAggr;
+        moveY = (dy / dist) * speed * 0.65 * punishAggr;
       }
-      moveX += ai.strafeDir * speed * 0.35;
+      moveX += ai.strafeDir * speed * 0.25;
       // Learning v2: if player holds ground on approach, commit harder
       // If player sidesteps, match their lateral direction
       if (pm) {
-        if (pm.playerHoldsOnApproach > 0.5) {
+        if (pm.playerHoldsOnApproach > 0.4) {
           // They stand and fight — push straight in, they won't dodge
           if (dist > 1) {
-            moveX = (dx / dist) * speed * 0.65 * punishAggr;
-            moveY = (dy / dist) * speed * 0.65 * punishAggr;
+            moveX = (dx / dist) * speed * 0.75 * punishAggr;
+            moveY = (dy / dist) * speed * 0.75 * punishAggr;
           }
         }
-        if (pm.playerSidesteps > 0.5) {
+        if (pm.playerSidesteps > 0.4) {
           // They'll dodge sideways — lead toward their dodge direction
-          moveX += pm.dodgePredictBiasX * speed * 0.2;
+          moveX += pm.dodgePredictBiasX * speed * 0.25;
         }
       }
 
@@ -2125,77 +2145,72 @@ const SparSystem = {
       // === WE HAVE BOTTOM — use it actively, don't just camp ===
 
       // CRITICAL: if player hits strafing bot more than retreating/still, use stop-start movement
-      // Compare strafe effectiveness to alternatives — if strafe is NOT the best, mix it up
       const playerHitsStrafe = pm && pm.botMoveEffectiveness &&
         (pm.botMoveEffectiveness.strafe < pm.botMoveEffectiveness.retreat ||
          pm.botMoveEffectiveness.strafe < pm.botMoveEffectiveness.still);
 
       if (playerHitsStrafe) {
         // Player destroys horizontal strafing — use stop-start + vertical jukes
-        // We HAVE bottom, so don't retreat away — hold position but be unpredictable
         if (!ai._pauseTimer) ai._pauseTimer = 0;
         ai._pauseTimer--;
         if (ai._pauseTimer > 0) {
-          // Brief pause — hard to predict
           moveX = 0;
           moveY = 0;
         } else {
-          // Burst strafe with vertical jukes — NOT retreating (we want bottom)
-          moveX = ai.strafeDir * speed * 0.7;
-          moveY = (Math.random() < 0.5 ? -1 : 1) * speed * 0.35; // vertical juke
+          moveX = ai.strafeDir * speed * 0.75;
+          moveY = (Math.random() < 0.5 ? -1 : 1) * speed * 0.35;
           if (ai._pauseTimer <= -18) {
-            ai._pauseTimer = 5 + Math.floor(Math.random() * 8); // pause 5-13 frames
+            ai._pauseTimer = 5 + Math.floor(Math.random() * 8);
             ai.strafeDir *= -1;
           }
         }
       } else {
-        moveX = ai.strafeDir * speed * 0.65;
+        moveX = ai.strafeDir * speed * 0.7;
       }
 
-      // Elliptical peek advantage: maintain vertical gap (20px hit zone = hard to hit us)
-      // Don't close vertically — keep the peek distance, strafe horizontally instead
+      // Elliptical peek advantage: maintain vertical gap
       if (Math.abs(dy) > 40) {
-        moveY *= 0.4; // strongly reduce vertical drift to preserve peek gap
+        moveY *= 0.35;
       }
 
-      // Don't camp bottom corner — stay mobile. Push toward enemy only if too far.
-      const engageDist = (pm && pm.preferredDist) ? pm.preferredDist + 50 : 300;
+      // Stay engaged — push toward enemy if too far, tighter leash
+      const engageDist = (pm && pm.preferredDist) ? pm.preferredDist + 30 : 250;
       if (dist > engageDist && dist > 1) {
-        moveX += (dx / dist) * speed * 0.25;
-        moveY += (dy / dist) * speed * 0.25;
+        moveX += (dx / dist) * speed * 0.3;
+        moveY += (dy / dist) * speed * 0.3;
       }
 
       // Learning v2: adapt based on what player does when we have bottom
       if (pm) {
-        // If player retakes hard, wall bullets and be ready for them coming down
-        if (pm.playerRetakes > 0.5 && enemyMovingDown) {
-          moveX = ai.strafeDir * speed * 0.8;
-          if (dist < 200) moveY -= speed * 0.15;
+        // If player retakes hard, wall bullets and be ready
+        if (pm.playerRetakes > 0.35 && enemyMovingDown) {
+          moveX = ai.strafeDir * speed * 0.85;
+          if (dist < 200) moveY -= speed * 0.2;
         }
-        // If player flanks, track their horizontal movement more
-        if (pm.playerFlanks > 0.4) {
-          moveX += Math.sign(dx) * speed * 0.35;
+        // If player flanks, track their horizontal movement
+        if (pm.playerFlanks > 0.3) {
+          moveX += Math.sign(dx) * speed * 0.4;
         }
         // If player retreats / gives up bottom, PUSH and pressure
-        if (pm.playerRetreats > 0.4 && !enemyMovingDown && dist > 200) {
-          if (dist > 1) moveY += (dy / dist) * speed * 0.4;
+        if (pm.playerRetreats > 0.3 && !enemyMovingDown && dist > 180) {
+          if (dist > 1) moveY += (dy / dist) * speed * 0.45;
         }
       }
 
       if (enemyMovingDown) {
-        moveX += Math.sign(dx) * speed * 0.3;
-        if (dist < 200) moveY -= speed * 0.2;
+        moveX += Math.sign(dx) * speed * 0.35;
+        if (dist < 200) moveY -= speed * 0.25;
       } else if (enemyMovingLeft || enemyMovingRight) {
-        moveX += Math.sign(dx) * speed * 0.25;
+        moveX += Math.sign(dx) * speed * 0.3;
       }
       if (bot.y > arenaH - TILE * 2) moveY -= speed * 0.3;
 
     } else if (enemyHasBottom) {
-      // === ENEMY HAS BOTTOM — adapt based on what they do when they have it ===
+      // === ENEMY HAS BOTTOM — retake aggressively ===
 
       // Learning v2: counter their bottom-holding style
-      let approachAggr = 0.35;  // default downward drift
-      let strafeAggr = 0.6;     // default strafe speed
+      let approachAggr = 0.45;  // default downward push (was 0.35)
+      let strafeAggr = 0.65;    // default strafe speed (was 0.6)
 
       if (pm) {
         // If player walls bullets from bottom (high shot freq), be more evasive
@@ -2244,45 +2259,47 @@ const SparSystem = {
       }
 
     } else {
-      // === NEUTRAL — neither has clear bottom, play mobile ===
-      moveX = ai.strafeDir * speed * 0.65;
-      // Stay at preferred engagement distance, not just rush bottom
+      // === NEUTRAL — neither has clear bottom, actively contest ===
+      moveX = ai.strafeDir * speed * 0.7;
+      // Stay at preferred engagement distance + actively contest bottom
       if (pm && pm.preferredDist && dist > 1) {
         const distDiff = dist - pm.preferredDist;
-        if (distDiff > 60) {
-          moveX += (dx / dist) * speed * 0.3;
-          moveY += (dy / dist) * speed * 0.3;
-        } else if (distDiff < -60) {
-          moveX -= (dx / dist) * speed * 0.2;
-          moveY -= (dy / dist) * speed * 0.2;
+        if (distDiff > 50) {
+          moveX += (dx / dist) * speed * 0.35;
+          moveY += (dy / dist) * speed * 0.35;
+        } else if (distDiff < -50) {
+          moveX -= (dx / dist) * speed * 0.25;
+          moveY -= (dy / dist) * speed * 0.25;
         }
       } else if (bot.y < tgt.y) {
-        moveY = speed * 0.2; // slight drift down, not hard commit
+        // Push to get below enemy — bottom is valuable
+        moveY = speed * 0.4;
+      } else {
+        // Already below or level — slight drift to maintain bottom
+        moveY = speed * 0.1;
       }
-      // Maintain fighting distance
+      // Maintain fighting distance — don't stack on top of enemy
       if (dist < 100 && dist > 1) {
-        moveX -= (dx / dist) * speed * 0.2;
+        moveX -= (dx / dist) * speed * 0.25;
         moveY -= (dy / dist) * speed * 0.2;
       }
       // Learning v2: use approach/retreat knowledge in neutral
       if (pm) {
         // Dodge prediction bias
-        if (Math.abs(pm.dodgePredictBiasX) > 0.2) {
-          moveX += pm.dodgePredictBiasX * speed * 0.15;
+        if (Math.abs(pm.dodgePredictBiasX) > 0.15) {
+          moveX += pm.dodgePredictBiasX * speed * 0.2;
         }
         // If player sidesteps a lot when we approach, fake approach then cut perpendicular
-        if (pm.playerSidesteps > 0.5 && dist < 250) {
-          moveX += ai.strafeDir * speed * 0.15; // more lateral movement to match
+        if (pm.playerSidesteps > 0.4 && dist < 250) {
+          moveX += ai.strafeDir * speed * 0.2;
         }
         // If player counter-pushes, don't approach head-on — angle in
-        if (pm.playerCounterPushes > 0.4 && dist < 300) {
-          moveX += ai.strafeDir * speed * 0.2; // offset approach angle
+        if (pm.playerCounterPushes > 0.35 && dist < 300) {
+          moveX += ai.strafeDir * speed * 0.25;
         }
-        // If player chases when we retreat, we can use retreats as baits
-        if (pm.playerChases > 0.6 && hpPct > 0.5 && dist < 200) {
-          // They'll chase us — this is useful info for baiting (handled in bait section)
-          // Increase bait frequency by reducing cooldown check threshold
-          if (ai.baitCooldown > 30) ai.baitCooldown = 30;
+        // If player chases when we retreat, exploit it for baiting
+        if (pm.playerChases > 0.5 && hpPct > 0.5 && dist < 200) {
+          if (ai.baitCooldown > 25) ai.baitCooldown = 25;
         }
       }
     }
@@ -2310,8 +2327,8 @@ const SparSystem = {
       if (styleWeights.preferredDist && dist > 1) {
         const styleDist = styleWeights.preferredDist;
         const distDiff = dist - styleDist;
-        if (Math.abs(distDiff) > 50) {
-          const adjust = Math.min(0.2, Math.abs(distDiff) / 600);
+        if (Math.abs(distDiff) > 40) {
+          const adjust = Math.min(0.3, Math.abs(distDiff) / 450);
           const dir = distDiff > 0 ? 1 : -1;
           moveX += (dx / dist) * speed * adjust * dir;
           moveY += (dy / dist) * speed * adjust * dir;
@@ -2344,8 +2361,8 @@ const SparSystem = {
     // After-hit momentum: within 30 frames of landing a hit, push harder
     if (ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30 && !isOpening) {
       if (dist > 1) {
-        moveX += (dx / dist) * speed * 0.15;
-        moveY += (dy / dist) * speed * 0.15;
+        moveX += (dx / dist) * speed * 0.2;
+        moveY += (dy / dist) * speed * 0.2;
       }
       // Reduce shot timing hesitation (handled in shooting section)
     }
@@ -2403,13 +2420,13 @@ const SparSystem = {
       // POSITION VALUE: top half without bottom is BAD — push to retake
       // Scales with stuck duration AND learned bottom-win correlation
       if (inTopHalf && !hasBottom && !member.gun.reloading) {
-        const posValueMult = pm ? pm.bottomWinCorrelation : 0.6; // 0-1, higher = bottom matters more
-        const topUrgency = Math.min(0.55, ai._topStuckFrames / 90) * posValueMult; // ramps over 1.5s
-        // Push downward toward bottom position
-        moveY += speed * (0.2 + topUrgency);
+        const posValueMult = pm ? pm.bottomWinCorrelation : 0.7;
+        const topUrgency = Math.min(0.65, ai._topStuckFrames / 70) * posValueMult; // faster ramp
+        // Push downward toward bottom position — strong base push
+        moveY += speed * (0.3 + topUrgency);
         // Push toward enemy X to not drift into a corner
         if (Math.abs(dx) > 30) {
-          moveX += Math.sign(dx) * speed * 0.15;
+          moveX += Math.sign(dx) * speed * 0.2;
         }
       }
     }
@@ -2492,9 +2509,9 @@ const SparSystem = {
       // DISTANCE MANAGEMENT: aggressively push toward preferred engagement range
       if (pm.preferredDist && dist > 1) {
         const distDiff = dist - pm.preferredDist;
-        if (Math.abs(distDiff) > 40) {
+        if (Math.abs(distDiff) > 30) {
           // STRONG adjustment — this is where we should be fighting
-          const adjustStr = Math.min(0.45, Math.abs(distDiff) / 400);
+          const adjustStr = Math.min(0.55, Math.abs(distDiff) / 350);
           const towardEnemy = distDiff > 0 ? 1 : -1;
           moveX += (dx / dist) * speed * adjustStr * towardEnemy;
           moveY += (dy / dist) * speed * adjustStr * towardEnemy;
@@ -2634,7 +2651,7 @@ const SparSystem = {
           ai.baitDirX = -ai.strafeDir;
           ai.baitDirY = 0;
         }
-        ai.baitCooldown = 90 + Math.floor(Math.random() * 120);
+        ai.baitCooldown = 60 + Math.floor(Math.random() * 80);
       }
     }
 

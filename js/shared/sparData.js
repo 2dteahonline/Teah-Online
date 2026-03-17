@@ -200,7 +200,7 @@ function createDefaultSparLearning() {
     lowHpExpanded: { fleesPct: 0.5, killAttemptPct: 0.5 },
     chasePatterns: { giveUpFrames: 90 },
     nearWall: { cornerStuckPct: 0.5 },
-    positionValue: { bottomWinCorrelation: 0.5, topPenalty: 0.5 },
+    positionValue: { bottomWinCorrelation: 0.65, topPenalty: 0.4 },
     general1v1: {
       styleResults: {
         pressure: { wins: 0, losses: 0, total: 0, avgDmgDelta: 0 },
