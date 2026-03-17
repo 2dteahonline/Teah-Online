@@ -120,6 +120,26 @@ const SparSystem = {
     return reward + bonus;
   },
 
+  _pickWeightedScoreChoice(scores) {
+    let minScore = Infinity;
+    for (const value of Object.values(scores)) {
+      if (value < minScore) minScore = value;
+    }
+    let total = 0;
+    const weights = {};
+    for (const [key, value] of Object.entries(scores)) {
+      const weight = Math.max(0.05, value - minScore + 0.05);
+      weights[key] = weight;
+      total += weight;
+    }
+    let roll = Math.random() * total;
+    for (const [key, weight] of Object.entries(weights)) {
+      roll -= weight;
+      if (roll <= 0) return key;
+    }
+    return Object.keys(scores)[0];
+  },
+
   _updateRewardBucket(bucket, reward) {
     if (!bucket) return;
     const clamped = this._clamp01(reward);
@@ -2042,10 +2062,17 @@ const SparSystem = {
     // Available routes — bottom is meta, so bottom routes are default
     const routes = ['bottomCenter', 'bottomLeft', 'bottomRight', 'topHold', 'midFlank', 'mirrorPlayer'];
 
-    // Not enough data — rush bottom (need 2+ matches before using learned routes)
+    // Not enough data — still favor bottom, but don't lock out all other routes.
     if (!sl || sl.matchCount < 2) {
-      const starters = ['bottomCenter', 'bottomLeft', 'bottomRight'];
-      return starters[Math.floor(Math.random() * starters.length)];
+      const openers = {
+        bottomCenter: 0.34,
+        bottomLeft: 0.22,
+        bottomRight: 0.22,
+        midFlank: 0.10,
+        mirrorPlayer: 0.08,
+        topHold: 0.04,
+      };
+      return this._pickWeightedScoreChoice(openers);
     }
 
     // Score each route — WIN RATE IS EVERYTHING
@@ -2059,13 +2086,13 @@ const SparSystem = {
     const totalGeneralOpening = this._sumBucketPlays(gOpeningBuckets);
     const totalSelfPlayOpening = this._sumBucketPlays(sOpeningBuckets);
 
-    // Base bonus for bottom routes — bottom is meta
-    scores['bottomCenter'] += 5;
-    scores['bottomLeft'] += 5;
-    scores['bottomRight'] += 5;
-    scores['mirrorPlayer'] += 3;
-    scores['midFlank'] += 3;
-    scores['topHold'] += 1;
+    // Base bonus for bottom routes — bottom is meta, but not the only answer.
+    scores['bottomCenter'] += 4;
+    scores['bottomLeft'] += 4;
+    scores['bottomRight'] += 4;
+    scores['mirrorPlayer'] += 3.5;
+    scores['midFlank'] += 3.5;
+    scores['topHold'] += 2.5;
 
     const rr = sl.botOpenings.routeResults;
     for (const r of routes) {
@@ -2090,6 +2117,9 @@ const SparSystem = {
         if (rr[r].wins === 0 && rr[r].total >= 5) {
           scores[r] -= rr[r].total * 3;
         }
+      } else {
+        // Untested routes should actually get sampled.
+        scores[r] += r.indexOf('bottom') === 0 ? 5 : 9;
       }
 
       const playerRewardScore = this._scoreRewardBucket(
@@ -2116,29 +2146,44 @@ const SparSystem = {
     const playerRoute = sl.opening.route;
     if (playerRoute === 'bottomLeft') {
       scores['bottomRight'] += 12;
+      scores['midFlank'] += 5;
     } else if (playerRoute === 'bottomRight') {
       scores['bottomLeft'] += 12;
+      scores['midFlank'] += 5;
     } else if (playerRoute === 'bottomCenter') {
       // Counter center by flanking to a side
       scores['bottomLeft'] += 6;
       scores['bottomRight'] += 6;
+      scores['midFlank'] += 8;
+      scores['mirrorPlayer'] += 5;
     }
 
     // Variety bonus — don't repeat same route more than twice
     const lastRoute = sl.botOpenings.lastRoute;
-    if (lastRoute) scores[lastRoute] -= 5;
+    if (lastRoute) {
+      scores[lastRoute] -= 10;
+      if (rr[lastRoute] && rr[lastRoute].total >= 3) {
+        const lastWinRate = rr[lastRoute].wins / rr[lastRoute].total;
+        if (lastWinRate < 0.4) scores[lastRoute] -= 10;
+      }
+    }
+
+    // If the player heavily rushes bottom, make side counters and mirrors more appealing.
+    if (sl.opening && sl.opening.rushBottom > 0.6) {
+      scores['midFlank'] += 7;
+      scores['mirrorPlayer'] += 6;
+      scores['topHold'] += 2;
+    }
 
     // Small randomness for unpredictability
     for (const r of routes) scores[r] += Math.random() * 8;
 
-    // Pick highest scoring route
-    let bestRoute = 'bottomCenter';
-    let bestScore = -Infinity;
-    for (const r of routes) {
-      if (scores[r] > bestScore) { bestScore = scores[r]; bestRoute = r; }
+    // Occasionally force broad exploration so weak habits do not calcify.
+    if (Math.random() < 0.16) {
+      return routes[Math.floor(Math.random() * routes.length)];
     }
 
-    return bestRoute;
+    return this._pickWeightedScoreChoice(scores);
   },
 
   // ---- LEARNING: called from meleeSystem when a spar bullet hits or misses ----
