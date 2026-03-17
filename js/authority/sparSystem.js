@@ -227,6 +227,15 @@ const SparSystem = {
       if (!scope.midPressureFamily) scope.midPressureFamily = createSparRewardBuckets(midPressureFamilyKeys);
       if (!scope.wallPressurePolicy) scope.wallPressurePolicy = createSparRewardBuckets(wallPressureKeys);
       if (!scope.wallPressureFamily) scope.wallPressureFamily = createSparRewardBuckets(wallPressureFamilyKeys);
+      // vNext: opening contest + punish window buckets
+      const openContestKeys = typeof SPAR_OPENING_CONTEST_KEYS !== 'undefined' ? SPAR_OPENING_CONTEST_KEYS : ['hardRace', 'denyLane', 'delayedDrop', 'mirrorThenBreak', 'fakeCommit'];
+      const openContestFamilyKeys = typeof SPAR_OPENING_CONTEST_FAMILY_KEYS !== 'undefined' ? SPAR_OPENING_CONTEST_FAMILY_KEYS : ['race', 'deny', 'bait'];
+      const punishWindowKeys = typeof SPAR_PUNISH_WINDOW_KEYS !== 'undefined' ? SPAR_PUNISH_WINDOW_KEYS : ['hardConvert', 'angleConvert', 'baitConvert'];
+      const punishWindowFamilyKeys = typeof SPAR_PUNISH_WINDOW_FAMILY_KEYS !== 'undefined' ? SPAR_PUNISH_WINDOW_FAMILY_KEYS : ['rush', 'angle', 'bait'];
+      if (!scope.openingContestPolicy) scope.openingContestPolicy = createSparRewardBuckets(openContestKeys);
+      if (!scope.openingContestFamily) scope.openingContestFamily = createSparRewardBuckets(openContestFamilyKeys);
+      if (!scope.punishWindowPolicy) scope.punishWindowPolicy = createSparRewardBuckets(punishWindowKeys);
+      if (!scope.punishWindowFamily) scope.punishWindowFamily = createSparRewardBuckets(punishWindowFamilyKeys);
     }
     if (!sl.tactical) {
       sl.tactical = {
@@ -247,6 +256,10 @@ const SparSystem = {
     // v11: mid-fight pressure + wall pressure tactical tracking
     if (!sl.tactical.midPressureOutcomes) sl.tactical.midPressureOutcomes = { attempts: 0, dmgDealtDuring: 0, avgDmgDealt: 0, avgDuration: 0 };
     if (!sl.tactical.wallPressureOutcomes) sl.tactical.wallPressureOutcomes = { attempts: 0, pinned: 0, avgDmgDealt: 0, avgDuration: 0 };
+    if (!sl.tactical.openingContestOutcomes) sl.tactical.openingContestOutcomes = { attempts: 0, securedBottom: 0, deniedBottom: 0, avgDmgDealt: 0, avgDuration: 0 };
+    if (!sl.tactical.punishWindowOutcomes) sl.tactical.punishWindowOutcomes = { attempts: 0, converted: 0, avgDmgDealt: 0, avgReturnDmg: 0, avgDuration: 0 };
+    if (typeof sl.tactical.idleBreaks !== 'number') sl.tactical.idleBreaks = 0;
+    if (typeof sl.tactical.lowMotionRescues !== 'number') sl.tactical.lowMotionRescues = 0;
     return sl.reinforcement1v1;
   },
 
@@ -507,6 +520,26 @@ const SparSystem = {
       if (wpFamily && scope.wallPressureFamily && scope.wallPressureFamily[wpFamily]) {
         this._updateRewardBucket(scope.wallPressureFamily[wpFamily], wallPressureReward);
       }
+      // vNext: opening contest match-end update
+      const ocPolicy = enemyBot.ai._openingContestPolicy || enemyBot.ai._lastOpeningContestPolicy || null;
+      const ocFamily = enemyBot.ai._openingContestFamily || enemyBot.ai._lastOpeningContestFamily || null;
+      const openingContestReward = this._clamp01(baseReward * 0.5 + gotBottomAtOpening * 0.35 + underReward * 0.15);
+      if (ocPolicy && scope.openingContestPolicy && scope.openingContestPolicy[ocPolicy]) {
+        this._updateRewardBucket(scope.openingContestPolicy[ocPolicy], openingContestReward);
+      }
+      if (ocFamily && scope.openingContestFamily && scope.openingContestFamily[ocFamily]) {
+        this._updateRewardBucket(scope.openingContestFamily[ocFamily], openingContestReward);
+      }
+      // vNext: punish window match-end update
+      const pwPolicy = enemyBot.ai._punishWindowPolicy || enemyBot.ai._lastPunishWindowPolicy || null;
+      const pwFamily = enemyBot.ai._punishWindowFamily || enemyBot.ai._lastPunishWindowFamily || null;
+      const punishWindowReward = this._clamp01(baseReward * 0.6 + dmgReward * 0.4);
+      if (pwPolicy && scope.punishWindowPolicy && scope.punishWindowPolicy[pwPolicy]) {
+        this._updateRewardBucket(scope.punishWindowPolicy[pwPolicy], punishWindowReward);
+      }
+      if (pwFamily && scope.punishWindowFamily && scope.punishWindowFamily[pwFamily]) {
+        this._updateRewardBucket(scope.punishWindowFamily[pwFamily], punishWindowReward);
+      }
     }
   },
 
@@ -738,6 +771,158 @@ const SparSystem = {
       playerExplore: 0.16, generalExplore: 0.08, selfPlayExplore: 0.06,
       noise: 2.0,
     });
+  },
+
+  // vNext: Opening contest policy picker — how to fight the first 180 frames
+  _pickOpeningContestPolicy(pm) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const familyMap = typeof SPAR_OPENING_CONTEST_FAMILY_MAP !== 'undefined'
+      ? SPAR_OPENING_CONTEST_FAMILY_MAP
+      : { hardRace: 'race', denyLane: 'deny', delayedDrop: 'deny', mirrorThenBreak: 'bait', fakeCommit: 'bait' };
+    const rf = sl ? this._ensureReinforcementProfile(sl) : null;
+    const pPolicy = rf && rf.player ? rf.player.openingContestPolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.openingContestPolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.openingContestPolicy : null;
+    const pFamily = rf && rf.player ? rf.player.openingContestFamily : null;
+    const gFamily = rf && rf.general ? rf.general.openingContestFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.openingContestFamily : null;
+    const baseScores = {
+      hardRace: 8, denyLane: 6, delayedDrop: 5, mirrorThenBreak: 5, fakeCommit: 4,
+    };
+    const familyBiases = { race: 0, deny: 0, bait: 0 };
+    if (sl && sl.opening) {
+      if (sl.opening.rushBottom > 0.6) { familyBiases.deny += 4; familyBiases.bait += 3; }
+      if (sl.opening.takesBottomPct > 0.65) { familyBiases.deny += 5; familyBiases.bait += 4; familyBiases.race -= 2; }
+      if (sl.opening.shootsDuringOpening > 0.6) baseScores.delayedDrop += 4;
+      if (sl.opening.strafeLeft > 0.65 || sl.opening.strafeLeft < 0.35) baseScores.denyLane += 4;
+    }
+    if (sl && sl.gunSide && sl.gunSide.playerPreference) baseScores.mirrorThenBreak += 2;
+    return this._pickHierarchicalPolicy({
+      keys: typeof SPAR_OPENING_CONTEST_KEYS !== 'undefined'
+        ? SPAR_OPENING_CONTEST_KEYS : ['hardRace', 'denyLane', 'delayedDrop', 'mirrorThenBreak', 'fakeCommit'],
+      familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP: this._sumBucketPlays(pPolicy), totalGP: this._sumBucketPlays(gPolicy), totalSP: this._sumBucketPlays(sPolicy),
+      totalPF: this._sumBucketPlays(pFamily), totalGF: this._sumBucketPlays(gFamily), totalSF: this._sumBucketPlays(sFamily),
+      baseScores, familyBiases, failStreaks: null,
+      playerWeight: 22, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.2, generalExplore: 0.12, selfPlayExplore: 0.08,
+      noise: 2.5,
+    });
+  },
+
+  // vNext: Punish window policy picker
+  _pickPunishWindowPolicy(pm, trigger) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const familyMap = typeof SPAR_PUNISH_WINDOW_FAMILY_MAP !== 'undefined'
+      ? SPAR_PUNISH_WINDOW_FAMILY_MAP
+      : { hardConvert: 'rush', angleConvert: 'angle', baitConvert: 'bait' };
+    const rf = sl ? this._ensureReinforcementProfile(sl) : null;
+    const pPolicy = rf && rf.player ? rf.player.punishWindowPolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.punishWindowPolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.punishWindowPolicy : null;
+    const pFamily = rf && rf.player ? rf.player.punishWindowFamily : null;
+    const gFamily = rf && rf.general ? rf.general.punishWindowFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.punishWindowFamily : null;
+    const baseScores = { hardConvert: 7, angleConvert: 6, baitConvert: 5 };
+    const familyBiases = { rush: 0, angle: 0, bait: 0 };
+    if (sl && sl.rhythm) {
+      if (sl.rhythm.avgShotDelay < 6) { familyBiases.angle += 3; familyBiases.bait += 2; familyBiases.rush -= 2; }
+      if (sl.rhythm.repeeksQuickly > 0.55) baseScores.baitConvert += 4;
+      if (sl.rhythm.retreatsSameSide > 0.55) baseScores.angleConvert += 3;
+    }
+    if (trigger === 'reload') familyBiases.rush += 3;
+    else if (trigger === 'whiff') familyBiases.angle += 2;
+    else if (trigger === 'repeek') familyBiases.bait += 3;
+    return this._pickHierarchicalPolicy({
+      keys: typeof SPAR_PUNISH_WINDOW_KEYS !== 'undefined'
+        ? SPAR_PUNISH_WINDOW_KEYS : ['hardConvert', 'angleConvert', 'baitConvert'],
+      familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP: this._sumBucketPlays(pPolicy), totalGP: this._sumBucketPlays(gPolicy), totalSP: this._sumBucketPlays(sPolicy),
+      totalPF: this._sumBucketPlays(pFamily), totalGF: this._sumBucketPlays(gFamily), totalSF: this._sumBucketPlays(sFamily),
+      baseScores, familyBiases, failStreaks: null,
+      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.18, generalExplore: 0.1, selfPlayExplore: 0.08,
+      noise: 2.0,
+    });
+  },
+
+  // vNext: Finalize opening contest engagement
+  _finalizeOpeningContest(ai, botSecuredBottom, playerDeniedBottom, dmgDealt, duration) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const policy = ai._openingContestPolicy;
+    const family = ai._openingContestFamily;
+    if (!policy) return;
+    const securedR = botSecuredBottom ? 1 : 0;
+    const deniedR = playerDeniedBottom ? 1 : 0;
+    const dmgR = this._clamp01(0.5 + dmgDealt / (SPAR_CONFIG.HP_BASELINE * 0.5));
+    const phaseReward = this._clamp01(securedR * 0.4 + deniedR * 0.25 + dmgR * 0.2 + 0.15 * 0.5);
+    if (sl) {
+      const rf = this._ensureReinforcementProfile(sl);
+      if (rf) {
+        for (const scopeName of this._getPhaseScopes()) {
+          const scope = rf[scopeName];
+          if (!scope) continue;
+          if (scope.openingContestPolicy && scope.openingContestPolicy[policy]) this._updateRewardBucket(scope.openingContestPolicy[policy], phaseReward);
+          if (scope.openingContestFamily && scope.openingContestFamily[family]) this._updateRewardBucket(scope.openingContestFamily[family], phaseReward);
+        }
+      }
+      if (sl.tactical && sl.tactical.openingContestOutcomes) {
+        const oco = sl.tactical.openingContestOutcomes;
+        oco.attempts++;
+        if (botSecuredBottom) oco.securedBottom++;
+        if (playerDeniedBottom) oco.deniedBottom++;
+        oco.avgDmgDealt = oco.attempts > 1 ? oco.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
+        oco.avgDuration = oco.attempts > 1 ? oco.avgDuration * 0.8 + duration * 0.2 : duration;
+      }
+    }
+    ai._lastOpeningContestPolicy = policy;
+    ai._lastOpeningContestFamily = family;
+    ai._openingContestPolicy = null;
+    ai._openingContestFamily = null;
+  },
+
+  // vNext: Finalize punish window engagement
+  _finalizePunishWindow(ai) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const policy = ai._punishWindowPolicy;
+    const family = ai._punishWindowFamily;
+    const frames = ai._punishWindowFrames || 0;
+    if (!policy || frames <= 0) return;
+    const dmgDealt = (ai._matchDmgDealt || 0) - (ai._punishWindowStartDmgDealt || 0);
+    const dmgTaken = (ai._matchDmgTaken || 0) - (ai._punishWindowStartDmgTaken || 0);
+    const converted = dmgDealt > 0 && dmgTaken <= dmgDealt * 0.5;
+    const dmgR = this._clamp01(0.5 + dmgDealt / (SPAR_CONFIG.HP_BASELINE * 0.3));
+    const safeR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.2));
+    const convertR = converted ? 1 : 0;
+    const phaseReward = this._clamp01(dmgR * 0.4 + safeR * 0.3 + convertR * 0.3);
+    if (sl) {
+      const rf = this._ensureReinforcementProfile(sl);
+      if (rf) {
+        for (const scopeName of this._getPhaseScopes()) {
+          const scope = rf[scopeName];
+          if (!scope) continue;
+          if (scope.punishWindowPolicy && scope.punishWindowPolicy[policy]) this._updateRewardBucket(scope.punishWindowPolicy[policy], phaseReward);
+          if (scope.punishWindowFamily && scope.punishWindowFamily[family]) this._updateRewardBucket(scope.punishWindowFamily[family], phaseReward);
+        }
+      }
+      if (sl.tactical && sl.tactical.punishWindowOutcomes) {
+        const pwo = sl.tactical.punishWindowOutcomes;
+        pwo.attempts++;
+        if (converted) pwo.converted++;
+        pwo.avgDmgDealt = pwo.attempts > 1 ? pwo.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
+        pwo.avgReturnDmg = pwo.attempts > 1 ? pwo.avgReturnDmg * 0.8 + dmgTaken * 0.2 : dmgTaken;
+        pwo.avgDuration = pwo.attempts > 1 ? pwo.avgDuration * 0.8 + frames * 0.2 : frames;
+      }
+    }
+    ai._lastPunishWindowPolicy = policy;
+    ai._lastPunishWindowFamily = family;
+    ai._punishWindowPolicy = null;
+    ai._punishWindowFamily = null;
+    ai._punishWindowFrames = 0;
+    ai._punishWindowTrigger = null;
+    ai._punishWindowCooldown = 30;
   },
 
   _finalizeGunSideEngagement(ai, resolved) {
@@ -1564,6 +1749,25 @@ const SparSystem = {
         _cornerFrames: 0,         // consecutive frames stuck in a corner
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
         _idleFrames: 0,           // consecutive frames with near-zero movement (idle guard)
+        _lowMotionFrames: 0,     // anti-passivity: frames with tiny movement in neutral
+        // vNext: opening contest policy state
+        _openingContestPolicy: null,
+        _openingContestFamily: null,
+        _openingContestStartDmg: 0,
+        _lastOpeningContestPolicy: null,
+        _lastOpeningContestFamily: null,
+        // vNext: punish window policy state
+        _punishWindowPolicy: null,
+        _punishWindowFamily: null,
+        _punishWindowFrames: 0,
+        _punishWindowStartDmgDealt: 0,
+        _punishWindowStartDmgTaken: 0,
+        _punishWindowTrigger: null,   // 'reload'|'whiff'|'repeek'|'lane'
+        _punishWindowCooldown: 0,
+        _lastPunishWindowPolicy: null,
+        _lastPunishWindowFamily: null,
+        // Anti-passivity: stop-start pause cap
+        _pauseMaxFrames: 0,
       },
     };
 
@@ -1683,8 +1887,8 @@ const SparSystem = {
       const aAlive = SparState.teamA.filter(p => p.alive).length;
       const bAlive = SparState.teamB.filter(p => p.alive).length;
 
-      // Hard timeout: prevent infinite matches (3600f = 60 seconds at 60fps)
-      const MAX_MATCH_FRAMES = 3600;
+      // Hard timeout: prevent stalled matches (1200f = 20 seconds at 60fps)
+      const MAX_MATCH_FRAMES = 1200;
       const matchTimedOut = aAlive > 0 && bAlive > 0 && SparState.matchTimer >= MAX_MATCH_FRAMES;
       if (matchTimedOut) {
         // Force resolve by remaining HP
@@ -1826,6 +2030,11 @@ const SparSystem = {
         m.ai._retreatFrames = 0;
         m.ai._cornerFrames = 0;
         m.ai._idleFrames = 0;
+        m.ai._lowMotionFrames = 0;
+        m.ai._openingContestPolicy = null;
+        m.ai._openingContestFamily = null;
+        m.ai._punishWindowPolicy = null;
+        m.ai._punishWindowCooldown = 0;
         m.ai._profileMods = null;
       }
     }
@@ -3850,6 +4059,17 @@ const SparSystem = {
     // Cooldowns: prevent rapid reopen after finalize
     if (ai._midPressureCooldown > 0) ai._midPressureCooldown--;
     if (ai._wallPressureCooldown > 0) ai._wallPressureCooldown--;
+    if (ai._punishWindowCooldown > 0) ai._punishWindowCooldown--;
+    // vNext: Finalize opening contest at opening-to-fight transition (frame 180)
+    if (!isOpening && ai._openingContestPolicy) {
+      const c = SparState._matchCollector;
+      const botSecured = c && c.botYAtOpeningEnd > 0 && c.playerYAtOpeningEnd > 0
+        ? (c.botYAtOpeningEnd > c.playerYAtOpeningEnd + this._getSparBottomGap()) : false;
+      const playerDenied = c && c.playerYAtOpeningEnd > 0 && c.botYAtOpeningEnd > 0
+        ? (c.playerYAtOpeningEnd < c.botYAtOpeningEnd - this._getSparBottomGap()) : false;
+      const dmgDealt = (ai._matchDmgDealt || 0) - (ai._openingContestStartDmg || 0);
+      this._finalizeOpeningContest(ai, botSecured, playerDenied, dmgDealt, 180);
+    }
     // v11: Detect when leaving neutral state → finalize mid-fight pressure
     const isNeutral = !isOpening && !member.gun.reloading && !enemyReloading && !hasBottom && !enemyHasBottom;
     if (!isNeutral && ai._midPressurePolicy && (ai._midPressureFrames || 0) >= 20) {
@@ -3865,50 +4085,119 @@ const SparSystem = {
     }
 
     if (isOpening) {
-      // === PHASE 1: Opening — choose a route and commit ===
-      // Pick route once at frame 1
+      // === PHASE 1: Opening — choose a route + contest policy and commit ===
       if (!ai._openingRoute) {
         ai._openingRoute = this._pickBotOpeningRoute(pm, arenaW, arenaH);
         SparState._botOpeningRoute = ai._openingRoute;
       }
+      // vNext: Pick opening contest policy once (how to FIGHT during opening)
+      if (!ai._openingContestPolicy) {
+        const contestPolicy = this._pickOpeningContestPolicy(pm);
+        const contestFamilyMap = typeof SPAR_OPENING_CONTEST_FAMILY_MAP !== 'undefined'
+          ? SPAR_OPENING_CONTEST_FAMILY_MAP
+          : { hardRace: 'race', denyLane: 'deny', delayedDrop: 'deny', mirrorThenBreak: 'bait', fakeCommit: 'bait' };
+        ai._openingContestPolicy = contestPolicy;
+        ai._openingContestFamily = contestFamilyMap[contestPolicy] || 'race';
+        ai._openingContestStartDmg = ai._matchDmgDealt || 0;
+      }
       const route = ai._openingRoute;
+      const contest = ai._openingContestPolicy;
 
-      // Route-specific movement — ALL routes prioritize getting bottom
+      // Base route destination
+      let routeGoalY = arenaH * 0.85;
+      let routeGoalX = midX;
+      let routeSpeedY = speed;
+      let routeSpeedX = 0;
       if (route === 'bottomCenter') {
-        // Straight down the middle — FULL SPEED to bottom
-        const goalY = arenaH * 0.85;
-        if (bot.y < goalY - 10) moveY = speed; // full speed down
-        moveX = ai.strafeDir * speed * 0.15; // minimal strafe, commit to bottom
+        routeGoalX = midX;
+        routeSpeedX = ai.strafeDir * speed * 0.15;
       } else if (route === 'bottomLeft') {
-        // Full speed to bottom-left corner
-        const goalY = arenaH * 0.85;
-        const goalX = arenaW * 0.25;
-        if (bot.y < goalY - 10) moveY = speed * 0.9;
-        moveX = Math.sign(goalX - bot.x) * speed * 0.4;
+        routeGoalX = arenaW * 0.25;
+        routeSpeedY = speed * 0.9;
+        routeSpeedX = Math.sign(routeGoalX - bot.x) * speed * 0.4;
       } else if (route === 'bottomRight') {
-        // Full speed to bottom-right corner
-        const goalY = arenaH * 0.85;
-        const goalX = arenaW * 0.75;
-        if (bot.y < goalY - 10) moveY = speed * 0.9;
-        moveX = Math.sign(goalX - bot.x) * speed * 0.4;
+        routeGoalX = arenaW * 0.75;
+        routeSpeedY = speed * 0.9;
+        routeSpeedX = Math.sign(routeGoalX - bot.x) * speed * 0.4;
       } else if (route === 'topHold') {
-        // Strafe at top, wall bullets — sometimes surprises
-        const goalY = arenaH * 0.3;
-        moveY = Math.sign(goalY - bot.y) * speed * 0.5;
-        moveX = ai.strafeDir * speed * 0.8;
+        routeGoalY = arenaH * 0.3;
+        routeSpeedY = Math.sign(routeGoalY - bot.y) * speed * 0.5;
+        routeSpeedX = ai.strafeDir * speed * 0.8;
       } else if (route === 'midFlank') {
-        // Go to bottom but offset horizontally from player
-        const goalY = arenaH * 0.8;
+        routeGoalY = arenaH * 0.8;
         const flankSide = tgt.x < midX ? arenaW * 0.7 : arenaW * 0.3;
-        if (bot.y < goalY - 10) moveY = speed * 0.85;
-        moveX = Math.sign(flankSide - bot.x) * speed * 0.45;
+        routeGoalX = flankSide;
+        routeSpeedY = speed * 0.85;
+        routeSpeedX = Math.sign(flankSide - bot.x) * speed * 0.45;
       } else if (route === 'mirrorPlayer') {
-        // Match player's movement but race them to bottom
         const tVx = tgt.vx || 0, tVy = tgt.vy || 0;
-        moveX = tVx * 0.9;
-        moveY = tVy * 0.9;
-        // Always push toward bottom — harder than just drifting
-        if (bot.y < arenaH * 0.8) moveY = Math.max(moveY, speed * 0.7);
+        routeSpeedX = tVx * 0.9;
+        routeSpeedY = tVy * 0.9;
+        if (bot.y < arenaH * 0.8) routeSpeedY = Math.max(routeSpeedY, speed * 0.7);
+      }
+
+      // Contest policy modifies HOW we execute the route
+      if (contest === 'hardRace') {
+        // Max-speed direct bottom race with lateral deny
+        if (bot.y < routeGoalY - 10) moveY = routeSpeedY;
+        moveX = routeSpeedX;
+        // Add slight lateral deny toward enemy lane
+        if (Math.abs(tgt.x - bot.x) < arenaW * 0.3) {
+          moveX += Math.sign(tgt.x - bot.x) * speed * 0.15;
+        }
+      } else if (contest === 'denyLane') {
+        // Cut off player's favored bottom side before descending
+        const playerFavSide = (sl && sl.opening && sl.opening.strafeLeft > 0.55) ? -1 : 1;
+        const denyX = midX + playerFavSide * arenaW * 0.25;
+        if (SparState.matchTimer < 60) {
+          // Phase 1: move laterally to deny lane
+          moveX = Math.sign(denyX - bot.x) * speed * 0.7;
+          moveY = speed * 0.4; // still descend, just slower
+        } else {
+          // Phase 2: now race to bottom from deny position
+          if (bot.y < routeGoalY - 10) moveY = speed * 0.95;
+          moveX = Math.sign(routeGoalX - bot.x) * speed * 0.35;
+        }
+      } else if (contest === 'delayedDrop') {
+        // Stay high briefly (avoid early shot line), then drop opposite player
+        if (SparState.matchTimer < 50) {
+          // Hold high, strafe to avoid early shots
+          moveX = ai.strafeDir * speed * 0.8;
+          moveY = speed * 0.15;
+        } else {
+          // Fast drop to bottom, opposite side of player
+          const oppSide = tgt.x < midX ? arenaW * 0.7 : arenaW * 0.3;
+          if (bot.y < routeGoalY - 10) moveY = speed;
+          moveX = Math.sign(oppSide - bot.x) * speed * 0.4;
+        }
+      } else if (contest === 'mirrorThenBreak') {
+        // Mirror first 25f, then break opposite
+        if (SparState.matchTimer < 25) {
+          moveX = (tgt.vx || 0) * 0.85;
+          moveY = (tgt.vy || 0) * 0.85;
+          if (bot.y < arenaH * 0.8) moveY = Math.max(moveY, speed * 0.5);
+        } else {
+          // Break to opposite side
+          const breakSide = tgt.x < midX ? 1 : -1;
+          moveX = breakSide * speed * 0.6;
+          if (bot.y < routeGoalY - 10) moveY = speed * 0.85;
+        }
+      } else if (contest === 'fakeCommit') {
+        // Show one route for 25f, then cut to center/flank
+        if (SparState.matchTimer < 25) {
+          // Fake commit to route destination
+          if (bot.y < routeGoalY - 10) moveY = speed * 0.7;
+          moveX = routeSpeedX;
+        } else {
+          // Cut to opposite side
+          const cutX = tgt.x < midX ? arenaW * 0.65 : arenaW * 0.35;
+          moveX = Math.sign(cutX - bot.x) * speed * 0.55;
+          if (bot.y < routeGoalY - 10) moveY = speed * 0.85;
+        }
+      } else {
+        // Fallback: basic route movement
+        if (bot.y < routeGoalY - 10) moveY = routeSpeedY;
+        moveX = routeSpeedX;
       }
 
       // Dodge bullets even during opening — don't just tank hits
@@ -3916,7 +4205,6 @@ const SparSystem = {
       const openDodgeMag = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
       if (openDodgeMag > 0.5) {
         moveX += openDodge.x * speed * 0.7;
-        // Don't let dodging stop downward progress too much
         moveY += openDodge.y * speed * 0.4;
       }
 
@@ -3931,6 +4219,18 @@ const SparSystem = {
 
     } else if (enemyReloading) {
       // === PUNISH: enemy reloading — v10 policy-driven ===
+      // vNext: Activate punish window on reload trigger
+      if (!ai._punishWindowPolicy && !(ai._punishWindowCooldown > 0)) {
+        const pwPolicy = this._pickPunishWindowPolicy(pm, 'reload');
+        const pwFamilyMap = typeof SPAR_PUNISH_WINDOW_FAMILY_MAP !== 'undefined' ? SPAR_PUNISH_WINDOW_FAMILY_MAP : { hardConvert: 'rush', angleConvert: 'angle', baitConvert: 'bait' };
+        ai._punishWindowPolicy = pwPolicy;
+        ai._punishWindowFamily = pwFamilyMap[pwPolicy] || 'rush';
+        ai._punishWindowFrames = 0;
+        ai._punishWindowStartDmgDealt = ai._matchDmgDealt || 0;
+        ai._punishWindowStartDmgTaken = ai._matchDmgTaken || 0;
+        ai._punishWindowTrigger = 'reload';
+      }
+      if (ai._punishWindowPolicy) ai._punishWindowFrames++;
       // Pick reload behavior policy if not active
       if (!ai._reloadPolicy) {
         const duelCtx = {
@@ -4020,6 +4320,26 @@ const SparSystem = {
           moveX += pm.dodgePredictBiasX * speed * 0.25;
         }
       }
+      // vNext: Punish window movement modifier on top of reload behavior
+      if (ai._punishWindowPolicy && dist > 1) {
+        if (ai._punishWindowPolicy === 'hardConvert') {
+          // Amplify approach — push harder
+          moveX += (dx / dist) * speed * 0.2;
+          moveY += (dy / dist) * speed * 0.2;
+        } else if (ai._punishWindowPolicy === 'angleConvert') {
+          // Increase lateral offset before shooting
+          moveX += ai.strafeDir * speed * 0.25;
+        } else if (ai._punishWindowPolicy === 'baitConvert') {
+          // After 15f of approach, fake a brief retreat to draw a panic response
+          if (ai._punishWindowFrames > 15 && ai._punishWindowFrames < 25) {
+            moveX = -(dx / dist) * speed * 0.3;
+            moveY = -(dy / dist) * speed * 0.3;
+            moveX += ai.strafeDir * speed * 0.4;
+          }
+        }
+      }
+      // Finalize punish window when enemy stops reloading
+      // (handled below at punish window finalization section)
 
     } else if (hasBottom) {
       // === WE HAVE BOTTOM — use it actively, don't just camp ===
@@ -4031,16 +4351,18 @@ const SparSystem = {
 
       if (playerHitsStrafe) {
         // Player destroys horizontal strafing — use stop-start + vertical jukes
+        // vNext: cap pause to 6f max, always maintain minimum drift
         if (!ai._pauseTimer) ai._pauseTimer = 0;
         ai._pauseTimer--;
         if (ai._pauseTimer > 0) {
-          moveX = 0;
-          moveY = 0;
+          // Minimum drift even during pause — never fully plant
+          moveX = ai.strafeDir * speed * 0.12;
+          moveY = (Math.random() < 0.5 ? -1 : 1) * speed * 0.1;
         } else {
           moveX = ai.strafeDir * speed * 0.75;
           moveY = (Math.random() < 0.5 ? -1 : 1) * speed * 0.35;
           if (ai._pauseTimer <= -18) {
-            ai._pauseTimer = 5 + Math.floor(Math.random() * 8);
+            ai._pauseTimer = 3 + Math.floor(Math.random() * 4); // capped 3-6f
             ai.strafeDir *= -1;
           }
         }
@@ -4398,6 +4720,18 @@ const SparSystem = {
         if (bot.y < tgt.y - 40) moveY += speed * 0.15;
       }
 
+      // vNext: Anti-passivity — ALL neutral policies must maintain minimum lateral drift in open center
+      // Prevents planting in mid-map where no positional reason exists to hold still
+      const botInOpenCenter = bot.x > arenaW * 0.2 && bot.x < arenaW * 0.8 &&
+        bot.y > arenaH * 0.25 && bot.y < arenaH * 0.75;
+      if (botInOpenCenter && Math.abs(moveX) < speed * 0.3) {
+        moveX = ai.strafeDir * speed * 0.35; // minimum lateral drift
+      }
+      // Always push toward bottom in neutral if above enemy
+      if (botInOpenCenter && bot.y < tgt.y - 20 && moveY < speed * 0.1) {
+        moveY += speed * 0.15;
+      }
+
       // Maintain fighting distance — don't stack on top of enemy
       if (dist < 100 && dist > 1) {
         moveX -= (dx / dist) * speed * 0.25;
@@ -4458,15 +4792,29 @@ const SparSystem = {
         moveX += ai.strafeDir * speed * 0.15;
       } else if (ai._gunSidePolicy === 'holdAngle') {
         suppressPeekShots = laneQuality < 0.5;
-        moveX += ai.strafeDir * speed * 0.18;
-        moveY += (badGunSide ? 0.08 : 0) * speed;
+        // vNext: Only plant if conditions justify it; otherwise maintain movement
+        const canPlantHold = hasBottom || nearEnemyWall || laneQuality > 0.55;
+        if (canPlantHold) {
+          moveX += ai.strafeDir * speed * 0.18;
+          moveY += (badGunSide ? 0.08 : 0) * speed;
+        } else {
+          // Open center — maintain meaningful lateral drift
+          moveX += ai.strafeDir * speed * 0.4;
+          moveY += (badGunSide ? 0.12 : 0.05) * speed;
+        }
       } else if (ai._gunSidePolicy === 'preAimLaneHold') {
-        // Hold position firmly with pre-aimed lane — minimal movement, wait for enemy to walk into line
+        // Hold position firmly with pre-aimed lane
         suppressPeekShots = laneQuality < 0.45;
-        // Micro-adjust only: tiny lateral corrections to maintain lane alignment
-        moveX += ai.strafeDir * speed * 0.06;
-        // No vertical push — stay planted
-        moveY *= 0.2;
+        // vNext: Only micro-adjust if conditions justify planting
+        const canPlantPreAim = hasBottom || nearEnemyWall || laneQuality > 0.58;
+        if (canPlantPreAim) {
+          moveX += ai.strafeDir * speed * 0.06;
+          moveY *= 0.2;
+        } else {
+          // Open center — must maintain minimum lateral movement
+          moveX += ai.strafeDir * speed * 0.35;
+          if (bot.y < tgt.y - 20) moveY += speed * 0.12;
+        }
       } else if (ai._gunSidePolicy === 'reAngleWide') {
         suppressPeekShots = true;
         moveX = reAngleDir * speed * 0.9;
@@ -4915,6 +5263,77 @@ const SparSystem = {
       }
     }
 
+    // vNext: Punish window lifecycle — finalize when trigger ends or window times out
+    if (ai._punishWindowPolicy) {
+      const pwTimedOut = ai._punishWindowFrames >= 40;
+      const triggerEnded = (ai._punishWindowTrigger === 'reload' && !enemyReloading);
+      if (pwTimedOut || triggerEnded) {
+        this._finalizePunishWindow(ai);
+      }
+    }
+    // vNext: Detect whiff/repeek punish windows in non-reload contexts
+    if (!ai._punishWindowPolicy && !(ai._punishWindowCooldown > 0) && !isOpening && !member.gun.reloading && !enemyReloading) {
+      // Whiff detection: enemy recently shot and missed (bot took no hit in last 8 frames but enemy shot)
+      const enemyRecentShot = ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) > 8 &&
+        (SparState.matchTimer - ai._lastTookHitFrame) < 20;
+      // Quick re-peek: rhythm says player re-peeks fast
+      const quickRepeek = sl && sl.rhythm && sl.rhythm.repeeksQuickly > 0.55 &&
+        ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 12;
+      const trigger = quickRepeek ? 'repeek' : (enemyRecentShot ? 'whiff' : null);
+      if (trigger && Math.random() < 0.35) { // don't trigger every time
+        const pwPolicy = this._pickPunishWindowPolicy(pm, trigger);
+        const pwFamilyMap = typeof SPAR_PUNISH_WINDOW_FAMILY_MAP !== 'undefined' ? SPAR_PUNISH_WINDOW_FAMILY_MAP : { hardConvert: 'rush', angleConvert: 'angle', baitConvert: 'bait' };
+        ai._punishWindowPolicy = pwPolicy;
+        ai._punishWindowFamily = pwFamilyMap[pwPolicy] || 'rush';
+        ai._punishWindowFrames = 0;
+        ai._punishWindowStartDmgDealt = ai._matchDmgDealt || 0;
+        ai._punishWindowStartDmgTaken = ai._matchDmgTaken || 0;
+        ai._punishWindowTrigger = trigger;
+      }
+    }
+    // vNext: Apply non-reload punish window movement modifier
+    if (ai._punishWindowPolicy && !enemyReloading && dist > 1) {
+      if (ai._punishWindowPolicy === 'hardConvert') {
+        moveX += (dx / dist) * speed * 0.25;
+        moveY += (dy / dist) * speed * 0.25;
+      } else if (ai._punishWindowPolicy === 'angleConvert') {
+        moveX += ai.strafeDir * speed * 0.2;
+      } else if (ai._punishWindowPolicy === 'baitConvert' && ai._punishWindowFrames > 12) {
+        // Fake retreat then snap back
+        if (ai._punishWindowFrames < 22) {
+          moveX -= (dx / dist) * speed * 0.2;
+        } else {
+          moveX += (dx / dist) * speed * 0.15;
+        }
+      }
+      ai._punishWindowFrames++;
+    }
+
+    // vNext: Anti-passivity — detect low-motion in open neutral and force movement
+    const isInNeutralOpen = !isOpening && !member.gun.reloading && !enemyReloading &&
+      !ai._escapePolicy && !ai._wallPressurePolicy && !hasBottom && !enemyHasBottom &&
+      SparState.phase === 'fighting';
+    const moveMag = Math.sqrt(moveX * moveX + moveY * moveY);
+    if (isInNeutralOpen && moveMag < speed * 0.15) {
+      ai._lowMotionFrames++;
+    } else {
+      ai._lowMotionFrames = 0;
+    }
+    if (ai._lowMotionFrames >= 12) {
+      // Force lateral break
+      const breakDir = (Math.random() < 0.5 ? -1 : 1);
+      moveX = breakDir * speed * 0.7;
+      moveY = (bot.y < tgt.y) ? speed * 0.3 : ((Math.random() < 0.5 ? -1 : 1) * speed * 0.2);
+      ai.strafeDir = breakDir;
+      ai.strafeTimer = 15 + Math.floor(Math.random() * 20);
+      ai._lowMotionFrames = 0;
+      // Track diagnostics
+      if (sl && sl.tactical) {
+        if (typeof sl.tactical.lowMotionRescues !== 'number') sl.tactical.lowMotionRescues = 0;
+        sl.tactical.lowMotionRescues++;
+      }
+    }
+
     // Learning: apply strafe speed multiplier (win-rate based)
     if (pm && pm.strafeSpeedMult !== 1.0) {
       moveX *= pm.strafeSpeedMult;
@@ -4950,15 +5369,20 @@ const SparSystem = {
     } else {
       ai._idleFrames = 0;
     }
-    // After 30 idle frames, if not escaping or reloading, force a lateral break
-    if (ai._idleFrames >= 30 && !ai._escapePolicy && !(bot === tgt ? false : (member && member.gun.reloading))) {
+    // After 20 idle frames, if not escaping or reloading, force a lateral break
+    if (ai._idleFrames >= 20 && !ai._escapePolicy && !(bot === tgt ? false : (member && member.gun.reloading))) {
       const breakDir = (Math.random() < 0.5 ? -1 : 1);
       moveX = breakDir * speed * 0.7;
-      // Also nudge vertically toward bottom if above enemy, else random
       moveY = (bot.y < tgt.y) ? speed * 0.3 : ((Math.random() < 0.5 ? -1 : 1) * speed * 0.25);
       ai._idleFrames = 0;
-      ai.strafeDir = breakDir; // commit to this direction for the next strafe cycle
+      ai.strafeDir = breakDir;
       ai.strafeTimer = 20 + Math.floor(Math.random() * 20);
+      // Track diagnostics
+      const sl2 = typeof sparLearning !== 'undefined' ? sparLearning : null;
+      if (sl2 && sl2.tactical) {
+        if (typeof sl2.tactical.idleBreaks !== 'number') sl2.tactical.idleBreaks = 0;
+        sl2.tactical.idleBreaks++;
+      }
     }
 
     // Collision — use player wall size, not mob (bots = future players)

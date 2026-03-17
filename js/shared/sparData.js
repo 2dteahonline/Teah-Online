@@ -142,6 +142,26 @@ const SPAR_WALL_PRESSURE_FAMILY_MAP = {
   prefireCorner: 'widen',
 };
 
+// vNext: opening contest policies — how to fight the first 180 frames
+const SPAR_OPENING_CONTEST_KEYS = ['hardRace', 'denyLane', 'delayedDrop', 'mirrorThenBreak', 'fakeCommit'];
+const SPAR_OPENING_CONTEST_FAMILY_KEYS = ['race', 'deny', 'bait'];
+const SPAR_OPENING_CONTEST_FAMILY_MAP = {
+  hardRace: 'race',
+  denyLane: 'deny',
+  delayedDrop: 'deny',
+  mirrorThenBreak: 'bait',
+  fakeCommit: 'bait',
+};
+
+// vNext: punish-window conversion policies — how to capitalize on small mistakes
+const SPAR_PUNISH_WINDOW_KEYS = ['hardConvert', 'angleConvert', 'baitConvert'];
+const SPAR_PUNISH_WINDOW_FAMILY_KEYS = ['rush', 'angle', 'bait'];
+const SPAR_PUNISH_WINDOW_FAMILY_MAP = {
+  hardConvert: 'rush',
+  angleConvert: 'angle',
+  baitConvert: 'bait',
+};
+
 const SPAR_LANE_SHAPE_KEYS = ['center', 'left', 'right', 'topLeft', 'topRight'];
 
 function createSparRewardBuckets(keys) {
@@ -331,6 +351,10 @@ function createDefaultSparLearning() {
         midPressureFamily: createSparRewardBuckets(SPAR_MID_PRESSURE_FAMILY_KEYS),
         wallPressurePolicy: createSparRewardBuckets(SPAR_WALL_PRESSURE_KEYS),
         wallPressureFamily: createSparRewardBuckets(SPAR_WALL_PRESSURE_FAMILY_KEYS),
+        openingContestPolicy: createSparRewardBuckets(SPAR_OPENING_CONTEST_KEYS),
+        openingContestFamily: createSparRewardBuckets(SPAR_OPENING_CONTEST_FAMILY_KEYS),
+        punishWindowPolicy: createSparRewardBuckets(SPAR_PUNISH_WINDOW_KEYS),
+        punishWindowFamily: createSparRewardBuckets(SPAR_PUNISH_WINDOW_FAMILY_KEYS),
       },
       player: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -350,6 +374,10 @@ function createDefaultSparLearning() {
         midPressureFamily: createSparRewardBuckets(SPAR_MID_PRESSURE_FAMILY_KEYS),
         wallPressurePolicy: createSparRewardBuckets(SPAR_WALL_PRESSURE_KEYS),
         wallPressureFamily: createSparRewardBuckets(SPAR_WALL_PRESSURE_FAMILY_KEYS),
+        openingContestPolicy: createSparRewardBuckets(SPAR_OPENING_CONTEST_KEYS),
+        openingContestFamily: createSparRewardBuckets(SPAR_OPENING_CONTEST_FAMILY_KEYS),
+        punishWindowPolicy: createSparRewardBuckets(SPAR_PUNISH_WINDOW_KEYS),
+        punishWindowFamily: createSparRewardBuckets(SPAR_PUNISH_WINDOW_FAMILY_KEYS),
       },
       selfPlay: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -369,6 +397,10 @@ function createDefaultSparLearning() {
         midPressureFamily: createSparRewardBuckets(SPAR_MID_PRESSURE_FAMILY_KEYS),
         wallPressurePolicy: createSparRewardBuckets(SPAR_WALL_PRESSURE_KEYS),
         wallPressureFamily: createSparRewardBuckets(SPAR_WALL_PRESSURE_FAMILY_KEYS),
+        openingContestPolicy: createSparRewardBuckets(SPAR_OPENING_CONTEST_KEYS),
+        openingContestFamily: createSparRewardBuckets(SPAR_OPENING_CONTEST_FAMILY_KEYS),
+        punishWindowPolicy: createSparRewardBuckets(SPAR_PUNISH_WINDOW_KEYS),
+        punishWindowFamily: createSparRewardBuckets(SPAR_PUNISH_WINDOW_FAMILY_KEYS),
       },
     },
     tactical: {
@@ -422,6 +454,16 @@ function createDefaultSparLearning() {
         attempts: 0, pinned: 0,
         avgDmgDealt: 0, avgDuration: 0,
       },
+      openingContestOutcomes: {
+        attempts: 0, securedBottom: 0, deniedBottom: 0,
+        avgDmgDealt: 0, avgDuration: 0,
+      },
+      punishWindowOutcomes: {
+        attempts: 0, converted: 0,
+        avgDmgDealt: 0, avgReturnDmg: 0, avgDuration: 0,
+      },
+      idleBreaks: 0,
+      lowMotionRescues: 0,
     },
     gunSide: {
       playerPreference: 'left',
@@ -478,7 +520,7 @@ function sparSummary() {
   const pGunSide = rf.player && rf.player.gunSidePolicy || {};
   const pEscape = rf.player && rf.player.escapePolicy || {};
 
-  console.log('=== Spar Bot v11 Summary ===');
+  console.log('=== Spar Bot vNext Summary ===');
   console.log(`Matches: ${sl.matchCount}, Win Rate: ${(sl.winRate * 100).toFixed(1)}%`);
 
   // Fail streaks
@@ -584,6 +626,35 @@ function sparSummary() {
   if (wpo.attempts > 0) {
     console.log(`  Outcomes: ${wpo.attempts} attempts, pinned=${wpo.pinned || 0}, avgDmg=${(wpo.avgDmgDealt || 0).toFixed(1)}, avgDuration=${Math.round(wpo.avgDuration || 0)}f`);
   }
+
+  // Opening contest rewards
+  const pOpenContest = rf.player && rf.player.openingContestPolicy || {};
+  console.log('\n--- Player Opening Contest Rewards ---');
+  for (const [k, v] of Object.entries(pOpenContest)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+  const oco = t.openingContestOutcomes || {};
+  if (oco.attempts > 0) {
+    const securedPct = (oco.securedBottom / oco.attempts * 100).toFixed(1);
+    const deniedPct = (oco.deniedBottom / oco.attempts * 100).toFixed(1);
+    console.log(`  Outcomes: ${oco.attempts} attempts, secured=${securedPct}%, denied=${deniedPct}%, avgDmg=${(oco.avgDmgDealt || 0).toFixed(1)}, avgDur=${Math.round(oco.avgDuration || 0)}f`);
+  }
+
+  // Punish window rewards
+  const pPunish = rf.player && rf.player.punishWindowPolicy || {};
+  console.log('\n--- Player Punish Window Rewards ---');
+  for (const [k, v] of Object.entries(pPunish)) {
+    console.log(`  ${k}: reward=${(v.reward || 0.5).toFixed(3)} plays=${v.plays || 0}`);
+  }
+  const pwo = t.punishWindowOutcomes || {};
+  if (pwo.attempts > 0) {
+    const convertPct = (pwo.converted / pwo.attempts * 100).toFixed(1);
+    console.log(`  Outcomes: ${pwo.attempts} attempts, converted=${convertPct}%, avgDmg=${(pwo.avgDmgDealt || 0).toFixed(1)}, avgReturnDmg=${(pwo.avgReturnDmg || 0).toFixed(1)}, avgDur=${Math.round(pwo.avgDuration || 0)}f`);
+  }
+
+  // Anti-stall diagnostics
+  console.log('\n--- Anti-Stall ---');
+  console.log(`  Idle breaks: ${t.idleBreaks || 0}, Low motion rescues: ${t.lowMotionRescues || 0}`);
 
   return 'Done';
 }
