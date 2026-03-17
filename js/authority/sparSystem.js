@@ -1674,6 +1674,8 @@ const SparSystem = {
         // Phase 1a: circumstance tracking
         _lastHitFrame: 0,
         _lastTookHitFrame: 0,
+        _lastEnemyShotFrame: 0,   // frame when player last fired at this bot (hit or miss)
+        _lastEnemyWhiffFrame: 0,  // frame when player last missed this bot
         _losBlockedFrames: 0,
         _chaseFrames: 0,
         _retreatFrames: 0,
@@ -1903,7 +1905,7 @@ const SparSystem = {
 
       if (matchTimedOut || aAlive <= 0 || bAlive <= 0) {
         if (!matchTimedOut) SparState.lastResult = aAlive > 0 ? 'teamA' : 'teamB';
-        SparState.lastResult = aAlive > 0 ? 'teamA' : 'teamB';
+        // (timeout result already set above from HP comparison — don't overwrite)
         SparState.phase = 'post_match';
         // Auto-print engagement telemetry (skip during bulk training for cleaner logs)
         if (SparState._engagementLog && !(typeof _isSparTraining === 'function' && _isSparTraining())) {
@@ -3816,12 +3818,16 @@ const SparSystem = {
         }
       }
     }
-    if (wasHit && isPlayerBullet) {
-      // Player bullet hit a bot — find the hit bot
+    if (isPlayerBullet) {
+      // Track when player fires at this bot (hit or miss) for whiff/repeek detection
       for (const m of SparState._sparBots) {
-        if (m.entity === target || m.entity.x === target.x && m.entity.y === target.y) {
-          m.ai._lastTookHitFrame = SparState.matchTimer;
-          m.ai._matchDmgTaken += bullet.damage || 20;
+        if (m.entity === target || (m.entity.x === target.x && m.entity.y === target.y)) {
+          m.ai._lastEnemyShotFrame = SparState.matchTimer;
+          if (!wasHit) m.ai._lastEnemyWhiffFrame = SparState.matchTimer;
+          if (wasHit) {
+            m.ai._lastTookHitFrame = SparState.matchTimer;
+            m.ai._matchDmgTaken += bullet.damage || 20;
+          }
           break;
         }
       }
@@ -5273,13 +5279,16 @@ const SparSystem = {
     }
     // vNext: Detect whiff/repeek punish windows in non-reload contexts
     if (!ai._punishWindowPolicy && !(ai._punishWindowCooldown > 0) && !isOpening && !member.gun.reloading && !enemyReloading) {
-      // Whiff detection: enemy recently shot and missed (bot took no hit in last 8 frames but enemy shot)
-      const enemyRecentShot = ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) > 8 &&
-        (SparState.matchTimer - ai._lastTookHitFrame) < 20;
-      // Quick re-peek: rhythm says player re-peeks fast
+      // Whiff detection: enemy fired and MISSED recently (actual miss, not a hit)
+      const enemyWhiffed = ai._lastEnemyWhiffFrame > 0 &&
+        (SparState.matchTimer - ai._lastEnemyWhiffFrame) >= 3 &&
+        (SparState.matchTimer - ai._lastEnemyWhiffFrame) < 18 &&
+        // Only count as whiff if bot wasn't ALSO hit in the same window
+        (ai._lastTookHitFrame === 0 || (SparState.matchTimer - ai._lastTookHitFrame) > 12);
+      // Quick re-peek: enemy fired (hit or miss) very recently after a gap
       const quickRepeek = sl && sl.rhythm && sl.rhythm.repeeksQuickly > 0.55 &&
-        ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 12;
-      const trigger = quickRepeek ? 'repeek' : (enemyRecentShot ? 'whiff' : null);
+        ai._lastEnemyShotFrame > 0 && (SparState.matchTimer - ai._lastEnemyShotFrame) < 10;
+      const trigger = quickRepeek ? 'repeek' : (enemyWhiffed ? 'whiff' : null);
       if (trigger && Math.random() < 0.35) { // don't trigger every time
         const pwPolicy = this._pickPunishWindowPolicy(pm, trigger);
         const pwFamilyMap = typeof SPAR_PUNISH_WINDOW_FAMILY_MAP !== 'undefined' ? SPAR_PUNISH_WINDOW_FAMILY_MAP : { hardConvert: 'rush', angleConvert: 'angle', baitConvert: 'bait' };
