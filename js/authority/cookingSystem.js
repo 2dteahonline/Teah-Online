@@ -301,14 +301,11 @@ function updateCooking() {
   if (!cookingState.active) return;
 
   // Generate tickets on timer (independent of NPCs)
-  // Deli: NPCs push their own tickets at the counter, skip auto-generation
-  if (cookingState.activeRestaurantId !== 'street_deli') {
-    cookingState.ticketSpawnTimer++;
-    if (cookingState.ticketSpawnTimer >= COOKING_CONFIG.ticketSpawnInterval &&
-        cookingState.ticketQueue.length < COOKING_CONFIG.ticketQueueMax) {
-      cookingState.ticketSpawnTimer = 0;
-      _generateTicket();
-    }
+  cookingState.ticketSpawnTimer++;
+  if (cookingState.ticketSpawnTimer >= COOKING_CONFIG.ticketSpawnInterval &&
+      cookingState.ticketQueue.length < COOKING_CONFIG.ticketQueueMax) {
+    cookingState.ticketSpawnTimer = 0;
+    _generateTicket();
   }
 
   // Activate next ticket if no active order
