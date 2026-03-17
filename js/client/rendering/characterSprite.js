@@ -63,6 +63,56 @@ function loadSpritesheet(name, src) {
   img.src = src;
 }
 
+// ===================== HEAD SPRITE SYSTEM =====================
+// Registry of available head spritesheets (128x128 PNGs, 4 cols x 4 rows of 32x32 cells)
+// Columns: Down, Left, Up, Right | Rows: Walk&Idle, Push, Pull, Hurt&Dying
+const HEAD_REGISTRY = {};
+let _headScanDone = false;
+
+// Register a head from a PNG file in assets/sprites/heads/
+function registerHead(id, displayName, src) {
+  const img = new Image();
+  img.onload = () => {
+    HEAD_REGISTRY[id] = { id, name: displayName, img, ready: true };
+  };
+  img.onerror = () => {
+    HEAD_REGISTRY[id] = { id, name: displayName, img: null, ready: false };
+  };
+  HEAD_REGISTRY[id] = { id, name: displayName, img, ready: false };
+  img.src = src;
+}
+
+// Scan the heads manifest and load all heads
+function loadHeadSprites(headList) {
+  for (const h of headList) {
+    registerHead(h.id, h.name, h.src);
+  }
+  _headScanDone = true;
+}
+
+// Draw a spritesheet head at the given position
+// hx, hy: top-left of head area (same coords used by procedural head)
+// dir: 0=down, 1=up, 2=left, 3=right
+// headEntry: HEAD_REGISTRY entry with .img
+function drawSpriteHead(hx, hy, dir, headEntry, bobY) {
+  if (!headEntry || !headEntry.img || !headEntry.ready) return false;
+  const img = headEntry.img;
+  // Cell size in the spritesheet
+  const cellW = 32, cellH = 32;
+  // Column mapping: dir 0=Down(col0), 1=Up(col2), 2=Left(col1), 3=Right(col3)
+  const dirToCol = [0, 2, 1, 3];
+  const col = dirToCol[dir] || 0;
+  const row = 0; // Row 0 = Walk & Idle (default)
+  const srcX = col * cellW, srcY = row * cellH;
+  // Draw scaled to match the procedural head size (~40x32 area)
+  // The procedural head occupies roughly hx+4 to hx+36 (32px wide), hy to hy+32 (32px tall)
+  // We draw the 32x32 cell scaled up slightly to match
+  const drawW = 40, drawH = 40;
+  const drawX = hx + 0, drawY = hy - 6 + (bobY || 0);
+  ctx.drawImage(img, srcX, srcY, cellW, cellH, drawX, drawY, drawW, drawH);
+  return true;
+}
+
 // Generate a template sheet for a specific layer
 function generateLayerTemplate(label, layer, outlineColor) {
   const lw = LAYER_SIZES[layer].w, lh = LAYER_SIZES[layer].h;
@@ -2337,171 +2387,182 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
 
   // === HEAD ===
   const hx = x - 2, hy = y + bobY;
-  ctx.fillStyle = skin;
-  ctx.beginPath(); ctx.roundRect(hx + 4, hy + 6, 32, 26, 7); ctx.fill();
 
-  // === WILD MESSY HAIR (Choso style - big, spiky, messy) ===
-  ctx.fillStyle = hairColor;
-  // Main hair mass — rounded base
-  ctx.beginPath(); ctx.roundRect(hx - 2, hy - 1, 44, 18, 6); ctx.fill();
-  // Wider top portion
-  ctx.beginPath(); ctx.roundRect(hx - 4, hy - 2, 48, 14, 5); ctx.fill();
+  // Check for spritesheet head
+  const _headId = _charColorOverride ? (_charColorOverride.headId || 'default') : (player.headId || 'default');
+  const _headEntry = _headId !== 'default' ? HEAD_REGISTRY[_headId] : null;
 
-  // Wild spikes going in different directions
-  // Left wild spikes
-  ctx.beginPath(); ctx.moveTo(hx - 4, hy + 4); ctx.lineTo(hx - 12, hy - 8); ctx.lineTo(hx + 2, hy + 2); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(hx - 2, hy + 8); ctx.lineTo(hx - 10, hy + 2); ctx.lineTo(hx + 2, hy + 10); ctx.fill();
+  if (_headEntry && _headEntry.ready && _headEntry.img) {
+    // Draw spritesheet head
+    drawSpriteHead(hx, hy, dir, _headEntry, 0);
+  } else {
+    // Procedural fallback (original Choso head)
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.roundRect(hx + 4, hy + 6, 32, 26, 7); ctx.fill();
 
-  // Top spikes - messy, uneven
-  ctx.beginPath(); ctx.moveTo(hx + 2, hy - 2); ctx.lineTo(hx + 5, hy - 16); ctx.lineTo(hx + 10, hy); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(hx + 7, hy - 2); ctx.lineTo(hx + 14, hy - 20); ctx.lineTo(hx + 19, hy - 1); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(hx + 14, hy - 1); ctx.lineTo(hx + 20, hy - 18); ctx.lineTo(hx + 26, hy); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(hx + 22, hy - 1); ctx.lineTo(hx + 28, hy - 15); ctx.lineTo(hx + 34, hy); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(hx + 30, hy - 1); ctx.lineTo(hx + 36, hy - 12); ctx.lineTo(hx + 42, hy + 2); ctx.fill();
-
-  // Right wild spikes
-  ctx.beginPath(); ctx.moveTo(hx + 40, hy + 4); ctx.lineTo(hx + 50, hy - 6); ctx.lineTo(hx + 42, hy + 6); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(hx + 40, hy + 8); ctx.lineTo(hx + 48, hy + 3); ctx.lineTo(hx + 40, hy + 12); ctx.fill();
-
-  // Hair texture - subtle darker strands
-  ctx.fillStyle = darkenColor(hairColor, 0.78);
-  ctx.fillRect(hx + 6, hy + 2, 2, 14);
-  ctx.fillRect(hx + 16, hy + 1, 2, 12);
-  ctx.fillRect(hx + 26, hy + 2, 2, 14);
-  ctx.fillRect(hx + 34, hy + 3, 2, 12);
-
-  // Hair lighter highlights
-  ctx.fillStyle = lightenColor(hairColor, 0.3);
-  ctx.fillRect(hx + 10, hy + 4, 2, 8);
-  ctx.fillRect(hx + 22, hy + 3, 2, 8);
-  ctx.fillRect(hx + 32, hy + 5, 2, 6);
-
-  if (dir === 1) {
-    // Back view - hair covers everything
+    // === WILD MESSY HAIR (Choso style - big, spiky, messy) ===
     ctx.fillStyle = hairColor;
-    ctx.beginPath(); ctx.roundRect(hx - 4, hy - 2, 48, 30, 6); ctx.fill();
-    // Redraw spikes on back
+    // Main hair mass — rounded base
+    ctx.beginPath(); ctx.roundRect(hx - 2, hy - 1, 44, 18, 6); ctx.fill();
+    // Wider top portion
+    ctx.beginPath(); ctx.roundRect(hx - 4, hy - 2, 48, 14, 5); ctx.fill();
+
+    // Wild spikes going in different directions
+    // Left wild spikes
     ctx.beginPath(); ctx.moveTo(hx - 4, hy + 4); ctx.lineTo(hx - 12, hy - 8); ctx.lineTo(hx + 2, hy + 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hx - 2, hy + 8); ctx.lineTo(hx - 10, hy + 2); ctx.lineTo(hx + 2, hy + 10); ctx.fill();
+
+    // Top spikes - messy, uneven
     ctx.beginPath(); ctx.moveTo(hx + 2, hy - 2); ctx.lineTo(hx + 5, hy - 16); ctx.lineTo(hx + 10, hy); ctx.fill();
     ctx.beginPath(); ctx.moveTo(hx + 7, hy - 2); ctx.lineTo(hx + 14, hy - 20); ctx.lineTo(hx + 19, hy - 1); ctx.fill();
     ctx.beginPath(); ctx.moveTo(hx + 14, hy - 1); ctx.lineTo(hx + 20, hy - 18); ctx.lineTo(hx + 26, hy); ctx.fill();
     ctx.beginPath(); ctx.moveTo(hx + 22, hy - 1); ctx.lineTo(hx + 28, hy - 15); ctx.lineTo(hx + 34, hy); ctx.fill();
     ctx.beginPath(); ctx.moveTo(hx + 30, hy - 1); ctx.lineTo(hx + 36, hy - 12); ctx.lineTo(hx + 42, hy + 2); ctx.fill();
+
+    // Right wild spikes
     ctx.beginPath(); ctx.moveTo(hx + 40, hy + 4); ctx.lineTo(hx + 50, hy - 6); ctx.lineTo(hx + 42, hy + 6); ctx.fill();
-    // Back hair texture
+    ctx.beginPath(); ctx.moveTo(hx + 40, hy + 8); ctx.lineTo(hx + 48, hy + 3); ctx.lineTo(hx + 40, hy + 12); ctx.fill();
+
+    // Hair texture - subtle darker strands
     ctx.fillStyle = darkenColor(hairColor, 0.78);
-    ctx.fillRect(hx + 8, hy + 6, 2, 18);
-    ctx.fillRect(hx + 18, hy + 4, 2, 20);
-    ctx.fillRect(hx + 28, hy + 6, 2, 18);
-  } else {
-    // Side hair drape
-    if (dir === 2) {
+    ctx.fillRect(hx + 6, hy + 2, 2, 14);
+    ctx.fillRect(hx + 16, hy + 1, 2, 12);
+    ctx.fillRect(hx + 26, hy + 2, 2, 14);
+    ctx.fillRect(hx + 34, hy + 3, 2, 12);
+
+    // Hair lighter highlights
+    ctx.fillStyle = lightenColor(hairColor, 0.3);
+    ctx.fillRect(hx + 10, hy + 4, 2, 8);
+    ctx.fillRect(hx + 22, hy + 3, 2, 8);
+    ctx.fillRect(hx + 32, hy + 5, 2, 6);
+
+    if (dir === 1) {
+      // Back view - hair covers everything
       ctx.fillStyle = hairColor;
-      ctx.fillRect(hx + 28, hy + 6, 10, 18);
-      ctx.beginPath(); ctx.moveTo(hx + 38, hy + 10); ctx.lineTo(hx + 44, hy + 6); ctx.lineTo(hx + 38, hy + 18); ctx.fill();
-    } else if (dir === 3) {
-      ctx.fillStyle = hairColor;
-      ctx.fillRect(hx + 2, hy + 6, 10, 18);
-      ctx.beginPath(); ctx.moveTo(hx + 2, hy + 10); ctx.lineTo(hx - 4, hy + 6); ctx.lineTo(hx + 2, hy + 18); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(hx - 4, hy - 2, 48, 30, 6); ctx.fill();
+      // Redraw spikes on back
+      ctx.beginPath(); ctx.moveTo(hx - 4, hy + 4); ctx.lineTo(hx - 12, hy - 8); ctx.lineTo(hx + 2, hy + 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hx + 2, hy - 2); ctx.lineTo(hx + 5, hy - 16); ctx.lineTo(hx + 10, hy); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hx + 7, hy - 2); ctx.lineTo(hx + 14, hy - 20); ctx.lineTo(hx + 19, hy - 1); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hx + 14, hy - 1); ctx.lineTo(hx + 20, hy - 18); ctx.lineTo(hx + 26, hy); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hx + 22, hy - 1); ctx.lineTo(hx + 28, hy - 15); ctx.lineTo(hx + 34, hy); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hx + 30, hy - 1); ctx.lineTo(hx + 36, hy - 12); ctx.lineTo(hx + 42, hy + 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hx + 40, hy + 4); ctx.lineTo(hx + 50, hy - 6); ctx.lineTo(hx + 42, hy + 6); ctx.fill();
+      // Back hair texture
+      ctx.fillStyle = darkenColor(hairColor, 0.78);
+      ctx.fillRect(hx + 8, hy + 6, 2, 18);
+      ctx.fillRect(hx + 18, hy + 4, 2, 20);
+      ctx.fillRect(hx + 28, hy + 6, 2, 18);
     } else {
-      // Front - tapered side bangs that frame the face
-      ctx.fillStyle = hairColor;
-      // Left bang — tapered, thinner at bottom
-      ctx.beginPath();
-      ctx.moveTo(hx - 2, hy + 4);
-      ctx.lineTo(hx - 4, hy + 10);
-      ctx.lineTo(hx - 1, hy + 20);
-      ctx.lineTo(hx + 3, hy + 16);
-      ctx.lineTo(hx + 4, hy + 6);
-      ctx.closePath(); ctx.fill();
-      // Right bang — tapered
-      ctx.beginPath();
-      ctx.moveTo(hx + 42, hy + 4);
-      ctx.lineTo(hx + 44, hy + 10);
-      ctx.lineTo(hx + 41, hy + 20);
-      ctx.lineTo(hx + 37, hy + 16);
-      ctx.lineTo(hx + 36, hy + 6);
-      ctx.closePath(); ctx.fill();
-      // Front fringe across forehead (messy, overlaps slightly)
-      ctx.fillStyle = darkenColor(hairColor, 0.88);
-      ctx.beginPath();
-      ctx.moveTo(hx + 2, hy + 6);
-      ctx.lineTo(hx + 6, hy + 12);
-      ctx.lineTo(hx + 10, hy + 8);
-      ctx.lineTo(hx + 15, hy + 13);
-      ctx.lineTo(hx + 20, hy + 9);
-      ctx.lineTo(hx + 25, hy + 12);
-      ctx.lineTo(hx + 30, hy + 8);
-      ctx.lineTo(hx + 34, hy + 11);
-      ctx.lineTo(hx + 38, hy + 6);
-      ctx.lineTo(hx + 38, hy + 4);
-      ctx.lineTo(hx + 2, hy + 4);
-      ctx.closePath(); ctx.fill();
+      // Side hair drape
+      if (dir === 2) {
+        ctx.fillStyle = hairColor;
+        ctx.fillRect(hx + 28, hy + 6, 10, 18);
+        ctx.beginPath(); ctx.moveTo(hx + 38, hy + 10); ctx.lineTo(hx + 44, hy + 6); ctx.lineTo(hx + 38, hy + 18); ctx.fill();
+      } else if (dir === 3) {
+        ctx.fillStyle = hairColor;
+        ctx.fillRect(hx + 2, hy + 6, 10, 18);
+        ctx.beginPath(); ctx.moveTo(hx + 2, hy + 10); ctx.lineTo(hx - 4, hy + 6); ctx.lineTo(hx + 2, hy + 18); ctx.fill();
+      } else {
+        // Front - tapered side bangs that frame the face
+        ctx.fillStyle = hairColor;
+        // Left bang — tapered, thinner at bottom
+        ctx.beginPath();
+        ctx.moveTo(hx - 2, hy + 4);
+        ctx.lineTo(hx - 4, hy + 10);
+        ctx.lineTo(hx - 1, hy + 20);
+        ctx.lineTo(hx + 3, hy + 16);
+        ctx.lineTo(hx + 4, hy + 6);
+        ctx.closePath(); ctx.fill();
+        // Right bang — tapered
+        ctx.beginPath();
+        ctx.moveTo(hx + 42, hy + 4);
+        ctx.lineTo(hx + 44, hy + 10);
+        ctx.lineTo(hx + 41, hy + 20);
+        ctx.lineTo(hx + 37, hy + 16);
+        ctx.lineTo(hx + 36, hy + 6);
+        ctx.closePath(); ctx.fill();
+        // Front fringe across forehead (messy, overlaps slightly)
+        ctx.fillStyle = darkenColor(hairColor, 0.88);
+        ctx.beginPath();
+        ctx.moveTo(hx + 2, hy + 6);
+        ctx.lineTo(hx + 6, hy + 12);
+        ctx.lineTo(hx + 10, hy + 8);
+        ctx.lineTo(hx + 15, hy + 13);
+        ctx.lineTo(hx + 20, hy + 9);
+        ctx.lineTo(hx + 25, hy + 12);
+        ctx.lineTo(hx + 30, hy + 8);
+        ctx.lineTo(hx + 34, hy + 11);
+        ctx.lineTo(hx + 38, hy + 6);
+        ctx.lineTo(hx + 38, hy + 4);
+        ctx.lineTo(hx + 2, hy + 4);
+        ctx.closePath(); ctx.fill();
+      }
     }
-  }
 
-  // === FACE (only front and sides) ===
-  const faceMarkColor = darkenColor(skin, 0.55);
-  const noseBridgeColor = darkenColor(skin, 0.45);
-  const mouthColor = darkenColor(skin, 0.7);
-  if (dir !== 1) {
-    if (dir === 0) {
-      // Eyes - dark, intense
-      ctx.fillStyle = "#0a0a0a";
-      ctx.fillRect(hx + 9, hy + 14, 7, 6);
-      ctx.fillRect(hx + 24, hy + 14, 7, 6);
-      // Pupils
-      ctx.fillStyle = "#300";
-      ctx.fillRect(hx + 11, hy + 15, 4, 4);
-      ctx.fillRect(hx + 26, hy + 15, 4, 4);
-      // Eye shine
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(hx + 11, hy + 15, 2, 2);
-      ctx.fillRect(hx + 26, hy + 15, 2, 2);
+    // === FACE (only front and sides) ===
+    const faceMarkColor = darkenColor(skin, 0.55);
+    const noseBridgeColor = darkenColor(skin, 0.45);
+    const mouthColor = darkenColor(skin, 0.7);
+    if (dir !== 1) {
+      if (dir === 0) {
+        // Eyes - dark, intense
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillRect(hx + 9, hy + 14, 7, 6);
+        ctx.fillRect(hx + 24, hy + 14, 7, 6);
+        // Pupils
+        ctx.fillStyle = "#300";
+        ctx.fillRect(hx + 11, hy + 15, 4, 4);
+        ctx.fillRect(hx + 26, hy + 15, 4, 4);
+        // Eye shine
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(hx + 11, hy + 15, 2, 2);
+        ctx.fillRect(hx + 26, hy + 15, 2, 2);
 
-      // Under-eye markings
-      ctx.fillStyle = faceMarkColor;
-      ctx.fillRect(hx + 10, hy + 20, 6, 2);
-      ctx.fillRect(hx + 25, hy + 20, 6, 2);
-      // Nose bridge mark
-      ctx.fillStyle = noseBridgeColor;
-      ctx.fillRect(hx + 18, hy + 14, 4, 3);
+        // Under-eye markings
+        ctx.fillStyle = faceMarkColor;
+        ctx.fillRect(hx + 10, hy + 20, 6, 2);
+        ctx.fillRect(hx + 25, hy + 20, 6, 2);
+        // Nose bridge mark
+        ctx.fillStyle = noseBridgeColor;
+        ctx.fillRect(hx + 18, hy + 14, 4, 3);
 
-      // Mouth
-      ctx.fillStyle = mouthColor;
-      ctx.fillRect(hx + 16, hy + 25, 8, 2);
-    } else if (dir === 2) {
-      // Left-facing eye
-      ctx.fillStyle = "#0a0a0a";
-      ctx.fillRect(hx + 7, hy + 14, 7, 6);
-      ctx.fillStyle = "#300";
-      ctx.fillRect(hx + 8, hy + 15, 4, 4);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(hx + 8, hy + 15, 2, 2);
-      // Mark
-      ctx.fillStyle = faceMarkColor;
-      ctx.fillRect(hx + 8, hy + 20, 5, 2);
-      ctx.fillStyle = noseBridgeColor;
-      ctx.fillRect(hx + 14, hy + 15, 3, 2);
-      // Mouth
-      ctx.fillStyle = mouthColor;
-      ctx.fillRect(hx + 10, hy + 25, 6, 2);
-    } else {
-      // Right-facing eye
-      ctx.fillStyle = "#0a0a0a";
-      ctx.fillRect(hx + 26, hy + 14, 7, 6);
-      ctx.fillStyle = "#300";
-      ctx.fillRect(hx + 27, hy + 15, 4, 4);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(hx + 27, hy + 15, 2, 2);
-      // Mark
-      ctx.fillStyle = faceMarkColor;
-      ctx.fillRect(hx + 27, hy + 20, 5, 2);
-      ctx.fillStyle = noseBridgeColor;
-      ctx.fillRect(hx + 23, hy + 15, 3, 2);
-      // Mouth
-      ctx.fillStyle = mouthColor;
-      ctx.fillRect(hx + 24, hy + 25, 6, 2);
+        // Mouth
+        ctx.fillStyle = mouthColor;
+        ctx.fillRect(hx + 16, hy + 25, 8, 2);
+      } else if (dir === 2) {
+        // Left-facing eye
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillRect(hx + 7, hy + 14, 7, 6);
+        ctx.fillStyle = "#300";
+        ctx.fillRect(hx + 8, hy + 15, 4, 4);
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(hx + 8, hy + 15, 2, 2);
+        // Mark
+        ctx.fillStyle = faceMarkColor;
+        ctx.fillRect(hx + 8, hy + 20, 5, 2);
+        ctx.fillStyle = noseBridgeColor;
+        ctx.fillRect(hx + 14, hy + 15, 3, 2);
+        // Mouth
+        ctx.fillStyle = mouthColor;
+        ctx.fillRect(hx + 10, hy + 25, 6, 2);
+      } else {
+        // Right-facing eye
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillRect(hx + 26, hy + 14, 7, 6);
+        ctx.fillStyle = "#300";
+        ctx.fillRect(hx + 27, hy + 15, 4, 4);
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(hx + 27, hy + 15, 2, 2);
+        // Mark
+        ctx.fillStyle = faceMarkColor;
+        ctx.fillRect(hx + 27, hy + 20, 5, 2);
+        ctx.fillStyle = noseBridgeColor;
+        ctx.fillRect(hx + 23, hy + 15, 3, 2);
+        // Mouth
+        ctx.fillStyle = mouthColor;
+        ctx.fillRect(hx + 24, hy + 25, 6, 2);
+      }
     }
   }
 

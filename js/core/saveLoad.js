@@ -19,7 +19,7 @@ const SaveLoad = {
   // Cosmetic keys to persist from player object
   _cosmeticKeys: ['skin', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'glasses',
     'gloves', 'belt', 'cape', 'tattoo', 'scars', 'earring', 'necklace',
-    'backpack', 'warpaint', 'eyes', 'facialHair'],
+    'backpack', 'warpaint', 'eyes', 'facialHair', 'headId'],
 
   save() {
     try {

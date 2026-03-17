@@ -22,6 +22,7 @@ window.GameState = {
     glasses: "#1a1a1a", gloves: "#5a4a3a", belt: "#4a3a2a", cape: "#2a1a3a",
     tattoo: "#1a3a2a", scars: "#c8a090", earring: "#c8a040", necklace: "#c0c0c0",
     backpack: "#6a5a3a", warpaint: "#3a1a1a",
+    headId: 'default',
     name: "Alex", hp: 50, maxHp: 50,
   },
 
