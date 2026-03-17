@@ -5537,12 +5537,19 @@ const SparSystem = {
     }
 
     // === DUEL STYLE WEIGHT APPLICATION ===
+    // Style weights adjust approach/strafe/distance, but must respect distance discipline:
+    // - Without advantage: never pull closer than 160px
+    // - With advantage: allow pressing closer (minimum ~90px)
+    // - approachMult only amplifies when bot is already moving toward enemy AND is far enough
     if (styleWeights && !isOpening && modifierLevel < 2) {
+      const hasAdvantage = hasBottom || (!badGunSide && laneQuality > 0.6);
+      const styleMinDist = hasAdvantage ? 90 : 160;
+
       // Scale approach/retreat based on style
       if (dist > 1) {
         const moveDot = (moveX * dx + moveY * dy) / dist;
-        if (moveDot > 0) {
-          // Moving toward enemy — scale by approachMult
+        if (moveDot > 0 && dist > styleMinDist) {
+          // Moving toward enemy AND far enough — scale by approachMult
           const approachComponent = moveDot / speed;
           const scaledApproach = approachComponent * styleWeights.approachMult;
           const diff = (scaledApproach - approachComponent) * speed;
@@ -5555,10 +5562,10 @@ const SparSystem = {
       if (perpComponent > 0.5) {
         moveX *= styleWeights.strafeMult;
       }
-      // Apply preferred distance from style
+      // Apply preferred distance from style — but never pull closer than floor
       if (styleWeights.preferredDist && dist > 1) {
-        const styleDist = styleWeights.preferredDist;
-        const distDiff = dist - styleDist;
+        const effectiveDist = Math.max(styleWeights.preferredDist, styleMinDist);
+        const distDiff = dist - effectiveDist;
         if (Math.abs(distDiff) > 40) {
           const adjust = Math.min(0.3, Math.abs(distDiff) / 450);
           const dir = distDiff > 0 ? 1 : -1;
@@ -5830,12 +5837,15 @@ const SparSystem = {
     // --- Combat-informed adjustments (STRONG — override base behaviors) ---
     // Skip during active anti-bottom engagement — tactic handles positioning
     if (pm && !isOpening && !inActiveAntiBottom && modifierLevel < 1) {
-      // DISTANCE MANAGEMENT: aggressively push toward preferred engagement range
+      // DISTANCE MANAGEMENT: push toward preferred engagement range
+      // Respect distance floor: never pull closer than 160 without advantage
       if (pm.preferredDist && dist > 1) {
-        const distDiff = dist - pm.preferredDist;
+        const hasAdvantage2 = hasBottom || (!badGunSide && laneQuality > 0.6);
+        const minFloor = hasAdvantage2 ? 90 : 160;
+        const effectivePrefDist = Math.max(pm.preferredDist, minFloor);
+        const distDiff = dist - effectivePrefDist;
         if (Math.abs(distDiff) > 30) {
-          // STRONG adjustment — this is where we should be fighting
-          const adjustStr = Math.min(0.55, Math.abs(distDiff) / 350);
+          const adjustStr = Math.min(0.45, Math.abs(distDiff) / 400);
           const towardEnemy = distDiff > 0 ? 1 : -1;
           moveX += (dx / dist) * speed * adjustStr * towardEnemy;
           moveY += (dy / dist) * speed * adjustStr * towardEnemy;
@@ -6019,15 +6029,18 @@ const SparSystem = {
     // vNext: Apply non-reload punish window movement modifier
     if (ai._punishWindowPolicy && !enemyReloading && dist > 1 && modifierLevel < 2) {
       if (ai._punishWindowPolicy === 'hardConvert') {
-        moveX += (dx / dist) * speed * 0.25;
-        moveY += (dy / dist) * speed * 0.25;
+        // Only approach if we're far enough — don't stack on top of enemy
+        if (dist > 130) {
+          moveX += (dx / dist) * speed * 0.25;
+          moveY += (dy / dist) * speed * 0.25;
+        }
       } else if (ai._punishWindowPolicy === 'angleConvert') {
         moveX += ai.strafeDir * speed * 0.2;
       } else if (ai._punishWindowPolicy === 'baitConvert' && ai._punishWindowFrames > 12) {
         // Fake retreat then snap back
         if (ai._punishWindowFrames < 22) {
           moveX -= (dx / dist) * speed * 0.2;
-        } else {
+        } else if (dist > 130) {
           moveX += (dx / dist) * speed * 0.15;
         }
       }

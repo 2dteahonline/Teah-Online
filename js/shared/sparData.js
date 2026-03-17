@@ -50,30 +50,30 @@ function _sparCtxReloadFromRof(pts) {
 const SPAR_DUEL_STYLES = {
   pressure: {
     label: 'Pressure',
-    approachMult: 1.3,     // pushes in harder
-    strafeMult: 0.8,       // tighter strafes
-    retreatMult: 0.5,      // rarely retreats
+    approachMult: 1.1,     // slight approach bias (was 1.3 — too aggressive, pulled bot into face)
+    strafeMult: 0.9,       // slightly tighter strafes
+    retreatMult: 0.7,      // reduced retreat but not halved (was 0.5)
     baitMult: 0.6,         // less baiting
     shootAggr: 1.2,        // shoots more aggressively
-    preferredDist: 150,    // close range
+    preferredDist: 220,    // controlled pressure range (was 150 — far too close for default)
   },
   control: {
     label: 'Control',
-    approachMult: 0.7,     // cautious approach
+    approachMult: 0.8,     // cautious approach
     strafeMult: 1.2,       // wider strafes
-    retreatMult: 1.3,      // retreats when needed
+    retreatMult: 1.2,      // retreats when needed
     baitMult: 0.8,         // moderate baiting
     shootAggr: 0.8,        // picks shots
     preferredDist: 280,    // mid range
   },
   bait: {
     label: 'Bait',
-    approachMult: 1.0,     // normal approach
+    approachMult: 0.9,     // slightly cautious (was 1.0)
     strafeMult: 1.0,       // normal strafes
     retreatMult: 1.5,      // frequent fake retreats
     baitMult: 2.0,         // heavy baiting
     shootAggr: 0.7,        // conservative shooting
-    preferredDist: 200,    // mid-close range
+    preferredDist: 240,    // mid range (was 200 — too close for bait style)
   },
 };
 
