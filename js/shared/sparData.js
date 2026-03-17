@@ -124,6 +124,22 @@ const SPAR_RELOAD_BEHAVIOR_FAMILY_MAP = {
   reloadBait: 'bait',
 };
 
+const SPAR_MID_PRESSURE_KEYS = ['pressureHard', 'pressureSoft', 'holdLane'];
+const SPAR_MID_PRESSURE_FAMILY_KEYS = ['press', 'hold'];
+const SPAR_MID_PRESSURE_FAMILY_MAP = {
+  pressureHard: 'press',
+  pressureSoft: 'press',
+  holdLane: 'hold',
+};
+
+const SPAR_WALL_PRESSURE_KEYS = ['wallPinHold', 'pressureWiden', 'prefireCorner'];
+const SPAR_WALL_PRESSURE_FAMILY_KEYS = ['pin', 'widen'];
+const SPAR_WALL_PRESSURE_FAMILY_MAP = {
+  wallPinHold: 'pin',
+  pressureWiden: 'pin',
+  prefireCorner: 'widen',
+};
+
 const SPAR_LANE_SHAPE_KEYS = ['center', 'left', 'right', 'topLeft', 'topRight'];
 
 function createSparRewardBuckets(keys) {
@@ -309,6 +325,10 @@ function createDefaultSparLearning() {
         shotTimingFamily: createSparRewardBuckets(SPAR_SHOT_TIMING_FAMILY_KEYS),
         reloadPolicy: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_KEYS),
         reloadFamily: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS),
+        midPressurePolicy: createSparRewardBuckets(SPAR_MID_PRESSURE_KEYS),
+        midPressureFamily: createSparRewardBuckets(SPAR_MID_PRESSURE_FAMILY_KEYS),
+        wallPressurePolicy: createSparRewardBuckets(SPAR_WALL_PRESSURE_KEYS),
+        wallPressureFamily: createSparRewardBuckets(SPAR_WALL_PRESSURE_FAMILY_KEYS),
       },
       player: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -324,6 +344,10 @@ function createDefaultSparLearning() {
         shotTimingFamily: createSparRewardBuckets(SPAR_SHOT_TIMING_FAMILY_KEYS),
         reloadPolicy: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_KEYS),
         reloadFamily: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS),
+        midPressurePolicy: createSparRewardBuckets(SPAR_MID_PRESSURE_KEYS),
+        midPressureFamily: createSparRewardBuckets(SPAR_MID_PRESSURE_FAMILY_KEYS),
+        wallPressurePolicy: createSparRewardBuckets(SPAR_WALL_PRESSURE_KEYS),
+        wallPressureFamily: createSparRewardBuckets(SPAR_WALL_PRESSURE_FAMILY_KEYS),
       },
       selfPlay: {
         style: createSparRewardBuckets(Object.keys(SPAR_DUEL_STYLES)),
@@ -339,6 +363,10 @@ function createDefaultSparLearning() {
         shotTimingFamily: createSparRewardBuckets(SPAR_SHOT_TIMING_FAMILY_KEYS),
         reloadPolicy: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_KEYS),
         reloadFamily: createSparRewardBuckets(SPAR_RELOAD_BEHAVIOR_FAMILY_KEYS),
+        midPressurePolicy: createSparRewardBuckets(SPAR_MID_PRESSURE_KEYS),
+        midPressureFamily: createSparRewardBuckets(SPAR_MID_PRESSURE_FAMILY_KEYS),
+        wallPressurePolicy: createSparRewardBuckets(SPAR_WALL_PRESSURE_KEYS),
+        wallPressureFamily: createSparRewardBuckets(SPAR_WALL_PRESSURE_FAMILY_KEYS),
       },
     },
     tactical: {
@@ -382,6 +410,14 @@ function createDefaultSparLearning() {
       },
       reloadPunishOutcomes: {
         attempts: 0, punished: 0,
+        avgDmgDealt: 0, avgDuration: 0,
+      },
+      midPressureOutcomes: {
+        attempts: 0, dmgDealtDuring: 0,
+        avgDmgDealt: 0, avgDuration: 0,
+      },
+      wallPressureOutcomes: {
+        attempts: 0, pinned: 0,
         avgDmgDealt: 0, avgDuration: 0,
       },
     },

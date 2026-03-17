@@ -173,6 +173,15 @@ const SparSystem = {
       if (!scope.shotTimingFamily) scope.shotTimingFamily = createSparRewardBuckets(shotTimingFamilyKeys);
       if (!scope.reloadPolicy) scope.reloadPolicy = createSparRewardBuckets(reloadKeys);
       if (!scope.reloadFamily) scope.reloadFamily = createSparRewardBuckets(reloadFamilyKeys);
+      // v11: mid-fight pressure + wall pressure buckets
+      const midPressureKeys = typeof SPAR_MID_PRESSURE_KEYS !== 'undefined' ? SPAR_MID_PRESSURE_KEYS : ['pressureHard', 'pressureSoft', 'holdLane'];
+      const midPressureFamilyKeys = typeof SPAR_MID_PRESSURE_FAMILY_KEYS !== 'undefined' ? SPAR_MID_PRESSURE_FAMILY_KEYS : ['press', 'hold'];
+      const wallPressureKeys = typeof SPAR_WALL_PRESSURE_KEYS !== 'undefined' ? SPAR_WALL_PRESSURE_KEYS : ['wallPinHold', 'pressureWiden', 'prefireCorner'];
+      const wallPressureFamilyKeys = typeof SPAR_WALL_PRESSURE_FAMILY_KEYS !== 'undefined' ? SPAR_WALL_PRESSURE_FAMILY_KEYS : ['pin', 'widen'];
+      if (!scope.midPressurePolicy) scope.midPressurePolicy = createSparRewardBuckets(midPressureKeys);
+      if (!scope.midPressureFamily) scope.midPressureFamily = createSparRewardBuckets(midPressureFamilyKeys);
+      if (!scope.wallPressurePolicy) scope.wallPressurePolicy = createSparRewardBuckets(wallPressureKeys);
+      if (!scope.wallPressureFamily) scope.wallPressureFamily = createSparRewardBuckets(wallPressureFamilyKeys);
     }
     if (!sl.tactical) {
       sl.tactical = {
@@ -190,6 +199,9 @@ const SparSystem = {
     // v10: shot timing + reload behavior tactical tracking
     if (!sl.tactical.shotTimingOutcomes) sl.tactical.shotTimingOutcomes = { attempts: 0, hitsDuring: 0, avgDmgDealt: 0, avgDuration: 0 };
     if (!sl.tactical.reloadPunishOutcomes) sl.tactical.reloadPunishOutcomes = { attempts: 0, punished: 0, avgDmgDealt: 0, avgDuration: 0 };
+    // v11: mid-fight pressure + wall pressure tactical tracking
+    if (!sl.tactical.midPressureOutcomes) sl.tactical.midPressureOutcomes = { attempts: 0, dmgDealtDuring: 0, avgDmgDealt: 0, avgDuration: 0 };
+    if (!sl.tactical.wallPressureOutcomes) sl.tactical.wallPressureOutcomes = { attempts: 0, pinned: 0, avgDmgDealt: 0, avgDuration: 0 };
     return sl.reinforcement1v1;
   },
 
@@ -369,6 +381,9 @@ const SparSystem = {
     const botHitRate = enemyBot.ai._matchDmgDealt > 0 ? 0.7 : 0.3; // rough proxy
     const shotTimingReward = this._clamp01(baseReward * 0.6 + botHitRate * 0.4);
     const reloadReward = this._clamp01(baseReward * 0.7 + dmgReward * 0.3);
+    // v11: mid-fight pressure + wall pressure rewards
+    const midPressureReward = this._clamp01(baseReward * 0.65 + dmgReward * 0.35);
+    const wallPressureReward = this._clamp01(baseReward * 0.55 + underReward * 0.25 + gunReward * 0.20);
     const scopeList = Array.isArray(scopes) ? scopes : [];
     for (const scopeName of scopeList) {
       const scope = rf[scopeName];
@@ -426,6 +441,24 @@ const SparSystem = {
       }
       if (rlFamily && scope.reloadFamily && scope.reloadFamily[rlFamily]) {
         this._updateRewardBucket(scope.reloadFamily[rlFamily], reloadReward);
+      }
+      // v11: mid-fight pressure match-end update
+      const mpPolicy = enemyBot.ai._midPressurePolicy || enemyBot.ai._lastMidPressurePolicy || null;
+      const mpFamily = enemyBot.ai._midPressureFamily || enemyBot.ai._lastMidPressureFamily || null;
+      if (mpPolicy && scope.midPressurePolicy && scope.midPressurePolicy[mpPolicy]) {
+        this._updateRewardBucket(scope.midPressurePolicy[mpPolicy], midPressureReward);
+      }
+      if (mpFamily && scope.midPressureFamily && scope.midPressureFamily[mpFamily]) {
+        this._updateRewardBucket(scope.midPressureFamily[mpFamily], midPressureReward);
+      }
+      // v11: wall pressure match-end update
+      const wpPolicy = enemyBot.ai._wallPressurePolicy || enemyBot.ai._lastWallPressurePolicy || null;
+      const wpFamily = enemyBot.ai._wallPressureFamily || enemyBot.ai._lastWallPressureFamily || null;
+      if (wpPolicy && scope.wallPressurePolicy && scope.wallPressurePolicy[wpPolicy]) {
+        this._updateRewardBucket(scope.wallPressurePolicy[wpPolicy], wallPressureReward);
+      }
+      if (wpFamily && scope.wallPressureFamily && scope.wallPressureFamily[wpFamily]) {
+        this._updateRewardBucket(scope.wallPressureFamily[wpFamily], wallPressureReward);
       }
     }
   },
@@ -917,6 +950,169 @@ const SparSystem = {
     ai._reloadFamily = null;
   },
 
+  // v11: Mid-fight pressure policy picker
+  _pickMidFightPressure(pm, duelContext) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const rf = this._ensureReinforcementProfile(sl);
+    const policies = typeof SPAR_MID_PRESSURE_KEYS !== 'undefined' ? SPAR_MID_PRESSURE_KEYS : ['pressureHard', 'pressureSoft', 'holdLane'];
+    const familyMap = typeof SPAR_MID_PRESSURE_FAMILY_MAP !== 'undefined' ? SPAR_MID_PRESSURE_FAMILY_MAP : { pressureHard: 'press', pressureSoft: 'press', holdLane: 'hold' };
+    const pPolicy = rf && rf.player ? rf.player.midPressurePolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.midPressurePolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.midPressurePolicy : null;
+    const pFamily = rf && rf.player ? rf.player.midPressureFamily : null;
+    const gFamily = rf && rf.general ? rf.general.midPressureFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.midPressureFamily : null;
+    const totalPP = this._sumBucketPlays(pPolicy);
+    const totalGP = this._sumBucketPlays(gPolicy);
+    const totalSP = this._sumBucketPlays(sPolicy);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+
+    const baseScores = {};
+    for (const p of policies) baseScores[p] = 5;
+
+    // Context-based
+    if (duelContext) {
+      if (duelContext.hasBottom) { baseScores.pressureHard += 4; baseScores.holdLane += 2; }
+      if (duelContext.enemyHasBottom) { baseScores.pressureSoft += 3; baseScores.holdLane += 3; }
+      if (duelContext.recentHit) baseScores.pressureHard += 4;   // momentum
+      if (duelContext.recentTookHit) baseScores.holdLane += 3;    // stabilize
+      if (duelContext.dist < 180) baseScores.pressureHard += 2;
+      if (duelContext.dist > 280) baseScores.holdLane += 3;
+      if (duelContext.laneQuality > 0.6) baseScores.pressureHard += 2;
+      if (duelContext.laneQuality < 0.4) baseScores.holdLane += 3;
+      if (duelContext.enemyNearWall) baseScores.pressureHard += 3;
+    }
+
+    // Rhythm-based
+    if (pm) {
+      if (pm.playerShootsFast) baseScores.pressureSoft += 2;       // don't rush a fast shooter
+      if (pm.playerRetreatsSameSide > 0.6) baseScores.pressureHard += 3; // predictable = pressure
+      if (pm.playerReEngageDelay > 40) baseScores.pressureHard += 2;     // slow re-engage = push
+      if (pm.playerRepeeksQuickly) baseScores.holdLane += 3;            // they'll come to you
+    }
+
+    return this._pickHierarchicalPolicy({
+      keys: policies, familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores,
+      familyBiases: {},
+      failStreaks: null,
+      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.16, generalExplore: 0.08, selfPlayExplore: 0.06,
+      noise: 2.5,
+    });
+  },
+
+  // v11: Finalize mid-fight pressure engagement
+  _finalizeMidFightPressure(ai, dmgDealt) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    if (!sl || !ai._midPressurePolicy) return;
+    const policy = ai._midPressurePolicy;
+    const family = ai._midPressureFamily;
+    const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
+    const rf = this._ensureReinforcementProfile(sl);
+    if (rf) {
+      for (const scopeName of this._getPhaseScopes()) {
+        const scope = rf[scopeName];
+        if (!scope) continue;
+        if (scope.midPressurePolicy && scope.midPressurePolicy[policy]) this._updateRewardBucket(scope.midPressurePolicy[policy], phaseReward);
+        if (scope.midPressureFamily && scope.midPressureFamily[family]) this._updateRewardBucket(scope.midPressureFamily[family], phaseReward);
+      }
+    }
+    if (sl.tactical && sl.tactical.midPressureOutcomes) {
+      const mo = sl.tactical.midPressureOutcomes;
+      mo.attempts++;
+      if (dmgDealt > 0) mo.dmgDealtDuring++;
+      mo.avgDmgDealt = mo.attempts > 1 ? mo.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
+      mo.avgDuration = mo.attempts > 1 ? mo.avgDuration * 0.8 + (ai._midPressureFrames || 0) * 0.2 : (ai._midPressureFrames || 0);
+    }
+    ai._midPressurePolicy = null;
+    ai._midPressureFamily = null;
+    ai._midPressureFrames = 0;
+  },
+
+  // v11: Wall pressure policy picker
+  _pickWallPressure(pm, duelContext) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const rf = this._ensureReinforcementProfile(sl);
+    const policies = typeof SPAR_WALL_PRESSURE_KEYS !== 'undefined' ? SPAR_WALL_PRESSURE_KEYS : ['wallPinHold', 'pressureWiden', 'prefireCorner'];
+    const familyMap = typeof SPAR_WALL_PRESSURE_FAMILY_MAP !== 'undefined' ? SPAR_WALL_PRESSURE_FAMILY_MAP : { wallPinHold: 'pin', pressureWiden: 'pin', prefireCorner: 'widen' };
+    const pPolicy = rf && rf.player ? rf.player.wallPressurePolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.wallPressurePolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.wallPressurePolicy : null;
+    const pFamily = rf && rf.player ? rf.player.wallPressureFamily : null;
+    const gFamily = rf && rf.general ? rf.general.wallPressureFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.wallPressureFamily : null;
+    const totalPP = this._sumBucketPlays(pPolicy);
+    const totalGP = this._sumBucketPlays(gPolicy);
+    const totalSP = this._sumBucketPlays(sPolicy);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+
+    const baseScores = {};
+    for (const p of policies) baseScores[p] = 5;
+
+    // Context-based
+    if (duelContext) {
+      if (duelContext.enemyInCorner) baseScores.wallPinHold += 5;
+      if (duelContext.enemyNearWall && !duelContext.enemyInCorner) baseScores.pressureWiden += 4;
+      if (duelContext.dist < 200) baseScores.prefireCorner += 3;
+      if (duelContext.hasBottom) { baseScores.wallPinHold += 3; baseScores.pressureWiden += 2; }
+      if (duelContext.laneQuality > 0.6) baseScores.wallPinHold += 2;
+    }
+
+    // Rhythm-based
+    if (pm) {
+      if (pm.playerRetreatsSameSide > 0.6) baseScores.wallPinHold += 3;
+      if (pm.playerCrossesAfterBottomLoss > 0.5) baseScores.pressureWiden += 3;
+      if (pm.playerShootsFast) baseScores.prefireCorner += 2;
+    }
+
+    return this._pickHierarchicalPolicy({
+      keys: policies, familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores,
+      familyBiases: {},
+      failStreaks: null,
+      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.16, generalExplore: 0.08, selfPlayExplore: 0.06,
+      noise: 2.5,
+    });
+  },
+
+  // v11: Finalize wall pressure engagement
+  _finalizeWallPressure(ai, dmgDealt) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    if (!sl || !ai._wallPressurePolicy) return;
+    const policy = ai._wallPressurePolicy;
+    const family = ai._wallPressureFamily;
+    const phaseReward = this._clamp01(this._computeDamageReward(dmgDealt));
+    const rf = this._ensureReinforcementProfile(sl);
+    if (rf) {
+      for (const scopeName of this._getPhaseScopes()) {
+        const scope = rf[scopeName];
+        if (!scope) continue;
+        if (scope.wallPressurePolicy && scope.wallPressurePolicy[policy]) this._updateRewardBucket(scope.wallPressurePolicy[policy], phaseReward);
+        if (scope.wallPressureFamily && scope.wallPressureFamily[family]) this._updateRewardBucket(scope.wallPressureFamily[family], phaseReward);
+      }
+    }
+    if (sl.tactical && sl.tactical.wallPressureOutcomes) {
+      const wo = sl.tactical.wallPressureOutcomes;
+      wo.attempts++;
+      if (dmgDealt > 10) wo.pinned++;
+      wo.avgDmgDealt = wo.attempts > 1 ? wo.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
+      wo.avgDuration = wo.attempts > 1 ? wo.avgDuration * 0.8 + (ai._wallPressureFrames || 0) * 0.2 : (ai._wallPressureFrames || 0);
+    }
+    ai._wallPressurePolicy = null;
+    ai._wallPressureFamily = null;
+    ai._wallPressureFrames = 0;
+  },
+
   // Phase reward: fires when an anti-bottom engagement ends
   _finalizeAntiBottomEngagement(ai, regainedBottom, collector) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
@@ -1269,6 +1465,20 @@ const SparSystem = {
         _reloadFamily: null,
         _reloadStartDmg: 0,
         _reloadFrames: 0,
+        // v11: mid-fight pressure policy state
+        _midPressurePolicy: null,
+        _midPressureFamily: null,
+        _midPressureFrames: 0,
+        _midPressureStartDmg: 0,
+        _lastMidPressurePolicy: null,
+        _lastMidPressureFamily: null,
+        // v11: wall pressure policy state
+        _wallPressurePolicy: null,
+        _wallPressureFamily: null,
+        _wallPressureFrames: 0,
+        _wallPressureStartDmg: 0,
+        _lastWallPressurePolicy: null,
+        _lastWallPressureFamily: null,
         _cornerFrames: 0,         // consecutive frames stuck in a corner
         _topStuckFrames: 0,       // consecutive frames in top half without bottom
       },
@@ -3375,6 +3585,13 @@ const SparSystem = {
     const nearBottomWallBase = bot.y > arenaH - TILE * 3;
     const nearAnyWallBase = nearLeftWallBase || nearRightWallBase || nearTopWallBase || nearBottomWallBase;
     const inCornerBase = (nearLeftWallBase || nearRightWallBase) && (nearTopWallBase || nearBottomWallBase);
+    // v11: target wall proximity detection
+    const tNearLeft = tgt.x < TILE * 3;
+    const tNearRight = tgt.x > arenaW - TILE * 3;
+    const tNearTop = tgt.y < TILE * 3;
+    const tNearBottom = tgt.y > arenaH - TILE * 3;
+    const nearEnemyWall = tNearLeft || tNearRight || tNearTop || tNearBottom;
+    const enemyInCorner = (tNearLeft || tNearRight) && (tNearTop || tNearBottom);
     const botLaneScore = this._getGunSideLaneScore(bot, tgt);
     const enemyLaneScore = this._getGunSideLaneScore(tgt, bot);
     const laneShape = this._getLaneShape(bot, tgt, bottomGap, aimSlack);
@@ -3478,6 +3695,18 @@ const SparSystem = {
     if (ai.jukeTimer <= 0 && Math.random() < 0.012) {
       ai.strafeDir *= -1;
       ai.jukeTimer = 15;
+    }
+
+    // v11: Detect when leaving neutral state → finalize mid-fight pressure
+    const isNeutral = !isOpening && !member.gun.reloading && !enemyReloading && !hasBottom && !(enemyHasBottom && ai._antiBottomHysteresisFrames >= 20) && !(enemyHasBottom);
+    if (!isNeutral && ai._midPressurePolicy) {
+      const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
+      this._finalizeMidFightPressure(ai, mpDmg);
+    }
+    // v11: Detect when enemy leaves wall → finalize wall pressure
+    if (!nearEnemyWall && ai._wallPressurePolicy) {
+      const wpDmg = (ai._matchDmgDealt || 0) - (ai._wallPressureStartDmg || 0);
+      this._finalizeWallPressure(ai, wpDmg);
     }
 
     if (isOpening) {
@@ -3871,24 +4100,75 @@ const SparSystem = {
       // Reset engagement if enemy lost bottom (handled by hysteresis above)
       if (!ai._antiBottomTactic) ai._antiBottomFrames = 0;
       // === NEUTRAL — neither has clear bottom, actively contest ===
-      moveX = ai.strafeDir * speed * 0.7;
-      // Stay at preferred engagement distance + actively contest bottom
-      if (pm && pm.preferredDist && dist > 1) {
-        const distDiff = dist - pm.preferredDist;
-        if (distDiff > 50) {
-          moveX += (dx / dist) * speed * 0.35;
-          moveY += (dy / dist) * speed * 0.35;
-        } else if (distDiff < -50) {
-          moveX -= (dx / dist) * speed * 0.25;
-          moveY -= (dy / dist) * speed * 0.25;
-        }
-      } else if (bot.y < tgt.y) {
-        // Push to get below enemy — bottom is valuable
-        moveY = speed * 0.4;
-      } else {
-        // Already below or level — slight drift to maintain bottom
-        moveY = speed * 0.1;
+      // v11: Pick mid-fight pressure policy if not active
+      if (!ai._midPressurePolicy) {
+        const mpCtx = {
+          dist, hasBottom, enemyHasBottom,
+          recentHit: ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30,
+          recentTookHit: ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 30,
+          laneQuality, enemyNearWall: nearEnemyWall,
+        };
+        const mpPolicy = this._pickMidFightPressure(pm, mpCtx);
+        const mpFamilyMap = typeof SPAR_MID_PRESSURE_FAMILY_MAP !== 'undefined' ? SPAR_MID_PRESSURE_FAMILY_MAP : { pressureHard: 'press', pressureSoft: 'press', holdLane: 'hold' };
+        ai._midPressurePolicy = mpPolicy;
+        ai._midPressureFamily = mpFamilyMap[mpPolicy] || 'press';
+        ai._midPressureStartDmg = ai._matchDmgDealt || 0;
+        ai._midPressureFrames = 0;
+        ai._lastMidPressurePolicy = mpPolicy;
+        ai._lastMidPressureFamily = mpFamilyMap[mpPolicy] || 'press';
       }
+      ai._midPressureFrames++;
+
+      // Policy-driven neutral movement
+      if (ai._midPressurePolicy === 'pressureHard') {
+        // Aggressive close-in: 50% approach, 50% strafe, push toward bottom
+        moveX = ai.strafeDir * speed * 0.5;
+        if (dist > 120 && dist > 1) {
+          moveX += (dx / dist) * speed * 0.5;
+          moveY += (dy / dist) * speed * 0.5;
+        }
+        // Push toward bottom position
+        if (bot.y < tgt.y) moveY += speed * 0.3;
+        else moveY += speed * 0.1;
+      } else if (ai._midPressurePolicy === 'pressureSoft') {
+        // Moderate: 70% strafe, 30% approach when far, don't chase close
+        moveX = ai.strafeDir * speed * 0.7;
+        const prefDist = (pm && pm.preferredDist) ? pm.preferredDist : 220;
+        if (dist > prefDist && dist > 1) {
+          moveX += (dx / dist) * speed * 0.3;
+          moveY += (dy / dist) * speed * 0.3;
+        } else if (dist < 150 && dist > 1) {
+          // Don't chase when close — maintain distance
+          moveX -= (dx / dist) * speed * 0.15;
+          moveY -= (dy / dist) * speed * 0.15;
+        }
+        // Moderate bottom push
+        if (bot.y < tgt.y) moveY += speed * 0.2;
+        else moveY += speed * 0.05;
+      } else {
+        // holdLane: 80% strafe, no vertical push unless losing position, maintain distance
+        moveX = ai.strafeDir * speed * 0.8;
+        // Only approach if enemy retreats (moving away)
+        const enemyRetreating = dist > 1 && ((tgt.vx || 0) * -dx + (tgt.vy || 0) * -dy) / dist < -2;
+        if (enemyRetreating && dist > 200 && dist > 1) {
+          moveX += (dx / dist) * speed * 0.25;
+          moveY += (dy / dist) * speed * 0.25;
+        }
+        // Stay at preferred engagement distance
+        if (pm && pm.preferredDist && dist > 1) {
+          const distDiff = dist - pm.preferredDist;
+          if (distDiff > 50) {
+            moveX += (dx / dist) * speed * 0.2;
+            moveY += (dy / dist) * speed * 0.2;
+          } else if (distDiff < -50) {
+            moveX -= (dx / dist) * speed * 0.15;
+            moveY -= (dy / dist) * speed * 0.15;
+          }
+        }
+        // Only push toward bottom if significantly above
+        if (bot.y < tgt.y - 40) moveY += speed * 0.15;
+      }
+
       // Maintain fighting distance — don't stack on top of enemy
       if (dist < 100 && dist > 1) {
         moveX -= (dx / dist) * speed * 0.25;
@@ -3912,6 +4192,12 @@ const SparSystem = {
         if (pm.playerChases > 0.5 && hpPct > 0.5 && dist < 200) {
           if (ai.baitCooldown > 25) ai.baitCooldown = 25;
         }
+      }
+
+      // v11: Finalize mid-fight pressure after 180 frames timeout
+      if (ai._midPressureFrames >= 180) {
+        const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
+        this._finalizeMidFightPressure(ai, mpDmg);
       }
     }
 
@@ -4082,6 +4368,71 @@ const SparSystem = {
           if (nearTopWall || nearBottomWall) {
             moveX += (bot.x < midX ? 1 : -1) * speed * 0.4;
           }
+        }
+      }
+
+      // v11: WALL PRESSURE — exploit enemy near wall
+      if (nearEnemyWall && !nearAnyWall && !member.gun.reloading && !ai._escapePolicy) {
+        // Pick wall pressure policy if not active
+        if (!ai._wallPressurePolicy) {
+          const wpCtx = {
+            dist, hasBottom, enemyHasBottom,
+            enemyNearWall: nearEnemyWall, enemyInCorner,
+            laneQuality,
+          };
+          const wpPolicy = this._pickWallPressure(pm, wpCtx);
+          const wpFamilyMap = typeof SPAR_WALL_PRESSURE_FAMILY_MAP !== 'undefined' ? SPAR_WALL_PRESSURE_FAMILY_MAP : { wallPinHold: 'pin', pressureWiden: 'pin', prefireCorner: 'widen' };
+          ai._wallPressurePolicy = wpPolicy;
+          ai._wallPressureFamily = wpFamilyMap[wpPolicy] || 'pin';
+          ai._wallPressureStartDmg = ai._matchDmgDealt || 0;
+          ai._wallPressureFrames = 0;
+          ai._lastWallPressurePolicy = wpPolicy;
+          ai._lastWallPressureFamily = wpFamilyMap[wpPolicy] || 'pin';
+        }
+        ai._wallPressureFrames++;
+
+        if (ai._wallPressurePolicy === 'wallPinHold') {
+          // Hold position that pins enemy against wall, block escape route, maintain 120-180px
+          const pinDist = 150;
+          if (dist > pinDist + 30 && dist > 1) {
+            moveX += (dx / dist) * speed * 0.4;
+            moveY += (dy / dist) * speed * 0.4;
+          } else if (dist < pinDist - 30 && dist > 1) {
+            moveX -= (dx / dist) * speed * 0.2;
+            moveY -= (dy / dist) * speed * 0.2;
+          }
+          // Block escape: position between enemy and center
+          const escapeX = midX - tgt.x;
+          if (Math.abs(escapeX) > 30) {
+            moveX += Math.sign(escapeX) * speed * 0.15;
+          }
+        } else if (ai._wallPressurePolicy === 'pressureWiden') {
+          // Push toward enemy but offset wide to cut off escape
+          if (dist > 100 && dist > 1) {
+            moveX += (dx / dist) * speed * 0.35;
+            moveY += (dy / dist) * speed * 0.35;
+          }
+          // Offset wide: move perpendicular to cut escape
+          const perpDir = (tgt.x < midX) ? 1 : -1;
+          moveX += perpDir * speed * 0.3;
+        } else if (ai._wallPressurePolicy === 'prefireCorner') {
+          // Stand off at 200px, fire at predicted escape path
+          const prefireDist = 200;
+          if (dist > prefireDist + 30 && dist > 1) {
+            moveX += (dx / dist) * speed * 0.3;
+            moveY += (dy / dist) * speed * 0.3;
+          } else if (dist < prefireDist - 30 && dist > 1) {
+            moveX -= (dx / dist) * speed * 0.25;
+            moveY -= (dy / dist) * speed * 0.25;
+          }
+          // Strafe to track escape angle
+          moveX += ai.strafeDir * speed * 0.4;
+        }
+
+        // Finalize after 150 frames timeout
+        if (ai._wallPressureFrames >= 150) {
+          const wpDmg = (ai._matchDmgDealt || 0) - (ai._wallPressureStartDmg || 0);
+          this._finalizeWallPressure(ai, wpDmg);
         }
       }
 
