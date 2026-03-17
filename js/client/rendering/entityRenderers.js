@@ -2113,10 +2113,40 @@ const ENTITY_RENDERERS = {
       ctx.beginPath(); ctx.arc(ex + cw * 0.5, ey + ch * 0.35, bellR, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#a08030';
       ctx.beginPath(); ctx.arc(ex + cw * 0.5, ey + ch * 0.35, bellR * 0.6, Math.PI, 0); ctx.fill();
-      // Pulsing ready indicator
-      const pulse = 0.5 + 0.3 * Math.sin(t * 3);
-      ctx.fillStyle = `rgba(100,200,80,${pulse})`;
-      ctx.beginPath(); ctx.arc(ex + cw * 0.5, ey + ch * 0.7, 3, 0, Math.PI * 2); ctx.fill();
+      // Draw plates with customer numbers for completed deli orders
+      if (typeof cookingState !== 'undefined' && cookingState.counterOrders && cookingState.counterOrders.length > 0) {
+        const orders = cookingState.counterOrders;
+        const plateW = 36, plateSpacing = cw / (orders.length + 1);
+        for (let i = 0; i < orders.length; i++) {
+          const px = ex + plateSpacing * (i + 1);
+          const py = ey + ch * 0.45;
+          // Plate
+          ctx.fillStyle = '#e0d8c8';
+          ctx.beginPath(); ctx.ellipse(px, py, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#a09880'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.ellipse(px, py, 14, 8, 0, 0, Math.PI * 2); ctx.stroke();
+          // Food layers on plate
+          if (orders[i].recipeIngredients && typeof DELI_INGREDIENTS !== 'undefined') {
+            let ly = py - 3;
+            const maxLayers = Math.min(orders[i].recipeIngredients.length, 4);
+            for (let li = 0; li < maxLayers; li++) {
+              const ing = DELI_INGREDIENTS[orders[i].recipeIngredients[li]];
+              ctx.fillStyle = ing ? ing.color : '#c0a060';
+              ctx.fillRect(px - 8, ly - li * 3, 16, 3);
+            }
+          }
+          // Customer number badge
+          ctx.fillStyle = '#e04040';
+          ctx.beginPath(); ctx.arc(px + 10, py - 10, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.font = "bold 8px monospace"; ctx.fillStyle = '#fff'; ctx.textAlign = "center";
+          ctx.fillText('#' + orders[i].customerNumber, px + 10, py - 7);
+        }
+      } else {
+        // Pulsing ready indicator (only when no plates)
+        const pulse = 0.5 + 0.3 * Math.sin(t * 3);
+        ctx.fillStyle = `rgba(100,200,80,${pulse})`;
+        ctx.beginPath(); ctx.arc(ex + cw * 0.5, ey + ch * 0.7, 3, 0, Math.PI * 2); ctx.fill();
+      }
       // SERVE label on the counter
       ctx.font = "bold 10px monospace"; ctx.fillStyle = '#80ff80'; ctx.textAlign = "center";
       ctx.fillText("SERVE", ex + cw / 2, ey + ch - 4);

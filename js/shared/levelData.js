@@ -810,11 +810,15 @@ const LEVELS = {
   deli_01: {
     id: 'deli_01',
     widthTiles: 40,
-    heightTiles: 32,
+    heightTiles: 36,
     isCooking: true,
-    spawns: { p1: { tx: 14, ty: 30 } },
+    spawns: { p1: { tx: 14, ty: 34 } },
     collisionAscii: [
       "########################################",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
       "#......................................#",
       "#......................................#",
       "#......................................#",
@@ -849,7 +853,7 @@ const LEVELS = {
     ],
     entities: [
       // Exit door (bottom)
-      { type: 'deli_exit', tx: 12, ty: 29, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 21 },
+      { type: 'deli_exit', tx: 12, ty: 33, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 21 },
 
       // === KITCHEN FLOOR (rendered behind everything — tile pattern) ===
       { type: 'deli_kitchen_floor', tx: 1, ty: 1, w: 23, h: 20, solid: false },
@@ -860,14 +864,14 @@ const LEVELS = {
       { type: 'pickup_counter',       tx: 8,  ty: 21, w: 6,  h: 1, solid: true }, // serve window (in the wall)
       { type: 'deli_service_counter', tx: 14, ty: 21, w: 11, h: 1, solid: true }, // right segment
       // Service counter — vertical bar on right side (rows 1-18, door at 19-20)
-      { type: 'deli_service_counter', tx: 24, ty: 1, w: 1, h: 18, solid: true },
+      { type: 'deli_service_counter', tx: 24, ty: 1, w: 1, h: 17, solid: true },
       // Kitchen door (right side)
       { type: 'kitchen_door', tx: 24, ty: 19, w: 1, h: 2, solid: false },
 
       // === INGREDIENT SECTIONS (organized by category, 2 tile gap between each) ===
       // -- BREADS section (top-left, row 1) --
       { type: 'ing_bread', tx: 1, ty: 1, w: 2, h: 2, solid: true },
-      { type: 'ing_bagel', tx: 5, ty: 1, w: 2, h: 2, solid: true },
+      { type: 'ing_bagel', tx: 6, ty: 1, w: 2, h: 2, solid: true },
 
       // -- MEATS section (top-right, row 1) --
       { type: 'ing_turkey',  tx: 10, ty: 1, w: 2, h: 2, solid: true },
@@ -882,10 +886,10 @@ const LEVELS = {
       { type: 'ing_onion',   tx: 1, ty: 15, w: 2, h: 2, solid: true },
 
       // -- SAUCES section (right side, along wall) --
-      { type: 'ing_mayo',    tx: 21, ty: 7,  w: 2, h: 2, solid: true },
+      { type: 'ing_mayo',    tx: 21, ty: 6,  w: 2, h: 2, solid: true },
       { type: 'ing_ketchup', tx: 21, ty: 9,  w: 2, h: 2, solid: true },
-      { type: 'ing_mustard', tx: 21, ty: 11, w: 2, h: 2, solid: true },
-      { type: 'ing_ranch',   tx: 21, ty: 13, w: 2, h: 2, solid: true },
+      { type: 'ing_mustard', tx: 21, ty: 12, w: 2, h: 2, solid: true },
+      { type: 'ing_ranch',   tx: 21, ty: 15, w: 2, h: 2, solid: true },
 
       // === WORK STATIONS ===
       // Deli Counter (center — clear plate)
@@ -921,6 +925,8 @@ const LEVELS = {
       // 1 row of 2 shelves
       { type: 'deli_shelf_frozen',    tx: 27, ty: 24, w: 5, h: 2, solid: true },
       { type: 'deli_shelf_snacks',    tx: 34, ty: 24, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_candy',     tx: 27, ty: 27, w: 5, h: 2, solid: true },
+      { type: 'deli_shelf_drinks',    tx: 34, ty: 27, w: 5, h: 2, solid: true },
     ]
   },
   diner_01: {

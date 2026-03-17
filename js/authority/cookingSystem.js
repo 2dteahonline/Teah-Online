@@ -26,6 +26,7 @@ const cookingState = {
   // Ticket queue — orders auto-generate on timer, independent of NPCs
   ticketQueue: [],       // pre-generated order tickets waiting to activate
   ticketSpawnTimer: 0,   // frames until next ticket generation
+  counterOrders: [],     // completed orders waiting on pickup counter (deli)
 
   stats: {
     ordersCompleted: 0,
@@ -107,6 +108,7 @@ function startCookingShift(restaurantId) {
   cookingState.missedOrders = 0;
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
+  cookingState.counterOrders = [];
 
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
@@ -126,6 +128,7 @@ function endCookingShift() {
   cookingState.assembly = [];
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
+  cookingState.counterOrders = [];
 
   // Fully reset grill state
   if (typeof resetGrillState === 'function') resetGrillState();
@@ -179,6 +182,7 @@ function resetCookingState() {
   cookingState.missedOrders = 0;
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
+  cookingState.counterOrders = [];
 
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
@@ -252,7 +256,8 @@ function _activateNextTicket() {
     serviceDuration: ticket.timerType.duration,
     timerType: ticket.timerType,
     startFrame: typeof gameFrame !== 'undefined' ? gameFrame : 0,
-    npcId: null,
+    npcId: ticket._deliNpcId || null,
+    _deliCustomerNumber: ticket._deliCustomerNumber || null,
     _fdTableId: ticket._fdTableId != null ? ticket._fdTableId : null,
     _fdPartyId: ticket._fdPartyId != null ? ticket._fdPartyId : null,
     _dinerBoothId: ticket._dinerBoothId != null ? ticket._dinerBoothId : null,
@@ -296,11 +301,14 @@ function updateCooking() {
   if (!cookingState.active) return;
 
   // Generate tickets on timer (independent of NPCs)
-  cookingState.ticketSpawnTimer++;
-  if (cookingState.ticketSpawnTimer >= COOKING_CONFIG.ticketSpawnInterval &&
-      cookingState.ticketQueue.length < COOKING_CONFIG.ticketQueueMax) {
-    cookingState.ticketSpawnTimer = 0;
-    _generateTicket();
+  // Deli: NPCs push their own tickets at the counter, skip auto-generation
+  if (cookingState.activeRestaurantId !== 'street_deli') {
+    cookingState.ticketSpawnTimer++;
+    if (cookingState.ticketSpawnTimer >= COOKING_CONFIG.ticketSpawnInterval &&
+        cookingState.ticketQueue.length < COOKING_CONFIG.ticketQueueMax) {
+      cookingState.ticketSpawnTimer = 0;
+      _generateTicket();
+    }
   }
 
   // Activate next ticket if no active order
@@ -313,8 +321,9 @@ function updateCooking() {
     if (!cookingState.currentOrder) return;
   }
 
-  // Periodically try to link unlinked orders to NPCs at counter
-  if (cookingState.currentOrder && !cookingState.currentOrder.npcId) {
+  // Periodically try to link unlinked orders to NPCs at counter (non-deli only)
+  if (cookingState.currentOrder && !cookingState.currentOrder.npcId &&
+      cookingState.activeRestaurantId !== 'street_deli') {
     _tryLinkNPCToOrder();
   }
 
@@ -342,7 +351,9 @@ function updateCooking() {
       if (typeof _checkTrickHit === 'function') _checkTrickHit();
       return;
     }
-    const px = player.x, py = player.y - 20;
+    const dirOffsets = [[0,20],[0,-20],[-20,0],[20,0]]; // down, up, left, right
+    const [offX, offY] = dirOffsets[player.dir] || [0,0];
+    const px = player.x + offX, py = player.y + offY;
     let hitEntity = null;
     let hitDist = 999;
     for (const e of levelEntities) {
@@ -380,10 +391,18 @@ function updateCooking() {
       if (npc) {
         npc.linkedOrderId = null;
         npc.hasOrdered = true;
-        // Deli NPCs — release queue slot and despawn walk
-        npc._queueIdx = -1;
-        if (typeof _advanceQueue === 'function') _advanceQueue(0);
-        npc.route = [{ tx: 13, ty: 22 }, { tx: 13, ty: 27 }];
+        if (npc._counterSpotIdx >= 0) npc._counterSpotIdx = -1;
+        if (npc.claimedChair !== null) {
+          const ch = typeof DELI_CHAIRS !== 'undefined' && DELI_CHAIRS[npc.claimedChair];
+          npc.claimedChair = null;
+          if (ch) {
+            npc.route = [{ tx: ch.tx, ty: 20 }, { tx: 26, ty: 20 }, { tx: 26, ty: 22 }, { tx: 16, ty: 22 }, { tx: 16, ty: 34 }];
+          } else {
+            npc.route = [{ tx: 16, ty: 22 }, { tx: 16, ty: 34 }];
+          }
+        } else {
+          npc.route = [{ tx: 16, ty: 22 }, { tx: 16, ty: 34 }];
+        }
         npc.state = '_despawn_walk';
       }
     }
@@ -688,8 +707,27 @@ function applyOrderResult(result) {
         partyId: cookingState.currentOrder._fdPartyId,
         recipeIngredients: recipeIngredients,
       });
+    } else if (cookingState.activeRestaurantId === 'street_deli' && cookingState.currentOrder._deliCustomerNumber) {
+      // Deli: push to counter for NPC pickup
+      if (!cookingState.counterOrders) cookingState.counterOrders = [];
+      const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
+        ? cookingState.currentOrder.recipe.ingredients.slice()
+        : null;
+      cookingState.counterOrders.push({
+        customerNumber: cookingState.currentOrder._deliCustomerNumber,
+        recipe: cookingState.currentOrder.recipe,
+        recipeIngredients: recipeIngredients,
+        npcId: cookingState.currentOrder.npcId,
+      });
+      // Notify the NPC that food is ready
+      const activeNPCs = _getActiveNPCs();
+      const npc = activeNPCs.find(n => n.id === cookingState.currentOrder.npcId);
+      if (npc) {
+        npc._foodReady = true;
+        npc.linkedOrderId = null;
+      }
     } else if (cookingState.currentOrder.npcId) {
-      // Deli: direct NPC pickup
+      // Generic NPC pickup (fallback)
       const activeNPCs = _getActiveNPCs();
       const npc = activeNPCs.find(n => n.id === cookingState.currentOrder.npcId);
       if (npc && (npc.state === 'waiting_food' || npc.state === 'ordering')) {
@@ -776,7 +814,10 @@ function drawCookingHUD() {
     // Customer type + timer type label
     ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = order.customer.color || '#80a0c0';
-    ctx.fillText((order.customer.name || order.customer.type || 'Customer'), panelX + 8, panelY + 14);
+    const customerLabel = order._deliCustomerNumber
+      ? 'Customer ' + order._deliCustomerNumber + ' \u2014 ' + (order.customer.name || order.customer.type || '')
+      : (order.customer.name || order.customer.type || 'Customer');
+    ctx.fillText(customerLabel, panelX + 8, panelY + 14);
     // (Timer type label removed — bar color communicates urgency)
 
     // === Service timer bar (green→yellow→red) ===
