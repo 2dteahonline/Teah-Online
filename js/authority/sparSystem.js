@@ -4260,7 +4260,7 @@ const SparSystem = {
       ai._centerRecoveryFrames++;
       // Success: escaped center band OR regained bottom OR regained gun-side
       const escaped = !inCenterBand || hasBottom || (!badGunSide && laneQuality > 0.58);
-      const crMinFrames = 20;
+      const crMinFrames = 25;
       if (ai._centerRecoveryFrames >= crMinFrames && escaped) {
         this._finalizeCenterRecovery(ai, true, hasBottom, !badGunSide && laneQuality > 0.55);
         ai._centerRecoveryCooldown = 25;
@@ -4268,10 +4268,37 @@ const SparSystem = {
         // Timeout — failed to escape
         this._finalizeCenterRecovery(ai, false, hasBottom, !badGunSide && laneQuality > 0.55);
         ai._centerRecoveryCooldown = 25;
+      } else if (ai._centerRecoveryFrames > 0 && ai._centerRecoveryFrames % 40 === 0 && !escaped) {
+        // Progress-based escalation: every 40 frames without escape, consider switching policy
+        // Escalate within family: cross→cross (re-pick), bait→under
+        const crFamily = ai._centerRecoveryFamily;
+        const crFamilyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
+          ? SPAR_CENTER_RECOVERY_FAMILY_MAP
+          : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
+        // Finalize current, pick new with escalation bias
+        this._finalizeCenterRecovery(ai, false, false, false);
+        ai._centerRecoveryCooldown = 0; // immediate re-open (escalation, not failure cooldown)
+        // Force wideUnderEntry if bait family failed, or re-pick cross with opposite dir
+        if (crFamily === 'bait') {
+          ai._centerRecoveryPolicy = 'wideUnderEntry';
+          ai._centerRecoveryFamily = 'under';
+        } else {
+          ai._centerRecoveryPolicy = 'crossCommit';
+          ai._centerRecoveryFamily = 'cross';
+        }
+        ai._centerRecoveryFrames = 0;
+        ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
+        // Flip commit direction on escalation
+        ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
+        // Wall safety check on new direction
+        if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
+        else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
       }
-      // Finalize if bot reached a wall (recovery drove it there)
+      // Wall contact during recovery = FAILURE, not success (wall is not an exit)
+      // Only exception: if we also regained bottom or gun-side, that's partial success
       if (ai._centerRecoveryPolicy && ai._centerRecoveryFrames >= 5 && (nearLeftWallBase || nearRightWallBase)) {
-        this._finalizeCenterRecovery(ai, !inCenterBand, hasBottom, !badGunSide && laneQuality > 0.55);
+        const wallSuccess = hasBottom || (!badGunSide && laneQuality > 0.55);
+        this._finalizeCenterRecovery(ai, wallSuccess, hasBottom, !badGunSide && laneQuality > 0.55);
         ai._centerRecoveryCooldown = 30;
       }
       // Also finalize if we entered a higher-priority state
@@ -4391,6 +4418,22 @@ const SparSystem = {
       this._finalizeWallPressure(ai, wpDmg);
       ai._wallPressureCooldown = 20;
     }
+
+    // === MOVEMENT AUTHORITY: determine which system owns movement this frame ===
+    // Priority: escape > centerRecovery > antiBottom > gunSide > wallPressure > midPressure > neutral
+    // modifierLevel: 2=minimal (only wall safety, collision, freeze, dodge-reduced), 1=medium, 0=full
+    const movementOwner =
+      ai._escapePolicy ? 'escape' :
+      ai._centerRecoveryPolicy ? 'centerRecovery' :
+      (enemyHasBottom && ai._antiBottomTactic) ? 'antiBottom' :
+      ai._gunSidePolicy ? 'gunSide' :
+      ai._wallPressurePolicy ? 'wallPressure' :
+      ai._midPressurePolicy ? 'midPressure' :
+      isOpening ? 'opening' :
+      'neutral';
+    const modifierLevel = (movementOwner === 'escape' || movementOwner === 'centerRecovery' || movementOwner === 'antiBottom') ? 2
+      : (movementOwner === 'gunSide' || movementOwner === 'wallPressure') ? 1
+      : 0;
 
     if (isOpening) {
       // === PHASE 1: Opening — choose a route + contest policy and commit ===
@@ -4973,7 +5016,23 @@ const SparSystem = {
         // Minimal placeholder movement — real movement applied in center recovery overlay
         moveX = ai.strafeDir * speed * 0.2;
         moveY = speed * 0.05;
-      } else
+      }
+      // === DEAD-STATE PREVENTION: block moves that would worsen position ===
+      // If disadvantaged and drifting toward center band, push laterally
+      const driftingToCenter = !hasBottom && badGunSide &&
+        Math.abs(bot.x - midX) < arenaW * 0.22 && Math.abs(bot.x - midX) > arenaW * 0.08;
+      if (driftingToCenter && !ai._centerRecoveryPolicy) {
+        // Push away from center band to prevent entering center-trap
+        const preventDir = this._getStableCenterDir(ai, bot.x, midX) > 0 ? -1 : 1;
+        moveX += preventDir * speed * 0.25;
+      }
+      // If disadvantaged and drifting toward wall, push toward center
+      const driftingToWall = !hasBottom && (badGunSide || laneQuality < 0.5) &&
+        (bot.x < TILE * 5 || bot.x > arenaW - TILE * 5);
+      if (driftingToWall && !ai._escapePolicy && !ai._centerRecoveryPolicy) {
+        moveX += this._getStableCenterDir(ai, bot.x, midX) * speed * 0.3;
+      }
+      if (!ai._centerRecoveryPolicy)
       // v11: Pick mid-fight pressure policy if not active (respect cooldown)
       if (!ai._midPressurePolicy && !(ai._midPressureCooldown > 0)) {
         const mpCtx = {
@@ -5197,7 +5256,7 @@ const SparSystem = {
     }
 
     // === DUEL STYLE WEIGHT APPLICATION ===
-    if (styleWeights && !isOpening) {
+    if (styleWeights && !isOpening && modifierLevel < 2) {
       // Scale approach/retreat based on style
       if (dist > 1) {
         const moveDot = (moveX * dx + moveY * dy) / dist;
@@ -5267,7 +5326,7 @@ const SparSystem = {
     // === CIRCUMSTANCE LAYERS (Phase 1c) ===
 
     // After-hit momentum: within 30 frames of landing a hit, push harder
-    if (ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30 && !isOpening) {
+    if (ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30 && !isOpening && modifierLevel < 2) {
       if (dist > 1) {
         moveX += (dx / dist) * speed * 0.2;
         moveY += (dy / dist) * speed * 0.2;
@@ -5276,7 +5335,7 @@ const SparSystem = {
     }
 
     // After-taking-hit defense: within 30 frames of taking a hit, strafe harder and back off
-    if (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 30 && !isOpening) {
+    if (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 30 && !isOpening && modifierLevel < 1) {
       moveX += ai.strafeDir * speed * 0.12;
       if (dist < 250 && dist > 1) {
         moveX -= (dx / dist) * speed * 0.1;
@@ -5305,7 +5364,7 @@ const SparSystem = {
       ai._topStuckFrames = Math.max(0, ai._topStuckFrames - 2);
     }
 
-    if (!isOpening) {
+    if (!isOpening && modifierLevel < 2) {
       // CORNER ESCAPE: increasingly urgent the longer we're stuck
       if (inCorner) {
         const urgency = Math.min(0.7, ai._cornerFrames / 60); // ramps to 0.7 over 1 second
@@ -5412,7 +5471,7 @@ const SparSystem = {
     }
 
     // LOS blocked tracking
-    if (!isOpening && dist > 1) {
+    if (!isOpening && dist > 1 && modifierLevel < 2) {
       const hasLOS = this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20);
       if (!hasLOS) {
         ai._losBlockedFrames++;
@@ -5429,7 +5488,7 @@ const SparSystem = {
     // Chase/retreat reset: track consecutive chase and retreat frames
     // Skip during active anti-bottom — tactic handles its own approach
     const inActiveAntiBottom = !!ai._antiBottomTactic && enemyHasBottom;
-    if (!isOpening && !inActiveAntiBottom && dist > 1) {
+    if (!isOpening && !inActiveAntiBottom && dist > 1 && modifierLevel < 1) {
       const movingToward = (moveX * dx + moveY * dy) / dist;
       if (movingToward > speed * 0.3) {
         ai._chaseFrames++;
@@ -5457,7 +5516,7 @@ const SparSystem = {
 
     // === Expanded Low HP behavior (below 25%) ===
     // Skip during active anti-bottom engagement — tactic handles its own movement
-    if (hpPct < 0.25 && !isOpening && !inActiveAntiBottom) {
+    if (hpPct < 0.25 && !isOpening && !inActiveAntiBottom && modifierLevel < 2) {
       const tgtHpPct = tgt.hp / tgt.maxHp;
       // Estimate shots to kill each other
       const botDmg = member.gun.damage || 20;
@@ -5489,7 +5548,7 @@ const SparSystem = {
 
     // --- Combat-informed adjustments (STRONG — override base behaviors) ---
     // Skip during active anti-bottom engagement — tactic handles positioning
-    if (pm && !isOpening && !inActiveAntiBottom) {
+    if (pm && !isOpening && !inActiveAntiBottom && modifierLevel < 1) {
       // DISTANCE MANAGEMENT: aggressively push toward preferred engagement range
       if (pm.preferredDist && dist > 1) {
         const distDiff = dist - pm.preferredDist;
@@ -5614,7 +5673,7 @@ const SparSystem = {
 
     // --- Baiting: occasionally fake a direction then snap back ---
     // Skip during active anti-bottom / center recovery — don't fake directions while committed
-    if (ai.baitTimer > 0 && !inActiveAntiBottom && !inActiveCenterRecovery) {
+    if (ai.baitTimer > 0 && !inActiveAntiBottom && !inActiveCenterRecovery && modifierLevel < 2) {
       ai.baitTimer--;
       if (ai.baitTimer > 8) {
         // Fake phase — move in bait direction
@@ -5624,7 +5683,7 @@ const SparSystem = {
       // else: snap back (use the real moveX/moveY calculated above)
     } else {
       ai.baitCooldown--;
-      if (ai.baitCooldown <= 0 && !isOpening && !inActiveAntiBottom && !inActiveCenterRecovery && dist < 350 && dist > 100) {
+      if (ai.baitCooldown <= 0 && !isOpening && !inActiveAntiBottom && !inActiveCenterRecovery && modifierLevel < 2 && dist < 350 && dist > 100) {
         // Start a bait — fake going one direction
         ai.baitTimer = 18; // 12 frames fake + 6 frames real snap
         // Fake toward enemy then pull back, or fake a strafe direction
@@ -5677,7 +5736,7 @@ const SparSystem = {
       }
     }
     // vNext: Apply non-reload punish window movement modifier
-    if (ai._punishWindowPolicy && !enemyReloading && dist > 1) {
+    if (ai._punishWindowPolicy && !enemyReloading && dist > 1 && modifierLevel < 2) {
       if (ai._punishWindowPolicy === 'hardConvert') {
         moveX += (dx / dist) * speed * 0.25;
         moveY += (dy / dist) * speed * 0.25;
@@ -5709,7 +5768,7 @@ const SparSystem = {
     const isInNeutralOpen = !isOpening && !member.gun.reloading && !enemyReloading &&
       !ai._escapePolicy && !ai._wallPressurePolicy && !ai._centerRecoveryPolicy &&
       !hasBottom && !enemyHasBottom &&
-      SparState.phase === 'fighting';
+      SparState.phase === 'fighting' && modifierLevel < 2;
     const moveMag = Math.sqrt(moveX * moveX + moveY * moveY);
     if (isInNeutralOpen && moveMag < speed * 0.15 && ai._momentumBreakFrames <= 0) {
       ai._lowMotionFrames++;
@@ -5779,7 +5838,7 @@ const SparSystem = {
       ai._idleFrames = 0;
     }
     // After 20 idle frames, if not escaping or self reloading, force a lateral break with momentum
-    if (ai._idleFrames >= 20 && !ai._escapePolicy && !ai._centerRecoveryPolicy && !(member && member.gun.reloading)) {
+    if (ai._idleFrames >= 20 && !ai._escapePolicy && !ai._centerRecoveryPolicy && !(member && member.gun.reloading) && modifierLevel < 2) {
       const breakDir = (Math.random() < 0.5 ? -1 : 1);
       const breakDirY = (bot.y < tgt.y) ? 0.3 : ((Math.random() < 0.5 ? -1 : 1) * 0.25);
       moveX = breakDir * speed * 0.7;
@@ -5798,6 +5857,10 @@ const SparSystem = {
         sl2.tactical.idleBreaks++;
       }
     }
+
+    // === MOVEMENT OWNER DIAGNOSTICS ===
+    if (!ai._ownerFrames) ai._ownerFrames = {};
+    ai._ownerFrames[movementOwner] = (ai._ownerFrames[movementOwner] || 0) + 1;
 
     // Collision — use player wall size, not mob (bots = future players)
     const hw = GAME_CONFIG.PLAYER_WALL_HW;

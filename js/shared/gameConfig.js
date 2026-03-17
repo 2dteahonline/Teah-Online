@@ -33,5 +33,5 @@ const GAME_CONFIG = {
   DEFAULT_HITBOX_R: 33,         // hitbox visual radius (BULLET_HALF_SHORT + ENTITY_R)
 
   // --- Version ---
-  GAME_UPDATE: 344,             // increment each deploy - shown on lobby version sign
+  GAME_UPDATE: 345,             // increment each deploy - shown on lobby version sign
 };
