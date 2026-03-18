@@ -957,7 +957,7 @@ const LEVELS = {
     ],
     entities: [
       // Exit door (bottom center)
-      { type: 'diner_exit', tx: 26, ty: 21, w: 2, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
+      { type: 'diner_exit', tx: 25, ty: 21, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
 
       // === KITCHEN FLOOR (rendered behind everything) ===
       { type: 'diner_kitchen_floor', tx: 1, ty: 1, w: 22, h: 14, solid: false },
@@ -1060,7 +1060,7 @@ const LEVELS = {
       { type: 'arcade_cabinet', tx: 36, ty: 16, w: 1, h: 2, solid: true },
 
       // === CUSTOMER EXIT ===
-      { type: 'diner_customer_exit', tx: 44, ty: 21, w: 3, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
+      { type: 'diner_customer_exit', tx: 43, ty: 21, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
     ]
   },
   // ---- FINE DINING (teppanyaki) ----

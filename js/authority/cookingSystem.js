@@ -46,6 +46,9 @@ const cookingState = {
 // Unique ID counter for customers
 let _cookingOrderId = 0;
 
+// Diner: cycling table number counter (1-6)
+let _dinerNextTableNum = 0;
+
 // Multi-restaurant helpers
 function _getActiveIngredients() {
   if (cookingState.activeRestaurantId === 'fine_dining') return typeof FINE_DINING_INGREDIENTS !== 'undefined' ? FINE_DINING_INGREDIENTS : {};
@@ -110,6 +113,7 @@ function startCookingShift(restaurantId) {
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
   cookingState.counterOrders = [null, null, null, null];
+  _dinerNextTableNum = 0; // reset table cycling
 
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
@@ -229,11 +233,22 @@ function _generateTicket() {
     }
   }
 
+  // Diner: assign cycling table number (1-6) and corresponding booth
+  let _ticketDinerBoothId = null;
+  let _ticketDinerTableNum = null;
+  if (cookingState.activeRestaurantId === 'diner' && typeof DINER_BOOTHS !== 'undefined') {
+    _dinerNextTableNum = (_dinerNextTableNum % 6) + 1; // cycle 1-6
+    _ticketDinerTableNum = _dinerNextTableNum;
+    _ticketDinerBoothId = _dinerNextTableNum - 1; // booth index 0-5
+  }
+
   cookingState.ticketQueue.push({
     ticketItems: ticketItems,
     customer: customerType,
     moodThresholds: moodThresholds,
     timerType: timerType,
+    _dinerBoothId: _ticketDinerBoothId,
+    _dinerTableNumber: _ticketDinerTableNum,
   });
 }
 
@@ -682,8 +697,11 @@ function applyOrderResult(result) {
     cookingProgress.lifetimeOrdersByShop[shopId] = (cookingProgress.lifetimeOrdersByShop[shopId] || 0) + 1;
   }
 
-  // Multi-item ticket: advance to next item or finish
-  if (cookingState.ticket && cookingState.ticket.completedCount < cookingState.ticket.items.length - 1) {
+  // F-grade: skip ticket advancement entirely — the whole order is failed
+  const isFailedOrder = result.grade && result.grade.label === 'F';
+
+  // Multi-item ticket: advance to next item or finish (skip for F grades)
+  if (!isFailedOrder && cookingState.ticket && cookingState.ticket.completedCount < cookingState.ticket.items.length - 1) {
     // Accumulate completed item's ingredients for tray visual
     if (cookingState._dinerTrayItems && cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients) {
       cookingState._dinerTrayItems.push(cookingState.currentOrder.recipe.ingredients.slice());
@@ -698,8 +716,8 @@ function applyOrderResult(result) {
     return; // don't clear order — more items to serve
   }
 
-  // All ticket items done — notify NPC or waitress
-  if (cookingState.currentOrder) {
+  // All ticket items done — notify NPC or waitress (skip for F grades — no food delivery)
+  if (cookingState.currentOrder && !isFailedOrder) {
     // Diner: push to waitress pending serve queue
     if (cookingState.activeRestaurantId === 'diner' &&
         typeof _dinerPendingServe !== 'undefined') {
@@ -764,6 +782,26 @@ function applyOrderResult(result) {
           npc._recipeIngredients = cookingState.currentOrder.recipe.ingredients.slice();
         }
         npc.linkedOrderId = null;
+      }
+    }
+  }
+
+  // Diner F-grade cleanup: release pre-assigned booth so it's available for future orders
+  if (isFailedOrder && cookingState.activeRestaurantId === 'diner' && cookingState.currentOrder) {
+    const failedBoothId = cookingState.currentOrder._dinerBoothId;
+    if (failedBoothId != null && failedBoothId >= 0 && typeof DINER_BOOTHS !== 'undefined') {
+      const failedBooth = DINER_BOOTHS[failedBoothId];
+      if (failedBooth && (failedBooth.claimedBy === -1 || failedBooth.claimedBy === cookingState.currentOrder._dinerPartyId)) {
+        failedBooth.claimedBy = null;
+        failedBooth._plates = null;
+      }
+    }
+    // Update TV queue to failed
+    if (typeof _dinerTVQueue !== 'undefined') {
+      const tvIdx = _dinerTVQueue.findIndex(e => e.partyId === cookingState.currentOrder._dinerPartyId && e.status === 'pending');
+      if (tvIdx >= 0) {
+        _dinerTVQueue[tvIdx].status = 'failed';
+        _dinerTVQueue[tvIdx]._removeTimer = 180; // remove after 3 seconds
       }
     }
   }

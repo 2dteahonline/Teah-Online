@@ -1776,6 +1776,12 @@ const ENTITY_RENDERERS = {
       const screenW = cw - 16, screenH = ch - 28;
       const channel = Math.floor(t * 0.15) % 5; // switch every ~7 seconds
 
+      // Clip all TV content to screen bounds
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(screenX, screenY, screenW, screenH);
+      ctx.clip();
+
       if (channel === 0) {
         // Sports game — moving dots
         ctx.fillStyle = '#1a4a1a';
@@ -1836,6 +1842,9 @@ const ENTITY_RENDERERS = {
           ctx.fillRect(screenX + b * barW, screenY, barW + 1, screenH);
         }
       }
+      // Restore clipping before scan lines and stand
+      ctx.restore();
+
       // Scan lines overlay
       for (let sl = 0; sl < 8; sl++) {
         ctx.fillStyle = 'rgba(0,0,0,0.08)';
@@ -1877,7 +1886,7 @@ const ENTITY_RENDERERS = {
       ctx.textAlign = "left";
 
       // === Tray with order progress (multi-part orders) ===
-      // Only show tray after at least 1 item is completed
+      // Rendered on the RIGHT side of the counter surface (not floating above into ingredients)
       if (typeof cookingState !== 'undefined' && cookingState.ticket && cookingState.ticket.items &&
           cookingState.ticket.items.length > 1 && cookingState.activeRestaurantId === 'diner') {
         const completed = cookingState.ticket.completedCount || 0;
@@ -1885,38 +1894,36 @@ const ENTITY_RENDERERS = {
         if (completed > 0) {
           const tableNum = cookingState.currentOrder && cookingState.currentOrder._dinerTableNumber
             ? cookingState.currentOrder._dinerTableNumber : 0;
-          const trayX = ex + cw / 2, trayY = ey - 22;
+          // Place tray on counter surface, right side
+          const trayX = ex + cw - 30, trayY = ey + ch * 0.35;
           // Tray base (silver serving tray)
           ctx.fillStyle = '#b0b0b8';
-          ctx.beginPath(); ctx.ellipse(trayX, trayY + 4, cw * 0.35, 8, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(trayX, trayY + 4, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#c8c8d0';
-          ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, cw * 0.33, 6, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, 20, 6, 0, 0, Math.PI * 2); ctx.fill();
           // Food items on tray (one per completed part)
           const trayItems = cookingState._dinerTrayItems || [];
           for (let fi = 0; fi < completed; fi++) {
             const fx = trayX - (completed - 1) * 5 + fi * 10;
-            // Use actual recipe colors if available
             const itemIngs = trayItems[fi];
             const itemColor = itemIngs && itemIngs[0] && typeof DINER_INGREDIENTS !== 'undefined' && DINER_INGREDIENTS[itemIngs[0]]
               ? DINER_INGREDIENTS[itemIngs[0]].color : '#d4a040';
             ctx.fillStyle = itemColor;
             ctx.beginPath(); ctx.arc(fx, trayY - 2, 4, 0, Math.PI * 2); ctx.fill();
           }
-          // Progress text or green check
+          // Progress text or green check above tray
           ctx.textAlign = "center";
           if (completed >= total) {
-            // All done — green check
-            ctx.font = "bold 14px monospace"; ctx.fillStyle = '#40ff40';
+            ctx.font = "bold 12px monospace"; ctx.fillStyle = '#40ff40';
             ctx.fillText("\u2713", trayX, trayY - 8);
           } else {
-            // Progress: "1 out of 2"
-            ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffffff';
-            ctx.fillText(completed + " out of " + total, trayX, trayY - 12);
+            ctx.font = "bold 7px monospace"; ctx.fillStyle = '#ffffff';
+            ctx.fillText(completed + "/" + total, trayX, trayY - 8);
           }
           // Table number below tray in gold
           if (tableNum > 0) {
-            ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffd700';
-            ctx.fillText("Table " + tableNum, trayX, trayY + 16);
+            ctx.font = "bold 7px monospace"; ctx.fillStyle = '#ffd700';
+            ctx.fillText("T" + tableNum, trayX, trayY + 14);
           }
           ctx.textAlign = "left";
         }

@@ -20,8 +20,8 @@ const DINER_NPC_NAMES = typeof DINER_NAME_POOL !== 'undefined' ? DINER_NAME_POOL
 
 // ===================== DEFINED SPOTS =====================
 const DINER_SPOTS = {
-  entrance:    { tx: 27, ty: 21 },   // NPCs enter through left "Enter Diner" door
-  exit:        { tx: 45, ty: 21 },   // NPCs exit through right "Exit Diner" door
+  entrance:    { tx: 27, ty: 21 },   // NPCs enter through middle of "Enter Diner" door (tx:25-28)
+  exit:        { tx: 45, ty: 21 },   // NPCs exit through middle of "Exit Diner" door (tx:43-46)
   customerExit: { tx: 45, ty: 21 },  // same as exit
   passWindow:  { tx: 23, ty: 14 },
   counterWait: { tx: 23, ty: 16 },   // waitress idle spot — under kitchen door, facing south
@@ -36,9 +36,9 @@ const DINER_BOOTHS = [
   { id: 1, tx: 27, ty: 6,  w: 5, h: 3, entry: { tx: 26, ty: 7 }, topRowAccess: { tx: 26, ty: 6 }, bottomRowAccess: { tx: 26, ty: 8 }, seats: [{ tx: 28, ty: 6, sitDir: 0 }, { tx: 30, ty: 6, sitDir: 0 }, { tx: 28, ty: 8, sitDir: 1 }, { tx: 30, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 2 },
   { id: 2, tx: 27, ty: 10, w: 5, h: 3, entry: { tx: 26, ty: 11 }, topRowAccess: { tx: 26, ty: 10 }, bottomRowAccess: { tx: 26, ty: 12 }, seats: [{ tx: 28, ty: 10, sitDir: 0 }, { tx: 30, ty: 10, sitDir: 0 }, { tx: 28, ty: 12, sitDir: 1 }, { tx: 30, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 3 },
   // Right column
-  { id: 3, tx: 38, ty: 2,  w: 5, h: 3, entry: { tx: 36, ty: 3 }, topRowAccess: { tx: 36, ty: 2 }, bottomRowAccess: { tx: 36, ty: 4 }, seats: [{ tx: 39, ty: 2, sitDir: 0 }, { tx: 41, ty: 2, sitDir: 0 }, { tx: 39, ty: 4, sitDir: 1 }, { tx: 41, ty: 4, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 4 },
-  { id: 4, tx: 38, ty: 6,  w: 5, h: 3, entry: { tx: 36, ty: 7 }, topRowAccess: { tx: 36, ty: 6 }, bottomRowAccess: { tx: 36, ty: 8 }, seats: [{ tx: 39, ty: 6, sitDir: 0 }, { tx: 41, ty: 6, sitDir: 0 }, { tx: 39, ty: 8, sitDir: 1 }, { tx: 41, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 5 },
-  { id: 5, tx: 38, ty: 10, w: 5, h: 3, entry: { tx: 36, ty: 11 }, topRowAccess: { tx: 36, ty: 10 }, bottomRowAccess: { tx: 36, ty: 12 }, seats: [{ tx: 39, ty: 10, sitDir: 0 }, { tx: 41, ty: 10, sitDir: 0 }, { tx: 39, ty: 12, sitDir: 1 }, { tx: 41, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 6 },
+  { id: 3, tx: 38, ty: 2,  w: 5, h: 3, entry: { tx: 37, ty: 3 }, topRowAccess: { tx: 37, ty: 2 }, bottomRowAccess: { tx: 37, ty: 4 }, seats: [{ tx: 39, ty: 2, sitDir: 0 }, { tx: 41, ty: 2, sitDir: 0 }, { tx: 39, ty: 4, sitDir: 1 }, { tx: 41, ty: 4, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 4 },
+  { id: 4, tx: 38, ty: 6,  w: 5, h: 3, entry: { tx: 37, ty: 7 }, topRowAccess: { tx: 37, ty: 6 }, bottomRowAccess: { tx: 37, ty: 8 }, seats: [{ tx: 39, ty: 6, sitDir: 0 }, { tx: 41, ty: 6, sitDir: 0 }, { tx: 39, ty: 8, sitDir: 1 }, { tx: 41, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 5 },
+  { id: 5, tx: 38, ty: 10, w: 5, h: 3, entry: { tx: 37, ty: 11 }, topRowAccess: { tx: 37, ty: 10 }, bottomRowAccess: { tx: 37, ty: 12 }, seats: [{ tx: 39, ty: 10, sitDir: 0 }, { tx: 41, ty: 10, sitDir: 0 }, { tx: 39, ty: 12, sitDir: 1 }, { tx: 41, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 6 },
 ];
 
 // ===================== ARCADE SPOTS (centered in dining area) =====================
@@ -175,8 +175,7 @@ function _routeDinerEntranceToBooth(boothId) {
   route.push({ tx: 27, ty: 14 });
   if (booth.tx >= 38) {
     // Right column booth — east through gap
-    route.push({ tx: 36, ty: 14 });
-    route.push({ tx: 36, ty: booth.entry.ty });
+    route.push({ tx: booth.entry.tx, ty: 14 });
     route.push({ tx: booth.entry.tx, ty: booth.entry.ty });
   } else {
     // Left column booth — go west to tx:26
@@ -193,8 +192,8 @@ function _routeDinerToExit(fromTX, fromTY, corridorTX) {
   // Get to main corridor first
   if (fromTY < 14) {
     if (fromTX >= 35) {
-      route.push({ tx: 36, ty: fromTY });
-      route.push({ tx: 36, ty: 14 });
+      route.push({ tx: 37, ty: fromTY });
+      route.push({ tx: 37, ty: 14 });
     } else if (fromTX >= 24) {
       route.push({ tx: 26, ty: fromTY });
       route.push({ tx: 26, ty: 14 });
@@ -217,7 +216,7 @@ function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
   if (!booth) return [];
   return _cConcatRoutes(
     _routeDinerSeatToBoothEntry(boothId, seatIdx),
-    booth.entry.tx >= 36 ? [_cWP(36, 14)] : [_cWP(26, 14)],
+    booth.entry.tx >= 36 ? [_cWP(booth.entry.tx, 14)] : [_cWP(26, 14)],
     [_cWP(44, 14)],
     [_cWP(44, DINER_SPOTS.customerExit.ty)]
   );
@@ -232,7 +231,7 @@ function _routeCounterToBooth(boothId) {
     return _cConcatRoutes(
       [_cWP(26, 16)],
       [_cWP(26, 14)],
-      [_cWP(36, 14)],
+      [_cWP(booth.entry.tx, 14)],
       [_cWP(booth.entry.tx, booth.entry.ty)]
     );
   } else {
@@ -249,8 +248,8 @@ function _routeBoothToCounter(boothId) {
   if (!booth) return [];
   if (booth.tx >= 38) {
     return _cConcatRoutes(
-      [_cWP(36, booth.entry.ty)],
-      [_cWP(36, 14)],
+      [_cWP(booth.entry.tx, booth.entry.ty)],
+      [_cWP(booth.entry.tx, 14)],
       [_cWP(26, 14)],
       [_cWP(26, 16)],
       [_cWP(DINER_SPOTS.counterWait.tx, DINER_SPOTS.counterWait.ty)]
@@ -394,6 +393,10 @@ function _spawnDinerGroupNPC(partyId, isLeader, extraOverrides) {
 
 // Spawn a gamer NPC at the LEFT entrance door
 function _spawnDinerGamerNPC() {
+  // Only allow 1 gamer per arcade spot — check NPCs still in diner (including those walking to exit)
+  const existingGamers = dinerNPCs.filter(n => n._role === 'gamer' && n.state !== '_despawn');
+  if (existingGamers.length >= DINER_ARCADE_SPOTS.length) return null;
+
   const arcadeIdx = _findFreeArcadeSpot();
   if (arcadeIdx < 0) return null;
 
@@ -503,13 +506,21 @@ function _updateDinerWaitress() {
       // Check if there's a completed tray to deliver
       const serve = _waitressFindNextServe();
       if (serve) {
-        // Assign random booth if not already assigned
+        // Use pre-assigned booth from ticket, or fallback to random free booth
         if (serve.boothId == null || serve.boothId < 0) {
           const freeBoothIdx = _findFreeBooth(2);
           if (freeBoothIdx < 0) break; // wait for free booth
           serve.boothId = freeBoothIdx;
-          DINER_BOOTHS[freeBoothIdx].claimedBy = -1; // mark as claimed by incoming order
         }
+        // Ensure booth is free (release previous claim if needed) and claim it
+        const targetBooth = DINER_BOOTHS[serve.boothId];
+        if (targetBooth && targetBooth.claimedBy != null && targetBooth.claimedBy !== -1) {
+          // Booth still occupied — try a different one
+          const altIdx = _findFreeBooth(2);
+          if (altIdx < 0) break;
+          serve.boothId = altIdx;
+        }
+        DINER_BOOTHS[serve.boothId].claimedBy = -1; // mark as claimed by incoming order
 
         w._targetBoothId = serve.boothId;
         w._targetPartyId = serve.partyId;
@@ -539,7 +550,7 @@ function _updateDinerWaitress() {
       if (booth) {
         w.x = booth.entry.tx * TILE + TILE / 2;
         w.y = booth.entry.ty * TILE + TILE / 2;
-        w.dir = 1; // face into booth
+        w.dir = 3; // face east toward the table
       }
       if (w.stateTimer > 0) { w.stateTimer--; return; }
 
@@ -635,7 +646,7 @@ function spawnDinerGroup() {
     // Stagger entry — followers enter a bit behind the leader
     if (i > 0) {
       npc.state = 'spawn_wait';
-      npc.stateTimer = i * 40; // ~0.67 sec stagger
+      npc.stateTimer = i * 60; // ~1 sec stagger so leader reaches far seat first // ~0.67 sec stagger
     }
   }
 
@@ -677,7 +688,7 @@ function _spawnGroupForBooth(boothIdx) {
     npc.claimedSeatIdx = seatOrder[i] != null ? seatOrder[i] : (i % booth.seats.length);
     if (i > 0) {
       npc.state = 'spawn_wait';
-      npc.stateTimer = i * 40;
+      npc.stateTimer = i * 60; // ~1 sec stagger so leader reaches far seat first
     }
   }
 
@@ -764,17 +775,11 @@ const DINER_NPC_AI = {
 
       // If booth has plates (food delivered before NPC arrived), start eating immediately
       if (booth && booth._plates && booth._plates.length > 0) {
-        const members = _getPartyMembers(party);
-        let myIdx = 0;
-        for (const m of members) {
-          if (m.isWaitress) continue;
-          if (m.id === npc.id) break;
-          myIdx++;
-        }
         npc.state = 'eating';
         npc.stateTimer = _cRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
         npc.hasFood = true;
-        npc._recipeIngredients = booth._plates[myIdx] || booth._plates[0] || null;
+        // Take a plate from the table (remove it so the table visual updates one by one)
+        npc._recipeIngredients = booth._plates.shift() || null;
         return;
       }
     }
