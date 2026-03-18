@@ -4622,20 +4622,16 @@ const SparSystem = {
         ai._centerRecoveryCooldown = 15;
       }
     }
-    // Open center recovery if center-trapped — preempts antiBottom AND escape
-    // The "center-trapped with enemy having bottom" state is exactly when CR should fire
-    // Escape is too generic for this specific positional problem — CR targets winning lanes
-    if (centerTrapped && !ai._centerRecoveryPolicy && !(ai._centerRecoveryCooldown > 0)) {
+    // Open center recovery if center-trapped — but NOT during antiBottom.
+    // AntiBottom already handles crossing to gun-side + retaking bottom.
+    // CR was killing antiBottom tactics every time the bot entered the center band,
+    // preventing any crossing from ever completing.
+    if (centerTrapped && !ai._centerRecoveryPolicy && !(ai._centerRecoveryCooldown > 0)
+      && !ai._antiBottomTactic) {
       // Finalize active escape — CR is the specific fix for this state
       if (ai._escapePolicy && ai._escapeFrames >= 5) {
         this._finalizeEscapeEngagement(ai, false);
         ai._escapeCooldown = 0; // no cooldown — CR takes over immediately
-      }
-      // Finalize active antiBottom — centerRecovery owns the center-trapped state
-      if (ai._antiBottomTactic && ai._antiBottomFrames >= 5) {
-        this._finalizeAntiBottomEngagement(ai, false, SparState._matchCollector);
-        ai._antiBottomCooldown = 0; // no cooldown — CR takes over immediately
-        ai._antiBottomHysteresisFrames = 0;
       }
       // Finalize gunSide if active (center recovery takes priority)
       if (ai._gunSidePolicy && ai._gunSideFrames >= 15) {
@@ -5039,8 +5035,8 @@ const SparSystem = {
       // Wall ONLY from the very bottom of the arena — if you wall from mid-height,
       // the player just ducks under your bullets and takes bottom for free.
       // From the bottom, the rising wall blocks them from descending.
-      const atArenaBottom = bot.y > arenaH * 0.75;
-      const shouldWall = atArenaBottom && // must be at actual bottom, not just below enemy
+      const atArenaBottom = bot.y > arenaH * 0.88;
+      const shouldWall = atArenaBottom && // must be at very bottom — walling from mid-height lets player duck under
         bot.y > tgt.y && // we're below them (have bottom)
         Math.abs(dx) < arenaW * 0.6 && // they're not way off to the side
         !member.gun.reloading && member.gun.ammo > 0;
@@ -5300,14 +5296,20 @@ const SparSystem = {
           if ((gapReady && phaseF > 15) || phaseF > 60) {
             ai._antiBottomPhase = 1;
             ai._antiBottomPhaseFrames = 0;
-            // Cross toward favorable gun-side (or opposite if already on it)
-            ai._antiBottomOffsetDir = alreadyFavorable ? -favorableCrossDir : favorableCrossDir;
+            // If already on favorable side, skip crossing — just descend
+            // Don't cross to the WRONG side when you're already in the right spot
           }
         } else {
-          // Phase 1: commit cross — fast diagonal toward favorable gun-side + bottom
-          const crossDir = ai._antiBottomOffsetDir || favorableCrossDir;
-          moveX = crossDir * speed * 0.85;
-          moveY = speed * 0.65;
+          if (alreadyFavorable) {
+            // Already on favorable gun-side — descend to take bottom, maintain offset
+            moveX = favorableCrossDir * speed * 0.3; // slight drift to maintain gun-side
+            moveY = speed * 0.75; // hard descent to take bottom
+          } else {
+            // Cross toward favorable gun-side + bottom
+            const crossDir = ai._antiBottomOffsetDir || favorableCrossDir;
+            moveX = crossDir * speed * 0.85;
+            moveY = speed * 0.65;
+          }
         }
 
       } else if (tactic === 'forceMirrorThenBreak') {
@@ -6606,7 +6608,7 @@ const SparSystem = {
       // - bot is clearly not going to win the bottom race anyway (topHold route)
       // This prevents burning 5+ opening shots that just delay the bottom contest.
       const openingFireGated = isOpening && SparState.matchTimer < 90 &&
-        bot.y < arenaH * 0.75 && // haven't reached bottom yet
+        bot.y < arenaH * 0.88 && // haven't reached very bottom yet — shooting from mid-height lets player duck under
         ai._openingRoute !== 'topHold' && // topHold routes don't race for bottom
         !(dist < 120 && Math.min(Math.abs(tgt.x - bot.x), Math.abs(tgt.y - bot.y)) < aimSlack); // not a free close shot
 
