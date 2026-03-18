@@ -5036,14 +5036,14 @@ const SparSystem = {
       // === WE HAVE BOTTOM — use it actively, don't just camp ===
 
       // --- WALLING: strafe diagonally while shooting horizontally to create bullet walls ---
-      // Wall mode shoots horizontally to block crossing, but MUST alternate with normal
-      // aimed shots (up at the player) — pure horizontal walling lets the player duck under.
-      // Only wall when opponent is actively crossing (moving horizontally), otherwise aim normally.
-      const enemyMovingHoriz = Math.abs(tgt.vx || 0) > 2;
-      const shouldWall = bot.y > tgt.y && // we're below them (have bottom)
+      // Wall ONLY from the very bottom of the arena — if you wall from mid-height,
+      // the player just ducks under your bullets and takes bottom for free.
+      // From the bottom, the rising wall blocks them from descending.
+      const atArenaBottom = bot.y > arenaH * 0.75;
+      const shouldWall = atArenaBottom && // must be at actual bottom, not just below enemy
+        bot.y > tgt.y && // we're below them (have bottom)
         Math.abs(dx) < arenaW * 0.6 && // they're not way off to the side
-        !member.gun.reloading && member.gun.ammo > 0 &&
-        enemyMovingHoriz; // only wall when opponent is actually trying to cross
+        !member.gun.reloading && member.gun.ammo > 0;
       ai._wallMode = shouldWall;
 
       // When walling, add vertical oscillation to create Y-stagger between bullets
@@ -5218,8 +5218,8 @@ const SparSystem = {
             ai._antiBottomPhaseFrames = 0;
           }
         } else {
-          // Phase 1: cut in diagonally
-          moveX = Math.sign(dx || offDir) * speed * 0.45;
+          // Phase 1: descend while maintaining gun-side offset (don't move back toward enemy center)
+          moveX = offDir * speed * 0.45;
           moveY = speed * 0.55;
         }
 
@@ -5321,9 +5321,8 @@ const SparSystem = {
             ai._antiBottomPhaseFrames = 0;
           }
         } else {
-          // Phase 1 (60+): break pattern — sudden opposite direction strafe + diagonal descent
-          const breakDir = -(Math.sign(tgt.vx || 0) || offDir); // opposite of enemy's last direction
-          moveX = breakDir * speed * 0.85;
+          // Phase 1 (60+): break toward favorable gun-side + diagonal descent
+          moveX = offDir * speed * 0.85;
           moveY = speed * 0.55;
         }
       }
