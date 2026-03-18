@@ -4794,13 +4794,12 @@ const SparSystem = {
         ai._antiBottomPhaseFrames = 0;
         ai._antiBottomDmgAtStart = ai._matchDmgTaken || 0;
         ai._antiBottomStartFrame = SparState.matchTimer;
-        ai._antiBottomStallCount = 0; // track stalls per engagement
-        // Pick offset direction: ALWAYS target favorable gun-side for crossing
-        // Right gun → go RIGHT of enemy (+1), Left gun → go LEFT (-1)
-        // This ensures every antiBottom tactic naturally crosses to the correct side
+        ai._antiBottomStallCount = 0;
+        ai._abBlockedFrames = 0; // body-block detection
+        ai._abLastY = bot.y;     // track vertical progress
+        // Pick offset direction: favorable gun-side for crossing
         const favorableDir = (_botGunSide === 'right') ? 1 : -1;
         ai._antiBottomOffsetDir = favorableDir;
-        // Wall clamp: if favorable direction pushes into wall, flip
         if (favorableDir < 0 && bot.x < TILE * 4) ai._antiBottomOffsetDir = 1;
         else if (favorableDir > 0 && bot.x > arenaW - TILE * 4) ai._antiBottomOffsetDir = -1;
       }
@@ -4809,130 +4808,173 @@ const SparSystem = {
 
       const tactic = ai._antiBottomTactic;
       const phase = ai._antiBottomPhase;
-      const phaseF = ai._antiBottomPhaseFrames;
-      const offDir = ai._antiBottomOffsetDir;
+      let offDir = ai._antiBottomOffsetDir;
 
-      // --- Tactic-specific movement ---
+      // --- Body-block awareness (shared across all tactics) ---
+      // Track whether bot is making vertical progress toward bottom
+      const vertProgress = bot.y - (ai._abLastY || bot.y);
+      ai._abLastY = bot.y;
+      if (Math.abs(vertProgress) < 0.5 && bot.y < tgt.y) {
+        // Not descending despite wanting to — likely body-blocked
+        ai._abBlockedFrames = (ai._abBlockedFrames || 0) + 1;
+      } else {
+        ai._abBlockedFrames = 0;
+      }
+      // If body-blocked for 8+ frames, increase lateral offset to go AROUND
+      const bodyBlocked = ai._abBlockedFrames >= 8;
+      if (bodyBlocked) {
+        // Flip offset direction if near enemy X (trying to go through them)
+        if (alignX < GAME_CONFIG.PLAYER_RADIUS * 3) {
+          // Too close laterally — commit harder to current offset direction
+          // If still stuck after another 8 frames, flip direction entirely
+          if (ai._abBlockedFrames >= 16) {
+            ai._antiBottomOffsetDir *= -1;
+            offDir = ai._antiBottomOffsetDir;
+            ai._abBlockedFrames = 0;
+            // Wall clamp after flip
+            if (offDir < 0 && bot.x < TILE * 4) { ai._antiBottomOffsetDir = 1; offDir = 1; }
+            else if (offDir > 0 && bot.x > arenaW - TILE * 4) { ai._antiBottomOffsetDir = -1; offDir = -1; }
+          }
+        }
+      }
+
+      // --- Context flags used by all tactics ---
+      const clearedLaterally = alignX > sideOffsetNear;      // past enemy's aim slack
+      const clearedWide = alignX > sideOffsetWide * 1.5;     // well past enemy
+      const belowEnemy = bot.y > tgt.y;                       // already below
+      const hasEnoughDistance = dist > 250;                    // created separation
+      const enemyChasing = Math.abs(tgt.vx || 0) > 2 && Math.sign(tgt.vx || 0) === offDir; // enemy following our flank
+      const tookRecentHit = ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 10;
+      const onFavorableGunSide = !badGunSide;
+
+      // --- Tactic-specific movement (context-driven, no frame timers) ---
       if (tactic === 'contestDirect') {
-        // Descend diagonally with lateral offset — never on centerline
-        // This is a deliberate retake tactic — approaching is the purpose
-        const vertPush = 0.35 + 0.2 * Math.min(1, dist / 300);
-        moveX = offDir * speed * 0.55;
-        moveY = speed * vertPush;
-        // Close range: maintain lateral offset so we pass beside, not through
-        if (dist < 150) { moveX = offDir * speed * 0.65; moveY = speed * 0.3; }
+        // WHY: descend diagonally with lateral offset — go beside enemy, not through
+        // WHEN to adjust: body-blocked → go wider; close range → prioritize lateral clearance
+        if (bodyBlocked || alignX < GAME_CONFIG.PLAYER_RADIUS * 2.5) {
+          // Can't get past — go wider first
+          moveX = offDir * speed * 0.9;
+          moveY = speed * 0.15;
+        } else {
+          // Clear path — descend with offset
+          moveX = offDir * speed * 0.55;
+          moveY = speed * 0.45;
+        }
 
       } else if (tactic === 'contestSprint') {
-        // Full-speed diagonal dive to below+beside target
-        // Deliberate retake — approaching is correct, but target is offset, not on top of enemy
+        // WHY: full-speed to a point below+beside enemy
         const goalX = tgt.x + offDir * 75;
         const goalY = tgt.y + bottomGap + 30;
         const gdx = goalX - bot.x, gdy = goalY - bot.y;
         const gd = Math.sqrt(gdx * gdx + gdy * gdy);
-        if (gd > 15) {
+        if (bodyBlocked) {
+          // Body-blocked — go wider around
+          moveX = offDir * speed * 0.9;
+          moveY = speed * 0.2;
+        } else if (gd > 15) {
           moveX = (gdx / gd) * speed;
           moveY = (gdy / gd) * speed;
         } else {
-          // Arrived — hold position briefly, will transition to hasBottom
+          // Arrived at goal — strafe and hold
           moveX = ai.strafeDir * speed * 0.6;
           moveY = speed * 0.1;
         }
 
       } else if (tactic === 'flankWide') {
-        // Phase 0: wide lateral displacement
-        if (phase === 0) {
+        // WHY: go wide to get completely past enemy's aim, then descend from safe angle
+        // Phase 0→1: when laterally clear (not frame count)
+        if (!clearedWide && !belowEnemy) {
+          // Still need to get wider — full lateral
           moveX = offDir * speed * 0.95;
           moveY = speed * 0.08;
-          if (alignX > sideOffsetWide * 1.5) {
-            ai._antiBottomPhase = 1;
-            ai._antiBottomPhaseFrames = 0;
-          }
         } else {
-          // Phase 1: diagonal descent from wide position
-          moveX = offDir * speed * 0.4;
-          moveY = speed * 0.65;
+          // Wide enough or below — descend from this angle
+          moveX = offDir * speed * 0.35;
+          moveY = speed * 0.7;
         }
 
       } else if (tactic === 'flankTight') {
-        // Phase 0: quick lateral to just outside aim slack
-        if (phase === 0) {
+        // WHY: quick lateral to just outside aim slack, then descend
+        // Phase 0→1: when past enemy's aim cone (not frame count)
+        if (!clearedLaterally && !belowEnemy) {
           moveX = offDir * speed * 0.85;
           moveY = speed * 0.15;
-          if (alignX > sideOffsetNear) {
-            ai._antiBottomPhase = 1;
-            ai._antiBottomPhaseFrames = 0;
-          }
         } else {
-          // Phase 1: descend while maintaining gun-side offset (don't move back toward enemy center)
-          moveX = offDir * speed * 0.45;
-          moveY = speed * 0.55;
-        }
-
-      } else if (tactic === 'baitRetreat') {
-        // Phase 0: pull upward to create distance
-        if (phase === 0) {
-          moveY = -speed * 0.4;
-          moveX = ai.strafeDir * speed * 0.7;
-          if (phaseF > 75 || dist > 280) {
-            ai._antiBottomPhase = 1;
-            ai._antiBottomPhaseFrames = 0;
-          }
-        } else {
-          // Phase 1: re-enter from the side
-          moveX = offDir * speed * 0.6;
-          moveY = speed * 0.55;
-        }
-
-      } else if (tactic === 'baitFake') {
-        // Phase 0: fake direct approach
-        if (phase === 0) {
-          moveY = speed * 0.4;
-          moveX = ai.strafeDir * speed * 0.3;
-          if (phaseF > 30) {
-            ai._antiBottomPhase = 1;
-            ai._antiBottomPhaseFrames = 0;
-          }
-        } else if (phase === 1) {
-          // Phase 1: hard lateral juke
-          moveX = offDir * speed * 0.95;
-          moveY = speed * 0.05;
-          if (phaseF > 30) {
-            ai._antiBottomPhase = 2;
-            ai._antiBottomPhaseFrames = 0;
-          }
-        } else {
-          // Phase 2: descend from new angle
-          moveX = Math.sign(dx || offDir) * speed * 0.45;
-          moveY = speed * 0.55;
-        }
-
-      } else if (tactic === 'doubleFakeRetreat') {
-        // Phase 0 (0-40 frames): fake retreat upward to bait a chase
-        if (phase === 0) {
-          moveY = -speed * 0.55;
-          moveX = ai.strafeDir * speed * 0.5;
-          if (phaseF > 40) {
-            ai._antiBottomPhase = 1;
-            ai._antiBottomPhaseFrames = 0;
-          }
-        } else if (phase === 1) {
-          // Phase 1 (40-70 frames): reverse — move toward bottom with heavy lateral offset
-          moveY = speed * 0.35;
-          moveX = offDir * speed * 0.8;
-          if (phaseF > 30) {
-            ai._antiBottomPhase = 2;
-            ai._antiBottomPhaseFrames = 0;
-          }
-        } else {
-          // Phase 2 (70+): full lateral displacement, then diagonal descent from side
-          moveX = offDir * speed * 0.5;
+          // Cleared aim cone — descend while maintaining offset
+          moveX = offDir * speed * 0.4;
           moveY = speed * 0.6;
         }
 
+      } else if (tactic === 'baitRetreat') {
+        // WHY: pull upward to create distance, then re-enter from side when far enough
+        // Phase 0→1: when enough distance created (not frame count)
+        if (!hasEnoughDistance && bot.y < tgt.y) {
+          // Still too close — keep retreating upward + laterally
+          moveY = -speed * 0.4;
+          moveX = ai.strafeDir * speed * 0.7;
+        } else {
+          // Created distance — re-enter from the side diagonally
+          moveX = offDir * speed * 0.6;
+          moveY = speed * 0.55;
+          // If body-blocked during re-entry, go wider
+          if (bodyBlocked) { moveX = offDir * speed * 0.9; moveY = speed * 0.15; }
+        }
+
+      } else if (tactic === 'baitFake') {
+        // WHY: fake approach to draw enemy reaction, then juke laterally, then descend
+        // Phases based on position context, not frame count:
+        // Phase 0: approach until close enough to sell the fake
+        // Phase 1: juke laterally until cleared
+        // Phase 2: descend from new angle
+        if (phase === 0) {
+          moveY = speed * 0.4;
+          moveX = ai.strafeDir * speed * 0.3;
+          // Sell the fake: transition when close enough OR enemy reacts (moves laterally)
+          if (dist < 180 || (Math.abs(tgt.vx || 0) > 3 && dist < 250)) {
+            ai._antiBottomPhase = 1;
+          }
+        } else if (phase === 1) {
+          // Hard lateral juke
+          moveX = offDir * speed * 0.95;
+          moveY = speed * 0.05;
+          // Transition when laterally clear of enemy
+          if (clearedLaterally) {
+            ai._antiBottomPhase = 2;
+          }
+        } else {
+          // Descend from new angle
+          moveX = offDir * speed * 0.4;
+          moveY = speed * 0.6;
+          if (bodyBlocked) { moveX = offDir * speed * 0.9; moveY = speed * 0.15; }
+        }
+
+      } else if (tactic === 'doubleFakeRetreat') {
+        // WHY: fake retreat to bait chase, reverse with lateral offset, then descend
+        // Phase 0→1: when enough distance created
+        // Phase 1→2: when laterally clear
+        if (phase === 0) {
+          moveY = -speed * 0.55;
+          moveX = ai.strafeDir * speed * 0.5;
+          if (dist > 220 || (enemyChasing && dist > 150)) {
+            ai._antiBottomPhase = 1;
+          }
+        } else if (phase === 1) {
+          // Reverse — move toward bottom with heavy lateral offset
+          moveY = speed * 0.35;
+          moveX = offDir * speed * 0.8;
+          if (clearedLaterally || belowEnemy) {
+            ai._antiBottomPhase = 2;
+          }
+        } else {
+          moveX = offDir * speed * 0.45;
+          moveY = speed * 0.6;
+          if (bodyBlocked) { moveX = offDir * speed * 0.9; moveY = speed * 0.15; }
+        }
+
       } else if (tactic === 'lateCrossUnder') {
-        // Phase 0: strafe and read bullet gaps — wait for safe cross window
+        // WHY: strafe to read bullet patterns, cross under when safe
+        // Phase 0→1: when bullet gap found OR already on favorable side
         const crossGap = this._findSafeCrossWindow(bot, tgt, team);
-        // Target favorable gun-side: right gun → cross to RIGHT of enemy, left gun → LEFT
         const botGunSideForCross = this._getEntityGunSide(bot);
         const favorableCrossDir = (botGunSideForCross === 'right') ? 1 : -1;
         const alreadyFavorable = (favorableCrossDir === 1 && bot.x > tgt.x + 8) ||
@@ -4940,41 +4982,40 @@ const SparSystem = {
         if (phase === 0) {
           moveX = ai.strafeDir * speed * 0.9;
           moveY = speed * 0.1;
-          // Advance to cross when: gap found AND far enough, OR timeout at 60f
+          // Cross when: safe gap AND far enough, OR already on favorable side
           const gapReady = crossGap.gapQuality > 0.5 && dist > 180;
-          if ((gapReady && phaseF > 15) || phaseF > 60) {
+          if (gapReady || alreadyFavorable) {
             ai._antiBottomPhase = 1;
-            ai._antiBottomPhaseFrames = 0;
-            // If already on favorable side, skip crossing — just descend
-            // Don't cross to the WRONG side when you're already in the right spot
           }
         } else {
           if (alreadyFavorable) {
-            // Already on favorable gun-side — descend to take bottom, maintain offset
-            moveX = favorableCrossDir * speed * 0.3; // slight drift to maintain gun-side
-            moveY = speed * 0.75; // hard descent to take bottom
+            moveX = favorableCrossDir * speed * 0.3;
+            moveY = speed * 0.75;
           } else {
-            // Cross toward favorable gun-side + bottom
             const crossDir = ai._antiBottomOffsetDir || favorableCrossDir;
             moveX = crossDir * speed * 0.85;
             moveY = speed * 0.65;
           }
+          if (bodyBlocked) { moveX = offDir * speed * 0.9; moveY = speed * 0.15; }
         }
 
       } else if (tactic === 'forceMirrorThenBreak') {
-        // Phase 0 (0-60 frames): mirror enemy X movement to build predictability
+        // WHY: mirror enemy X to build predictability, then break when they commit to mirroring
+        // Phase 0→1: when enemy is mirroring back (they're tracking our X)
+        //   OR if we've descended enough that breaking now gets us past them
         if (phase === 0) {
           const tVx = tgt.vx || 0;
-          moveX = tVx * 0.85 + ai.strafeDir * speed * 0.15; // mostly mirror, slight strafe
-          moveY = speed * 0.15; // slow descent
-          if (phaseF > 60) {
+          moveX = tVx * 0.85 + ai.strafeDir * speed * 0.15;
+          moveY = speed * 0.15;
+          // Break when enemy is actively mirroring (moving same direction as us)
+          const enemyMirroring = Math.abs(tVx) > 2 && Math.sign(tVx) === Math.sign(bot.vx || ai.strafeDir);
+          if (enemyMirroring || (bot.y > tgt.y - 60 && clearedLaterally)) {
             ai._antiBottomPhase = 1;
-            ai._antiBottomPhaseFrames = 0;
           }
         } else {
-          // Phase 1 (60+): break toward favorable gun-side + diagonal descent
           moveX = offDir * speed * 0.85;
           moveY = speed * 0.55;
+          if (bodyBlocked) { moveX = offDir * speed * 0.9; moveY = speed * 0.15; }
         }
       }
 
@@ -4986,17 +5027,13 @@ const SparSystem = {
         const zoneData = tz[currentZone];
         const zoneHitRate = zoneData && zoneData.frames > 30
           ? zoneData.hits / zoneData.frames : 0;
-        // If current zone is dangerous, push laterally out of it
-        // but NEVER cap descent speed — the bot MUST keep descending to retake bottom
         if (zoneHitRate > 0.15) {
           const escapeDir = alignX < sideOffsetNear
             ? (offDir || ai.strafeDir)
             : Math.sign(bot.x - tgt.x);
           moveX += escapeDir * speed * Math.min(0.4, zoneHitRate);
-          // Only reduce descent slightly in dangerous zones, never cap or reverse it
           moveY *= Math.max(0.6, 1.0 - zoneHitRate);
         }
-        // Track exposure in collector
         if (c && c.trapZoneFrames) {
           c.trapZoneFrames[currentZone]++;
           const lastHit = ai._lastTookHitFrame || 0;
@@ -5014,8 +5051,6 @@ const SparSystem = {
         if (pm.belowShootsUp > 0.6) {
           moveX += Math.sign(bot.x - tgt.x || ai.strafeDir) * speed * 0.2;
         }
-        // Reduce vertical penalty during anti-bottom — bot needs to descend
-        // Only apply a small penalty, not enough to reverse descent direction
         if (pm.playerPushesFromBottom > 0.45 && tactic !== 'baitRetreat' && tactic !== 'baitFake' && tactic !== 'doubleFakeRetreat' && dist < 220) {
           moveY -= speed * 0.04;
         }
