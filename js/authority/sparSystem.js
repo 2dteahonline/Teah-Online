@@ -1025,6 +1025,8 @@ const SparSystem = {
     if (_gsCollector && _gsCollector.gunSideEngagements) {
       _gsCollector.gunSideEngagements.push({
         policy, family, frames, resolved, dmgTaken,
+        shotsFired: ai._gunSideShotsFired || 0,
+        shotsHeld: ai._gunSideShotsHeld || 0,
         startCtx: ai._gunSideStartCtx || null,
         qualityStart: ai._gunSideStartQuality, qualityBest: ai._gunSideBestQuality,
       });
@@ -1090,6 +1092,8 @@ const SparSystem = {
     if (_escCollector && _escCollector.escapeEngagements) {
       _escCollector.escapeEngagements.push({
         policy, family, frames, resolved, dmgTaken,
+        shotsFired: ai._escapeShotsFired || 0,
+        shotsHeld: ai._escapeShotsHeld || 0,
         startCtx: ai._escapeStartCtx || null,
       });
     }
@@ -1532,6 +1536,8 @@ const SparSystem = {
         bodyBlocks: ai._antiBottomStallCount || 0,
         dirFlips: ai._abDirFlips || 0,
         maxClearance: Math.round(ai._abMaxClearance || 0),
+        shotsFired: ai._antiBottomShotsFired || 0,
+        shotsHeld: ai._antiBottomShotsHeld || 0,
         startCtx: ai._abStartCtx || null,
         endReason: regainedBottom ? 'success'
           : (ai._antiBottomStallCount >= 3) ? 'stallAbandon'
@@ -1872,6 +1878,8 @@ const SparSystem = {
         _antiBottomOffsetDir: 0,      // chosen side: -1 or 1
         _antiBottomDmgAtStart: 0,     // bot dmgTaken when engagement started
         _antiBottomStartFrame: 0,
+        _antiBottomShotsFired: 0,     // shots fired during this engagement
+        _antiBottomShotsHeld: 0,      // shots held (cooldown ready but didn't fire)
         _antiBottomHysteresisFrames: 0, // hysteresis counter for engagement start/end
         _antiBottomCooldown: 0,       // frames until anti-bottom can re-open after finalize
         _openingLostBottomDir: null,  // direction player came from when taking bottom
@@ -1885,6 +1893,8 @@ const SparSystem = {
         _gunSideBestQuality: 0,
         _gunSideLaneShape: null,
         _gunSideCooldown: 0,          // frames until gun-side can re-open after finalize
+        _gunSideShotsFired: 0,
+        _gunSideShotsHeld: 0,
         _lastGunSidePolicy: null,
         _lastGunSideFamily: null,
         _escapePolicy: null,
@@ -1895,6 +1905,8 @@ const SparSystem = {
         _escapeBestQuality: 0,
         _escapeLaneShape: null,
         _escapeCooldown: 0,            // frames until escape can re-open
+        _escapeShotsFired: 0,
+        _escapeShotsHeld: 0,
         _lastEscapePolicy: null,
         _lastEscapeFamily: null,
         // v10: shot timing policy state
@@ -2871,7 +2883,9 @@ const SparSystem = {
         wallPressureEngagements: [], // [{policy, family, frames, dmgDealt, pinned, startCtx}]
         trapZoneHits:   { center: 0, near: 0, wide: 0 },
         trapZoneFrames: { center: 0, near: 0, wide: 0 },
-        shotDecisions: [],  // [{dist, hasBottom, dodgeMag, decision:'fired'|'holdForDodge'|'openingGated', ...}]
+        shotDecisions: [],  // [{dist, hasBottom, dodgeMag, decision:'fired'|'holdForDodge'|'holdForSpeed'|'openingGated', ...}]
+        shotsByState: { neutral: 0, hasBottom: 0, antiBottom: 0, escape: 0, gunSide: 0, opening: 0 },
+        shotsHeldByState: { neutral: 0, hasBottom: 0, antiBottom: 0, escape: 0, gunSide: 0, opening: 0 },
         openingBottomLostDir: null,  // 'left'|'right'|'center'
         // Rhythm tracking (v10)
         rhythm_losGainFrames: [],      // frames when player gains line-of-sight
@@ -4444,6 +4458,8 @@ const SparSystem = {
         ai._escapeFamily = (typeof SPAR_ESCAPE_FAMILY_MAP !== 'undefined') ? SPAR_ESCAPE_FAMILY_MAP[chosenEscape] : 'break';
         ai._escapeFrames = 0;
         ai._escapeStartDmg = ai._matchDmgTaken || 0;
+        ai._escapeShotsFired = 0;
+        ai._escapeShotsHeld = 0;
         ai._escapeStartQuality = laneQuality;
         ai._escapeBestQuality = laneQuality;
         ai._escapeLaneShape = laneShape;
@@ -4458,6 +4474,8 @@ const SparSystem = {
         ai._gunSideFamily = (typeof SPAR_GUN_SIDE_FAMILY_MAP !== 'undefined') ? SPAR_GUN_SIDE_FAMILY_MAP[chosenGunSide] : 'reposition';
         ai._gunSideFrames = 0;
         ai._gunSideStartDmg = ai._matchDmgTaken || 0;
+        ai._gunSideShotsFired = 0;
+        ai._gunSideShotsHeld = 0;
         ai._gunSideStartQuality = laneQuality;
         ai._gunSideBestQuality = laneQuality;
         ai._gunSideLaneShape = laneShape;
@@ -4474,6 +4492,8 @@ const SparSystem = {
         ai._gunSideFamily = 'pressure';
         ai._gunSideFrames = 0;
         ai._gunSideStartDmg = ai._matchDmgTaken || 0;
+        ai._gunSideShotsFired = 0;
+        ai._gunSideShotsHeld = 0;
         ai._gunSideStartQuality = laneQuality;
         ai._gunSideBestQuality = laneQuality;
         ai._gunSideLaneShape = laneShape;
@@ -4950,6 +4970,8 @@ const SparSystem = {
         ai._antiBottomDmgAtStart = ai._matchDmgTaken || 0;
         ai._antiBottomStartFrame = SparState.matchTimer;
         ai._antiBottomStallCount = 0;
+        ai._antiBottomShotsFired = 0;
+        ai._antiBottomShotsHeld = 0;
         ai._abBlockedFrames = 0;
         ai._abLastY = bot.y;
         ai._abDirFlips = 0;      // how many times offset direction flipped
@@ -6298,18 +6320,30 @@ const SparSystem = {
         state: _movePlanCurrentState,
       };
 
+      // Resolve state key for per-state tracking
+      const _stKey = _movePlanCurrentState === 'reload' ? 'neutral' : _movePlanCurrentState;
+
       if (openingFireGated) {
         if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'openingGated' });
+        if (c && c.shotsHeldByState) c.shotsHeldByState[_stKey] = (c.shotsHeldByState[_stKey] || 0) + 1;
       } else if (freezeWouldGetHit) {
-        // Hold fire — freeze would prevent dodging incoming bullet
         if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'holdForDodge' });
+        if (c && c.shotsHeldByState) c.shotsHeldByState[_stKey] = (c.shotsHeldByState[_stKey] || 0) + 1;
       } else if (needsFullSpeed) {
-        // Hold fire — need full speed for tactical movement (crossing, escaping, etc.)
         if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'holdForSpeed' });
+        if (c && c.shotsHeldByState) c.shotsHeldByState[_stKey] = (c.shotsHeldByState[_stKey] || 0) + 1;
+        // Track holds on per-engagement counters
+        if (ai._antiBottomTactic) ai._antiBottomShotsHeld = (ai._antiBottomShotsHeld || 0) + 1;
+        if (ai._escapePolicy) ai._escapeShotsHeld = (ai._escapeShotsHeld || 0) + 1;
+        if (ai._gunSidePolicy) ai._gunSideShotsHeld = (ai._gunSideShotsHeld || 0) + 1;
       } else {
-        // Stable position — fire on cooldown
         this._sparBotShoot(member, tgt);
         if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'fired' });
+        if (c && c.shotsByState) c.shotsByState[_stKey] = (c.shotsByState[_stKey] || 0) + 1;
+        // Track fires on per-engagement counters (shouldn't happen for speed states, but safety)
+        if (ai._antiBottomTactic) ai._antiBottomShotsFired = (ai._antiBottomShotsFired || 0) + 1;
+        if (ai._escapePolicy) ai._escapeShotsFired = (ai._escapeShotsFired || 0) + 1;
+        if (ai._gunSidePolicy) ai._gunSideShotsFired = (ai._gunSideShotsFired || 0) + 1;
       }
     }
   },
