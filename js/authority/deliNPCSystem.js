@@ -77,7 +77,7 @@ const DELI_NPC_CONFIG = {
   speedVariance: 0.14,
   eatDuration:    [900, 900],  // 15 sec at 60fps
   browseDuration: [480, 900],  // 8-15 sec browsing at an aisle
-  aisleSpawnInterval: [300, 600], // 5-10 sec between aisle NPC spawns
+  aisleSpawnInterval: [900, 900], // 15 sec between aisle NPC spawns
 };
 
 // ===================== STATE =====================
@@ -188,20 +188,20 @@ function _routeChairToExit(chairIdx) {
   ];
 }
 
-// Route from enter door to shelf spot (Aisle NPCs)
+// Route from enter door to shelf spot (Aisle NPCs — uses ty:23 to avoid counter pickup area at ty:22)
 function _routeEnterToShelf(spot) {
   const gap = _nearestAisleGap(spot.tx);
   if (gap <= 26) {
     return [
-      { tx: 13, ty: 22 },
-      { tx: 26, ty: 22 },
+      { tx: 13, ty: 23 },
+      { tx: 26, ty: 23 },
       { tx: 26, ty: spot.ty },
       { tx: spot.tx, ty: spot.ty },
     ];
   }
   return [
-    { tx: 13, ty: 22 },
-    { tx: 26, ty: 22 },
+    { tx: 13, ty: 23 },
+    { tx: 26, ty: 23 },
     { tx: 26, ty: 28 },
     { tx: gap, ty: 28 },
     { tx: gap, ty: spot.ty },
@@ -226,21 +226,33 @@ function _routeShelfToShelf(fromTX, fromTY, toSpot) {
   return route;
 }
 
-// Route to exit door — direct paths, no mandatory counter visit
+// Route to exit door for order NPCs (uses ty:22 corridor)
 function _routeToExitDoor(fromTX, fromTY) {
   const route = [];
   if (fromTX >= 25) {
     if (fromTY < 22) {
-      // Above corridor — go south to corridor
       route.push({ tx: 26, ty: 22 });
     } else if (fromTY >= 24) {
-      // In aisle area — move to nearest gap then south
       const gap = _nearestAisleGap(fromTX);
       route.push({ tx: gap, ty: fromTY });
       route.push({ tx: gap, ty: 22 });
     }
-    // Walk west through lobby to exit lane
     route.push({ tx: 14, ty: 22 });
+  }
+  route.push({ tx: 14, ty: 34 });
+  return route;
+}
+
+// Route to exit door for aisle NPCs (uses ty:23 to avoid counter pickup area)
+function _routeAisleToExit(fromTX, fromTY) {
+  const route = [];
+  if (fromTX >= 25) {
+    const gap = _nearestAisleGap(fromTX);
+    if (fromTY >= 24) {
+      route.push({ tx: gap, ty: fromTY });
+    }
+    route.push({ tx: gap, ty: 23 });
+    route.push({ tx: 14, ty: 23 });
   }
   route.push({ tx: 14, ty: 34 });
   return route;
@@ -268,8 +280,9 @@ function moveDeliNPC(npc) {
         const ox = other.x - npc.x;
         const oy = other.y - npc.y;
         const od = Math.sqrt(ox * ox + oy * oy);
-        if (od > 0 && od < TILE) {
+        if (od > 0 && od < TILE && npc.id > other.id) {
           // Check if other NPC is ahead of us (dot product with movement direction)
+          // Only higher-ID NPC yields — lower ID has priority and keeps moving
           const dot = (ox * mnx + oy * mny) / od;
           if (dot > 0.3) {
             // NPC ahead within 1 tile — pause this frame, don't push through
@@ -325,8 +338,11 @@ function _spawnOrderNPC() {
   return npc;
 }
 
-// Spawn an Aisle NPC (enters anytime)
+// Spawn an Aisle NPC (enters anytime — but only if free shelf spots exist so they always purchase)
 function _spawnAisleNPC() {
+  // Don't spawn if no free shelf spots — NPC must always buy something
+  if (!_pickFreeShelfSpot(null)) return null;
+
   const npc = _cCreateNPC(_deliIdCounter, DELI_SPOTS.enterDoor, DELI_NPC_APPEARANCES,
     DELI_NPC_NAMES, DELI_NPC_CONFIG, {
     purchasedExtras: [],
@@ -516,11 +532,11 @@ const DELI_NPC_AI = {
       }
     }
 
-    // Done shopping — exit via right side of door
+    // Done shopping — exit via aisle route (avoids counter area)
     npc._browseSpot = null;
     const aTX = Math.floor(npc.x / TILE);
     const aTY = Math.floor(npc.y / TILE);
-    _cStartRoute(npc, _routeToExitDoor(aTX, aTY), '_despawn', 0);
+    _cStartRoute(npc, _routeAisleToExit(aTX, aTY), '_despawn', 0);
   },
 
   // ─── DESPAWN WALK: Walking to exit then despawn ────────
@@ -567,7 +583,7 @@ function updateDeliNPCs() {
   _deliAisleSpawnTimer++;
   const aisleNPCCount = deliNPCs.filter(n => n._role === 'aisle').length;
   if (_deliAisleSpawnTimer >= _cRandRange(DELI_NPC_CONFIG.aisleSpawnInterval[0], DELI_NPC_CONFIG.aisleSpawnInterval[1])) {
-    if (aisleNPCCount < 3 && deliNPCs.length < DELI_NPC_CONFIG.maxNPCs) {
+    if (aisleNPCCount < 4 && deliNPCs.length < DELI_NPC_CONFIG.maxNPCs) {
       _spawnAisleNPC();
     }
     _deliAisleSpawnTimer = 0;
@@ -643,7 +659,11 @@ function updateDeliNPCs() {
           }
           const curTX = Math.floor(npc.x / TILE);
           const curTY = Math.floor(npc.y / TILE);
-          _cStartRoute(npc, _routeToExitDoor(curTX, curTY), '_despawn', 0);
+          // Aisle NPCs use ty:23 route to avoid counter, order NPCs use ty:22
+          const exitRoute = npc._role === 'aisle'
+            ? _routeAisleToExit(curTX, curTY)
+            : _routeToExitDoor(curTX, curTY);
+          _cStartRoute(npc, exitRoute, '_despawn', 0);
         }
       }
     } else {
@@ -666,7 +686,10 @@ function updateDeliNPCs() {
         }
         const curTX = Math.floor(npc.x / TILE);
         const curTY = Math.floor(npc.y / TILE);
-        _cStartRoute(npc, _routeToExitDoor(curTX, curTY), '_despawn', 0);
+        const idleExitRoute = npc._role === 'aisle'
+          ? _routeAisleToExit(curTX, curTY)
+          : _routeToExitDoor(curTX, curTY);
+        _cStartRoute(npc, idleExitRoute, '_despawn', 0);
       }
     } else {
       npc._idleTime = 0;

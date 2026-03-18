@@ -721,16 +721,18 @@ function applyOrderResult(result) {
         recipeIngredients: recipeIngredients,
       });
     } else if (cookingState.activeRestaurantId === 'street_deli') {
-      // Deli: push completed order to counter — any seated NPC picks it up
-      if (!cookingState.counterOrders) cookingState.counterOrders = [];
-      const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
-        ? cookingState.currentOrder.recipe.ingredients.slice()
-        : null;
-      cookingState.counterOrders.push({
-        recipe: cookingState.currentOrder.recipe,
-        recipeIngredients: recipeIngredients,
-        _claimedByNpc: null,
-      });
+      // Deli: push completed order to counter — but NEVER for expired/failed orders (no plate if not completed)
+      if (result.grade !== COOKING_GRADES.F) {
+        if (!cookingState.counterOrders) cookingState.counterOrders = [];
+        const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
+          ? cookingState.currentOrder.recipe.ingredients.slice()
+          : null;
+        cookingState.counterOrders.push({
+          recipe: cookingState.currentOrder.recipe,
+          recipeIngredients: recipeIngredients,
+          _claimedByNpc: null,
+        });
+      }
     } else if (cookingState.currentOrder.npcId) {
       // Generic NPC pickup (fallback)
       const activeNPCs = _getActiveNPCs();
