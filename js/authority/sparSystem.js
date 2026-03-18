@@ -4863,9 +4863,27 @@ const SparSystem = {
     const _abChangeDist = arenaH * (0.08 + Math.min(_abConsecFails, 5) * 0.04); // escalates: 8%→28% of arena
     const _abSituationChanged = !_abSnap ||
       Math.abs(bot.y - _abSnap.botY) > _abChangeDist ||
-      Math.abs(tgt.y - _abSnap.tgtY) > _abChangeDist ||
-      Math.abs(bot.x - _abSnap.botX) > arenaW * 0.15 ||
-      Math.abs(tgt.x - _abSnap.tgtX) > arenaW * 0.15;
+      Math.abs(tgt.y - _abSnap.tgtY) > _abChangeDist;
+    // v14: Scan descent path for bullets — don't enter anti-bottom if blocked.
+    // Lateral strafing and shooting is better than cycling enter→blocked→exit.
+    if (_abEnemySettled && !ai._antiBottomTactic) {
+      const _dbHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
+      const _dbHitR = this._getSparPerpHitRadius();
+      let _dbBlocked = false;
+      for (const b of bullets) {
+        if (!b.sparTeam || b.sparTeam === team) continue;
+        if (b.y > _dbHitY - _dbHitR && b.y < tgt.y + 50) {
+          const futMinX = b.x + Math.min(b.vx, 0) * 18;
+          const futMaxX = b.x + Math.max(b.vx, 0) * 18;
+          if (futMinX - _dbHitR < bot.x && futMaxX + _dbHitR > bot.x) {
+            _dbBlocked = true; break;
+          }
+        }
+      }
+      ai._abDescentBlocked = _dbBlocked;
+    } else if (!ai._antiBottomTactic) {
+      ai._abDescentBlocked = false;
+    }
     // Exit: engagement ends when bot got bottom OR enemy clearly left bottom
     if (!enemyHasBottom && ai._antiBottomTactic) {
       if (hasBottom) {
@@ -5465,7 +5483,9 @@ const SparSystem = {
         moveX *= 1.2; // faster strafe after getting hit
       }
 
-    } else if (_abEnemySettled && _abSituationChanged) {
+    } else if (_abEnemySettled && _abSituationChanged && !ai._abDescentBlocked) {
+      // v14: Don't enter anti-bottom if descent path is blocked by bullets.
+      // Strafing at current height and shooting is better than cycling enter/exit.
       // v12: finalize center recovery if entering anti-bottom
       if (ai._centerRecoveryPolicy) {
         this._finalizeCenterRecovery(ai, false, false, !badGunSide, c);
