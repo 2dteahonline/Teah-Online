@@ -4207,7 +4207,7 @@ const SparSystem = {
     );
     const _wantingToShootDown = bot.y < tgt.y - 15;
     const _wrongSideForDown = _wantingToShootDown && _wrongSide;
-    const badGunSide = _wrongSide || enemyLaneScore > botLaneScore + 0.1 || (botLaneScore < 0.46 && enemyLaneScore > 0.55);
+    const badGunSide = _wrongSideForDown || enemyLaneScore > botLaneScore + 0.1 || (botLaneScore < 0.46 && enemyLaneScore > 0.55);
     const repeekedBadLane = laneRepeatStreak >= 2 || (!!ai._gunSideLaneShape && ai._gunSideLaneShape === laneShape && badGunSide && ai._gunSideFrames > 24);
     const topCornerTrapped = !hasBottom && enemyHasBottom && (inCornerBase || (nearTopWallBase && (nearLeftWallBase || nearRightWallBase)));
     const lostBottomAndNoLane = !hasBottom && enemyHasBottom && laneQuality < 0.42;
