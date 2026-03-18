@@ -3057,108 +3057,121 @@ const SparSystem = {
 
   // Dodge incoming enemy bullets — uses relative velocity for correct approach detection
   _getIncomingBulletDodge(bot, team, botVx, botVy) {
-    let dodgeX = 0, dodgeY = 0;
     const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
     const hbYOff = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
-    const botHitY = bot.y + hbYOff; // match actual combat hitbox (torso center)
+    const botHitY = bot.y + hbYOff;
     const hitRadius = this._getSparPerpHitRadius(); // 33px
-    const margin = 6; // extra clearance beyond hitbox edge
-    const maxReactFrames = 10; // only dodge bullets arriving within 10 frames
+    const margin = 6;
+    const maxReactFrames = 10;
     const arenaLevel = typeof levels !== 'undefined' && levels[currentLevel] ? levels[currentLevel] : null;
     const arenaW = arenaLevel ? arenaLevel.widthTiles * TILE : 600;
     const arenaH = arenaLevel ? arenaLevel.heightTiles * TILE : 600;
     const wallM = TILE * 2;
-    const bVx = botVx || 0, bVy = botVy || 0; // bot's current velocity
+    const bVx = botVx || 0, bVy = botVy || 0;
+
+    // --- DODGE COMMITMENT: hold direction for multiple frames like a human ---
+    // Humans don't recalculate every frame. They see a bullet, step aside, continue.
+    const ai = bot.ai;
+    if (ai && ai._dodgeCommitFrames > 0) {
+      ai._dodgeCommitFrames--;
+      // Break commitment ONLY if a critical bullet arrives (tClosest < 3)
+      let criticalOverride = false;
+      for (const b of bullets) {
+        if (!b.sparTeam || b.sparTeam === team) continue;
+        const bvx = b.vx, bvy = b.vy;
+        if (bvx * bvx + bvy * bvy < 0.5) continue;
+        const rvx = bvx - bVx, rvy = bvy - bVy;
+        const rSq = rvx * rvx + rvy * rvy;
+        if (rSq < 0.5) continue;
+        const dbx = bot.x - b.x, dby = botHitY - b.y;
+        const tc = (dbx * rvx + dby * rvy) / rSq;
+        if (tc < 0 || tc > 3) continue; // only care about IMMINENT threats
+        const px = (bot.x + bVx * tc) - (b.x + bvx * tc);
+        const py = (botHitY + bVy * tc) - (b.y + bvy * tc);
+        if (Math.sqrt(px * px + py * py) < hitRadius) { criticalOverride = true; break; }
+      }
+      if (!criticalOverride) {
+        return { x: ai._dodgeCommitX || 0, y: ai._dodgeCommitY || 0 };
+      }
+      ai._dodgeCommitFrames = 0; // break commitment for critical re-evaluation
+    }
+
+    // --- SINGLE-THREAT DODGE: find the most urgent bullet, dodge ONLY that one ---
+    // Accumulating vectors from all bullets causes conflicting directions and jitter.
+    let bestTC = Infinity;
+    let bestPerp = null;
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
-
-      // --- Relative-velocity closest-approach geometry ---
-      // Accounts for bot movement: when approaching a bullet head-on,
-      // convergence is faster and tClosest is correctly shorter.
       const bvx = b.vx, bvy = b.vy;
       const bSpeedSq = bvx * bvx + bvy * bvy;
-      if (bSpeedSq < 0.5) continue; // stationary/dead bullet
+      if (bSpeedSq < 0.5) continue;
 
       const dbx = bot.x - b.x, dby = botHitY - b.y;
-
-      // Relative velocity: bullet velocity relative to bot
       const rvx = bvx - bVx, rvy = bvy - bVy;
       const relSpeedSq = rvx * rvx + rvy * rvy;
-      if (relSpeedSq < 0.5) continue; // not closing
+      if (relSpeedSq < 0.5) continue;
 
-      // Time of closest approach using relative velocity
       const tClosest = (dbx * rvx + dby * rvy) / relSpeedSq;
-      if (tClosest < 0) continue; // separating
-      if (tClosest > maxReactFrames) continue; // too far out to care
+      if (tClosest < 0 || tClosest > maxReactFrames) continue;
 
-      // Predicted positions at closest approach (both bot and bullet move)
       const closestBotX = bot.x + bVx * tClosest;
       const closestBotY = botHitY + bVy * tClosest;
       const closestBulletX = b.x + bvx * tClosest;
       const closestBulletY = b.y + bvy * tClosest;
-
-      // Perpendicular distance at closest approach (predicted positions)
       const perpX = closestBotX - closestBulletX;
       const perpY = closestBotY - closestBulletY;
       const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
 
-      if (perpDist >= hitRadius + margin) continue; // will miss — don't waste movement
+      if (perpDist >= hitRadius + margin) continue;
 
-      // --- This bullet WILL hit (or barely miss). Compute dodge. ---
+      // This bullet will hit — is it more urgent than current best?
+      if (tClosest < bestTC) {
+        bestTC = tClosest;
+        const bSpeed = Math.sqrt(bSpeedSq);
+        let pnx = -bvy / bSpeed;
+        let pny = bvx / bSpeed;
+        const sideSign = (perpX * pnx + perpY * pny) >= 0 ? 1 : -1;
+        pnx *= sideSign;
+        pny *= sideSign;
 
-      // Urgency: time-based — closer = more urgent
-      // tClosest < 5: CRITICAL (barely time to dodge)
-      // tClosest 5-15: HIGH
-      // tClosest 15-25: MODERATE
-      const urgency = Math.max(0.8, 3.0 - tClosest / 5);
-
-      // Strength: how dead-center is the bullet? Center = full, edge = less
-      const strength = perpDist < hitRadius
-        ? 1.0
-        : Math.max(0.4, 1 - (perpDist - hitRadius) / margin);
-
-      // Dodge direction: perpendicular to bullet travel
-      const bSpeed = Math.sqrt(bSpeedSq);
-      // Two perpendicular directions: (-bvy, bvx) and (bvy, -bvx)
-      let perpNormX = -bvy / bSpeed;
-      let perpNormY = bvx / bSpeed;
-
-      // Pick the perpendicular side bot is already on (shorter dodge path)
-      const sideSign = (perpX * perpNormX + perpY * perpNormY) >= 0 ? 1 : -1;
-      perpNormX *= sideSign;
-      perpNormY *= sideSign;
-
-      // Wall-aware: if chosen direction goes into wall, flip — but only if flip side is clear
-      const projX = bot.x + perpNormX * hitRadius;
-      const projY = bot.y + perpNormY * hitRadius;
-      const chosenBlocked = projX < wallM || projX > arenaW - wallM || projY < wallM || projY > arenaH - wallM;
-      if (chosenBlocked) {
-        const flipProjX = bot.x - perpNormX * hitRadius;
-        const flipProjY = bot.y - perpNormY * hitRadius;
-        const flipBlocked = flipProjX < wallM || flipProjX > arenaW - wallM || flipProjY < wallM || flipProjY > arenaH - wallM;
-        if (!flipBlocked) {
-          perpNormX *= -1;
-          perpNormY *= -1;
+        // Wall-aware flip
+        const projX = bot.x + pnx * hitRadius;
+        const projY = bot.y + pny * hitRadius;
+        if (projX < wallM || projX > arenaW - wallM || projY < wallM || projY > arenaH - wallM) {
+          const fX = bot.x - pnx * hitRadius, fY = bot.y - pny * hitRadius;
+          if (!(fX < wallM || fX > arenaW - wallM || fY < wallM || fY > arenaH - wallM)) {
+            pnx *= -1; pny *= -1;
+          }
         }
-        // If both sides blocked, keep original — diagonal away component will help
-      }
 
-      // Pure perpendicular dodge — no along-travel component.
-      // The diagonal comes from KEEPING existing tactical movement (strafe)
-      // at the override site, not from adding a synthetic second axis here.
-      // "Along travel" caused: wall collisions at bottom, reduced perpendicular
-      // clearance speed (6.4 vs 7.5), and wasted movement.
-      dodgeX += perpNormX * urgency * strength;
-      dodgeY += perpNormY * urgency * strength;
+        const urgency = Math.max(0.8, 3.0 - tClosest / 5);
+        const strength = perpDist < hitRadius ? 1.0 : Math.max(0.4, 1 - (perpDist - hitRadius) / margin);
+        bestPerp = { x: pnx * urgency * strength, y: pny * urgency * strength };
+      }
     }
 
+    if (!bestPerp) {
+      if (ai) { ai._dodgeCommitFrames = 0; }
+      return { x: 0, y: 0 };
+    }
+
+    // Clamp to max dodge speed
+    let dodgeX = bestPerp.x, dodgeY = bestPerp.y;
     const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
     const maxDodge = speed * 1.2;
     if (dodgeLen > maxDodge) {
       dodgeX = (dodgeX / dodgeLen) * maxDodge;
       dodgeY = (dodgeY / dodgeLen) * maxDodge;
     }
+
+    // Commit to this direction for 5 frames (smooth, human-like step)
+    if (ai) {
+      ai._dodgeCommitX = dodgeX;
+      ai._dodgeCommitY = dodgeY;
+      ai._dodgeCommitFrames = 5;
+    }
+
     return { x: dodgeX, y: dodgeY };
   },
 
