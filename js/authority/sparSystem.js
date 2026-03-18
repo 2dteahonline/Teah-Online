@@ -328,6 +328,7 @@ const SparSystem = {
   _updateRewardBucket(bucket, reward) {
     if (!bucket) return;
     const clamped = this._clamp01(reward);
+    if (isNaN(clamped)) return; // safety: never corrupt bucket with NaN
     const plays = bucket.plays || 0;
     bucket.reward = plays > 0 ? ((bucket.reward * plays) + clamped) / (plays + 1) : clamped;
     bucket.plays = plays + 1;
@@ -476,12 +477,12 @@ const SparSystem = {
     const gotBottomAtOpening = collector.botYAtOpeningEnd > 0 && collector.playerYAtOpeningEnd > 0
       ? (collector.botYAtOpeningEnd > collector.playerYAtOpeningEnd + 20 ? 1 : 0)
       : 0.5;
-    const totalBottomFrames = collector.botHasBottom_frames + collector.hasBottom_frames;
-    const retakeShare = totalBottomFrames > 0 ? (collector.botHasBottom_frames / totalBottomFrames) : 0.5;
-    const verticalFrames = collector.botUnderEnemy_frames + collector.botAboveEnemy_frames;
-    const underReward = verticalFrames > 0 ? (collector.botUnderEnemy_frames / verticalFrames) : 0.5;
-    const gunFrames = collector.botGunAdv_frames + collector.botGunDisadv_frames;
-    const gunReward = gunFrames > 0 ? (collector.botGunAdv_frames / gunFrames) : 0.5;
+    const totalBottomFrames = (collector.botHasBottom_frames || 0) + (collector.hasBottom_frames || 0);
+    const retakeShare = totalBottomFrames > 0 ? ((collector.botHasBottom_frames || 0) / totalBottomFrames) : 0.5;
+    const verticalFrames = (collector.botUnderEnemy_frames || 0) + (collector.botAboveEnemy_frames || 0);
+    const underReward = verticalFrames > 0 ? ((collector.botUnderEnemy_frames || 0) / verticalFrames) : 0.5;
+    const gunFrames = (collector.botGunAdv_frames || 0) + (collector.botGunDisadv_frames || 0);
+    const gunReward = gunFrames > 0 ? ((collector.botGunAdv_frames || 0) / gunFrames) : 0.5;
     const winReward = botWon ? 1 : 0;
     // Winning is the biggest signal, then damage trade, then posture.
     const baseReward = this._clamp01(
@@ -494,7 +495,9 @@ const SparSystem = {
     const routeReward = this._clamp01(baseReward * 0.7 + gotBottomAtOpening * 0.2 + underReward * 0.1);
     const antiBottomReward = this._clamp01(baseReward * 0.62 + retakeShare * 0.2 + underReward * 0.1 + gunReward * 0.08);
     const gunSideReward = this._clamp01(baseReward * 0.55 + gunReward * 0.3 + underReward * 0.15);
-    const escapeReward = this._clamp01(baseReward * 0.6 + (1 - Math.min(1, collector.nearWall_cornerStuckFrames / Math.max(1, collector.nearWall_frames || 1))) * 0.2 + gunReward * 0.2);
+    const cornerStuck = collector.nearWall_cornerStuckFrames || 0;
+    const wallFrames = collector.nearWall_frames || 1;
+    const escapeReward = this._clamp01(baseReward * 0.6 + (1 - Math.min(1, cornerStuck / Math.max(1, wallFrames))) * 0.2 + gunReward * 0.2);
     // v10: shot timing + reload behavior rewards
     // Use normalized damage delta instead of binary "any damage" — phase reward handles per-engagement
     const shotTimingReward = this._clamp01(baseReward * 0.6 + dmgReward * 0.25 + gunReward * 0.15);
@@ -1552,7 +1555,7 @@ const SparSystem = {
     _logEngagement('antiBottom', frames || 0, dmgTaken);
 
     // Record engagement in collector
-    if (collector) {
+    if (collector && collector.antiBottomEngagements) {
       collector.antiBottomEngagements.push({
         tactic, family, frames, regained: regainedBottom, dmgTaken,
       });
@@ -4083,9 +4086,13 @@ const SparSystem = {
     if (!c) return;
 
     const isPlayerBullet = bullet.sparTeam === 'teamA';
+    const isFullBvB = typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot();
+
+    // FullBvB: skip detailed player-centric hit tracking (no player to track)
+    // Reinforcement buckets still update via bot AI's _matchDmgDealt/_matchDmgTaken
+    if (isFullBvB) return;
 
     // Find the nearest enemy to compute context
-    const isFullBvB = typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot();
     let shooter, target;
     if (isPlayerBullet) {
       // TeamA bullet — find shooter from teamA
