@@ -1855,7 +1855,8 @@ const SparSystem = {
     ai._antiBottomFrames = 0;
     ai._antiBottomPhase = 0;
     ai._antiBottomPhaseFrames = 0;
-    ai._antiBottomHysteresisFrames = 0;
+    ai._abEnemySettledEMA = 0; // v13: reset stability EMA
+    ai._abEnemyLostEMA = 0;
     ai._antiBottomResponse = null;
     ai._lastAntiBottomTactic = tactic;
     ai._lastAntiBottomFamily = family;
@@ -4663,7 +4664,9 @@ const SparSystem = {
     const enemyMovingUp = tgt.vy < -1;
     const enemyMovingLeft = tgt.vx < -1;
     const enemyMovingRight = tgt.vx > 1;
-    const isOpening = SparState.matchTimer < 180;  // first 3 seconds
+    // Opening phase: time to race to bottom — scales with arena height
+    const _openingDuration = Math.max(90, Math.round((arenaH / speed) * 2));
+    const isOpening = SparState.matchTimer < _openingDuration;
     const aimSlack = this._getSparAimSlack();
     const sideOffsetNear = this._getSparSideOffsetNear();
     const alignX = Math.abs(tgt.x - bot.x);
@@ -4733,83 +4736,125 @@ const SparSystem = {
       botHpPct: (bot.hp || 0) / _liMaxHp, // v12: HP for conditional scoring
     };
 
-    // --- v8 anti-bottom engagement lifecycle (hysteresis + cooldown) ---
+    // --- v13 anti-bottom engagement lifecycle (condition-based, no frame counts) ---
     const c = SparState._matchCollector;
-    // Cooldown: prevent re-open for 30 frames after finalize
-    if (ai._antiBottomCooldown > 0) ai._antiBottomCooldown--;
+    // Track enemy bottom stability via EMA (replaces frame-count hysteresis)
     if (enemyHasBottom) {
-      ai._antiBottomHysteresisFrames = (ai._antiBottomHysteresisFrames || 0) + 1;
+      const _abEnemyYDrift = Math.abs(tgt.y - (ai._abEnemyLastY || tgt.y));
+      ai._abEnemySettledEMA = (ai._abEnemySettledEMA || 0) * 0.85 + (_abEnemyYDrift < 2 ? 1 : 0) * 0.15;
+      ai._abEnemyLostEMA = 0;
     } else {
-      // Enemy lost bottom — check if engagement should end
-      if (ai._antiBottomTactic && ai._antiBottomFrames > 0) {
-        ai._antiBottomHysteresisFrames = (ai._antiBottomHysteresisFrames || 0) - 1;
-        if (ai._antiBottomHysteresisFrames <= -15) {
-          // Engagement ended — fire phase reward
-          this._finalizeAntiBottomEngagement(ai, hasBottom, c);
-          ai._antiBottomCooldown = 30;
-          ai._antiBottomHysteresisFrames = 0;
-        }
-      } else {
-        ai._antiBottomHysteresisFrames = 0;
+      ai._abEnemySettledEMA = 0;
+      // Track how long enemy has NOT had bottom (for exit detection)
+      if (ai._antiBottomTactic) {
+        ai._abEnemyLostEMA = (ai._abEnemyLostEMA || 0) * 0.85 + 1 * 0.15;
+      }
+    }
+    ai._abEnemyLastY = tgt.y;
+    // Entry condition: enemy settled at bottom (stable position) OR large vertical gap
+    const _abEnemySettled = enemyHasBottom && (
+      (ai._abEnemySettledEMA || 0) > 0.6 ||       // enemy Y is stable (holding position)
+      (tgt.y - bot.y) > arenaH * 0.2               // OR large vertical separation (obvious)
+    );
+    // Cooldown: situation-changed check (replaces frame countdown)
+    // After failure, store snapshot — re-enter only when positions have materially changed
+    const _abSnap = ai._abFailSnapshot;
+    const _abConsecFails = ai._abConsecutiveFailures || 0;
+    const _abChangeDist = arenaH * (0.08 + Math.min(_abConsecFails, 5) * 0.04); // escalates: 8%→28% of arena
+    const _abSituationChanged = !_abSnap ||
+      Math.abs(bot.y - _abSnap.botY) > _abChangeDist ||
+      Math.abs(tgt.y - _abSnap.tgtY) > _abChangeDist ||
+      Math.abs(bot.x - _abSnap.botX) > arenaW * 0.15 ||
+      Math.abs(tgt.x - _abSnap.tgtX) > arenaW * 0.15;
+    // Exit: engagement ends when bot got bottom OR enemy clearly left bottom
+    if (!enemyHasBottom && ai._antiBottomTactic) {
+      if (hasBottom) {
+        // Success — bot reached bottom
+        this._finalizeAntiBottomEngagement(ai, true, c);
+        ai._abFailSnapshot = null;
+        ai._abEnemyLostEMA = 0;
+      } else if ((ai._abEnemyLostEMA || 0) > 0.6) {
+        // Enemy left bottom for sustained period — engagement resolved (neither won)
+        this._finalizeAntiBottomEngagement(ai, hasBottom, c);
+        ai._abFailSnapshot = null;
+        ai._abEnemyLostEMA = 0;
       }
     }
 
-    // Cooldown: prevent gun-side re-open for 20 frames after finalize
-    if (ai._gunSideCooldown > 0) ai._gunSideCooldown--;
+    // v13: Gun-side lifecycle — condition-based, situation-changed cooldown
     if (ai._gunSidePolicy) {
       ai._gunSideFrames++;
       ai._gunSideBestQuality = Math.max(ai._gunSideBestQuality || laneQuality, laneQuality);
+      // Track progress: has lane quality improved from start?
+      const _gsImproved = laneQuality > (ai._gunSideStartQuality || 0) + 0.08;
+      const _gsDmgTaken = (ai._matchDmgTaken || 0) - (ai._gunSideStartDmg || 0);
+      const _gsNoProgress = !_gsImproved && _gsDmgTaken > 15; // taking damage, no lane improvement
       if (ai._gunSidePolicy === 'peekPressure') {
-        // peekPressure success: gained bottom through gun-side pressure (advantage chain complete)
-        if (ai._gunSideFrames >= 20 && hasBottom) {
+        // Success: gained bottom through gun-side pressure
+        if (hasBottom) {
           this._finalizeGunSideEngagement(ai, true);
-          ai._gunSideCooldown = 20;
-        } else if (ai._gunSideFrames > 180 || badGunSide || (ai._gunSideFrames >= 20 && noAdvantageState)) {
-          // Failed: lost gun-side, timed out, or no advantage left
+          ai._gsFailSnapshot = null;
+        } else if (badGunSide || _gsNoProgress || noAdvantageState) {
           this._finalizeGunSideEngagement(ai, false);
-          ai._gunSideCooldown = 20;
+          ai._gsFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
         }
-      // Require minimum 20 frames before success-finalize to avoid lane flicker
-      } else if (ai._gunSideFrames >= 20 && ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom))) {
+      } else if ((!badGunSide && laneQuality > 0.58) || (dist > 260 && !enemyHasBottom)) {
+        // Success: lane quality achieved or favorable distance
         this._finalizeGunSideEngagement(ai, true);
-        ai._gunSideCooldown = 25;
-      } else if (ai._gunSideFrames > 150 || (ai._gunSideFrames >= 20 && noAdvantageState)) {
+        ai._gsFailSnapshot = null;
+      } else if (_gsNoProgress || noAdvantageState) {
+        // Failure: no lane improvement AND taking damage
         this._finalizeGunSideEngagement(ai, false);
-        ai._gunSideCooldown = 45; // longer cooldown on failure to prevent spam re-entry
+        ai._gsFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
       }
     }
-    if (ai._escapeCooldown > 0) ai._escapeCooldown--;
+    // v13: Escape lifecycle — condition-based
     if (ai._escapePolicy) {
       ai._escapeFrames++;
       ai._escapeBestQuality = Math.max(ai._escapeBestQuality || laneQuality, laneQuality);
-      if (ai._escapeFrames >= 20 && !topCornerTrapped && laneQuality > 0.56 && (!enemyHasBottom || !badGunSide)) {
+      // Success: no longer trapped AND lane quality recovered
+      if (!topCornerTrapped && laneQuality > 0.56 && (!enemyHasBottom || !badGunSide)) {
         this._finalizeEscapeEngagement(ai, true);
-        ai._escapeCooldown = 20;
-      } else if (ai._escapeFrames > 210) {
-        this._finalizeEscapeEngagement(ai, false);
-        ai._escapeCooldown = 20;
+        ai._escFailSnapshot = null;
+      } else {
+        // Failure: still trapped AND taking damage with no lane improvement
+        const _escDmg = (ai._matchDmgTaken || 0) - (ai._escapeStartDmg || 0);
+        const _escNoProgress = laneQuality <= (ai._escapeStartQuality || 0) + 0.05 && _escDmg > 25;
+        if (_escNoProgress) {
+          this._finalizeEscapeEngagement(ai, false);
+          ai._escFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
+        }
       }
     }
 
     if (!isOpening && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
-      // Only force-finalize if engagement has run long enough to be meaningful
-      // Angle family is DESIGNED to play from disadvantaged positions — don't kill it early
-      const _abIsAngle = ai._antiBottomFamily === 'angle';
-      const _abMinFrames = _abIsAngle ? 120 : 30; // angle gets 4x more time
-      if (ai._antiBottomTactic && ai._antiBottomFrames >= _abMinFrames) {
-        // Escalating cooldown: consecutive failures increase wait time
-        const _abConsecFails = ai._abConsecutiveFailures || 0;
-        const _abCooldown = Math.min(180, 30 + _abConsecFails * 20); // 30→50→70→...→180
-        ai._abConsecutiveFailures = _abConsecFails + 1;
-        this._finalizeAntiBottomEngagement(ai, false, c);
-        ai._antiBottomCooldown = _abCooldown;
-        ai._antiBottomHysteresisFrames = 0;
+      // v13: Force-finalize based on PROGRESS, not frame count.
+      // Abandon when: taking damage AND not making positional progress toward bottom.
+      if (ai._antiBottomTactic) {
+        const _abDmgTaken = (ai._matchDmgTaken || 0) - (ai._antiBottomDmgAtStart || 0);
+        const _abYProgress = (bot.y || 0) - (ai._abStartY || bot.y); // positive = moved toward bottom
+        const _abIsAngle = ai._antiBottomFamily === 'angle';
+        // Angle family doesn't measure Y progress — it plays from range. Judge by damage trade.
+        const _abAngleFailing = _abIsAngle && _abDmgTaken > 25;
+        // Descent families: failing if taking damage AND no vertical progress
+        const _abDescentFailing = !_abIsAngle && _abDmgTaken > 15 && _abYProgress < arenaH * 0.05;
+        if (_abAngleFailing || _abDescentFailing) {
+          ai._abConsecutiveFailures = (ai._abConsecutiveFailures || 0) + 1;
+          this._finalizeAntiBottomEngagement(ai, false, c);
+          ai._abFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
+        }
       }
-      if (ai._gunSidePolicy && ai._gunSideFrames >= 20) {
+      if (ai._gunSidePolicy) {
         this._finalizeGunSideEngagement(ai, false);
-        ai._gunSideCooldown = 20;
+        ai._gsFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
       }
-      if (!ai._escapePolicy && !(ai._escapeCooldown > 0)) {
+      // v13: situation-changed cooldown for escape
+      const _escSnap = ai._escFailSnapshot;
+      const _escSituationChanged = !_escSnap ||
+        Math.abs(bot.x - _escSnap.botX) > arenaW * 0.12 ||
+        Math.abs(bot.y - _escSnap.botY) > arenaH * 0.1 ||
+        Math.abs(tgt.x - _escSnap.tgtX) > arenaW * 0.12;
+      if (!ai._escapePolicy && _escSituationChanged) {
         const chosenEscape = this._pickEscapePolicy(pm, laneInfo);
         ai._escapePolicy = chosenEscape;
         ai._escapeFamily = (typeof SPAR_ESCAPE_FAMILY_MAP !== 'undefined') ? SPAR_ESCAPE_FAMILY_MAP[chosenEscape] : 'break';
@@ -4825,7 +4870,14 @@ const SparSystem = {
         ai._escapeStartCtx.topCornerTrapped = topCornerTrapped;
       }
     } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic && (badGunSide || repeekedBadLane) && laneQuality < 0.48) {
-      if (!ai._gunSidePolicy && !(ai._gunSideCooldown > 0)) {
+      // v13: situation-changed cooldown (replaces frame countdown)
+      const _gsSnap = ai._gsFailSnapshot;
+      const _gsSituationChanged = !_gsSnap ||
+        Math.abs(bot.x - _gsSnap.botX) > arenaW * 0.12 ||
+        Math.abs(bot.y - _gsSnap.botY) > arenaH * 0.1 ||
+        Math.abs(tgt.x - _gsSnap.tgtX) > arenaW * 0.12 ||
+        Math.abs(tgt.y - _gsSnap.tgtY) > arenaH * 0.1;
+      if (!ai._gunSidePolicy && _gsSituationChanged) {
         const chosenGunSide = this._pickGunSidePolicy(pm, laneInfo);
         ai._gunSidePolicy = chosenGunSide;
         ai._gunSideFamily = (typeof SPAR_GUN_SIDE_FAMILY_MAP !== 'undefined') ? SPAR_GUN_SIDE_FAMILY_MAP[chosenGunSide] : 'reposition';
@@ -4844,7 +4896,12 @@ const SparSystem = {
     // When bot HAS gun-side but NOT bottom, use gun-side peek to pressure opponent into losing bottom
     } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic
       && !badGunSide && laneQuality > 0.55 && !hasBottom && enemyHasBottom) {
-      if (!ai._gunSidePolicy && !(ai._gunSideCooldown > 0)) {
+      // v13: situation-changed cooldown for peekPressure entry
+      const _gsSnap2 = ai._gsFailSnapshot;
+      const _gsSitChanged2 = !_gsSnap2 ||
+        Math.abs(bot.x - _gsSnap2.botX) > arenaW * 0.12 ||
+        Math.abs(tgt.y - _gsSnap2.tgtY) > arenaH * 0.1;
+      if (!ai._gunSidePolicy && _gsSitChanged2) {
         ai._gunSidePolicy = 'peekPressure';
         ai._gunSideFamily = 'pressure';
         ai._gunSideFrames = 0;
@@ -4905,7 +4962,7 @@ const SparSystem = {
       const laneScore = this._clamp01(botLateralOffset / 200); // wider offset = cleaner lane
       const openingQuality = vertScore * 0.6 + laneScore * 0.4;
       const dmgDealt = (ai._matchDmgDealt || 0) - (ai._openingContestStartDmg || 0);
-      this._finalizeOpeningContest(ai, botSecured, playerDenied, dmgDealt, 180, openingQuality);
+      this._finalizeOpeningContest(ai, botSecured, playerDenied, dmgDealt, _openingDuration, openingQuality);
     }
     // v11: Detect when leaving neutral state → finalize mid-fight pressure
     const isNeutral = !isOpening && !member.gun.reloading && !enemyReloading && !hasBottom && !enemyHasBottom;
@@ -5308,7 +5365,7 @@ const SparSystem = {
         moveX *= 1.2; // faster strafe after getting hit
       }
 
-    } else if (enemyHasBottom && ai._antiBottomHysteresisFrames >= 20 && !(ai._antiBottomCooldown > 0)) {
+    } else if (_abEnemySettled && _abSituationChanged) {
       // v12: finalize center recovery if entering anti-bottom
       if (ai._centerRecoveryPolicy) {
         this._finalizeCenterRecovery(ai, false, false, !badGunSide, c);
@@ -5344,6 +5401,7 @@ const SparSystem = {
         ai._antiBottomPhaseFrames = 0;
         ai._antiBottomDmgAtStart = ai._matchDmgTaken || 0;
         ai._antiBottomStartFrame = SparState.matchTimer;
+        ai._abStartY = bot.y; // v13: track start position for progress detection
         ai._antiBottomStallCount = 0;
         ai._antiBottomShotsFired = 0;
         ai._antiBottomShotsHeld = 0;
@@ -5682,17 +5740,16 @@ const SparSystem = {
         moveY = (moveY / abLen) * speed;
       }
 
-      // Safety cap at 600 frames (10 sec) to prevent infinite loops.
-      if (ai._antiBottomFrames > 600) {
-        const _abConsecFails2 = ai._abConsecutiveFailures || 0;
-        ai._abConsecutiveFailures = _abConsecFails2 + 1;
+      // Safety cap: arena traverse time × 3 (scales with map size). Pure circuit breaker.
+      const _abSafetyCap = Math.max(300, Math.round((arenaH / speed) * 3));
+      if (ai._antiBottomFrames > _abSafetyCap) {
+        ai._abConsecutiveFailures = (ai._abConsecutiveFailures || 0) + 1;
         this._finalizeAntiBottomEngagement(ai, false, c);
-        ai._antiBottomCooldown = Math.min(180, 30 + _abConsecFails2 * 20);
-        ai._antiBottomHysteresisFrames = 0;
+        ai._abFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
       }
 
     } else if (enemyHasBottom) {
-      // Hysteresis not yet met — waiting for 20+ frames to confirm enemy has bottom
+      // v13: Enemy has bottom but not confirmed settled — play normally with gentle descent
       // Full speed strafe + descent toward bottom
       moveX = ai.strafeDir * speed * 0.85;
       moveY = (bot.y < tgt.y) ? speed * 0.53 : speed * 0.1;
@@ -5788,12 +5845,13 @@ const SparSystem = {
           }
         }
 
-        // Finalize: success (escaped center), timeout (180 frames), or state changed
+        // v13: Finalize on success (escaped center) OR taking damage with no progress
         const _crRegainedBottom = hasBottom;
         const _crRegainedGunSide = !badGunSide;
-        if (_crNowClear || ai._centerRecoveryFrames >= 180) {
+        const _crDmg = (ai._matchDmgTaken || 0) - (ai._centerRecoveryStartDmg || 0);
+        const _crStillStuck = !_crNowClear && _crDmg > 20;
+        if (_crNowClear || _crStillStuck) {
           this._finalizeCenterRecovery(ai, _crNowClear, _crRegainedBottom, _crRegainedGunSide, c);
-          ai._centerRecoveryCooldown = 30;
         }
       } else {
         // Fallback: simple center prevention (no active policy)
@@ -5823,6 +5881,7 @@ const SparSystem = {
         ai._midPressurePolicy = mpPolicy;
         ai._midPressureFamily = mpFamilyMap[mpPolicy] || 'press';
         ai._midPressureStartDmg = ai._matchDmgDealt || 0;
+        ai._midPressureStartTakenDmg = ai._matchDmgTaken || 0; // v13: track damage taken for progress check
         ai._midPressureFrames = 0;
         ai._midPressureStartCtx = _snapEngagementCtx(bot, tgt, ai);
         ai._midPressureStartCtx.hasBottom = hasBottom;
@@ -5956,11 +6015,12 @@ const SparSystem = {
         }
       }
 
-      // v11: Finalize mid-fight pressure after 180 frames timeout
-      if (ai._midPressureFrames >= 180) {
-        const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
-        this._finalizeMidFightPressure(ai, mpDmg);
-        ai._midPressureCooldown = 25;
+      // v13: Finalize mid-pressure when not dealing damage AND taking damage (no progress)
+      const _mpDmgDealt = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
+      const _mpDmgTaken = (ai._matchDmgTaken || 0) - (ai._midPressureStartTakenDmg || 0);
+      if (_mpDmgDealt < 5 && _mpDmgTaken > 15) {
+        this._finalizeMidFightPressure(ai, _mpDmgDealt);
+        ai._mpFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
       }
     }
 
@@ -6216,6 +6276,7 @@ const SparSystem = {
           ai._wallPressurePolicy = wpPolicy;
           ai._wallPressureFamily = wpFamilyMap[wpPolicy] || 'pin';
           ai._wallPressureStartDmg = ai._matchDmgDealt || 0;
+          ai._wallPressureStartTakenDmg = ai._matchDmgTaken || 0; // v13: track for progress check
           ai._wallPressureFrames = 0;
           ai._wallPressureStartCtx = _snapEngagementCtx(bot, tgt, ai);
           ai._wallPressureStartCtx.hasBottom = hasBottom;
@@ -6267,11 +6328,12 @@ const SparSystem = {
           moveX += ai.strafeDir * speed * 0.4;
         }
 
-        // Finalize after 150 frames timeout
-        if (ai._wallPressureFrames >= 150) {
-          const wpDmg = (ai._matchDmgDealt || 0) - (ai._wallPressureStartDmg || 0);
-          this._finalizeWallPressure(ai, wpDmg);
-          ai._wallPressureCooldown = 20;
+        // v13: Finalize when enemy escaped wall zone OR bot taking more damage than dealing
+        const _wpDmgDealt = (ai._matchDmgDealt || 0) - (ai._wallPressureStartDmg || 0);
+        const _wpDmgTaken = (ai._matchDmgTaken || 0) - (ai._wallPressureStartTakenDmg || 0);
+        if (!nearEnemyWall || (_wpDmgDealt < 5 && _wpDmgTaken > 15)) {
+          this._finalizeWallPressure(ai, _wpDmgDealt);
+          ai._wpFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
         }
       }
 
@@ -6503,11 +6565,13 @@ const SparSystem = {
       }
     }
 
-    // vNext: Punish window lifecycle — finalize when trigger ends or window times out
+    // v13: Punish window lifecycle — finalize when trigger condition ends (no frame timeout)
     if (ai._punishWindowPolicy) {
-      const pwTimedOut = ai._punishWindowFrames >= 40;
       const triggerEnded = (ai._punishWindowTrigger === 'reload' && !enemyReloading);
-      if (pwTimedOut || triggerEnded) {
+      // Punish window ends when the opportunity is gone (enemy recovered), not after N frames
+      const _pwDmgTaken = (ai._matchDmgTaken || 0) - (ai._punishWindowStartDmgTaken || 0);
+      const _pwLostAdvantage = _pwDmgTaken > 15; // taking damage = opportunity gone wrong
+      if (triggerEnded || _pwLostAdvantage) {
         this._finalizePunishWindow(ai);
       }
     }
@@ -6788,11 +6852,9 @@ const SparSystem = {
             ai._antiBottomStallCount = (ai._antiBottomStallCount || 0) + 1;
             if (ai._antiBottomStallCount >= 3) {
               // Tactic is body-blocked — abandon and force a different one
-              const _abConsecFails3 = ai._abConsecutiveFailures || 0;
-              ai._abConsecutiveFailures = _abConsecFails3 + 1;
+              ai._abConsecutiveFailures = (ai._abConsecutiveFailures || 0) + 1;
               this._finalizeAntiBottomEngagement(ai, false, c);
-              ai._antiBottomCooldown = Math.min(120, 15 + _abConsecFails3 * 15);
-              ai._antiBottomHysteresisFrames = 0;
+              ai._abFailSnapshot = { botX: bot.x, botY: bot.y, tgtX: tgt.x, tgtY: tgt.y };
             }
           }
         }
@@ -6861,15 +6923,20 @@ const SparSystem = {
       ai._shotTimingPolicy = stPolicy;
       ai._shotTimingFamily = stFamilyMap[stPolicy] || 'aggressive';
       ai._shotTimingStartDmg = ai._matchDmgDealt || 0;
+      ai._shotTimingStartTakenDmg = ai._matchDmgTaken || 0; // v13: track for progress check
       ai._shotTimingFrames = 0;
       ai._shotTimingHitsLanded = 0;
+      ai._shotTimingMisses = 0; // v13: track misses for ammo-based finalize
       ai._shotTimingBaitFrames = 0;
       ai._shotTimingStartCtx = _snapEngagementCtx(bot, tgt, ai);
     }
     if (ai._shotTimingPolicy) {
       ai._shotTimingFrames++;
-      // Re-evaluate every 120 frames (2 seconds)
-      if (ai._shotTimingFrames >= 120) {
+      // v13: Re-evaluate after enough shots fired to judge (ammo-based, not time-based)
+      // Finalize when bot has fired 4+ shots during this timing window OR situation changed
+      const _stShotsFired = (ai._shotTimingHitsLanded || 0) + (ai._shotTimingMisses || 0);
+      const _stDmgTaken = (ai._matchDmgTaken || 0) - (ai._shotTimingStartTakenDmg || 0);
+      if (_stShotsFired >= 4 || _stDmgTaken > 20) {
         const stDmg = (ai._matchDmgDealt || 0) - (ai._shotTimingStartDmg || 0);
         this._finalizeShotTimingEngagement(ai, ai._shotTimingHitsLanded || 0, stDmg);
         ai._shotTimingCooldown = 10;
