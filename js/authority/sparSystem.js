@@ -4207,7 +4207,11 @@ const SparSystem = {
     );
     const _wantingToShootDown = bot.y < tgt.y - 15;
     const _wrongSideForDown = _wantingToShootDown && _wrongSide;
-    const badGunSide = _wrongSideForDown || enemyLaneScore > botLaneScore + 0.1 || (botLaneScore < 0.46 && enemyLaneScore > 0.55);
+    // With MUZZLE_OFFSET_Y=0, horizontal gun-side advantage is gone.
+    // Lane score differences now reflect vertical disadvantage (arm-hitbox gap),
+    // NOT gun-side positioning — bottom-seeking in neutral handles that.
+    // badGunSide should only flag X-positioning issues for downward shots.
+    const badGunSide = _wrongSideForDown;
     const repeekedBadLane = laneRepeatStreak >= 2 || (!!ai._gunSideLaneShape && ai._gunSideLaneShape === laneShape && badGunSide && ai._gunSideFrames > 24);
     const topCornerTrapped = !hasBottom && enemyHasBottom && (inCornerBase || (nearTopWallBase && (nearLeftWallBase || nearRightWallBase)));
     const lostBottomAndNoLane = !hasBottom && enemyHasBottom && laneQuality < 0.42;
@@ -4454,8 +4458,23 @@ const SparSystem = {
         if (bot.y < arenaH * 0.8) routeSpeedY = Math.max(routeSpeedY, speed * 0.85);
       }
 
+      // --- Arrival detection: once bot reaches route goal, switch to active fighting ---
+      const arrivedAtGoal = bot.y >= routeGoalY - 10;
+
       // Contest policy modifies HOW we execute the route
-      if (contest === 'hardRace') {
+      if (arrivedAtGoal) {
+        // Arrived at destination — strafe and fight, don't just stand still
+        moveX = ai.strafeDir * speed * 0.7;
+        // Hold position: slight downward drift if not at very bottom
+        if (bot.y < arenaH * 0.92) moveY = speed * 0.1;
+        // Engage: approach if enemy is far, maintain distance if close
+        if (dist > 250 && dist > 1) {
+          moveX += (dx / dist) * speed * 0.25;
+          moveY += (dy / dist) * speed * 0.2;
+        } else if (dist < 120 && dist > 1) {
+          moveX -= (dx / dist) * speed * 0.15;
+        }
+      } else if (contest === 'hardRace') {
         // Max-speed direct bottom race with lateral deny
         if (bot.y < routeGoalY - 10) moveY = routeSpeedY;
         moveX = routeSpeedX;
