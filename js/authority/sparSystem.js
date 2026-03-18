@@ -5036,13 +5036,14 @@ const SparSystem = {
       // === WE HAVE BOTTOM — use it actively, don't just camp ===
 
       // --- WALLING: strafe diagonally while shooting horizontally to create bullet walls ---
-      // Activate wall mode when we have bottom and opponent is above us.
-      // The bot's diagonal strafe movement + fixed horizontal shot direction creates
-      // a staggered line of bullets that's harder to dodge (each bullet at different Y).
-      // Wall up = shoot toward opponent while strafing up-diagonally (blocks them from descending)
+      // Wall mode shoots horizontally to block crossing, but MUST alternate with normal
+      // aimed shots (up at the player) — pure horizontal walling lets the player duck under.
+      // Only wall when opponent is actively crossing (moving horizontally), otherwise aim normally.
+      const enemyMovingHoriz = Math.abs(tgt.vx || 0) > 2;
       const shouldWall = bot.y > tgt.y && // we're below them (have bottom)
         Math.abs(dx) < arenaW * 0.6 && // they're not way off to the side
-        !member.gun.reloading && member.gun.ammo > 0;
+        !member.gun.reloading && member.gun.ammo > 0 &&
+        enemyMovingHoriz; // only wall when opponent is actually trying to cross
       ai._wallMode = shouldWall;
 
       // When walling, add vertical oscillation to create Y-stagger between bullets
@@ -5149,15 +5150,14 @@ const SparSystem = {
         ai._antiBottomPhaseFrames = 0;
         ai._antiBottomDmgAtStart = ai._matchDmgTaken || 0;
         ai._antiBottomStartFrame = SparState.matchTimer;
-        // Pick offset direction: if we know which side player approached from,
-        // go to the OPPOSITE side. Otherwise, pick based on available space.
-        if (ai._openingLostBottomDir === 'left') {
-          ai._antiBottomOffsetDir = 1;   // player went left → we go right
-        } else if (ai._openingLostBottomDir === 'right') {
-          ai._antiBottomOffsetDir = -1;  // player went right → we go left
-        } else {
-          ai._antiBottomOffsetDir = this._getStableCenterDir(ai, bot.x, midX);
-        }
+        // Pick offset direction: ALWAYS target favorable gun-side for crossing
+        // Right gun → go RIGHT of enemy (+1), Left gun → go LEFT (-1)
+        // This ensures every antiBottom tactic naturally crosses to the correct side
+        const favorableDir = (_botGunSide === 'right') ? 1 : -1;
+        ai._antiBottomOffsetDir = favorableDir;
+        // Wall clamp: if favorable direction pushes into wall, flip
+        if (favorableDir < 0 && bot.x < TILE * 4) ai._antiBottomOffsetDir = 1;
+        else if (favorableDir > 0 && bot.x > arenaW - TILE * 4) ai._antiBottomOffsetDir = -1;
       }
       ai._antiBottomFrames++;
       ai._antiBottomPhaseFrames++;
