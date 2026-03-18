@@ -5551,9 +5551,13 @@ const SparSystem = {
     // FIX: Suppress shots when bot doesn't have gun-side advantage in normal combat.
     // Without gun-side, peeking is a losing trade — reposition to GET gun-side first.
     // Only suppress if no policy is actively managing movement (they handle their own suppression).
+    // Allow close-range aggression when there's a tactical reason (finishing low HP, pressing after hit)
+    const _enemyLowHp = tgt.hp < (tgt.maxHp || SPAR_CONFIG.HP_BASELINE) * 0.35;
+    const _recentLandedHit = ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30;
+    const _hasCloseReason = _enemyLowHp || _recentLandedHit;
     if (!isOpening && !ai._escapePolicy && !ai._gunSidePolicy && !ai._antiBottomTactic
       && !ai._centerRecoveryPolicy && !ai._midPressurePolicy && !ai._wallPressurePolicy
-      && badGunSide && laneQuality < 0.55) {
+      && badGunSide && laneQuality < 0.55 && !_hasCloseReason) {
       suppressPeekShots = true;
     }
     if (!isOpening && ai._escapePolicy) {
@@ -5829,7 +5833,11 @@ const SparSystem = {
     // - approachMult only amplifies when bot is already moving toward enemy AND is far enough
     if (styleWeights && !isOpening && modifierLevel < 2) {
       const hasAdvantage = hasBottom || (!badGunSide && laneQuality > 0.6);
-      const styleMinDist = hasAdvantage ? 90 : (badGunSide ? 200 : 160);
+      // Context-aware distance: close in when there's a REASON (pressure, finish, momentum)
+      const enemyLowHp = tgt.hp < (tgt.maxHp || SPAR_CONFIG.HP_BASELINE) * 0.35;
+      const recentLandedHit = ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30;
+      const hasCloseReason = enemyLowHp || recentLandedHit;
+      const styleMinDist = hasAdvantage ? 90 : (badGunSide && !hasCloseReason ? 200 : 160);
 
       // Scale approach/retreat based on style
       if (dist > 1) {
