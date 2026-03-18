@@ -54,6 +54,28 @@ function _logEngagement(type, frames, dmgDelta) {
   entry.dmgDeltas.push(dmgDelta);
 }
 
+// Snapshot current game context for engagement tracking.
+// Called at engagement START (saved on ai) and at END (compared against start).
+function _snapEngagementCtx(bot, tgt, ai) {
+  const dx = (tgt.x || 0) - (bot.x || 0), dy = (tgt.y || 0) - (bot.y || 0);
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const maxHp = bot.maxHp || (typeof SPAR_CONFIG !== 'undefined' ? SPAR_CONFIG.HP_BASELINE : 100);
+  const tgtMaxHp = tgt.maxHp || maxHp;
+  return {
+    dist: Math.round(dist),
+    botX: Math.round(bot.x || 0),
+    botY: Math.round(bot.y || 0),
+    tgtX: Math.round(tgt.x || 0),
+    tgtY: Math.round(tgt.y || 0),
+    botHpPct: +(((bot.hp || 0) / maxHp)).toFixed(2),
+    tgtHpPct: +(((tgt.hp || 0) / tgtMaxHp)).toFixed(2),
+    botBelow: (bot.y || 0) > (tgt.y || 0),
+    tgtMovingX: Math.round(tgt.vx || 0),
+    tgtMovingY: Math.round(tgt.vy || 0),
+    frame: SparState.matchTimer || 0,
+  };
+}
+
 function sparEngagementReport() {
   const log = SparState._engagementLog;
   if (!log) { console.log('[SparDiag] No engagement log — play a match first'); return; }
@@ -951,6 +973,14 @@ const SparSystem = {
     if (!policy || frames <= 0) return;
     const dmgTaken = (ai._matchDmgTaken || 0) - (ai._gunSideStartDmg || 0);
     _logEngagement('gunSide', frames, dmgTaken);
+    const _gsCollector = SparState._matchCollector;
+    if (_gsCollector && _gsCollector.gunSideEngagements) {
+      _gsCollector.gunSideEngagements.push({
+        policy, family, frames, resolved, dmgTaken,
+        startCtx: ai._gunSideStartCtx || null,
+        qualityStart: ai._gunSideStartQuality, qualityBest: ai._gunSideBestQuality,
+      });
+    }
     const startQuality = typeof ai._gunSideStartQuality === 'number' ? ai._gunSideStartQuality : 0.35;
     const endQuality = typeof ai._gunSideBestQuality === 'number' ? ai._gunSideBestQuality : startQuality;
     const qualityGain = this._clamp01(0.5 + (endQuality - startQuality));
@@ -997,6 +1027,7 @@ const SparSystem = {
     ai._gunSideStartDmg = 0;
     ai._gunSideStartQuality = 0;
     ai._gunSideBestQuality = 0;
+    ai._gunSideStartCtx = null;
   },
 
   _finalizeEscapeEngagement(ai, resolved) {
@@ -1007,6 +1038,13 @@ const SparSystem = {
     if (!policy || frames <= 0) return;
     const dmgTaken = (ai._matchDmgTaken || 0) - (ai._escapeStartDmg || 0);
     _logEngagement('escape', frames, dmgTaken);
+    const _escCollector = SparState._matchCollector;
+    if (_escCollector && _escCollector.escapeEngagements) {
+      _escCollector.escapeEngagements.push({
+        policy, family, frames, resolved, dmgTaken,
+        startCtx: ai._escapeStartCtx || null,
+      });
+    }
     const startQuality = typeof ai._escapeStartQuality === 'number' ? ai._escapeStartQuality : 0.25;
     const endQuality = typeof ai._escapeBestQuality === 'number' ? ai._escapeBestQuality : startQuality;
     const qualityGain = this._clamp01(0.5 + (endQuality - startQuality));
@@ -1047,6 +1085,7 @@ const SparSystem = {
     ai._escapeStartDmg = 0;
     ai._escapeStartQuality = 0;
     ai._escapeBestQuality = 0;
+    ai._escapeStartCtx = null;
   },
 
   // v10: Shot timing policy picker — same pattern as _pickGunSidePolicy
@@ -1111,6 +1150,13 @@ const SparSystem = {
     _logEngagement('shotTiming', ai._shotTimingFrames || 0, dmgDealt);
     const policy = ai._shotTimingPolicy;
     const family = ai._shotTimingFamily;
+    const _stCollector = SparState._matchCollector;
+    if (_stCollector && _stCollector.shotTimingEngagements) {
+      _stCollector.shotTimingEngagements.push({
+        policy, family, frames: ai._shotTimingFrames || 0, hits: hitsDuring, dmgDealt,
+        startCtx: ai._shotTimingStartCtx || null,
+      });
+    }
     // Shot timing: landing hits during the window is the objective
     const phaseReward = this._clamp01(
       (hitsDuring > 0 ? 0.65 : 0) * 0.65 +
@@ -1138,6 +1184,7 @@ const SparSystem = {
     ai._lastShotTimingFamily = family;
     ai._shotTimingPolicy = null;
     ai._shotTimingFamily = null;
+    ai._shotTimingStartCtx = null;
   },
 
   // v10: Reload behavior policy picker
@@ -1201,8 +1248,15 @@ const SparSystem = {
     _logEngagement('reload', ai._reloadFrames || 0, dmgDealt);
     const policy = ai._reloadPolicy;
     const family = ai._reloadFamily;
-    // Reload punish: actually dealing damage during the window is the objective
     const punished = dmgDealt > 0 ? 1 : 0;
+    const _rlCollector = SparState._matchCollector;
+    if (_rlCollector && _rlCollector.reloadEngagements) {
+      _rlCollector.reloadEngagements.push({
+        policy, family, frames: ai._reloadFrames || 0, dmgDealt, punished,
+        startCtx: ai._reloadStartCtx || null,
+      });
+    }
+    // Reload punish: actually dealing damage during the window is the objective
     const phaseReward = this._clamp01(punished * 0.55 + this._computeDamageReward(dmgDealt) * 0.45);
     const rf = this._ensureReinforcementProfile(sl);
     if (rf) {
@@ -1225,6 +1279,7 @@ const SparSystem = {
     ai._lastReloadFamily = family;
     ai._reloadPolicy = null;
     ai._reloadFamily = null;
+    ai._reloadStartCtx = null;
   },
 
   // v11: Mid-fight pressure policy picker
@@ -1290,8 +1345,15 @@ const SparSystem = {
     _logEngagement('midPressure', ai._midPressureFrames || 0, dmgDealt);
     const policy = ai._midPressurePolicy;
     const family = ai._midPressureFamily;
-    // Mid-pressure: dealing damage is the objective, but actually converting matters more
     const converted = dmgDealt > 0 ? 1 : 0;
+    const _mpCollector = SparState._matchCollector;
+    if (_mpCollector && _mpCollector.midPressureEngagements) {
+      _mpCollector.midPressureEngagements.push({
+        policy, family, frames: ai._midPressureFrames || 0, dmgDealt, converted,
+        startCtx: ai._midPressureStartCtx || null,
+      });
+    }
+    // Mid-pressure: dealing damage is the objective, but actually converting matters more
     const phaseReward = this._clamp01(converted * 0.45 + this._computeDamageReward(dmgDealt) * 0.55);
     const rf = this._ensureReinforcementProfile(sl);
     if (rf) {
@@ -1312,6 +1374,7 @@ const SparSystem = {
     ai._midPressurePolicy = null;
     ai._midPressureFamily = null;
     ai._midPressureFrames = 0;
+    ai._midPressureStartCtx = null;
   },
 
   // v11: Wall pressure policy picker
@@ -1372,8 +1435,15 @@ const SparSystem = {
     _logEngagement('wallPressure', ai._wallPressureFrames || 0, dmgDealt);
     const policy = ai._wallPressurePolicy;
     const family = ai._wallPressureFamily;
-    // Wall pressure: pinning + dealing damage are the objectives
     const pinned = dmgDealt > 10 ? 1 : 0;
+    const _wpCollector = SparState._matchCollector;
+    if (_wpCollector && _wpCollector.wallPressureEngagements) {
+      _wpCollector.wallPressureEngagements.push({
+        policy, family, frames: ai._wallPressureFrames || 0, dmgDealt, pinned,
+        startCtx: ai._wallPressureStartCtx || null,
+      });
+    }
+    // Wall pressure: pinning + dealing damage are the objectives
     const phaseReward = this._clamp01(pinned * 0.40 + this._computeDamageReward(dmgDealt) * 0.60);
     const rf = this._ensureReinforcementProfile(sl);
     if (rf) {
@@ -1394,6 +1464,7 @@ const SparSystem = {
     ai._wallPressurePolicy = null;
     ai._wallPressureFamily = null;
     ai._wallPressureFrames = 0;
+    ai._wallPressureStartCtx = null;
   },
 
   // Phase reward: fires when an anti-bottom engagement ends
@@ -1405,10 +1476,18 @@ const SparSystem = {
     const dmgTaken = (ai._matchDmgTaken || 0) - (ai._antiBottomDmgAtStart || 0);
     _logEngagement('antiBottom', frames || 0, dmgTaken);
 
-    // Record engagement in collector
+    // Record engagement in collector with full context
     if (collector && collector.antiBottomEngagements) {
       collector.antiBottomEngagements.push({
         tactic, family, frames, regained: regainedBottom, dmgTaken,
+        phaseReached: ai._antiBottomPhase || 0,
+        bodyBlocks: ai._antiBottomStallCount || 0,
+        dirFlips: ai._abDirFlips || 0,
+        maxClearance: Math.round(ai._abMaxClearance || 0),
+        startCtx: ai._abStartCtx || null,
+        endReason: regainedBottom ? 'success'
+          : (ai._antiBottomStallCount >= 3) ? 'stallAbandon'
+          : (frames >= 120) ? 'timeout' : 'stateChange',
       });
     }
 
@@ -2730,7 +2809,13 @@ const SparSystem = {
         peekAttempts: 0,
         peekHits: 0,
         // v8 anti-bottom tactical tracking
-        antiBottomEngagements: [],   // [{tactic, family, frames, regained, dmgTaken}]
+        antiBottomEngagements: [],   // [{tactic, family, frames, regained, dmgTaken, startCtx, endReason, ...}]
+        gunSideEngagements: [],      // [{policy, family, frames, resolved, dmgTaken, startCtx}]
+        escapeEngagements: [],       // [{policy, family, frames, resolved, dmgTaken, startCtx}]
+        shotTimingEngagements: [],   // [{policy, family, frames, hits, dmgDealt, startCtx}]
+        reloadEngagements: [],       // [{policy, family, frames, dmgDealt, punished, startCtx}]
+        midPressureEngagements: [],  // [{policy, family, frames, dmgDealt, startCtx}]
+        wallPressureEngagements: [], // [{policy, family, frames, dmgDealt, pinned, startCtx}]
         trapZoneHits:   { center: 0, near: 0, wide: 0 },
         trapZoneFrames: { center: 0, near: 0, wide: 0 },
         openingBottomLostDir: null,  // 'left'|'right'|'center'
@@ -4308,6 +4393,9 @@ const SparSystem = {
         ai._escapeStartQuality = laneQuality;
         ai._escapeBestQuality = laneQuality;
         ai._escapeLaneShape = laneShape;
+        ai._escapeStartCtx = _snapEngagementCtx(bot, tgt, ai);
+        ai._escapeStartCtx.laneQuality = laneQuality;
+        ai._escapeStartCtx.topCornerTrapped = topCornerTrapped;
       }
     } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic && (badGunSide || repeekedBadLane) && laneQuality < 0.48) {
       if (!ai._gunSidePolicy && !(ai._gunSideCooldown > 0)) {
@@ -4319,6 +4407,9 @@ const SparSystem = {
         ai._gunSideStartQuality = laneQuality;
         ai._gunSideBestQuality = laneQuality;
         ai._gunSideLaneShape = laneShape;
+        ai._gunSideStartCtx = _snapEngagementCtx(bot, tgt, ai);
+        ai._gunSideStartCtx.laneQuality = laneQuality;
+        ai._gunSideStartCtx.badGunSide = badGunSide;
       }
     // --- Advantage chaining: peekPressure activation ---
     // When bot HAS gun-side but NOT bottom, use gun-side peek to pressure opponent into losing bottom
@@ -4579,6 +4670,8 @@ const SparSystem = {
         ai._reloadFamily = rlFamilyMap[rlPolicy] || 'punish';
         ai._reloadStartDmg = ai._matchDmgDealt || 0;
         ai._reloadFrames = 0;
+        ai._reloadStartCtx = _snapEngagementCtx(bot, tgt, ai);
+        ai._reloadStartCtx.hasBottom = hasBottom;
       }
       ai._reloadFrames++;
 
@@ -4795,8 +4888,12 @@ const SparSystem = {
         ai._antiBottomDmgAtStart = ai._matchDmgTaken || 0;
         ai._antiBottomStartFrame = SparState.matchTimer;
         ai._antiBottomStallCount = 0;
-        ai._abBlockedFrames = 0; // body-block detection
-        ai._abLastY = bot.y;     // track vertical progress
+        ai._abBlockedFrames = 0;
+        ai._abLastY = bot.y;
+        ai._abDirFlips = 0;      // how many times offset direction flipped
+        ai._abMaxClearance = 0;  // max lateral clearance achieved
+        ai._abStartCtx = _snapEngagementCtx(bot, tgt, ai);
+        ai._abStartCtx.badGunSide = badGunSide;
         // Pick offset direction: favorable gun-side for crossing
         const favorableDir = (_botGunSide === 'right') ? 1 : -1;
         ai._antiBottomOffsetDir = favorableDir;
@@ -4809,6 +4906,8 @@ const SparSystem = {
       const tactic = ai._antiBottomTactic;
       const phase = ai._antiBottomPhase;
       let offDir = ai._antiBottomOffsetDir;
+      // Track max lateral clearance achieved this engagement
+      if (alignX > (ai._abMaxClearance || 0)) ai._abMaxClearance = alignX;
 
       // --- Body-block awareness (shared across all tactics) ---
       // Track whether bot is making vertical progress toward bottom
@@ -4831,6 +4930,7 @@ const SparSystem = {
             ai._antiBottomOffsetDir *= -1;
             offDir = ai._antiBottomOffsetDir;
             ai._abBlockedFrames = 0;
+            ai._abDirFlips = (ai._abDirFlips || 0) + 1;
             // Wall clamp after flip
             if (offDir < 0 && bot.x < TILE * 4) { ai._antiBottomOffsetDir = 1; offDir = 1; }
             else if (offDir > 0 && bot.x > arenaW - TILE * 4) { ai._antiBottomOffsetDir = -1; offDir = -1; }
@@ -5109,6 +5209,9 @@ const SparSystem = {
         ai._midPressureFamily = mpFamilyMap[mpPolicy] || 'press';
         ai._midPressureStartDmg = ai._matchDmgDealt || 0;
         ai._midPressureFrames = 0;
+        ai._midPressureStartCtx = _snapEngagementCtx(bot, tgt, ai);
+        ai._midPressureStartCtx.hasBottom = hasBottom;
+        ai._midPressureStartCtx.laneQuality = laneQuality;
         ai._lastMidPressurePolicy = mpPolicy;
         ai._lastMidPressureFamily = mpFamilyMap[mpPolicy] || 'press';
       }
@@ -5511,6 +5614,9 @@ const SparSystem = {
           ai._wallPressureFamily = wpFamilyMap[wpPolicy] || 'pin';
           ai._wallPressureStartDmg = ai._matchDmgDealt || 0;
           ai._wallPressureFrames = 0;
+          ai._wallPressureStartCtx = _snapEngagementCtx(bot, tgt, ai);
+          ai._wallPressureStartCtx.hasBottom = hasBottom;
+          ai._wallPressureStartCtx.enemyInCorner = enemyInCorner;
           ai._lastWallPressurePolicy = wpPolicy;
           ai._lastWallPressureFamily = wpFamilyMap[wpPolicy] || 'pin';
         }
@@ -6068,6 +6174,9 @@ const SparSystem = {
         ai._shotTimingFamily = stFamilyMap[stPolicy] || 'aggressive';
         ai._shotTimingStartDmg = ai._matchDmgDealt || 0;
         ai._shotTimingFrames = 0;
+        ai._shotTimingStartCtx = _snapEngagementCtx(bot, tgt, ai);
+        ai._shotTimingStartCtx.hasBottom = hasBottom;
+        ai._shotTimingStartCtx.laneQuality = laneQuality;
         // Map policy to shot mode
         if (stPolicy === 'shootImmediate') {
           ai._shotMode = 'immediate';
