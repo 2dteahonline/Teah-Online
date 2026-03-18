@@ -1185,6 +1185,9 @@ function draw() {
   // Medpacks (in world space)
   drawMedpacks();
 
+  // Test shoot bot (if active)
+  if (typeof drawTestShootBot === 'function') drawTestShootBot();
+
   // Bullets (in world space)
   drawBullets();
 

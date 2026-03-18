@@ -624,6 +624,10 @@ window.addEventListener("keydown", e => {
           const mob = createMob('grunt', player.x + 80, player.y, 1, 1);
           if (mob) mobs.push(mob);
           chatMessages.push({ name: "SYSTEM", text: "Spawned test grunt", time: Date.now() });
+        } else if (cmdLower.startsWith("/testmob bot")) {
+          const side = cmdLower.includes('right') ? 'right' : 'left';
+          if (typeof spawnTestShootBot === 'function') spawnTestShootBot(side);
+          else chatMessages.push({ name: "SYSTEM", text: "Shoot bot not available", time: Date.now() });
         } else if (cmdLower === "/testmob" || cmdLower === "/testmobs") {
           chatInput = "";
           chatInputActive = false; InputIntent.chatActive = false;

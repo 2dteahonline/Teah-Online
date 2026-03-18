@@ -29,6 +29,7 @@ function resetCombatState(mode) {
   window._godMode = false;
   window._mobsNoFire = false;
   window._gameSpeed = 1;
+  if (typeof _testShootBot !== 'undefined') _testShootBot = null;
   // --- Clear telegraph + hazard systems ---
   if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
   if (typeof HazardSystem !== 'undefined') HazardSystem.clear();

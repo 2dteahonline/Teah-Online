@@ -2769,6 +2769,7 @@ function update() {
   } else {
     hotbarHoldSlot = -1; hotbarHoldTime = 0; showWeaponStats = false;
   }
+  if (typeof tickTestShootBot === 'function') tickTestShootBot();
   updateBullets();
   if (typeof updateMining === 'function') updateMining();
   if (typeof updateOrePickups === 'function') updateOrePickups();

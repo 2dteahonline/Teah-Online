@@ -614,6 +614,7 @@ function _testmobSpawn(typeKey, mode) {
     currentDungeon = testMobDungeon;
   }
   // Clear previous
+  _testShootBot = null;
   mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
   if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
   if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
@@ -626,6 +627,105 @@ function _testmobSpawn(typeKey, mode) {
     const label = mode === 'live' ? ' [LIVE]' : ' [FROZEN]';
     chatMessages.push({ name: "SYSTEM", text: "Testing: " + (mob.name || typeKey) + label, time: Date.now() });
   }
+}
+
+// ===================== TEST SHOOTING BOT =====================
+// Stationary bot that shoots CT-X bullets in one direction.
+// Spawned via /testmob bot left|right
+let _testShootBot = null; // { x, y, dir, fireTimer, reloadTimer, ammo, magSize, fireRate, reloadTime }
+
+function spawnTestShootBot(side) {
+  // Enter test arena if not already there
+  if (!Scene.inTestArena) {
+    enterLevel('test_arena', 18, 10);
+    window._opMode = true;
+    player.hp = player.maxHp = 10000;
+    gold = 999999;
+  }
+  // Clear previous mobs/bullets
+  mobs.length = 0; bullets.length = 0; hitEffects.length = 0;
+  if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.clear();
+  if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
+  player.hp = player.maxHp;
+
+  // dir: 2=left, 3=right (matching game dir convention)
+  const dir = side === 'left' ? 2 : 3;
+  // Place bot offset from player
+  const offsetX = side === 'left' ? 150 : -150;
+  _testShootBot = {
+    x: player.x + offsetX,
+    y: player.y,
+    dir: dir,
+    fireTimer: 0,
+    reloadTimer: 0,
+    ammo: 30,
+    magSize: 30,
+    // ROF 50 → rofToStat(50): p=60, frames=11.025-60*0.1125=4.275, *4=17.1
+    fireRate: 17,
+    reloadTime: 36, // ~0.6s reload
+    damage: 20,     // CT-X damage
+  };
+  chatMessages.push({ name: "SYSTEM", text: "Shoot bot spawned — firing " + side + " (CT-X, ROF 50)", time: Date.now() });
+}
+
+function tickTestShootBot() {
+  if (!_testShootBot) return;
+  const b = _testShootBot;
+
+  // Reload
+  if (b.ammo <= 0) {
+    b.reloadTimer--;
+    if (b.reloadTimer <= 0) {
+      b.ammo = b.magSize;
+    }
+    return;
+  }
+
+  // Fire cooldown
+  if (b.fireTimer > 0) { b.fireTimer--; return; }
+
+  // Fire a bullet
+  const bSpeed = GAME_CONFIG.BULLET_SPEED;
+  let vx = 0, vy = 0;
+  if (b.dir === 0) vy = bSpeed;
+  else if (b.dir === 1) vy = -bSpeed;
+  else if (b.dir === 2) vx = -bSpeed;
+  else vx = bSpeed;
+
+  bullets.push({
+    id: nextBulletId++,
+    x: b.x, y: b.y - 10,
+    vx: vx, vy: vy,
+    fromPlayer: true,
+    bulletColor: null, // default bullet color
+    damage: b.damage,
+  });
+
+  b.ammo--;
+  b.fireTimer = b.fireRate;
+  if (b.ammo <= 0) b.reloadTimer = b.reloadTime;
+}
+
+function drawTestShootBot() {
+  if (!_testShootBot) return;
+  const b = _testShootBot;
+  const sx = b.x - camX, sy = b.y - camY;
+  // Simple player-like silhouette
+  ctx.fillStyle = '#4a8aaa';
+  ctx.fillRect(sx - 8, sy - 28, 16, 28);
+  // Head
+  ctx.fillStyle = '#5a9aba';
+  ctx.beginPath(); ctx.arc(sx, sy - 32, 8, 0, Math.PI * 2); ctx.fill();
+  // Gun arm indicator
+  ctx.fillStyle = '#3a6a3a';
+  if (b.dir === 2) ctx.fillRect(sx - 16, sy - 18, 10, 4);
+  else ctx.fillRect(sx + 6, sy - 18, 10, 4);
+  // Label
+  ctx.font = 'bold 9px monospace';
+  ctx.fillStyle = '#88ccff';
+  ctx.textAlign = 'center';
+  ctx.fillText('SHOOT BOT', sx, sy - 44);
+  ctx.textAlign = 'left';
 }
 
 // ===================== DRAW PANEL =====================
