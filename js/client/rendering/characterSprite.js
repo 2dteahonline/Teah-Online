@@ -2363,7 +2363,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
       drawGunArm(bodyL - 3, y + 29 + bobY, bodyL - 1, y + 28 + bobY, 1);
     }
   } else if (dir === 2) { // facing LEFT — gun side offsets Y by ±mOff from center
-    const mOff = (typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.MUZZLE_OFFSET_Y) || 14;
+    const mOff = (typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.MUZZLE_OFFSET_Y != null) ? GAME_CONFIG.MUZZLE_OFFSET_Y : 14;
     if (_gunRight) {
       drawFreeArm(bodyL + 4, y + 29 + bobY + armSwing - mOff); // free arm upper
       ctx.fillStyle = black; ctx.fillRect(bodyL + 8, armY - mOff - 2, 10, 7);
@@ -2376,7 +2376,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
       drawGunArm(bodyL + 4, armY + mOff, bodyL + 2, armY + mOff, 2);
     }
   } else { // facing RIGHT — gun side offsets Y by ±mOff from center
-    const mOff = (typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.MUZZLE_OFFSET_Y) || 14;
+    const mOff = (typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.MUZZLE_OFFSET_Y != null) ? GAME_CONFIG.MUZZLE_OFFSET_Y : 14;
     if (_gunRight) {
       drawFreeArm(bodyR - 2, y + 29 + bobY - armSwing - mOff); // free arm upper
       ctx.fillStyle = black; ctx.fillRect(bodyR - 2, armY + mOff - 2, 10, 7);

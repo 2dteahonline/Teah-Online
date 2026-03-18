@@ -431,7 +431,7 @@ function getMuzzlePos(aimDir) {
   const bodyL = x + 2;
   const bodyR = x + 36;
   const armY = y + 35; // arm at natural chest position (player.y - 33)
-  const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
+  const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 14;
   const isRight = getCurrentGunSide() === 'right';
   if (aimDir === 0) { // down — default: gun on screen-right (bodyR). Mirror: screen-left (bodyL)
     return isRight

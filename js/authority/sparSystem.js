@@ -350,7 +350,7 @@ const SparSystem = {
     const isRight = gunSide === 'right';
     if (aimDir === 0) return { x: isRight ? (bodyL - 1) : (bodyR + 1), y: armY + 6 + 49 };
     if (aimDir === 1) return { x: isRight ? (bodyR + 1) : (bodyL - 1), y: by + 28 - 49 };
-    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
+    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 14;
     if (aimDir === 2) return { x: bodyL + 2 - 49, y: isRight ? (armY - mOff) : (armY + mOff) };
     return { x: bodyR + 9 + 49, y: isRight ? (armY + mOff) : (armY - mOff) };
   },
@@ -2370,7 +2370,7 @@ const SparSystem = {
       const bx = e.x - 20, by = e.y - 68;
       const bodyL = bx + 2, bodyR = bx + 36;
       const armY = by + 35;
-      const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
+      const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 14;
       const isRight = e._gunSide === 'right';
       let mx, my;
       if (wallDir === 2) { mx = bodyL + 2 - 49; my = isRight ? (armY - mOff) : (armY + mOff); }
@@ -2467,7 +2467,7 @@ const SparSystem = {
     const bodyL = bx + 2;
     const bodyR = bx + 36;
     const armY = by + 35;
-    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
+    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 14;
     const isRight = e._gunSide === 'right';
     let mx, my;
     if (aimDir === 0) { // down
