@@ -4339,7 +4339,16 @@ const SparSystem = {
       (1 - wallRisk) * 0.18 +
       (1 - Math.min(1, trapDanger + laneRepeatStreak * 0.08)) * 0.12
     );
-    const badGunSide = enemyLaneScore > botLaneScore + 0.1 || (botLaneScore < 0.46 && enemyLaneScore > 0.55);
+    // Direct gun-side check: when above enemy wanting to shoot down, are we on the WRONG side?
+    // Right gun → muzzle offset left → bot should be RIGHT of enemy to align
+    // Left gun → muzzle offset right → bot should be LEFT of enemy to align
+    const _botGunSide = this._getEntityGunSide(bot);
+    const _wantingToShootDown = bot.y < tgt.y - 15;
+    const _wrongSideForDown = _wantingToShootDown && (
+      (_botGunSide === 'right' && bot.x < tgt.x - 8) ||
+      (_botGunSide === 'left' && bot.x > tgt.x + 8)
+    );
+    const badGunSide = _wrongSideForDown || enemyLaneScore > botLaneScore + 0.1 || (botLaneScore < 0.46 && enemyLaneScore > 0.55);
     const repeekedBadLane = laneRepeatStreak >= 2 || (!!ai._gunSideLaneShape && ai._gunSideLaneShape === laneShape && badGunSide && ai._gunSideFrames > 24);
     const topCornerTrapped = !hasBottom && enemyHasBottom && (inCornerBase || (nearTopWallBase && (nearLeftWallBase || nearRightWallBase)));
     const lostBottomAndNoLane = !hasBottom && enemyHasBottom && laneQuality < 0.42;
@@ -5797,8 +5806,8 @@ const SparSystem = {
           if (bot.y < tgt.y - 20) moveY += speed * 0.12;
         }
       } else if (ai._gunSidePolicy === 'reAngleWide') {
-        // Suppress shots only if lane is bad — still shoot while repositioning if lane is OK
-        suppressPeekShots = laneQuality < 0.45;
+        // Suppress shots while repositioning to correct side — shooting from wrong side is a losing trade
+        suppressPeekShots = laneQuality < 0.45 || _wrongSideForDown;
         moveX = reAngleDir * speed * 0.9;
         moveY += (!hasBottom ? 0.18 : 0.05) * speed;
       } else if (ai._gunSidePolicy === 'yieldLane') {
