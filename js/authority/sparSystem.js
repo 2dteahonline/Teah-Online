@@ -268,6 +268,11 @@ const SparSystem = {
       if (!scope.openingContestFamily) scope.openingContestFamily = createSparRewardBuckets(openContestFamilyKeys);
       if (!scope.punishWindowPolicy) scope.punishWindowPolicy = createSparRewardBuckets(punishWindowKeys);
       if (!scope.punishWindowFamily) scope.punishWindowFamily = createSparRewardBuckets(punishWindowFamilyKeys);
+      // v12: center recovery buckets
+      const centerRecoveryKeys = typeof SPAR_CENTER_RECOVERY_KEYS !== 'undefined' ? SPAR_CENTER_RECOVERY_KEYS : ['crossCommit', 'fakeCrossBreak', 'baitShotDrop', 'wideUnderEntry'];
+      const centerRecoveryFamilyKeys = typeof SPAR_CENTER_RECOVERY_FAMILY_KEYS !== 'undefined' ? SPAR_CENTER_RECOVERY_FAMILY_KEYS : ['cross', 'bait', 'under'];
+      if (!scope.centerRecoveryPolicy) scope.centerRecoveryPolicy = createSparRewardBuckets(centerRecoveryKeys);
+      if (!scope.centerRecoveryFamily) scope.centerRecoveryFamily = createSparRewardBuckets(centerRecoveryFamilyKeys);
     }
     if (!sl.tactical) {
       sl.tactical = {
@@ -621,6 +626,17 @@ const SparSystem = {
       if (pwFamily && scope.punishWindowFamily && scope.punishWindowFamily[pwFamily]) {
         this._updateRewardBucket(scope.punishWindowFamily[pwFamily], pwRewardHalf);
       }
+      // v12: center recovery match-end update — half weight
+      const crPolicy = enemyBot.ai._centerRecoveryPolicy || enemyBot.ai._lastCenterRecoveryPolicy || null;
+      const crFamily = enemyBot.ai._centerRecoveryFamily || enemyBot.ai._lastCenterRecoveryFamily || null;
+      const centerRecoveryReward = this._clamp01(baseReward * 0.5 + gunReward * 0.3 + underReward * 0.2);
+      const crRewardHalf = this._clamp01(0.5 + (centerRecoveryReward - 0.5) * 0.5);
+      if (crPolicy && scope.centerRecoveryPolicy && scope.centerRecoveryPolicy[crPolicy]) {
+        this._updateRewardBucket(scope.centerRecoveryPolicy[crPolicy], crRewardHalf);
+      }
+      if (crFamily && scope.centerRecoveryFamily && scope.centerRecoveryFamily[crFamily]) {
+        this._updateRewardBucket(scope.centerRecoveryFamily[crFamily], crRewardHalf);
+      }
     }
   },
 
@@ -740,6 +756,33 @@ const SparSystem = {
       }
     }
 
+    // v12: Anti-bottom retry diversity — if last engagement failed, penalize same family
+    // and boost other families to encourage trying something different
+    if (posCtx && posCtx._lastFailedFamily) {
+      const lastFailed = posCtx._lastFailedFamily;
+      for (const t of tactics) {
+        const fam = familyMap[t];
+        if (fam === lastFailed) {
+          baseScores[t] = (baseScores[t] || 5) - 8; // penalize same family
+        } else {
+          baseScores[t] = (baseScores[t] || 5) + 4; // boost other families
+        }
+      }
+    }
+
+    // v12: HP-conditional scoring — low HP favors safe tactics, high HP favors aggressive
+    if (posCtx && typeof posCtx.botHpPct === 'number') {
+      if (posCtx.botHpPct <= 0.4) {
+        // Low HP: favor baiting/retreat tactics, penalize rushing in
+        familyBiases.bait = (familyBiases.bait || 0) + 8;
+        familyBiases.flank = (familyBiases.flank || 0) + 3;
+        familyBiases.contest = (familyBiases.contest || 0) - 6;
+      } else if (posCtx.botHpPct >= 0.7) {
+        // High HP: can afford aggressive tactics
+        familyBiases.contest = (familyBiases.contest || 0) + 5;
+      }
+    }
+
     return this._pickHierarchicalPolicy({
       keys: tactics, familyMap,
       pPolicy: pTactic, gPolicy: gTactic, sPolicy: sTactic,
@@ -850,6 +893,17 @@ const SparSystem = {
       if (pm.playerWallsFromBottom > 0.55) baseScores.wideDisengage += 3;
       if (pm.playerHitRate > 0.55) familyBiases.break += 2;
     }
+    // v12: HP-conditional — low HP needs quick escape, high HP can afford reset
+    if (laneInfo && typeof laneInfo.botHpPct === 'number') {
+      if (laneInfo.botHpPct <= 0.35) {
+        baseScores.cornerBreak += 4; // fastest escape
+        baseScores.wideDisengage += 3;
+        baseScores.highReset -= 3; // too slow when dying
+      } else if (laneInfo.botHpPct >= 0.7) {
+        baseScores.baitPullout += 3; // can afford to bait
+        baseScores.highReset += 2;
+      }
+    }
     return this._pickHierarchicalPolicy({
       keys: typeof SPAR_ESCAPE_POLICY_KEYS !== 'undefined'
         ? SPAR_ESCAPE_POLICY_KEYS : ['cornerBreak', 'highReset', 'wideDisengage', 'baitPullout'],
@@ -924,6 +978,14 @@ const SparSystem = {
     if (trigger === 'reload') familyBiases.rush += 3;
     else if (trigger === 'whiff') familyBiases.angle += 2;
     else if (trigger === 'repeek') familyBiases.bait += 3;
+    // v12: HP-conditional — low HP shouldn't rush in to punish
+    if (trigger && trigger.botHpPct !== undefined) {
+      if (trigger.botHpPct <= 0.35) {
+        familyBiases.rush -= 6;
+        familyBiases.angle += 2;
+        familyBiases.bait += 3;
+      }
+    }
     return this._pickHierarchicalPolicy({
       keys: typeof SPAR_PUNISH_WINDOW_KEYS !== 'undefined'
         ? SPAR_PUNISH_WINDOW_KEYS : ['hardConvert', 'angleConvert', 'baitConvert'],
@@ -1073,6 +1135,9 @@ const SparSystem = {
         }
       }
     }
+    ai._lastEngagementType = 'gunSide';
+    ai._lastEngagementSuccess = resolved;
+    ai._lastEngagementFamily = family;
     ai._lastGunSidePolicy = policy;
     ai._lastGunSideFamily = family;
     ai._gunSidePolicy = null;
@@ -1133,6 +1198,9 @@ const SparSystem = {
         }
       }
     }
+    ai._lastEngagementType = 'escape';
+    ai._lastEngagementSuccess = resolved;
+    ai._lastEngagementFamily = family;
     ai._lastEscapePolicy = policy;
     ai._lastEscapeFamily = family;
     ai._escapePolicy = null;
@@ -1237,10 +1305,17 @@ const SparSystem = {
       so.avgDmgDealt = so.attempts > 1 ? so.avgDmgDealt * 0.8 + dmgDealt * 0.2 : dmgDealt;
       so.avgDuration = so.attempts > 1 ? so.avgDuration * 0.8 + stFrames * 0.2 : stFrames;
     }
+    // Engagement transition tracking
+    ai._lastEngagementType = 'shotTiming';
+    ai._lastEngagementSuccess = hitsDuring > 0;
+    ai._lastEngagementFamily = family;
     ai._lastShotTimingPolicy = policy;
     ai._lastShotTimingFamily = family;
     ai._shotTimingPolicy = null;
     ai._shotTimingFamily = null;
+    ai._shotTimingFrames = 0;
+    ai._shotTimingHitsLanded = 0;
+    ai._shotTimingBaitFrames = 0;
     ai._shotTimingStartCtx = null;
   },
 
@@ -1524,6 +1599,149 @@ const SparSystem = {
     ai._wallPressureStartCtx = null;
   },
 
+  // v12: Center recovery policy picker — how to escape center exposure
+  _pickCenterRecovery(pm, posCtx) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    const rf = this._ensureReinforcementProfile(sl);
+    const policies = typeof SPAR_CENTER_RECOVERY_KEYS !== 'undefined'
+      ? SPAR_CENTER_RECOVERY_KEYS
+      : ['crossCommit', 'fakeCrossBreak', 'baitShotDrop', 'wideUnderEntry'];
+    const familyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
+      ? SPAR_CENTER_RECOVERY_FAMILY_MAP
+      : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
+    const pPolicy = rf && rf.player ? rf.player.centerRecoveryPolicy : null;
+    const gPolicy = rf && rf.general ? rf.general.centerRecoveryPolicy : null;
+    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.centerRecoveryPolicy : null;
+    const pFamily = rf && rf.player ? rf.player.centerRecoveryFamily : null;
+    const gFamily = rf && rf.general ? rf.general.centerRecoveryFamily : null;
+    const sFamily = rf && rf.selfPlay ? rf.selfPlay.centerRecoveryFamily : null;
+    const totalPP = this._sumBucketPlays(pPolicy);
+    const totalGP = this._sumBucketPlays(gPolicy);
+    const totalSP = this._sumBucketPlays(sPolicy);
+    const totalPF = this._sumBucketPlays(pFamily);
+    const totalGF = this._sumBucketPlays(gFamily);
+    const totalSF = this._sumBucketPlays(sFamily);
+    const failStreaks = sl && sl.tactical ? sl.tactical.centerRecoveryFailStreaks : null;
+
+    const baseScores = {};
+    for (const p of policies) baseScores[p] = 5;
+
+    // Context-based scoring
+    if (posCtx) {
+      // Near a wall — crossing is risky, go wide or bait
+      if (posCtx.nearWall) {
+        baseScores.wideUnderEntry += 4;
+        baseScores.baitShotDrop += 3;
+        baseScores.crossCommit -= 2;
+      }
+      // Close to enemy — bait is better than crossing through them
+      if (posCtx.dist < 180) {
+        baseScores.baitShotDrop += 5;
+        baseScores.fakeCrossBreak += 3;
+      }
+      // Far from enemy — crossing is safer
+      if (posCtx.dist > 280) {
+        baseScores.crossCommit += 4;
+        baseScores.wideUnderEntry += 3;
+      }
+      // Enemy above — dropping under while in center is strong
+      if (posCtx.enemyAbove) {
+        baseScores.baitShotDrop += 4;
+        baseScores.wideUnderEntry += 3;
+      }
+    }
+
+    // HP-conditional: low HP → prefer safer options
+    if (posCtx && posCtx.botHpPct <= 0.5) {
+      baseScores.baitShotDrop += 3;
+      baseScores.wideUnderEntry += 2;
+      baseScores.crossCommit -= 3;
+    }
+
+    return this._pickHierarchicalPolicy({
+      keys: policies, familyMap,
+      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
+      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
+      baseScores,
+      familyBiases: {},
+      failStreaks,
+      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
+      playerExplore: 0.20, generalExplore: 0.10, selfPlayExplore: 0.08,
+      noise: 3,
+    });
+  },
+
+  // v12: Finalize center recovery engagement
+  _finalizeCenterRecovery(ai, escapedCenter, regainedBottom, regainedGunSide, collector) {
+    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
+    if (!sl || !ai._centerRecoveryPolicy) return;
+    const policy = ai._centerRecoveryPolicy;
+    const family = ai._centerRecoveryFamily;
+    const frames = ai._centerRecoveryFrames || 0;
+    const dmgTaken = (ai._matchDmgTaken || 0) - (ai._centerRecoveryStartDmg || 0);
+    _logEngagement('centerRecovery', frames, dmgTaken);
+
+    if (collector && collector.centerRecoveryEngagements) {
+      collector.centerRecoveryEngagements.push({
+        policy, family, frames, escapedCenter, regainedBottom, regainedGunSide, dmgTaken,
+        startCtx: ai._centerRecoveryStartCtx || null,
+      });
+    }
+
+    // Reward: escaping center is primary (40%), regaining bottom/gunSide (30%), low damage (30%)
+    const escapeR = escapedCenter ? 1 : 0;
+    const posR = (regainedBottom ? 0.6 : 0) + (regainedGunSide ? 0.4 : 0);
+    const dmgR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.4));
+    const phaseReward = this._clamp01(escapeR * 0.40 + posR * 0.30 + dmgR * 0.30);
+
+    const rf = this._ensureReinforcementProfile(sl);
+    if (rf) {
+      for (const scopeName of this._getPhaseScopes()) {
+        const scope = rf[scopeName];
+        if (!scope) continue;
+        if (scope.centerRecoveryPolicy && scope.centerRecoveryPolicy[policy]) {
+          this._updateRewardBucket(scope.centerRecoveryPolicy[policy], phaseReward);
+        }
+        if (scope.centerRecoveryFamily && scope.centerRecoveryFamily[family]) {
+          this._updateRewardBucket(scope.centerRecoveryFamily[family], phaseReward);
+        }
+      }
+    }
+
+    // Fail streaks
+    if (sl.tactical && sl.tactical.centerRecoveryFailStreaks) {
+      if (!escapedCenter) {
+        sl.tactical.centerRecoveryFailStreaks[policy] = (sl.tactical.centerRecoveryFailStreaks[policy] || 0) + 1;
+      } else {
+        sl.tactical.centerRecoveryFailStreaks[policy] = 0;
+      }
+    }
+
+    // Outcome stats
+    if (sl.tactical && sl.tactical.centerRecoveryOutcomes) {
+      const cro = sl.tactical.centerRecoveryOutcomes;
+      cro.attempts++;
+      if (escapedCenter) cro.escapedCenter++;
+      if (regainedBottom) cro.regainedBottom++;
+      if (regainedGunSide) cro.regainedGunSide++;
+      cro.avgDmgTakenDuring = cro.attempts > 1 ? cro.avgDmgTakenDuring * 0.8 + dmgTaken * 0.2 : dmgTaken;
+      cro.avgDuration = cro.attempts > 1 ? cro.avgDuration * 0.8 + frames * 0.2 : frames;
+    }
+
+    // Engagement transition tracking
+    ai._lastEngagementType = 'centerRecovery';
+    ai._lastEngagementSuccess = escapedCenter;
+    ai._lastEngagementFamily = family;
+
+    // Reset state
+    ai._lastCenterRecoveryPolicy = policy;
+    ai._lastCenterRecoveryFamily = family;
+    ai._centerRecoveryPolicy = null;
+    ai._centerRecoveryFamily = null;
+    ai._centerRecoveryFrames = 0;
+    ai._centerRecoveryStartCtx = null;
+  },
+
   // Phase reward: fires when an anti-bottom engagement ends
   _finalizeAntiBottomEngagement(ai, regainedBottom, collector) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
@@ -1596,6 +1814,11 @@ const SparSystem = {
           : frames;
       }
     }
+
+    // Engagement transition tracking
+    ai._lastEngagementType = 'antiBottom';
+    ai._lastEngagementSuccess = regainedBottom;
+    ai._lastEngagementFamily = family;
 
     // Reset engagement state
     ai._antiBottomTactic = null;
@@ -1919,6 +2142,10 @@ const SparSystem = {
         _shotTimingFamily: null,
         _shotTimingStartDmg: 0,
         _shotTimingFrames: 0,
+        _shotTimingHitsLanded: 0,
+        _shotTimingCooldown: 0,
+        _shotTimingStartCtx: null,
+        _shotTimingBaitFrames: 0,    // frames holding shot for baitShot policy
         _lastShotTimingPolicy: null,
         _lastShotTimingFamily: null,
         // v10: reload behavior policy state
@@ -1973,6 +2200,19 @@ const SparSystem = {
         _punishWindowCooldown: 0,
         _lastPunishWindowPolicy: null,
         _lastPunishWindowFamily: null,
+        // v12: center recovery policy state
+        _centerRecoveryPolicy: null,
+        _centerRecoveryFamily: null,
+        _centerRecoveryFrames: 0,
+        _centerRecoveryStartDmg: 0,
+        _centerRecoveryStartCtx: null,
+        _centerRecoveryCooldown: 0,
+        _lastCenterRecoveryPolicy: null,
+        _lastCenterRecoveryFamily: null,
+        // v12: engagement transition tracking
+        _lastEngagementType: null,     // 'antiBottom'|'escape'|'gunSide'|'centerRecovery'|etc
+        _lastEngagementSuccess: false,
+        _lastEngagementFamily: null,
         // Anti-passivity: stop-start pause cap
         _pauseMaxFrames: 0,
       },
@@ -2959,6 +3199,7 @@ const SparSystem = {
         reloadEngagements: [],       // [{policy, family, frames, dmgDealt, punished, startCtx}]
         midPressureEngagements: [],  // [{policy, family, frames, dmgDealt, startCtx}]
         wallPressureEngagements: [], // [{policy, family, frames, dmgDealt, pinned, startCtx}]
+        centerRecoveryEngagements: [], // [{policy, family, frames, escapedCenter, regainedBottom, regainedGunSide, dmgTaken, startCtx}]
         trapZoneHits:   { center: 0, near: 0, wide: 0 },
         trapZoneFrames: { center: 0, near: 0, wide: 0 },
         shotDecisions: [],  // [{dist, hasBottom, dodgeMag, decision:'fired'|'holdForDodge'|'holdForSpeed'|'openingGated', ...}]
@@ -4447,6 +4688,7 @@ const SparSystem = {
     const topCornerTrapped = !hasBottom && enemyHasBottom && (inCornerBase || (nearTopWallBase && (nearLeftWallBase || nearRightWallBase)));
     const lostBottomAndNoLane = !hasBottom && enemyHasBottom && laneQuality < 0.42;
     const noAdvantageState = !hasBottom && badGunSide && (nearTopWallBase || inCornerBase);
+    const _liMaxHp = bot.maxHp || (typeof SPAR_CONFIG !== 'undefined' ? SPAR_CONFIG.HP_BASELINE : 100);
     const laneInfo = {
       score: laneQuality,
       laneShape,
@@ -4459,6 +4701,7 @@ const SparSystem = {
       topCornerTrapped,
       lostBottomAndNoLane,
       noAdvantageState,
+      botHpPct: (bot.hp || 0) / _liMaxHp, // v12: HP for conditional scoring
     };
 
     // --- v8 anti-bottom engagement lifecycle (hysteresis + cooldown) ---
@@ -4930,6 +5173,11 @@ const SparSystem = {
       // (handled below at punish window finalization section)
 
     } else if (hasBottom) {
+      // v12: finalize center recovery if we just gained bottom
+      if (ai._centerRecoveryPolicy) {
+        this._finalizeCenterRecovery(ai, true, true, !badGunSide, c);
+        ai._centerRecoveryCooldown = 30;
+      }
       // === WE HAVE BOTTOM — use it actively, don't just camp ===
 
       // --- WALLING: strafe diagonally while shooting horizontally to create bullet walls ---
@@ -5014,6 +5262,11 @@ const SparSystem = {
       }
 
     } else if (enemyHasBottom && ai._antiBottomHysteresisFrames >= 20 && !(ai._antiBottomCooldown > 0)) {
+      // v12: finalize center recovery if entering anti-bottom
+      if (ai._centerRecoveryPolicy) {
+        this._finalizeCenterRecovery(ai, false, false, !badGunSide, c);
+        ai._centerRecoveryCooldown = 30;
+      }
       // === ENEMY HAS BOTTOM — v8 tactical retake system ===
       const aimSlack = this._getSparAimSlack();
       const sideOffsetNear = this._getSparSideOffsetNear();
@@ -5022,6 +5275,7 @@ const SparSystem = {
 
       // Initialize engagement if not started
       if (!ai._antiBottomTactic) {
+        const maxHp = bot.maxHp || (typeof SPAR_CONFIG !== 'undefined' ? SPAR_CONFIG.HP_BASELINE : 100);
         const _abPosCtx = {
           nearLeftWall: nearLeftWallBase,
           nearRightWall: nearRightWallBase,
@@ -5029,6 +5283,10 @@ const SparSystem = {
           alreadyBelow: bot.y > tgt.y,               // already below enemy
           dist,
           badGunSide,
+          botHpPct: (bot.hp || 0) / maxHp,
+          // v12: retry diversity — pass last failed family if engagement just failed
+          _lastFailedFamily: (ai._lastEngagementType === 'antiBottom' && !ai._lastEngagementSuccess)
+            ? ai._lastEngagementFamily : null,
         };
         const chosen = this._pickAntiBottomTactic(pm, ai._openingLostBottomDir, _abPosCtx);
         ai._antiBottomTactic = chosen;
@@ -5384,19 +5642,95 @@ const SparSystem = {
       // Reset engagement if enemy lost bottom (handled by hysteresis above)
       if (!ai._antiBottomTactic) ai._antiBottomFrames = 0;
       // === NEUTRAL — neither has clear bottom, actively contest ===
-      // === DEAD-STATE PREVENTION: block moves that would worsen position ===
-      // If disadvantaged and drifting toward center band, push laterally
-      const driftingToCenter = !hasBottom && badGunSide &&
-        Math.abs(bot.x - midX) < arenaW * 0.22 && Math.abs(bot.x - midX) > arenaW * 0.08;
-      if (driftingToCenter) {
-        // Push away from center band
-        const preventDir = this._getStableCenterDir(ai, bot.x, midX) > 0 ? -1 : 1;
-        moveX += preventDir * speed * 0.25;
+      // === v12: CENTER RECOVERY POLICY SYSTEM ===
+      if (ai._centerRecoveryCooldown > 0) ai._centerRecoveryCooldown--;
+      // Cancel center recovery if state changed (hasBottom/enemyHasBottom handled by outer if/else)
+      // This block only runs in neutral, so active CR is valid here
+      const _inCenterBand = Math.abs(bot.x - midX) < arenaW * 0.18;
+      const _centerDisadvantaged = !hasBottom && (badGunSide || laneQuality < 0.4);
+      const _shouldStartCR = _inCenterBand && _centerDisadvantaged && !isOpening
+        && !ai._centerRecoveryPolicy && !(ai._centerRecoveryCooldown > 0)
+        && !ai._antiBottomTactic && !ai._escapePolicy;
+
+      if (_shouldStartCR) {
+        const _crMaxHp = bot.maxHp || (typeof SPAR_CONFIG !== 'undefined' ? SPAR_CONFIG.HP_BASELINE : 100);
+        const _crPosCtx = {
+          nearWall: bot.x < TILE * 5 || bot.x > arenaW - TILE * 5,
+          dist,
+          enemyAbove: tgt.y < bot.y - 30,
+          botHpPct: (bot.hp || 0) / _crMaxHp,
+        };
+        const crPolicy = this._pickCenterRecovery(pm, _crPosCtx);
+        const crFamilyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
+          ? SPAR_CENTER_RECOVERY_FAMILY_MAP
+          : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
+        ai._centerRecoveryPolicy = crPolicy;
+        ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
+        ai._centerRecoveryFrames = 0;
+        ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
+        ai._centerRecoveryStartCtx = _snapEngagementCtx(bot, tgt, ai);
+      }
+
+      if (ai._centerRecoveryPolicy) {
+        ai._centerRecoveryFrames++;
+        const crPolicy = ai._centerRecoveryPolicy;
+        const _crEscapeDir = this._getStableCenterDir(ai, bot.x, midX) > 0 ? -1 : 1; // away from center
+        const _crNowClear = Math.abs(bot.x - midX) > arenaW * 0.25; // escaped center band
+
+        // Movement per policy
+        if (crPolicy === 'crossCommit') {
+          // Full commit to crossing to other side
+          moveX = _crEscapeDir * speed * 0.9;
+          moveY = speed * 0.25; // slight descent while crossing
+        } else if (crPolicy === 'fakeCrossBreak') {
+          // Phase 0: start crossing, Phase 1: break back when enemy reacts
+          if (ai._centerRecoveryFrames < 15) {
+            moveX = _crEscapeDir * speed * 0.85;
+            moveY = speed * 0.15;
+          } else {
+            moveX = -_crEscapeDir * speed * 0.8; // reverse direction
+            moveY = speed * 0.4; // descend while reversing
+          }
+        } else if (crPolicy === 'baitShotDrop') {
+          // Strafe to bait a shot, then drop below center during freeze window
+          if (ai._centerRecoveryFrames < 10) {
+            moveX = ai.strafeDir * speed * 0.9;
+            moveY = speed * 0.1;
+          } else {
+            moveX = _crEscapeDir * speed * 0.5;
+            moveY = speed * 0.7; // aggressive descent
+          }
+        } else if (crPolicy === 'wideUnderEntry') {
+          // Go wide to arena edge first, then approach from under
+          if (!_crNowClear) {
+            moveX = _crEscapeDir * speed * 0.95;
+            moveY = speed * 0.08;
+          } else {
+            moveX = _crEscapeDir * speed * 0.3;
+            moveY = speed * 0.75; // drop to bottom
+          }
+        }
+
+        // Finalize: success (escaped center), timeout (180 frames), or state changed
+        const _crRegainedBottom = hasBottom;
+        const _crRegainedGunSide = !badGunSide;
+        if (_crNowClear || ai._centerRecoveryFrames >= 180) {
+          this._finalizeCenterRecovery(ai, _crNowClear, _crRegainedBottom, _crRegainedGunSide, c);
+          ai._centerRecoveryCooldown = 30;
+        }
+      } else {
+        // Fallback: simple center prevention (no active policy)
+        const driftingToCenter = !hasBottom && badGunSide &&
+          Math.abs(bot.x - midX) < arenaW * 0.22 && Math.abs(bot.x - midX) > arenaW * 0.08;
+        if (driftingToCenter) {
+          const preventDir = this._getStableCenterDir(ai, bot.x, midX) > 0 ? -1 : 1;
+          moveX += preventDir * speed * 0.25;
+        }
       }
       // If disadvantaged and drifting toward wall, push toward center
       const driftingToWall = !hasBottom && (badGunSide || laneQuality < 0.5) &&
         (bot.x < TILE * 5 || bot.x > arenaW - TILE * 5);
-      if (driftingToWall && !ai._escapePolicy) {
+      if (driftingToWall && !ai._escapePolicy && !ai._centerRecoveryPolicy) {
         moveX += this._getStableCenterDir(ai, bot.x, midX) * speed * 0.3;
       }
       // v11: Pick mid-fight pressure policy if not active (respect cooldown)
@@ -6431,6 +6765,37 @@ const SparSystem = {
       bot.dir = moveY > 0 ? 0 : 1;
     }
 
+    // --- v12: Shot timing policy lifecycle ---
+    if (ai._shotTimingCooldown > 0) ai._shotTimingCooldown--;
+    if (!ai._shotTimingPolicy && !isOpening && !(ai._shotTimingCooldown > 0)) {
+      const stCtx = {
+        dist, hasBottom, enemyHasBottom,
+        recentHit: ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30,
+        recentTookHit: ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 30,
+        laneQuality,
+      };
+      const stPolicy = this._pickShotTimingPolicy(pm, stCtx);
+      const stFamilyMap = typeof SPAR_SHOT_TIMING_FAMILY_MAP !== 'undefined'
+        ? SPAR_SHOT_TIMING_FAMILY_MAP
+        : { shootImmediate: 'aggressive', delayShot: 'patient', baitShot: 'patient' };
+      ai._shotTimingPolicy = stPolicy;
+      ai._shotTimingFamily = stFamilyMap[stPolicy] || 'aggressive';
+      ai._shotTimingStartDmg = ai._matchDmgDealt || 0;
+      ai._shotTimingFrames = 0;
+      ai._shotTimingHitsLanded = 0;
+      ai._shotTimingBaitFrames = 0;
+      ai._shotTimingStartCtx = _snapEngagementCtx(bot, tgt, ai);
+    }
+    if (ai._shotTimingPolicy) {
+      ai._shotTimingFrames++;
+      // Re-evaluate every 120 frames (2 seconds)
+      if (ai._shotTimingFrames >= 120) {
+        const stDmg = (ai._matchDmgDealt || 0) - (ai._shotTimingStartDmg || 0);
+        this._finalizeShotTimingEngagement(ai, ai._shotTimingHitsLanded || 0, stDmg);
+        ai._shotTimingCooldown = 10;
+      }
+    }
+
     // --- Shooting: fire on cooldown, but NOT during speed-critical moves ---
     // The freeze penalty (54% slow, 15 frames) means shooting costs movement.
     // Hold fire when: (1) bullet incoming during freeze, (2) executing a move
@@ -6442,7 +6807,11 @@ const SparSystem = {
       // With aggressive dodge detection, dodgeMag is high for ANY bullet in air.
       // Only suppress shooting when bullet is VERY close and on collision course.
       // When bot has bottom, shoot freely — the angle advantage is worth more than dodging.
-      const freezeWouldGetHit = !hasBottom && dodgeMag > 2.5;
+      let freezeWouldGetHit = !hasBottom && dodgeMag > 2.5;
+      // v12: shootImmediate relaxes freeze threshold — fire through mild danger
+      if (ai._shotTimingPolicy === 'shootImmediate' && dodgeMag < 4.0) {
+        freezeWouldGetHit = false;
+      }
       // Is the bot executing a move that needs full speed?
       // These states require committed movement — freeze would ruin them.
       const needsFullSpeed = _movePlanCurrentState === 'antiBottom'  // crossing/flanking/descending
@@ -6475,13 +6844,34 @@ const SparSystem = {
         if (ai._escapePolicy) ai._escapeShotsHeld = (ai._escapeShotsHeld || 0) + 1;
         if (ai._gunSidePolicy) ai._gunSideShotsHeld = (ai._gunSideShotsHeld || 0) + 1;
       } else {
-        this._sparBotShoot(member, tgt);
-        if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'fired' });
-        if (c && c.shotsByState) c.shotsByState[_stKey] = (c.shotsByState[_stKey] || 0) + 1;
-        // Track fires on per-engagement counters (shouldn't happen for speed states, but safety)
-        if (ai._antiBottomTactic) ai._antiBottomShotsFired = (ai._antiBottomShotsFired || 0) + 1;
-        if (ai._escapePolicy) ai._escapeShotsFired = (ai._escapeShotsFired || 0) + 1;
-        if (ai._gunSidePolicy) ai._gunSideShotsFired = (ai._gunSideShotsFired || 0) + 1;
+        // v12: Shot timing policy gate — delayShot waits for alignment, baitShot holds then fires
+        const _alignX = Math.abs(dx), _alignY = Math.abs(dy);
+        let _shotTimingHold = false;
+        if (ai._shotTimingPolicy === 'delayShot') {
+          // Patient: only fire when alignment is very tight
+          _shotTimingHold = Math.min(_alignX, _alignY) > 35 && dist > 120;
+        } else if (ai._shotTimingPolicy === 'baitShot') {
+          // Bait: hold for 8 frames after first wanting to shoot, then fire
+          ai._shotTimingBaitFrames = (ai._shotTimingBaitFrames || 0) + 1;
+          _shotTimingHold = ai._shotTimingBaitFrames < 8;
+          if (!_shotTimingHold) ai._shotTimingBaitFrames = 0; // reset for next cycle
+        }
+        // shootImmediate: never holds (already handled by relaxing freeze threshold above)
+
+        if (_shotTimingHold) {
+          if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'shotTimingHold', policy: ai._shotTimingPolicy });
+          if (c && c.shotsHeldByState) c.shotsHeldByState[_stKey] = (c.shotsHeldByState[_stKey] || 0) + 1;
+        } else {
+          this._sparBotShoot(member, tgt);
+          if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'fired' });
+          if (c && c.shotsByState) c.shotsByState[_stKey] = (c.shotsByState[_stKey] || 0) + 1;
+          // Track fires on per-engagement counters (shouldn't happen for speed states, but safety)
+          if (ai._antiBottomTactic) ai._antiBottomShotsFired = (ai._antiBottomShotsFired || 0) + 1;
+          if (ai._escapePolicy) ai._escapeShotsFired = (ai._escapeShotsFired || 0) + 1;
+          if (ai._gunSidePolicy) ai._gunSideShotsFired = (ai._gunSideShotsFired || 0) + 1;
+          // Track hits for shot timing engagement
+          if (ai._shotTimingPolicy) ai._shotTimingHitsLanded = (ai._shotTimingHitsLanded || 0) + 1;
+        }
       }
     }
   },
