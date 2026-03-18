@@ -4339,16 +4339,20 @@ const SparSystem = {
       (1 - wallRisk) * 0.18 +
       (1 - Math.min(1, trapDanger + laneRepeatStreak * 0.08)) * 0.12
     );
-    // Direct gun-side check: when above enemy wanting to shoot down, are we on the WRONG side?
-    // Right gun → muzzle offset left → bot should be RIGHT of enemy to align
-    // Left gun → muzzle offset right → bot should be LEFT of enemy to align
+    // Full gun-side positional check — applies to ALL shooting angles (down, up, horizontal):
+    // Right gun → muzzle geometry favors being RIGHT of enemy in every direction:
+    //   - Down: muzzle.x left of body → right-of-enemy aligns bullet path to target
+    //   - Horizontal: right gun shooting right → muzzle lower → pressures bottom
+    //   - Up: right gun → muzzle.x right of body → left-of-enemy aligns (weaker case)
+    // Left gun: opposite — favors being LEFT of enemy
     const _botGunSide = this._getEntityGunSide(bot);
-    const _wantingToShootDown = bot.y < tgt.y - 15;
-    const _wrongSideForDown = _wantingToShootDown && (
+    const _wrongSide = (
       (_botGunSide === 'right' && bot.x < tgt.x - 8) ||
       (_botGunSide === 'left' && bot.x > tgt.x + 8)
     );
-    const badGunSide = _wrongSideForDown || enemyLaneScore > botLaneScore + 0.1 || (botLaneScore < 0.46 && enemyLaneScore > 0.55);
+    const _wantingToShootDown = bot.y < tgt.y - 15;
+    const _wrongSideForDown = _wantingToShootDown && _wrongSide;
+    const badGunSide = _wrongSide || enemyLaneScore > botLaneScore + 0.1 || (botLaneScore < 0.46 && enemyLaneScore > 0.55);
     const repeekedBadLane = laneRepeatStreak >= 2 || (!!ai._gunSideLaneShape && ai._gunSideLaneShape === laneShape && badGunSide && ai._gunSideFrames > 24);
     const topCornerTrapped = !hasBottom && enemyHasBottom && (inCornerBase || (nearTopWallBase && (nearLeftWallBase || nearRightWallBase)));
     const lostBottomAndNoLane = !hasBottom && enemyHasBottom && laneQuality < 0.42;
@@ -4802,12 +4806,12 @@ const SparSystem = {
         routeSpeedX = ai.strafeDir * speed * 0.15;
       } else if (route === 'bottomLeft') {
         routeGoalX = arenaW * 0.25;
-        routeSpeedY = speed * 0.9;
-        routeSpeedX = Math.sign(routeGoalX - bot.x) * speed * 0.4;
+        routeSpeedY = speed * 0.95;
+        routeSpeedX = Math.sign(routeGoalX - bot.x) * speed * 0.3;
       } else if (route === 'bottomRight') {
         routeGoalX = arenaW * 0.75;
-        routeSpeedY = speed * 0.9;
-        routeSpeedX = Math.sign(routeGoalX - bot.x) * speed * 0.4;
+        routeSpeedY = speed * 0.95;
+        routeSpeedX = Math.sign(routeGoalX - bot.x) * speed * 0.3;
       } else if (route === 'topHold') {
         routeGoalY = arenaH * 0.3;
         routeSpeedY = Math.sign(routeGoalY - bot.y) * speed * 0.5;
@@ -4816,13 +4820,13 @@ const SparSystem = {
         routeGoalY = arenaH * 0.8;
         const flankSide = tgt.x < midX ? arenaW * 0.7 : arenaW * 0.3;
         routeGoalX = flankSide;
-        routeSpeedY = speed * 0.85;
-        routeSpeedX = Math.sign(flankSide - bot.x) * speed * 0.45;
+        routeSpeedY = speed * 0.92;
+        routeSpeedX = Math.sign(flankSide - bot.x) * speed * 0.35;
       } else if (route === 'mirrorPlayer') {
         const tVx = tgt.vx || 0, tVy = tgt.vy || 0;
         routeSpeedX = tVx * 0.9;
         routeSpeedY = tVy * 0.9;
-        if (bot.y < arenaH * 0.8) routeSpeedY = Math.max(routeSpeedY, speed * 0.7);
+        if (bot.y < arenaH * 0.8) routeSpeedY = Math.max(routeSpeedY, speed * 0.85);
       }
 
       // Contest policy modifies HOW we execute the route
@@ -4835,56 +4839,51 @@ const SparSystem = {
           moveX += Math.sign(tgt.x - bot.x) * speed * 0.15;
         }
       } else if (contest === 'denyLane') {
-        // Cut off player's favored bottom side before descending
+        // Cut off player's favored bottom side while descending hard
         const _sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
         const playerFavSide = (_sl && _sl.opening && _sl.opening.strafeLeft > 0.55) ? -1 : 1;
-        // Clamp deny target to arena bounds so we don't run into walls
         const denyX = Math.max(TILE * 5, Math.min(arenaW - TILE * 5, midX + playerFavSide * arenaW * 0.2));
-        if (SparState.matchTimer < 45) {
-          // Phase 1: move laterally to deny lane while descending meaningfully
-          moveX = Math.sign(denyX - bot.x) * speed * 0.55;
-          moveY = speed * 0.55; // descend faster — bottom is the priority, not just lateral deny
+        if (SparState.matchTimer < 30) {
+          // Phase 1: deny lane while descending hard — bottom is priority
+          moveX = Math.sign(denyX - bot.x) * speed * 0.45;
+          moveY = speed * 0.75;
         } else {
-          // Phase 2: now race to bottom from deny position
-          if (bot.y < routeGoalY - 10) moveY = speed * 0.95;
-          moveX = Math.sign(routeGoalX - bot.x) * speed * 0.35;
+          // Phase 2: race to bottom from deny position
+          if (bot.y < routeGoalY - 10) moveY = speed;
+          moveX = Math.sign(routeGoalX - bot.x) * speed * 0.3;
         }
       } else if (contest === 'delayedDrop') {
-        // Brief lateral shift (avoid early shot line), then drop opposite player
-        // Don't waste too long — bottom is the priority
-        if (SparState.matchTimer < 30) {
-          // Short lateral phase — still descend meaningfully
-          moveX = ai.strafeDir * speed * 0.65;
-          moveY = speed * 0.45;
+        // Very brief lateral shift, then drop fast to bottom
+        if (SparState.matchTimer < 20) {
+          // Short lateral phase — still descend hard
+          moveX = ai.strafeDir * speed * 0.55;
+          moveY = speed * 0.65;
         } else {
           // Fast drop to bottom, opposite side of player
           const oppSide = tgt.x < midX ? arenaW * 0.7 : arenaW * 0.3;
           if (bot.y < routeGoalY - 10) moveY = speed;
-          moveX = Math.sign(oppSide - bot.x) * speed * 0.4;
+          moveX = Math.sign(oppSide - bot.x) * speed * 0.35;
         }
       } else if (contest === 'mirrorThenBreak') {
-        // Mirror first 25f, then break opposite
-        if (SparState.matchTimer < 25) {
+        // Mirror first 20f, then break opposite — always descend hard
+        if (SparState.matchTimer < 20) {
           moveX = (tgt.vx || 0) * 0.85;
           moveY = (tgt.vy || 0) * 0.85;
-          if (bot.y < arenaH * 0.8) moveY = Math.max(moveY, speed * 0.5);
+          if (bot.y < arenaH * 0.8) moveY = Math.max(moveY, speed * 0.7);
         } else {
-          // Break to opposite side
           const breakSide = tgt.x < midX ? 1 : -1;
-          moveX = breakSide * speed * 0.6;
-          if (bot.y < routeGoalY - 10) moveY = speed * 0.85;
+          moveX = breakSide * speed * 0.5;
+          if (bot.y < routeGoalY - 10) moveY = speed * 0.92;
         }
       } else if (contest === 'fakeCommit') {
-        // Show one route for 25f, then cut to center/flank
-        if (SparState.matchTimer < 25) {
-          // Fake commit to route destination
-          if (bot.y < routeGoalY - 10) moveY = speed * 0.7;
+        // Show one route for 20f, then cut — always descend hard
+        if (SparState.matchTimer < 20) {
+          if (bot.y < routeGoalY - 10) moveY = speed * 0.85;
           moveX = routeSpeedX;
         } else {
-          // Cut to opposite side
           const cutX = tgt.x < midX ? arenaW * 0.65 : arenaW * 0.35;
-          moveX = Math.sign(cutX - bot.x) * speed * 0.55;
-          if (bot.y < routeGoalY - 10) moveY = speed * 0.85;
+          moveX = Math.sign(cutX - bot.x) * speed * 0.45;
+          if (bot.y < routeGoalY - 10) moveY = speed * 0.92;
         }
       } else {
         // Fallback: basic route movement
@@ -5286,19 +5285,29 @@ const SparSystem = {
         }
 
       } else if (tactic === 'lateCrossUnder') {
-        // Phase 0 (0-50 frames): heavy strafe, hold vertical, dodge shots
+        // Phase 0: strafe and read bullet gaps — wait for safe cross window
+        const crossGap = this._findSafeCrossWindow(bot, tgt, team);
+        // Target favorable gun-side: right gun → cross to RIGHT of enemy, left gun → LEFT
+        const botGunSideForCross = this._getEntityGunSide(bot);
+        const favorableCrossDir = (botGunSideForCross === 'right') ? 1 : -1;
+        const alreadyFavorable = (favorableCrossDir === 1 && bot.x > tgt.x + 8) ||
+          (favorableCrossDir === -1 && bot.x < tgt.x - 8);
         if (phase === 0) {
           moveX = ai.strafeDir * speed * 0.9;
           moveY = speed * 0.1;
-          if (phaseF > 50) {
+          // Advance to cross when: gap found AND far enough, OR timeout at 60f
+          const gapReady = crossGap.gapQuality > 0.5 && dist > 180;
+          if ((gapReady && phaseF > 15) || phaseF > 60) {
             ai._antiBottomPhase = 1;
             ai._antiBottomPhaseFrames = 0;
+            // Cross toward favorable gun-side (or opposite if already on it)
+            ai._antiBottomOffsetDir = alreadyFavorable ? -favorableCrossDir : favorableCrossDir;
           }
         } else {
-          // Phase 1 (50+): sprint diagonally down-and-across (cross the centerline)
-          const crossDir = (bot.x < tgt.x) ? 1 : -1; // cross toward enemy's opposite side
-          moveX = crossDir * speed * 0.7;
-          moveY = speed * 0.7;
+          // Phase 1: commit cross — fast diagonal toward favorable gun-side + bottom
+          const crossDir = ai._antiBottomOffsetDir || favorableCrossDir;
+          moveX = crossDir * speed * 0.85;
+          moveY = speed * 0.65;
         }
 
       } else if (tactic === 'forceMirrorThenBreak') {
@@ -5446,13 +5455,15 @@ const SparSystem = {
             moveY -= (dy / dist) * speed * 0.1;
           }
         } else {
-          // No advantage: approach cautiously, don't get close
-          if (dist > 200 && dist > 1) {
+          // No advantage: keep distance — more aggressively when on wrong gun-side
+          const noAdvMinDist = badGunSide ? 200 : 140;
+          if (dist > 220 && dist > 1) {
             moveX += (dx / dist) * speed * 0.35;
             moveY += (dy / dist) * speed * 0.3;
-          } else if (dist < 140 && dist > 1) {
-            moveX -= (dx / dist) * speed * 0.15;
-            moveY -= (dy / dist) * speed * 0.1;
+          } else if (dist < noAdvMinDist && dist > 1) {
+            const retreatStr = badGunSide ? 0.3 : 0.15;
+            moveX -= (dx / dist) * speed * retreatStr;
+            moveY -= (dy / dist) * speed * (retreatStr * 0.7);
           }
         }
         // Push toward bottom position — bottom is the primary objective
@@ -5685,16 +5696,19 @@ const SparSystem = {
           moveX = arcDir * speed * 0.75;
           moveY = (bot.y < tgt.y) ? -speed * 0.3 : speed * 0.15; // prefer backing up if above
         } else {
-          // Safe distance — commit to cross
+          // Safe distance — commit to cross toward favorable gun-side
           const goalDx = clampedCrossX - bot.x;
-          const goalDy = (bot.y < tgt.y ? speed * 0.2 : speed * 0.05);
           const goalDist = Math.abs(goalDx);
           if (goalDist > 10) {
-            moveX = Math.sign(goalDx) * speed * 0.9;
-            moveY = goalDy;
+            // Cross faster when path is clear — this is the window, commit through it
+            const crossSpeed = pathIsClear ? 1.0 : 0.85;
+            moveX = Math.sign(goalDx) * speed * crossSpeed;
+            // Descend during cross to gain bottom — that's the whole point of crossing
+            moveY = (bot.y < tgt.y) ? speed * 0.35 : speed * 0.1;
           } else {
+            // Reached target X — descend hard toward bottom
             moveX = ai.strafeDir * speed * 0.5;
-            moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
+            moveY = (bot.y < tgt.y) ? speed * 0.45 : speed * 0.1;
           }
         }
       } else if (crPolicy === 'fakeCrossBreak') {
@@ -5807,7 +5821,7 @@ const SparSystem = {
         }
       } else if (ai._gunSidePolicy === 'reAngleWide') {
         // Suppress shots while repositioning to correct side — shooting from wrong side is a losing trade
-        suppressPeekShots = laneQuality < 0.45 || _wrongSideForDown;
+        suppressPeekShots = laneQuality < 0.45 || _wrongSide;
         moveX = reAngleDir * speed * 0.9;
         moveY += (!hasBottom ? 0.18 : 0.05) * speed;
       } else if (ai._gunSidePolicy === 'yieldLane') {
@@ -5846,7 +5860,7 @@ const SparSystem = {
       const enemyLowHp = tgt.hp < (tgt.maxHp || SPAR_CONFIG.HP_BASELINE) * 0.35;
       const recentLandedHit = ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30;
       const hasCloseReason = enemyLowHp || recentLandedHit;
-      const styleMinDist = hasAdvantage ? 90 : (badGunSide && !hasCloseReason ? 200 : 160);
+      const styleMinDist = hasAdvantage ? 90 : (badGunSide && !hasCloseReason ? 220 : 160);
 
       // Scale approach/retreat based on style
       if (dist > 1) {
@@ -5859,6 +5873,12 @@ const SparSystem = {
           moveX += (dx / dist) * diff;
           moveY += (dy / dist) * diff;
         }
+      }
+      // Active retreat when below minimum distance without advantage
+      if (dist < styleMinDist && dist > 1 && !hasAdvantage) {
+        const retreatStr = Math.min(0.35, (styleMinDist - dist) / styleMinDist);
+        moveX -= (dx / dist) * speed * retreatStr;
+        moveY -= (dy / dist) * speed * retreatStr;
       }
       // Scale strafe intensity
       const perpComponent = Math.abs(moveX * dy - moveY * dx) / Math.max(1, dist);
@@ -6593,7 +6613,7 @@ const SparSystem = {
 
       const policyShotAllowed = (!ai._escapePolicy && !suppressPeekShots && !openingFireGated)
         || (laneQuality > 0.62 && !badGunSide && !openingFireGated)
-        || (dist < 130 && botLaneScore > enemyLaneScore + 0.08 && !openingFireGated)
+        || (dist < 130 && botLaneScore > enemyLaneScore + 0.08 && !_wrongSide && !openingFireGated)
         // Stall-break fail-safe: if bot is stalled in an owner state, allow defensive firing
         || (ai._stallBreakActive && laneQuality > 0.35)
         // Long-stall fail-safe: if suppressPeekShots has been active 30+ frames without progress
