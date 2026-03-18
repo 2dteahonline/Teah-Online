@@ -1624,24 +1624,27 @@ const ENTITY_RENDERERS = {
       const sx = ex + 8, sy = ey + 8, sw = cw - 16, sh = ch * 0.4;
       ctx.fillStyle = '#000';
       ctx.fillRect(sx, sy, sw, sh);
-      // Active player detection
-      let _arcadePlaying = false;
+      // Active player detection — screen only on when gamer is at cabinet and actively playing
       let _arcadeGamerNpc = null;
+      let _arcadeScreenOn = false;
       if (typeof DINER_ARCADE_SPOTS !== 'undefined' && typeof dinerNPCs !== 'undefined') {
         for (const spot of DINER_ARCADE_SPOTS) {
           if (spot.claimedBy && Math.abs(spot.tx - e.tx) <= 1 && Math.abs(spot.ty - (e.ty + 2)) <= 1) {
-            _arcadePlaying = true;
-            // Find the gamer NPC for result display
             for (const dn of dinerNPCs) {
               if (dn.id === spot.claimedBy) { _arcadeGamerNpc = dn; break; }
+            }
+            // Screen is only on when gamer is at the cabinet and playing or showing result
+            if (_arcadeGamerNpc && _arcadeGamerNpc.state === 'gamer_playing' &&
+                (_arcadeGamerNpc.stateTimer > 0 || _arcadeGamerNpc._arcadeResultTimer > 0 || _arcadeGamerNpc._arcadeFeePaid)) {
+              _arcadeScreenOn = true;
             }
             break;
           }
         }
       }
-      if (_arcadePlaying) {
+      if (_arcadeScreenOn && _arcadeGamerNpc) {
         // Check if showing win/lose result
-        if (_arcadeGamerNpc && _arcadeGamerNpc._arcadeResultTimer > 0) {
+        if (_arcadeGamerNpc._arcadeResultTimer > 0) {
           const isWin = _arcadeGamerNpc._arcadeLastResult === 'win';
           ctx.fillStyle = isWin ? 'rgba(0,80,0,0.8)' : 'rgba(80,0,0,0.8)';
           ctx.fillRect(sx + 2, sy + 2, sw - 4, sh - 4);
@@ -1649,9 +1652,8 @@ const ENTITY_RENDERERS = {
           ctx.fillStyle = isWin ? '#40ff40' : '#ff4040';
           ctx.fillText(isWin ? "YOU WIN!" : "YOU LOSE", sx + sw / 2, sy + sh / 2 + 3);
           ctx.textAlign = "left";
-          _arcadeGamerNpc._arcadeResultTimer--;
         } else {
-          // Animated pixel patterns when NPC is playing
+          // Animated pixel patterns when NPC is actively playing
           const seed = Math.floor(t * 8);
           for (let _py = 0; _py < 4; _py++) {
             for (let _px = 0; _px < 3; _px++) {
@@ -1668,7 +1670,7 @@ const ENTITY_RENDERERS = {
           ctx.fillRect(sx + 2, sy + 4 + sl * (sh / 5), sw - 4, 1);
         }
       }
-      // When not playing, screen stays black (no glow)
+      // When not playing or no gamer, screen stays black
       // Joystick bump
       ctx.fillStyle = '#333';
       ctx.beginPath(); ctx.arc(ex + cw * 0.4, ey + ch * 0.72, 4, 0, Math.PI * 2); ctx.fill();
@@ -1914,87 +1916,7 @@ const ENTITY_RENDERERS = {
       ctx.fillText("SERVE", ex + cw / 2, ey + ch - 4);
       ctx.textAlign = "left";
 
-      // === Tray rendering — ON the pickup counter, right end (below coffee station) ===
-      // Trays render on the counter surface starting at the right end (tx:14),
-      // growing left for additional trays. Position: 1 tile right of coffee entity left edge.
-      {
-        let traySlot = 0; // tracks horizontal position (0 = rightmost, grows left)
-        const trayBaseX = ex + cw - TILE / 2; // center of rightmost counter tile (tx:14)
-        const trayY = ey + ch * 0.4;
-
-        // In-progress tray (current multi-part order) — shows first, rightmost
-        if (typeof cookingState !== 'undefined' && cookingState.ticket && cookingState.ticket.items &&
-            cookingState.activeRestaurantId === 'diner') {
-          const completed = cookingState.ticket.completedCount || 0;
-          const total = cookingState.ticket.items.length;
-          if (completed > 0) {
-            const tableNum = cookingState.currentOrder && cookingState.currentOrder._dinerTableNumber
-              ? cookingState.currentOrder._dinerTableNumber : 0;
-            const trayX = trayBaseX - traySlot * TILE;
-            // Tray grows with each completed item
-            const trayW = 10 + completed * 4;
-            const trayH = 4 + completed * 1;
-            ctx.fillStyle = '#b0b0b8';
-            ctx.beginPath(); ctx.ellipse(trayX, trayY + 4, trayW, trayH + 2, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#c8c8d0';
-            ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, trayW - 2, trayH + 1, 0, 0, Math.PI * 2); ctx.fill();
-            // Food items on tray
-            const trayItems = cookingState._dinerTrayItems || [];
-            for (let fi = 0; fi < completed; fi++) {
-              const fx = trayX - (completed - 1) * 4 + fi * 8;
-              const itemIngs = trayItems[fi];
-              const itemColor = itemIngs && itemIngs[0] && typeof DINER_INGREDIENTS !== 'undefined' && DINER_INGREDIENTS[itemIngs[0]]
-                ? DINER_INGREDIENTS[itemIngs[0]].color : '#d4a040';
-              ctx.fillStyle = itemColor;
-              ctx.beginPath(); ctx.arc(fx, trayY - 1, 3, 0, Math.PI * 2); ctx.fill();
-            }
-            // Progress text
-            ctx.textAlign = "center";
-            ctx.font = "bold 7px monospace"; ctx.fillStyle = '#ffffff';
-            ctx.fillText(completed + "/" + total, trayX, trayY - 8);
-            if (tableNum > 0) {
-              ctx.font = "bold 7px monospace"; ctx.fillStyle = '#ffd700';
-              ctx.fillText("T" + tableNum, trayX, trayY + 14);
-            }
-            ctx.textAlign = "left";
-            traySlot++;
-          }
-        }
-
-        // Completed trays waiting for waitress pickup (left of in-progress tray)
-        if (typeof _dinerPendingServe !== 'undefined' && _dinerPendingServe.length > 0) {
-          for (let pi = 0; pi < Math.min(_dinerPendingServe.length, 4); pi++) {
-            const trayX = trayBaseX - traySlot * TILE;
-            const items = _dinerPendingServe[pi].allTrayItems || [];
-            const itemCount = Math.max(items.length, 2);
-            const trayW = 10 + itemCount * 4;
-            const trayH = 4 + itemCount * 1;
-            // Tray base
-            ctx.fillStyle = '#b0b0b8';
-            ctx.beginPath(); ctx.ellipse(trayX, trayY + 4, trayW, trayH + 2, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#c8c8d0';
-            ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, trayW - 2, trayH + 1, 0, 0, Math.PI * 2); ctx.fill();
-            // Food items
-            for (let fi = 0; fi < Math.min(items.length, 4); fi++) {
-              const fx = trayX - (Math.min(items.length, 4) - 1) * 4 + fi * 8;
-              const itemIngs = items[fi];
-              const itemColor = itemIngs && itemIngs[0] && typeof DINER_INGREDIENTS !== 'undefined' && DINER_INGREDIENTS[itemIngs[0]]
-                ? DINER_INGREDIENTS[itemIngs[0]].color : '#d4a040';
-              ctx.fillStyle = itemColor;
-              ctx.beginPath(); ctx.arc(fx, trayY - 1, 3, 0, Math.PI * 2); ctx.fill();
-            }
-            // Green check (ready for pickup)
-            ctx.font = "bold 10px monospace"; ctx.fillStyle = '#40ff40'; ctx.textAlign = "center";
-            ctx.fillText("\u2713", trayX, trayY - 8);
-            // Table number
-            const bNum = _dinerPendingServe[pi].tableNumber || (_dinerPendingServe[pi].boothId + 1);
-            ctx.font = "bold 7px monospace"; ctx.fillStyle = '#ffd700';
-            ctx.fillText("T" + bNum, trayX, trayY + 14);
-            ctx.textAlign = "left";
-            traySlot++;
-          }
-        }
-      }
+      // Tray rendering moved to _drawDinerTrayOverlay (post-entity pass)
   },
 
   diner_service_counter: (e, ctx, ex, ey, w, h) => {
@@ -4617,6 +4539,97 @@ function drawLevelEntities(camX, camY) {
     const ey = e.ty * TILE - camY;
     const renderer = ENTITY_RENDERERS[e.type];
     if (renderer) renderer(e, ctx, ex, ey, w, h);
+  }
+  // Post-entity overlays (drawn AFTER all entities so they aren't painted over)
+  if (typeof Scene !== 'undefined' && Scene.inCooking &&
+      typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') {
+    _drawDinerTrayOverlay(camX, camY);
+  }
+}
+
+// ===================== DINER TRAY OVERLAY =====================
+// Rendered AFTER all entities so trays aren't hidden by the service counter.
+// Trays appear at tx:15, ty:15 (1 tile right of pickup counter end, on service counter surface).
+// Max tray size: 1 tile. Table number circle underneath.
+function _drawDinerTrayOverlay(camX, camY) {
+  const TRAY_TX = 15; // 1 tile right of pickup counter right edge (tx:14)
+  const TRAY_TY = 15; // on the counter surface row
+  let traySlot = 0;
+
+  // Helper: draw one tray at a given slot
+  function _drawTray(slot, items, tableNum, isComplete, progressText) {
+    const trayX = (TRAY_TX - slot) * TILE + TILE / 2 - camX;
+    const trayY = TRAY_TY * TILE + TILE / 2 - camY;
+    const itemCount = items ? items.length : 0;
+    // Tray grows with items, max 1 tile (TILE/2 radius)
+    const maxR = TILE / 2 - 4;
+    const trayW = Math.min(maxR, 12 + itemCount * 4);
+    const trayH = Math.min(maxR * 0.45, 6 + itemCount * 2);
+    // Tray base (chrome oval)
+    ctx.fillStyle = '#a0a0a8';
+    ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, trayW + 2, trayH + 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c8c8d0';
+    ctx.beginPath(); ctx.ellipse(trayX, trayY, trayW, trayH, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e0e0e8';
+    ctx.beginPath(); ctx.ellipse(trayX, trayY - 1, trayW * 0.8, trayH * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    // Food items on tray
+    if (items) {
+      for (let fi = 0; fi < Math.min(itemCount, 4); fi++) {
+        const spread = Math.min(itemCount, 4);
+        const fx = trayX - (spread - 1) * 5 + fi * 10;
+        const itemIngs = items[fi];
+        const itemColor = itemIngs && itemIngs[0] && typeof DINER_INGREDIENTS !== 'undefined' && DINER_INGREDIENTS[itemIngs[0]]
+          ? DINER_INGREDIENTS[itemIngs[0]].color : '#d4a040';
+        ctx.fillStyle = itemColor;
+        ctx.beginPath(); ctx.arc(fx, trayY - 2, 4, 0, Math.PI * 2); ctx.fill();
+        // Food highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath(); ctx.arc(fx - 1, trayY - 4, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Top label: check mark or progress text
+    ctx.textAlign = "center";
+    if (isComplete) {
+      ctx.font = "bold 12px monospace"; ctx.fillStyle = '#40ff40';
+      ctx.fillText("\u2713", trayX, trayY - trayH - 4);
+    } else if (progressText) {
+      ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffffff';
+      ctx.fillText(progressText, trayX, trayY - trayH - 4);
+    }
+    // Table number circle underneath tray
+    if (tableNum > 0) {
+      const circY = trayY + trayH + 10;
+      ctx.fillStyle = '#1a1a2a';
+      ctx.beginPath(); ctx.arc(trayX, circY, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(trayX, circY, 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffd700';
+      ctx.fillText(String(tableNum), trayX, circY + 3);
+    }
+    ctx.textAlign = "left";
+  }
+
+  // In-progress tray (current multi-part order) — rightmost slot
+  if (typeof cookingState !== 'undefined' && cookingState.ticket && cookingState.ticket.items) {
+    const completed = cookingState.ticket.completedCount || 0;
+    const total = cookingState.ticket.items.length;
+    if (completed > 0) {
+      const tableNum = cookingState.currentOrder && cookingState.currentOrder._dinerTableNumber
+        ? cookingState.currentOrder._dinerTableNumber : 0;
+      const trayItems = cookingState._dinerTrayItems || [];
+      _drawTray(traySlot, trayItems, tableNum, false, completed + "/" + total);
+      traySlot++;
+    }
+  }
+
+  // Completed trays waiting for waitress pickup
+  if (typeof _dinerPendingServe !== 'undefined' && _dinerPendingServe.length > 0) {
+    for (let pi = 0; pi < Math.min(_dinerPendingServe.length, 4); pi++) {
+      const serve = _dinerPendingServe[pi];
+      const tableNum = serve.tableNumber || (serve.boothId + 1);
+      _drawTray(traySlot, serve.allTrayItems || [], tableNum, true, null);
+      traySlot++;
+    }
   }
 }
 

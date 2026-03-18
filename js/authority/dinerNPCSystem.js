@@ -25,7 +25,7 @@ const DINER_SPOTS = {
   customerExit: { tx: 45, ty: 21 },  // same as exit
   passWindow:  { tx: 23, ty: 14 },
   counterWait: { tx: 23, ty: 16 },   // waitress idle spot — under kitchen door, facing south
-  pickupSpot:  { tx: 12, ty: 16 },   // waitress walks here to pick up tray (in front of pickup counter)
+  pickupSpot:  { tx: 15, ty: 16 },   // waitress walks here to pick up tray (south of tray on counter at tx:15)
 };
 
 // ===================== BOOTHS =====================
@@ -857,9 +857,10 @@ const DINER_NPC_AI = {
     npc.state = 'post_meal';
   },
 
-  // ─── POST_MEAL: Wait for all to finish, then leave in REVERSE order ─────
+  // ─── POST_MEAL: Wait for all to finish, then leave in REVERSE order with 2-sec gaps ─────
   // Followers (near seats, later in member array) leave first.
   // Leaders (far seats, earlier in member array) wait until followers are out.
+  // 2-second (120 frame) delay between each NPC leaving to avoid collision.
   post_meal: (npc) => {
     npc.moving = false;
     const party = _getDinerParty(npc.partyId);
@@ -881,20 +882,28 @@ const DINER_NPC_AI = {
     const members = _getPartyMembers(party);
     const allDone = members.every(m => m.isWaitress || m.state === 'post_meal' ||
                                         m.state === 'walking' || m.state === 'leaving' || m.state === '_despawn');
-    if (!allDone) return;
+    if (!allDone) { npc._exitWaitTimer = 0; return; }
 
-    // Reverse exit: NPCs later in the member array (near seats / followers) leave first.
-    // Each NPC waits until all members AFTER them have started leaving (not in post_meal).
+    // Reverse exit: last member (near seat / follower) leaves first.
+    // Each NPC waits until all members AFTER them have left post_meal.
     const memberIds = party.members;
     const myIdx = memberIds.indexOf(npc.id);
     for (let j = myIdx + 1; j < memberIds.length; j++) {
       const laterNpc = _getDinerNPC(memberIds[j]);
       if (laterNpc && laterNpc.state === 'post_meal') {
-        return; // a later member (near seat / follower) hasn't left yet — wait
+        npc._exitWaitTimer = 0; // reset while waiting for later members
+        return;
       }
     }
 
-    // My turn to leave
+    // All later members have started leaving — count 2-second delay before my turn
+    // (Last member in array leaves immediately since no one is after them)
+    if (myIdx < memberIds.length - 1) {
+      npc._exitWaitTimer = (npc._exitWaitTimer || 0) + 1;
+      if (npc._exitWaitTimer < 120) return; // 2-second gap
+    }
+
+    // My turn to leave — each NPC exits independently via their own seat route
     const exitPlan = _buildDinerExitPlan(npc);
     _cStartRoute(npc, exitPlan.route, '_despawn', 0, exitPlan.intent);
 
