@@ -441,15 +441,21 @@ const SparSystem = {
       const pPlays = pPolicy && pPolicy[key] ? pPolicy[key].plays || 0 : 0;
       const gPlays = gPolicy && gPolicy[key] ? gPolicy[key].plays || 0 : 0;
       const sPlays = sPolicy && sPolicy[key] ? sPolicy[key].plays || 0 : 0;
+      // Fall back to family when tactic has < 3 plays, but require family to also
+      // have >= 3 plays for reliable data. Otherwise use neutral 0.5 to avoid
+      // poisoning from a single bad play (e.g. angle family with 1 play at reward 0).
+      const _pFamPlays = pFamily && pFamily[family] ? pFamily[family].plays || 0 : 0;
+      const _gFamPlays = gFamily && gFamily[family] ? gFamily[family].plays || 0 : 0;
+      const _sFamPlays = sFamily && sFamily[family] ? sFamily[family].plays || 0 : 0;
       const pScore = pPlays >= 3
         ? this._scoreRewardBucket(pPolicy && pPolicy[key], totalPP, dynPE)
-        : this._scoreRewardBucket(pFamily && pFamily[family], totalPF, dynPE);
+        : _pFamPlays >= 3 ? this._scoreRewardBucket(pFamily[family], totalPF, dynPE) : 0.5;
       const gScore = gPlays >= 3
         ? this._scoreRewardBucket(gPolicy && gPolicy[key], totalGP, generalExplore)
-        : this._scoreRewardBucket(gFamily && gFamily[family], totalGF, generalExplore);
+        : _gFamPlays >= 3 ? this._scoreRewardBucket(gFamily[family], totalGF, generalExplore) : 0.5;
       const sScore = sPlays >= 3
         ? this._scoreRewardBucket(sPolicy && sPolicy[key], totalSP, selfPlayExplore)
-        : this._scoreRewardBucket(sFamily && sFamily[family], totalSF, selfPlayExplore);
+        : _sFamPlays >= 3 ? this._scoreRewardBucket(sFamily[family], totalSF, selfPlayExplore) : 0.5;
       score += (pScore - 0.5) * dynPW;
       score += (gScore - 0.5) * dynGW;
       score += (sScore - 0.5) * dynSW;
@@ -1839,6 +1845,9 @@ const SparSystem = {
     ai._lastEngagementType = 'antiBottom';
     ai._lastEngagementSuccess = regainedBottom;
     ai._lastEngagementFamily = family;
+
+    // Reset consecutive failure counter on success (used for escalating cooldown)
+    if (regainedBottom) ai._abConsecutiveFailures = 0;
 
     // Reset engagement state
     ai._antiBottomTactic = null;
@@ -4784,9 +4793,16 @@ const SparSystem = {
 
     if (!isOpening && (topCornerTrapped || noAdvantageState || lostBottomAndNoLane)) {
       // Only force-finalize if engagement has run long enough to be meaningful
-      if (ai._antiBottomTactic && ai._antiBottomFrames >= 30) {
+      // Angle family is DESIGNED to play from disadvantaged positions — don't kill it early
+      const _abIsAngle = ai._antiBottomFamily === 'angle';
+      const _abMinFrames = _abIsAngle ? 120 : 30; // angle gets 4x more time
+      if (ai._antiBottomTactic && ai._antiBottomFrames >= _abMinFrames) {
+        // Escalating cooldown: consecutive failures increase wait time
+        const _abConsecFails = ai._abConsecutiveFailures || 0;
+        const _abCooldown = Math.min(180, 30 + _abConsecFails * 20); // 30→50→70→...→180
+        ai._abConsecutiveFailures = _abConsecFails + 1;
         this._finalizeAntiBottomEngagement(ai, false, c);
-        ai._antiBottomCooldown = 30;
+        ai._antiBottomCooldown = _abCooldown;
         ai._antiBottomHysteresisFrames = 0;
       }
       if (ai._gunSidePolicy && ai._gunSideFrames >= 20) {
@@ -5633,33 +5649,29 @@ const SparSystem = {
         }
       }
 
-      // --- BULLET WALL CHECK: don't descend into horizontal bullet streams ---
-      // Relaxed: require 2+ bullets forming a wall (not just 1 stray bullet),
-      // tighter 12-frame lookahead, and urgency bypass after 40 frames of blocking.
+      // --- BULLET WALL CHECK: don't descend into bullet streams ---
+      // Even 1 bullet in the descent path is a real threat — don't require 2+.
+      // No urgency bypass — bot should NEVER blindly rush through bullets.
+      // Use 18-frame lookahead for adequate reaction time.
       const _abHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
       const _abHitR = this._getSparPerpHitRadius(); // 33px
       let _bulletWallCount = 0;
       for (const b of bullets) {
         if (!b.sparTeam || b.sparTeam === team) continue;
-        // Bullet Y is between bot hitbox and target? (in the descent path)
         if (b.y > _abHitY - _abHitR && b.y < tgt.y + 50) {
-          // Will bullet reach bot's X within 12 frames? (was 25 — too conservative)
-          const futMinX = b.x + Math.min(b.vx, 0) * 12;
-          const futMaxX = b.x + Math.max(b.vx, 0) * 12;
+          const futMinX = b.x + Math.min(b.vx, 0) * 18;
+          const futMaxX = b.x + Math.max(b.vx, 0) * 18;
           if (futMinX - _abHitR < bot.x && futMaxX + _abHitR > bot.x) {
             _bulletWallCount++;
           }
         }
       }
-      // Need 2+ bullets for a real wall, and respect urgency bypass
-      const _bulletWallBelow = _bulletWallCount >= 2 && (ai._abBulletWallFrames || 0) < 40;
+      const _bulletWallBelow = _bulletWallCount >= 1; // 1 bullet = real threat
       if (_bulletWallBelow && moveY > 0) {
-        // Bullets blocking descent — don't go down, strafe instead
         ai._abBulletWallFrames = (ai._abBulletWallFrames || 0) + 1;
         moveY = 0;
         moveX = ai.strafeDir * speed;
       } else {
-        // Decay bullet wall counter when not blocked (allow re-blocking after gap)
         ai._abBulletWallFrames = Math.max(0, (ai._abBulletWallFrames || 0) - 2);
       }
 
@@ -5670,35 +5682,35 @@ const SparSystem = {
         moveY = (moveY / abLen) * speed;
       }
 
-      // No arbitrary timeout — tactic runs until it succeeds (regained bottom),
-      // gets body-blocked out (3 stalls), or enemy loses bottom (state change).
-      // Only safety cap at 600 frames (10 sec) to prevent infinite loops.
+      // Safety cap at 600 frames (10 sec) to prevent infinite loops.
       if (ai._antiBottomFrames > 600) {
+        const _abConsecFails2 = ai._abConsecutiveFailures || 0;
+        ai._abConsecutiveFailures = _abConsecFails2 + 1;
         this._finalizeAntiBottomEngagement(ai, false, c);
-        ai._antiBottomCooldown = 10;
+        ai._antiBottomCooldown = Math.min(180, 30 + _abConsecFails2 * 20);
         ai._antiBottomHysteresisFrames = 0;
       }
 
     } else if (enemyHasBottom) {
       // Hysteresis not yet met — waiting for 20+ frames to confirm enemy has bottom
-      // Full speed strafe + descent toward bottom
+      // Strafe + cautious descent — don't rush into bullets during buildup
       moveX = ai.strafeDir * speed * 0.85;
-      moveY = (bot.y < tgt.y) ? speed * 0.53 : speed * 0.1;
-      // Bullet wall check — relaxed: require 2+ bullets, 12-frame window
+      moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.1; // gentler descent (was 0.53)
+      // Bullet wall check — 1 bullet blocks descent, 18-frame lookahead
       const _hystHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
       const _hystHitR = this._getSparPerpHitRadius();
       let _hystBulletCount = 0;
       for (const b of bullets) {
         if (!b.sparTeam || b.sparTeam === team) continue;
         if (b.y > _hystHitY - _hystHitR && b.y < tgt.y + 50) {
-          const futMinX = b.x + Math.min(b.vx, 0) * 12;
-          const futMaxX = b.x + Math.max(b.vx, 0) * 12;
+          const futMinX = b.x + Math.min(b.vx, 0) * 18;
+          const futMaxX = b.x + Math.max(b.vx, 0) * 18;
           if (futMinX - _hystHitR < bot.x && futMaxX + _hystHitR > bot.x) {
             _hystBulletCount++;
           }
         }
       }
-      if (_hystBulletCount >= 2 && moveY > 0) {
+      if (_hystBulletCount >= 1 && moveY > 0) {
         moveY = 0;
         moveX = ai.strafeDir * speed;
       }
@@ -6776,8 +6788,10 @@ const SparSystem = {
             ai._antiBottomStallCount = (ai._antiBottomStallCount || 0) + 1;
             if (ai._antiBottomStallCount >= 3) {
               // Tactic is body-blocked — abandon and force a different one
+              const _abConsecFails3 = ai._abConsecutiveFailures || 0;
+              ai._abConsecutiveFailures = _abConsecFails3 + 1;
               this._finalizeAntiBottomEngagement(ai, false, c);
-              ai._antiBottomCooldown = 10; // short cooldown — pick new tactic fast
+              ai._antiBottomCooldown = Math.min(120, 15 + _abConsecFails3 * 15);
               ai._antiBottomHysteresisFrames = 0;
             }
           }
