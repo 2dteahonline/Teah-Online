@@ -1,6 +1,6 @@
 // ===================== DINER NPC SYSTEM =====================
 // Party-based customer NPCs for the diner restaurant.
-// TWO NPC types: Group NPCs (2-6, sit at tables, order food) and Gamer NPCs (solo, arcade).
+// TWO NPC types: Group NPCs (2-4, sit at tables, order food) and Gamer NPCs (solo, arcade).
 // Groups enter periodically, sit at a table, their order becomes active (N parts = group size).
 // Only one active order at a time — groups queue. Waitress delivers completed trays.
 // NO pathfinding — straight-line movement between defined waypoints.
@@ -50,14 +50,14 @@ const DINER_ARCADE_SPOTS = [
 // ===================== CONFIG =====================
 const DINER_NPC_CONFIG = {
   maxParties: 6,                     // max groups in diner at once
-  spawnInterval: [120, 300],         // 2-5 sec between checks for new group spawns
+  spawnInterval: [3600, 3600],       // 60 sec between group spawns
   baseSpeed: 0.77,
   speedVariance: 0.14,
   eatDuration: [900, 900],           // 15 sec eating
   gamerSpawnInterval: [600, 1200],   // 10-20 sec between gamer spawns
   gamerPlayDuration: [1800, 1800],   // 30 sec per game
   gamerFee: 5,                       // gold per play
-  gamerMaxPlays: 3,                  // max games before leaving
+  gamerMaxPlays: 2,                  // max games before leaving
   waitressTakeOrderDuration: 0,
   waitressSubmitDuration: 30,
   waitressServeDuration: 30,
@@ -503,6 +503,7 @@ function _updateDinerWaitress() {
         w._targetPartyId = serve.partyId;
         w.hasFood = true;
         w._recipeIngredients = serve.recipeIngredients || null;
+        w._allTrayItems = serve.allTrayItems || [];
         _dinerPendingServe.shift(); // remove from queue
 
         // Update TV queue — mark as delivered
@@ -530,17 +531,21 @@ function _updateDinerWaitress() {
       }
       if (w.stateTimer > 0) { w.stateTimer--; return; }
 
-      // Set all party members to eating
+      // Set all party members to eating — assign per-NPC food from tray
       const party = _getDinerParty(w._targetPartyId);
       if (party) {
         const members = _getPartyMembers(party);
+        const trayItems = w._allTrayItems || [];
+        let foodIdx = 0;
         for (const m of members) {
           if (m.isWaitress) continue;
           if (m.state === 'waiting_at_booth') {
             m.state = 'eating';
             m.stateTimer = _cRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
             m.hasFood = true;
-            m._recipeIngredients = w._recipeIngredients;
+            // Each NPC gets their own food item from the tray
+            m._recipeIngredients = trayItems[foodIdx] || w._recipeIngredients;
+            foodIdx++;
           }
         }
 
@@ -570,6 +575,7 @@ function _updateDinerWaitress() {
       // Waitress drops food, walks back to counter
       w.hasFood = false;
       w._recipeIngredients = null;
+      w._allTrayItems = null;
       const servedBoothId = w._targetBoothId;
       const routeBack = _routeBoothToCounter(servedBoothId);
       w._targetBoothId = -1;
@@ -663,10 +669,8 @@ function _tryActivateNextGroupOrder() {
 // ===================== SPAWN GROUP =====================
 
 function spawnDinerGroup() {
-  const partySize = _cRandRange(2, 6);
-  // Need a booth with enough capacity — seats go up to 4, but groups up to 6
-  // For groups > 4, they still use a 4-seat booth (some stand)
-  const boothIdx = _findFreeBooth(Math.min(partySize, 4));
+  const partySize = _cRandRange(2, 4);
+  const boothIdx = _findFreeBooth(partySize);
   if (boothIdx < 0) return null;
 
   const partyId = ++_dinerPartyId;
@@ -687,15 +691,20 @@ function spawnDinerGroup() {
   };
 
   // Create NPCs — first is leader
+  // Seat order: far-end seats first so first NPC doesn't body-block second
+  // Seats: [0]=top-near, [1]=top-far, [2]=bottom-near, [3]=bottom-far
+  // Order: far-top, far-bottom, near-top, near-bottom
+  const seatOrder = [1, 3, 0, 2];
   const partyCustomerType = typeof pickDinerCustomerType === 'function' ? pickDinerCustomerType() : { tipMult: 1.0 };
   for (let i = 0; i < partySize; i++) {
     const npc = _spawnDinerGroupNPC(partyId, i === 0);
     npc._customerTipMult = partyCustomerType.tipMult || 1.0;
+    npc._tableNumber = booth.tableNumber; // for name badge rendering
     party.members.push(npc.id);
     if (i === 0) party.leaderId = npc.id;
 
-    // Assign seat (wrap around if more NPCs than seats)
-    npc.claimedSeatIdx = i < booth.seats.length ? i : i % booth.seats.length;
+    // Assign seat — far end first to avoid body blocking
+    npc.claimedSeatIdx = seatOrder[i] != null ? seatOrder[i] : (i % booth.seats.length);
 
     // Stagger entry — followers enter a bit behind the leader
     if (i > 0) {
@@ -720,7 +729,7 @@ function initDinerNPCs() {
   _dinerIdCounter.value = 0;
   _dinerPartyId = 0;
   _dinerSpawnState.timer = 0;
-  _dinerSpawnState.nextInterval = _cRandRange(120, 300);
+  _dinerSpawnState.nextInterval = _cRandRange(3600, 3600);
   _dinerGamerSpawnState.timer = 0;
   _dinerGamerSpawnState.nextInterval = _cRandRange(DINER_NPC_CONFIG.gamerSpawnInterval[0], DINER_NPC_CONFIG.gamerSpawnInterval[1]);
   _dinerPendingServe = [];
@@ -886,24 +895,16 @@ const DINER_NPC_AI = {
     // Game finished — 50% win chance
     const won = Math.random() < 0.5;
     const playsLeft = DINER_NPC_CONFIG.gamerMaxPlays - (npc._arcadePlaysTotal || 1);
+    npc._arcadeLastResult = won ? 'win' : 'lose';
+    npc._arcadeResultTimer = 120; // show result for 2 seconds
 
     if (won && playsLeft > 0) {
-      // Won — wants to play again? 50% chance
-      if (Math.random() < 0.5) {
-        // Replay
-        npc._arcadeFeePaid = false;
-        npc.stateTimer = _cRandRange(DINER_NPC_CONFIG.gamerPlayDuration[0], DINER_NPC_CONFIG.gamerPlayDuration[1]);
-        return;
-      }
-    } else if (!won && playsLeft > 0) {
-      // Lost — 50% chance to leave, 50% chance to retry
-      if (Math.random() < 0.5) {
-        // Retry
-        npc._arcadeFeePaid = false;
-        npc.stateTimer = _cRandRange(DINER_NPC_CONFIG.gamerPlayDuration[0], DINER_NPC_CONFIG.gamerPlayDuration[1]);
-        return;
-      }
+      // Won — continue playing
+      npc._arcadeFeePaid = false;
+      npc.stateTimer = 120 + _cRandRange(DINER_NPC_CONFIG.gamerPlayDuration[0], DINER_NPC_CONFIG.gamerPlayDuration[1]);
+      return;
     }
+    // Lost or max plays reached — leave
 
     // Done — release spot and leave
     if (npc._claimedArcadeIdx >= 0) {
@@ -1082,6 +1083,7 @@ function updateDinerNPCs() {
         npc._targetPartyId = -1;
         npc.hasFood = false;
         npc._recipeIngredients = null;
+        npc._allTrayItems = null;
         return;
       }
       npc._stuckFrames = 0;
@@ -1143,6 +1145,7 @@ function updateDinerNPCs() {
           _dinerWaitress._targetPartyId = -1;
           _dinerWaitress.hasFood = false;
           _dinerWaitress._recipeIngredients = null;
+          _dinerWaitress._allTrayItems = null;
         }
       });
     },

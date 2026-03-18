@@ -862,6 +862,20 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
+      // Table number badge to the right of NPC name (customer groups only)
+      if (npc._tableNumber && !npc.isWaitress) {
+        ctx.font = "bold 13px monospace";
+        const nameW = ctx.measureText(npc.name).width + 14; // matches drawChar tag width
+        const tagRight = npc.x + nameW / 2;
+        const tagCenterY = npc.y + 26;
+        // Small gold number badge
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.beginPath(); ctx.roundRect(tagRight + 2, tagCenterY - 8, 16, 16, 3); ctx.fill();
+        ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(String(npc._tableNumber), tagRight + 10, tagCenterY + 5);
+        ctx.textAlign = "left";
+      }
       // Food indicator — plate with round items (diner style)
       if (npc.hasFood) {
         let fOffX = 0, fOffY = -36;

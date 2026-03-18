@@ -40,6 +40,7 @@ const cookingState = {
   lastResult: null,
   lastResultTimer: 0,
   _swingHandled: false, // one-shot flag for melee station detection
+  _dinerTrayItems: null, // accumulated per-item ingredients for diner tray visual
 };
 
 // Unique ID counter for customers
@@ -265,6 +266,13 @@ function _activateNextTicket() {
     _dinerTableNumber: ticket._dinerTableNumber || null,
   };
   cookingState.assembly = [];
+
+  // Initialize tray item tracker for diner multi-item orders
+  if (cookingState.activeRestaurantId === 'diner' && ticket.ticketItems.length > 1) {
+    cookingState._dinerTrayItems = [];
+  } else {
+    cookingState._dinerTrayItems = null;
+  }
 
   // Try to link an NPC at the counter
   _tryLinkNPCToOrder();
@@ -676,6 +684,10 @@ function applyOrderResult(result) {
 
   // Multi-item ticket: advance to next item or finish
   if (cookingState.ticket && cookingState.ticket.completedCount < cookingState.ticket.items.length - 1) {
+    // Accumulate completed item's ingredients for tray visual
+    if (cookingState._dinerTrayItems && cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients) {
+      cookingState._dinerTrayItems.push(cookingState.currentOrder.recipe.ingredients.slice());
+    }
     cookingState.ticket.completedCount++;
     const nextItem = cookingState.ticket.items[cookingState.ticket.completedCount];
     cookingState.currentOrder.recipe = nextItem.recipe;
@@ -696,11 +708,15 @@ function applyOrderResult(result) {
       const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
         ? cookingState.currentOrder.recipe.ingredients.slice()
         : null;
+      // Collect all tray items (accumulated per-item ingredients) for per-NPC plates
+      const allTrayItems = cookingState._dinerTrayItems ? cookingState._dinerTrayItems.slice() : [];
+      if (recipeIngredients) allTrayItems.push(recipeIngredients); // add final item
       _dinerPendingServe.push({
         boothId: cookingState.currentOrder._dinerBoothId,
         partyId: cookingState.currentOrder._dinerPartyId,
         tableNumber: cookingState.currentOrder._dinerTableNumber || null,
         recipeIngredients: recipeIngredients,
+        allTrayItems: allTrayItems,
       });
       // Update TV queue status to ready
       if (typeof _dinerTVQueue !== 'undefined') {
@@ -867,7 +883,9 @@ function drawCookingHUD() {
     ctx.font = "bold 11px monospace"; ctx.fillStyle = '#ffd700';
     let orderLabel = "Order: " + order.recipe.name;
     if (cookingState.ticket && cookingState.ticket.items.length > 1) {
-      orderLabel = "Item " + (cookingState.ticket.completedCount + 1) + "/" + cookingState.ticket.items.length + ": " + order.recipe.name;
+      const currentItem = cookingState.ticket.completedCount + 1;
+      const totalItems = cookingState.ticket.items.length;
+      orderLabel = currentItem + " out of " + totalItems + ": " + order.recipe.name;
     }
     // Diner: table number is shown in gold at top-right, don't repeat in label
     ctx.fillText(orderLabel, panelX + 8, panelY + 42);

@@ -1550,56 +1550,7 @@ const ENTITY_RENDERERS = {
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
       ctx.fillRect(ex + 8, by + 4, cw - 16, rowH * 0.3);
 
-      // Dynamic table number badge — find party claiming this booth
-      const _boothPositions = [[27,2],[27,6],[27,10],[38,2],[38,6],[38,10]];
-      let _boothIdx = -1;
-      for (let _bi = 0; _bi < _boothPositions.length; _bi++) {
-        if (e.tx === _boothPositions[_bi][0] && e.ty === _boothPositions[_bi][1]) { _boothIdx = _bi; break; }
-      }
-      if (_boothIdx >= 0) {
-        // Find party claiming this booth for dynamic table number
-        let _tableNum = null;
-        let _tableTimerPct = -1;
-        if (typeof dinerParties !== 'undefined') {
-          for (const _dp of dinerParties) {
-            if (_dp.boothId === _boothIdx && _dp.state !== 'done') {
-              _tableNum = _dp.tableNumber;
-              if (_dp._tableTimerActive && _dp._tableDuration > 0) {
-                _tableTimerPct = Math.max(0, 1.0 - (_dp._tableTimer / _dp._tableDuration));
-              }
-              break;
-            }
-          }
-        }
-        if (_tableNum) {
-          const badgeX = ex + cw / 2, badgeY = ey + rowH + rowH / 2;
-          ctx.fillStyle = 'rgba(0,0,0,0.55)';
-          ctx.beginPath(); ctx.arc(badgeX, badgeY, 10, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffd700';
-          ctx.beginPath(); ctx.arc(badgeX, badgeY, 8, 0, Math.PI * 2); ctx.fill();
-          ctx.font = "bold 11px monospace"; ctx.fillStyle = '#1a1a1a'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.fillText(String(_tableNum), badgeX, badgeY);
-          ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-
-          // Timer bar on table (green→yellow→red)
-          if (_tableTimerPct >= 0) {
-            const barW = cw - 30, barH = 4;
-            const barX = ex + 15, barY = ey + rowH + rowH - 6;
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.fillRect(barX, barY, barW, barH);
-            let tbR, tbG;
-            if (_tableTimerPct > 0.5) {
-              const t2 = (_tableTimerPct - 0.5) / 0.5;
-              tbR = Math.round(255 * (1 - t2)); tbG = 200;
-            } else {
-              const t2 = _tableTimerPct / 0.5;
-              tbR = 255; tbG = Math.round(200 * t2);
-            }
-            ctx.fillStyle = 'rgb(' + tbR + ',' + tbG + ',40)';
-            ctx.fillRect(barX, barY, barW * _tableTimerPct, barH);
-          }
-        }
-      }
+      // (Table numbers removed — shown on NPC name badges instead)
   },
 
   diner_booth_table: (e, ctx, ex, ey, w, h) => {
@@ -1628,38 +1579,51 @@ const ENTITY_RENDERERS = {
       const sx = ex + 8, sy = ey + 8, sw = cw - 16, sh = ch * 0.4;
       ctx.fillStyle = '#000';
       ctx.fillRect(sx, sy, sw, sh);
-      // Animated screen glow (cycles cyan/green/purple)
-      const phase = Math.floor(t * 0.5) % 3;
-      const colors = ['rgba(0,255,255,', 'rgba(0,255,100,', 'rgba(180,0,255,'];
-      const screenGlow = 0.4 + Math.sin(t * 3) * 0.2;
-      ctx.fillStyle = colors[phase] + screenGlow + ')';
-      ctx.fillRect(sx + 2, sy + 2, sw - 4, sh - 4);
-      // Scan lines
-      for (let sl = 0; sl < 5; sl++) {
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.fillRect(sx + 2, sy + 4 + sl * (sh / 5), sw - 4, 1);
-      }
-      // Active player detection — show game animation
+      // Active player detection
       let _arcadePlaying = false;
-      if (typeof DINER_ARCADE_SPOTS !== 'undefined') {
+      let _arcadeGamerNpc = null;
+      if (typeof DINER_ARCADE_SPOTS !== 'undefined' && typeof dinerNPCs !== 'undefined') {
         for (const spot of DINER_ARCADE_SPOTS) {
           if (spot.claimedBy && Math.abs(spot.tx - e.tx) <= 1 && Math.abs(spot.ty - (e.ty + 2)) <= 1) {
-            _arcadePlaying = true; break;
+            _arcadePlaying = true;
+            // Find the gamer NPC for result display
+            for (const dn of dinerNPCs) {
+              if (dn.id === spot.claimedBy) { _arcadeGamerNpc = dn; break; }
+            }
+            break;
           }
         }
       }
       if (_arcadePlaying) {
-        // Animated pixel patterns when NPC is playing
-        const seed = Math.floor(t * 8);
-        for (let _py = 0; _py < 4; _py++) {
-          for (let _px = 0; _px < 3; _px++) {
-            const hash = (seed + _py * 7 + _px * 13) % 6;
-            const pColors = ['#ff4040','#40ff40','#4040ff','#ffff40','#ff40ff','#40ffff'];
-            ctx.fillStyle = pColors[hash];
-            ctx.fillRect(sx + 3 + _px * ((sw - 6) / 3), sy + 3 + _py * ((sh - 6) / 4), (sw - 6) / 3 - 1, (sh - 6) / 4 - 1);
+        // Check if showing win/lose result
+        if (_arcadeGamerNpc && _arcadeGamerNpc._arcadeResultTimer > 0) {
+          const isWin = _arcadeGamerNpc._arcadeLastResult === 'win';
+          ctx.fillStyle = isWin ? 'rgba(0,80,0,0.8)' : 'rgba(80,0,0,0.8)';
+          ctx.fillRect(sx + 2, sy + 2, sw - 4, sh - 4);
+          ctx.font = "bold 8px monospace"; ctx.textAlign = "center";
+          ctx.fillStyle = isWin ? '#40ff40' : '#ff4040';
+          ctx.fillText(isWin ? "YOU WIN!" : "YOU LOSE", sx + sw / 2, sy + sh / 2 + 3);
+          ctx.textAlign = "left";
+          _arcadeGamerNpc._arcadeResultTimer--;
+        } else {
+          // Animated pixel patterns when NPC is playing
+          const seed = Math.floor(t * 8);
+          for (let _py = 0; _py < 4; _py++) {
+            for (let _px = 0; _px < 3; _px++) {
+              const hash = (seed + _py * 7 + _px * 13) % 6;
+              const pColors = ['#ff4040','#40ff40','#4040ff','#ffff40','#ff40ff','#40ffff'];
+              ctx.fillStyle = pColors[hash];
+              ctx.fillRect(sx + 3 + _px * ((sw - 6) / 3), sy + 3 + _py * ((sh - 6) / 4), (sw - 6) / 3 - 1, (sh - 6) / 4 - 1);
+            }
           }
         }
+        // Scan lines
+        for (let sl = 0; sl < 5; sl++) {
+          ctx.fillStyle = 'rgba(0,0,0,0.15)';
+          ctx.fillRect(sx + 2, sy + 4 + sl * (sh / 5), sw - 4, 1);
+        }
       }
+      // When not playing, screen stays black (no glow)
       // Joystick bump
       ctx.fillStyle = '#333';
       ctx.beginPath(); ctx.arc(ex + cw * 0.4, ey + ch * 0.72, 4, 0, Math.PI * 2); ctx.fill();
@@ -1758,7 +1722,7 @@ const ENTITY_RENDERERS = {
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(ex + cw / 2 - 50, ey + ch + 2, 100, 16);
       ctx.font = "bold 12px monospace"; ctx.fillStyle = '#e0e0e8'; ctx.textAlign = "center";
-      ctx.fillText("CLEAR PLATE", ex + cw / 2, ey + ch + 14);
+      ctx.fillText("CLEAR TRAY", ex + cw / 2, ey + ch + 14);
       ctx.textAlign = "left";
   },
 
@@ -1841,34 +1805,49 @@ const ENTITY_RENDERERS = {
       ctx.textAlign = "left";
 
       // === Tray with order progress (multi-part orders) ===
-      // Show tray that fills as order parts are completed
+      // Only show tray after at least 1 item is completed
       if (typeof cookingState !== 'undefined' && cookingState.ticket && cookingState.ticket.items &&
           cookingState.ticket.items.length > 1 && cookingState.activeRestaurantId === 'diner') {
         const completed = cookingState.ticket.completedCount || 0;
         const total = cookingState.ticket.items.length;
-        const tableNum = cookingState.currentOrder && cookingState.currentOrder._dinerTableNumber
-          ? cookingState.currentOrder._dinerTableNumber : 0;
-        const trayX = ex + cw / 2, trayY = ey - 22;
-        // Tray base
-        ctx.fillStyle = '#8a7050';
-        ctx.beginPath(); ctx.ellipse(trayX, trayY + 4, cw * 0.35, 8, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#a08860';
-        ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, cw * 0.33, 6, 0, 0, Math.PI * 2); ctx.fill();
-        // Food items on tray (one per completed part)
-        for (let fi = 0; fi < completed; fi++) {
-          const fx = trayX - (completed - 1) * 5 + fi * 10;
-          ctx.fillStyle = '#d4a040';
-          ctx.beginPath(); ctx.arc(fx, trayY - 2, 4, 0, Math.PI * 2); ctx.fill();
+        if (completed > 0) {
+          const tableNum = cookingState.currentOrder && cookingState.currentOrder._dinerTableNumber
+            ? cookingState.currentOrder._dinerTableNumber : 0;
+          const trayX = ex + cw / 2, trayY = ey - 22;
+          // Tray base (silver serving tray)
+          ctx.fillStyle = '#b0b0b8';
+          ctx.beginPath(); ctx.ellipse(trayX, trayY + 4, cw * 0.35, 8, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#c8c8d0';
+          ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, cw * 0.33, 6, 0, 0, Math.PI * 2); ctx.fill();
+          // Food items on tray (one per completed part)
+          const trayItems = cookingState._dinerTrayItems || [];
+          for (let fi = 0; fi < completed; fi++) {
+            const fx = trayX - (completed - 1) * 5 + fi * 10;
+            // Use actual recipe colors if available
+            const itemIngs = trayItems[fi];
+            const itemColor = itemIngs && itemIngs[0] && typeof DINER_INGREDIENTS !== 'undefined' && DINER_INGREDIENTS[itemIngs[0]]
+              ? DINER_INGREDIENTS[itemIngs[0]].color : '#d4a040';
+            ctx.fillStyle = itemColor;
+            ctx.beginPath(); ctx.arc(fx, trayY - 2, 4, 0, Math.PI * 2); ctx.fill();
+          }
+          // Progress text or green check
+          ctx.textAlign = "center";
+          if (completed >= total) {
+            // All done — green check
+            ctx.font = "bold 14px monospace"; ctx.fillStyle = '#40ff40';
+            ctx.fillText("\u2713", trayX, trayY - 8);
+          } else {
+            // Progress: "1 out of 2"
+            ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffffff';
+            ctx.fillText(completed + " out of " + total, trayX, trayY - 12);
+          }
+          // Table number below tray in gold
+          if (tableNum > 0) {
+            ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffd700';
+            ctx.fillText("Table " + tableNum, trayX, trayY + 16);
+          }
+          ctx.textAlign = "left";
         }
-        // Progress text above tray (e.g., "2/6")
-        ctx.font = "bold 9px monospace"; ctx.fillStyle = '#ffffff'; ctx.textAlign = "center";
-        ctx.fillText(completed + "/" + total, trayX, trayY - 12);
-        // Table number below tray in gold
-        if (tableNum > 0) {
-          ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffd700';
-          ctx.fillText("Table " + tableNum, trayX, trayY + 16);
-        }
-        ctx.textAlign = "left";
       }
       // Completed trays waiting for waitress pickup
       else if (typeof _dinerPendingServe !== 'undefined' && _dinerPendingServe.length > 0) {
