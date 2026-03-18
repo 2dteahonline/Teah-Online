@@ -2694,12 +2694,15 @@ const SparSystem = {
   _getIncomingBulletDodge(bot, team) {
     let dodgeX = 0, dodgeY = 0;
     const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
-    const botHitY = bot.y + 5; // hitbox at feet level (entity.y + 5)
-    const hitRadius = this._getSparPerpHitRadius(); // 33px — actual collision range
+    const botHitY = bot.y + 5;
+    const hitRadius = this._getSparPerpHitRadius(); // 33px
     const bulletSpeed = GAME_CONFIG.BULLET_SPEED || 9;
-    // Detection lane: actual hit zone + small margin for early reaction
-    const dodgeLane = hitRadius + speed * 2; // 33 + 15 = 48
-    const maxThreatDist = Math.max(400, bulletSpeed * 45); // 400px — detect earlier
+    const dodgeLane = hitRadius + speed * 2; // 48px
+    const maxThreatDist = Math.max(400, bulletSpeed * 45);
+    const arenaLevel = typeof levels !== 'undefined' && levels[currentLevel] ? levels[currentLevel] : null;
+    const arenaW = arenaLevel ? arenaLevel.widthTiles * TILE : 600;
+    const arenaH = arenaLevel ? arenaLevel.heightTiles * TILE : 600;
+    const wallM = TILE * 2; // wall margin for direction choice
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
@@ -2707,7 +2710,6 @@ const SparSystem = {
       const bDist = Math.sqrt(dbx * dbx + dby * dby);
       if (bDist > maxThreatDist || bDist < 8) continue;
 
-      // Urgency: closer = stronger, but even far bullets get strong response
       const urgency = Math.max(0.6, 1.5 - bDist / maxThreatDist);
 
       if (Math.abs(b.vy) > Math.abs(b.vx)) {
@@ -2716,8 +2718,13 @@ const SparSystem = {
         if (!isApproaching) continue;
         const perpDist = Math.abs(dbx);
         if (perpDist > dodgeLane) continue;
-        const dodgeDir = dbx >= 0 ? 1 : -1;
-        // Binary: within hit zone (33px) = full strength, margin zone = partial
+        // Pick easiest direction: whichever side has more room
+        const roomLeft = bot.x - wallM;
+        const roomRight = arenaW - wallM - bot.x;
+        let dodgeDir;
+        if (roomLeft < 30 && roomRight > 30) dodgeDir = 1;       // near left wall → go right
+        else if (roomRight < 30 && roomLeft > 30) dodgeDir = -1;  // near right wall → go left
+        else dodgeDir = dbx >= 0 ? 1 : -1;                        // default: away from bullet
         const willHit = perpDist < hitRadius;
         const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
         dodgeX += dodgeDir * urgency * strength * 3.5;
@@ -2727,15 +2734,19 @@ const SparSystem = {
         if (!isApproaching) continue;
         const perpDist = Math.abs(dby);
         if (perpDist > dodgeLane) continue;
-        const dodgeDir = dby >= 0 ? 1 : -1;
-        // Binary: within hit zone = full strength
+        // Pick easiest direction: whichever side has more room
+        const roomUp = bot.y - wallM;
+        const roomDown = arenaH - wallM - bot.y;
+        let dodgeDir;
+        if (roomUp < 30 && roomDown > 30) dodgeDir = 1;          // near top wall → go down
+        else if (roomDown < 30 && roomUp > 30) dodgeDir = -1;     // near bottom wall → go up
+        else dodgeDir = dby >= 0 ? 1 : -1;                        // default: away from bullet
         const willHit = perpDist < hitRadius;
         const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
         dodgeY += dodgeDir * urgency * strength * 3.5;
       }
     }
 
-    // Clamp — but allow strong dodge values through
     const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
     const maxDodge = speed * 1.2;
     if (dodgeLen > maxDodge) {
@@ -4964,15 +4975,11 @@ const SparSystem = {
         // Dodge to preserve bottom — 75% override, wall-clamped, no upward dodge
         const bdLen = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
         if (bdLen > 0.01) {
-          let bndx = bottomDodge.x / bdLen, bndy = bottomDodge.y / bdLen;
-          // Wall clamp: don't dodge into walls
-          const wallM2 = TILE * 2;
-          if (bot.x < wallM2 && bndx < 0) bndx = 0;
-          if (bot.x > arenaW - wallM2 && bndx > 0) bndx = 0;
-          if (bot.y > arenaH - wallM2 && bndy > 0) bndy = 0;
-          // 75% lateral dodge + suppress upward (would lose bottom)
+          const bndx = bottomDodge.x / bdLen, bndy = bottomDodge.y / bdLen;
+          // Direction already wall-aware from _getIncomingBulletDodge
+          // 75% lateral dodge, allow vertical if direction says so
           moveX = moveX * 0.25 + bndx * speed * 0.75;
-          if (bndy > 0) {
+          if (bndy !== 0) {
             moveY = moveY * 0.4 + bndy * speed * 0.6;
           }
           // else: keep current moveY (don't dodge upward)
@@ -6213,15 +6220,10 @@ const SparSystem = {
       // 65-80% gives strong dodge while retaining some current movement variety.
       const baseOverride = inActiveAntiBottom ? 0.45 : 0.75;
       // Normalize dodge to unit vector, apply at speed
+      // Direction already accounts for walls (computed in _getIncomingBulletDodge)
       const dLen = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
       if (dLen > 0.01) {
-        let ndx = dodge.x / dLen, ndy = dodge.y / dLen;
-        // WALL CLAMP: don't dodge INTO a wall — redirect along it instead
-        const wallM = TILE * 2;
-        if (bot.x < wallM && ndx < 0) ndx = 0; // near left wall, don't dodge left
-        if (bot.x > arenaW - wallM && ndx > 0) ndx = 0; // near right wall, don't dodge right
-        if (bot.y < wallM && ndy < 0) ndy = 0; // near top wall, don't dodge up
-        if (bot.y > arenaH - wallM && ndy > 0) ndy = 0; // near bottom wall, don't dodge down
+        const ndx = dodge.x / dLen, ndy = dodge.y / dLen;
         moveX = moveX * (1 - baseOverride) + ndx * speed * baseOverride;
         moveY = moveY * (1 - baseOverride) + ndy * speed * baseOverride;
       }
