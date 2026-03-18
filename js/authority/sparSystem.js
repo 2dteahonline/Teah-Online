@@ -5306,17 +5306,31 @@ const SparSystem = {
         }
       }
 
-      // --- ANTI-BOTTOM DODGE: dodge bullets while approaching ---
-      // The approach sets moveX/moveY toward bottom. Check for incoming bullets
-      // and override perpendicular component to dodge. This prevents the bot from
-      // blindly descending into bullet streams.
-      const abDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
-      const abDodgeMag = Math.sqrt(abDodge.x * abDodge.x + abDodge.y * abDodge.y);
-      if (abDodgeMag > 0.15) {
-        const abdx = abDodge.x / abDodgeMag, abdy = abDodge.y / abDodgeMag;
-        const abPC = moveX * abdx + moveY * abdy;
-        moveX = (moveX - abPC * abdx) + abdx * speed;
-        moveY = (moveY - abPC * abdy) + abdy * speed;
+      // --- BULLET WALL CHECK: don't descend into horizontal bullet streams ---
+      // The reactive dodge (10-frame window) can't see far enough — by the time
+      // it detects a horizontal bullet, the bot is already in the kill zone.
+      // Instead, STRATEGICALLY check: are there enemy bullets between me and bottom?
+      // If yes, don't descend — strafe and wait for a gap.
+      const _abHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
+      const _abHitR = this._getSparPerpHitRadius(); // 33px
+      let _bulletWallBelow = false;
+      for (const b of bullets) {
+        if (!b.sparTeam || b.sparTeam === team) continue;
+        // Bullet Y is between bot hitbox and target? (in the descent path)
+        if (b.y > _abHitY - _abHitR && b.y < tgt.y + 50) {
+          // Will bullet reach bot's X within 25 frames?
+          const futMinX = b.x + Math.min(b.vx, 0) * 25;
+          const futMaxX = b.x + Math.max(b.vx, 0) * 25;
+          if (futMinX - _abHitR < bot.x && futMaxX + _abHitR > bot.x) {
+            _bulletWallBelow = true;
+            break;
+          }
+        }
+      }
+      if (_bulletWallBelow && moveY > 0) {
+        // Bullets blocking descent — don't go down, strafe instead
+        moveY = 0;
+        moveX = ai.strafeDir * speed;
       }
 
       // Normalize to full speed — bot must always move at max speed during anti-bottom
@@ -5340,16 +5354,24 @@ const SparSystem = {
       // Full speed strafe + descent toward bottom
       moveX = ai.strafeDir * speed * 0.85;
       moveY = (bot.y < tgt.y) ? speed * 0.53 : speed * 0.1;
-      // Dodge bullets even during hysteresis descent
-      const hystDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
-      const hystDodgeMag = Math.sqrt(hystDodge.x * hystDodge.x + hystDodge.y * hystDodge.y);
-      if (hystDodgeMag > 0.15) {
-        const hdx = hystDodge.x / hystDodgeMag, hdy = hystDodge.y / hystDodgeMag;
-        const hPC = moveX * hdx + moveY * hdy;
-        moveX = (moveX - hPC * hdx) + hdx * speed;
-        moveY = (moveY - hPC * hdy) + hdy * speed;
-        const hLen = Math.sqrt(moveX * moveX + moveY * moveY);
-        if (hLen > speed) { moveX = (moveX / hLen) * speed; moveY = (moveY / hLen) * speed; }
+      // Bullet wall check — don't descend into bullet streams during hysteresis
+      const _hystHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
+      const _hystHitR = this._getSparPerpHitRadius();
+      let _hystBulletWall = false;
+      for (const b of bullets) {
+        if (!b.sparTeam || b.sparTeam === team) continue;
+        if (b.y > _hystHitY - _hystHitR && b.y < tgt.y + 50) {
+          const futMinX = b.x + Math.min(b.vx, 0) * 25;
+          const futMaxX = b.x + Math.max(b.vx, 0) * 25;
+          if (futMinX - _hystHitR < bot.x && futMaxX + _hystHitR > bot.x) {
+            _hystBulletWall = true;
+            break;
+          }
+        }
+      }
+      if (_hystBulletWall && moveY > 0) {
+        moveY = 0;
+        moveX = ai.strafeDir * speed;
       }
 
     } else {
