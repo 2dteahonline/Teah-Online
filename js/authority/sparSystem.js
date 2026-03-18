@@ -2280,11 +2280,22 @@ const SparSystem = {
         m.ai._momentumBreakDirX = 0;
         m.ai._momentumBreakDirY = 0;
         m.ai._movePlanFrames = 0;
+        m.ai._movePlanDirX = 0;
+        m.ai._movePlanDirY = 0;
         m.ai._movePlanState = null;
+        m.ai._movePlanDist = 0;
         m.ai._openingContestPolicy = null;
         m.ai._openingContestFamily = null;
         m.ai._punishWindowPolicy = null;
+        m.ai._punishWindowFrames = 0;
         m.ai._punishWindowCooldown = 0;
+        // Per-engagement shot counters
+        m.ai._antiBottomShotsFired = 0;
+        m.ai._antiBottomShotsHeld = 0;
+        m.ai._escapeShotsFired = 0;
+        m.ai._escapeShotsHeld = 0;
+        m.ai._gunSideShotsFired = 0;
+        m.ai._gunSideShotsHeld = 0;
         m.ai._profileMods = null;
         // Reset stale frame stamps — prevent negative deltas after matchTimer resets
         m.ai._lastHitFrame = 0;
