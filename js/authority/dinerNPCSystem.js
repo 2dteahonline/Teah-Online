@@ -669,10 +669,10 @@ function spawnDinerGroup() {
     // Assign seat — far end first to avoid body blocking
     npc.claimedSeatIdx = seatOrder[i] != null ? seatOrder[i] : (i % booth.seats.length);
 
-    // Stagger entry — followers enter a bit behind the leader
+    // Short stagger — NPCs walk toward table as a group, not one at a time
     if (i > 0) {
       npc.state = 'spawn_wait';
-      npc.stateTimer = i * 60; // ~1 sec stagger so leader reaches far seat first // ~0.67 sec stagger
+      npc.stateTimer = i * 15; // ~0.25 sec spacing — walk as a group
     }
   }
 
@@ -714,7 +714,7 @@ function _spawnGroupForBooth(boothIdx) {
     npc.claimedSeatIdx = seatOrder[i] != null ? seatOrder[i] : (i % booth.seats.length);
     if (i > 0) {
       npc.state = 'spawn_wait';
-      npc.stateTimer = i * 60; // ~1 sec stagger so leader reaches far seat first
+      npc.stateTimer = i * 15; // ~0.25 sec spacing — walk as a group
     }
   }
 
@@ -750,25 +750,10 @@ function initDinerNPCs() {
 
 const DINER_NPC_AI = {
 
-  // ─── SPAWN_WAIT: Wait until the NPC ahead has seated before entering ───────
+  // ─── SPAWN_WAIT: Short stagger so NPCs walk toward table as a group ───────
   spawn_wait: (npc) => {
     npc.moving = false;
-    // Minimum timer still applies for basic spacing
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
-    // Check if the NPC who enters before us has reached their seat
-    const party = _getDinerParty(npc.partyId);
-    if (party) {
-      const memberIds = party.members;
-      const myIdx = memberIds.indexOf(npc.id);
-      if (myIdx > 0) {
-        const prevNpc = _getDinerNPC(memberIds[myIdx - 1]);
-        // Wait until previous NPC is seated (waiting_at_booth) or eating
-        if (prevNpc && prevNpc.state !== 'waiting_at_booth' && prevNpc.state !== 'eating' &&
-            prevNpc.state !== 'post_meal' && prevNpc.state !== '_despawn') {
-          return; // previous NPC still walking — wait
-        }
-      }
-    }
     npc.state = 'entering';
   },
 
@@ -782,10 +767,28 @@ const DINER_NPC_AI = {
     _cStartRoute(npc, route, 'seating', 0, { kind: 'entrance_to_booth', boothId: party.boothId });
   },
 
-  // ─── SEATING: Walk to individual seat in booth ─────────
+  // ─── SEATING: Wait at booth entry until previous member is seated, then walk to seat ─────────
   seating: (npc) => {
     const party = _getDinerParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
+
+    // Followers wait at booth entry until the NPC before them is seated
+    const memberIds = party.members;
+    const myIdx = memberIds.indexOf(npc.id);
+    if (myIdx > 0) {
+      const prevNpc = _getDinerNPC(memberIds[myIdx - 1]);
+      if (prevNpc && prevNpc.state !== 'waiting_at_booth' && prevNpc.state !== 'eating' &&
+          prevNpc.state !== 'post_meal' && prevNpc.state !== '_despawn') {
+        // Previous NPC hasn't sat yet — hold position at booth entry
+        npc.moving = false;
+        const booth = DINER_BOOTHS[party.boothId];
+        if (booth) {
+          npc.x = booth.entry.tx * TILE + TILE / 2;
+          npc.y = booth.entry.ty * TILE + TILE / 2;
+        }
+        return;
+      }
+    }
 
     const route = _routeDinerBoothToSeat(party.boothId, npc.claimedSeatIdx);
     if (!route.length) { npc.state = '_despawn'; return; }
@@ -854,7 +857,9 @@ const DINER_NPC_AI = {
     npc.state = 'post_meal';
   },
 
-  // ─── POST_MEAL: Wait for all to finish, then leave ─────
+  // ─── POST_MEAL: Wait for all to finish, then leave in REVERSE order ─────
+  // Followers (near seats, later in member array) leave first.
+  // Leaders (far seats, earlier in member array) wait until followers are out.
   post_meal: (npc) => {
     npc.moving = false;
     const party = _getDinerParty(npc.partyId);
@@ -863,16 +868,44 @@ const DINER_NPC_AI = {
       return;
     }
 
+    // Snap to seat while waiting
+    const booth = DINER_BOOTHS[party.boothId];
+    if (booth && booth.seats[npc.claimedSeatIdx]) {
+      const seat = booth.seats[npc.claimedSeatIdx];
+      npc.x = seat.tx * TILE + TILE / 2;
+      npc.y = seat.ty * TILE + TILE / 2;
+      npc.dir = seat.sitDir;
+    }
+
     // Wait for all party members to finish eating
     const members = _getPartyMembers(party);
     const allDone = members.every(m => m.isWaitress || m.state === 'post_meal' ||
-                                        m.state === 'leaving' || m.state === '_despawn');
+                                        m.state === 'walking' || m.state === 'leaving' || m.state === '_despawn');
     if (!allDone) return;
 
-    // Only the leader triggers exit for the whole party
-    if (!npc.isLeader) return;
+    // Reverse exit: NPCs later in the member array (near seats / followers) leave first.
+    // Each NPC waits until all members AFTER them have started leaving (not in post_meal).
+    const memberIds = party.members;
+    const myIdx = memberIds.indexOf(npc.id);
+    for (let j = myIdx + 1; j < memberIds.length; j++) {
+      const laterNpc = _getDinerNPC(memberIds[j]);
+      if (laterNpc && laterNpc.state === 'post_meal') {
+        return; // a later member (near seat / follower) hasn't left yet — wait
+      }
+    }
 
-    _triggerPartyLeave(party);
+    // My turn to leave
+    const exitPlan = _buildDinerExitPlan(npc);
+    _cStartRoute(npc, exitPlan.route, '_despawn', 0, exitPlan.intent);
+
+    // Release booth when the first member (original leader, far seat) finally leaves
+    if (myIdx === 0) {
+      if (booth) { booth.claimedBy = null; booth._plates = null; }
+      party.state = 'leaving';
+      const qIdx = _dinerGroupQueue.indexOf(party);
+      if (qIdx >= 0) _dinerGroupQueue.splice(qIdx, 1);
+      if (_dinerActiveGroup && _dinerActiveGroup.id === party.id) _dinerActiveGroup = null;
+    }
   },
 
   // ─── GAMER_ENTERING: Gamer NPC walks from entrance to arcade ─
@@ -1087,7 +1120,7 @@ function updateDinerNPCs() {
     npcList: dinerNPCs,
     stateHandlers: DINER_NPC_AI,
     moveFn: moveDinerNPC,
-    exemptIdleStates: new Set(['eating', 'waiting_at_booth', 'post_meal', 'gamer_playing', 'idle', 'taking_order', 'submitting_ticket', 'serving', 'pickup_tray']),
+    exemptIdleStates: new Set(['eating', 'waiting_at_booth', 'post_meal', 'seating', 'gamer_playing', 'idle', 'taking_order', 'submitting_ticket', 'serving', 'pickup_tray']),
     onIdleTimeout: (npc) => {
       if (npc.isWaitress) return; // never despawn waitress
       npc._idleTime = 0;
