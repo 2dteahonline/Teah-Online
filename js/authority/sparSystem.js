@@ -1886,6 +1886,12 @@ const SparSystem = {
         _momentumBreakFrames: 0, // frames remaining in forced break direction after idle/low-motion guard
         _momentumBreakDirX: 0,   // forced X direction during momentum break
         _momentumBreakDirY: 0,   // forced Y direction during momentum break
+        // Movement plan: commit to a direction for N frames (like a real player)
+        _movePlanDirX: 0,        // committed direction X (unit)
+        _movePlanDirY: 0,        // committed direction Y (unit)
+        _movePlanFrames: 0,      // frames remaining in current plan
+        _movePlanState: null,    // which state set this plan ('neutral','antiBottom','hasBottom','escape','gunSide')
+        _movePlanTookHitFrame: 0, // _lastTookHitFrame when plan was set (to detect new hits)
         // vNext: opening contest policy state
         _openingContestPolicy: null,
         _openingContestFamily: null,
@@ -2213,6 +2219,8 @@ const SparSystem = {
         m.ai._momentumBreakFrames = 0;
         m.ai._momentumBreakDirX = 0;
         m.ai._momentumBreakDirY = 0;
+        m.ai._movePlanFrames = 0;
+        m.ai._movePlanState = null;
         m.ai._openingContestPolicy = null;
         m.ai._openingContestFamily = null;
         m.ai._punishWindowPolicy = null;
@@ -6008,29 +6016,46 @@ const SparSystem = {
       moveY = 0;
     }
 
-    // Direction commitment: real players don't reverse direction every frame.
-    // If the new direction is >90° from last frame's, keep the old direction
-    // for a few frames before allowing the change. This prevents jitter from
-    // competing forces that nearly cancel and flip the resultant each frame.
-    if (moveLen > 1 && ai._lastMoveX !== undefined) {
-      const dotProd = moveX * ai._lastMoveX + moveY * ai._lastMoveY;
-      // dotProd < 0 means >90° turn (direction reversal)
-      if (dotProd < 0 && ai._momentumBreakFrames <= 0) {
-        ai._dirCommitFrames = (ai._dirCommitFrames || 0) + 1;
-        if (ai._dirCommitFrames < 5) {
-          // Keep old direction — don't allow the flip yet
-          moveX = ai._lastMoveX;
-          moveY = ai._lastMoveY;
-        } else {
-          // Committed long enough, allow the direction change
-          ai._dirCommitFrames = 0;
-        }
-      } else {
-        ai._dirCommitFrames = 0;
-      }
+    // === MOVEMENT PLAN: commit to a direction like a real player ===
+    // Real players pick a direction and go for 0.5-1 sec. They only change
+    // if a bullet is about to hit them. This replaces per-frame re-evaluation
+    // which causes jitter from competing forces flipping the resultant.
+    //
+    // Determine current movement state for plan tracking
+    const _movePlanCurrentState = isOpening ? 'opening'
+      : (member && member.gun && member.gun.reloading) ? 'reload'
+      : hasBottom ? 'hasBottom'
+      : (enemyHasBottom && ai._antiBottomTactic) ? 'antiBottom'
+      : ai._escapePolicy ? 'escape'
+      : ai._gunSidePolicy ? 'gunSide'
+      : 'neutral';
+
+    // Check if bullet dodge is urgent enough to break the plan
+    const _planDodgeUrgent = dodgeMag > 1.5;
+
+    // Check if state changed (entered a new tactical phase)
+    const _planStateChanged = ai._movePlanState !== null && ai._movePlanState !== _movePlanCurrentState;
+
+    // Check if momentum break is active (overrides plan)
+    const _planMomentumBreak = ai._momentumBreakFrames > 0;
+
+    if (ai._movePlanFrames > 0 && !_planDodgeUrgent && !_planStateChanged && !_planMomentumBreak && moveLen > 1) {
+      // Active plan, no bullet threat, same state — hold the committed direction
+      moveX = ai._movePlanDirX * speed;
+      moveY = ai._movePlanDirY * speed;
+      ai._movePlanFrames--;
+    } else if (moveLen > 1) {
+      // Set new plan from computed direction
+      // Duration: 25-45 frames (~0.4-0.75 sec at 60fps)
+      // Shorter during anti-bottom (faster re-evaluation needed for phases)
+      const planDuration = (_movePlanCurrentState === 'antiBottom' || _movePlanCurrentState === 'escape')
+        ? 15 + Math.floor(Math.random() * 15)   // 15-30 frames for tactical phases
+        : 25 + Math.floor(Math.random() * 20);   // 25-45 frames for neutral/hasBottom
+      ai._movePlanDirX = moveX / speed;
+      ai._movePlanDirY = moveY / speed;
+      ai._movePlanFrames = planDuration;
+      ai._movePlanState = _movePlanCurrentState;
     }
-    ai._lastMoveX = moveX;
-    ai._lastMoveY = moveY;
 
     // Freeze penalty after shooting — applied AFTER normalization (the only valid speed reduction)
     if (ai._freezeTimer > 0) {
@@ -6061,6 +6086,7 @@ const SparSystem = {
       ai._momentumBreakFrames = 25 + Math.floor(Math.random() * 10);
       ai._momentumBreakDirX = breakDir * 0.7;
       ai._momentumBreakDirY = breakDirY;
+      ai._movePlanFrames = 0; // clear plan so break takes effect immediately
       // Track diagnostics
       const sl2 = typeof sparLearning !== 'undefined' ? sparLearning : null;
       if (sl2 && sl2.tactical) {
@@ -6101,6 +6127,7 @@ const SparSystem = {
           ai._momentumBreakFrames = 15 + Math.floor(Math.random() * 10);
           ai._momentumBreakDirX = breakDir * 0.8;
           ai._momentumBreakDirY = breakDirY;
+          ai._movePlanFrames = 0; // clear plan so break takes effect
           const _sl2 = typeof sparLearning !== 'undefined' ? sparLearning : null;
           if (_sl2 && _sl2.tactical) {
             if (typeof _sl2.tactical.ownerStallBreaks !== 'number') _sl2.tactical.ownerStallBreaks = 0;
@@ -6135,6 +6162,7 @@ const SparSystem = {
         ai._momentumBreakFrames = 15 + Math.floor(Math.random() * 10);
         ai._momentumBreakDirX = breakDir2 * 0.75;
         ai._momentumBreakDirY = breakDirY2;
+        ai._movePlanFrames = 0; // clear plan so break takes effect
         const sl2 = typeof sparLearning !== 'undefined' ? sparLearning : null;
         if (sl2 && sl2.tactical) {
           if (typeof sl2.tactical.idleBreaks !== 'number') sl2.tactical.idleBreaks = 0;
