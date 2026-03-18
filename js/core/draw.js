@@ -778,69 +778,7 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
-      // Food indicator — plate + sandwich held at hand level (52px wide)
-      if (npc.hasFood) {
-        // Position at hand/arm level, offset by facing direction
-        let fOffX = 0, fOffY = -36; // hand height (mid-torso)
-        if (npc.dir === 2) fOffX = -18;        // facing left → food on left
-        else if (npc.dir === 3) fOffX = 18;    // facing right → food on right
-        else if (npc.dir === 0) fOffY = -32;   // facing down → food slightly lower/forward
-        else if (npc.dir === 1) fOffY = -42;   // facing up → food slightly higher
-        const bobF = npc.moving ? Math.sin(npc.frame * Math.PI / 2) * 1.5 : 0;
-        const fx = npc.x + fOffX, fy = npc.y + fOffY + bobF;
-        // Shadow under plate
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.beginPath(); ctx.ellipse(fx, fy + 12, 28, 9, 0, 0, Math.PI * 2); ctx.fill();
-        // Plate (52px wide)
-        ctx.fillStyle = '#d4c8a8';
-        ctx.beginPath(); ctx.ellipse(fx, fy + 6, 26, 10, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#a09070'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.ellipse(fx, fy + 6, 26, 10, 0, 0, Math.PI * 2); ctx.stroke();
-        // Plate rim highlight
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.ellipse(fx, fy + 5, 23, 7, 0, 0, Math.PI); ctx.stroke();
-        // Build sandwich layers from NPC's recipe if available
-        let layers = [];
-        if (npc._recipeIngredients && typeof DELI_INGREDIENTS !== 'undefined') {
-          for (const ingId of npc._recipeIngredients) {
-            const ing = DELI_INGREDIENTS[ingId];
-            if (ing) layers.push({ color: ing.color, isBread: ingId === 'bread' || ingId === 'bagel' });
-          }
-        }
-        if (layers.length === 0) {
-          layers = [
-            { color: '#c8a050', isBread: true }, { color: '#e08080', isBread: false },
-            { color: '#60c040', isBread: false }, { color: '#f0d040', isBread: false },
-            { color: '#d4a840', isBread: true },
-          ];
-        }
-        const npcMaxW = 46, npcLayerH = 7;
-        for (let li = 0; li < layers.length; li++) {
-          const ly = fy + 3 - li * npcLayerH;
-          const lw = layers[li].isBread ? npcMaxW : npcMaxW - 6;
-          const lh = layers[li].isBread ? 8 : 7;
-          if (layers[li].isBread && li === layers.length - 1 && li > 0) {
-            ctx.fillStyle = layers[li].color;
-            ctx.beginPath();
-            ctx.moveTo(fx - lw / 2, ly + 1);
-            ctx.quadraticCurveTo(fx, ly - lh - 3, fx + lw / 2, ly + 1);
-            ctx.closePath(); ctx.fill();
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            ctx.beginPath();
-            ctx.moveTo(fx - lw / 2 + 2, ly);
-            ctx.quadraticCurveTo(fx, ly - lh - 1, fx + lw / 2 - 2, ly);
-            ctx.closePath(); ctx.fill();
-          } else {
-            ctx.fillStyle = layers[li].color;
-            ctx.fillRect(fx - lw / 2, ly - lh / 2, lw, lh);
-            ctx.fillStyle = 'rgba(255,255,255,0.25)';
-            ctx.fillRect(fx - lw / 2 + 1, ly - lh / 2, lw - 2, 2);
-            ctx.fillStyle = 'rgba(0,0,0,0.08)';
-            ctx.fillRect(fx - lw / 2 + 1, ly + lh / 2 - 1, lw - 2, 1);
-          }
-        }
-      }
-      // Food plate on table when NPC is eating at a red seat
+      // Food plate on table when NPC is eating at a red seat (no carried plate — only shows on table)
       if (npc._tableFood && npc.state === 'eating') {
         // Plate goes on table surface: 1 tile toward the table from the chair
         // Left chairs (dir:3) → plate 1 tile to the right; Right chairs (dir:2) → plate 1 tile to the left

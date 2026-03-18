@@ -37,10 +37,10 @@ const DELI_SPOTS = {
   diningEntry: { tx: 26, ty: 20 },   // gap into dining area
 };
 
-// Pickup spots along the brown service counter (ty:22, south of counter wall at ty:21)
-// NPC must be at ty:22 facing north (dir:1) to pick up food
+// Pickup spots aligned with plate render positions on the service counter (ty:22, south of counter wall at ty:21)
+// Plates render at tx:14,15,16,17 on the counter — NPC must stand directly in front facing north
 const DELI_PICKUP_SPOTS = [
-  { tx: 15, ty: 22 }, { tx: 16, ty: 22 }, { tx: 17, ty: 22 }, { tx: 18, ty: 22 },
+  { tx: 14, ty: 22 }, { tx: 15, ty: 22 }, { tx: 16, ty: 22 }, { tx: 17, ty: 22 },
 ];
 
 // Chairs (NPCs sit here) — LEFT and RIGHT sides only (no top/bottom corners)
@@ -252,6 +252,34 @@ const _deliMoveSkipStates = new Set(['eating', 'spawn_wait', '_despawn', 'browsi
 const _deliMoveLaneDisable = new Set(['picking_up', 'browsing_shelf']);
 
 function moveDeliNPC(npc) {
+  // 1-tile ahead radar — if another walking NPC is within 1 tile ahead, pause to avoid collision
+  if (npc.route && npc.route.length > 0) {
+    const wp = npc.route[0];
+    const tgtX = wp.tx * TILE + TILE / 2;
+    const tgtY = wp.ty * TILE + TILE / 2;
+    const mdx = tgtX - npc.x;
+    const mdy = tgtY - npc.y;
+    const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+    if (mdist > 1) {
+      const mnx = mdx / mdist, mny = mdy / mdist;
+      for (const other of deliNPCs) {
+        if (other === npc) continue;
+        if (_deliMoveSkipStates.has(other.state)) continue;
+        const ox = other.x - npc.x;
+        const oy = other.y - npc.y;
+        const od = Math.sqrt(ox * ox + oy * oy);
+        if (od > 0 && od < TILE) {
+          // Check if other NPC is ahead of us (dot product with movement direction)
+          const dot = (ox * mnx + oy * mny) / od;
+          if (dot > 0.3) {
+            // NPC ahead within 1 tile — pause this frame, don't push through
+            npc.moving = true;
+            return;
+          }
+        }
+      }
+    }
+  }
   _cMoveNPC(npc, {
     npcList: deliNPCs,
     skipStates: _deliMoveSkipStates,
@@ -578,27 +606,45 @@ function updateDeliNPCs() {
     const handler = DELI_NPC_AI[npc.state];
     if (handler) handler(npc);
 
-    // Stuck detection — 10 sec stuck → force exit
+    // Stuck detection — 10 sec stuck → reroute or force exit
     if (npc.moving && npc.route && npc.route.length > 0) {
       npc._stuckFrames = (npc._stuckFrames || 0) + 1;
       if (npc._stuckFrames > 600) {
         npc._stuckFrames = 0;
-        npc.hasFood = false;
-        npc._tableFood = false;
-        npc._recipeIngredients = null;
-        npc._browseSpot = null;
-        if (npc.claimedChair !== null) npc.claimedChair = null;
-        if (npc._claimedOrder) {
-          npc._claimedOrder._claimedByNpc = null;
-          npc._claimedOrder = null;
-        }
         if (_isKitchenZone(npc.x, npc.y)) {
           npc.x = 26 * TILE + TILE / 2;
           npc.y = 22 * TILE + TILE / 2;
         }
-        const curTX = Math.floor(npc.x / TILE);
-        const curTY = Math.floor(npc.y / TILE);
-        _cStartRoute(npc, _routeToExitDoor(curTX, curTY), '_despawn', 0);
+        // Order NPCs with food: NEVER drop food — reroute to a table instead
+        if (npc._role === 'order' && npc.hasFood) {
+          const chairIdx = _claimChair(npc);
+          if (chairIdx >= 0) {
+            if (npc.claimedChair !== null) npc.claimedChair = null;
+            npc.claimedChair = chairIdx;
+            const curTX = Math.floor(npc.x / TILE);
+            const curTY = Math.floor(npc.y / TILE);
+            _cStartRoute(npc, _routePickupToChair(chairIdx), 'eating', DELI_NPC_CONFIG.eatDuration[0]);
+          } else {
+            // No chair available — wait at counter area, retry soon
+            npc.state = 'picking_up';
+            npc.stateTimer = 60;
+            npc.route = null;
+          }
+        } else {
+          // Aisle NPCs or order NPCs without food — clean up and exit
+          npc.hasFood = false;
+          npc._tableFood = false;
+          npc._recipeIngredients = null;
+          npc._browseSpot = null;
+          if (npc.claimedChair !== null) npc.claimedChair = null;
+          if (npc._claimedOrder) {
+            npc._claimedOrder._claimedByNpc = null;
+            npc._claimedOrder = null;
+          }
+          const curTX = Math.floor(npc.x / TILE);
+          const curTY = Math.floor(npc.y / TILE);
+          _cStartRoute(npc, _routeToExitDoor(curTX, curTY), '_despawn', 0);
+        }
       }
     } else {
       npc._stuckFrames = 0;
