@@ -15,6 +15,29 @@ const SPAR_CONFIG = {
   ARENA_LARGE: { w: 36, h: 28 },
 };
 
+// Derived constants — computed from physics so they auto-update if source values change
+const SPAR_DERIVED = {
+  // Dodge geometry: optimal angle θ = arcsin(botSpeed / bulletSpeed)
+  DODGE_SIN_THETA: Math.min(1.0, SPAR_CONFIG.BOT_SPEED / (GAME_CONFIG.BULLET_SPEED || 9)),
+  DODGE_COS_THETA: Math.sqrt(1 - Math.pow(Math.min(1.0, SPAR_CONFIG.BOT_SPEED / (GAME_CONFIG.BULLET_SPEED || 9)), 2)),
+  // Frames needed to clear the hitbox at bot speed
+  FRAMES_TO_CLEAR: Math.ceil((GAME_CONFIG.DEFAULT_HITBOX_R || 33) / SPAR_CONFIG.BOT_SPEED),
+  // Speed during post-shot freeze (default 50/50 build → 0.54 penalty)
+  FROZEN_SPEED_FACTOR: 1 - 0.54, // placeholder — actual penalty comes from gun stats at runtime
+  // Bottom gap = entity hitbox radius (arm offset physics)
+  BOTTOM_GAP: GAME_CONFIG.ENTITY_R || 29,
+  // React frames: how many frames of bullet travel = 2.7 hitbox radii
+  REACT_FRAMES: Math.ceil(2.7 * (GAME_CONFIG.DEFAULT_HITBOX_R || 33) / (GAME_CONFIG.BULLET_SPEED || 9)),
+  // Opening factor: traverse time multiplier (1.3 = traverse + settle)
+  OPENING_FACTOR: 1.3,
+  // Hit radius for dodge/shoot calculations (entity R + bullet half-short)
+  HIT_RADIUS: (GAME_CONFIG.DEFAULT_HITBOX_R || 33),
+  // Bullet speed reference
+  BULLET_SPEED: GAME_CONFIG.BULLET_SPEED || 9,
+  // Bot speed reference
+  BOT_SPEED: SPAR_CONFIG.BOT_SPEED,
+};
+
 // CT-X stat conversion functions (from 0-100 slider value to gun stat)
 // These mirror the existing _mgSliders logic in gunSystem.js
 const SPAR_CTX_STATS = {

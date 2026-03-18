@@ -3055,52 +3055,29 @@ const SparSystem = {
     }
   },
 
-  // Dodge incoming enemy bullets — uses relative velocity for correct approach detection
-  _getIncomingBulletDodge(bot, team, botVx, botVy) {
+  // Compute dodge plan using diagonal dodge at optimal angle θ = arcsin(speed/bulletSpeed)
+  // This angle maximizes clearance by combining perpendicular evasion with time compression.
+  // Returns { x, y, shouldHoldFire, threatCount }
+  _computeDodgePlan(bot, team, botVx, botVy) {
     const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
     const hbYOff = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
     const botHitY = bot.y + hbYOff;
     const hitRadius = this._getSparPerpHitRadius(); // 33px
     const margin = 6;
-    const maxReactFrames = 10;
+    const bulletSpeed = GAME_CONFIG.BULLET_SPEED || 9;
     const arenaLevel = typeof levels !== 'undefined' && levels[currentLevel] ? levels[currentLevel] : null;
     const arenaW = arenaLevel ? arenaLevel.widthTiles * TILE : 600;
     const arenaH = arenaLevel ? arenaLevel.heightTiles * TILE : 600;
     const wallM = TILE * 2;
     const bVx = botVx || 0, bVy = botVy || 0;
 
-    // --- DODGE COMMITMENT: hold direction for multiple frames like a human ---
-    // Humans don't recalculate every frame. They see a bullet, step aside, continue.
-    const ai = bot.ai;
-    if (ai && ai._dodgeCommitFrames > 0) {
-      ai._dodgeCommitFrames--;
-      // Break commitment ONLY if a critical bullet arrives (tClosest < 3)
-      let criticalOverride = false;
-      for (const b of bullets) {
-        if (!b.sparTeam || b.sparTeam === team) continue;
-        const bvx = b.vx, bvy = b.vy;
-        if (bvx * bvx + bvy * bvy < 0.5) continue;
-        const rvx = bvx - bVx, rvy = bvy - bVy;
-        const rSq = rvx * rvx + rvy * rvy;
-        if (rSq < 0.5) continue;
-        const dbx = bot.x - b.x, dby = botHitY - b.y;
-        const tc = (dbx * rvx + dby * rvy) / rSq;
-        if (tc < 0 || tc > 3) continue; // only care about IMMINENT threats
-        const px = (bot.x + bVx * tc) - (b.x + bvx * tc);
-        const py = (botHitY + bVy * tc) - (b.y + bvy * tc);
-        if (Math.sqrt(px * px + py * py) < hitRadius) { criticalOverride = true; break; }
-      }
-      if (!criticalOverride) {
-        return { x: ai._dodgeCommitX || 0, y: ai._dodgeCommitY || 0 };
-      }
-      ai._dodgeCommitFrames = 0; // break commitment for critical re-evaluation
-    }
+    // Derived dodge angle constants
+    const sinTheta = typeof SPAR_DERIVED !== 'undefined' ? SPAR_DERIVED.DODGE_SIN_THETA : Math.min(1.0, speed / bulletSpeed);
+    const cosTheta = typeof SPAR_DERIVED !== 'undefined' ? SPAR_DERIVED.DODGE_COS_THETA : Math.sqrt(1 - sinTheta * sinTheta);
+    const reactFrames = typeof SPAR_DERIVED !== 'undefined' ? SPAR_DERIVED.REACT_FRAMES : 10;
 
-    // --- SINGLE-THREAT DODGE: find the most urgent bullet, dodge ONLY that one ---
-    // Accumulating vectors from all bullets causes conflicting directions and jitter.
-    let bestTC = Infinity;
-    let bestPerp = null;
-
+    // Collect all threatening bullets sorted by arrival time
+    const threats = [];
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
       const bvx = b.vx, bvy = b.vy;
@@ -3113,8 +3090,9 @@ const SparSystem = {
       if (relSpeedSq < 0.5) continue;
 
       const tClosest = (dbx * rvx + dby * rvy) / relSpeedSq;
-      if (tClosest < 0 || tClosest > maxReactFrames) continue;
+      if (tClosest < 0 || tClosest > reactFrames) continue;
 
+      // Closest approach distance
       const closestBotX = bot.x + bVx * tClosest;
       const closestBotY = botHitY + bVy * tClosest;
       const closestBulletX = b.x + bvx * tClosest;
@@ -3125,54 +3103,186 @@ const SparSystem = {
 
       if (perpDist >= hitRadius + margin) continue;
 
-      // This bullet will hit — is it more urgent than current best?
-      if (tClosest < bestTC) {
-        bestTC = tClosest;
-        const bSpeed = Math.sqrt(bSpeedSq);
-        let pnx = -bvy / bSpeed;
-        let pny = bvx / bSpeed;
-        const sideSign = (perpX * pnx + perpY * pny) >= 0 ? 1 : -1;
-        pnx *= sideSign;
-        pny *= sideSign;
+      const bSpeed = Math.sqrt(bSpeedSq);
+      threats.push({ b, tClosest, perpX, perpY, perpDist, bvx, bvy, bSpeed });
+    }
 
-        // Wall-aware flip
-        const projX = bot.x + pnx * hitRadius;
-        const projY = bot.y + pny * hitRadius;
-        if (projX < wallM || projX > arenaW - wallM || projY < wallM || projY > arenaH - wallM) {
-          const fX = bot.x - pnx * hitRadius, fY = bot.y - pny * hitRadius;
-          if (!(fX < wallM || fX > arenaW - wallM || fY < wallM || fY > arenaH - wallM)) {
-            pnx *= -1; pny *= -1;
-          }
-        }
+    if (threats.length === 0) {
+      return { x: 0, y: 0, shouldHoldFire: false, threatCount: 0 };
+    }
 
-        const urgency = Math.max(0.8, 3.0 - tClosest / 5);
-        const strength = perpDist < hitRadius ? 1.0 : Math.max(0.4, 1 - (perpDist - hitRadius) / margin);
-        bestPerp = { x: pnx * urgency * strength, y: pny * urgency * strength };
+    // Sort by arrival time — dodge the most urgent first
+    threats.sort((a, b) => a.tClosest - b.tClosest);
+    const primary = threats[0];
+
+    // Compute diagonal dodge direction for primary threat
+    // Perpendicular to bullet velocity
+    let perpNx = -primary.bvy / primary.bSpeed;
+    let perpNy = primary.bvx / primary.bSpeed;
+    // Bullet travel direction
+    const bulletDirX = primary.bvx / primary.bSpeed;
+    const bulletDirY = primary.bvy / primary.bSpeed;
+
+    // Choose perpendicular side (toward existing offset from bullet path)
+    const sideSign = (primary.perpX * perpNx + primary.perpY * perpNy) >= 0 ? 1 : -1;
+    perpNx *= sideSign;
+    perpNy *= sideSign;
+
+    // Rotate perpendicular toward bullet travel by θ = arcsin(speed/bulletSpeed)
+    // This creates the optimal diagonal that maximizes clearance
+    let dodgeDirX = perpNx * cosTheta + bulletDirX * sinTheta;
+    let dodgeDirY = perpNy * cosTheta + bulletDirY * sinTheta;
+
+    // Normalize (should be ~1.0 already but ensure)
+    const dLen = Math.sqrt(dodgeDirX * dodgeDirX + dodgeDirY * dodgeDirY);
+    if (dLen > 0.01) {
+      dodgeDirX /= dLen;
+      dodgeDirY /= dLen;
+    }
+
+    // Wall-aware flip: if dodge pushes into wall, flip to opposite direction
+    const projX = bot.x + dodgeDirX * hitRadius;
+    const projY = bot.y + dodgeDirY * hitRadius;
+    if (projX < wallM || projX > arenaW - wallM || projY < wallM || projY > arenaH - wallM) {
+      // Try opposite perpendicular side (flip perp, recompute diagonal)
+      const flipPerpNx = -perpNx;
+      const flipPerpNy = -perpNy;
+      const flipDirX = flipPerpNx * cosTheta + bulletDirX * sinTheta;
+      const flipDirY = flipPerpNy * cosTheta + bulletDirY * sinTheta;
+      const fProjX = bot.x + flipDirX * hitRadius;
+      const fProjY = bot.y + flipDirY * hitRadius;
+      if (!(fProjX < wallM || fProjX > arenaW - wallM || fProjY < wallM || fProjY > arenaH - wallM)) {
+        dodgeDirX = flipDirX;
+        dodgeDirY = flipDirY;
+        // Renormalize
+        const fLen = Math.sqrt(dodgeDirX * dodgeDirX + dodgeDirY * dodgeDirY);
+        if (fLen > 0.01) { dodgeDirX /= fLen; dodgeDirY /= fLen; }
       }
     }
 
-    if (!bestPerp) {
-      if (ai) { ai._dodgeCommitFrames = 0; }
-      return { x: 0, y: 0 };
+    // Validate dodge direction against secondary threats
+    // If dodging primary would move INTO another bullet, adjust
+    for (let i = 1; i < Math.min(threats.length, 4); i++) {
+      const sec = threats[i];
+      // Project bot position after moving in dodge direction for the secondary bullet's arrival
+      const futBotX = bot.x + dodgeDirX * speed * sec.tClosest;
+      const futBotY = botHitY + dodgeDirY * speed * sec.tClosest;
+      const futBulletX = sec.b.x + sec.bvx * sec.tClosest;
+      const futBulletY = sec.b.y + sec.bvy * sec.tClosest;
+      const futDx = futBotX - futBulletX, futDy = futBotY - futBulletY;
+      const futDist = Math.sqrt(futDx * futDx + futDy * futDy);
+      if (futDist < hitRadius * 0.8) {
+        // Dodge into secondary threat — reduce dodge magnitude to thread the gap
+        // Don't flip (primary is more urgent), but scale back
+        dodgeDirX *= 0.5;
+        dodgeDirY *= 0.5;
+        break;
+      }
     }
 
-    // Clamp to max dodge speed
-    let dodgeX = bestPerp.x, dodgeY = bestPerp.y;
-    const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
-    const maxDodge = speed * 1.2;
-    if (dodgeLen > maxDodge) {
-      dodgeX = (dodgeX / dodgeLen) * maxDodge;
-      dodgeY = (dodgeY / dodgeLen) * maxDodge;
+    // Dense volley detection: 3+ threats arriving within 10 frames = hold fire
+    let closeThreats = 0;
+    for (const t of threats) {
+      if (t.tClosest <= 10) closeThreats++;
     }
+    const shouldHoldFire = closeThreats >= 3;
 
-    // Commit to this direction for 5 frames (smooth, human-like step)
-    if (ai) {
-      ai._dodgeCommitX = dodgeX;
-      ai._dodgeCommitY = dodgeY;
-      ai._dodgeCommitFrames = 5;
+    // Scale dodge to full speed (binary: dodge at full speed or don't)
+    const finalX = dodgeDirX * speed;
+    const finalY = dodgeDirY * speed;
+
+    return { x: finalX, y: finalY, shouldHoldFire, threatCount: threats.length };
+  },
+
+  // Frame-exact shoot decision: can the bot shoot and still dodge all incoming bullets?
+  // Computes max displacement during freeze window vs required displacement to dodge each threat.
+  // Returns true if safe to shoot (no bullet will hit during freeze).
+  _canShootAndDodge(bot, team, member) {
+    const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
+    const hbYOff = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
+    const botHitY = bot.y + hbYOff;
+    const hitRadius = this._getSparPerpHitRadius();
+    const bulletSpeed = GAME_CONFIG.BULLET_SPEED || 9;
+
+    // Get freeze parameters from gun
+    const gun = member.gun;
+    const freezeDur = gun.freezeDuration || 15;
+    const freezePenalty = gun.freezePenalty || 0.54;
+    const frozenSpeed = speed * (1 - freezePenalty);
+
+    for (const b of bullets) {
+      if (!b.sparTeam || b.sparTeam === team) continue;
+      const bvx = b.vx, bvy = b.vy;
+      const bSpeedSq = bvx * bvx + bvy * bvy;
+      if (bSpeedSq < 0.5) continue;
+
+      const dbx = bot.x - b.x, dby = botHitY - b.y;
+      const rvx = bvx, rvy = bvy; // bot velocity is ~0 during freeze
+      const relSpeedSq = rvx * rvx + rvy * rvy;
+      if (relSpeedSq < 0.5) continue;
+
+      // Time to closest approach (assuming bot stationary during freeze)
+      const tc = (dbx * rvx + dby * rvy) / relSpeedSq;
+      if (tc < 0 || tc > freezeDur + 5) continue; // only care about bullets arriving during/just after freeze
+
+      // Closest approach distance if bot doesn't move
+      const closestBulletX = b.x + bvx * tc;
+      const closestBulletY = b.y + bvy * tc;
+      const perpX = bot.x - closestBulletX;
+      const perpY = botHitY - closestBulletY;
+      const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
+
+      if (perpDist >= hitRadius + 6) continue; // this bullet won't hit even stationary
+
+      // Bullet WILL hit if stationary — can the bot move far enough during freeze?
+      // Max displacement: frozen speed for min(tc, freezeDur) + full speed for remainder
+      const frozenFrames = Math.min(tc, freezeDur);
+      const fullFrames = Math.max(0, tc - freezeDur);
+      const maxDisp = frozenSpeed * frozenFrames + speed * fullFrames;
+
+      // Need to move perpendicular to bullet by hitRadius to clear
+      if (maxDisp < hitRadius) return false; // can't dodge this bullet during freeze
     }
+    return true;
+  },
 
-    return { x: dodgeX, y: dodgeY };
+  // Relative-velocity descent path check: does any bullet ACTUALLY intersect the bot's
+  // descent corridor? Uses closest-approach math instead of box-projection.
+  // descentSpeed: how fast the bot is descending (positive = downward)
+  _isDescentPathBlocked(bot, team, descentSpeed) {
+    const hbYOff = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
+    const botHitY = bot.y + hbYOff;
+    const hitRadius = this._getSparPerpHitRadius();
+    const lookAhead = 14; // frames to check ahead
+
+    for (const b of bullets) {
+      if (!b.sparTeam || b.sparTeam === team) continue;
+      const bvx = b.vx, bvy = b.vy;
+      const bSpeedSq = bvx * bvx + bvy * bvy;
+      if (bSpeedSq < 0.5) continue;
+
+      // Relative velocity: bullet vel minus bot descent vel (bot moves at descentSpeed downward)
+      const rvx = bvx - 0; // bot horizontal velocity ~0 during descent check
+      const rvy = bvy - descentSpeed;
+      const relSpeedSq = rvx * rvx + rvy * rvy;
+      if (relSpeedSq < 0.5) continue;
+
+      const dbx = bot.x - b.x, dby = botHitY - b.y;
+      const tc = (dbx * rvx + dby * rvy) / relSpeedSq;
+      if (tc < 0 || tc > lookAhead) continue; // not arriving in window
+
+      // Closest approach distance
+      const closestBotX = bot.x; // horizontal pos unchanged
+      const closestBotY = botHitY + descentSpeed * tc;
+      const closestBulletX = b.x + bvx * tc;
+      const closestBulletY = b.y + bvy * tc;
+      const px = closestBotX - closestBulletX;
+      const py = closestBotY - closestBulletY;
+      const closestDist = Math.sqrt(px * px + py * py);
+
+      if (closestDist < hitRadius) return true; // bullet intersects descent path
+    }
+    return false;
   },
 
   // --- BULLET GAP READING: scan live bullet field for safe crossing corridors ---
@@ -4199,25 +4309,30 @@ const SparSystem = {
       else olb.fromCenter++;
     }
 
-    // v8: decay all tactic fail streaks by 1 per match (prevent permanent lockout)
-    if (sl.tactical && sl.tactical.tacticFailStreaks) {
+    // Fail streak decay: halve every 50 matches (recovers in ~150, not 200+)
+    const _decayNow = sl.matchCount > 0 && sl.matchCount % 50 === 0;
+    if (_decayNow && sl.tactical && sl.tactical.tacticFailStreaks) {
       const tKeys = typeof SPAR_ANTI_BOTTOM_TACTIC_KEYS !== 'undefined'
         ? SPAR_ANTI_BOTTOM_TACTIC_KEYS
         : Object.keys(sl.tactical.tacticFailStreaks);
       for (const key of tKeys) {
         if (sl.tactical.tacticFailStreaks[key] > 0) {
-          sl.tactical.tacticFailStreaks[key]--;
+          sl.tactical.tacticFailStreaks[key] = Math.floor(sl.tactical.tacticFailStreaks[key] / 2);
         }
       }
     }
-    if (sl.tactical && sl.tactical.repeekFailStreaks) {
+    if (_decayNow && sl.tactical && sl.tactical.repeekFailStreaks) {
       for (const key of Object.keys(sl.tactical.repeekFailStreaks)) {
-        if (sl.tactical.repeekFailStreaks[key] > 0) sl.tactical.repeekFailStreaks[key]--;
+        if (sl.tactical.repeekFailStreaks[key] > 0) {
+          sl.tactical.repeekFailStreaks[key] = Math.floor(sl.tactical.repeekFailStreaks[key] / 2);
+        }
       }
     }
-    if (sl.tactical && sl.tactical.escapeFailStreaks) {
+    if (_decayNow && sl.tactical && sl.tactical.escapeFailStreaks) {
       for (const key of Object.keys(sl.tactical.escapeFailStreaks)) {
-        if (sl.tactical.escapeFailStreaks[key] > 0) sl.tactical.escapeFailStreaks[key]--;
+        if (sl.tactical.escapeFailStreaks[key] > 0) {
+          sl.tactical.escapeFailStreaks[key] = Math.floor(sl.tactical.escapeFailStreaks[key] / 2);
+        }
       }
     }
 
@@ -5033,26 +5148,41 @@ const SparSystem = {
       }
     }
 
-    // --- Strafe helper (used by all behaviors) ---
-    ai.strafeTimer--;
-    if (ai.strafeTimer <= 0) {
-      ai.strafeDir *= -1;
-      ai.strafeTimer = 25 + Math.floor(Math.random() * 35);
-    }
-    if (ai.jukeTimer <= 0 && Math.random() < 0.012) {
-      ai.strafeDir *= -1;
-      ai.jukeTimer = 15;
-    }
-
-    // v12: Cross-side unpredictability — prevent retreatsSameSide=0.9999
-    // After a failed engagement, flip strafe direction to cross to the other side
-    // This makes the bot less predictable and enables advantage chaining
-    if (ai._lastEngagementType && !ai._lastEngagementSuccess && !isOpening) {
-      // 40% chance to cross sides after a failed engagement
-      if (Math.random() < 0.40) {
-        ai.strafeDir *= -1;
+    // --- Computed strafe direction (replaces random timer) ---
+    // Direction set by CONDITIONS, not timers. Tactical owners compute their own moveX.
+    // 1. Wall proximity: flip away from nearby wall
+    // 2. Bullet threat side: strafe away from side with more incoming bullets
+    // 3. Failed engagement: cross sides for unpredictability
+    // 4. No strong signal: maintain current direction (momentum)
+    {
+      const wallM = TILE * 2.5;
+      const nearLeftWall = bot.x < wallM;
+      const nearRightWall = bot.x > arenaW - wallM;
+      if (nearLeftWall && ai.strafeDir < 0) ai.strafeDir = 1;
+      else if (nearRightWall && ai.strafeDir > 0) ai.strafeDir = -1;
+      else {
+        // Count bullet threats on each side
+        const hbYOff = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
+        const _stBotHitY = bot.y + hbYOff;
+        let leftBullets = 0, rightBullets = 0;
+        for (const b of bullets) {
+          if (!b.sparTeam || b.sparTeam === team) continue;
+          const dbx = bot.x - b.x, dby = _stBotHitY - b.y;
+          const d2 = dbx * dbx + dby * dby;
+          if (d2 > 250 * 250) continue; // too far to matter
+          // Is bullet approaching from left or right?
+          if (b.x < bot.x && b.vx > 0) leftBullets++;
+          else if (b.x > bot.x && b.vx < 0) rightBullets++;
+        }
+        if (leftBullets > rightBullets + 1) ai.strafeDir = 1; // strafe away from left threats
+        else if (rightBullets > leftBullets + 1) ai.strafeDir = -1;
+        // else: maintain current direction (no random flip)
       }
-      ai._lastEngagementType = null; // consume the trigger so it only fires once
+      // Failed engagement: cross sides for unpredictability
+      if (ai._lastEngagementType && !ai._lastEngagementSuccess && !isOpening) {
+        if (Math.random() < 0.40) ai.strafeDir *= -1;
+        ai._lastEngagementType = null;
+      }
     }
 
     // Cooldowns: prevent rapid reopen after finalize
@@ -5244,7 +5374,7 @@ const SparSystem = {
       }
 
       // Dodge bullets even during opening — always dodge, never tank
-      const openDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
+      const openDodge = this._computeDodgePlan(bot, team, moveX, moveY);
       const openDodgeMag = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
       if (openDodgeMag > 0.15) {
         // Perpendicular dodge: keep route movement, replace perp component
@@ -5464,7 +5594,7 @@ const SparSystem = {
       // --- BOTTOM RETENTION: dodge incoming bullets while maintaining bottom ---
       // When we have bottom and bullets are incoming, dodge to preserve position
       // rather than standing still and eating hits. Re-stabilize after dodge.
-      const bottomDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
+      const bottomDodge = this._computeDodgePlan(bot, team, moveX, moveY);
       const bottomDodgeMag = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
       if (bottomDodgeMag > 0.15) {
         // Perpendicular dodge: keep strafe movement, replace perp component
@@ -5828,24 +5958,9 @@ const SparSystem = {
       }
 
       // --- BULLET WALL CHECK: don't descend into bullet streams ---
-      // Even 1 bullet in the descent path is a real threat — don't require 2+.
-      // No urgency bypass — bot should NEVER blindly rush through bullets.
-      // Use 18-frame lookahead for adequate reaction time.
-      const _abHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
-      const _abHitR = this._getSparPerpHitRadius(); // 33px
-      let _bulletWallCount = 0;
-      for (const b of bullets) {
-        if (!b.sparTeam || b.sparTeam === team) continue;
-        if (b.y > _abHitY - _abHitR && b.y < tgt.y + 50) {
-          const futMinX = b.x + Math.min(b.vx, 0) * 18;
-          const futMaxX = b.x + Math.max(b.vx, 0) * 18;
-          if (futMinX - _abHitR < bot.x && futMaxX + _abHitR > bot.x) {
-            _bulletWallCount++;
-          }
-        }
-      }
-      const _bulletWallBelow = _bulletWallCount >= 1; // 1 bullet = real threat
-      if (_bulletWallBelow && moveY > 0) {
+      // Uses relative-velocity closest-approach math instead of box-projection.
+      const _bulletWallBelow = moveY > 0 && this._isDescentPathBlocked(bot, team, moveY);
+      if (_bulletWallBelow) {
         ai._abBulletWallFrames = (ai._abBulletWallFrames || 0) + 1;
         moveY = 0;
         moveX = ai.strafeDir * speed;
@@ -5873,21 +5988,8 @@ const SparSystem = {
       // Full speed strafe + descent toward bottom
       moveX = ai.strafeDir * speed * 0.85;
       moveY = (bot.y < tgt.y) ? speed * 0.53 : speed * 0.1;
-      // Bullet wall check — 1 bullet blocks descent, 18-frame lookahead
-      const _hystHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
-      const _hystHitR = this._getSparPerpHitRadius();
-      let _hystBulletCount = 0;
-      for (const b of bullets) {
-        if (!b.sparTeam || b.sparTeam === team) continue;
-        if (b.y > _hystHitY - _hystHitR && b.y < tgt.y + 50) {
-          const futMinX = b.x + Math.min(b.vx, 0) * 18;
-          const futMaxX = b.x + Math.max(b.vx, 0) * 18;
-          if (futMinX - _hystHitR < bot.x && futMaxX + _hystHitR > bot.x) {
-            _hystBulletCount++;
-          }
-        }
-      }
-      if (_hystBulletCount >= 1 && moveY > 0) {
+      // Bullet wall check — relative-velocity closest-approach
+      if (moveY > 0 && this._isDescentPathBlocked(bot, team, moveY)) {
         moveY = 0;
         moveX = ai.strafeDir * speed;
       }
@@ -6228,58 +6330,10 @@ const SparSystem = {
       // (suppressPeekShots removed)
     }
 
-    // === DUEL STYLE WEIGHT APPLICATION ===
-    // Style weights adjust approach/strafe/distance, but must respect distance discipline:
-    // - Without advantage: never pull closer than 160px
-    // - With advantage: allow pressing closer (minimum ~90px)
-    // - approachMult only amplifies when bot is already moving toward enemy AND is far enough
-    if (styleWeights && !isOpening && modifierLevel < 2) {
-      const hasAdvantage = hasBottom || (!badGunSide && laneQuality > 0.6);
-      // Context-aware distance: close in when there's a REASON (pressure, finish, momentum)
-      const enemyLowHp = tgt.hp < (tgt.maxHp || SPAR_CONFIG.HP_BASELINE) * 0.35;
-      const recentLandedHit = ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30;
-      const hasCloseReason = enemyLowHp || recentLandedHit;
-      const styleMinDist = hasAdvantage ? 90 : (badGunSide && !hasCloseReason ? 220 : 160);
-
-      // Scale approach/retreat based on style
-      if (dist > 1) {
-        const moveDot = (moveX * dx + moveY * dy) / dist;
-        if (moveDot > 0 && dist > styleMinDist) {
-          // Moving toward enemy AND far enough — scale by approachMult
-          const approachComponent = moveDot / speed;
-          const scaledApproach = approachComponent * styleWeights.approachMult;
-          const diff = (scaledApproach - approachComponent) * speed;
-          moveX += (dx / dist) * diff;
-          moveY += (dy / dist) * diff;
-        }
-      }
-      // Active retreat when below minimum distance without advantage
-      if (dist < styleMinDist && dist > 1 && !hasAdvantage) {
-        const retreatStr = Math.min(0.35, (styleMinDist - dist) / styleMinDist);
-        moveX -= (dx / dist) * speed * retreatStr;
-        moveY -= (dy / dist) * speed * retreatStr;
-      }
-      // Scale strafe intensity
-      const perpComponent = Math.abs(moveX * dy - moveY * dx) / Math.max(1, dist);
-      if (perpComponent > 0.5) {
-        moveX *= styleWeights.strafeMult;
-      }
-      // Apply preferred distance from style — but never pull closer than floor
-      if (styleWeights.preferredDist && dist > 1) {
-        const effectiveDist = Math.max(styleWeights.preferredDist, styleMinDist);
-        const distDiff = dist - effectiveDist;
-        if (Math.abs(distDiff) > 40) {
-          const adjust = Math.min(0.3, Math.abs(distDiff) / 450);
-          const dir = distDiff > 0 ? 1 : -1;
-          moveX += (dx / dist) * speed * adjust * dir;
-          moveY += (dy / dist) * speed * adjust * dir;
-        }
-      }
-      // Scale bait frequency
-      if (styleWeights.baitMult) {
-        // Already handled in bait section, just adjust cooldown
-      }
-    }
+    // === DUEL STYLE — tactic selection bias only, no movement modification ===
+    // Style weights previously scaled moveX/moveY post-hoc, creating unpredictable
+    // interactions with tactic-computed movement. Now style only influences WHICH
+    // tactic is selected (via learning reward buckets), not execution.
 
     // === MID-MATCH SOFT-SWITCH ===
     if (ai._duelStyle && !ai._styleSwitchEvaluated && !isOpening && SparState.matchTimer > 480) {
@@ -6635,7 +6689,7 @@ const SparSystem = {
 
     // --- Bullet dodge detection (computed here, APPLIED after movement plan) ---
     // Dodge must be applied after the plan so it's never overwritten.
-    const dodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
+    const dodge = this._computeDodgePlan(bot, team, moveX, moveY);
     const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
 
     // Separation from allies
@@ -6930,24 +6984,10 @@ const SparSystem = {
     }
 
     // === GLOBAL BULLET WALL CHECK ===
-    // Regardless of phase (opening, anti-bottom, neutral), NEVER descend into
-    // horizontal bullet streams. This is the final safety net before movement.
+    // Regardless of phase, NEVER descend into bullet streams.
+    // Uses relative-velocity closest-approach (shared function).
     if (moveY > 0 && tgt && SparState.phase === 'fighting') {
-      const _gwHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
-      const _gwHitR = this._getSparPerpHitRadius(); // 33px
-      let _gwBulletCount = 0;
-      for (const b of bullets) {
-        if (!b.sparTeam || b.sparTeam === team) continue;
-        // Check bullets between bot and target (below bot, above target + margin)
-        if (b.y > _gwHitY - _gwHitR && b.y < _gwHitY + _gwHitR + moveY * 18) {
-          const futMinX = b.x + Math.min(b.vx, 0) * 18;
-          const futMaxX = b.x + Math.max(b.vx, 0) * 18;
-          if (futMinX - _gwHitR < bot.x && futMaxX + _gwHitR > bot.x) {
-            _gwBulletCount++;
-          }
-        }
-      }
-      if (_gwBulletCount >= 1) {
+      if (this._isDescentPathBlocked(bot, team, moveY)) {
         moveY = 0;
         if (Math.abs(moveX) < 0.1) moveX = (ai.strafeDir || 1) * speed;
       }
@@ -7051,42 +7091,6 @@ const SparSystem = {
       bot.dir = moveY > 0 ? 0 : 1;
     }
 
-    // --- v12: Shot timing policy lifecycle ---
-    if (ai._shotTimingCooldown > 0) ai._shotTimingCooldown--;
-    if (!ai._shotTimingPolicy && !isOpening && !(ai._shotTimingCooldown > 0)) {
-      const stCtx = {
-        dist, hasBottom, enemyHasBottom,
-        recentHit: ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30,
-        recentTookHit: ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 30,
-        laneQuality,
-      };
-      const stPolicy = this._pickShotTimingPolicy(pm, stCtx);
-      const stFamilyMap = typeof SPAR_SHOT_TIMING_FAMILY_MAP !== 'undefined'
-        ? SPAR_SHOT_TIMING_FAMILY_MAP
-        : { shootImmediate: 'aggressive', delayShot: 'patient', baitShot: 'patient' };
-      ai._shotTimingPolicy = stPolicy;
-      ai._shotTimingFamily = stFamilyMap[stPolicy] || 'aggressive';
-      ai._shotTimingStartDmg = ai._matchDmgDealt || 0;
-      ai._shotTimingStartTakenDmg = ai._matchDmgTaken || 0; // v13: track for progress check
-      ai._shotTimingFrames = 0;
-      ai._shotTimingHitsLanded = 0;
-      ai._shotTimingMisses = 0; // v13: track misses for ammo-based finalize
-      ai._shotTimingBaitFrames = 0;
-      ai._shotTimingStartCtx = _snapEngagementCtx(bot, tgt, ai);
-    }
-    if (ai._shotTimingPolicy) {
-      ai._shotTimingFrames++;
-      // v13: Re-evaluate after enough shots fired to judge (ammo-based, not time-based)
-      // Finalize when bot has fired 4+ shots during this timing window OR situation changed
-      const _stShotsFired = (ai._shotTimingHitsLanded || 0) + (ai._shotTimingMisses || 0);
-      const _stDmgTaken = (ai._matchDmgTaken || 0) - (ai._shotTimingStartTakenDmg || 0);
-      if (_stShotsFired >= 4 || _stDmgTaken > 20) {
-        const stDmg = (ai._matchDmgDealt || 0) - (ai._shotTimingStartDmg || 0);
-        this._finalizeShotTimingEngagement(ai, ai._shotTimingHitsLanded || 0, stDmg);
-        ai._shotTimingCooldown = 10;
-      }
-    }
-
     // --- Shooting: fire on cooldown, but NOT during speed-critical moves ---
     // The freeze penalty (54% slow, 15 frames) means shooting costs movement.
     // Hold fire when: (1) bullet incoming during freeze, (2) executing a move
@@ -7098,11 +7102,9 @@ const SparSystem = {
       // With aggressive dodge detection, dodgeMag is high for ANY bullet in air.
       // Only suppress shooting when bullet is VERY close and on collision course.
       // When bot has bottom, shoot freely — the angle advantage is worth more than dodging.
-      let freezeWouldGetHit = !hasBottom && dodgeMag > 2.5;
-      // v12: shootImmediate relaxes freeze threshold — fire through mild danger
-      if (ai._shotTimingPolicy === 'shootImmediate' && dodgeMag < 4.0) {
-        freezeWouldGetHit = false;
-      }
+      // Frame-exact shoot decision: compute whether any bullet will hit during freeze
+      // Also hold fire during dense volleys (3+ threats in 10 frames)
+      let freezeWouldGetHit = !hasBottom && (!this._canShootAndDodge(bot, team, member) || dodge.shouldHoldFire);
       // Is the bot executing a move that needs full speed?
       // These states require committed movement — freeze would ruin them.
       const needsFullSpeed = _movePlanCurrentState === 'antiBottom'  // crossing/flanking/descending
@@ -7135,34 +7137,14 @@ const SparSystem = {
         if (ai._escapePolicy) ai._escapeShotsHeld = (ai._escapeShotsHeld || 0) + 1;
         if (ai._gunSidePolicy) ai._gunSideShotsHeld = (ai._gunSideShotsHeld || 0) + 1;
       } else {
-        // v12: Shot timing policy gate — delayShot waits for alignment, baitShot holds then fires
-        const _alignX = Math.abs(dx), _alignY = Math.abs(dy);
-        let _shotTimingHold = false;
-        if (ai._shotTimingPolicy === 'delayShot') {
-          // Patient: only fire when alignment is very tight
-          _shotTimingHold = Math.min(_alignX, _alignY) > 35 && dist > 120;
-        } else if (ai._shotTimingPolicy === 'baitShot') {
-          // Bait: hold for 8 frames after first wanting to shoot, then fire
-          ai._shotTimingBaitFrames = (ai._shotTimingBaitFrames || 0) + 1;
-          _shotTimingHold = ai._shotTimingBaitFrames < 8;
-          if (!_shotTimingHold) ai._shotTimingBaitFrames = 0; // reset for next cycle
-        }
-        // shootImmediate: never holds (already handled by relaxing freeze threshold above)
-
-        if (_shotTimingHold) {
-          if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'shotTimingHold', policy: ai._shotTimingPolicy });
-          if (c && c.shotsHeldByState) c.shotsHeldByState[_stKey] = (c.shotsHeldByState[_stKey] || 0) + 1;
-        } else {
-          this._sparBotShoot(member, tgt);
-          if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'fired' });
-          if (c && c.shotsByState) c.shotsByState[_stKey] = (c.shotsByState[_stKey] || 0) + 1;
-          // Track fires on per-engagement counters (shouldn't happen for speed states, but safety)
-          if (ai._antiBottomTactic) ai._antiBottomShotsFired = (ai._antiBottomShotsFired || 0) + 1;
-          if (ai._escapePolicy) ai._escapeShotsFired = (ai._escapeShotsFired || 0) + 1;
-          if (ai._gunSidePolicy) ai._gunSideShotsFired = (ai._gunSideShotsFired || 0) + 1;
-          // Track hits for shot timing engagement
-          if (ai._shotTimingPolicy) ai._shotTimingHitsLanded = (ai._shotTimingHitsLanded || 0) + 1;
-        }
+        // Frame-exact math says safe to shoot — fire immediately
+        this._sparBotShoot(member, tgt);
+        if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'fired' });
+        if (c && c.shotsByState) c.shotsByState[_stKey] = (c.shotsByState[_stKey] || 0) + 1;
+        // Track fires on per-engagement counters
+        if (ai._antiBottomTactic) ai._antiBottomShotsFired = (ai._antiBottomShotsFired || 0) + 1;
+        if (ai._escapePolicy) ai._escapeShotsFired = (ai._escapeShotsFired || 0) + 1;
+        if (ai._gunSidePolicy) ai._gunSideShotsFired = (ai._gunSideShotsFired || 0) + 1;
       }
     }
   },
