@@ -957,7 +957,7 @@ const LEVELS = {
     ],
     entities: [
       // Exit door (bottom center)
-      { type: 'diner_exit', tx: 25, ty: 21, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
+      { type: 'diner_exit', tx: 26, ty: 21, w: 2, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
 
       // === KITCHEN FLOOR (rendered behind everything) ===
       { type: 'diner_kitchen_floor', tx: 1, ty: 1, w: 22, h: 14, solid: false },
@@ -998,7 +998,7 @@ const LEVELS = {
       { type: 'ding_coffee', tx: 13, ty: 13, w: 2, h: 2, solid: true },
 
       // === WORK COUNTER (clear plate) ===
-      { type: 'diner_counter', tx: 17, ty: 7, w: 4, h: 2, solid: true },
+      { type: 'diner_counter', tx: 17, ty: 9, w: 4, h: 2, solid: true },
 
       // === TV (moved 2 up, 1 right from original position) ===
       { type: 'diner_tv', tx: 22, ty: 5, w: 3, h: 3, solid: true },

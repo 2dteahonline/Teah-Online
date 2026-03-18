@@ -214,7 +214,7 @@ function _generateTicket() {
   // Build ticket (multi-item for diner, single for deli/fine_dining)
   let ticketItems = [{ recipe: recipe, qty: 1 }];
   if (cookingState.activeRestaurantId === 'diner') {
-    const itemCount = _ticketRandRange(1, 3);
+    const itemCount = _ticketRandRange(2, 4);
     ticketItems = [];
     for (let i = 0; i < itemCount; i++) {
       ticketItems.push({ recipe: _pickActiveRecipe(), qty: 1 });
@@ -702,8 +702,6 @@ function applyOrderResult(result) {
   if (cookingState.currentOrder) {
     // Diner: push to waitress pending serve queue
     if (cookingState.activeRestaurantId === 'diner' &&
-        cookingState.currentOrder._dinerBoothId != null &&
-        cookingState.currentOrder._dinerPartyId != null &&
         typeof _dinerPendingServe !== 'undefined') {
       const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
         ? cookingState.currentOrder.recipe.ingredients.slice()
@@ -712,8 +710,8 @@ function applyOrderResult(result) {
       const allTrayItems = cookingState._dinerTrayItems ? cookingState._dinerTrayItems.slice() : [];
       if (recipeIngredients) allTrayItems.push(recipeIngredients); // add final item
       _dinerPendingServe.push({
-        boothId: cookingState.currentOrder._dinerBoothId,
-        partyId: cookingState.currentOrder._dinerPartyId,
+        boothId: cookingState.currentOrder._dinerBoothId != null ? cookingState.currentOrder._dinerBoothId : -1,
+        partyId: cookingState.currentOrder._dinerPartyId != null ? cookingState.currentOrder._dinerPartyId : -1,
         tableNumber: cookingState.currentOrder._dinerTableNumber || null,
         recipeIngredients: recipeIngredients,
         allTrayItems: allTrayItems,

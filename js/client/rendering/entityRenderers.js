@@ -1551,6 +1551,33 @@ const ENTITY_RENDERERS = {
       ctx.fillRect(ex + 8, by + 4, cw - 16, rowH * 0.3);
 
       // (Table numbers removed — shown on NPC name badges instead)
+
+      // Render plates on table when food has been delivered
+      const _boothPositions = [[27,2],[27,6],[27,10],[38,2],[38,6],[38,10]];
+      let _bIdx = -1;
+      for (let _bi = 0; _bi < _boothPositions.length; _bi++) {
+        if (e.tx === _boothPositions[_bi][0] && e.ty === _boothPositions[_bi][1]) { _bIdx = _bi; break; }
+      }
+      if (_bIdx >= 0 && typeof DINER_BOOTHS !== 'undefined' && DINER_BOOTHS[_bIdx] && DINER_BOOTHS[_bIdx]._plates && DINER_BOOTHS[_bIdx]._plates.length > 0) {
+        const plates = DINER_BOOTHS[_bIdx]._plates;
+        const tableY = ey + rowH + rowH / 2;
+        for (let pi = 0; pi < Math.min(plates.length, 4); pi++) {
+          const px = ex + 20 + pi * ((cw - 40) / Math.max(plates.length - 1, 1));
+          // Plate
+          ctx.fillStyle = '#e8e0d0';
+          ctx.beginPath(); ctx.ellipse(px, tableY, 10, 5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#c0b8a0'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.ellipse(px, tableY, 10, 5, 0, 0, Math.PI * 2); ctx.stroke();
+          // Food on plate
+          const ings = plates[pi];
+          if (ings && ings[0] && typeof DINER_INGREDIENTS !== 'undefined' && DINER_INGREDIENTS[ings[0]]) {
+            ctx.fillStyle = DINER_INGREDIENTS[ings[0]].color;
+          } else {
+            ctx.fillStyle = '#d4a040';
+          }
+          ctx.beginPath(); ctx.arc(px, tableY - 2, 4, 0, Math.PI * 2); ctx.fill();
+        }
+      }
   },
 
   diner_booth_table: (e, ctx, ex, ey, w, h) => {
@@ -1639,6 +1666,15 @@ const ENTITY_RENDERERS = {
       ctx.fillRect(ex + cw * 0.35, ey + ch * 0.88, cw * 0.3, 3);
       ctx.fillStyle = '#888';
       ctx.fillRect(ex + cw * 0.42, ey + ch * 0.88, cw * 0.16, 2);
+      // Arcade number label
+      let _arcadeNum = 0;
+      if (e.tx === 34) _arcadeNum = 1;
+      else if (e.tx === 36) _arcadeNum = 2;
+      if (_arcadeNum > 0) {
+        ctx.font = "bold 7px monospace"; ctx.fillStyle = '#c0c0c0'; ctx.textAlign = "center";
+        ctx.fillText("Arcade " + _arcadeNum, ex + cw / 2, ey + ch + 10);
+        ctx.textAlign = "left";
+      }
   },
 
   diner_jukebox: (e, ctx, ex, ey, w, h) => {
@@ -1734,40 +1770,76 @@ const ENTITY_RENDERERS = {
       // Screen
       ctx.fillStyle = '#0a0a1a';
       ctx.fillRect(ex + 6, ey + 6, cw - 12, ch - 20);
-      // Screen glow
-      ctx.fillStyle = 'rgba(0,100,200,0.15)';
-      ctx.fillRect(ex + 6, ey + 6, cw - 12, ch - 20);
+      // Animated TV content — random channels cycling
+      const t = Date.now() / 1000;
+      const screenX = ex + 8, screenY = ey + 8;
+      const screenW = cw - 16, screenH = ch - 28;
+      const channel = Math.floor(t * 0.15) % 5; // switch every ~7 seconds
 
-      // Order queue display
-      if (typeof _dinerTVQueue !== 'undefined' && _dinerTVQueue.length > 0) {
-        const screenX = ex + 8, screenY = ey + 10;
-        const screenW = cw - 16;
-        // Header
-        ctx.font = "bold 7px monospace"; ctx.fillStyle = '#40a0ff'; ctx.textAlign = "center";
-        ctx.fillText("ORDER QUEUE", ex + cw / 2, screenY + 4);
-        // Orders
-        const maxShow = Math.min(_dinerTVQueue.length, 3);
-        for (let qi = 0; qi < maxShow; qi++) {
-          const entry = _dinerTVQueue[qi];
-          const oy = screenY + 12 + qi * 14;
-          if (entry.status === 'ready') {
-            ctx.fillStyle = '#40ff40';
-            ctx.font = "bold 6px monospace";
-            ctx.fillText("READY: " + entry.name + " T" + entry.tableNumber, ex + cw / 2, oy);
-          } else {
-            ctx.fillStyle = '#c0c0c0';
-            ctx.font = "6px monospace";
-            ctx.fillText(entry.name + " - Table " + entry.tableNumber, ex + cw / 2, oy);
-          }
+      if (channel === 0) {
+        // Sports game — moving dots
+        ctx.fillStyle = '#1a4a1a';
+        ctx.fillRect(screenX, screenY, screenW, screenH);
+        for (let d = 0; d < 4; d++) {
+          const dx = screenX + screenW * 0.2 + Math.sin(t * 3 + d * 1.5) * screenW * 0.3;
+          const dy = screenY + screenH * 0.3 + Math.cos(t * 2.5 + d * 2) * screenH * 0.25;
+          ctx.fillStyle = d < 2 ? '#ff4040' : '#4040ff';
+          ctx.beginPath(); ctx.arc(dx, dy, 3, 0, Math.PI * 2); ctx.fill();
         }
-        ctx.textAlign = "left";
+        // Ball
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(screenX + screenW / 2 + Math.sin(t * 5) * screenW * 0.35, screenY + screenH / 2 + Math.cos(t * 4) * screenH * 0.3, 2, 0, Math.PI * 2); ctx.fill();
+      } else if (channel === 1) {
+        // News ticker — scrolling bar
+        ctx.fillStyle = '#0a0a3a';
+        ctx.fillRect(screenX, screenY, screenW, screenH);
+        ctx.fillStyle = '#cc2020';
+        ctx.fillRect(screenX, screenY + screenH - 8, screenW, 8);
+        const scrollX = ((t * 30) % (screenW * 2)) - screenW;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = "bold 5px monospace";
+        ctx.fillText("BREAKING NEWS", screenX + scrollX, screenY + screenH - 2);
+        // Anchor desk
+        ctx.fillStyle = '#d4a574';
+        ctx.beginPath(); ctx.arc(screenX + screenW / 2, screenY + screenH * 0.4, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#4060a0';
+        ctx.fillRect(screenX + screenW / 2 - 4, screenY + screenH * 0.5, 8, 10);
+      } else if (channel === 2) {
+        // Cooking show — bubbling pot
+        ctx.fillStyle = '#3a2a1a';
+        ctx.fillRect(screenX, screenY, screenW, screenH);
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(screenX + screenW * 0.25, screenY + screenH * 0.4, screenW * 0.5, screenH * 0.4);
+        for (let b = 0; b < 3; b++) {
+          const bx = screenX + screenW * 0.35 + b * screenW * 0.1;
+          const by = screenY + screenH * 0.35 + Math.sin(t * 4 + b * 2) * 4;
+          ctx.fillStyle = 'rgba(255,255,255,0.6)';
+          ctx.beginPath(); ctx.arc(bx, by, 2, 0, Math.PI * 2); ctx.fill();
+        }
+      } else if (channel === 3) {
+        // Cartoon — bouncing character
+        ctx.fillStyle = '#80c0ff';
+        ctx.fillRect(screenX, screenY, screenW, screenH);
+        ctx.fillStyle = '#40a040';
+        ctx.fillRect(screenX, screenY + screenH * 0.7, screenW, screenH * 0.3);
+        const jumpY = Math.abs(Math.sin(t * 3)) * screenH * 0.3;
+        ctx.fillStyle = '#ff8040';
+        ctx.beginPath(); ctx.arc(screenX + screenW / 2 + Math.sin(t) * screenW * 0.2, screenY + screenH * 0.6 - jumpY, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath(); ctx.arc(screenX + screenW / 2 + Math.sin(t) * screenW * 0.2, screenY + screenH * 0.55 - jumpY, 3, 0, Math.PI * 2); ctx.fill();
       } else {
-        // No orders — idle screen
-        const t = Date.now() / 1000;
-        ctx.font = "bold 7px monospace"; ctx.fillStyle = `rgba(100,150,255,${0.4 + 0.2 * Math.sin(t * 2)})`;
-        ctx.textAlign = "center";
-        ctx.fillText("DINER TV", ex + cw / 2, ey + ch / 2 - 4);
-        ctx.textAlign = "left";
+        // Static / color bars
+        const barW = screenW / 7;
+        const barColors = ['#fff','#ff0','#0ff','#0f0','#f0f','#f00','#00f'];
+        for (let b = 0; b < 7; b++) {
+          ctx.fillStyle = barColors[b];
+          ctx.fillRect(screenX + b * barW, screenY, barW + 1, screenH);
+        }
+      }
+      // Scan lines overlay
+      for (let sl = 0; sl < 8; sl++) {
+        ctx.fillStyle = 'rgba(0,0,0,0.08)';
+        ctx.fillRect(screenX, screenY + sl * (screenH / 8), screenW, 1);
       }
 
       // Stand/mount
