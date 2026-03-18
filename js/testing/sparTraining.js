@@ -825,7 +825,8 @@ function _sparTrainOnMatchEnd(won) {
   }
 
   const saveEvery = SPAR_TRAINING_TIMING.saveEveryMatches || 1;
-  const shouldSave = _sparTrainState.completedMatches % saveEvery === 0 || _sparTrainState.queue.length === 0;
+  const isLastMatch = (_sparTrainState._remainingMatches || 0) <= 0 && _sparTrainState.queue.length === 0;
+  const shouldSave = _sparTrainState.completedMatches % saveEvery === 0 || isLastMatch;
   if (shouldSave && typeof SaveLoad !== 'undefined') SaveLoad.save();
 
   const logEvery = SPAR_TRAINING_TIMING.logEveryMatches || 1;

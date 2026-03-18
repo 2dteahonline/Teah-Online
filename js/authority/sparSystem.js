@@ -4088,37 +4088,37 @@ const SparSystem = {
     const isPlayerBullet = bullet.sparTeam === 'teamA';
     const isFullBvB = typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot();
 
-    // FullBvB: skip detailed player-centric hit tracking (no player to track)
-    // Reinforcement buckets still update via bot AI's _matchDmgDealt/_matchDmgTaken
-    if (isFullBvB) return;
-
-    // Find the nearest enemy to compute context
+    // FullBvB: resolve shooter/target from team arrays (no player global)
+    // Then track damage on bot AI, but skip player-centric collector arrays
     let shooter, target;
-    if (isPlayerBullet) {
-      // TeamA bullet — find shooter from teamA
-      if (isFullBvB) {
-        let nearA = null, nearDA = Infinity;
-        for (const p of SparState.teamA) {
-          if (!p.alive) continue;
-          const d = Math.sqrt((p.entity.x - bullet.startX) ** 2 + (p.entity.y - bullet.startY) ** 2);
-          if (d < nearDA) { nearDA = d; nearA = p.entity; }
-        }
-        shooter = nearA;
-      } else {
-        shooter = player;
+    if (isFullBvB) {
+      // Find shooter from the bullet's own team
+      const shooterTeam = isPlayerBullet ? SparState.teamA : SparState.teamB;
+      const targetTeam = isPlayerBullet ? SparState.teamB : SparState.teamA;
+      let nearS = null, nearDS = Infinity;
+      for (const p of shooterTeam) {
+        if (!p.alive) continue;
+        const d = Math.sqrt((p.entity.x - bullet.startX) ** 2 + (p.entity.y - bullet.startY) ** 2);
+        if (d < nearDS) { nearDS = d; nearS = p.entity; }
       }
-      // Find nearest opponent on teamB
+      shooter = nearS;
+      let nearT = null, nearDT = Infinity;
+      for (const p of targetTeam) {
+        if (!p.alive) continue;
+        const d = Math.sqrt((p.entity.x - bullet.x) ** 2 + (p.entity.y - bullet.y) ** 2);
+        if (d < nearDT) { nearDT = d; nearT = p.entity; }
+      }
+      target = nearT;
+    } else if (isPlayerBullet) {
+      shooter = player;
       let nearBot = null, nearDist = Infinity;
-      const srcX = shooter ? shooter.x : bullet.startX;
-      const srcY = shooter ? shooter.y : bullet.startY;
       for (const p of SparState.teamB) {
         if (!p.alive) continue;
-        const d = Math.sqrt((p.entity.x - srcX) ** 2 + (p.entity.y - srcY) ** 2);
+        const d = Math.sqrt((p.entity.x - player.x) ** 2 + (p.entity.y - player.y) ** 2);
         if (d < nearDist) { nearDist = d; nearBot = p.entity; }
       }
       target = nearBot;
     } else {
-      // TeamB bullet — find which bot shot it
       let nearBot = null, nearDist = Infinity;
       for (const p of SparState.teamB) {
         if (!p.alive) continue;
@@ -4126,18 +4126,7 @@ const SparSystem = {
         if (d < nearDist) { nearDist = d; nearBot = p.entity; }
       }
       shooter = nearBot;
-      // Target: teamA bot in fullBvB, player otherwise
-      if (isFullBvB) {
-        let nearA = null, nearDA = Infinity;
-        for (const p of SparState.teamA) {
-          if (!p.alive) continue;
-          const d = Math.sqrt((p.entity.x - bullet.x) ** 2 + (p.entity.y - bullet.y) ** 2);
-          if (d < nearDA) { nearDA = d; nearA = p.entity; }
-        }
-        target = nearA;
-      } else {
-        target = player;
-      }
+      target = player;
     }
     if (!shooter || !target) return;
 
@@ -4164,36 +4153,10 @@ const SparSystem = {
     const bulletDir = Math.abs(bullet.vx) > Math.abs(bullet.vy) ? 'horiz' : 'vert';
     const record = { dist, tMovement, dir: bullet._sparDir || 0, relY: shooter.y - target.y, bulletDir };
 
-    if (isPlayerBullet) {
-      if (wasHit) {
-        c.playerHits.push(record);
-        c.playerDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: player.y > (target.y + this._getSparBottomGap()) });
-      } else {
-        c.playerMisses.push(record);
-      }
-      // Directional hit tracking (v4 — hitbox awareness)
-      c.hitsByBulletDir[bulletDir].total++;
-      if (wasHit) c.hitsByBulletDir[bulletDir].hits++;
-    } else {
-      if (wasHit) {
-        c.botHits.push(record);
-        c.botDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: shooterHasBottom });
-      } else {
-        c.botMisses.push(record);
-      }
-      // Bot directional hit tracking (v4)
-      c.botHitsByBulletDir[bulletDir].total++;
-      if (wasHit) c.botHitsByBulletDir[bulletDir].hits++;
-      // Peek tracking: bot had bottom + shot horizontal
-      if (shooterHasBottom && bulletDir === 'horiz') {
-        c.peekAttempts++;
-        if (wasHit) c.peekHits++;
-      }
-    }
-
-    // Phase 1b: Track hit/took-hit frames on bot AI
+    // Phase 1b: Track hit/took-hit frames + damage on bot AI (critical for rewards)
+    // Must run for ALL modes including fullBvB
     if (wasHit && !isPlayerBullet) {
-      // Bot bullet hit the player — find the shooter bot
+      // Bot bullet hit target — find the shooter bot to credit damage
       for (const m of SparState._sparBots) {
         if (m.entity === shooter || m.id === (bullet.ownerId || null)) {
           m.ai._lastHitFrame = SparState.matchTimer;
@@ -4203,7 +4166,7 @@ const SparSystem = {
       }
     }
     if (isPlayerBullet) {
-      // Track when player fires at this bot (hit or miss) for whiff/repeek detection
+      // TeamA bullet — track on target bot for whiff/repeek detection + damage taken
       for (const m of SparState._sparBots) {
         if (m.entity === target || (m.entity.x === target.x && m.entity.y === target.y)) {
           m.ai._prevEnemyShotFrame = m.ai._lastEnemyShotFrame;
@@ -4215,6 +4178,34 @@ const SparSystem = {
           }
           break;
         }
+      }
+    }
+
+    // FullBvB: damage tracked above, skip player-centric collector arrays below
+    if (isFullBvB) return;
+
+    // Player-centric hit/miss tracking (only for human player matches)
+    if (isPlayerBullet) {
+      if (wasHit) {
+        c.playerHits.push(record);
+        c.playerDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: player.y > (target.y + this._getSparBottomGap()) });
+      } else {
+        c.playerMisses.push(record);
+      }
+      c.hitsByBulletDir[bulletDir].total++;
+      if (wasHit) c.hitsByBulletDir[bulletDir].hits++;
+    } else {
+      if (wasHit) {
+        c.botHits.push(record);
+        c.botDmgFrames.push({ frame: SparState.matchTimer, dmg: bullet.damage || 20, hasBottom: shooterHasBottom });
+      } else {
+        c.botMisses.push(record);
+      }
+      c.botHitsByBulletDir[bulletDir].total++;
+      if (wasHit) c.botHitsByBulletDir[bulletDir].hits++;
+      if (shooterHasBottom && bulletDir === 'horiz') {
+        c.peekAttempts++;
+        if (wasHit) c.peekHits++;
       }
     }
   },
