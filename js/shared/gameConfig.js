@@ -21,7 +21,7 @@ const GAME_CONFIG = {
   BULLET_HALF_SHORT: 4,         // bullet collision half-width perpendicular to travel
   ENTITY_R: 29,                 // entity hitbox circle radius (+15%)
   PLAYER_HITBOX_Y: -25,          // player/spar hitbox Y offset from feet (torso center)
-  MUZZLE_OFFSET_Y: 14,           // horizontal-shot muzzle Y offset from arm (gun-side shift)
+  MUZZLE_OFFSET_Y: 7,            // horizontal-shot muzzle Y offset from arm (gun-side shift)
 
   // --- Mining ---
   ORE_COLLISION_RADIUS: 17,     // ore node collision circle
@@ -35,5 +35,5 @@ const GAME_CONFIG = {
   DEFAULT_HITBOX_R: 33,         // hitbox visual radius (BULLET_HALF_SHORT + ENTITY_R)
 
   // --- Version ---
-  GAME_UPDATE: 385,             // increment each deploy - shown on lobby version sign
+  GAME_UPDATE: 386,             // increment each deploy - shown on lobby version sign
 };
