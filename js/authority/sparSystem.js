@@ -5105,7 +5105,8 @@ const SparSystem = {
           } else if (dist < noAdvMinDist && dist > 1) {
             const retreatStr = badGunSide ? 0.3 : 0.15;
             moveX -= (dx / dist) * speed * retreatStr;
-            moveY -= (dy / dist) * speed * (retreatStr * 0.7);
+            // Only retreat vertically if we have bottom — never resist descent
+            if (bot.y >= tgt.y) moveY -= (dy / dist) * speed * (retreatStr * 0.7);
           }
         }
         // Push toward bottom position — bottom is the primary objective
@@ -5119,9 +5120,9 @@ const SparSystem = {
           moveX += (dx / dist) * speed * 0.3;
           moveY += (dy / dist) * speed * 0.3;
         } else if (dist < 150 && dist > 1) {
-          // Don't chase when close — maintain distance
+          // Don't chase when close — maintain distance (lateral only when above enemy)
           moveX -= (dx / dist) * speed * 0.15;
-          moveY -= (dy / dist) * speed * 0.15;
+          if (bot.y >= tgt.y) moveY -= (dy / dist) * speed * 0.15;
         }
         // Moderate bottom push — still prioritize getting below enemy
         if (bot.y < tgt.y) moveY += speed * 0.25;
@@ -5143,7 +5144,7 @@ const SparSystem = {
             moveY += (dy / dist) * speed * 0.2;
           } else if (distDiff < -50) {
             moveX -= (dx / dist) * speed * 0.15;
-            moveY -= (dy / dist) * speed * 0.15;
+            if (bot.y >= tgt.y) moveY -= (dy / dist) * speed * 0.15;
           }
         }
         // Only push toward bottom if significantly above
@@ -5173,13 +5174,13 @@ const SparSystem = {
         // Pressing from advantage — only separate if truly stacking (dist < 90)
         if (dist < 90 && dist > 1) {
           moveX -= (dx / dist) * speed * 0.2;
-          moveY -= (dy / dist) * speed * 0.15;
+          if (bot.y >= tgt.y) moveY -= (dy / dist) * speed * 0.15;
         }
       } else if (dist < 160 && dist > 1) {
-        // No advantage — no reason to be close, scale separation with proximity
+        // No advantage — separate laterally, but never resist descent toward bottom
         const sepStrength = (160 - dist) / 160;
         moveX -= (dx / dist) * speed * (0.15 + sepStrength * 0.25);
-        moveY -= (dy / dist) * speed * (0.10 + sepStrength * 0.20);
+        if (bot.y >= tgt.y) moveY -= (dy / dist) * speed * (0.10 + sepStrength * 0.20);
       }
       // Learning v2: use approach/retreat knowledge in neutral
       if (pm) {
