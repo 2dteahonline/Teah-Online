@@ -4961,17 +4961,21 @@ const SparSystem = {
       const _btmTankForTrade = !member.gun.reloading && member.gun.ammo > 0
         && member.ai.shootCD <= 0 && bot.hp > tgt.hp + 40 && dist < 200;
       if (bottomDodgeMag > 0.15 && !_btmTankForKill && !_btmTankForTrade) {
-        // Dodge to preserve bottom — commit to dodge direction but clamp upward movement
+        // Dodge to preserve bottom — 75% override, wall-clamped, no upward dodge
         const bdLen = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
         if (bdLen > 0.01) {
-          const bndx = bottomDodge.x / bdLen, bndy = bottomDodge.y / bdLen;
-          // Full lateral dodge commitment
-          moveX = moveX * 0.1 + bndx * speed * 0.9;
-          // Vertical: allow down, suppress up (would lose bottom)
+          let bndx = bottomDodge.x / bdLen, bndy = bottomDodge.y / bdLen;
+          // Wall clamp: don't dodge into walls
+          const wallM2 = TILE * 2;
+          if (bot.x < wallM2 && bndx < 0) bndx = 0;
+          if (bot.x > arenaW - wallM2 && bndx > 0) bndx = 0;
+          if (bot.y > arenaH - wallM2 && bndy > 0) bndy = 0;
+          // 75% lateral dodge + suppress upward (would lose bottom)
+          moveX = moveX * 0.25 + bndx * speed * 0.75;
           if (bndy > 0) {
-            moveY = moveY * 0.3 + bndy * speed * 0.7; // dodge downward OK
+            moveY = moveY * 0.4 + bndy * speed * 0.6;
           }
-          // else: keep current moveY (don't dodge upward — lose bottom for free)
+          // else: keep current moveY (don't dodge upward)
         }
       }
       // If recently took a hit, increase strafe speed to be harder to hit
@@ -6202,17 +6206,24 @@ const SparSystem = {
 
     // --- Bullet dodging (reactive, applied AFTER movement plan so never overwritten) ---
     // ALWAYS dodge unless tanking wins the round or trades favorably.
-    // Not dodging = taking damage for free. Commit FULLY to dodge direction.
+    // Not dodging = taking damage for free. Commit strongly to dodge direction.
     if (dodgeMag > 0.15 && !_shouldTankForTrade) {
-      // Override 90-95% — nearly full commitment to dodge direction.
-      // During anti-bottom reduce to 55% so bot keeps some cross momentum.
-      const overridePct = inActiveAntiBottom ? 0.55 : 0.92;
-      // Normalize dodge to unit vector, apply at full speed
+      // Override scales with threat: close bullet = stronger commitment
+      // Don't go full 92% — that's predictable (player reads the snap).
+      // 65-80% gives strong dodge while retaining some current movement variety.
+      const baseOverride = inActiveAntiBottom ? 0.45 : 0.75;
+      // Normalize dodge to unit vector, apply at speed
       const dLen = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
       if (dLen > 0.01) {
-        const ndx = dodge.x / dLen, ndy = dodge.y / dLen;
-        moveX = moveX * (1 - overridePct) + ndx * speed * overridePct;
-        moveY = moveY * (1 - overridePct) + ndy * speed * overridePct;
+        let ndx = dodge.x / dLen, ndy = dodge.y / dLen;
+        // WALL CLAMP: don't dodge INTO a wall — redirect along it instead
+        const wallM = TILE * 2;
+        if (bot.x < wallM && ndx < 0) ndx = 0; // near left wall, don't dodge left
+        if (bot.x > arenaW - wallM && ndx > 0) ndx = 0; // near right wall, don't dodge right
+        if (bot.y < wallM && ndy < 0) ndy = 0; // near top wall, don't dodge up
+        if (bot.y > arenaH - wallM && ndy > 0) ndy = 0; // near bottom wall, don't dodge down
+        moveX = moveX * (1 - baseOverride) + ndx * speed * baseOverride;
+        moveY = moveY * (1 - baseOverride) + ndy * speed * baseOverride;
       }
       // Re-normalize to full speed — dodging should never slow you down
       const postDodgeLen = Math.sqrt(moveX * moveX + moveY * moveY);
@@ -6366,7 +6377,10 @@ const SparSystem = {
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
       const openingFireGated = isOpening && !hasBottom;
       // Would a bullet hit us during the freeze window?
-      const freezeWouldGetHit = dodgeMag > 0.8;
+      // With aggressive dodge detection, dodgeMag is high for ANY bullet in air.
+      // Only suppress shooting when bullet is VERY close and on collision course.
+      // When bot has bottom, shoot freely — the angle advantage is worth more than dodging.
+      const freezeWouldGetHit = !hasBottom && dodgeMag > 2.5;
       // Is the bot executing a move that needs full speed?
       // These states require committed movement — freeze would ruin them.
       const needsFullSpeed = _movePlanCurrentState === 'antiBottom'  // crossing/flanking/descending
