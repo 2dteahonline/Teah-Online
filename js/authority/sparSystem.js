@@ -2694,7 +2694,8 @@ const SparSystem = {
   _getIncomingBulletDodge(bot, team) {
     let dodgeX = 0, dodgeY = 0;
     const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
-    const botHitY = bot.y + 5;
+    const hbYOff = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
+    const botHitY = bot.y + hbYOff; // match actual combat hitbox (torso center)
     const hitRadius = this._getSparPerpHitRadius(); // 33px
     const margin = 6; // extra clearance beyond hitbox edge
     const maxReactFrames = 25; // only dodge bullets arriving within 25 frames
@@ -2753,12 +2754,19 @@ const SparSystem = {
       perpNormX *= sideSign;
       perpNormY *= sideSign;
 
-      // Wall-aware: if chosen direction goes into wall, flip
+      // Wall-aware: if chosen direction goes into wall, flip — but only if flip side is clear
       const projX = bot.x + perpNormX * hitRadius;
       const projY = bot.y + perpNormY * hitRadius;
-      if (projX < wallM || projX > arenaW - wallM || projY < wallM || projY > arenaH - wallM) {
-        perpNormX *= -1;
-        perpNormY *= -1;
+      const chosenBlocked = projX < wallM || projX > arenaW - wallM || projY < wallM || projY > arenaH - wallM;
+      if (chosenBlocked) {
+        const flipProjX = bot.x - perpNormX * hitRadius;
+        const flipProjY = bot.y - perpNormY * hitRadius;
+        const flipBlocked = flipProjX < wallM || flipProjX > arenaW - wallM || flipProjY < wallM || flipProjY > arenaH - wallM;
+        if (!flipBlocked) {
+          perpNormX *= -1;
+          perpNormY *= -1;
+        }
+        // If both sides blocked, keep original — diagonal away component will help
       }
 
       // Always diagonal: perpendicular clearance + away from bullet source
