@@ -2695,10 +2695,11 @@ const SparSystem = {
     let dodgeX = 0, dodgeY = 0;
     const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
     const botHitY = bot.y + 5; // hitbox at feet level (entity.y + 5)
-    const hitRadius = this._getSparPerpHitRadius();
-    const reactionMargin = Math.max(speed * 2, (GAME_CONFIG.BULLET_SPEED || 9) * 1.5);
-    const dodgeLane = hitRadius + reactionMargin;
-    const maxThreatDist = Math.max(320, (GAME_CONFIG.BULLET_SPEED || 9) * 36);
+    const hitRadius = this._getSparPerpHitRadius(); // 33px — actual collision range
+    const bulletSpeed = GAME_CONFIG.BULLET_SPEED || 9;
+    // Detection lane: actual hit zone + small margin for early reaction
+    const dodgeLane = hitRadius + speed * 2; // 33 + 15 = 48
+    const maxThreatDist = Math.max(400, bulletSpeed * 45); // 400px — detect earlier
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
@@ -2706,31 +2707,37 @@ const SparSystem = {
       const bDist = Math.sqrt(dbx * dbx + dby * dby);
       if (bDist > maxThreatDist || bDist < 8) continue;
 
-      // Urgency: closer = stronger dodge
-      const urgency = Math.max(0.45, 1.35 - bDist / Math.max(260, maxThreatDist));
+      // Urgency: closer = stronger, but even far bullets get strong response
+      const urgency = Math.max(0.6, 1.5 - bDist / maxThreatDist);
 
       if (Math.abs(b.vy) > Math.abs(b.vx)) {
-        // Vertical bullet — dodge LEFT or RIGHT (perpendicular to travel)
+        // Vertical bullet — dodge LEFT or RIGHT
         const isApproaching = (b.vy > 0 && b.y < botHitY) || (b.vy < 0 && b.y > botHitY);
         if (!isApproaching) continue;
-        if (Math.abs(dbx) > dodgeLane) continue;
+        const perpDist = Math.abs(dbx);
+        if (perpDist > dodgeLane) continue;
         const dodgeDir = dbx >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0.2, 1 - Math.abs(dbx) / dodgeLane);
-        dodgeX += dodgeDir * urgency * laneProximity * 3.0;
+        // Binary: within hit zone (33px) = full strength, margin zone = partial
+        const willHit = perpDist < hitRadius;
+        const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
+        dodgeX += dodgeDir * urgency * strength * 3.5;
       } else {
-        // Horizontal bullet — dodge UP or DOWN (perpendicular to travel)
+        // Horizontal bullet — dodge UP or DOWN
         const isApproaching = (b.vx > 0 && b.x < bot.x) || (b.vx < 0 && b.x > bot.x);
         if (!isApproaching) continue;
-        if (Math.abs(dby) > dodgeLane) continue;
+        const perpDist = Math.abs(dby);
+        if (perpDist > dodgeLane) continue;
         const dodgeDir = dby >= 0 ? 1 : -1;
-        const laneProximity = Math.max(0.2, 1 - Math.abs(dby) / dodgeLane);
-        dodgeY += dodgeDir * urgency * laneProximity * 3.0;
+        // Binary: within hit zone = full strength
+        const willHit = perpDist < hitRadius;
+        const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
+        dodgeY += dodgeDir * urgency * strength * 3.5;
       }
     }
 
-    // Clamp total dodge so it doesn't exceed reasonable movement
+    // Clamp — but allow strong dodge values through
     const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
-    const maxDodge = Math.max(3.5, speed * 0.95);
+    const maxDodge = speed * 1.2;
     if (dodgeLen > maxDodge) {
       dodgeX = (dodgeX / dodgeLen) * maxDodge;
       dodgeY = (dodgeY / dodgeLen) * maxDodge;
@@ -4717,9 +4724,13 @@ const SparSystem = {
       const _openTankForKill = !member.gun.reloading && member.gun.ammo > 0
         && member.ai.shootCD <= 0 && tgt.hp <= (member.gun.damage || 20);
       if (openDodgeMag > 0.15 && !_openTankForKill) {
-        const openOverride = Math.min(0.7, openDodgeMag * 0.5);
-        moveX = moveX * (1 - openOverride) + openDodge.x * speed * openOverride * 1.5;
-        moveY = moveY * (1 - openOverride * 0.6) + openDodge.y * speed * openOverride * 0.6;
+        // During opening, still prioritize dodge but keep some forward momentum
+        const odLen = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
+        if (odLen > 0.01) {
+          const ondx = openDodge.x / odLen, ondy = openDodge.y / odLen;
+          moveX = moveX * 0.2 + ondx * speed * 0.8;
+          moveY = moveY * 0.4 + ondy * speed * 0.6; // keep some downward momentum
+        }
       }
 
     } else if (member.gun.reloading) {
@@ -4950,12 +4961,18 @@ const SparSystem = {
       const _btmTankForTrade = !member.gun.reloading && member.gun.ammo > 0
         && member.ai.shootCD <= 0 && bot.hp > tgt.hp + 40 && dist < 200;
       if (bottomDodgeMag > 0.15 && !_btmTankForKill && !_btmTankForTrade) {
-        // Dodge to preserve bottom — primarily lateral, allow downward but not upward
-        const btmOverride = Math.min(0.8, bottomDodgeMag * 0.5);
-        moveX = moveX * (1 - btmOverride) + bottomDodge.x * speed * btmOverride * 1.5;
-        // Only allow downward dodge — never dodge up (would lose bottom)
-        if (bottomDodge.y > 0) moveY = moveY * (1 - btmOverride * 0.4) + bottomDodge.y * speed * btmOverride * 0.5;
-        // else: suppress upward dodge to keep bottom position
+        // Dodge to preserve bottom — commit to dodge direction but clamp upward movement
+        const bdLen = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
+        if (bdLen > 0.01) {
+          const bndx = bottomDodge.x / bdLen, bndy = bottomDodge.y / bdLen;
+          // Full lateral dodge commitment
+          moveX = moveX * 0.1 + bndx * speed * 0.9;
+          // Vertical: allow down, suppress up (would lose bottom)
+          if (bndy > 0) {
+            moveY = moveY * 0.3 + bndy * speed * 0.7; // dodge downward OK
+          }
+          // else: keep current moveY (don't dodge upward — lose bottom for free)
+        }
       }
       // If recently took a hit, increase strafe speed to be harder to hit
       if (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 20) {
@@ -6185,16 +6202,19 @@ const SparSystem = {
 
     // --- Bullet dodging (reactive, applied AFTER movement plan so never overwritten) ---
     // ALWAYS dodge unless tanking wins the round or trades favorably.
-    // During anti-bottom, reduce override so bot keeps some cross commitment.
+    // Not dodging = taking damage for free. Commit FULLY to dodge direction.
     if (dodgeMag > 0.15 && !_shouldTankForTrade) {
-      // Scale override by urgency: closer bullets = stronger override
-      // At dodgeMag 0.5 → 25% override, at 1.0 → 50%, at 2.0 → 85% (capped)
-      const rawOverride = Math.min(0.85, dodgeMag * 0.5);
-      const maxDodgeOverride = inActiveAntiBottom ? 0.45 : rawOverride;
-      const overridePct = Math.min(maxDodgeOverride, rawOverride);
-      moveX = moveX * (1 - overridePct) + dodge.x * speed * overridePct * 1.5;
-      moveY = moveY * (1 - overridePct) + dodge.y * speed * overridePct * 1.5;
-      // Re-normalize to full speed
+      // Override 90-95% — nearly full commitment to dodge direction.
+      // During anti-bottom reduce to 55% so bot keeps some cross momentum.
+      const overridePct = inActiveAntiBottom ? 0.55 : 0.92;
+      // Normalize dodge to unit vector, apply at full speed
+      const dLen = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
+      if (dLen > 0.01) {
+        const ndx = dodge.x / dLen, ndy = dodge.y / dLen;
+        moveX = moveX * (1 - overridePct) + ndx * speed * overridePct;
+        moveY = moveY * (1 - overridePct) + ndy * speed * overridePct;
+      }
+      // Re-normalize to full speed — dodging should never slow you down
       const postDodgeLen = Math.sqrt(moveX * moveX + moveY * moveY);
       if (postDodgeLen > 1) {
         moveX = (moveX / postDodgeLen) * speed;
