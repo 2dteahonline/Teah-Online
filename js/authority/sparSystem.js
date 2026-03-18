@@ -308,9 +308,22 @@ const SparSystem = {
   },
 
   _scoreRewardBucket(bucket, totalPlays, exploreWeight) {
-    const plays = bucket && bucket.plays ? bucket.plays : 0;
-    const reward = bucket && typeof bucket.reward === 'number' ? bucket.reward : 0.5;
-    const bonus = exploreWeight * Math.sqrt(Math.log((totalPlays || 0) + 2) / (plays + 1));
+    const matchPlays = bucket && bucket.plays ? bucket.plays : 0;
+    const matchReward = bucket && typeof bucket.reward === 'number' ? bucket.reward : 0.5;
+    const phasePlays = bucket && bucket.phasePlays ? bucket.phasePlays : 0;
+    const phaseReward = bucket && typeof bucket.phaseReward === 'number' ? bucket.phaseReward : 0.5;
+    // v13: Blend phase reward (engagement-specific) with match reward (global outcome).
+    // Phase is more reliable — it measures what the decision actually caused.
+    let reward;
+    if (phasePlays > 0 && matchPlays > 0) {
+      reward = phaseReward * 0.7 + matchReward * 0.3;
+    } else if (phasePlays > 0) {
+      reward = phaseReward;
+    } else {
+      reward = matchReward;
+    }
+    const totalDataPlays = matchPlays + phasePlays;
+    const bonus = exploreWeight * Math.sqrt(Math.log((totalPlays || 0) + 2) / (totalDataPlays + 1));
     return reward + bonus;
   },
 
@@ -342,13 +355,29 @@ const SparSystem = {
       : ['general', 'player'];
   },
 
+  // v13: Match-level reward — used by _updateMatchReinforcement (global outcome signal)
   _updateRewardBucket(bucket, reward) {
     if (!bucket) return;
     const clamped = this._clamp01(reward);
-    if (isNaN(clamped)) return; // safety: never corrupt bucket with NaN
+    if (isNaN(clamped)) return;
     const plays = bucket.plays || 0;
-    bucket.reward = plays > 0 ? ((bucket.reward * plays) + clamped) / (plays + 1) : clamped;
+    // EMA: α = max(0.1, 1/(plays+1)) — fast early learning, 10% weight for new data after convergence
+    const alpha = Math.max(0.1, 1 / (plays + 1));
+    bucket.reward = plays > 0 ? bucket.reward * (1 - alpha) + clamped * alpha : clamped;
     bucket.plays = plays + 1;
+  },
+
+  // v13: Phase-level reward — used by finalize functions (engagement-specific outcome)
+  // Separated so phase success (did THIS decision work?) doesn't get diluted by match outcome
+  _updatePhaseRewardBucket(bucket, reward) {
+    if (!bucket) return;
+    const clamped = this._clamp01(reward);
+    if (isNaN(clamped)) return;
+    const plays = bucket.phasePlays || 0;
+    const alpha = Math.max(0.1, 1 / (plays + 1));
+    const old = typeof bucket.phaseReward === 'number' ? bucket.phaseReward : 0.5;
+    bucket.phaseReward = plays > 0 ? old * (1 - alpha) + clamped * alpha : clamped;
+    bucket.phasePlays = plays + 1;
   },
 
   _computeDamageReward(dmgDelta) {
@@ -529,67 +558,79 @@ const SparSystem = {
     // v11: mid-fight pressure + wall pressure rewards
     const midPressureReward = this._clamp01(baseReward * 0.65 + dmgReward * 0.35);
     const wallPressureReward = this._clamp01(baseReward * 0.55 + underReward * 0.25 + gunReward * 0.20);
+    // v13: Don't record match-end rewards for dimensions that were forced by training variants.
+    // Forced variants create false causal links (random style gets credit/blame for match outcome).
+    const _forced = (typeof _sparTrainState !== 'undefined' && _sparTrainState && _sparTrainState.runtime)
+      ? (_sparTrainState.runtime.selfPlayForcedDimensions || {}) : {};
     const scopeList = Array.isArray(scopes) ? scopes : [];
     for (const scopeName of scopeList) {
       const scope = rf[scopeName];
       if (!scope) continue;
-      if (enemyBot.ai._duelStyle && scope.style && scope.style[enemyBot.ai._duelStyle]) {
+      if (!_forced.style && enemyBot.ai._duelStyle && scope.style && scope.style[enemyBot.ai._duelStyle]) {
         this._updateRewardBucket(scope.style[enemyBot.ai._duelStyle], styleReward);
       }
-      if (SparState._botOpeningRoute && scope.opening && scope.opening[SparState._botOpeningRoute]) {
+      if (!_forced.opening && SparState._botOpeningRoute && scope.opening && scope.opening[SparState._botOpeningRoute]) {
         this._updateRewardBucket(scope.opening[SparState._botOpeningRoute], routeReward);
       }
       // Legacy anti-bottom bucket (backward compat)
-      if (enemyBot.ai._antiBottomResponse && enemyBot.ai._antiBottomFrames > 20 &&
-          scope.antiBottom && scope.antiBottom[enemyBot.ai._antiBottomResponse]) {
-        this._updateRewardBucket(scope.antiBottom[enemyBot.ai._antiBottomResponse], antiBottomReward);
-      }
-      // v8 tactic/family buckets — fall back to _last fields if engagement already finalized
-      const abTactic = enemyBot.ai._antiBottomTactic || enemyBot.ai._lastAntiBottomTactic || null;
-      const abFamily = enemyBot.ai._antiBottomFamily || enemyBot.ai._lastAntiBottomFamily || null;
-      if (abTactic) {
-        if (scope.antiBottomTactic && scope.antiBottomTactic[abTactic]) {
-          this._updateRewardBucket(scope.antiBottomTactic[abTactic], antiBottomReward);
+      // v13: Skip match-end update for forced variant dimensions
+      if (!_forced.antiBottom) {
+        if (enemyBot.ai._antiBottomResponse && enemyBot.ai._antiBottomFrames > 20 &&
+            scope.antiBottom && scope.antiBottom[enemyBot.ai._antiBottomResponse]) {
+          this._updateRewardBucket(scope.antiBottom[enemyBot.ai._antiBottomResponse], antiBottomReward);
         }
-        if (abFamily && scope.antiBottomFamily && scope.antiBottomFamily[abFamily]) {
-          this._updateRewardBucket(scope.antiBottomFamily[abFamily], antiBottomReward);
+        const abTactic = enemyBot.ai._antiBottomTactic || enemyBot.ai._lastAntiBottomTactic || null;
+        const abFamily = enemyBot.ai._antiBottomFamily || enemyBot.ai._lastAntiBottomFamily || null;
+        if (abTactic) {
+          if (scope.antiBottomTactic && scope.antiBottomTactic[abTactic]) {
+            this._updateRewardBucket(scope.antiBottomTactic[abTactic], antiBottomReward);
+          }
+          if (abFamily && scope.antiBottomFamily && scope.antiBottomFamily[abFamily]) {
+            this._updateRewardBucket(scope.antiBottomFamily[abFamily], antiBottomReward);
+          }
         }
       }
-      const gunPolicy = enemyBot.ai._gunSidePolicy || enemyBot.ai._lastGunSidePolicy;
-      const gunFamily = enemyBot.ai._gunSideFamily || enemyBot.ai._lastGunSideFamily;
-      if (gunPolicy && scope.gunSidePolicy && scope.gunSidePolicy[gunPolicy]) {
-        this._updateRewardBucket(scope.gunSidePolicy[gunPolicy], gunSideReward);
+      if (!_forced.gunSide) {
+        const gunPolicy = enemyBot.ai._gunSidePolicy || enemyBot.ai._lastGunSidePolicy;
+        const gunFamily = enemyBot.ai._gunSideFamily || enemyBot.ai._lastGunSideFamily;
+        if (gunPolicy && scope.gunSidePolicy && scope.gunSidePolicy[gunPolicy]) {
+          this._updateRewardBucket(scope.gunSidePolicy[gunPolicy], gunSideReward);
+        }
+        if (gunFamily && scope.gunSideFamily && scope.gunSideFamily[gunFamily]) {
+          this._updateRewardBucket(scope.gunSideFamily[gunFamily], gunSideReward);
+        }
       }
-      if (gunFamily && scope.gunSideFamily && scope.gunSideFamily[gunFamily]) {
-        this._updateRewardBucket(scope.gunSideFamily[gunFamily], gunSideReward);
+      if (!_forced.escape) {
+        const escapePolicy = enemyBot.ai._escapePolicy || enemyBot.ai._lastEscapePolicy;
+        const escapeFamily = enemyBot.ai._escapeFamily || enemyBot.ai._lastEscapeFamily;
+        if (escapePolicy && scope.escapePolicy && scope.escapePolicy[escapePolicy]) {
+          this._updateRewardBucket(scope.escapePolicy[escapePolicy], escapeReward);
+        }
+        if (escapeFamily && scope.escapeFamily && scope.escapeFamily[escapeFamily]) {
+          this._updateRewardBucket(scope.escapeFamily[escapeFamily], escapeReward);
+        }
       }
-      const escapePolicy = enemyBot.ai._escapePolicy || enemyBot.ai._lastEscapePolicy;
-      const escapeFamily = enemyBot.ai._escapeFamily || enemyBot.ai._lastEscapeFamily;
-      if (escapePolicy && scope.escapePolicy && scope.escapePolicy[escapePolicy]) {
-        this._updateRewardBucket(scope.escapePolicy[escapePolicy], escapeReward);
+      if (!_forced.shotTiming) {
+        const stPolicy = enemyBot.ai._shotTimingPolicy || enemyBot.ai._lastShotTimingPolicy || null;
+        const stFamily = enemyBot.ai._shotTimingFamily || enemyBot.ai._lastShotTimingFamily || null;
+        const stRewardHalf = this._clamp01(0.5 + (shotTimingReward - 0.5) * 0.5);
+        if (stPolicy && scope.shotTimingPolicy && scope.shotTimingPolicy[stPolicy]) {
+          this._updateRewardBucket(scope.shotTimingPolicy[stPolicy], stRewardHalf);
+        }
+        if (stFamily && scope.shotTimingFamily && scope.shotTimingFamily[stFamily]) {
+          this._updateRewardBucket(scope.shotTimingFamily[stFamily], stRewardHalf);
+        }
       }
-      if (escapeFamily && scope.escapeFamily && scope.escapeFamily[escapeFamily]) {
-        this._updateRewardBucket(scope.escapeFamily[escapeFamily], escapeReward);
-      }
-      // v10: shot timing policy match-end update — half weight (phase reward is primary)
-      const stPolicy = enemyBot.ai._shotTimingPolicy || enemyBot.ai._lastShotTimingPolicy || null;
-      const stFamily = enemyBot.ai._shotTimingFamily || enemyBot.ai._lastShotTimingFamily || null;
-      const stRewardHalf = this._clamp01(0.5 + (shotTimingReward - 0.5) * 0.5);
-      if (stPolicy && scope.shotTimingPolicy && scope.shotTimingPolicy[stPolicy]) {
-        this._updateRewardBucket(scope.shotTimingPolicy[stPolicy], stRewardHalf);
-      }
-      if (stFamily && scope.shotTimingFamily && scope.shotTimingFamily[stFamily]) {
-        this._updateRewardBucket(scope.shotTimingFamily[stFamily], stRewardHalf);
-      }
-      // v10: reload behavior match-end update — half weight (phase reward is primary)
-      const rlPolicy = enemyBot.ai._reloadPolicy || enemyBot.ai._lastReloadPolicy || null;
-      const rlFamily = enemyBot.ai._reloadFamily || enemyBot.ai._lastReloadFamily || null;
-      const rlRewardHalf = this._clamp01(0.5 + (reloadReward - 0.5) * 0.5);
-      if (rlPolicy && scope.reloadPolicy && scope.reloadPolicy[rlPolicy]) {
-        this._updateRewardBucket(scope.reloadPolicy[rlPolicy], rlRewardHalf);
-      }
-      if (rlFamily && scope.reloadFamily && scope.reloadFamily[rlFamily]) {
-        this._updateRewardBucket(scope.reloadFamily[rlFamily], rlRewardHalf);
+      if (!_forced.reload) {
+        const rlPolicy = enemyBot.ai._reloadPolicy || enemyBot.ai._lastReloadPolicy || null;
+        const rlFamily = enemyBot.ai._reloadFamily || enemyBot.ai._lastReloadFamily || null;
+        const rlRewardHalf = this._clamp01(0.5 + (reloadReward - 0.5) * 0.5);
+        if (rlPolicy && scope.reloadPolicy && scope.reloadPolicy[rlPolicy]) {
+          this._updateRewardBucket(scope.reloadPolicy[rlPolicy], rlRewardHalf);
+        }
+        if (rlFamily && scope.reloadFamily && scope.reloadFamily[rlFamily]) {
+          this._updateRewardBucket(scope.reloadFamily[rlFamily], rlRewardHalf);
+        }
       }
       // v11: mid-fight pressure match-end update — half weight
       const mpPolicy = enemyBot.ai._midPressurePolicy || enemyBot.ai._lastMidPressurePolicy || null;
@@ -642,6 +683,35 @@ const SparSystem = {
       }
       if (crFamily && scope.centerRecoveryFamily && scope.centerRecoveryFamily[crFamily]) {
         this._updateRewardBucket(scope.centerRecoveryFamily[crFamily], crRewardHalf);
+      }
+    }
+
+    // v13: Decay fail streaks — halve every 200 matches so old failures don't permanently block tactics
+    if (sl && sl.tactical && sl.tactical.tacticFailStreaks) {
+      if (!sl.tactical._failStreakDecayCounter) sl.tactical._failStreakDecayCounter = 0;
+      sl.tactical._failStreakDecayCounter++;
+      if (sl.tactical._failStreakDecayCounter >= 200) {
+        for (const key in sl.tactical.tacticFailStreaks) {
+          if (typeof sl.tactical.tacticFailStreaks[key] === 'number') {
+            sl.tactical.tacticFailStreaks[key] = Math.floor(sl.tactical.tacticFailStreaks[key] / 2);
+          }
+        }
+        // Also decay escape and center recovery fail streaks if they exist
+        if (sl.tactical.escapeFailStreaks) {
+          for (const key in sl.tactical.escapeFailStreaks) {
+            if (typeof sl.tactical.escapeFailStreaks[key] === 'number') {
+              sl.tactical.escapeFailStreaks[key] = Math.floor(sl.tactical.escapeFailStreaks[key] / 2);
+            }
+          }
+        }
+        if (sl.tactical.centerRecoveryFailStreaks) {
+          for (const key in sl.tactical.centerRecoveryFailStreaks) {
+            if (typeof sl.tactical.centerRecoveryFailStreaks[key] === 'number') {
+              sl.tactical.centerRecoveryFailStreaks[key] = Math.floor(sl.tactical.centerRecoveryFailStreaks[key] / 2);
+            }
+          }
+        }
+        sl.tactical._failStreakDecayCounter = 0;
       }
     }
   },
@@ -1037,8 +1107,8 @@ const SparSystem = {
         for (const scopeName of this._getPhaseScopes()) {
           const scope = rf[scopeName];
           if (!scope) continue;
-          if (scope.openingContestPolicy && scope.openingContestPolicy[policy]) this._updateRewardBucket(scope.openingContestPolicy[policy], phaseReward);
-          if (scope.openingContestFamily && scope.openingContestFamily[family]) this._updateRewardBucket(scope.openingContestFamily[family], phaseReward);
+          if (scope.openingContestPolicy && scope.openingContestPolicy[policy]) this._updatePhaseRewardBucket(scope.openingContestPolicy[policy], phaseReward);
+          if (scope.openingContestFamily && scope.openingContestFamily[family]) this._updatePhaseRewardBucket(scope.openingContestFamily[family], phaseReward);
         }
       }
       if (sl.tactical && sl.tactical.openingContestOutcomes) {
@@ -1077,8 +1147,8 @@ const SparSystem = {
         for (const scopeName of this._getPhaseScopes()) {
           const scope = rf[scopeName];
           if (!scope) continue;
-          if (scope.punishWindowPolicy && scope.punishWindowPolicy[policy]) this._updateRewardBucket(scope.punishWindowPolicy[policy], phaseReward);
-          if (scope.punishWindowFamily && scope.punishWindowFamily[family]) this._updateRewardBucket(scope.punishWindowFamily[family], phaseReward);
+          if (scope.punishWindowPolicy && scope.punishWindowPolicy[policy]) this._updatePhaseRewardBucket(scope.punishWindowPolicy[policy], phaseReward);
+          if (scope.punishWindowFamily && scope.punishWindowFamily[family]) this._updatePhaseRewardBucket(scope.punishWindowFamily[family], phaseReward);
         }
       }
       if (sl.tactical && sl.tactical.punishWindowOutcomes) {
@@ -1129,8 +1199,8 @@ const SparSystem = {
         for (const scopeName of this._getPhaseScopes()) {
           const scope = rf[scopeName];
           if (!scope) continue;
-          if (scope.gunSidePolicy && scope.gunSidePolicy[policy]) this._updateRewardBucket(scope.gunSidePolicy[policy], phaseReward);
-          if (scope.gunSideFamily && scope.gunSideFamily[family]) this._updateRewardBucket(scope.gunSideFamily[family], phaseReward);
+          if (scope.gunSidePolicy && scope.gunSidePolicy[policy]) this._updatePhaseRewardBucket(scope.gunSidePolicy[policy], phaseReward);
+          if (scope.gunSideFamily && scope.gunSideFamily[family]) this._updatePhaseRewardBucket(scope.gunSideFamily[family], phaseReward);
         }
       }
       if (sl.tactical) {
@@ -1199,8 +1269,8 @@ const SparSystem = {
         for (const scopeName of this._getPhaseScopes()) {
           const scope = rf[scopeName];
           if (!scope) continue;
-          if (scope.escapePolicy && scope.escapePolicy[policy]) this._updateRewardBucket(scope.escapePolicy[policy], phaseReward);
-          if (scope.escapeFamily && scope.escapeFamily[family]) this._updateRewardBucket(scope.escapeFamily[family], phaseReward);
+          if (scope.escapePolicy && scope.escapePolicy[policy]) this._updatePhaseRewardBucket(scope.escapePolicy[policy], phaseReward);
+          if (scope.escapeFamily && scope.escapeFamily[family]) this._updatePhaseRewardBucket(scope.escapeFamily[family], phaseReward);
         }
       }
       if (sl.tactical) {
@@ -1311,8 +1381,8 @@ const SparSystem = {
       for (const scopeName of this._getPhaseScopes()) {
         const scope = rf[scopeName];
         if (!scope) continue;
-        if (scope.shotTimingPolicy && scope.shotTimingPolicy[policy]) this._updateRewardBucket(scope.shotTimingPolicy[policy], phaseReward);
-        if (scope.shotTimingFamily && scope.shotTimingFamily[family]) this._updateRewardBucket(scope.shotTimingFamily[family], phaseReward);
+        if (scope.shotTimingPolicy && scope.shotTimingPolicy[policy]) this._updatePhaseRewardBucket(scope.shotTimingPolicy[policy], phaseReward);
+        if (scope.shotTimingFamily && scope.shotTimingFamily[family]) this._updatePhaseRewardBucket(scope.shotTimingFamily[family], phaseReward);
       }
     }
     // Track outcomes
@@ -1414,8 +1484,8 @@ const SparSystem = {
       for (const scopeName of this._getPhaseScopes()) {
         const scope = rf[scopeName];
         if (!scope) continue;
-        if (scope.reloadPolicy && scope.reloadPolicy[policy]) this._updateRewardBucket(scope.reloadPolicy[policy], phaseReward);
-        if (scope.reloadFamily && scope.reloadFamily[family]) this._updateRewardBucket(scope.reloadFamily[family], phaseReward);
+        if (scope.reloadPolicy && scope.reloadPolicy[policy]) this._updatePhaseRewardBucket(scope.reloadPolicy[policy], phaseReward);
+        if (scope.reloadFamily && scope.reloadFamily[family]) this._updatePhaseRewardBucket(scope.reloadFamily[family], phaseReward);
       }
     }
     const rlFrames = ai._reloadFrames || 0;
@@ -1511,8 +1581,8 @@ const SparSystem = {
       for (const scopeName of this._getPhaseScopes()) {
         const scope = rf[scopeName];
         if (!scope) continue;
-        if (scope.midPressurePolicy && scope.midPressurePolicy[policy]) this._updateRewardBucket(scope.midPressurePolicy[policy], phaseReward);
-        if (scope.midPressureFamily && scope.midPressureFamily[family]) this._updateRewardBucket(scope.midPressureFamily[family], phaseReward);
+        if (scope.midPressurePolicy && scope.midPressurePolicy[policy]) this._updatePhaseRewardBucket(scope.midPressurePolicy[policy], phaseReward);
+        if (scope.midPressureFamily && scope.midPressureFamily[family]) this._updatePhaseRewardBucket(scope.midPressureFamily[family], phaseReward);
       }
     }
     if (sl.tactical && sl.tactical.midPressureOutcomes) {
@@ -1601,8 +1671,8 @@ const SparSystem = {
       for (const scopeName of this._getPhaseScopes()) {
         const scope = rf[scopeName];
         if (!scope) continue;
-        if (scope.wallPressurePolicy && scope.wallPressurePolicy[policy]) this._updateRewardBucket(scope.wallPressurePolicy[policy], phaseReward);
-        if (scope.wallPressureFamily && scope.wallPressureFamily[family]) this._updateRewardBucket(scope.wallPressureFamily[family], phaseReward);
+        if (scope.wallPressurePolicy && scope.wallPressurePolicy[policy]) this._updatePhaseRewardBucket(scope.wallPressurePolicy[policy], phaseReward);
+        if (scope.wallPressureFamily && scope.wallPressureFamily[family]) this._updatePhaseRewardBucket(scope.wallPressureFamily[family], phaseReward);
       }
     }
     if (sl.tactical && sl.tactical.wallPressureOutcomes) {
@@ -1719,10 +1789,10 @@ const SparSystem = {
         const scope = rf[scopeName];
         if (!scope) continue;
         if (scope.centerRecoveryPolicy && scope.centerRecoveryPolicy[policy]) {
-          this._updateRewardBucket(scope.centerRecoveryPolicy[policy], phaseReward);
+          this._updatePhaseRewardBucket(scope.centerRecoveryPolicy[policy], phaseReward);
         }
         if (scope.centerRecoveryFamily && scope.centerRecoveryFamily[family]) {
-          this._updateRewardBucket(scope.centerRecoveryFamily[family], phaseReward);
+          this._updatePhaseRewardBucket(scope.centerRecoveryFamily[family], phaseReward);
         }
       }
     }
@@ -1810,10 +1880,10 @@ const SparSystem = {
           const scope = rf[scopeName];
           if (!scope) continue;
           if (scope.antiBottomTactic && scope.antiBottomTactic[tactic]) {
-            this._updateRewardBucket(scope.antiBottomTactic[tactic], phaseReward);
+            this._updatePhaseRewardBucket(scope.antiBottomTactic[tactic], phaseReward);
           }
           if (scope.antiBottomFamily && scope.antiBottomFamily[family]) {
-            this._updateRewardBucket(scope.antiBottomFamily[family], phaseReward);
+            this._updatePhaseRewardBucket(scope.antiBottomFamily[family], phaseReward);
           }
         }
       }

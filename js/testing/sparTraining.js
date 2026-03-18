@@ -637,22 +637,24 @@ function _sparTrainStartNext() {
   if (_sparTrainState.mode === 'selfplay') {
     const variant = _randomizeSelfPlayVariant(_sparTrainState.snapshotPolicy);
     const rt = _sparTrainState.runtime;
+    // v13: Track which dimensions were forced by variants (so match-end doesn't record them)
+    rt.selfPlayForcedDimensions = {};
     // (a) Override opening route
-    if (variant.route) rt.selfPlayRoute = variant.route;
+    if (variant.route) { rt.selfPlayRoute = variant.route; rt.selfPlayForcedDimensions.opening = true; }
     // (b) Override duel style
-    if (variant.style) rt.selfPlayStyle = variant.style;
+    if (variant.style) { rt.selfPlayStyle = variant.style; rt.selfPlayForcedDimensions.style = true; }
     // (d) Reaction delay on shooting
     rt.selfPlayReactionDelay = variant.reactionDelay || 0;
     // (e) Side preference (applied as initial strafe direction)
     if (variant.sidePref === 'left') { rt.strafeDir = -1; rt.selfPlaySidePref = 'left'; }
     else if (variant.sidePref === 'right') { rt.strafeDir = 1; rt.selfPlaySidePref = 'right'; }
     // (f) Anti-bottom family override (using family key, not legacy response)
-    if (variant.antiBottomFamily) rt.selfPlayAntiBottom = variant.antiBottomFamily;
+    if (variant.antiBottomFamily) { rt.selfPlayAntiBottom = variant.antiBottomFamily; rt.selfPlayForcedDimensions.antiBottom = true; }
     // (g-j) Policy-dimension behavioral overrides
-    if (variant.shootAggr) rt.selfPlayShootAggr = variant.shootAggr;
-    if (variant.retreatSpeed) rt.selfPlayRetreatSpeed = variant.retreatSpeed;
-    if (variant.gunSideBias) rt.selfPlayGunSideBias = variant.gunSideBias;
-    if (variant.reloadPunish) rt.selfPlayReloadPunish = variant.reloadPunish;
+    if (variant.shootAggr) { rt.selfPlayShootAggr = variant.shootAggr; rt.selfPlayForcedDimensions.shotTiming = true; }
+    if (variant.retreatSpeed) { rt.selfPlayRetreatSpeed = variant.retreatSpeed; rt.selfPlayForcedDimensions.escape = true; }
+    if (variant.gunSideBias) { rt.selfPlayGunSideBias = variant.gunSideBias; rt.selfPlayForcedDimensions.gunSide = true; }
+    if (variant.reloadPunish) { rt.selfPlayReloadPunish = variant.reloadPunish; rt.selfPlayForcedDimensions.reload = true; }
     // Store label for logging
     rt.selfPlayVariantLabel = variant.label;
     // (c) Store CT-X allocation for bot creation override
