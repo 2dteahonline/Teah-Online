@@ -5693,9 +5693,9 @@ const SparSystem = {
 
     } else if (enemyHasBottom) {
       // Hysteresis not yet met — waiting for 20+ frames to confirm enemy has bottom
-      // Strafe + cautious descent — don't rush into bullets during buildup
+      // Full speed strafe + descent toward bottom
       moveX = ai.strafeDir * speed * 0.85;
-      moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.1; // gentler descent (was 0.53)
+      moveY = (bot.y < tgt.y) ? speed * 0.53 : speed * 0.1;
       // Bullet wall check — 1 bullet blocks descent, 18-frame lookahead
       const _hystHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
       const _hystHitR = this._getSparPerpHitRadius();
