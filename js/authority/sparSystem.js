@@ -4741,12 +4741,12 @@ const SparSystem = {
       const _openTankForKill = !member.gun.reloading && member.gun.ammo > 0
         && member.ai.shootCD <= 0 && tgt.hp <= (member.gun.damage || 20);
       if (openDodgeMag > 0.15 && !_openTankForKill) {
-        // During opening, still prioritize dodge but keep some forward momentum
+        // 100% commit to diagonal dodge — survival always wins
         const odLen = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
         if (odLen > 0.01) {
           const ondx = openDodge.x / odLen, ondy = openDodge.y / odLen;
-          moveX = moveX * 0.2 + ondx * speed * 0.8;
-          moveY = moveY * 0.4 + ondy * speed * 0.6; // keep some downward momentum
+          moveX = ondx * speed;
+          moveY = ondy * speed;
         }
       }
 
@@ -4978,17 +4978,12 @@ const SparSystem = {
       const _btmTankForTrade = !member.gun.reloading && member.gun.ammo > 0
         && member.ai.shootCD <= 0 && bot.hp > tgt.hp + 40 && dist < 200;
       if (bottomDodgeMag > 0.15 && !_btmTankForKill && !_btmTankForTrade) {
-        // Dodge to preserve bottom — 75% override, wall-clamped, no upward dodge
+        // 100% commit to diagonal dodge — survival always wins
         const bdLen = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
         if (bdLen > 0.01) {
           const bndx = bottomDodge.x / bdLen, bndy = bottomDodge.y / bdLen;
-          // Direction already wall-aware from _getIncomingBulletDodge
-          // 75% lateral dodge, allow vertical if direction says so
-          moveX = moveX * 0.25 + bndx * speed * 0.75;
-          if (bndy !== 0) {
-            moveY = moveY * 0.4 + bndy * speed * 0.6;
-          }
-          // else: keep current moveY (don't dodge upward)
+          moveX = bndx * speed;
+          moveY = bndy * speed;
         }
       }
       // If recently took a hit, increase strafe speed to be harder to hit
@@ -6220,33 +6215,26 @@ const SparSystem = {
     // --- Bullet dodging (reactive, applied AFTER movement plan so never overwritten) ---
     // ALWAYS dodge unless tanking wins the round or trades favorably.
     // Not dodging = taking damage for free. Commit strongly to dodge direction.
+    let _isDodging = false;
     if (dodgeMag > 0.15 && !_shouldTankForTrade) {
-      // Override scales with threat: close bullet = stronger commitment
-      // Don't go full 92% — that's predictable (player reads the snap).
-      // 65-80% gives strong dodge while retaining some current movement variety.
-      const baseOverride = inActiveAntiBottom ? 0.45 : 0.75;
-      // Normalize dodge to unit vector, apply at speed
-      // Direction already accounts for walls (computed in _getIncomingBulletDodge)
+      _isDodging = true;
+      // 100% commit to dodge direction — diagonal vector already optimal from detection
       const dLen = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
       if (dLen > 0.01) {
         const ndx = dodge.x / dLen, ndy = dodge.y / dLen;
-        moveX = moveX * (1 - baseOverride) + ndx * speed * baseOverride;
-        moveY = moveY * (1 - baseOverride) + ndy * speed * baseOverride;
-      }
-      // Re-normalize to full speed — dodging should never slow you down
-      const postDodgeLen = Math.sqrt(moveX * moveX + moveY * moveY);
-      if (postDodgeLen > 1) {
-        moveX = (moveX / postDodgeLen) * speed;
-        moveY = (moveY / postDodgeLen) * speed;
+        moveX = ndx * speed;
+        moveY = ndy * speed;
       }
     }
 
-    // Freeze penalty after shooting — applied AFTER normalization (the only valid speed reduction)
+    // Freeze penalty after shooting — but NOT when actively dodging (survival > penalty)
     if (ai._freezeTimer > 0) {
       ai._freezeTimer--;
-      const penalty = ai._freezePenalty || 0.54;
-      moveX *= (1.0 - penalty);
-      moveY *= (1.0 - penalty);
+      if (!_isDodging) {
+        const penalty = ai._freezePenalty || 0.54;
+        moveX *= (1.0 - penalty);
+        moveY *= (1.0 - penalty);
+      }
     }
 
     // --- Idle guard: if near-stationary too long, force a lateral break ---
