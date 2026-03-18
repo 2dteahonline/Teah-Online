@@ -2695,42 +2695,52 @@ const SparSystem = {
     }
   },
 
-  // Dodge incoming enemy bullets — optimized for 4-cardinal bullet paths
-  _getIncomingBulletDodge(bot, team) {
+  // Dodge incoming enemy bullets — uses relative velocity for correct approach detection
+  _getIncomingBulletDodge(bot, team, botVx, botVy) {
     let dodgeX = 0, dodgeY = 0;
     const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
     const hbYOff = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
     const botHitY = bot.y + hbYOff; // match actual combat hitbox (torso center)
     const hitRadius = this._getSparPerpHitRadius(); // 33px
     const margin = 6; // extra clearance beyond hitbox edge
-    const maxReactFrames = 10; // only dodge bullets arriving within 10 frames (~90px at bullet speed 9)
+    const maxReactFrames = 10; // only dodge bullets arriving within 10 frames
     const arenaLevel = typeof levels !== 'undefined' && levels[currentLevel] ? levels[currentLevel] : null;
     const arenaW = arenaLevel ? arenaLevel.widthTiles * TILE : 600;
     const arenaH = arenaLevel ? arenaLevel.heightTiles * TILE : 600;
     const wallM = TILE * 2;
+    const bVx = botVx || 0, bVy = botVy || 0; // bot's current velocity
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
 
-      // --- Precise closest-approach geometry ---
+      // --- Relative-velocity closest-approach geometry ---
+      // Accounts for bot movement: when approaching a bullet head-on,
+      // convergence is faster and tClosest is correctly shorter.
       const bvx = b.vx, bvy = b.vy;
       const bSpeedSq = bvx * bvx + bvy * bvy;
       if (bSpeedSq < 0.5) continue; // stationary/dead bullet
 
       const dbx = bot.x - b.x, dby = botHitY - b.y;
 
-      // Time of closest approach: t = dot(botOffset, bulletVel) / |bulletVel|²
-      const tClosest = (dbx * bvx + dby * bvy) / bSpeedSq;
-      if (tClosest < 0) continue; // bullet moving away
+      // Relative velocity: bullet velocity relative to bot
+      const rvx = bvx - bVx, rvy = bvy - bVy;
+      const relSpeedSq = rvx * rvx + rvy * rvy;
+      if (relSpeedSq < 0.5) continue; // not closing
+
+      // Time of closest approach using relative velocity
+      const tClosest = (dbx * rvx + dby * rvy) / relSpeedSq;
+      if (tClosest < 0) continue; // separating
       if (tClosest > maxReactFrames) continue; // too far out to care
 
-      // Bullet position at closest approach
-      const closestX = b.x + bvx * tClosest;
-      const closestY = b.y + bvy * tClosest;
+      // Predicted positions at closest approach (both bot and bullet move)
+      const closestBotX = bot.x + bVx * tClosest;
+      const closestBotY = botHitY + bVy * tClosest;
+      const closestBulletX = b.x + bvx * tClosest;
+      const closestBulletY = b.y + bvy * tClosest;
 
-      // Perpendicular distance at closest approach
-      const perpX = bot.x - closestX;
-      const perpY = botHitY - closestY;
+      // Perpendicular distance at closest approach (predicted positions)
+      const perpX = closestBotX - closestBulletX;
+      const perpY = closestBotY - closestBulletY;
       const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
 
       if (perpDist >= hitRadius + margin) continue; // will miss — don't waste movement
@@ -4766,7 +4776,7 @@ const SparSystem = {
       }
 
       // Dodge bullets even during opening — always dodge, never tank
-      const openDodge = this._getIncomingBulletDodge(bot, team);
+      const openDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
       const openDodgeMag = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
       if (openDodgeMag > 0.15) {
         // Perpendicular dodge: keep route movement, replace perp component
@@ -4981,7 +4991,7 @@ const SparSystem = {
       // --- BOTTOM RETENTION: dodge incoming bullets while maintaining bottom ---
       // When we have bottom and bullets are incoming, dodge to preserve position
       // rather than standing still and eating hits. Re-stabilize after dodge.
-      const bottomDodge = this._getIncomingBulletDodge(bot, team);
+      const bottomDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
       const bottomDodgeMag = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
       if (bottomDodgeMag > 0.15) {
         // Perpendicular dodge: keep strafe movement, replace perp component
@@ -5980,7 +5990,7 @@ const SparSystem = {
 
     // --- Bullet dodge detection (computed here, APPLIED after movement plan) ---
     // Dodge must be applied after the plan so it's never overwritten.
-    const dodge = this._getIncomingBulletDodge(bot, team);
+    const dodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
     const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
 
     // Separation from allies
