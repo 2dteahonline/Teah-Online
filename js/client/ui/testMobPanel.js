@@ -648,14 +648,17 @@ function spawnTestShootBot(side) {
   if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
   player.hp = player.maxHp;
 
-  // dir: 2=left, 3=right (matching game dir convention)
-  const dir = side === 'left' ? 2 : 3;
-  // Place bot offset from player
-  const offsetX = side === 'left' ? 150 : -150;
+  // Gunside: which side the bot holds its gun (right or left)
+  // "right gunside" = bot fires left, placed to player's RIGHT
+  // "left gunside" = bot fires right, placed to player's LEFT
+  const dir = side === 'right' ? 2 : 3;
+  // Spar distance: teamA tx:4, teamB tx:19 → 15 tiles × 48px = 720px apart
+  const offsetX = side === 'right' ? 720 : -720;
   _testShootBot = {
     x: player.x + offsetX,
     y: player.y,
     dir: dir,
+    gunSide: side, // 'right' or 'left' — matches player gunSide convention
     fireTimer: 0,
     reloadTimer: 0,
     ammo: 30,
@@ -667,7 +670,7 @@ function spawnTestShootBot(side) {
     hp: 500,
     maxHp: 500,
   };
-  chatMessages.push({ name: "SYSTEM", text: "Shoot bot spawned — firing " + side + " (CT-X, ROF 50)", time: Date.now() });
+  chatMessages.push({ name: "SYSTEM", text: "Shoot bot spawned — " + side + " gunside, spar distance (CT-X, ROF 50, 500 HP)", time: Date.now() });
 }
 
 function tickTestShootBot() {
@@ -686,7 +689,7 @@ function tickTestShootBot() {
   // Fire cooldown
   if (b.fireTimer > 0) { b.fireTimer--; return; }
 
-  // Fire a bullet
+  // Fire a bullet — use same muzzle position as spar bots
   const bSpeed = GAME_CONFIG.BULLET_SPEED;
   let vx = 0, vy = 0;
   if (b.dir === 0) vy = bSpeed;
@@ -694,9 +697,14 @@ function tickTestShootBot() {
   else if (b.dir === 2) vx = -bSpeed;
   else vx = bSpeed;
 
+  // Muzzle pos matching _getSparMuzzlePos
+  const muzzle = (typeof SparSystem !== 'undefined' && SparSystem._getSparMuzzlePos)
+    ? SparSystem._getSparMuzzlePos(b, b.dir, b.gunSide || 'right')
+    : { x: b.x, y: b.y - 10 };
+
   bullets.push({
     id: nextBulletId++,
-    x: b.x, y: b.y - 10,
+    x: muzzle.x, y: muzzle.y,
     vx: vx, vy: vy,
     fromPlayer: false,
     bulletColor: null,

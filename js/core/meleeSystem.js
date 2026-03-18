@@ -1134,7 +1134,7 @@ function updateBullets() {
       // Player bullet vs test shoot bot
       if (typeof _testShootBot !== 'undefined' && _testShootBot && _testShootBot.hp > 0) {
         const tb = _testShootBot;
-        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, tb.x, tb.y - 20, ENTITY_R)) {
+        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, tb.x, tb.y + PLAYER_HB_Y, ENTITY_R)) {
           const _bDmg = b.damage || gun.damage;
           tb.hp -= _bDmg;
           hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: _bDmg });
