@@ -7,7 +7,7 @@ const MAFIA_GAME = {
   // ---- Match config ----
   BOT_COUNT: 8,              // 8 bots + 1 player = 9 participants
   IMPOSTOR_COUNT: 1,         // 1 impostor per match (hardcoded for now)
-  BOT_SPEED: 6.25,           // matches PLAYER_BASE_SPEED
+  BOT_SPEED: GAME_CONFIG.PLAYER_BASE_SPEED,  // always match player speed
 
   // ---- Vision ----
   FOV_BASE_RADIUS: 4.5,        // tiles — vision circle radius

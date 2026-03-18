@@ -529,9 +529,9 @@ const BotAI = {
           cooldownMax: item.cooldown,
           critChance: item.critChance || 0.10,
           special: item.special || null,
-          knockback: 4.2, arcAngle: Math.PI * 0.8,
+          knockback: 4.76, arcAngle: Math.PI * 0.8,
           // Dash fields (ninja katanas) — same defaults as gameState.js
-          dashing: false, dashTimer: 0, dashDuration: 14, dashSpeed: 18.2,
+          dashing: false, dashTimer: 0, dashDuration: 14, dashSpeed: 20.63,
           dashDirX: 0, dashDirY: 0, dashTrail: [],
           dashesLeft: 0, dashChainWindow: 0,
           dashCooldown: 0, dashCooldownMax: 240, dashActive: false, dashGap: 0,

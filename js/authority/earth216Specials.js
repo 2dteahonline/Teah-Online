@@ -383,7 +383,7 @@ MOB_SPECIALS.call_collection = (m, ctx) => {
           mobs.push({
             x: sx, y: sy, type: 'grunt', ai: 'grunt', id: minionId,
             hp: Math.round(m.maxHp * 0.1), maxHp: Math.round(m.maxHp * 0.1),
-            speed: 1.6, damage: Math.round(m.damage * 0.35),
+            speed: 1.8, damage: Math.round(m.damage * 0.35),
             contactRange: 30, skin: '#887766', hair: '#554433', shirt: '#443322', pants: '#332211',
             name: 'Thug', dir: 0, frame: 0, attackCooldown: 0,
             shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
