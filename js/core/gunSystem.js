@@ -430,7 +430,7 @@ function getMuzzlePos(aimDir) {
   const y = player.y - 68;
   const bodyL = x + 2;
   const bodyR = x + 36;
-  const armY = y + 35;
+  const armY = y + 68 + (GAME_CONFIG.PLAYER_HITBOX_Y || -25); // arm at hitbox center
   const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
   const isRight = getCurrentGunSide() === 'right';
   if (aimDir === 0) { // down — default: gun on screen-right (bodyR). Mirror: screen-left (bodyL)

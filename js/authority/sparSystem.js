@@ -346,7 +346,7 @@ const SparSystem = {
     const by = entity.y - 68;
     const bodyL = bx + 2;
     const bodyR = bx + 36;
-    const armY = by + 35;
+    const armY = by + 68 + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
     const isRight = gunSide === 'right';
     if (aimDir === 0) return { x: isRight ? (bodyL - 1) : (bodyR + 1), y: armY + 6 + 49 };
     if (aimDir === 1) return { x: isRight ? (bodyR + 1) : (bodyL - 1), y: by + 28 - 49 };
@@ -2369,7 +2369,7 @@ const SparSystem = {
       // Compute muzzle position for this aim direction
       const bx = e.x - 20, by = e.y - 68;
       const bodyL = bx + 2, bodyR = bx + 36;
-      const armY = by + 35;
+      const armY = by + 68 + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
       const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
       const isRight = e._gunSide === 'right';
       let mx, my;
@@ -2466,7 +2466,7 @@ const SparSystem = {
     const by = e.y - 68;
     const bodyL = bx + 2;
     const bodyR = bx + 36;
-    const armY = by + 35;
+    const armY = by + 68 + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
     const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
     const isRight = e._gunSide === 'right';
     let mx, my;

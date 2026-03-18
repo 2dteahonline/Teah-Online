@@ -1560,7 +1560,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     }
   };
   // Consistent anchor: gun arm at left side of body, mid-torso height
-  const armY = y + 35 + bobY; // consistent Y for gun hand
+  const armY = y + 43 + bobY; // gun hand at hitbox center (y+68+PLAYER_HITBOX_Y)
   const bodyL = x + 2;  // left edge of body
   const bodyR = x + 36; // right edge of body
   const bodyC = x + 20; // center X (= sx)
