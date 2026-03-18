@@ -179,7 +179,7 @@ const SPAR_LANE_SHAPE_KEYS = ['center', 'left', 'right', 'topLeft', 'topRight'];
 
 function createSparRewardBuckets(keys) {
   const buckets = {};
-  for (const key of keys) buckets[key] = { plays: 0, reward: 0.5 };
+  for (const key of keys) buckets[key] = { plays: 0, reward: 0.5, phasePlays: 0, phaseReward: 0.5 };
   return buckets;
 }
 
@@ -566,7 +566,7 @@ function resetGeometryLearning() {
     for (const bucketName of bucketsToReset) {
       if (scope[bucketName]) {
         for (const key of Object.keys(scope[bucketName])) {
-          scope[bucketName][key] = { plays: 0, reward: 0.5 };
+          scope[bucketName][key] = { plays: 0, reward: 0.5, phasePlays: 0, phaseReward: 0.5 };
           resetCount++;
         }
       }

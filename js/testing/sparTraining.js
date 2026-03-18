@@ -645,6 +645,7 @@ function _sparTrainStartNext() {
     if (variant.style) { rt.selfPlayStyle = variant.style; rt.selfPlayForcedDimensions.style = true; }
     // (d) Reaction delay on shooting
     rt.selfPlayReactionDelay = variant.reactionDelay || 0;
+    if (variant.reactionDelay > 0) rt.selfPlayForcedDimensions.shotTiming = true;
     // (e) Side preference (applied as initial strafe direction)
     if (variant.sidePref === 'left') { rt.strafeDir = -1; rt.selfPlaySidePref = 'left'; }
     else if (variant.sidePref === 'right') { rt.strafeDir = 1; rt.selfPlaySidePref = 'right'; }

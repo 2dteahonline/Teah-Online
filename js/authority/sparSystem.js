@@ -633,56 +633,66 @@ const SparSystem = {
         }
       }
       // v11: mid-fight pressure match-end update — half weight
-      const mpPolicy = enemyBot.ai._midPressurePolicy || enemyBot.ai._lastMidPressurePolicy || null;
-      const mpFamily = enemyBot.ai._midPressureFamily || enemyBot.ai._lastMidPressureFamily || null;
-      const mpRewardHalf = this._clamp01(0.5 + (midPressureReward - 0.5) * 0.5);
-      if (mpPolicy && scope.midPressurePolicy && scope.midPressurePolicy[mpPolicy]) {
-        this._updateRewardBucket(scope.midPressurePolicy[mpPolicy], mpRewardHalf);
-      }
-      if (mpFamily && scope.midPressureFamily && scope.midPressureFamily[mpFamily]) {
-        this._updateRewardBucket(scope.midPressureFamily[mpFamily], mpRewardHalf);
+      if (!_forced.midPressure) {
+        const mpPolicy = enemyBot.ai._midPressurePolicy || enemyBot.ai._lastMidPressurePolicy || null;
+        const mpFamily = enemyBot.ai._midPressureFamily || enemyBot.ai._lastMidPressureFamily || null;
+        const mpRewardHalf = this._clamp01(0.5 + (midPressureReward - 0.5) * 0.5);
+        if (mpPolicy && scope.midPressurePolicy && scope.midPressurePolicy[mpPolicy]) {
+          this._updateRewardBucket(scope.midPressurePolicy[mpPolicy], mpRewardHalf);
+        }
+        if (mpFamily && scope.midPressureFamily && scope.midPressureFamily[mpFamily]) {
+          this._updateRewardBucket(scope.midPressureFamily[mpFamily], mpRewardHalf);
+        }
       }
       // v11: wall pressure match-end update — half weight
-      const wpPolicy = enemyBot.ai._wallPressurePolicy || enemyBot.ai._lastWallPressurePolicy || null;
-      const wpFamily = enemyBot.ai._wallPressureFamily || enemyBot.ai._lastWallPressureFamily || null;
-      const wpRewardHalf = this._clamp01(0.5 + (wallPressureReward - 0.5) * 0.5);
-      if (wpPolicy && scope.wallPressurePolicy && scope.wallPressurePolicy[wpPolicy]) {
-        this._updateRewardBucket(scope.wallPressurePolicy[wpPolicy], wpRewardHalf);
-      }
-      if (wpFamily && scope.wallPressureFamily && scope.wallPressureFamily[wpFamily]) {
-        this._updateRewardBucket(scope.wallPressureFamily[wpFamily], wpRewardHalf);
+      if (!_forced.wallPressure) {
+        const wpPolicy = enemyBot.ai._wallPressurePolicy || enemyBot.ai._lastWallPressurePolicy || null;
+        const wpFamily = enemyBot.ai._wallPressureFamily || enemyBot.ai._lastWallPressureFamily || null;
+        const wpRewardHalf = this._clamp01(0.5 + (wallPressureReward - 0.5) * 0.5);
+        if (wpPolicy && scope.wallPressurePolicy && scope.wallPressurePolicy[wpPolicy]) {
+          this._updateRewardBucket(scope.wallPressurePolicy[wpPolicy], wpRewardHalf);
+        }
+        if (wpFamily && scope.wallPressureFamily && scope.wallPressureFamily[wpFamily]) {
+          this._updateRewardBucket(scope.wallPressureFamily[wpFamily], wpRewardHalf);
+        }
       }
       // vNext: opening contest match-end update
-      const ocPolicy = enemyBot.ai._openingContestPolicy || enemyBot.ai._lastOpeningContestPolicy || null;
-      const ocFamily = enemyBot.ai._openingContestFamily || enemyBot.ai._lastOpeningContestFamily || null;
-      const openingContestReward = this._clamp01(baseReward * 0.5 + gotBottomAtOpening * 0.35 + underReward * 0.15);
-      if (ocPolicy && scope.openingContestPolicy && scope.openingContestPolicy[ocPolicy]) {
-        this._updateRewardBucket(scope.openingContestPolicy[ocPolicy], openingContestReward);
-      }
-      if (ocFamily && scope.openingContestFamily && scope.openingContestFamily[ocFamily]) {
-        this._updateRewardBucket(scope.openingContestFamily[ocFamily], openingContestReward);
+      if (!_forced.openingContest) {
+        const ocPolicy = enemyBot.ai._openingContestPolicy || enemyBot.ai._lastOpeningContestPolicy || null;
+        const ocFamily = enemyBot.ai._openingContestFamily || enemyBot.ai._lastOpeningContestFamily || null;
+        const openingContestReward = this._clamp01(baseReward * 0.5 + gotBottomAtOpening * 0.35 + underReward * 0.15);
+        if (ocPolicy && scope.openingContestPolicy && scope.openingContestPolicy[ocPolicy]) {
+          this._updateRewardBucket(scope.openingContestPolicy[ocPolicy], openingContestReward);
+        }
+        if (ocFamily && scope.openingContestFamily && scope.openingContestFamily[ocFamily]) {
+          this._updateRewardBucket(scope.openingContestFamily[ocFamily], openingContestReward);
+        }
       }
       // vNext: punish window match-end update — half weight (phase reward is primary)
-      const pwPolicy = enemyBot.ai._punishWindowPolicy || enemyBot.ai._lastPunishWindowPolicy || null;
-      const pwFamily = enemyBot.ai._punishWindowFamily || enemyBot.ai._lastPunishWindowFamily || null;
-      const punishWindowReward = this._clamp01(baseReward * 0.6 + dmgReward * 0.4);
-      const pwRewardHalf = this._clamp01(0.5 + (punishWindowReward - 0.5) * 0.5);
-      if (pwPolicy && scope.punishWindowPolicy && scope.punishWindowPolicy[pwPolicy]) {
-        this._updateRewardBucket(scope.punishWindowPolicy[pwPolicy], pwRewardHalf);
-      }
-      if (pwFamily && scope.punishWindowFamily && scope.punishWindowFamily[pwFamily]) {
-        this._updateRewardBucket(scope.punishWindowFamily[pwFamily], pwRewardHalf);
+      if (!_forced.punishWindow) {
+        const pwPolicy = enemyBot.ai._punishWindowPolicy || enemyBot.ai._lastPunishWindowPolicy || null;
+        const pwFamily = enemyBot.ai._punishWindowFamily || enemyBot.ai._lastPunishWindowFamily || null;
+        const punishWindowReward = this._clamp01(baseReward * 0.6 + dmgReward * 0.4);
+        const pwRewardHalf = this._clamp01(0.5 + (punishWindowReward - 0.5) * 0.5);
+        if (pwPolicy && scope.punishWindowPolicy && scope.punishWindowPolicy[pwPolicy]) {
+          this._updateRewardBucket(scope.punishWindowPolicy[pwPolicy], pwRewardHalf);
+        }
+        if (pwFamily && scope.punishWindowFamily && scope.punishWindowFamily[pwFamily]) {
+          this._updateRewardBucket(scope.punishWindowFamily[pwFamily], pwRewardHalf);
+        }
       }
       // v12: center recovery match-end update — half weight
-      const crPolicy = enemyBot.ai._centerRecoveryPolicy || enemyBot.ai._lastCenterRecoveryPolicy || null;
-      const crFamily = enemyBot.ai._centerRecoveryFamily || enemyBot.ai._lastCenterRecoveryFamily || null;
-      const centerRecoveryReward = this._clamp01(baseReward * 0.5 + gunReward * 0.3 + underReward * 0.2);
-      const crRewardHalf = this._clamp01(0.5 + (centerRecoveryReward - 0.5) * 0.5);
-      if (crPolicy && scope.centerRecoveryPolicy && scope.centerRecoveryPolicy[crPolicy]) {
-        this._updateRewardBucket(scope.centerRecoveryPolicy[crPolicy], crRewardHalf);
-      }
-      if (crFamily && scope.centerRecoveryFamily && scope.centerRecoveryFamily[crFamily]) {
-        this._updateRewardBucket(scope.centerRecoveryFamily[crFamily], crRewardHalf);
+      if (!_forced.centerRecovery) {
+        const crPolicy = enemyBot.ai._centerRecoveryPolicy || enemyBot.ai._lastCenterRecoveryPolicy || null;
+        const crFamily = enemyBot.ai._centerRecoveryFamily || enemyBot.ai._lastCenterRecoveryFamily || null;
+        const centerRecoveryReward = this._clamp01(baseReward * 0.5 + gunReward * 0.3 + underReward * 0.2);
+        const crRewardHalf = this._clamp01(0.5 + (centerRecoveryReward - 0.5) * 0.5);
+        if (crPolicy && scope.centerRecoveryPolicy && scope.centerRecoveryPolicy[crPolicy]) {
+          this._updateRewardBucket(scope.centerRecoveryPolicy[crPolicy], crRewardHalf);
+        }
+        if (crFamily && scope.centerRecoveryFamily && scope.centerRecoveryFamily[crFamily]) {
+          this._updateRewardBucket(scope.centerRecoveryFamily[crFamily], crRewardHalf);
+        }
       }
     }
 
@@ -696,7 +706,14 @@ const SparSystem = {
             sl.tactical.tacticFailStreaks[key] = Math.floor(sl.tactical.tacticFailStreaks[key] / 2);
           }
         }
-        // Also decay escape and center recovery fail streaks if they exist
+        // Also decay repeek, escape and center recovery fail streaks if they exist
+        if (sl.tactical.repeekFailStreaks) {
+          for (const key in sl.tactical.repeekFailStreaks) {
+            if (typeof sl.tactical.repeekFailStreaks[key] === 'number') {
+              sl.tactical.repeekFailStreaks[key] = Math.floor(sl.tactical.repeekFailStreaks[key] / 2);
+            }
+          }
+        }
         if (sl.tactical.escapeFailStreaks) {
           for (const key in sl.tactical.escapeFailStreaks) {
             if (typeof sl.tactical.escapeFailStreaks[key] === 'number') {
