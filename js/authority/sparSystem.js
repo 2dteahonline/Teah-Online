@@ -5313,13 +5313,10 @@ const SparSystem = {
       const abDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
       const abDodgeMag = Math.sqrt(abDodge.x * abDodge.x + abDodge.y * abDodge.y);
       if (abDodgeMag > 0.15) {
-        const abdLen = Math.sqrt(abDodge.x * abDodge.x + abDodge.y * abDodge.y);
-        if (abdLen > 0.01) {
-          const abdx = abDodge.x / abdLen, abdy = abDodge.y / abdLen;
-          const abPC = moveX * abdx + moveY * abdy;
-          moveX = (moveX - abPC * abdx) + abdx * speed;
-          moveY = (moveY - abPC * abdy) + abdy * speed;
-        }
+        const abdx = abDodge.x / abDodgeMag, abdy = abDodge.y / abDodgeMag;
+        const abPC = moveX * abdx + moveY * abdy;
+        moveX = (moveX - abPC * abdx) + abdx * speed;
+        moveY = (moveY - abPC * abdy) + abdy * speed;
       }
 
       // Normalize to full speed — bot must always move at max speed during anti-bottom
@@ -5347,13 +5344,12 @@ const SparSystem = {
       const hystDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
       const hystDodgeMag = Math.sqrt(hystDodge.x * hystDodge.x + hystDodge.y * hystDodge.y);
       if (hystDodgeMag > 0.15) {
-        const hdLen = Math.sqrt(hystDodge.x * hystDodge.x + hystDodge.y * hystDodge.y);
-        if (hdLen > 0.01) {
-          const hdx = hystDodge.x / hdLen, hdy = hystDodge.y / hdLen;
-          const hPC = moveX * hdx + moveY * hdy;
-          moveX = (moveX - hPC * hdx) + hdx * speed;
-          moveY = (moveY - hPC * hdy) + hdy * speed;
-        }
+        const hdx = hystDodge.x / hystDodgeMag, hdy = hystDodge.y / hystDodgeMag;
+        const hPC = moveX * hdx + moveY * hdy;
+        moveX = (moveX - hPC * hdx) + hdx * speed;
+        moveY = (moveY - hPC * hdy) + hdy * speed;
+        const hLen = Math.sqrt(moveX * moveX + moveY * moveY);
+        if (hLen > speed) { moveX = (moveX / hLen) * speed; moveY = (moveY / hLen) * speed; }
       }
 
     } else {
