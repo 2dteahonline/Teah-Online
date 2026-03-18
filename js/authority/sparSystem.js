@@ -703,10 +703,19 @@ const SparSystem = {
 
     // Build base scores from family + profile bonuses + opening context
     const baseScores = {};
-    const familyBiases = { contest: 0, flank: 0, bait: 0 };
+    const familyBiases = { contest: 0, flank: 0, bait: 0, angle: 0 };
     for (const tactic of tactics) {
       const family = familyMap[tactic];
-      baseScores[tactic] = family === 'flank' ? 7 : (family === 'contest' ? 6 : 5);
+      baseScores[tactic] = family === 'flank' ? 7 : (family === 'contest' ? 6 : (family === 'angle' ? 6 : 5));
+    }
+    // v12: angle family gets boosted when descent tactics keep failing
+    if (failStreaks) {
+      let totalDescentFails = 0;
+      for (const t of tactics) {
+        if (familyMap[t] !== 'angle' && (failStreaks[t] || 0) >= 3) totalDescentFails++;
+      }
+      if (totalDescentFails >= 3) familyBiases.angle += 12;  // many descent tactics failing
+      else if (totalDescentFails >= 2) familyBiases.angle += 7;
     }
 
     // Context-based scoring boosts (position-aware)
@@ -725,6 +734,10 @@ const SparSystem = {
         baseScores.contestSprint = (baseScores.contestSprint || 6) + 8;
         baseScores.contestDirect = (baseScores.contestDirect || 6) + 5;
       }
+      // v12: Far from enemy — angle tactics work well at range
+      if (posCtx.dist > 280) familyBiases.angle += 6;
+      // Close range — angle is bad, need to commit
+      if (posCtx.dist < 150) familyBiases.angle -= 8;
     }
 
     // Profile bonuses (mapped to family + specific tactics)
@@ -1768,12 +1781,19 @@ const SparSystem = {
       });
     }
 
-    // Anti-bottom: regaining bottom is the key objective (50%)
+    // Anti-bottom reward: angle family values damage avoidance over regaining bottom
     const hpBase = SPAR_CONFIG.HP_BASELINE || 100;
     const regainR = regainedBottom ? 1 : 0;
     const dmgR = Math.max(0, Math.min(1, 1 - dmgTaken / (hpBase * 0.5)));
     const speedR = Math.max(0, Math.min(1, 1 - frames / 300));
-    const phaseReward = regainR * 0.50 + dmgR * 0.28 + speedR * 0.22;
+    let phaseReward;
+    if (family === 'angle') {
+      // Angle family: NOT about regaining bottom — reward surviving + low damage
+      // Regaining bottom is a bonus, not the objective
+      phaseReward = dmgR * 0.55 + regainR * 0.25 + speedR * 0.20;
+    } else {
+      phaseReward = regainR * 0.50 + dmgR * 0.28 + speedR * 0.22;
+    }
 
     // Update reinforcement buckets — respect training/self-play data separation
     if (sl) {
@@ -4833,6 +4853,17 @@ const SparSystem = {
       ai.jukeTimer = 15;
     }
 
+    // v12: Cross-side unpredictability — prevent retreatsSameSide=0.9999
+    // After a failed engagement, flip strafe direction to cross to the other side
+    // This makes the bot less predictable and enables advantage chaining
+    if (ai._lastEngagementType && !ai._lastEngagementSuccess && !isOpening) {
+      // 40% chance to cross sides after a failed engagement
+      if (Math.random() < 0.40) {
+        ai.strafeDir *= -1;
+      }
+      ai._lastEngagementType = null; // consume the trigger so it only fires once
+    }
+
     // Cooldowns: prevent rapid reopen after finalize
     if (ai._midPressureCooldown > 0) ai._midPressureCooldown--;
     if (ai._wallPressureCooldown > 0) ai._wallPressureCooldown--;
@@ -5528,6 +5559,40 @@ const SparSystem = {
           moveX = offDir * speed * 0.85;
           moveY = speed * 0.65;
           if (bodyBlocked) { moveX = offDir * speed * 0.9; moveY = speed * 0.15; }
+        }
+      } else if (tactic === 'angleStrafe') {
+        // v12 "angle" family: DON'T try to retake bottom — play from range
+        // Wide lateral strafe at distance, fire from angles, wait for mistakes
+        // Only descend if a bullet gap appears (checked below via _findSafeCrossWindow)
+        const _angleSafeGap = this._findSafeCrossWindow(bot, tgt, team);
+        if (_angleSafeGap.vertClear && dist > 200 && ai._antiBottomPhaseFrames > 30) {
+          // Gap detected! Descend now through the opening
+          moveX = _angleSafeGap.bestCrossDir * speed * 0.4;
+          moveY = speed * 0.75;
+        } else {
+          // No gap — strafe wide, stay alive, shoot from angles
+          moveX = ai.strafeDir * speed * 0.92;
+          moveY = (bot.y < tgt.y - 60) ? speed * 0.12 : -speed * 0.08; // slight drift toward level, not descending into fire
+          // Flip strafe occasionally to be unpredictable
+          if (Math.random() < 0.02) ai.strafeDir *= -1;
+        }
+      } else if (tactic === 'angleWait') {
+        // v12 "angle" family: Hold position, pressure from range, wait for overcommit
+        // Enemy eventually moves or makes a mistake — then chain advantage
+        const _waitGap = this._findSafeCrossWindow(bot, tgt, team);
+        const enemyPushing = (tgt.vy || 0) < -2; // enemy moving up (away from bottom)
+        const enemyOvercommit = enemyPushing && dist < 300;
+        if ((enemyOvercommit || _waitGap.vertClear) && ai._antiBottomPhaseFrames > 20) {
+          // Enemy left bottom or gap appeared — go take it
+          moveX = offDir * speed * 0.5;
+          moveY = speed * 0.8;
+        } else {
+          // Hold position: strafe at mid-range, don't approach
+          moveX = ai.strafeDir * speed * 0.75;
+          const idealY = tgt.y - 120; // stay ~120px above enemy
+          moveY = Math.sign(idealY - bot.y) * speed * 0.2;
+          // Periodic strafe flips for unpredictability
+          if (Math.random() < 0.025) ai.strafeDir *= -1;
         }
       }
 
@@ -6547,10 +6612,10 @@ const SparSystem = {
     const _planEligible = _movePlanCurrentState === 'neutral' || _movePlanCurrentState === 'hasBottom';
 
     if (_planEligible) {
-      // Break trigger 1: ANY bullet coming at me = break and dodge first
-      // Plan is for preventing jitter, not for tanking hits.
-      // Dodging never prevents shooting, so always break for dodge.
-      const _planDodgeUrgent = dodgeMag > 0.15;
+      // Break trigger 1: bullet coming at me = break and dodge
+      // v12: raised threshold from 0.15 to 0.4 — was too sensitive, causing 5.7M
+      // plan breaks per 300k matches. Low dodgeMag bullets are far away or grazing.
+      const _planDodgeUrgent = dodgeMag > 0.4;
 
       // Break trigger 2: enemy rushing me (closing distance significantly)
       const _planEnemyRushing = ai._movePlanDist !== undefined
@@ -6602,10 +6667,11 @@ const SparSystem = {
     }
 
     // --- Bullet dodging (reactive, applied AFTER movement plan so never overwritten) ---
-    // ALWAYS dodge incoming bullets. Dodging doesn't prevent shooting — the bot
-    // can dodge AND shoot on the same frame. Tanking is never worth it.
+    // Dodge incoming bullets — but only when they're actually close enough to matter.
+    // v12: raised threshold from 0.15 to 0.3 — was too sensitive, causing constant
+    // micro-dodges that cancelled strategic movement. Distant bullets shouldn't override plans.
     let _isDodging = false;
-    if (dodgeMag > 0.15) {
+    if (dodgeMag > 0.3) {
       _isDodging = true;
       // Perpendicular dodge: replace ONLY the perpendicular component of movement,
       // keep the parallel component (existing strafe/tactical movement).
