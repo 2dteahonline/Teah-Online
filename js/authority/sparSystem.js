@@ -2871,6 +2871,7 @@ const SparSystem = {
         wallPressureEngagements: [], // [{policy, family, frames, dmgDealt, pinned, startCtx}]
         trapZoneHits:   { center: 0, near: 0, wide: 0 },
         trapZoneFrames: { center: 0, near: 0, wide: 0 },
+        shotDecisions: [],  // [{dist, hasBottom, dodgeMag, decision:'fired'|'holdForDodge'|'openingGated', ...}]
         openingBottomLostDir: null,  // 'left'|'right'|'center'
         // Rhythm tracking (v10)
         rhythm_losGainFrames: [],      // frames when player gains line-of-sight
@@ -5413,22 +5414,9 @@ const SparSystem = {
       }
     }
 
-    let suppressPeekShots = false;
-    // Suppress shots ONLY in the worst lanes — bot needs shot volume for pressure.
-    // With 0.7% hit rate, suppressing "ok" lanes wastes more than it saves.
-    // Only suppress when truly bad: escape or very poor lane with no reason to fire.
-    const _enemyLowHp = tgt.hp < (tgt.maxHp || SPAR_CONFIG.HP_BASELINE) * 0.35;
-    const _recentLandedHit = ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30;
-    const _hasCloseReason = _enemyLowHp || _recentLandedHit;
-    // Only suppress in truly terrible lanes (< 0.35) with bad gun side and no active policy
-    if (!isOpening && !ai._escapePolicy && !ai._gunSidePolicy && !ai._antiBottomTactic
-      && !ai._midPressurePolicy && !ai._wallPressurePolicy
-      && badGunSide && laneQuality < 0.35 && !_hasCloseReason) {
-      suppressPeekShots = true;
-    }
+    // Shot suppression removed — bot now fires on cooldown unless freeze would
+    // cause a hit (checked at shooting section below). Shot volume > lane quality.
     if (!isOpening && ai._escapePolicy) {
-      // Only suppress during escape if lane is truly bad — otherwise keep shooting for pressure
-      suppressPeekShots = laneQuality < 0.4;
       const centerDir = this._getStableCenterDir(ai, bot.x, midX);
       const awayDir = -Math.sign(dx || ai.strafeDir);
       const descendDir = bot.y < arenaH * 0.6 ? 1 : -0.2;
@@ -5449,14 +5437,14 @@ const SparSystem = {
       if (bot.x < TILE * 4) moveX = Math.max(moveX, speed * 0.3);
       else if (bot.x > arenaW - TILE * 4) moveX = Math.min(moveX, -speed * 0.3);
       if (bot.y < TILE * 3) moveY = Math.max(moveY, speed * 0.1);
-      if (!topCornerTrapped && laneQuality > 0.62 && !badGunSide && dist < 165) suppressPeekShots = false;
+      // (suppressPeekShots removed — shooting is now dodge-gated only)
     } else if (!isOpening && ai._gunSidePolicy) {
       const awayDir = -Math.sign(dx || ai.strafeDir);
       const reAngleDir = Math.sign(bot.x - tgt.x || ai.strafeDir);
       if (ai._gunSidePolicy === 'forcePeek') {
         moveX += ai.strafeDir * speed * 0.15;
       } else if (ai._gunSidePolicy === 'holdAngle') {
-        suppressPeekShots = laneQuality < 0.5;
+        // (suppressPeekShots removed)
         // vNext: Only plant if conditions justify it; otherwise maintain movement
         const canPlantHold = hasBottom || nearEnemyWall || laneQuality > 0.55;
         if (canPlantHold) {
@@ -5469,7 +5457,7 @@ const SparSystem = {
         }
       } else if (ai._gunSidePolicy === 'preAimLaneHold') {
         // Hold position firmly with pre-aimed lane
-        suppressPeekShots = laneQuality < 0.45;
+        // (suppressPeekShots removed)
         // vNext: Only micro-adjust if conditions justify planting
         const canPlantPreAim = hasBottom || nearEnemyWall || laneQuality > 0.58;
         if (canPlantPreAim) {
@@ -5482,17 +5470,17 @@ const SparSystem = {
         }
       } else if (ai._gunSidePolicy === 'reAngleWide') {
         // Suppress shots while repositioning to correct side — shooting from wrong side is a losing trade
-        suppressPeekShots = laneQuality < 0.35; // shoot while repositioning — volume matters
+        // (suppressPeekShots removed)
         moveX = reAngleDir * speed * 0.9;
         moveY += (!hasBottom ? 0.18 : 0.05) * speed;
       } else if (ai._gunSidePolicy === 'yieldLane') {
-        suppressPeekShots = laneQuality < 0.35; // only suppress truly bad lanes, not all
+        // (suppressPeekShots removed)
         moveX = awayDir * speed * 0.7 + this._getStableCenterDir(ai, bot.x, midX) * speed * 0.25;
         moveY += (enemyHasBottom ? 0.25 : -0.05) * speed;
       } else if (ai._gunSidePolicy === 'peekPressure') {
         // Advantage chaining: use gun-side peek to pressure opponent into losing bottom
         // Strafe to maintain gun-side angle, gradually descend toward bottom, keep shooting
-        suppressPeekShots = false; // the pressure IS shooting from favorable angle
+        // (suppressPeekShots removed)
         moveX += ai.strafeDir * speed * 0.25; // maintain gun-side with lateral movement
         // Gradually descend — the goal is to take bottom while pressuring with shots
         if (bot.y < tgt.y) {
@@ -5507,7 +5495,7 @@ const SparSystem = {
           moveY -= (dy / dist) * speed * sepStr * 0.2;
         }
       }
-      if (laneQuality > 0.62 && !badGunSide && !repeekedBadLane) suppressPeekShots = false;
+      // (suppressPeekShots removed)
     }
 
     // === DUEL STYLE WEIGHT APPLICATION ===
@@ -6286,105 +6274,35 @@ const SparSystem = {
       bot.dir = moveY > 0 ? 0 : 1;
     }
 
-    // --- Shooting with shot timing modes (v10: policy-driven) ---
-    // Re-evaluate shot mode every 90 frames or on context change
-    if (SparState.matchTimer % 90 === 0 || (ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 2)) {
-      // Finalize previous shot timing engagement if active
-      if (ai._shotTimingPolicy) {
-        const stDmg = (ai._matchDmgDealt || 0) - (ai._shotTimingStartDmg || 0);
-        this._finalizeShotTimingEngagement(ai, stDmg > 0 ? 1 : 0, stDmg);
-      }
-      // Pick mode based on context — escape/wall overrides take priority
-      if (ai._escapePolicy || suppressPeekShots) {
-        ai._shotMode = 'held';
-        ai._shotTimingPolicy = null;
-        ai._shotTimingFamily = null;
-      } else if (nearAnyWall && !this._hasLOS(bot.x, bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25), tgt.x, tgt.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25))) {
-        ai._shotMode = 'prefire';
-        ai._shotTimingPolicy = null;
-        ai._shotTimingFamily = null;
-      } else {
-        // v10: Use policy picker for normal combat
-        const duelCtx = {
-          dist: dist,
-          hasBottom: hasBottom,
-          enemyHasBottom: enemyHasBottom,
-          recentHit: ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30,
-          recentTookHit: ai._lastTookHitFrame > 0 && (SparState.matchTimer - ai._lastTookHitFrame) < 30,
-          laneQuality: laneQuality,
-        };
-        const stPolicy = this._pickShotTimingPolicy(pm, duelCtx);
-        const stFamilyMap = typeof SPAR_SHOT_TIMING_FAMILY_MAP !== 'undefined' ? SPAR_SHOT_TIMING_FAMILY_MAP : { shootImmediate: 'aggressive', delayShot: 'patient', baitShot: 'patient' };
-        ai._shotTimingPolicy = stPolicy;
-        ai._shotTimingFamily = stFamilyMap[stPolicy] || 'aggressive';
-        ai._shotTimingStartDmg = ai._matchDmgDealt || 0;
-        ai._shotTimingFrames = 0;
-        ai._shotTimingStartCtx = _snapEngagementCtx(bot, tgt, ai);
-        ai._shotTimingStartCtx.hasBottom = hasBottom;
-        ai._shotTimingStartCtx.laneQuality = laneQuality;
-        // Map policy to shot mode
-        if (stPolicy === 'shootImmediate') {
-          ai._shotMode = 'immediate';
-        } else if (stPolicy === 'delayShot') {
-          ai._shotMode = 'held';
-        } else if (stPolicy === 'baitShot') {
-          ai._shotMode = 'held'; // baitShot uses held + extra cooldown (applied below)
-        }
-      }
-    }
-    // Increment shot timing frame counter for ALL active policies
-    if (ai._shotTimingPolicy) {
-      ai._shotTimingFrames++;
-    }
-
+    // --- Shooting: fire on cooldown unless a bullet would hit during freeze ---
+    // Real players spam shots. The only reason to hold fire is if the freeze
+    // penalty (54% slow for 15 frames) would get you hit by an incoming bullet.
+    // Opening gate: don't shoot from above during opening (gives away bottom for free).
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
-      const hasLOS = this._hasLOS(bot.x, bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25), tgt.x, tgt.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25));
-      // --- OPENING FIRE GATE ---
-      // Don't shoot during opening unless bot has bottom — if bot shoots from above,
-      // player just ducks under the bullets and takes bottom for free.
       const openingFireGated = isOpening && !hasBottom;
+      // Would a bullet hit us during the freeze window? dodgeMag already computed above.
+      // dodgeMag > 0.8 = meaningful incoming threat that needs dodging
+      const freezeWouldGetHit = dodgeMag > 0.8;
+      // Context for data collection
+      const _shootCtx = {
+        dist: Math.round(dist),
+        hasBottom, enemyHasBottom, badGunSide,
+        laneQuality: +laneQuality.toFixed(2),
+        dodgeMag: +dodgeMag.toFixed(2),
+        freezeWouldGetHit,
+        state: _movePlanCurrentState,
+      };
 
-      const policyShotAllowed = (!ai._escapePolicy && !suppressPeekShots && !openingFireGated)
-        || (laneQuality > 0.62 && !badGunSide && !openingFireGated)
-        || (dist < 130 && botLaneScore > enemyLaneScore + 0.08 && !_wrongSide && !openingFireGated)
-        // Stall-break fail-safe: if bot is stalled in an owner state, allow defensive firing
-        || (ai._stallBreakActive && laneQuality > 0.35)
-        // Long-stall fail-safe: if suppressPeekShots has been active 30+ frames without progress
-        || (ai._ownerStallFrames >= 20 && laneQuality > 0.40);
-
-      if (!policyShotAllowed) {
-        // Hold fire while escaping or re-angling out of a bad lane.
-      } else if (ai._shotMode === 'immediate' && hasLOS) {
+      if (openingFireGated) {
+        // Don't shoot during opening without bottom — track it
+        if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'openingGated' });
+      } else if (freezeWouldGetHit) {
+        // Hold fire — freeze would prevent dodging incoming bullet
+        if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'holdForDodge' });
+      } else {
+        // Fire on cooldown — no reason to wait
         this._sparBotShoot(member, tgt);
-      } else if (ai._shotMode === 'held' && hasLOS) {
-        // Wait for reasonable alignment, but don't hold forever — shot volume matters
-        const alignX = Math.abs(tgt.x - bot.x);
-        const alignY = Math.abs(tgt.y - bot.y);
-        const axisSlack = this._getSparAimSlack();
-        // Wider alignment window: 1.5x aim slack instead of 1x
-        let aligned = Math.min(alignX, alignY) < axisSlack * 1.5;
-        // With vertical offset, horizontal alignment still valuable for perpendicular shot
-        if ((hasBottom || enemyHasBottom) && alignX < axisSlack * 2) aligned = true;
-        if (aligned) {
-          this._sparBotShoot(member, tgt);
-        } else if (member.ai.shootCD <= -5) {
-          // Don't wait more than 5 frames past cooldown — just fire for pressure
-          this._sparBotShoot(member, tgt);
-        }
-      } else if (ai._shotMode === 'prefire') {
-        // Fire toward where LOS is about to open (corner peek)
-        // Fire at predicted position even without current LOS
-        const tgtMoving = Math.abs(tgt.vx || 0) > 1 || Math.abs(tgt.vy || 0) > 1;
-        if (hasLOS || (tgtMoving && dist < 300)) {
-          this._sparBotShoot(member, tgt);
-          if (hasLOS) ai._shotMode = 'immediate'; // got LOS, switch back
-        }
-      } else if (ai._shotMode === 'cutoff' && hasLOS) {
-        // Fire perpendicular to predict wall run exit
-        this._sparBotShoot(member, tgt);
-      } else if (hasLOS) {
-        // Fallback
-        this._sparBotShoot(member, tgt);
+        if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'fired' });
       }
     }
   },
