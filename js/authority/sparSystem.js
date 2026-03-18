@@ -350,8 +350,9 @@ const SparSystem = {
     const isRight = gunSide === 'right';
     if (aimDir === 0) return { x: isRight ? (bodyL - 1) : (bodyR + 1), y: armY + 6 + 49 };
     if (aimDir === 1) return { x: isRight ? (bodyR + 1) : (bodyL - 1), y: by + 28 - 49 };
-    if (aimDir === 2) return { x: bodyL + 2 - 49, y: isRight ? (armY - 20) : (armY + 20) };
-    return { x: bodyR + 9 + 49, y: isRight ? (armY + 20) : (armY - 20) };
+    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
+    if (aimDir === 2) return { x: bodyL + 2 - 49, y: isRight ? (armY - mOff) : (armY + mOff) };
+    return { x: bodyR + 9 + 49, y: isRight ? (armY + mOff) : (armY - mOff) };
   },
 
   _getGunSideLaneScore(source, target) {
