@@ -26,7 +26,7 @@ const cookingState = {
   // Ticket queue — orders auto-generate on timer, independent of NPCs
   ticketQueue: [],       // pre-generated order tickets waiting to activate
   ticketSpawnTimer: 0,   // frames until next ticket generation
-  counterOrders: [],     // completed orders waiting on pickup counter (deli)
+  counterOrders: [null, null, null, null],  // fixed-slot counter: 4 plate positions, null = empty
 
   stats: {
     ordersCompleted: 0,
@@ -108,7 +108,7 @@ function startCookingShift(restaurantId) {
   cookingState.missedOrders = 0;
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.counterOrders = [];
+  cookingState.counterOrders = [null, null, null, null];
 
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
@@ -128,7 +128,7 @@ function endCookingShift() {
   cookingState.assembly = [];
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.counterOrders = [];
+  cookingState.counterOrders = [null, null, null, null];
 
   // Fully reset grill state
   if (typeof resetGrillState === 'function') resetGrillState();
@@ -182,7 +182,7 @@ function resetCookingState() {
   cookingState.missedOrders = 0;
   cookingState.ticketQueue = [];
   cookingState.ticketSpawnTimer = 0;
-  cookingState.counterOrders = [];
+  cookingState.counterOrders = [null, null, null, null];
 
   cookingState.lastResult = null;
   cookingState.lastResultTimer = 0;
@@ -723,15 +723,20 @@ function applyOrderResult(result) {
     } else if (cookingState.activeRestaurantId === 'street_deli') {
       // Deli: push completed order to counter — but NEVER for expired/failed orders (no plate if not completed)
       if (result.grade !== COOKING_GRADES.F) {
-        if (!cookingState.counterOrders) cookingState.counterOrders = [];
+        if (!cookingState.counterOrders) cookingState.counterOrders = [null, null, null, null];
         const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
           ? cookingState.currentOrder.recipe.ingredients.slice()
           : null;
-        cookingState.counterOrders.push({
-          recipe: cookingState.currentOrder.recipe,
-          recipeIngredients: recipeIngredients,
-          _claimedByNpc: null,
-        });
+        // Fixed-slot system: plates stay at fixed positions (0-3) until picked up — no shifting
+        const _slotIdx = cookingState.counterOrders.indexOf(null);
+        if (_slotIdx >= 0) {
+          cookingState.counterOrders[_slotIdx] = {
+            recipe: cookingState.currentOrder.recipe,
+            recipeIngredients: recipeIngredients,
+            _claimedByNpc: null,
+            _slotIdx: _slotIdx,
+          };
+        }
       }
     } else if (cookingState.currentOrder.npcId) {
       // Generic NPC pickup (fallback)

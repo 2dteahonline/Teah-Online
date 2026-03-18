@@ -2382,13 +2382,14 @@ const ENTITY_RENDERERS = {
       ctx.fillStyle = '#4a3020';
       ctx.fillRect(ex, ey + ch - 4, cw, 4);
       // Draw completed order plates on the right brown counter segment (tx >= 14, horizontal)
+      // Fixed-slot system: each slot (0-3) renders at a fixed position, null slots are skipped
       if (e.tx >= 14 && (e.h || 1) === 1 && (e.w || 1) >= 5 &&
-          typeof cookingState !== 'undefined' && cookingState.counterOrders && cookingState.counterOrders.length > 0) {
+          typeof cookingState !== 'undefined' && cookingState.counterOrders) {
         const orders = cookingState.counterOrders;
-        const maxPlates = Math.min(orders.length, 4);
         const spacing = TILE; // 1 tile apart between plates
         const startX = ex + TILE * 0.5; // start half-tile in from left edge
-        for (let i = 0; i < maxPlates; i++) {
+        for (let i = 0; i < Math.min(orders.length, 4); i++) {
+          if (!orders[i]) continue; // empty slot — no plate here
           const px = startX + i * spacing;
           const py = ey + ch * 0.4;
           // Plate

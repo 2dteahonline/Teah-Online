@@ -94,7 +94,7 @@ function _isKitchenZone(px, py) {
   const ty = Math.floor(py / TILE);
   if (tx <= 23 && ty <= 20) return true;
   if (tx === 24 && ty >= 18 && ty <= 21) return true;  // kitchen door + counter wall
-  if (tx === 25 && ty === 21) return true;               // corner under kitchen door
+  // tx:25,ty:21 removed — counter wall at tx:24 already blocks entry; false positive caused stuck NPCs at ty:22
   return false;
 }
 
@@ -134,7 +134,7 @@ function _claimChair(npc) {
 // Check if there are unclaimed orders on the counter
 function _hasUnclaimedCounterOrders() {
   if (typeof cookingState === 'undefined' || !cookingState.counterOrders) return false;
-  return cookingState.counterOrders.some(o => !o._claimedByNpc);
+  return cookingState.counterOrders.some(o => o !== null && !o._claimedByNpc);
 }
 
 // ===================== ROUTE BUILDERS =====================
@@ -310,8 +310,8 @@ function moveDeliNPC(npc) {
 
 // Spawn an Order NPC (only when food is on counter)
 function _spawnOrderNPC() {
-  // Claim the first unclaimed order BEFORE spawning
-  const order = cookingState.counterOrders.find(o => !o._claimedByNpc);
+  // Claim the first unclaimed order BEFORE spawning (skip null slots)
+  const order = cookingState.counterOrders.find(o => o !== null && !o._claimedByNpc);
   if (!order) return null;
 
   const npc = _cCreateNPC(_deliIdCounter, DELI_SPOTS.enterDoor, DELI_NPC_APPEARANCES,
@@ -373,7 +373,7 @@ function initDeliNPCs() {
   _deliSpawnState.nextInterval = _cRandRange(60, 180);
   _deliAisleSpawnTimer = 0;
   if (typeof cookingState !== 'undefined') {
-    cookingState.counterOrders = [];
+    cookingState.counterOrders = [null, null, null, null];
   }
 }
 
@@ -392,10 +392,10 @@ const DELI_NPC_AI = {
   entering: (npc) => {
     if (npc._role === 'order') {
       // Order NPC — walk to the pickup spot directly in front of their claimed plate
+      // Use the order's fixed slot index (never shifts when other orders are picked up)
       let spotIdx = 0;
-      if (npc._claimedOrder && typeof cookingState !== 'undefined' && cookingState.counterOrders) {
-        const orderPos = cookingState.counterOrders.indexOf(npc._claimedOrder);
-        if (orderPos >= 0) spotIdx = Math.min(orderPos, DELI_PICKUP_SPOTS.length - 1);
+      if (npc._claimedOrder && typeof npc._claimedOrder._slotIdx === 'number') {
+        spotIdx = Math.min(npc._claimedOrder._slotIdx, DELI_PICKUP_SPOTS.length - 1);
       }
       npc._pickupSpotIdx = spotIdx;
       _cStartRoute(npc, _routeEnterToPickup(spotIdx), 'picking_up', 30);
@@ -427,18 +427,25 @@ const DELI_NPC_AI = {
     npc.moving = false;
     npc.dir = 1; // face north toward counter — MUST face plate to pick it up
 
-    // Snap to pickup spot on south side of counter
-    if (npc._pickupSpotIdx >= 0 && npc._pickupSpotIdx < DELI_PICKUP_SPOTS.length) {
-      const spot = DELI_PICKUP_SPOTS[npc._pickupSpotIdx];
-      npc.x = spot.tx * TILE + TILE / 2;
-      npc.y = spot.ty * TILE + TILE / 2;
+    // Recalculate pickup spot from order's fixed slot (never shifts)
+    if (npc._claimedOrder && typeof npc._claimedOrder._slotIdx === 'number') {
+      npc._pickupSpotIdx = Math.min(npc._claimedOrder._slotIdx, DELI_PICKUP_SPOTS.length - 1);
     }
 
-    // Verify NPC is on south side of counter (ty >= 22) — cannot grab from other side
-    const npcTY = Math.floor(npc.y / TILE);
-    if (npcTY < 22) {
-      _cStartRoute(npc, [{ tx: Math.floor(npc.x / TILE), ty: 22 }], 'picking_up', 30);
-      return;
+    // Snap to correct pickup spot — if too far, re-route instead of teleporting
+    if (npc._pickupSpotIdx >= 0 && npc._pickupSpotIdx < DELI_PICKUP_SPOTS.length) {
+      const spot = DELI_PICKUP_SPOTS[npc._pickupSpotIdx];
+      const spotX = spot.tx * TILE + TILE / 2;
+      const spotY = spot.ty * TILE + TILE / 2;
+      const dx = spotX - npc.x, dy = spotY - npc.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > TILE * 1.5) {
+        // Too far from plate — walk to the correct spot first
+        _cStartRoute(npc, [{ tx: spot.tx, ty: spot.ty }], 'picking_up', 30);
+        return;
+      }
+      npc.x = spotX;
+      npc.y = spotY;
     }
 
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
@@ -449,10 +456,10 @@ const DELI_NPC_AI = {
       if (npc._claimedOrder.recipeIngredients) {
         npc._recipeIngredients = npc._claimedOrder.recipeIngredients;
       }
-      // Remove from counterOrders
+      // Clear the fixed slot (set to null, NOT splice — preserves other plate positions)
       if (typeof cookingState !== 'undefined' && cookingState.counterOrders) {
         const idx = cookingState.counterOrders.indexOf(npc._claimedOrder);
-        if (idx >= 0) cookingState.counterOrders.splice(idx, 1);
+        if (idx >= 0) cookingState.counterOrders[idx] = null;
       }
       npc._claimedOrder = null;
     }
@@ -570,7 +577,7 @@ function updateDeliNPCs() {
   if (typeof Scene === 'undefined' || !Scene.inCooking) return;
   if (typeof cookingState === 'undefined' || cookingState.activeRestaurantId !== 'street_deli') return;
 
-  if (!cookingState.counterOrders) cookingState.counterOrders = [];
+  if (!cookingState.counterOrders) cookingState.counterOrders = [null, null, null, null];
 
   // Spawn Order NPCs when food is on counter (check every frame)
   if (_hasUnclaimedCounterOrders() && deliNPCs.length < DELI_NPC_CONFIG.maxNPCs) {
@@ -607,7 +614,7 @@ function updateDeliNPCs() {
       }
       if (typeof cookingState !== 'undefined' && cookingState.counterOrders) {
         for (let j = cookingState.counterOrders.length - 1; j >= 0; j--) {
-          if (cookingState.counterOrders[j]._claimedByNpc === npc.id) {
+          if (cookingState.counterOrders[j] && cookingState.counterOrders[j]._claimedByNpc === npc.id) {
             cookingState.counterOrders[j]._claimedByNpc = null;
           }
         }
