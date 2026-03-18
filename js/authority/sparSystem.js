@@ -2651,10 +2651,7 @@ const SparSystem = {
     g.ammo--;
     // Fire rate: match player's actual cooldown (fireRate * 4, same as gunSystem.js)
     member.ai.shootCD = Math.round((g.fireRate || 5) * 4);
-    // v10: baitShot adds 50% more cooldown between shots to feign hesitation
-    if (member.ai._shotTimingPolicy === 'baitShot') {
-      member.ai.shootCD = Math.round(member.ai.shootCD * 1.5);
-    }
+    // v10: baitShot used to add 50% cooldown — removed, shot volume matters more than feigned hesitation
 
     // Freeze penalty after shooting — same as player (gunSystem.js shoot())
     member.ai._freezeTimer = g.freezeDuration || 15;
@@ -5417,20 +5414,21 @@ const SparSystem = {
     }
 
     let suppressPeekShots = false;
-    // Suppress shots when lane quality is poor (bad angle / wrong vertical position).
-    // With MUZZLE_OFFSET_Y=0, gun-side only matters for vertical shots (up/down).
-    // Only suppress if no policy is actively managing movement (they handle their own suppression).
-    // Allow close-range aggression when there's a tactical reason (finishing low HP, pressing after hit)
+    // Suppress shots ONLY in the worst lanes — bot needs shot volume for pressure.
+    // With 0.7% hit rate, suppressing "ok" lanes wastes more than it saves.
+    // Only suppress when truly bad: escape or very poor lane with no reason to fire.
     const _enemyLowHp = tgt.hp < (tgt.maxHp || SPAR_CONFIG.HP_BASELINE) * 0.35;
     const _recentLandedHit = ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30;
     const _hasCloseReason = _enemyLowHp || _recentLandedHit;
+    // Only suppress in truly terrible lanes (< 0.35) with bad gun side and no active policy
     if (!isOpening && !ai._escapePolicy && !ai._gunSidePolicy && !ai._antiBottomTactic
       && !ai._midPressurePolicy && !ai._wallPressurePolicy
-      && badGunSide && laneQuality < 0.55 && !_hasCloseReason) {
+      && badGunSide && laneQuality < 0.35 && !_hasCloseReason) {
       suppressPeekShots = true;
     }
     if (!isOpening && ai._escapePolicy) {
-      suppressPeekShots = true;
+      // Only suppress during escape if lane is truly bad — otherwise keep shooting for pressure
+      suppressPeekShots = laneQuality < 0.4;
       const centerDir = this._getStableCenterDir(ai, bot.x, midX);
       const awayDir = -Math.sign(dx || ai.strafeDir);
       const descendDir = bot.y < arenaH * 0.6 ? 1 : -0.2;
@@ -5484,11 +5482,11 @@ const SparSystem = {
         }
       } else if (ai._gunSidePolicy === 'reAngleWide') {
         // Suppress shots while repositioning to correct side — shooting from wrong side is a losing trade
-        suppressPeekShots = laneQuality < 0.45 || _wrongSide;
+        suppressPeekShots = laneQuality < 0.35; // shoot while repositioning — volume matters
         moveX = reAngleDir * speed * 0.9;
         moveY += (!hasBottom ? 0.18 : 0.05) * speed;
       } else if (ai._gunSidePolicy === 'yieldLane') {
-        suppressPeekShots = true;
+        suppressPeekShots = laneQuality < 0.35; // only suppress truly bad lanes, not all
         moveX = awayDir * speed * 0.7 + this._getStableCenterDir(ai, bot.x, midX) * speed * 0.25;
         moveY += (enemyHasBottom ? 0.25 : -0.05) * speed;
       } else if (ai._gunSidePolicy === 'peekPressure') {
@@ -6359,17 +6357,18 @@ const SparSystem = {
       } else if (ai._shotMode === 'immediate' && hasLOS) {
         this._sparBotShoot(member, tgt);
       } else if (ai._shotMode === 'held' && hasLOS) {
-        // Wait for better alignment: target about to cross our shot axis
+        // Wait for reasonable alignment, but don't hold forever — shot volume matters
         const alignX = Math.abs(tgt.x - bot.x);
         const alignY = Math.abs(tgt.y - bot.y);
         const axisSlack = this._getSparAimSlack();
-        let aligned = Math.min(alignX, alignY) < axisSlack;
+        // Wider alignment window: 1.5x aim slack instead of 1x
+        let aligned = Math.min(alignX, alignY) < axisSlack * 1.5;
         // With vertical offset, horizontal alignment still valuable for perpendicular shot
-        if ((hasBottom || enemyHasBottom) && alignX < axisSlack + Math.max(4, GAME_CONFIG.BULLET_HALF_SHORT || 4)) aligned = true;
+        if ((hasBottom || enemyHasBottom) && alignX < axisSlack * 2) aligned = true;
         if (aligned) {
           this._sparBotShoot(member, tgt);
-        } else if (member.ai.shootCD <= -10) {
-          // Been waiting too long, just fire
+        } else if (member.ai.shootCD <= -5) {
+          // Don't wait more than 5 frames past cooldown — just fire for pressure
           this._sparBotShoot(member, tgt);
         }
       } else if (ai._shotMode === 'prefire') {
