@@ -2727,11 +2727,10 @@ const SparSystem = {
         else dodgeDir = dbx >= 0 ? 1 : -1;
         const willHit = perpDist < hitRadius;
         const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
-        // Diagonal dodge: perpendicular (X) + away from bullet (Y)
-        dodgeX += dodgeDir * urgency * strength * 3.0;
-        // Move away from bullet's current position on the travel axis
-        const awayY = dby >= 0 ? 1 : -1; // away from bullet vertically
-        dodgeY += awayY * urgency * strength * 1.5;
+        // Always diagonal: equal force on both axes for max distance/efficiency
+        dodgeX += dodgeDir * urgency * strength * 2.5;
+        const awayY = dby >= 0 ? 1 : -1;
+        dodgeY += awayY * urgency * strength * 2.5;
       } else {
         // Horizontal bullet — PRIMARY: dodge UP or DOWN, DIAGONAL: also move away horizontally
         const isApproaching = (b.vx > 0 && b.x < bot.x) || (b.vx < 0 && b.x > bot.x);
@@ -2747,11 +2746,10 @@ const SparSystem = {
         else dodgeDir = dby >= 0 ? 1 : -1;
         const willHit = perpDist < hitRadius;
         const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
-        // Diagonal dodge: perpendicular (Y) + away from bullet (X)
-        dodgeY += dodgeDir * urgency * strength * 3.0;
-        // Move away from bullet's current position on the travel axis
-        const awayX = dbx >= 0 ? 1 : -1; // away from bullet horizontally
-        dodgeX += awayX * urgency * strength * 1.5;
+        // Always diagonal: equal force on both axes for max distance/efficiency
+        dodgeY += dodgeDir * urgency * strength * 2.5;
+        const awayX = dbx >= 0 ? 1 : -1;
+        dodgeX += awayX * urgency * strength * 2.5;
       }
     }
 
