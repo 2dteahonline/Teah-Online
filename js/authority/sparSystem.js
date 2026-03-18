@@ -6896,6 +6896,30 @@ const SparSystem = {
       }
     }
 
+    // === GLOBAL BULLET WALL CHECK ===
+    // Regardless of phase (opening, anti-bottom, neutral), NEVER descend into
+    // horizontal bullet streams. This is the final safety net before movement.
+    if (moveY > 0 && tgt && SparState.phase === 'fighting') {
+      const _gwHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
+      const _gwHitR = this._getSparPerpHitRadius(); // 33px
+      let _gwBulletCount = 0;
+      for (const b of bullets) {
+        if (!b.sparTeam || b.sparTeam === team) continue;
+        // Check bullets between bot and target (below bot, above target + margin)
+        if (b.y > _gwHitY - _gwHitR && b.y < _gwHitY + _gwHitR + moveY * 18) {
+          const futMinX = b.x + Math.min(b.vx, 0) * 18;
+          const futMaxX = b.x + Math.max(b.vx, 0) * 18;
+          if (futMinX - _gwHitR < bot.x && futMaxX + _gwHitR > bot.x) {
+            _gwBulletCount++;
+          }
+        }
+      }
+      if (_gwBulletCount >= 1) {
+        moveY = 0;
+        if (Math.abs(moveX) < 0.1) moveX = (ai.strafeDir || 1) * speed;
+      }
+    }
+
     // === MOVEMENT OWNER DIAGNOSTICS ===
     if (!ai._ownerFrames) ai._ownerFrames = {};
     ai._ownerFrames[movementOwner] = (ai._ownerFrames[movementOwner] || 0) + 1;
