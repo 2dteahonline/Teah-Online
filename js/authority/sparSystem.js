@@ -2696,61 +2696,77 @@ const SparSystem = {
     const speed = bot.speed || SPAR_CONFIG.BOT_SPEED;
     const botHitY = bot.y + 5;
     const hitRadius = this._getSparPerpHitRadius(); // 33px
-    const bulletSpeed = GAME_CONFIG.BULLET_SPEED || 9;
-    const dodgeLane = hitRadius + speed * 2; // 48px
-    const maxThreatDist = Math.max(400, bulletSpeed * 45);
+    const margin = 6; // extra clearance beyond hitbox edge
+    const maxReactFrames = 25; // only dodge bullets arriving within 25 frames
     const arenaLevel = typeof levels !== 'undefined' && levels[currentLevel] ? levels[currentLevel] : null;
     const arenaW = arenaLevel ? arenaLevel.widthTiles * TILE : 600;
     const arenaH = arenaLevel ? arenaLevel.heightTiles * TILE : 600;
-    const wallM = TILE * 2; // wall margin for direction choice
+    const wallM = TILE * 2;
 
     for (const b of bullets) {
       if (!b.sparTeam || b.sparTeam === team) continue;
+
+      // --- Precise closest-approach geometry ---
+      const bvx = b.vx, bvy = b.vy;
+      const bSpeedSq = bvx * bvx + bvy * bvy;
+      if (bSpeedSq < 0.5) continue; // stationary/dead bullet
+
       const dbx = bot.x - b.x, dby = botHitY - b.y;
-      const bDist = Math.sqrt(dbx * dbx + dby * dby);
-      if (bDist > maxThreatDist || bDist < 8) continue;
 
-      const urgency = Math.max(0.6, 1.5 - bDist / maxThreatDist);
+      // Time of closest approach: t = dot(botOffset, bulletVel) / |bulletVel|²
+      const tClosest = (dbx * bvx + dby * bvy) / bSpeedSq;
+      if (tClosest < 0) continue; // bullet moving away
+      if (tClosest > maxReactFrames) continue; // too far out to care
 
-      if (Math.abs(b.vy) > Math.abs(b.vx)) {
-        // Vertical bullet — PRIMARY: dodge LEFT or RIGHT, DIAGONAL: also move away vertically
-        const isApproaching = (b.vy > 0 && b.y < botHitY) || (b.vy < 0 && b.y > botHitY);
-        if (!isApproaching) continue;
-        const perpDist = Math.abs(dbx);
-        if (perpDist > dodgeLane) continue;
-        // Pick easiest direction: whichever side has more room
-        const roomLeft = bot.x - wallM;
-        const roomRight = arenaW - wallM - bot.x;
-        let dodgeDir;
-        if (roomLeft < 30 && roomRight > 30) dodgeDir = 1;
-        else if (roomRight < 30 && roomLeft > 30) dodgeDir = -1;
-        else dodgeDir = dbx >= 0 ? 1 : -1;
-        const willHit = perpDist < hitRadius;
-        const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
-        // Always diagonal: equal force on both axes for max distance/efficiency
-        dodgeX += dodgeDir * urgency * strength * 2.5;
-        const awayY = dby >= 0 ? 1 : -1;
-        dodgeY += awayY * urgency * strength * 2.5;
-      } else {
-        // Horizontal bullet — PRIMARY: dodge UP or DOWN, DIAGONAL: also move away horizontally
-        const isApproaching = (b.vx > 0 && b.x < bot.x) || (b.vx < 0 && b.x > bot.x);
-        if (!isApproaching) continue;
-        const perpDist = Math.abs(dby);
-        if (perpDist > dodgeLane) continue;
-        // Pick easiest direction: whichever side has more room
-        const roomUp = bot.y - wallM;
-        const roomDown = arenaH - wallM - bot.y;
-        let dodgeDir;
-        if (roomUp < 30 && roomDown > 30) dodgeDir = 1;
-        else if (roomDown < 30 && roomUp > 30) dodgeDir = -1;
-        else dodgeDir = dby >= 0 ? 1 : -1;
-        const willHit = perpDist < hitRadius;
-        const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
-        // Always diagonal: equal force on both axes for max distance/efficiency
-        dodgeY += dodgeDir * urgency * strength * 2.5;
-        const awayX = dbx >= 0 ? 1 : -1;
-        dodgeX += awayX * urgency * strength * 2.5;
+      // Bullet position at closest approach
+      const closestX = b.x + bvx * tClosest;
+      const closestY = b.y + bvy * tClosest;
+
+      // Perpendicular distance at closest approach
+      const perpX = bot.x - closestX;
+      const perpY = botHitY - closestY;
+      const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
+
+      if (perpDist >= hitRadius + margin) continue; // will miss — don't waste movement
+
+      // --- This bullet WILL hit (or barely miss). Compute dodge. ---
+
+      // Urgency: time-based — closer = more urgent
+      // tClosest < 5: CRITICAL (barely time to dodge)
+      // tClosest 5-15: HIGH
+      // tClosest 15-25: MODERATE
+      const urgency = Math.max(0.8, 3.0 - tClosest / 5);
+
+      // Strength: how dead-center is the bullet? Center = full, edge = less
+      const strength = perpDist < hitRadius
+        ? 1.0
+        : Math.max(0.4, 1 - (perpDist - hitRadius) / margin);
+
+      // Dodge direction: perpendicular to bullet travel
+      const bSpeed = Math.sqrt(bSpeedSq);
+      // Two perpendicular directions: (-bvy, bvx) and (bvy, -bvx)
+      let perpNormX = -bvy / bSpeed;
+      let perpNormY = bvx / bSpeed;
+
+      // Pick the perpendicular side bot is already on (shorter dodge path)
+      const sideSign = (perpX * perpNormX + perpY * perpNormY) >= 0 ? 1 : -1;
+      perpNormX *= sideSign;
+      perpNormY *= sideSign;
+
+      // Wall-aware: if chosen direction goes into wall, flip
+      const projX = bot.x + perpNormX * hitRadius;
+      const projY = bot.y + perpNormY * hitRadius;
+      if (projX < wallM || projX > arenaW - wallM || projY < wallM || projY > arenaH - wallM) {
+        perpNormX *= -1;
+        perpNormY *= -1;
       }
+
+      // Always diagonal: perpendicular clearance + away from bullet source
+      const awayX = dbx >= 0 ? 1 : -1;
+      const awayY = dby >= 0 ? 1 : -1;
+
+      dodgeX += (perpNormX * 2.0 + awayX * 1.5) * urgency * strength;
+      dodgeY += (perpNormY * 2.0 + awayY * 1.5) * urgency * strength;
     }
 
     const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
