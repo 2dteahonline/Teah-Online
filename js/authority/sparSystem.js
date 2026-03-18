@@ -6031,15 +6031,9 @@ const SparSystem = {
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
       const hasLOS = this._hasLOS(bot.x, bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25), tgt.x, tgt.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25));
       // --- OPENING FIRE GATE ---
-      // During the bottom race (first ~90 frames), only shoot if truly free:
-      // - bot already reached bottom (y > 80% of arena)
-      // - target is very close and aligned (free shot doesn't cost bottom race time)
-      // - bot is clearly not going to win the bottom race anyway (topHold route)
-      // This prevents burning 5+ opening shots that just delay the bottom contest.
-      const openingFireGated = isOpening && SparState.matchTimer < 90 &&
-        bot.y < arenaH * 0.84 && // haven't reached very bottom yet — shooting from mid-height lets player duck under
-        ai._openingRoute !== 'topHold' && // topHold routes don't race for bottom
-        !(dist < 120 && Math.min(Math.abs(tgt.x - bot.x), Math.abs(tgt.y - bot.y)) < aimSlack); // not a free close shot
+      // Don't shoot during opening unless bot has bottom — if bot shoots from above,
+      // player just ducks under the bullets and takes bottom for free.
+      const openingFireGated = isOpening && !hasBottom;
 
       const policyShotAllowed = (!ai._escapePolicy && !suppressPeekShots && !openingFireGated)
         || (laneQuality > 0.62 && !badGunSide && !openingFireGated)
