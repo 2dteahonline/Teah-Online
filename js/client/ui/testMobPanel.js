@@ -709,7 +709,8 @@ function tickTestShootBot() {
 function drawTestShootBot() {
   if (!_testShootBot) return;
   const b = _testShootBot;
-  const sx = b.x - camX, sy = b.y - camY;
+  // Canvas is already translated by camera, so use world coords directly
+  const sx = b.x, sy = b.y;
   // Simple player-like silhouette
   ctx.fillStyle = '#4a8aaa';
   ctx.fillRect(sx - 8, sy - 28, 16, 28);
