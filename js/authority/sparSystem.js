@@ -350,7 +350,7 @@ const SparSystem = {
     const isRight = gunSide === 'right';
     if (aimDir === 0) return { x: isRight ? (bodyL - 1) : (bodyR + 1), y: armY + 6 + 49 };
     if (aimDir === 1) return { x: isRight ? (bodyR + 1) : (bodyL - 1), y: by + 28 - 49 };
-    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 14;
+    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 0;
     if (aimDir === 2) return { x: bodyL + 2 - 49, y: isRight ? (armY - mOff) : (armY + mOff) };
     return { x: bodyR + 9 + 49, y: isRight ? (armY + mOff) : (armY - mOff) };
   },
@@ -2370,7 +2370,7 @@ const SparSystem = {
       const bx = e.x - 20, by = e.y - 68;
       const bodyL = bx + 2, bodyR = bx + 36;
       const armY = by + 35;
-      const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 14;
+      const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 0;
       const isRight = e._gunSide === 'right';
       let mx, my;
       if (wallDir === 2) { mx = bodyL + 2 - 49; my = isRight ? (armY - mOff) : (armY + mOff); }
@@ -2467,7 +2467,7 @@ const SparSystem = {
     const bodyL = bx + 2;
     const bodyR = bx + 36;
     const armY = by + 35;
-    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 14;
+    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y ?? 0;
     const isRight = e._gunSide === 'right';
     let mx, my;
     if (aimDir === 0) { // down
@@ -4196,9 +4196,10 @@ const SparSystem = {
     // Full gun-side positional check — applies to ALL shooting angles (down, up, horizontal):
     // Right gun → muzzle geometry favors being RIGHT of enemy in every direction:
     //   - Down: muzzle.x left of body → right-of-enemy aligns bullet path to target
-    //   - Horizontal: right gun shooting right → muzzle lower → pressures bottom
+    //   - Horizontal: MUZZLE_OFFSET_Y=0, no gun-side advantage (both sides fire from armY)
     //   - Up: right gun → muzzle.x right of body → left-of-enemy aligns (weaker case)
     // Left gun: opposite — favors being LEFT of enemy
+    // Bottom advantage comes from arm(-33) vs hitbox(-25) gap, not gun side
     const _botGunSide = this._getEntityGunSide(bot);
     const _wrongSide = (
       (_botGunSide === 'right' && bot.x < tgt.x - 8) ||
@@ -5190,8 +5191,8 @@ const SparSystem = {
     }
 
     let suppressPeekShots = false;
-    // FIX: Suppress shots when bot doesn't have gun-side advantage in normal combat.
-    // Without gun-side, peeking is a losing trade — reposition to GET gun-side first.
+    // Suppress shots when lane quality is poor (bad angle / wrong vertical position).
+    // With MUZZLE_OFFSET_Y=0, gun-side only matters for vertical shots (up/down).
     // Only suppress if no policy is actively managing movement (they handle their own suppression).
     // Allow close-range aggression when there's a tactical reason (finishing low HP, pressing after hit)
     const _enemyLowHp = tgt.hp < (tgt.maxHp || SPAR_CONFIG.HP_BASELINE) * 0.35;
@@ -5665,15 +5666,8 @@ const SparSystem = {
         if (Math.abs(vertOffset) < 30) {
           moveY += (vertOffset >= 0 ? 1 : -1) * speed * 0.2;
         }
-        // Gun side muzzle offset: bullet spawns ±20px from body center
-        const enemyIsRight = enemyGunSide === 'right';
-        const shootingRight = tgt.dir === 3;
-        const muzzleHigh = (enemyIsRight && !shootingRight) || (!enemyIsRight && shootingRight);
-        const preferBelow = muzzleHigh;
-        const currentBelow = bot.y > tgt.y;
-        if (preferBelow !== currentBelow) {
-          moveY += (preferBelow ? 1 : -1) * speed * 0.12;
-        }
+        // With MUZZLE_OFFSET_Y=0, gun side has no horizontal muzzle advantage.
+        // Bottom advantage comes from arm(-33) vs hitbox(-25) gap instead.
       } else if (tgt.dir === 0 || tgt.dir === 1) {
         // Enemy shooting vertically — dodge HORIZONTALLY (perpendicular to bullet)
         const horizOffset = bot.x - tgt.x;
