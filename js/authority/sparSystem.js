@@ -6076,14 +6076,18 @@ const SparSystem = {
     }
 
     // === MOVEMENT PLAN: commit to a direction like a real player ===
-    // Real players pick a direction and hold it. They only change when:
-    //   1. A bullet will hit them on this trajectory (predictive dodge)
-    //   2. Enemy is rushing them (closing distance fast — context changed)
-    //   3. State changed (entered anti-bottom, escape, etc.)
-    //   4. Momentum/stall break forced
-    // NO time limit — plan runs until one of these triggers fires.
+    // Only applies in NEUTRAL and HAS-BOTTOM states where competing forces
+    // cause jitter. Tactical states (anti-bottom, escape, gun-side) have their
+    // own committed movement logic — the plan would override tactic phase
+    // transitions (e.g., "cleared laterally → descend") causing wall-hugging.
     //
-    // Determine current movement state for plan tracking
+    // Break triggers (no time limit — plan runs until one fires):
+    //   1. Bullet will hit me on this trajectory (predictive dodge)
+    //   2. Enemy rushing me (closing distance fast)
+    //   3. Heading into a wall (plan direction would push into wall)
+    //   4. State changed
+    //   5. Momentum/stall break forced
+    //
     const _movePlanCurrentState = isOpening ? 'opening'
       : (member && member.gun && member.gun.reloading) ? 'reload'
       : hasBottom ? 'hasBottom'
@@ -6092,44 +6096,60 @@ const SparSystem = {
       : ai._gunSidePolicy ? 'gunSide'
       : 'neutral';
 
-    // Break trigger 1: bullet will hit me on this trajectory
-    const _planDodgeUrgent = dodgeMag > 1.5;
+    // Only lock plans in neutral/hasBottom — tactics handle their own direction
+    const _planEligible = _movePlanCurrentState === 'neutral' || _movePlanCurrentState === 'hasBottom';
 
-    // Break trigger 2: enemy rushing me (closing distance significantly)
-    const _planEnemyRushing = ai._movePlanDist !== undefined
-      && dist < ai._movePlanDist - 40; // enemy closed 40+ px since plan started
+    if (_planEligible) {
+      // Break trigger 1: bullet will hit me on this trajectory
+      const _planDodgeUrgent = dodgeMag > 1.5;
 
-    // Break trigger 3: state changed (entered a new tactical phase)
-    const _planStateChanged = ai._movePlanState !== null && ai._movePlanState !== _movePlanCurrentState;
+      // Break trigger 2: enemy rushing me (closing distance significantly)
+      const _planEnemyRushing = ai._movePlanDist !== undefined
+        && dist < ai._movePlanDist - 40;
 
-    // Break trigger 4: momentum break is active (overrides plan)
-    const _planMomentumBreak = ai._momentumBreakFrames > 0;
+      // Break trigger 3: heading into a wall
+      const _planWallBound = (ai._movePlanDirX > 0.3 && bot.x > arenaW - TILE * 2.5)
+        || (ai._movePlanDirX < -0.3 && bot.x < TILE * 2.5)
+        || (ai._movePlanDirY > 0.3 && bot.y > arenaH - TILE * 2.5)
+        || (ai._movePlanDirY < -0.3 && bot.y < TILE * 2.5);
 
-    const _planShouldBreak = _planDodgeUrgent || _planEnemyRushing || _planStateChanged || _planMomentumBreak;
+      // Break trigger 4: state changed
+      const _planStateChanged = ai._movePlanState !== null && ai._movePlanState !== _movePlanCurrentState;
 
-    if (ai._movePlanFrames > 0 && !_planShouldBreak && moveLen > 1) {
-      // Active plan, no break triggers — hold the committed direction
-      moveX = ai._movePlanDirX * speed;
-      moveY = ai._movePlanDirY * speed;
-      ai._movePlanFrames--;
-    } else if (moveLen > 1) {
-      // Track why the previous plan broke (for learning diagnostics)
-      if (ai._movePlanFrames > 0 && _planShouldBreak) {
-        const _sl3 = typeof sparLearning !== 'undefined' ? sparLearning : null;
-        if (_sl3 && _sl3.tactical) {
-          if (!_sl3.tactical.planBreaks) _sl3.tactical.planBreaks = { dodge: 0, rush: 0, stateChange: 0, momentum: 0 };
-          if (_planDodgeUrgent) _sl3.tactical.planBreaks.dodge++;
-          else if (_planEnemyRushing) _sl3.tactical.planBreaks.rush++;
-          else if (_planStateChanged) _sl3.tactical.planBreaks.stateChange++;
-          else if (_planMomentumBreak) _sl3.tactical.planBreaks.momentum++;
+      // Break trigger 5: momentum break active
+      const _planMomentumBreak = ai._momentumBreakFrames > 0;
+
+      const _planShouldBreak = _planDodgeUrgent || _planEnemyRushing || _planWallBound || _planStateChanged || _planMomentumBreak;
+
+      if (ai._movePlanFrames > 0 && !_planShouldBreak && moveLen > 1) {
+        // Active plan, no break triggers — hold the committed direction
+        moveX = ai._movePlanDirX * speed;
+        moveY = ai._movePlanDirY * speed;
+        ai._movePlanFrames--;
+      } else if (moveLen > 1) {
+        // Track why the previous plan broke (for learning diagnostics)
+        if (ai._movePlanFrames > 0 && _planShouldBreak) {
+          const _sl3 = typeof sparLearning !== 'undefined' ? sparLearning : null;
+          if (_sl3 && _sl3.tactical) {
+            if (!_sl3.tactical.planBreaks) _sl3.tactical.planBreaks = { dodge: 0, rush: 0, wall: 0, stateChange: 0, momentum: 0 };
+            if (_planDodgeUrgent) _sl3.tactical.planBreaks.dodge++;
+            else if (_planEnemyRushing) _sl3.tactical.planBreaks.rush++;
+            else if (_planWallBound) { _sl3.tactical.planBreaks.wall = (_sl3.tactical.planBreaks.wall || 0) + 1; }
+            else if (_planStateChanged) _sl3.tactical.planBreaks.stateChange++;
+            else if (_planMomentumBreak) _sl3.tactical.planBreaks.momentum++;
+          }
         }
+        // Set new plan — no time limit, runs until break trigger
+        ai._movePlanDirX = moveX / speed;
+        ai._movePlanDirY = moveY / speed;
+        ai._movePlanFrames = 9999;
+        ai._movePlanState = _movePlanCurrentState;
+        ai._movePlanDist = dist;
       }
-      // Set new plan from computed direction — no time limit, runs until break trigger
-      ai._movePlanDirX = moveX / speed;
-      ai._movePlanDirY = moveY / speed;
-      ai._movePlanFrames = 9999; // effectively infinite — break triggers are the real exit
+    } else {
+      // Tactical states: no plan lock — follow the tactic's computed direction each frame
+      ai._movePlanFrames = 0;
       ai._movePlanState = _movePlanCurrentState;
-      ai._movePlanDist = dist; // snapshot distance to detect enemy rushing
     }
 
     // Freeze penalty after shooting — applied AFTER normalization (the only valid speed reduction)
