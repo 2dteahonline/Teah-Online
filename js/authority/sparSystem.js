@@ -715,7 +715,12 @@ const SparSystem = {
     if (pm) {
       if (pm.playerWallsFromBottom > 0.45) familyBiases.flank += 10;
       if (pm.playerHoldsBottom > 0.55) familyBiases.flank += 6;
-      if (pm.playerRetreatsSameSide > 0.55) baseScores.forceMirrorThenBreak = (baseScores.forceMirrorThenBreak || 7) + 4;
+      // playerRetreatsSameSide no longer boosts forceMirrorThenBreak exclusively —
+      // crossing tactics (contestSprint, lateCrossUnder) are better at exploiting predictable retreats
+      if (pm.playerRetreatsSameSide > 0.55) {
+        baseScores.contestSprint = (baseScores.contestSprint || 6) + 4;
+        baseScores.lateCrossUnder = (baseScores.lateCrossUnder || 6) + 4;
+      }
       if (pm.playerHoldsBottom > 0.6 && pm.playerPushesFromBottom < 0.35) familyBiases.contest += 10;
       if (pm.playerPushesFromBottom > 0.45) familyBiases.contest -= 4;
       if (pm.playerShootsFast) baseScores.lateCrossUnder = (baseScores.lateCrossUnder || 6) + 5;
@@ -5243,21 +5248,19 @@ const SparSystem = {
         }
 
       } else if (tactic === 'forceMirrorThenBreak') {
-        // WHY: mirror enemy X to build predictability, then break when they commit to mirroring
-        // Phase 0→1: when enemy is mirroring back (they're tracking our X)
-        //   OR if we've descended enough that breaking now gets us past them
+        // WHY: mirror enemy X while actively descending, then break hard to cross
+        // Phase 0→1: when enemy is mirroring OR descended enough to break
         if (phase === 0) {
           const tVx = tgt.vx || 0;
           moveX = tVx * 0.85 + ai.strafeDir * speed * 0.15;
-          moveY = speed * 0.15;
-          // Break when enemy is actively mirroring (moving same direction as us)
+          moveY = speed * 0.5; // descend at 50% while mirroring (was 15% — too passive)
           const enemyMirroring = Math.abs(tVx) > 2 && Math.sign(tVx) === Math.sign(bot.vx || ai.strafeDir);
-          if (enemyMirroring || (bot.y > tgt.y - 60 && clearedLaterally)) {
+          if (enemyMirroring || (bot.y > tgt.y - 60 && clearedLaterally) || ai._antiBottomPhaseFrames > 40) {
             ai._antiBottomPhase = 1;
           }
         } else {
           moveX = offDir * speed * 0.85;
-          moveY = speed * 0.55;
+          moveY = speed * 0.65;
           if (bodyBlocked) { moveX = offDir * speed * 0.9; moveY = speed * 0.15; }
         }
       }
