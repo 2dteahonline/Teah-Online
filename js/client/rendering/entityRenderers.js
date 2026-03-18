@@ -1633,9 +1633,10 @@ const ENTITY_RENDERERS = {
             for (const dn of dinerNPCs) {
               if (dn.id === spot.claimedBy) { _arcadeGamerNpc = dn; break; }
             }
-            // Screen is only on when gamer is at the cabinet and playing or showing result
+            // Screen only on AFTER coins inserted (fee paid) and game active or showing result
             if (_arcadeGamerNpc && _arcadeGamerNpc.state === 'gamer_playing' &&
-                (_arcadeGamerNpc.stateTimer > 0 || _arcadeGamerNpc._arcadeResultTimer > 0 || _arcadeGamerNpc._arcadeFeePaid)) {
+                _arcadeGamerNpc._arcadeFeePaid &&
+                (_arcadeGamerNpc.stateTimer > 0 || _arcadeGamerNpc._arcadeResultTimer > 0)) {
               _arcadeScreenOn = true;
             }
             break;

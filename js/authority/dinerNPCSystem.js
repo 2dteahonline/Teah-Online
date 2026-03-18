@@ -79,6 +79,9 @@ let _dinerWaitress = null;
 // Pending serve queue — orders completed by player, waiting for waitress delivery
 let _dinerPendingServe = [];
 
+// Exit cooldown — 5-second gap between different table groups leaving
+let _dinerExitCooldown = 0;
+
 // TV queue — tracks order status for diner TV display
 let _dinerTVQueue = [];
 
@@ -215,9 +218,13 @@ function _routeDinerToExit(fromTX, fromTY, corridorTX) {
 function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
+  const access = _getDinerSeatAccess(booth, seatIdx);
+  if (!access) return [];
+  // Go from seat → rowAccess → straight south to corridor (skip booth entry to avoid convergence)
+  const corridorX = booth.entry.tx >= 36 ? booth.entry.tx : 26;
   return _cConcatRoutes(
-    _routeDinerSeatToBoothEntry(boothId, seatIdx),
-    booth.entry.tx >= 36 ? [_cWP(booth.entry.tx, 14)] : [_cWP(26, 14)],
+    [_cWP(access.rowAccess.tx, access.rowAccess.ty)],
+    [_cWP(corridorX, 14)],
     [_cWP(44, 14)],
     [_cWP(44, DINER_SPOTS.customerExit.ty)]
   );
@@ -369,7 +376,13 @@ function moveDinerNPC(npc) {
     kitchenSafe: { tx: 26, ty: 16 },
     kitchenFallback: [{ tx: 27, ty: 16 }, { tx: 27, ty: 21 }],
     laneMode: 'always',
-    selfAvoidSkip: (npc) => npc.isWaitress,
+    pairBehavior: (npc, other) => {
+      // Waitress slows near guests instead of pushing them
+      if (npc.isWaitress && !other.isWaitress) return 'slow';
+      // Guests don't react to waitress (no push/nudge from her)
+      if (!npc.isWaitress && other.isWaitress) return 'skip';
+      return 'yield';
+    },
   });
 }
 
@@ -734,6 +747,7 @@ function initDinerNPCs() {
   _dinerGamerSpawnState.timer = 0;
   _dinerGamerSpawnState.nextInterval = _cRandRange(DINER_NPC_CONFIG.gamerSpawnInterval[0], DINER_NPC_CONFIG.gamerSpawnInterval[1]);
   _dinerPendingServe = [];
+  _dinerExitCooldown = 0;
   _dinerTVQueue = [];
   _dinerGroupQueue = [];
   _dinerActiveGroup = null;
@@ -896,6 +910,14 @@ const DINER_NPC_AI = {
       }
     }
 
+    // First NPC to leave (last in array): check inter-table exit cooldown
+    // 5-second gap between different groups leaving to avoid corridor collisions
+    if (myIdx === memberIds.length - 1 && !party._exitStarted) {
+      if (_dinerExitCooldown > 0) return; // another table's group is still clearing out
+      party._exitStarted = true;
+      _dinerExitCooldown = 300; // 5 seconds before next group can start leaving
+    }
+
     // All later members have started leaving — count 2-second delay before my turn
     // (Last member in array leaves immediately since no one is after them)
     if (myIdx < memberIds.length - 1) {
@@ -949,8 +971,13 @@ const DINER_NPC_AI = {
       return;
     }
 
-    // Pay arcade fee BEFORE each game starts (visible payment per play)
+    // Coin insertion delay — gamer stands at arcade briefly before paying
+    // Screen stays off during this phase
     if (!npc._arcadeFeePaid) {
+      npc._arcadeCoinTimer = (npc._arcadeCoinTimer || 0) + 1;
+      if (npc._arcadeCoinTimer < 60) return; // 1 second inserting coins
+      npc._arcadeCoinTimer = 0;
+      // Pay arcade fee — screen turns on after this
       npc._arcadeFeePaid = true;
       npc._arcadePlaysTotal = (npc._arcadePlaysTotal || 0) + 1;
       if (typeof gold !== 'undefined') {
@@ -1105,6 +1132,9 @@ function updateDinerNPCs() {
 
   // Update TV queue timers
   _updateDinerTVQueue();
+
+  // Tick inter-table exit cooldown
+  if (_dinerExitCooldown > 0) _dinerExitCooldown--;
 
   // Gamer spawn timer (independent of group spawns)
   if (typeof Scene !== 'undefined' && Scene.inCooking &&
