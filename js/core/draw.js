@@ -778,7 +778,31 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
-      // Food plate on table when NPC is eating at a red seat (no carried plate — only shows on table)
+      // Carried plate while walking to table (visible until NPC sits down)
+      if (npc.hasFood && npc.state !== 'eating') {
+        let fOffX = 0, fOffY = -36;
+        if (npc.dir === 2) fOffX = -18;
+        else if (npc.dir === 3) fOffX = 18;
+        else if (npc.dir === 0) fOffY = -32;
+        else if (npc.dir === 1) fOffY = -42;
+        const bobF = npc.moving ? Math.sin(npc.frame * Math.PI / 2) * 1.5 : 0;
+        const fx = npc.x + fOffX, fy = npc.y + fOffY + bobF;
+        // Plate
+        ctx.fillStyle = '#d4c8a8';
+        ctx.beginPath(); ctx.ellipse(fx, fy + 6, 14, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#a09070'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(fx, fy + 6, 14, 7, 0, 0, Math.PI * 2); ctx.stroke();
+        // Food layers
+        if (npc._recipeIngredients && typeof DELI_INGREDIENTS !== 'undefined') {
+          const maxL = Math.min(npc._recipeIngredients.length, 3);
+          for (let li = 0; li < maxL; li++) {
+            const ing = DELI_INGREDIENTS[npc._recipeIngredients[li]];
+            ctx.fillStyle = ing ? ing.color : '#c0a060';
+            ctx.fillRect(fx - 7, fy + 3 - li * 3, 14, 3);
+          }
+        }
+      }
+      // Food plate on table when NPC is seated and eating (carried plate disappears, table plate appears)
       if (npc._tableFood && npc.state === 'eating') {
         // Plate goes on table surface: 1 tile toward the table from the chair
         // Left chairs (dir:3) → plate 1 tile to the right; Right chairs (dir:2) → plate 1 tile to the left

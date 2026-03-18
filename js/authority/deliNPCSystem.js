@@ -77,7 +77,7 @@ const DELI_NPC_CONFIG = {
   speedVariance: 0.14,
   eatDuration:    [900, 900],  // 15 sec at 60fps
   browseDuration: [480, 900],  // 8-15 sec browsing at an aisle
-  aisleSpawnInterval: [900, 900], // 15 sec between aisle NPC spawns
+  aisleSpawnInterval: [1800, 1800], // 30 sec between aisle NPC spawns
 };
 
 // ===================== STATE =====================
@@ -93,7 +93,8 @@ function _isKitchenZone(px, py) {
   const tx = Math.floor(px / TILE);
   const ty = Math.floor(py / TILE);
   if (tx <= 23 && ty <= 20) return true;
-  if (tx === 24 && ty >= 19 && ty <= 20) return true;
+  if (tx === 24 && ty >= 18 && ty <= 21) return true;  // kitchen door + counter wall
+  if (tx === 25 && ty === 21) return true;               // corner under kitchen door
   return false;
 }
 
@@ -319,8 +320,8 @@ function _spawnOrderNPC() {
     claimedChair: null,
     _claimedOrder: null,
     _recipeIngredients: null,
-    _laneOffX: (Math.random() - 0.5) * 32,
-    _laneOffY: (Math.random() - 0.5) * 32,
+    _laneOffX: 0,
+    _laneOffY: 0,
     _role: 'order',
     _pickupSpotIdx: -1,
     hasBag: false,
@@ -349,8 +350,8 @@ function _spawnAisleNPC() {
     claimedChair: null,
     _claimedOrder: null,
     _recipeIngredients: null,
-    _laneOffX: (Math.random() - 0.5) * 32,
-    _laneOffY: (Math.random() - 0.5) * 32,
+    _laneOffX: 0,
+    _laneOffY: 0,
     _role: 'aisle',
     _pickupSpotIdx: -1,
     _aisleVisits: 0,
@@ -390,8 +391,12 @@ const DELI_NPC_AI = {
   // ─── ENTERING: Route depends on NPC role ──────────────
   entering: (npc) => {
     if (npc._role === 'order') {
-      // Order NPC — walk straight to pickup counter
-      const spotIdx = Math.floor(Math.random() * DELI_PICKUP_SPOTS.length);
+      // Order NPC — walk to the pickup spot directly in front of their claimed plate
+      let spotIdx = 0;
+      if (npc._claimedOrder && typeof cookingState !== 'undefined' && cookingState.counterOrders) {
+        const orderPos = cookingState.counterOrders.indexOf(npc._claimedOrder);
+        if (orderPos >= 0) spotIdx = Math.min(orderPos, DELI_PICKUP_SPOTS.length - 1);
+      }
       npc._pickupSpotIdx = spotIdx;
       _cStartRoute(npc, _routeEnterToPickup(spotIdx), 'picking_up', 30);
       return;
@@ -622,10 +627,10 @@ function updateDeliNPCs() {
     const handler = DELI_NPC_AI[npc.state];
     if (handler) handler(npc);
 
-    // Stuck detection — 10 sec stuck → reroute or force exit
+    // Stuck detection — 3 sec stuck → reroute or force exit
     if (npc.moving && npc.route && npc.route.length > 0) {
       npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-      if (npc._stuckFrames > 600) {
+      if (npc._stuckFrames > 180) {
         npc._stuckFrames = 0;
         if (_isKitchenZone(npc.x, npc.y)) {
           npc.x = 26 * TILE + TILE / 2;
