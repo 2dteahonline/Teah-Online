@@ -4711,10 +4711,12 @@ const SparSystem = {
         moveX = routeSpeedX;
       }
 
-      // Dodge bullets even during opening — don't just tank hits
+      // Dodge bullets even during opening — unless tanking wins the trade
       const openDodge = this._getIncomingBulletDodge(bot, team);
       const openDodgeMag = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
-      if (openDodgeMag > 0.15) {
+      const _openTankForKill = !member.gun.reloading && member.gun.ammo > 0
+        && member.ai.shootCD <= 0 && tgt.hp <= (member.gun.damage || 20);
+      if (openDodgeMag > 0.15 && !_openTankForKill) {
         const openOverride = Math.min(0.7, openDodgeMag * 0.5);
         moveX = moveX * (1 - openOverride) + openDodge.x * speed * openOverride * 1.5;
         moveY = moveY * (1 - openOverride * 0.6) + openDodge.y * speed * openOverride * 0.6;
@@ -4943,7 +4945,11 @@ const SparSystem = {
       // rather than standing still and eating hits. Re-stabilize after dodge.
       const bottomDodge = this._getIncomingBulletDodge(bot, team);
       const bottomDodgeMag = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
-      if (bottomDodgeMag > 0.15) {
+      const _btmTankForKill = !member.gun.reloading && member.gun.ammo > 0
+        && member.ai.shootCD <= 0 && tgt.hp <= (member.gun.damage || 20);
+      const _btmTankForTrade = !member.gun.reloading && member.gun.ammo > 0
+        && member.ai.shootCD <= 0 && bot.hp > tgt.hp + 40 && dist < 200;
+      if (bottomDodgeMag > 0.15 && !_btmTankForKill && !_btmTankForTrade) {
         // Dodge to preserve bottom — primarily lateral, allow downward but not upward
         const btmOverride = Math.min(0.8, bottomDodgeMag * 0.5);
         moveX = moveX * (1 - btmOverride) + bottomDodge.x * speed * btmOverride * 1.5;
@@ -6111,8 +6117,14 @@ const SparSystem = {
     if (_planEligible) {
       // Break trigger 1: ANY bullet coming at me = break and dodge first
       // Plan is for preventing jitter, not for tanking hits.
-      // dodgeMag > 0.15 catches any real bullet threat (filters noise only)
-      const _planDodgeUrgent = dodgeMag > 0.15;
+      // Exception: don't break if tanking this hit wins the round or trades favorably.
+      // (Trade eval uses variables computed earlier in tick — _botDmg, _canFireNow etc
+      //  are not yet available here, so we do a lightweight check inline)
+      const _planTankForKill = !member.gun.reloading && member.gun.ammo > 0
+        && member.ai.shootCD <= 0 && tgt.hp <= (member.gun.damage || 20);
+      const _planTankForTrade = !member.gun.reloading && member.gun.ammo > 0
+        && member.ai.shootCD <= 0 && bot.hp > tgt.hp + 40 && dist < 200;
+      const _planDodgeUrgent = dodgeMag > 0.15 && !_planTankForKill && !_planTankForTrade;
 
       // Break trigger 2: enemy rushing me (closing distance significantly)
       const _planEnemyRushing = ai._movePlanDist !== undefined
@@ -6163,10 +6175,18 @@ const SparSystem = {
       ai._movePlanState = _movePlanCurrentState;
     }
 
+    // --- Trade evaluation: should we tank the hit instead of dodging? ---
+    // Tank ONLY when: (1) next shot kills enemy, or (2) we win the HP trade clearly
+    const _botDmg = member.gun.damage || 20;
+    const _canFireNow = !member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0;
+    const _nextShotKills = _canFireNow && tgt.hp <= _botDmg;
+    const _wonTrade = _canFireNow && bot.hp > tgt.hp + 40; // clearly ahead on HP
+    const _shouldTankForTrade = _nextShotKills || (_wonTrade && dist < 200);
+
     // --- Bullet dodging (reactive, applied AFTER movement plan so never overwritten) ---
-    // ANY bullet threat = dodge. Plan already broke above, now apply the dodge direction.
+    // ALWAYS dodge unless tanking wins the round or trades favorably.
     // During anti-bottom, reduce override so bot keeps some cross commitment.
-    if (dodgeMag > 0.15) {
+    if (dodgeMag > 0.15 && !_shouldTankForTrade) {
       // Scale override by urgency: closer bullets = stronger override
       // At dodgeMag 0.5 → 25% override, at 1.0 → 50%, at 2.0 → 85% (capped)
       const rawOverride = Math.min(0.85, dodgeMag * 0.5);
