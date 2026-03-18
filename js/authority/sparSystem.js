@@ -5320,7 +5320,7 @@ const SparSystem = {
           moveY *= Math.max(0.6, 1.0 - zoneHitRate);
         }
         // Track exposure in collector
-        if (c) {
+        if (c && c.trapZoneFrames) {
           c.trapZoneFrames[currentZone]++;
           const lastHit = ai._lastTookHitFrame || 0;
           if (lastHit >= SparState.matchTimer - 1 && lastHit <= SparState.matchTimer) {
