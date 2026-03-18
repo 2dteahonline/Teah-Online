@@ -17,9 +17,9 @@ const SPAR_CONFIG = {
 
 // Derived constants — computed from physics so they auto-update if source values change
 const SPAR_DERIVED = {
-  // Dodge geometry: optimal angle θ = arcsin(botSpeed / bulletSpeed)
-  DODGE_SIN_THETA: Math.min(1.0, SPAR_CONFIG.BOT_SPEED / (GAME_CONFIG.BULLET_SPEED || 9)),
-  DODGE_COS_THETA: Math.sqrt(1 - Math.pow(Math.min(1.0, SPAR_CONFIG.BOT_SPEED / (GAME_CONFIG.BULLET_SPEED || 9)), 2)),
+  // Dodge geometry: capped at ~20° from perpendicular (raw optimal is 56° but too aggressive)
+  DODGE_SIN_THETA: Math.min(0.34, SPAR_CONFIG.BOT_SPEED / (GAME_CONFIG.BULLET_SPEED || 9)),
+  DODGE_COS_THETA: Math.sqrt(1 - Math.pow(Math.min(0.34, SPAR_CONFIG.BOT_SPEED / (GAME_CONFIG.BULLET_SPEED || 9)), 2)),
   // Frames needed to clear the hitbox at bot speed
   FRAMES_TO_CLEAR: Math.ceil((GAME_CONFIG.DEFAULT_HITBOX_R || 33) / SPAR_CONFIG.BOT_SPEED),
   // Speed during post-shot freeze (default 50/50 build → 0.54 penalty)

@@ -3071,9 +3071,13 @@ const SparSystem = {
     const wallM = TILE * 2;
     const bVx = botVx || 0, bVy = botVy || 0;
 
-    // Derived dodge angle constants
-    const sinTheta = typeof SPAR_DERIVED !== 'undefined' ? SPAR_DERIVED.DODGE_SIN_THETA : Math.min(1.0, speed / bulletSpeed);
-    const cosTheta = typeof SPAR_DERIVED !== 'undefined' ? SPAR_DERIVED.DODGE_COS_THETA : Math.sqrt(1 - sinTheta * sinTheta);
+    // Dodge angle: cap at ~20° from perpendicular (sin≈0.34, cos≈0.94)
+    // Full θ=56° was mathematically optimal but visually terrible — bot appeared to
+    // chase bullets, and put it in bad arena positions. 20° gives mild diagonal
+    // that's mostly perpendicular with a small time-compression benefit.
+    const rawSin = Math.min(1.0, speed / bulletSpeed);
+    const sinTheta = Math.min(0.34, rawSin); // cap at ~20°
+    const cosTheta = Math.sqrt(1 - sinTheta * sinTheta);
     const reactFrames = typeof SPAR_DERIVED !== 'undefined' ? SPAR_DERIVED.REACT_FRAMES : 10;
 
     // Collect all threatening bullets sorted by arrival time
@@ -5148,12 +5152,8 @@ const SparSystem = {
       }
     }
 
-    // --- Computed strafe direction (replaces random timer) ---
-    // Direction set by CONDITIONS, not timers. Tactical owners compute their own moveX.
-    // 1. Wall proximity: flip away from nearby wall
-    // 2. Bullet threat side: strafe away from side with more incoming bullets
-    // 3. Failed engagement: cross sides for unpredictability
-    // 4. No strong signal: maintain current direction (momentum)
+    // --- Strafe direction: condition-driven with timer fallback ---
+    // Priority: wall > bullet threat > failed engagement > timer flip
     {
       const wallM = TILE * 2.5;
       const nearLeftWall = bot.x < wallM;
@@ -5169,16 +5169,28 @@ const SparSystem = {
           if (!b.sparTeam || b.sparTeam === team) continue;
           const dbx = bot.x - b.x, dby = _stBotHitY - b.y;
           const d2 = dbx * dbx + dby * dby;
-          if (d2 > 250 * 250) continue; // too far to matter
-          // Is bullet approaching from left or right?
+          if (d2 > 250 * 250) continue;
           if (b.x < bot.x && b.vx > 0) leftBullets++;
           else if (b.x > bot.x && b.vx < 0) rightBullets++;
         }
-        if (leftBullets > rightBullets + 1) ai.strafeDir = 1; // strafe away from left threats
-        else if (rightBullets > leftBullets + 1) ai.strafeDir = -1;
-        // else: maintain current direction (no random flip)
+        if (leftBullets > rightBullets) ai.strafeDir = 1;
+        else if (rightBullets > leftBullets) ai.strafeDir = -1;
+        // No bullet signal: timer-based flip (human-like rhythm)
+        else {
+          ai.strafeTimer--;
+          if (ai.strafeTimer <= 0) {
+            ai.strafeDir *= -1;
+            ai.strafeTimer = 30 + Math.floor(Math.random() * 40);
+          }
+        }
       }
-      // Failed engagement: cross sides for unpredictability
+      // Juke: small random flip chance for unpredictability
+      if (ai.jukeTimer <= 0 && Math.random() < 0.008) {
+        ai.strafeDir *= -1;
+        ai.jukeTimer = 20;
+      }
+      if (ai.jukeTimer > 0) ai.jukeTimer--;
+      // Failed engagement: cross sides
       if (ai._lastEngagementType && !ai._lastEngagementSuccess && !isOpening) {
         if (Math.random() < 0.40) ai.strafeDir *= -1;
         ai._lastEngagementType = null;
