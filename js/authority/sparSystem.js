@@ -6274,33 +6274,40 @@ const SparSystem = {
       bot.dir = moveY > 0 ? 0 : 1;
     }
 
-    // --- Shooting: fire on cooldown unless a bullet would hit during freeze ---
-    // Real players spam shots. The only reason to hold fire is if the freeze
-    // penalty (54% slow for 15 frames) would get you hit by an incoming bullet.
-    // Opening gate: don't shoot from above during opening (gives away bottom for free).
+    // --- Shooting: fire on cooldown, but NOT during speed-critical moves ---
+    // The freeze penalty (54% slow, 15 frames) means shooting costs movement.
+    // Hold fire when: (1) bullet incoming during freeze, (2) executing a move
+    // that needs full speed (crossing, retaking bottom, escaping, repositioning).
+    // Shoot when: stable position (has bottom, neutral strafing).
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
       const openingFireGated = isOpening && !hasBottom;
-      // Would a bullet hit us during the freeze window? dodgeMag already computed above.
-      // dodgeMag > 0.8 = meaningful incoming threat that needs dodging
+      // Would a bullet hit us during the freeze window?
       const freezeWouldGetHit = dodgeMag > 0.8;
+      // Is the bot executing a move that needs full speed?
+      // These states require committed movement — freeze would ruin them.
+      const needsFullSpeed = _movePlanCurrentState === 'antiBottom'  // crossing/flanking/descending
+        || _movePlanCurrentState === 'escape'     // getting out of bad position
+        || _movePlanCurrentState === 'gunSide';   // repositioning to fix angle
       // Context for data collection
       const _shootCtx = {
         dist: Math.round(dist),
         hasBottom, enemyHasBottom, badGunSide,
         laneQuality: +laneQuality.toFixed(2),
         dodgeMag: +dodgeMag.toFixed(2),
-        freezeWouldGetHit,
+        freezeWouldGetHit, needsFullSpeed,
         state: _movePlanCurrentState,
       };
 
       if (openingFireGated) {
-        // Don't shoot during opening without bottom — track it
         if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'openingGated' });
       } else if (freezeWouldGetHit) {
         // Hold fire — freeze would prevent dodging incoming bullet
         if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'holdForDodge' });
+      } else if (needsFullSpeed) {
+        // Hold fire — need full speed for tactical movement (crossing, escaping, etc.)
+        if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'holdForSpeed' });
       } else {
-        // Fire on cooldown — no reason to wait
+        // Stable position — fire on cooldown
         this._sparBotShoot(member, tgt);
         if (c && c.shotDecisions) c.shotDecisions.push({ ...(_shootCtx), decision: 'fired' });
       }
