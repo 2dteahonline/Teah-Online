@@ -530,6 +530,9 @@ function sparData() {
 }
 
 // Console helper to wipe learning data during testing
+// Alias for convenience
+function sparReset() { return resetSparLearning(); }
+
 function resetSparLearning() {
   const fresh = createDefaultSparLearning();
   Object.keys(sparLearning).forEach(k => delete sparLearning[k]);
