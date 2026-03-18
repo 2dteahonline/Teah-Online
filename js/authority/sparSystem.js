@@ -2081,7 +2081,14 @@ const SparSystem = {
         _resetEngagementLog();
         // FullBvB: pre-initialize collector stub so reinforcement learning still runs
         if (typeof _isSparFullBotVsBot === 'function' && _isSparFullBotVsBot()) {
-          SparState._matchCollector = { samples: 10 };
+          SparState._matchCollector = {
+            samples: 10,
+            // Fields accessed by _tickOneBot — must exist on stub to prevent crashes
+            botYAtOpeningEnd: -1,
+            playerYAtOpeningEnd: -1,
+            trapZoneFrames: { center: 0, near: 0, wide: 0 },
+            trapZoneHits:   { center: 0, near: 0, wide: 0 },
+          };
         }
       }
       return;
@@ -2778,6 +2785,8 @@ const SparSystem = {
   },
 
   // ---- LEARNING: collect player data each frame during fighting ----
+  // NOTE: If you add new fields here that _tickOneBot reads from the collector,
+  // you MUST also add them to the fullBvB stub in tick() (search "fullBvB stub").
   _collectPlayerData() {
     if (SparState.phase !== 'fighting') return;
     // FullBvB: player is offscreen, skip all player-specific data collection

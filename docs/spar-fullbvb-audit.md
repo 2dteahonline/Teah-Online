@@ -1,4 +1,4 @@
-# Full Bot-vs-Bot Self-Play Audit (Update #361)
+# Full Bot-vs-Bot Self-Play Audit (Update #362)
 
 ## Bugs Found and Fixed
 
@@ -24,7 +24,14 @@
 - **What:** Stub `{ samples: 10 }` didn't have `antiBottomEngagements` array — `.push()` crashed
 - **Fix:** Added null guard `if (collector && collector.antiBottomEngagements)`
 
-### BUG 5 (Previously Fixed): NaN reward corruption
+### BUG 5 (Update #362): matchCollector stub missing trapZone fields
+- **File:** `sparSystem.js` `_tickOneBot()` line ~5324
+- **What:** Stub `{ samples: 10 }` didn't have `trapZoneFrames`/`trapZoneHits` objects. `if (c)` guard passed but `c.trapZoneFrames[currentZone]++` crashed with "Cannot read properties of undefined (reading 'near'/'center'/'wide')"
+- **Impact:** Every tick during fullBvB crashed — training was non-functional
+- **Fix:** (1) Expanded stub to include all fields `_tickOneBot` accesses: `botYAtOpeningEnd`, `playerYAtOpeningEnd`, `trapZoneFrames`, `trapZoneHits`. (2) Added `c.trapZoneFrames` guard on the access. (3) Added comment on full collector definition warning to update stub when adding new fields.
+- **Prevention:** Comment on `_collectPlayerData` and on the stub itself warns future edits to keep both in sync
+
+### BUG 6 (Previously Fixed): NaN reward corruption
 - **File:** `sparSystem.js` `_updateMatchReinforcement()`
 - **What:** Undefined collector fields (botHasBottom_frames, nearWall_cornerStuckFrames, etc) produced NaN that propagated into reward buckets permanently
 - **Fix:** Added `|| 0` defaults for all collector field reads + NaN guard in `_updateRewardBucket`
