@@ -4707,9 +4707,9 @@ const SparSystem = {
         if (!ai._pauseTimer) ai._pauseTimer = 0;
         ai._pauseTimer--;
         if (ai._pauseTimer > 0) {
-          // Minimum drift even during pause — never fully plant
-          moveX = ai.strafeDir * speed * 0.12;
-          moveY = (Math.random() < 0.5 ? -1 : 1) * speed * 0.1;
+          // Full stop during pause — real players stop, not drift
+          moveX = 0;
+          moveY = 0;
         } else {
           moveX = ai.strafeDir * speed * 0.75;
           moveY = (Math.random() < 0.5 ? -1 : 1) * speed * 0.35;
@@ -5647,8 +5647,8 @@ const SparSystem = {
           ai._pauseTimer = 10 + Math.floor(Math.random() * 15); // pause 10-25 frames
         }
         if (ai._pauseTimer > 0) {
-          moveX *= 0.1; // nearly stop
-          moveY *= 0.1;
+          moveX = 0; // full stop — real players stop, not drift
+          moveY = 0;
           ai._pauseTimer--;
         }
       } else if (pm.bestEvasion === 'strafe') {
@@ -5850,12 +5850,7 @@ const SparSystem = {
 
     // (Old pre-collision stall logic removed — now runs post-collision below)
 
-    // Learning: apply strafe speed multiplier (win-rate based)
-    // Skip during anti-bottom — bot must move at full speed to contest vertical control
-    if (pm && pm.strafeSpeedMult !== 1.0 && !ai._antiBottomTactic) {
-      moveX *= pm.strafeSpeedMult;
-      moveY *= pm.strafeSpeedMult;
-    }
+    // Removed: strafeSpeedMult — real players move at full speed or stop, no fractional speeds
 
     // Freeze penalty after shooting — same slowdown as player
     if (ai._freezeTimer > 0) {
@@ -5865,24 +5860,15 @@ const SparSystem = {
       moveY *= (1.0 - penalty);
     }
 
-    // Normalize
+    // Binary movement: full speed or stopped (like a real player)
+    // Weights above determine DIRECTION, this enforces full-speed magnitude
     const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
-    if (moveLen > speed) {
+    if (moveLen > 1) {
       moveX = (moveX / moveLen) * speed;
       moveY = (moveY / moveLen) * speed;
-    }
-
-    // --- Smooth movement (blend toward target velocity) ---
-    // Skip smoothing during momentum breaks — anti-stall must snap immediately
-    if (ai._momentumBreakFrames > 0) {
-      ai.smoothVx = moveX;
-      ai.smoothVy = moveY;
     } else {
-      const smoothFactor = 0.3; // 0 = instant snap, 1 = no change
-      moveX = ai.smoothVx * smoothFactor + moveX * (1 - smoothFactor);
-      moveY = ai.smoothVy * smoothFactor + moveY * (1 - smoothFactor);
-      ai.smoothVx = moveX;
-      ai.smoothVy = moveY;
+      moveX = 0;
+      moveY = 0;
     }
 
     // --- Idle guard: if near-stationary too long, force a lateral break ---
