@@ -4933,31 +4933,10 @@ const SparSystem = {
         moveY -= speed * 0.15;
       }
 
-      // CRITICAL: if player hits strafing bot more than retreating/still, use stop-start movement
-      const playerHitsStrafe = pm && pm.botMoveEffectiveness &&
-        (pm.botMoveEffectiveness.strafe < pm.botMoveEffectiveness.retreat ||
-         pm.botMoveEffectiveness.strafe < pm.botMoveEffectiveness.still);
-
-      if (playerHitsStrafe) {
-        // Player destroys horizontal strafing — use stop-start + vertical jukes
-        // vNext: cap pause to 6f max, always maintain minimum drift
-        if (!ai._pauseTimer) ai._pauseTimer = 0;
-        ai._pauseTimer--;
-        if (ai._pauseTimer > 0) {
-          // Full stop during pause — real players stop, not drift
-          moveX = 0;
-          moveY = 0;
-        } else {
-          moveX = ai.strafeDir * speed * 0.75;
-          moveY = (Math.random() < 0.5 ? -1 : 1) * speed * 0.35;
-          if (ai._pauseTimer <= -18) {
-            ai._pauseTimer = 3 + Math.floor(Math.random() * 4); // capped 3-6f
-            ai.strafeDir *= -1;
-          }
-        }
-      } else {
-        moveX = ai.strafeDir * speed * 0.7;
-      }
+      // Always strafe when holding bottom — standing still is never correct.
+      // Dodge handles bullet avoidance; strafe provides the movement that makes
+      // the dodge diagonal and keeps the bot unpredictable.
+      moveX = ai.strafeDir * speed * 0.7;
 
       // Elliptical peek advantage: maintain vertical gap
       if (Math.abs(dy) > 40) {
