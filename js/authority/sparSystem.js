@@ -38,7 +38,6 @@ function _resetEngagementLog() {
     reload:       { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
     midPressure:  { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
     wallPressure: { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
-    centerRecovery: { count: 0, totalFrames: 0, zeroFrames: 0, zeroDmg: 0, shortCount: 0, durations: [], dmgDeltas: [] },
   };
 }
 
@@ -247,11 +246,6 @@ const SparSystem = {
       if (!scope.openingContestFamily) scope.openingContestFamily = createSparRewardBuckets(openContestFamilyKeys);
       if (!scope.punishWindowPolicy) scope.punishWindowPolicy = createSparRewardBuckets(punishWindowKeys);
       if (!scope.punishWindowFamily) scope.punishWindowFamily = createSparRewardBuckets(punishWindowFamilyKeys);
-      // vNext: center recovery buckets
-      const centerRecoveryKeys = typeof SPAR_CENTER_RECOVERY_KEYS !== 'undefined' ? SPAR_CENTER_RECOVERY_KEYS : ['crossCommit', 'fakeCrossBreak', 'baitShotDrop', 'wideUnderEntry'];
-      const centerRecoveryFamilyKeys = typeof SPAR_CENTER_RECOVERY_FAMILY_KEYS !== 'undefined' ? SPAR_CENTER_RECOVERY_FAMILY_KEYS : ['cross', 'bait', 'under'];
-      if (!scope.centerRecoveryPolicy) scope.centerRecoveryPolicy = createSparRewardBuckets(centerRecoveryKeys);
-      if (!scope.centerRecoveryFamily) scope.centerRecoveryFamily = createSparRewardBuckets(centerRecoveryFamilyKeys);
     }
     if (!sl.tactical) {
       sl.tactical = {
@@ -274,10 +268,6 @@ const SparSystem = {
     if (!sl.tactical.wallPressureOutcomes) sl.tactical.wallPressureOutcomes = { attempts: 0, pinned: 0, avgDmgDealt: 0, avgDuration: 0 };
     if (!sl.tactical.openingContestOutcomes) sl.tactical.openingContestOutcomes = { attempts: 0, securedBottom: 0, deniedBottom: 0, avgDmgDealt: 0, avgDuration: 0 };
     if (!sl.tactical.punishWindowOutcomes) sl.tactical.punishWindowOutcomes = { attempts: 0, converted: 0, avgDmgDealt: 0, avgReturnDmg: 0, avgDuration: 0 };
-    // vNext: center recovery tactical tracking
-    if (!sl.tactical.centerRecoveryOutcomes) sl.tactical.centerRecoveryOutcomes = { attempts: 0, escapedCenter: 0, regainedBottom: 0, regainedGunSide: 0, avgDmgTakenDuring: 0, avgDuration: 0 };
-    if (!sl.tactical.centerRecoveryFailStreaks) sl.tactical.centerRecoveryFailStreaks = { crossCommit: 0, fakeCrossBreak: 0, baitShotDrop: 0, wideUnderEntry: 0 };
-    if (typeof sl.tactical.centerOscillationCount !== 'number') sl.tactical.centerOscillationCount = 0;
     if (typeof sl.tactical.idleBreaks !== 'number') sl.tactical.idleBreaks = 0;
     if (typeof sl.tactical.lowMotionRescues !== 'number') sl.tactical.lowMotionRescues = 0;
     return sl.reinforcement1v1;
@@ -1321,146 +1311,6 @@ const SparSystem = {
     ai._midPressurePolicy = null;
     ai._midPressureFamily = null;
     ai._midPressureFrames = 0;
-  },
-
-  // vNext: center recovery policy picker — how to escape center-trapped state
-  _pickCenterRecoveryPolicy(pm, duelContext) {
-    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
-    const rf = this._ensureReinforcementProfile(sl);
-    const policies = typeof SPAR_CENTER_RECOVERY_KEYS !== 'undefined' ? SPAR_CENTER_RECOVERY_KEYS : ['crossCommit', 'fakeCrossBreak', 'baitShotDrop', 'wideUnderEntry'];
-    const familyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined' ? SPAR_CENTER_RECOVERY_FAMILY_MAP : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
-    const pPolicy = rf && rf.player ? rf.player.centerRecoveryPolicy : null;
-    const gPolicy = rf && rf.general ? rf.general.centerRecoveryPolicy : null;
-    const sPolicy = rf && rf.selfPlay ? rf.selfPlay.centerRecoveryPolicy : null;
-    const pFamily = rf && rf.player ? rf.player.centerRecoveryFamily : null;
-    const gFamily = rf && rf.general ? rf.general.centerRecoveryFamily : null;
-    const sFamily = rf && rf.selfPlay ? rf.selfPlay.centerRecoveryFamily : null;
-    const totalPP = this._sumBucketPlays(pPolicy);
-    const totalGP = this._sumBucketPlays(gPolicy);
-    const totalSP = this._sumBucketPlays(sPolicy);
-    const totalPF = this._sumBucketPlays(pFamily);
-    const totalGF = this._sumBucketPlays(gFamily);
-    const totalSF = this._sumBucketPlays(sFamily);
-
-    const baseScores = {};
-    for (const p of policies) baseScores[p] = 5;
-
-    // === CROSS-VS-BAIT-BOTTOM FORK ===
-    // The player cannot fully cover both:
-    //   1. Cross to restore favorable gun-side for shooting down
-    //   2. Bait the cross defense and retake bottom
-    // If player over-defends bottom → cross is open
-    // If player over-defends the cross → take bottom
-
-    // Context-based biases
-    if (duelContext) {
-      // If player shoots fast, baitShotDrop exploits their trigger-happy shots
-      if (duelContext.playerShootsFast) baseScores.baitShotDrop += 4;
-      // If player has strong bottom, wideUnderEntry to recover bottom from wide angle
-      if (duelContext.enemyHasStrongBottom) {
-        baseScores.wideUnderEntry += 5; // bottom recovery is primary
-        baseScores.baitShotDrop += 3;   // bait into bottom recovery
-      }
-      // If bot is close to a wall exit, crossCommit is faster
-      if (duelContext.nearWallExit) baseScores.crossCommit += 3;
-      // If lane quality is very poor, wideUnderEntry to recover bottom
-      if (duelContext.laneQuality < 0.35) baseScores.wideUnderEntry += 4;
-      // If oscillating, favor strong commitment (cross or under)
-      if (duelContext.oscillating) {
-        baseScores.crossCommit += 3;
-        baseScores.wideUnderEntry += 3;
-      }
-    }
-
-    // Rhythm-based: player behavior reveals which fork to exploit
-    if (pm) {
-      if (pm.playerShootsFast) baseScores.baitShotDrop += 3;
-      // Player defends bottom → cross is open (they can't cover both)
-      if (pm.playerPushesFromBottom > 0.5) {
-        baseScores.crossCommit += 4;
-        baseScores.fakeCrossBreak += 3;
-      }
-      // Player covers the cross → bottom retake is open
-      if (pm.playerCrossesAfterBottomLoss > 0.5) {
-        baseScores.wideUnderEntry += 4;
-        baseScores.baitShotDrop += 3;
-        baseScores.fakeCrossBreak += 2; // fake the cross they expect, break other way
-      }
-      if (pm.playerRetreatsSameSide > 0.6) baseScores.crossCommit += 2;
-      // If player chases retreats, bait exploits that
-      if (pm.playerChases > 0.45) baseScores.baitShotDrop += 3;
-    }
-
-    // Fail streak suppression
-    const failStreaks = sl && sl.tactical && sl.tactical.centerRecoveryFailStreaks ? sl.tactical.centerRecoveryFailStreaks : null;
-
-    return this._pickHierarchicalPolicy({
-      keys: policies, familyMap,
-      pPolicy, gPolicy, sPolicy, pFamily, gFamily, sFamily,
-      totalPP, totalGP, totalSP, totalPF, totalGF, totalSF,
-      baseScores,
-      familyBiases: {},
-      failStreaks,
-      playerWeight: 24, generalWeight: 12, selfPlayWeight: 8,
-      playerExplore: 0.18, generalExplore: 0.1, selfPlayExplore: 0.08,
-      noise: 2.5,
-    });
-  },
-
-  // vNext: Finalize center recovery engagement
-  _finalizeCenterRecovery(ai, escaped, regainedBottom, regainedGunSide) {
-    const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
-    if (!sl || !ai._centerRecoveryPolicy) return;
-    const policy = ai._centerRecoveryPolicy;
-    const family = ai._centerRecoveryFamily;
-    const frames = ai._centerRecoveryFrames || 0;
-    if (frames <= 0) return;
-    const dmgTaken = (ai._matchDmgTaken || 0) - (ai._centerRecoveryStartDmg || 0);
-    _logEngagement('centerRecovery', frames, dmgTaken);
-    const dmgR = this._clamp01(1 - dmgTaken / (SPAR_CONFIG.HP_BASELINE * 0.35));
-    const speedR = this._clamp01(1 - frames / 180);
-    // Center recovery: bottom is the primary objective, gun-side is secondary
-    // "Escaped center" alone is not valuable — position must actually improve
-    const bottomR = regainedBottom ? 1 : 0;
-    const gunSideR = regainedGunSide ? 1 : 0;
-    const escapeBonus = (escaped && !regainedBottom && !regainedGunSide) ? 0.3 : 0; // small bonus for escape-only
-    const phaseReward = this._clamp01(bottomR * 0.35 + gunSideR * 0.15 + escapeBonus * 0.10 + dmgR * 0.25 + speedR * 0.15);
-    const rf = this._ensureReinforcementProfile(sl);
-    if (rf) {
-      for (const scopeName of this._getPhaseScopes()) {
-        const scope = rf[scopeName];
-        if (!scope) continue;
-        if (scope.centerRecoveryPolicy && scope.centerRecoveryPolicy[policy]) this._updateRewardBucket(scope.centerRecoveryPolicy[policy], phaseReward);
-        if (scope.centerRecoveryFamily && scope.centerRecoveryFamily[family]) this._updateRewardBucket(scope.centerRecoveryFamily[family], phaseReward);
-      }
-    }
-    if (sl.tactical) {
-      const cro = sl.tactical.centerRecoveryOutcomes;
-      if (cro) {
-        cro.attempts++;
-        if (escaped) cro.escapedCenter++;
-        if (regainedBottom) cro.regainedBottom++;
-        if (regainedGunSide) cro.regainedGunSide++;
-        cro.avgDmgTakenDuring = cro.attempts > 1 ? cro.avgDmgTakenDuring * 0.8 + dmgTaken * 0.2 : dmgTaken;
-        cro.avgDuration = cro.attempts > 1 ? cro.avgDuration * 0.8 + frames * 0.2 : frames;
-      }
-      if (sl.tactical.centerRecoveryFailStreaks && policy in sl.tactical.centerRecoveryFailStreaks) {
-        if (!escaped) sl.tactical.centerRecoveryFailStreaks[policy] = (sl.tactical.centerRecoveryFailStreaks[policy] || 0) + 1;
-        else sl.tactical.centerRecoveryFailStreaks[policy] = 0;
-      }
-    }
-    ai._lastCenterRecoveryPolicy = policy;
-    ai._lastCenterRecoveryFamily = family;
-    ai._centerRecoveryPolicy = null;
-    ai._centerRecoveryFamily = null;
-    ai._centerRecoveryFrames = 0;
-    ai._centerRecoveryStartDmg = 0;
-    ai._centerRecoveryCommitDir = 0;
-    ai._crWallRedirects = 0;
-    ai._crStartLaneQuality = undefined;
-    ai._crBestLaneQuality = undefined;
-    ai._crStartX = undefined;
-    ai._crStartY = undefined;
   },
 
   // v11: Wall pressure policy picker
@@ -4371,43 +4221,6 @@ const SparSystem = {
       noAdvantageState,
     };
 
-    // --- vNext: Oscillation detection (horizontal jitter without progress) ---
-    // Lightweight: track sign flips and net displacement with counters, no array
-    const prevCenterX = typeof ai._prevCenterX === 'number' ? ai._prevCenterX : bot.x;
-    const frameDeltaX = bot.x - prevCenterX;
-    ai._prevCenterX = bot.x;
-    const curSign = frameDeltaX > 0.3 ? 1 : (frameDeltaX < -0.3 ? -1 : 0);
-    if (curSign !== 0 && typeof ai._prevMoveSign === 'number' && ai._prevMoveSign !== 0 && curSign !== ai._prevMoveSign) {
-      ai._oscSignFlips = (ai._oscSignFlips || 0) + 1;
-    }
-    if (curSign !== 0) ai._prevMoveSign = curSign;
-    ai._oscNetDisp = (ai._oscNetDisp || 0) + frameDeltaX;
-    ai._oscWindow = (ai._oscWindow || 0) + 1;
-    // Every 16 frames, evaluate and reset
-    let centerOscillating = false;
-    if (ai._oscWindow >= 16) {
-      if ((ai._oscSignFlips || 0) >= 4 && Math.abs(ai._oscNetDisp || 0) < 15) {
-        centerOscillating = true;
-        const _sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
-        if (_sl && _sl.tactical) {
-          if (typeof _sl.tactical.centerOscillationCount !== 'number') _sl.tactical.centerOscillationCount = 0;
-          _sl.tactical.centerOscillationCount++;
-        }
-      }
-      ai._oscSignFlips = 0;
-      ai._oscNetDisp = 0;
-      ai._oscWindow = 0;
-    }
-
-    // --- vNext: Center-trapped state detection ---
-    const inCenterBand = Math.abs(bot.x - midX) < arenaW * 0.18;
-    const centerTrapped = !isOpening && !hasBottom &&
-      (enemyHasBottom || verticalLane < 0.45) &&
-      (badGunSide || laneQuality < 0.5) &&
-      inCenterBand &&
-      !ai._escapePolicy && !member.gun.reloading &&
-      SparState.phase === 'fighting';
-
     // --- v8 anti-bottom engagement lifecycle (hysteresis + cooldown) ---
     const c = SparState._matchCollector;
     // Cooldown: prevent re-open for 30 frames after finalize
@@ -4477,10 +4290,7 @@ const SparSystem = {
         this._finalizeGunSideEngagement(ai, false);
         ai._gunSideCooldown = 20;
       }
-      // Only open escape if CR is not active and won't immediately take over
-      // centerTrapped states are owned by CR, not escape — don't fight for ownership
-      if (!ai._escapePolicy && !(ai._escapeCooldown > 0) &&
-          !ai._centerRecoveryPolicy && !centerTrapped && !centerOscillating) {
+      if (!ai._escapePolicy && !(ai._escapeCooldown > 0)) {
         const chosenEscape = this._pickEscapePolicy(pm, laneInfo);
         ai._escapePolicy = chosenEscape;
         ai._escapeFamily = (typeof SPAR_ESCAPE_FAMILY_MAP !== 'undefined') ? SPAR_ESCAPE_FAMILY_MAP[chosenEscape] : 'break';
@@ -4503,7 +4313,7 @@ const SparSystem = {
       }
     // --- Advantage chaining: peekPressure activation ---
     // When bot HAS gun-side but NOT bottom, use gun-side peek to pressure opponent into losing bottom
-    } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic && !ai._centerRecoveryPolicy
+    } else if (!isOpening && !ai._escapePolicy && !ai._antiBottomTactic
       && !badGunSide && laneQuality > 0.55 && !hasBottom && enemyHasBottom) {
       if (!ai._gunSidePolicy && !(ai._gunSideCooldown > 0)) {
         ai._gunSidePolicy = 'peekPressure';
@@ -4515,191 +4325,6 @@ const SparSystem = {
         ai._gunSideLaneShape = laneShape;
         ai._peekPressureStartBottom = false;
       }
-    }
-
-    // --- vNext: Center recovery engagement lifecycle ---
-    if (ai._centerRecoveryCooldown > 0) ai._centerRecoveryCooldown--;
-    if (ai._centerRecoveryPolicy) {
-      ai._centerRecoveryFrames++;
-      // Track best lane quality achieved during this CR engagement
-      if (typeof ai._crStartLaneQuality === 'undefined') ai._crStartLaneQuality = laneQuality;
-      if (typeof ai._crBestLaneQuality === 'undefined') ai._crBestLaneQuality = laneQuality;
-      if (laneQuality > ai._crBestLaneQuality) ai._crBestLaneQuality = laneQuality;
-      // Track position progress: how much lateral displacement toward target
-      if (typeof ai._crStartX === 'undefined') ai._crStartX = bot.x;
-      if (typeof ai._crStartY === 'undefined') ai._crStartY = bot.y;
-
-      // Success: regained bottom OR regained favorable gun-side (not just "left center band")
-      // Bottom is the primary win condition. Gun-side recovery only counts if also out of center.
-      const regainedRealPosition = hasBottom || (!badGunSide && laneQuality > 0.58 && !inCenterBand);
-      const escaped = regainedRealPosition;
-      const crMinFrames = 25;
-
-      // --- CR END-REASON TRACKING ---
-      // Track WHY each CR ended for telemetry (success/escalation/wall/abort/timeout)
-      const crEndReason = (reason) => {
-        const _sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
-        if (_sl && _sl.tactical) {
-          if (!_sl.tactical.crEndReasons) _sl.tactical.crEndReasons = {};
-          _sl.tactical.crEndReasons[reason] = (_sl.tactical.crEndReasons[reason] || 0) + 1;
-        }
-      };
-
-      if (ai._centerRecoveryFrames >= crMinFrames && escaped) {
-        crEndReason('success');
-        this._finalizeCenterRecovery(ai, true, hasBottom, !badGunSide && laneQuality > 0.55);
-        ai._centerRecoveryCooldown = 25;
-      } else if (ai._centerRecoveryFrames > 180) {
-        // Timeout — failed to escape
-        crEndReason('timeout');
-        this._finalizeCenterRecovery(ai, false, hasBottom, !badGunSide && laneQuality > 0.55);
-        ai._centerRecoveryCooldown = 25;
-      } else if (ai._centerRecoveryFrames > 0 && ai._centerRecoveryFrames % 40 === 0 && !escaped) {
-        // Progress check: is the bot making real progress toward its goal?
-        // Measure lane quality improvement AND positional displacement since CR started
-        const laneImproved = (ai._crBestLaneQuality || 0) > (ai._crStartLaneQuality || 0) + 0.08;
-        const posDisp = Math.sqrt(
-          (bot.x - (ai._crStartX || bot.x)) ** 2 +
-          (bot.y - (ai._crStartY || bot.y)) ** 2
-        );
-        const hasMadeProgress = laneImproved || posDisp > 60;
-
-        if (hasMadeProgress) {
-          // Making real progress — DON'T escalate, just reset the progress baseline
-          // and let it continue working toward the goal
-          ai._crStartLaneQuality = laneQuality;
-          ai._crStartX = bot.x;
-          ai._crStartY = bot.y;
-        } else {
-          // No real progress in 40f — escalate: switch policy and direction
-          crEndReason('escalation');
-          const crFamily = ai._centerRecoveryFamily;
-          this._finalizeCenterRecovery(ai, false, false, false);
-          ai._centerRecoveryCooldown = 0; // immediate re-open (escalation, not failure cooldown)
-          // Force wideUnderEntry if bait family failed, or re-pick cross with opposite dir
-          if (crFamily === 'bait') {
-            ai._centerRecoveryPolicy = 'wideUnderEntry';
-            ai._centerRecoveryFamily = 'under';
-          } else {
-            ai._centerRecoveryPolicy = 'crossCommit';
-            ai._centerRecoveryFamily = 'cross';
-          }
-          ai._centerRecoveryFrames = 0;
-          ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
-          ai._crWallRedirects = 0;
-          ai._crStartLaneQuality = laneQuality;
-          ai._crBestLaneQuality = laneQuality;
-          ai._crStartX = bot.x;
-          ai._crStartY = bot.y;
-          // Flip commit direction on escalation
-          ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
-          // Wall safety check on new direction
-          if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
-          else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
-        }
-      }
-      // Wall contact during recovery = REDIRECT, not kill
-      // The bot hit a wall — flip commit direction and keep going (wall is not an exit)
-      // Only truly fail if bot has been wall-stuck for multiple redirect attempts
-      if (ai._centerRecoveryPolicy && ai._centerRecoveryFrames >= 5 && (nearLeftWallBase || nearRightWallBase)) {
-        ai._crWallRedirects = (ai._crWallRedirects || 0) + 1;
-        if (ai._crWallRedirects >= 3) {
-          // 3+ wall contacts — this recovery is truly stuck, finalize as failure
-          crEndReason('wallFail');
-          this._finalizeCenterRecovery(ai, false, false, false);
-          ai._centerRecoveryCooldown = 30;
-          ai._crWallRedirects = 0;
-        } else {
-          // Flip direction and continue — wall is a bounce, not a stop
-          ai._centerRecoveryCommitDir = nearLeftWallBase ? 1 : -1;
-        }
-      }
-      // Only abort CR for a true corner trap (physically stuck in corner with enemy blocking exit)
-      // Do NOT abort for noAdvantageState or lostBottomAndNoLane — those are the states CR fixes
-      if (ai._centerRecoveryPolicy && topCornerTrapped && ai._centerRecoveryFrames >= 15) {
-        crEndReason('cornerAbort');
-        this._finalizeCenterRecovery(ai, false, false, false);
-        ai._centerRecoveryCooldown = 15;
-      }
-    }
-    // Open center recovery if center-trapped — but NOT during antiBottom.
-    // AntiBottom already handles crossing to gun-side + retaking bottom.
-    // CR was killing antiBottom tactics every time the bot entered the center band,
-    // preventing any crossing from ever completing.
-    if (centerTrapped && !ai._centerRecoveryPolicy && !(ai._centerRecoveryCooldown > 0)
-      && !ai._antiBottomTactic) {
-      // Finalize active escape — CR is the specific fix for this state
-      if (ai._escapePolicy && ai._escapeFrames >= 5) {
-        this._finalizeEscapeEngagement(ai, false);
-        ai._escapeCooldown = 0; // no cooldown — CR takes over immediately
-      }
-      // Finalize gunSide if active (center recovery takes priority)
-      if (ai._gunSidePolicy && ai._gunSideFrames >= 15) {
-        this._finalizeGunSideEngagement(ai, false);
-        ai._gunSideCooldown = 15;
-      }
-      // Finalize midPressure if active
-      if (ai._midPressurePolicy && (ai._midPressureFrames || 0) >= 15) {
-        const mpDmg = (ai._matchDmgDealt || 0) - (ai._midPressureStartDmg || 0);
-        this._finalizeMidFightPressure(ai, mpDmg);
-        ai._midPressureCooldown = 15;
-      }
-      const crCtx = {
-        laneQuality,
-        enemyHasStrongBottom: enemyHasBottom && verticalLane < 0.3,
-        playerShootsFast: pm && pm.playerShootsFast,
-        nearWallExit: nearLeftWallBase || nearRightWallBase,
-        oscillating: centerOscillating,
-      };
-      const crPolicy = this._pickCenterRecoveryPolicy(pm, crCtx);
-      const crFamilyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
-        ? SPAR_CENTER_RECOVERY_FAMILY_MAP
-        : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
-      ai._centerRecoveryPolicy = crPolicy;
-      ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
-      ai._centerRecoveryFrames = 0;
-      ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
-      ai._crWallRedirects = 0;
-      // Pick commit direction: away from enemy, but NEVER toward a nearby wall
-      const awayFromEnemy = -Math.sign(dx || 1) || (Math.random() < 0.5 ? -1 : 1);
-      // Wall safety: if committing toward a wall within 4 tiles, flip direction
-      if (awayFromEnemy < 0 && bot.x < TILE * 4) {
-        ai._centerRecoveryCommitDir = 1;
-      } else if (awayFromEnemy > 0 && bot.x > arenaW - TILE * 4) {
-        ai._centerRecoveryCommitDir = -1;
-      } else {
-        ai._centerRecoveryCommitDir = awayFromEnemy;
-      }
-    }
-    // Oscillation rescue: if oscillating without a recovery policy, force one immediately
-    // centerRecovery preempts antiBottom AND escape — the exact state CR is designed to fix
-    if (centerOscillating && !ai._centerRecoveryPolicy &&
-        !isOpening && !(ai._centerRecoveryCooldown > 0) &&
-        SparState.phase === 'fighting') {
-      // Finalize active escape — CR is the specific fix for oscillation
-      if (ai._escapePolicy && ai._escapeFrames >= 5) {
-        this._finalizeEscapeEngagement(ai, false);
-        ai._escapeCooldown = 0;
-      }
-      // Finalize active antiBottom if present — centerRecovery owns this state
-      if (ai._antiBottomTactic && ai._antiBottomFrames >= 5) {
-        this._finalizeAntiBottomEngagement(ai, false, SparState._matchCollector);
-        ai._antiBottomCooldown = 0; // no cooldown — CR takes over immediately
-        ai._antiBottomHysteresisFrames = 0;
-      }
-      const crCtx = { laneQuality, oscillating: true, nearWallExit: nearLeftWallBase || nearRightWallBase };
-      const crPolicy = this._pickCenterRecoveryPolicy(pm, crCtx);
-      const crFamilyMap = typeof SPAR_CENTER_RECOVERY_FAMILY_MAP !== 'undefined'
-        ? SPAR_CENTER_RECOVERY_FAMILY_MAP
-        : { crossCommit: 'cross', fakeCrossBreak: 'cross', baitShotDrop: 'bait', wideUnderEntry: 'under' };
-      ai._centerRecoveryPolicy = crPolicy;
-      ai._centerRecoveryFamily = crFamilyMap[crPolicy] || 'cross';
-      ai._centerRecoveryFrames = 0;
-      ai._centerRecoveryStartDmg = ai._matchDmgTaken || 0;
-      ai._crWallRedirects = 0;
-      // Wall safety: pick direction away from nearest wall
-      const oscDir = bot.x < midX ? 1 : -1;
-      ai._centerRecoveryCommitDir = (bot.x < TILE * 4) ? 1 : (bot.x > arenaW - TILE * 4) ? -1 : oscDir;
     }
 
     // --- Strafe helper (used by all behaviors) ---
@@ -4755,18 +4380,17 @@ const SparSystem = {
     }
 
     // === MOVEMENT AUTHORITY: determine which system owns movement this frame ===
-    // Priority: escape > centerRecovery > antiBottom > gunSide > wallPressure > midPressure > neutral
+    // Priority: escape > antiBottom > gunSide > wallPressure > midPressure > neutral
     // modifierLevel: 2=minimal (only wall safety, collision, freeze, dodge-reduced), 1=medium, 0=full
     const movementOwner =
       ai._escapePolicy ? 'escape' :
-      ai._centerRecoveryPolicy ? 'centerRecovery' :
       (enemyHasBottom && ai._antiBottomTactic) ? 'antiBottom' :
       ai._gunSidePolicy ? 'gunSide' :
       ai._wallPressurePolicy ? 'wallPressure' :
       ai._midPressurePolicy ? 'midPressure' :
       isOpening ? 'opening' :
       'neutral';
-    const modifierLevel = (movementOwner === 'escape' || movementOwner === 'centerRecovery' || movementOwner === 'antiBottom') ? 2
+    const modifierLevel = (movementOwner === 'escape' || movementOwner === 'antiBottom') ? 2
       : (movementOwner === 'gunSide' || movementOwner === 'wallPressure') ? 1
       : 0;
 
@@ -5396,28 +5020,21 @@ const SparSystem = {
       // Reset engagement if enemy lost bottom (handled by hysteresis above)
       if (!ai._antiBottomTactic) ai._antiBottomFrames = 0;
       // === NEUTRAL — neither has clear bottom, actively contest ===
-      // vNext: Skip mid-fight pressure if center recovery is active (handled in overlay section)
-      if (ai._centerRecoveryPolicy) {
-        // Minimal placeholder movement — real movement applied in center recovery overlay
-        moveX = ai.strafeDir * speed * 0.2;
-        moveY = speed * 0.05;
-      }
       // === DEAD-STATE PREVENTION: block moves that would worsen position ===
       // If disadvantaged and drifting toward center band, push laterally
       const driftingToCenter = !hasBottom && badGunSide &&
         Math.abs(bot.x - midX) < arenaW * 0.22 && Math.abs(bot.x - midX) > arenaW * 0.08;
-      if (driftingToCenter && !ai._centerRecoveryPolicy) {
-        // Push away from center band to prevent entering center-trap
+      if (driftingToCenter) {
+        // Push away from center band
         const preventDir = this._getStableCenterDir(ai, bot.x, midX) > 0 ? -1 : 1;
         moveX += preventDir * speed * 0.25;
       }
       // If disadvantaged and drifting toward wall, push toward center
       const driftingToWall = !hasBottom && (badGunSide || laneQuality < 0.5) &&
         (bot.x < TILE * 5 || bot.x > arenaW - TILE * 5);
-      if (driftingToWall && !ai._escapePolicy && !ai._centerRecoveryPolicy) {
+      if (driftingToWall && !ai._escapePolicy) {
         moveX += this._getStableCenterDir(ai, bot.x, midX) * speed * 0.3;
       }
-      if (!ai._centerRecoveryPolicy)
       // v11: Pick mid-fight pressure policy if not active (respect cooldown)
       if (!ai._midPressurePolicy && !(ai._midPressureCooldown > 0)) {
         const mpCtx = {
@@ -5577,7 +5194,7 @@ const SparSystem = {
     const _recentLandedHit = ai._lastHitFrame > 0 && (SparState.matchTimer - ai._lastHitFrame) < 30;
     const _hasCloseReason = _enemyLowHp || _recentLandedHit;
     if (!isOpening && !ai._escapePolicy && !ai._gunSidePolicy && !ai._antiBottomTactic
-      && !ai._centerRecoveryPolicy && !ai._midPressurePolicy && !ai._wallPressurePolicy
+      && !ai._midPressurePolicy && !ai._wallPressurePolicy
       && badGunSide && laneQuality < 0.55 && !_hasCloseReason) {
       suppressPeekShots = true;
     }
@@ -5604,192 +5221,6 @@ const SparSystem = {
       else if (bot.x > arenaW - TILE * 4) moveX = Math.min(moveX, -speed * 0.3);
       if (bot.y < TILE * 3) moveY = Math.max(moveY, speed * 0.1);
       if (!topCornerTrapped && laneQuality > 0.62 && !badGunSide && dist < 165) suppressPeekShots = false;
-    } else if (!isOpening && ai._centerRecoveryPolicy) {
-      // === CENTER RECOVERY — target-lane movement to reach a winning position ===
-      suppressPeekShots = true;
-      let crDir = ai._centerRecoveryCommitDir || (Math.random() < 0.5 ? -1 : 1);
-      const crPolicy = ai._centerRecoveryPolicy;
-
-      // Wall safety: if heading toward a wall, flip commit direction immediately
-      if (crDir < 0 && bot.x < TILE * 3) { crDir = 1; ai._centerRecoveryCommitDir = 1; }
-      else if (crDir > 0 && bot.x > arenaW - TILE * 3) { crDir = -1; ai._centerRecoveryCommitDir = -1; }
-
-      // --- TARGET-LANE COMPUTATION ---
-      // Cross policies: target the X that restores favorable gun-side
-      // Bottom policies: target the position under the opponent with lateral offset
-      const botGunSide = this._getEntityGunSide(bot);
-      // Right gun side → muzzle shoots from left → bot should be RIGHT of enemy
-      // Left gun side → muzzle shoots from right → bot should be LEFT of enemy
-      let favorableGunSideDir = (botGunSide === 'right') ? 1 : -1;
-      const sideOffsetWide = this._getSparSideOffsetWide();
-
-      // --- CORNER-AWARE TARGET VALIDATION ---
-      // If the favorable side clamps to a position too close to the enemy (within aimSlack),
-      // the target is tactically invalid — it would steer us straight into the opponent near a wall.
-      // In that case, use the OTHER side (unfavorable gun-side but valid geometry).
-      const rawCrossX = tgt.x + favorableGunSideDir * sideOffsetWide;
-      const rawBottomX = tgt.x + favorableGunSideDir * sideOffsetNear;
-      const testClampCross = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, rawCrossX));
-      const testClampBottom = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, rawBottomX));
-
-      // Target is invalid if clamping ate most of the offset (target within aimSlack of enemy X)
-      const crossClamped = Math.abs(testClampCross - tgt.x) < aimSlack;
-      const bottomClamped = Math.abs(testClampBottom - tgt.x) < aimSlack;
-      const crIsCrossPolicy = (crPolicy === 'crossCommit' || crPolicy === 'fakeCrossBreak');
-      const targetInvalid = crIsCrossPolicy ? crossClamped : bottomClamped;
-
-      if (targetInvalid) {
-        // Flip to opposite side — unfavorable gun-side but at least valid geometry
-        favorableGunSideDir = -favorableGunSideDir;
-        ai._centerRecoveryCommitDir = favorableGunSideDir;
-      }
-
-      const crossTargetX = tgt.x + favorableGunSideDir * sideOffsetWide;
-      const bottomTargetX = tgt.x + favorableGunSideDir * sideOffsetNear;
-      const bottomTargetY = tgt.y + bottomGap + 20;
-
-      // Clamp targets to arena bounds (avoid steering into walls)
-      const clampedCrossX = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, crossTargetX));
-      const clampedBottomX = Math.max(TILE * 4, Math.min(arenaW - TILE * 4, bottomTargetX));
-      const clampedBottomY = Math.min(arenaH - TILE * 3, bottomTargetY);
-
-      // If BOTH sides clamp invalid (enemy centered in arena), force space-making
-      const bothSidesInvalid = Math.abs(clampedCrossX - tgt.x) < aimSlack && Math.abs(clampedBottomX - tgt.x) < aimSlack;
-
-      // --- BULLET GAP READING ---
-      // Check if the crossing/recovery path is actually clear of bullets
-      const crossGap = this._findSafeCrossWindow(bot, tgt, team);
-      // Use gap info to decide: commit through gap, or wait/arc for a better window
-      const pathIsClear = crIsCrossPolicy ? crossGap.horizClear : crossGap.vertClear;
-      // Distance confidence: farther = more time to cross, opponent can't react
-      const distConfidence = this._clamp01((dist - 100) / 200); // 0 at 100px, 1 at 300px
-      const effectiveGapQuality = crossGap.gapQuality * distConfidence;
-      // Use gap reading to pick better cross direction
-      if (crIsCrossPolicy && crossGap.bestCrossDir !== 0 && ai._centerRecoveryFrames < 5) {
-        // Early in CR — if gap reading disagrees with current commit dir, consider flipping
-        if (crossGap.bestCrossDir !== crDir && crossGap.gapQuality > 0.6) {
-          crDir = crossGap.bestCrossDir;
-          ai._centerRecoveryCommitDir = crDir;
-        }
-      }
-
-      // --- PATH SAFETY ---
-      // Close range must be EARNED — not drifted into during recovery.
-      // Also: even if a gap exists, if too close the opponent reacts to the cross.
-      // Policy-specific safe distances (cross needs more room than bait/fake)
-      const policySafeDist = crIsCrossPolicy ? 200
-        : (crPolicy === 'wideUnderEntry') ? 210
-        : (crPolicy === 'fakeCrossBreak') ? 160
-        : 150; // baitShotDrop works at shorter range
-      const tooClose = dist < policySafeDist;
-      // needsSpace: too close OR both sides invalid OR path is blocked by bullets AND close
-      const needsSpace = tooClose || bothSidesInvalid ||
-        (!pathIsClear && dist < policySafeDist * 1.3);
-
-      // --- ARC-AROUND STEERING ---
-      // When too close during CR, move LATERALLY (perpendicular to enemy direction)
-      // toward the target side. This arcs around the enemy instead of oscillating.
-      const arcDir = crDir;
-
-      if (crPolicy === 'crossCommit') {
-        if (needsSpace) {
-          // Too close — arc laterally toward target side while backing off slightly
-          moveX = arcDir * speed * 0.75;
-          moveY = (bot.y < tgt.y) ? -speed * 0.3 : speed * 0.15; // prefer backing up if above
-        } else {
-          // Safe distance — commit to cross toward favorable gun-side
-          const goalDx = clampedCrossX - bot.x;
-          const goalDist = Math.abs(goalDx);
-          if (goalDist > 10) {
-            // Cross faster when path is clear — this is the window, commit through it
-            const crossSpeed = pathIsClear ? 1.0 : 0.85;
-            moveX = Math.sign(goalDx) * speed * crossSpeed;
-            // Descend during cross to gain bottom — that's the whole point of crossing
-            moveY = (bot.y < tgt.y) ? speed * 0.35 : speed * 0.1;
-          } else {
-            // Reached target X — descend hard toward bottom
-            moveX = ai.strafeDir * speed * 0.5;
-            moveY = (bot.y < tgt.y) ? speed * 0.45 : speed * 0.1;
-          }
-        }
-      } else if (crPolicy === 'fakeCrossBreak') {
-        if (needsSpace) {
-          // Too close — arc in the fake direction first
-          moveX = (-Math.sign(clampedCrossX - bot.x || crDir)) * speed * 0.7;
-          moveY = (bot.y < tgt.y) ? -speed * 0.35 : speed * 0.1;
-        } else if (ai._centerRecoveryFrames < 12) {
-          // Phase 1: show one direction (opposite of real target)
-          moveX = -Math.sign(clampedCrossX - bot.x || crDir) * speed * 0.7;
-          moveY = speed * 0.1;
-        } else {
-          // Phase 2: reverse and steer toward actual favorable gun-side position
-          const goalDx = clampedCrossX - bot.x;
-          if (Math.abs(goalDx) > 10) {
-            moveX = Math.sign(goalDx) * speed * 0.95;
-            moveY = (bot.y < tgt.y) ? speed * 0.25 : speed * 0.05;
-          } else {
-            moveX = ai.strafeDir * speed * 0.5;
-            moveY = (bot.y < tgt.y) ? speed * 0.3 : speed * 0.05;
-          }
-        }
-      } else if (crPolicy === 'baitShotDrop') {
-        if (needsSpace) {
-          // Too close — arc laterally with active strafe
-          moveX = arcDir * speed * 0.65;
-          moveY = (bot.y < tgt.y) ? -speed * 0.25 : speed * 0.15;
-        } else if (ai._centerRecoveryFrames < 15) {
-          // Phase 1: bait — active strafe, not standing still
-          moveX = ai.strafeDir * speed * 0.55;
-          moveY = (bot.y < tgt.y) ? speed * 0.1 : -speed * 0.05;
-        } else {
-          // Phase 2: steer toward bottom target position (under opponent)
-          const goalDx = clampedBottomX - bot.x;
-          const goalDy = clampedBottomY - bot.y;
-          const goalDist = Math.sqrt(goalDx * goalDx + goalDy * goalDy);
-          if (goalDist > 15) {
-            moveX = (goalDx / goalDist) * speed * 0.55;
-            moveY = (goalDy / goalDist) * speed * 0.75;
-          } else {
-            moveX = ai.strafeDir * speed * 0.4;
-            moveY = speed * 0.1;
-          }
-        }
-      } else if (crPolicy === 'wideUnderEntry') {
-        if (needsSpace) {
-          // Too close — arc wide laterally before descending
-          moveX = arcDir * speed * 0.8;
-          moveY = (bot.y < tgt.y) ? -speed * 0.2 : speed * 0.1;
-        } else {
-          // Safe distance — steer toward bottom target from wide angle
-          const goalDx = clampedBottomX - bot.x;
-          const goalDy = clampedBottomY - bot.y;
-          const goalDist = Math.sqrt(goalDx * goalDx + goalDy * goalDy);
-          if (goalDist > 15) {
-            moveX = (goalDx / goalDist) * speed * 0.5;
-            moveY = (goalDy / goalDist) * speed * 0.8;
-            const len = Math.sqrt(moveX * moveX + moveY * moveY);
-            if (len > 0.1) { moveX = (moveX / len) * speed; moveY = (moveY / len) * speed; }
-          } else {
-            moveX = ai.strafeDir * speed * 0.4;
-            moveY = speed * 0.1;
-          }
-        }
-      }
-
-      // --- WALL AVOIDANCE INSIDE CR ---
-      // CR movement must not drift into walls — apply nudge away from nearby walls
-      if (bot.x < TILE * 4) moveX = Math.max(moveX, speed * 0.3);
-      else if (bot.x > arenaW - TILE * 4) moveX = Math.min(moveX, -speed * 0.3);
-      if (bot.y < TILE * 3) moveY = Math.max(moveY, speed * 0.1);
-      else if (bot.y > arenaH - TILE * 3) moveY = Math.min(moveY, -speed * 0.1);
-
-      // Allow shots during center recovery:
-      // - lane is briefly clean (original condition)
-      // - OR close-range defensive firing (dist < 130, any non-terrible lane)
-      // - OR space-making phase (needsSpace = actively creating distance, can shoot defensively)
-      if (laneQuality > 0.62 && !badGunSide && dist < 160) suppressPeekShots = false;
-      if (dist < 130 && laneQuality > 0.35) suppressPeekShots = false;
-      if (needsSpace && laneQuality > 0.30) suppressPeekShots = false;
     } else if (!isOpening && ai._gunSidePolicy) {
       const awayDir = -Math.sign(dx || ai.strafeDir);
       const reAngleDir = Math.sign(bot.x - tgt.x || ai.strafeDir);
@@ -6260,8 +5691,7 @@ const SparSystem = {
     const dodge = this._getIncomingBulletDodge(bot, team);
     const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
     // During anti-bottom or center recovery, reduce dodge override so bot keeps committed
-    const inActiveCenterRecovery = !!ai._centerRecoveryPolicy;
-    const maxDodgeOverride = (inActiveAntiBottom || inActiveCenterRecovery) ? 0.45 : 0.85;
+    const maxDodgeOverride = inActiveAntiBottom ? 0.45 : 0.85;
     if (dodgeMag > 1.5) {
       // Strong dodge signal — override movement (reduced during anti-bottom)
       const overridePct = Math.min(maxDodgeOverride, dodgeMag / 4);
@@ -6294,7 +5724,7 @@ const SparSystem = {
 
     // --- Baiting: occasionally fake a direction then snap back ---
     // Skip during active anti-bottom / center recovery — don't fake directions while committed
-    if (ai.baitTimer > 0 && !inActiveAntiBottom && !inActiveCenterRecovery && modifierLevel < 2) {
+    if (ai.baitTimer > 0 && !inActiveAntiBottom && modifierLevel < 2) {
       ai.baitTimer--;
       if (ai.baitTimer > 8) {
         // Fake phase — move in bait direction
@@ -6304,7 +5734,7 @@ const SparSystem = {
       // else: snap back (use the real moveX/moveY calculated above)
     } else {
       ai.baitCooldown--;
-      if (ai.baitCooldown <= 0 && !isOpening && !inActiveAntiBottom && !inActiveCenterRecovery && modifierLevel < 2 && dist < 350 && dist > 100) {
+      if (ai.baitCooldown <= 0 && !isOpening && !inActiveAntiBottom && modifierLevel < 2 && dist < 350 && dist > 100) {
         // Start a bait — fake going one direction
         ai.baitTimer = 18; // 12 frames fake + 6 frames real snap
         // Fake toward enemy then pull back, or fake a strafe direction
@@ -6379,7 +5809,7 @@ const SparSystem = {
 
     // --- Momentum break: if active, override movement to prevent re-sticking ---
     // Cancel momentum break if an active engagement started (anti-bottom, escape, etc.)
-    if (ai._momentumBreakFrames > 0 && (ai._antiBottomTactic || ai._escapePolicy || ai._centerRecoveryPolicy)) {
+    if (ai._momentumBreakFrames > 0 && (ai._antiBottomTactic || ai._escapePolicy)) {
       ai._momentumBreakFrames = 0;
     }
     if (ai._momentumBreakFrames > 0) {
@@ -6394,7 +5824,7 @@ const SparSystem = {
     // the "stand still in a bad state" problem.
     // IMPORTANT: Uses ACTUAL position (post-collision) snapshots, not intended moveX/moveY.
     // The old approach missed body-block/wall stalls because intended movement looked fine.
-    const hasActiveOwner = !!(ai._escapePolicy || ai._centerRecoveryPolicy || ai._antiBottomTactic || ai._gunSidePolicy);
+    const hasActiveOwner = !!(ai._escapePolicy || ai._antiBottomTactic || ai._gunSidePolicy);
 
     // Snapshot position BEFORE collision for this frame (we'll compare after collision below)
     ai._stallPreX = bot.x;
@@ -6490,11 +5920,6 @@ const SparSystem = {
       if (isStalled && hasActiveOwner && ai._momentumBreakFrames <= 0 && SparState.phase === 'fighting') {
         ai._ownerStallFrames = (ai._ownerStallFrames || 0) + 10;
         if (ai._ownerStallFrames >= 10) {
-          if (ai._centerRecoveryPolicy) {
-            ai._centerRecoveryCommitDir = -(ai._centerRecoveryCommitDir || 1);
-            if (ai._centerRecoveryCommitDir < 0 && bot.x < TILE * 4) ai._centerRecoveryCommitDir = 1;
-            else if (ai._centerRecoveryCommitDir > 0 && bot.x > arenaW - TILE * 4) ai._centerRecoveryCommitDir = -1;
-          }
           const breakDir = (bot.x < midX) ? 1 : -1;
           const breakDirY = (bot.y < tgt.y) ? 0.4 : -0.15;
           ai._stallBreakActive = true;
