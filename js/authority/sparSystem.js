@@ -5934,22 +5934,10 @@ const SparSystem = {
       }
     }
 
-    // --- Bullet dodging (reactive, OVERRIDES movement when urgent) ---
+    // --- Bullet dodge detection (computed here, APPLIED after movement plan) ---
+    // Dodge must be applied after the plan so it's never overwritten.
     const dodge = this._getIncomingBulletDodge(bot, team);
     const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
-    // During anti-bottom or center recovery, reduce dodge override so bot keeps committed
-    const maxDodgeOverride = inActiveAntiBottom ? 0.45 : 0.85;
-    if (dodgeMag > 1.5) {
-      // Strong dodge signal — override movement (reduced during anti-bottom)
-      const overridePct = Math.min(maxDodgeOverride, dodgeMag / 4);
-      moveX = moveX * (1 - overridePct) + dodge.x * speed * overridePct * 1.5;
-      moveY = moveY * (1 - overridePct) + dodge.y * speed * overridePct * 1.5;
-    } else if (dodgeMag > 0.1) {
-      // Mild dodge — additive (reduced during anti-bottom)
-      const dodgeScale = inActiveAntiBottom ? 0.5 : 1.0;
-      moveX += dodge.x * speed * dodgeScale;
-      moveY += dodge.y * speed * dodgeScale;
-    }
 
     // Separation from allies
     for (const a of allies) {
@@ -6169,6 +6157,28 @@ const SparSystem = {
       // Tactical states: no plan lock — follow the tactic's computed direction each frame
       ai._movePlanFrames = 0;
       ai._movePlanState = _movePlanCurrentState;
+    }
+
+    // --- Bullet dodging (reactive, applied AFTER movement plan so never overwritten) ---
+    // The plan locks a committed direction, but dodge is life-or-death and must always work.
+    // During anti-bottom, reduce dodge override so bot keeps committed to the cross.
+    if (dodgeMag > 1.5) {
+      // Strong dodge — override a large portion of movement
+      const maxDodgeOverride = inActiveAntiBottom ? 0.45 : 0.85;
+      const overridePct = Math.min(maxDodgeOverride, dodgeMag / 4);
+      moveX = moveX * (1 - overridePct) + dodge.x * speed * overridePct * 1.5;
+      moveY = moveY * (1 - overridePct) + dodge.y * speed * overridePct * 1.5;
+    } else if (dodgeMag > 0.3) {
+      // Mild dodge — additive on top of current direction
+      const dodgeScale = inActiveAntiBottom ? 0.5 : 1.0;
+      moveX += dodge.x * speed * dodgeScale;
+      moveY += dodge.y * speed * dodgeScale;
+      // Re-normalize to full speed after dodge adjustment
+      const postDodgeLen = Math.sqrt(moveX * moveX + moveY * moveY);
+      if (postDodgeLen > 1) {
+        moveX = (moveX / postDodgeLen) * speed;
+        moveY = (moveY / postDodgeLen) * speed;
+      }
     }
 
     // Freeze penalty after shooting — applied AFTER normalization (the only valid speed reduction)
