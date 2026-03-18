@@ -1561,8 +1561,11 @@ const ENTITY_RENDERERS = {
       if (_bIdx >= 0 && typeof DINER_BOOTHS !== 'undefined' && DINER_BOOTHS[_bIdx] && DINER_BOOTHS[_bIdx]._plates && DINER_BOOTHS[_bIdx]._plates.length > 0) {
         const plates = DINER_BOOTHS[_bIdx]._plates;
         const tableY = ey + rowH + rowH / 2;
+        // Center plates within the middle of the table
+        const plateMargin = cw * 0.25;
+        const plateSpan = cw - plateMargin * 2;
         for (let pi = 0; pi < Math.min(plates.length, 4); pi++) {
-          const px = ex + 20 + pi * ((cw - 40) / Math.max(plates.length - 1, 1));
+          const px = ex + plateMargin + (plates.length > 1 ? pi * (plateSpan / (plates.length - 1)) : plateSpan / 2);
           // Plate
           ctx.fillStyle = '#e8e0d0';
           ctx.beginPath(); ctx.ellipse(px, tableY, 10, 5, 0, 0, Math.PI * 2); ctx.fill();
@@ -1666,13 +1669,24 @@ const ENTITY_RENDERERS = {
       ctx.fillRect(ex + cw * 0.35, ey + ch * 0.88, cw * 0.3, 3);
       ctx.fillStyle = '#888';
       ctx.fillRect(ex + cw * 0.42, ey + ch * 0.88, cw * 0.16, 2);
-      // Arcade number label
+      // Arcade number label — bigger font, gold number
       let _arcadeNum = 0;
       if (e.tx === 34) _arcadeNum = 1;
       else if (e.tx === 36) _arcadeNum = 2;
       if (_arcadeNum > 0) {
-        ctx.font = "bold 7px monospace"; ctx.fillStyle = '#c0c0c0'; ctx.textAlign = "center";
-        ctx.fillText("Arcade " + _arcadeNum, ex + cw / 2, ey + ch + 10);
+        ctx.textAlign = "center";
+        // "Arcade" in white
+        ctx.font = "bold 11px monospace"; ctx.fillStyle = '#e0e0e8';
+        const arcLabel = "Arcade ";
+        const arcLabelW = ctx.measureText(arcLabel).width;
+        const numStr = String(_arcadeNum);
+        const totalW = arcLabelW + ctx.measureText(numStr).width;
+        const startX = ex + cw / 2 - totalW / 2;
+        ctx.textAlign = "left";
+        ctx.fillText(arcLabel, startX, ey + ch + 12);
+        // Number in gold
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(numStr, startX + arcLabelW, ey + ch + 12);
         ctx.textAlign = "left";
       }
   },

@@ -862,6 +862,21 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
+      // Gamer NPC: re-render number portion of name in gold
+      if (npc._role === 'gamer' && npc._arcadeNumber) {
+        ctx.font = "bold 13px monospace";
+        const gamerLabel = "Gamer ";
+        const gamerLabelW = ctx.measureText(gamerLabel).width;
+        const fullNameW = ctx.measureText(npc.name).width;
+        // Name tag center is at npc.x, npc.y + 26 (matches drawChar tag position)
+        const tagCX = npc.x;
+        const tagCY = npc.y + 26;
+        const numX = tagCX - fullNameW / 2 + gamerLabelW;
+        ctx.fillStyle = '#ffd700';
+        ctx.textAlign = "left";
+        ctx.fillText(String(npc._arcadeNumber), numX, tagCY + 5);
+        ctx.textAlign = "left";
+      }
       // Table number badge to the right of NPC name (customer groups only)
       if (npc._tableNumber && !npc.isWaitress) {
         ctx.font = "bold 13px monospace";
@@ -879,10 +894,19 @@ function draw() {
       // Food indicator — plate with round items (diner style)
       if (npc.hasFood) {
         let fOffX = 0, fOffY = -36;
-        if (npc.dir === 2) fOffX = -18;
-        else if (npc.dir === 3) fOffX = 18;
-        else if (npc.dir === 0) fOffY = -32;
-        else if (npc.dir === 1) fOffY = -42;
+        if (npc.state === 'eating') {
+          // Eating: place food between NPC and table (in front of them)
+          if (npc.dir === 0) { fOffX = 0; fOffY = 14; }       // facing south → food below
+          else if (npc.dir === 1) { fOffX = 0; fOffY = -18; }  // facing north → food above
+          else if (npc.dir === 2) { fOffX = -18; fOffY = 0; }
+          else if (npc.dir === 3) { fOffX = 18; fOffY = 0; }
+        } else {
+          // Carrying: food above head
+          if (npc.dir === 2) fOffX = -18;
+          else if (npc.dir === 3) fOffX = 18;
+          else if (npc.dir === 0) fOffY = -32;
+          else if (npc.dir === 1) fOffY = -42;
+        }
         const bobF = npc.moving ? Math.sin(npc.frame * Math.PI / 2) * 1.5 : 0;
         const fx = npc.x + fOffX, fy = npc.y + fOffY + bobF;
         // Shadow

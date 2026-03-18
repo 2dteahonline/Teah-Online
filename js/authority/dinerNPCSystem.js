@@ -25,6 +25,7 @@ const DINER_SPOTS = {
   customerExit: { tx: 45, ty: 21 },  // same as exit
   passWindow:  { tx: 23, ty: 14 },
   counterWait: { tx: 23, ty: 16 },   // waitress idle spot — under kitchen door, facing south
+  pickupSpot:  { tx: 12, ty: 16 },   // waitress walks here to pick up tray (in front of pickup counter)
 };
 
 // ===================== BOOTHS =====================
@@ -43,8 +44,8 @@ const DINER_BOOTHS = [
 
 // ===================== ARCADE SPOTS (centered in dining area) =====================
 const DINER_ARCADE_SPOTS = [
-  { tx: 34, ty: 18, claimedBy: null },
-  { tx: 36, ty: 18, claimedBy: null },
+  { tx: 34, ty: 19, claimedBy: null },
+  { tx: 36, ty: 19, claimedBy: null },
 ];
 
 // ===================== CONFIG =====================
@@ -354,7 +355,7 @@ function _recoverDinerNPC(npc) {
 
 // ===================== MOVEMENT =====================
 
-const _dinerMoveSkipStates = new Set(['eating', 'waiting_at_booth', 'arcade_playing', '_despawn', 'taking_order', 'submitting_ticket', 'serving', 'gamer_playing']);
+const _dinerMoveSkipStates = new Set(['eating', 'waiting_at_booth', 'arcade_playing', '_despawn', 'taking_order', 'submitting_ticket', 'serving', 'gamer_playing', 'pickup_tray']);
 
 function moveDinerNPC(npc) {
   _cMoveNPC(npc, {
@@ -393,12 +394,14 @@ function _spawnDinerGroupNPC(partyId, isLeader, extraOverrides) {
 
 // Spawn a gamer NPC at the LEFT entrance door
 function _spawnDinerGamerNPC() {
-  // Only allow 1 gamer per arcade spot — check NPCs still in diner (including those walking to exit)
-  const existingGamers = dinerNPCs.filter(n => n._role === 'gamer' && n.state !== '_despawn');
-  if (existingGamers.length >= DINER_ARCADE_SPOTS.length) return null;
-
+  // Only allow 1 gamer per arcade number — existing gamer must fully despawn before next spawns
   const arcadeIdx = _findFreeArcadeSpot();
   if (arcadeIdx < 0) return null;
+
+  const arcadeNum = arcadeIdx + 1;
+  // Check if a gamer with this arcade number already exists (even if walking to exit)
+  const duplicate = dinerNPCs.some(n => n._role === 'gamer' && n._arcadeNumber === arcadeNum && n.state !== '_despawn');
+  if (duplicate) return null;
 
   const partyId = ++_dinerPartyId;
   const party = {
@@ -418,8 +421,8 @@ function _spawnDinerGamerNPC() {
     claimedSeatIdx: -1,
     _claimedArcadeIdx: arcadeIdx,
     _recipeIngredients: null,
-    _laneOffX: (Math.random() - 0.5) * 32,
-    _laneOffY: (Math.random() - 0.5) * 32,
+    _laneOffX: 0, // no lane jitter for gamers — prevents clipping arcade cabinets
+    _laneOffY: 0,
     _recoveryTried: false,
     _routeIntent: null,
     isDinerNPC: true,
@@ -515,31 +518,50 @@ function _updateDinerWaitress() {
         // Ensure booth is free (release previous claim if needed) and claim it
         const targetBooth = DINER_BOOTHS[serve.boothId];
         if (targetBooth && targetBooth.claimedBy != null && targetBooth.claimedBy !== -1) {
-          // Booth still occupied — try a different one
           const altIdx = _findFreeBooth(2);
           if (altIdx < 0) break;
           serve.boothId = altIdx;
         }
         DINER_BOOTHS[serve.boothId].claimedBy = -1; // mark as claimed by incoming order
 
-        w._targetBoothId = serve.boothId;
-        w._targetPartyId = serve.partyId;
-        w.hasFood = true;
-        w._recipeIngredients = serve.recipeIngredients || null;
-        w._allTrayItems = serve.allTrayItems || [];
-        _dinerPendingServe.shift(); // remove from queue
-
-        // Update TV queue — mark as delivered
-        const tvIdx = _dinerTVQueue.findIndex(e => e.partyId === serve.partyId && (e.status === 'pending' || e.status === 'ready'));
-        if (tvIdx >= 0) {
-          _dinerTVQueue[tvIdx].status = 'delivered';
-          _dinerTVQueue[tvIdx]._removeTimer = 300; // remove after 5 seconds
-        }
-
-        // Route from counter to booth
-        const route = _routeCounterToBooth(serve.boothId);
-        _cStartRoute(w, route, 'serving', DINER_NPC_CONFIG.waitressServeDuration, { kind: 'pass_to_booth', boothId: serve.boothId });
+        // Stash serve data — waitress walks to pickup counter first
+        w._pendingServe = serve;
+        const pickupRoute = [_cWP(DINER_SPOTS.pickupSpot.tx, DINER_SPOTS.pickupSpot.ty)];
+        _cStartRoute(w, pickupRoute, 'pickup_tray', 30, null); // 0.5s pause at counter
       }
+      break;
+    }
+
+    case 'pickup_tray': {
+      // At pickup counter — face north toward the counter, pause, then grab tray
+      w.moving = false;
+      w.dir = 1; // face north toward counter
+      w.x = DINER_SPOTS.pickupSpot.tx * TILE + TILE / 2;
+      w.y = DINER_SPOTS.pickupSpot.ty * TILE + TILE / 2;
+      if (w.stateTimer > 0) { w.stateTimer--; return; }
+
+      // Pick up the tray
+      const serve = w._pendingServe;
+      if (!serve) { w.state = 'idle'; break; }
+      w._pendingServe = null;
+
+      w._targetBoothId = serve.boothId;
+      w._targetPartyId = serve.partyId;
+      w.hasFood = true;
+      w._recipeIngredients = serve.recipeIngredients || null;
+      w._allTrayItems = serve.allTrayItems || [];
+      _dinerPendingServe.shift(); // remove from queue
+
+      // Update TV queue — mark as delivered
+      const tvIdx = _dinerTVQueue.findIndex(e => e.partyId === serve.partyId && (e.status === 'pending' || e.status === 'ready'));
+      if (tvIdx >= 0) {
+        _dinerTVQueue[tvIdx].status = 'delivered';
+        _dinerTVQueue[tvIdx]._removeTimer = 300;
+      }
+
+      // Route from pickup counter to booth
+      const route = _routeCounterToBooth(serve.boothId);
+      _cStartRoute(w, route, 'serving', DINER_NPC_CONFIG.waitressServeDuration, { kind: 'pass_to_booth', boothId: serve.boothId });
       break;
     }
 
@@ -928,6 +950,7 @@ const DINER_NPC_AI = {
   taking_order: (npc) => { /* handled by _updateDinerWaitress */ },
   submitting_ticket: (npc) => { /* handled by _updateDinerWaitress */ },
   serving: (npc) => { /* handled by _updateDinerWaitress */ },
+  pickup_tray: (npc) => { /* handled by _updateDinerWaitress */ },
 };
 
 // ===================== PARTY HELPERS =====================
@@ -1039,7 +1062,7 @@ function updateDinerNPCs() {
     npcList: dinerNPCs,
     stateHandlers: DINER_NPC_AI,
     moveFn: moveDinerNPC,
-    exemptIdleStates: new Set(['eating', 'waiting_at_booth', 'post_meal', 'gamer_playing', 'idle', 'taking_order', 'submitting_ticket', 'serving']),
+    exemptIdleStates: new Set(['eating', 'waiting_at_booth', 'post_meal', 'gamer_playing', 'idle', 'taking_order', 'submitting_ticket', 'serving', 'pickup_tray']),
     onIdleTimeout: (npc) => {
       if (npc.isWaitress) return; // never despawn waitress
       npc._idleTime = 0;
@@ -1066,6 +1089,7 @@ function updateDinerNPCs() {
         npc._targetPartyId = -1;
         npc.hasFood = false;
         npc._recipeIngredients = null;
+        npc._pendingServe = null;
         npc._allTrayItems = null;
         return;
       }
