@@ -1416,7 +1416,7 @@ const SparSystem = {
     const hpBase = SPAR_CONFIG.HP_BASELINE || 100;
     const regainR = regainedBottom ? 1 : 0;
     const dmgR = Math.max(0, Math.min(1, 1 - dmgTaken / (hpBase * 0.5)));
-    const speedR = Math.max(0, Math.min(1, 1 - frames / 300));
+    const speedR = Math.max(0, Math.min(1, 1 - frames / 120));
     const phaseReward = regainR * 0.50 + dmgR * 0.28 + speedR * 0.22;
 
     // Update reinforcement buckets — respect training/self-play data separation
@@ -4794,6 +4794,7 @@ const SparSystem = {
         ai._antiBottomPhaseFrames = 0;
         ai._antiBottomDmgAtStart = ai._matchDmgTaken || 0;
         ai._antiBottomStartFrame = SparState.matchTimer;
+        ai._antiBottomStallCount = 0; // track stalls per engagement
         // Pick offset direction: ALWAYS target favorable gun-side for crossing
         // Right gun → go RIGHT of enemy (+1), Left gun → go LEFT (-1)
         // This ensures every antiBottom tactic naturally crosses to the correct side
@@ -5027,10 +5028,10 @@ const SparSystem = {
         moveY = (moveY / abLen) * speed;
       }
 
-      // --- Timeout: force re-pick after 300 frames ---
-      if (ai._antiBottomFrames > 300) {
+      // --- Timeout: force re-pick after 120 frames ---
+      if (ai._antiBottomFrames > 120) {
         this._finalizeAntiBottomEngagement(ai, false, c);
-        ai._antiBottomCooldown = 30;
+        ai._antiBottomCooldown = 10;
         ai._antiBottomHysteresisFrames = 0;
       }
 
@@ -5827,8 +5828,10 @@ const SparSystem = {
     }
 
     // --- Momentum break: if active, override movement to prevent re-sticking ---
-    // Cancel momentum break if an active engagement started (anti-bottom, escape, etc.)
-    if (ai._momentumBreakFrames > 0 && (ai._antiBottomTactic || ai._escapePolicy)) {
+    // Allow stall-detector breaks during anti-bottom/escape — they're the only way
+    // to physically escape body-block situations. Only cancel non-stall breaks
+    // (e.g., idle breaks that fire coincidentally).
+    if (ai._momentumBreakFrames > 0 && (ai._antiBottomTactic || ai._escapePolicy) && !ai._stallBreakActive) {
       ai._momentumBreakFrames = 0;
     }
     if (ai._momentumBreakFrames > 0) {
@@ -5938,6 +5941,16 @@ const SparSystem = {
             if (typeof _sl2.tactical.ownerStallBreaks !== 'number') _sl2.tactical.ownerStallBreaks = 0;
             _sl2.tactical.ownerStallBreaks++;
           }
+          // Track stalls per anti-bottom engagement — abandon failing tactics
+          if (ai._antiBottomTactic) {
+            ai._antiBottomStallCount = (ai._antiBottomStallCount || 0) + 1;
+            if (ai._antiBottomStallCount >= 3) {
+              // Tactic is body-blocked — abandon and force a different one
+              this._finalizeAntiBottomEngagement(ai, false, c);
+              ai._antiBottomCooldown = 10; // short cooldown — pick new tactic fast
+              ai._antiBottomHysteresisFrames = 0;
+            }
+          }
         }
       } else {
         ai._ownerStallFrames = 0;
@@ -5949,8 +5962,14 @@ const SparSystem = {
         !enemyReloading && !ai._wallPressurePolicy && SparState.phase === 'fighting';
       if (isInNeutralOpen && isStalled && ai._momentumBreakFrames <= 0) {
         const breakDir2 = (bot.x < midX) ? 1 : -1;
+        const breakDirY2 = (bot.y < tgt.y) ? 0.35 : -0.15;
         ai.strafeDir = breakDir2;
         ai.strafeTimer = 20 + Math.floor(Math.random() * 20);
+        // Commit to the break via momentum break — just changing strafeDir
+        // gets overridden by the next force computation
+        ai._momentumBreakFrames = 15 + Math.floor(Math.random() * 10);
+        ai._momentumBreakDirX = breakDir2 * 0.75;
+        ai._momentumBreakDirY = breakDirY2;
         const sl2 = typeof sparLearning !== 'undefined' ? sparLearning : null;
         if (sl2 && sl2.tactical) {
           if (typeof sl2.tactical.idleBreaks !== 'number') sl2.tactical.idleBreaks = 0;
