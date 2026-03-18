@@ -4714,9 +4714,10 @@ const SparSystem = {
       // Dodge bullets even during opening — don't just tank hits
       const openDodge = this._getIncomingBulletDodge(bot, team);
       const openDodgeMag = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
-      if (openDodgeMag > 0.5) {
-        moveX += openDodge.x * speed * 0.7;
-        moveY += openDodge.y * speed * 0.4;
+      if (openDodgeMag > 0.15) {
+        const openOverride = Math.min(0.7, openDodgeMag * 0.5);
+        moveX = moveX * (1 - openOverride) + openDodge.x * speed * openOverride * 1.5;
+        moveY = moveY * (1 - openOverride * 0.6) + openDodge.y * speed * openOverride * 0.6;
       }
 
     } else if (member.gun.reloading) {
@@ -4942,11 +4943,12 @@ const SparSystem = {
       // rather than standing still and eating hits. Re-stabilize after dodge.
       const bottomDodge = this._getIncomingBulletDodge(bot, team);
       const bottomDodgeMag = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
-      if (bottomDodgeMag > 0.5) {
-        // Dodge laterally to preserve bottom — don't dodge upward (would lose bottom)
-        moveX += bottomDodge.x * speed * 0.75;
-        // Only allow downward or minimal vertical dodge — never dodge up significantly
-        if (bottomDodge.y > 0) moveY += bottomDodge.y * speed * 0.3; // downward dodge OK
+      if (bottomDodgeMag > 0.15) {
+        // Dodge to preserve bottom — primarily lateral, allow downward but not upward
+        const btmOverride = Math.min(0.8, bottomDodgeMag * 0.5);
+        moveX = moveX * (1 - btmOverride) + bottomDodge.x * speed * btmOverride * 1.5;
+        // Only allow downward dodge — never dodge up (would lose bottom)
+        if (bottomDodge.y > 0) moveY = moveY * (1 - btmOverride * 0.4) + bottomDodge.y * speed * btmOverride * 0.5;
         // else: suppress upward dodge to keep bottom position
       }
       // If recently took a hit, increase strafe speed to be harder to hit
@@ -6107,8 +6109,10 @@ const SparSystem = {
     const _planEligible = _movePlanCurrentState === 'neutral' || _movePlanCurrentState === 'hasBottom';
 
     if (_planEligible) {
-      // Break trigger 1: bullet will hit me on this trajectory
-      const _planDodgeUrgent = dodgeMag > 1.5;
+      // Break trigger 1: ANY bullet coming at me = break and dodge first
+      // Plan is for preventing jitter, not for tanking hits.
+      // dodgeMag > 0.15 catches any real bullet threat (filters noise only)
+      const _planDodgeUrgent = dodgeMag > 0.15;
 
       // Break trigger 2: enemy rushing me (closing distance significantly)
       const _planEnemyRushing = ai._movePlanDist !== undefined
@@ -6160,20 +6164,17 @@ const SparSystem = {
     }
 
     // --- Bullet dodging (reactive, applied AFTER movement plan so never overwritten) ---
-    // The plan locks a committed direction, but dodge is life-or-death and must always work.
-    // During anti-bottom, reduce dodge override so bot keeps committed to the cross.
-    if (dodgeMag > 1.5) {
-      // Strong dodge — override a large portion of movement
-      const maxDodgeOverride = inActiveAntiBottom ? 0.45 : 0.85;
-      const overridePct = Math.min(maxDodgeOverride, dodgeMag / 4);
+    // ANY bullet threat = dodge. Plan already broke above, now apply the dodge direction.
+    // During anti-bottom, reduce override so bot keeps some cross commitment.
+    if (dodgeMag > 0.15) {
+      // Scale override by urgency: closer bullets = stronger override
+      // At dodgeMag 0.5 → 25% override, at 1.0 → 50%, at 2.0 → 85% (capped)
+      const rawOverride = Math.min(0.85, dodgeMag * 0.5);
+      const maxDodgeOverride = inActiveAntiBottom ? 0.45 : rawOverride;
+      const overridePct = Math.min(maxDodgeOverride, rawOverride);
       moveX = moveX * (1 - overridePct) + dodge.x * speed * overridePct * 1.5;
       moveY = moveY * (1 - overridePct) + dodge.y * speed * overridePct * 1.5;
-    } else if (dodgeMag > 0.3) {
-      // Mild dodge — additive on top of current direction
-      const dodgeScale = inActiveAntiBottom ? 0.5 : 1.0;
-      moveX += dodge.x * speed * dodgeScale;
-      moveY += dodge.y * speed * dodgeScale;
-      // Re-normalize to full speed after dodge adjustment
+      // Re-normalize to full speed
       const postDodgeLen = Math.sqrt(moveX * moveX + moveY * moveY);
       if (postDodgeLen > 1) {
         moveX = (moveX / postDodgeLen) * speed;
