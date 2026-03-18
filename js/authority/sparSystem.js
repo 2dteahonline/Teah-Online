@@ -5548,6 +5548,14 @@ const SparSystem = {
     }
 
     let suppressPeekShots = false;
+    // FIX: Suppress shots when bot doesn't have gun-side advantage in normal combat.
+    // Without gun-side, peeking is a losing trade — reposition to GET gun-side first.
+    // Only suppress if no policy is actively managing movement (they handle their own suppression).
+    if (!isOpening && !ai._escapePolicy && !ai._gunSidePolicy && !ai._antiBottomTactic
+      && !ai._centerRecoveryPolicy && !ai._midPressurePolicy && !ai._wallPressurePolicy
+      && badGunSide && laneQuality < 0.55) {
+      suppressPeekShots = true;
+    }
     if (!isOpening && ai._escapePolicy) {
       suppressPeekShots = true;
       const centerDir = this._getStableCenterDir(ai, bot.x, midX);
@@ -5821,7 +5829,7 @@ const SparSystem = {
     // - approachMult only amplifies when bot is already moving toward enemy AND is far enough
     if (styleWeights && !isOpening && modifierLevel < 2) {
       const hasAdvantage = hasBottom || (!badGunSide && laneQuality > 0.6);
-      const styleMinDist = hasAdvantage ? 90 : 160;
+      const styleMinDist = hasAdvantage ? 90 : (badGunSide ? 200 : 160);
 
       // Scale approach/retreat based on style
       if (dist > 1) {
@@ -6568,7 +6576,7 @@ const SparSystem = {
 
       const policyShotAllowed = (!ai._escapePolicy && !suppressPeekShots && !openingFireGated)
         || (laneQuality > 0.62 && !badGunSide && !openingFireGated)
-        || (dist < 130 && botLaneScore >= enemyLaneScore && !openingFireGated)
+        || (dist < 130 && botLaneScore > enemyLaneScore + 0.08 && !openingFireGated)
         // Stall-break fail-safe: if bot is stalled in an owner state, allow defensive firing
         || (ai._stallBreakActive && laneQuality > 0.35)
         // Long-stall fail-safe: if suppressPeekShots has been active 30+ frames without progress
