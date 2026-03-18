@@ -2369,10 +2369,11 @@ const SparSystem = {
       const bx = e.x - 20, by = e.y - 68;
       const bodyL = bx + 2, bodyR = bx + 36;
       const armY = by + 35;
+      const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
       const isRight = e._gunSide === 'right';
       let mx, my;
-      if (wallDir === 2) { mx = bodyL + 2 - 49; my = isRight ? (armY - 20) : (armY + 20); }
-      else { mx = bodyR + 9 + 49; my = isRight ? (armY + 20) : (armY - 20); }
+      if (wallDir === 2) { mx = bodyL + 2 - 49; my = isRight ? (armY - mOff) : (armY + mOff); }
+      else { mx = bodyR + 9 + 49; my = isRight ? (armY + mOff) : (armY - mOff); }
       const bvx = wallDir === 3 ? bspd : -bspd;
       // Apply spread
       let fvx = bvx, fvy = 0;
@@ -2465,6 +2466,7 @@ const SparSystem = {
     const bodyL = bx + 2;
     const bodyR = bx + 36;
     const armY = by + 35;
+    const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
     const isRight = e._gunSide === 'right';
     let mx, my;
     if (aimDir === 0) { // down
@@ -2475,10 +2477,10 @@ const SparSystem = {
       my = by + 28 - 49;
     } else if (aimDir === 2) { // left
       mx = bodyL + 2 - 49;
-      my = isRight ? (armY - 20) : (armY + 20);
+      my = isRight ? (armY - mOff) : (armY + mOff);
     } else { // right
       mx = bodyR + 9 + 49;
-      my = isRight ? (armY + 20) : (armY - 20);
+      my = isRight ? (armY + mOff) : (armY - mOff);
     }
 
     // Apply spread (same as player shoot() — random angular offset)

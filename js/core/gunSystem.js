@@ -431,6 +431,7 @@ function getMuzzlePos(aimDir) {
   const bodyL = x + 2;
   const bodyR = x + 36;
   const armY = y + 35;
+  const mOff = GAME_CONFIG.MUZZLE_OFFSET_Y || 14;
   const isRight = getCurrentGunSide() === 'right';
   if (aimDir === 0) { // down — default: gun on screen-right (bodyR). Mirror: screen-left (bodyL)
     return isRight
@@ -442,12 +443,12 @@ function getMuzzlePos(aimDir) {
       : { x: bodyL - 1, y: y + 28 - 49 };
   } else if (aimDir === 2) { // left — mirrored side shifts gun to opposite Y
     return isRight
-      ? { x: bodyL + 2 - 49, y: armY - 20 }
-      : { x: bodyL + 2 - 49, y: armY + 20 };
+      ? { x: bodyL + 2 - 49, y: armY - mOff }
+      : { x: bodyL + 2 - 49, y: armY + mOff };
   } else { // right — mirrored side shifts gun to opposite Y
     return isRight
-      ? { x: bodyR + 9 + 49, y: armY + 20 }
-      : { x: bodyR + 9 + 49, y: armY - 20 };
+      ? { x: bodyR + 9 + 49, y: armY + mOff }
+      : { x: bodyR + 9 + 49, y: armY - mOff };
   }
 }
 
