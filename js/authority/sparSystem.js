@@ -4987,9 +4987,7 @@ const SparSystem = {
       const bottomDodgeMag = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
       const _btmTankForKill = !member.gun.reloading && member.gun.ammo > 0
         && member.ai.shootCD <= 0 && tgt.hp <= (member.gun.damage || 20);
-      const _btmTankForTrade = !member.gun.reloading && member.gun.ammo > 0
-        && member.ai.shootCD <= 0 && bot.hp > tgt.hp + 40 && dist < 200;
-      if (bottomDodgeMag > 0.15 && !_btmTankForKill && !_btmTankForTrade) {
+      if (bottomDodgeMag > 0.15 && !_btmTankForKill) {
         // Perpendicular dodge: keep strafe movement, replace perp component
         const bdLen = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
         if (bdLen > 0.01) {
@@ -5841,7 +5839,7 @@ const SparSystem = {
     // Chase/retreat reset: track consecutive chase and retreat frames
     // Skip during active anti-bottom — tactic handles its own approach
     const inActiveAntiBottom = !!ai._antiBottomTactic && enemyHasBottom;
-    if (!isOpening && !inActiveAntiBottom && dist > 1 && modifierLevel < 1) {
+    if (!isOpening && !inActiveAntiBottom && !hasBottom && dist > 1 && modifierLevel < 1) {
       const movingToward = (moveX * dx + moveY * dy) / dist;
       if (movingToward > speed * 0.3) {
         ai._chaseFrames++;
@@ -5918,7 +5916,7 @@ const SparSystem = {
       }
 
       // EVASION STYLE: STRONGLY favor the movement that makes player miss most
-      if (pm.bestEvasion === 'still') {
+      if (pm.bestEvasion === 'still' && !hasBottom) {
         // Player can't hit a still bot — use STOP-START movement
         // This is critical: don't constantly strafe, pause between bursts
         if (!ai._pauseTimer) ai._pauseTimer = 0;
@@ -6011,8 +6009,8 @@ const SparSystem = {
     // Skip during active anti-bottom / center recovery — don't fake directions while committed
     if (ai.baitTimer > 0 && !inActiveAntiBottom && modifierLevel < 2) {
       ai.baitTimer--;
-      if (ai.baitTimer > 8) {
-        // Fake phase — move in bait direction
+      if (ai.baitTimer > 8 && !hasBottom) {
+        // Fake phase — move in bait direction (skip when hasBottom to preserve dodge)
         moveX = ai.baitDirX * speed * 0.7;
         moveY = ai.baitDirY * speed * 0.7;
       }
@@ -6223,7 +6221,7 @@ const SparSystem = {
     const _canFireNow = !member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0;
     const _nextShotKills = _canFireNow && tgt.hp <= _botDmg;
     const _wonTrade = _canFireNow && bot.hp > tgt.hp + 40; // clearly ahead on HP
-    const _shouldTankForTrade = _nextShotKills || (_wonTrade && dist < 200);
+    const _shouldTankForTrade = !hasBottom && (_nextShotKills || (_wonTrade && dist < 200));
 
     // --- Bullet dodging (reactive, applied AFTER movement plan so never overwritten) ---
     // ALWAYS dodge unless tanking wins the round or trades favorably.
