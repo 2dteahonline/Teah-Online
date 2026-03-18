@@ -2834,7 +2834,8 @@ const SparSystem = {
     // --- Rhythm tracking (v10) ---
     const botEntity = SparState.teamB[0] && SparState.teamB[0].alive ? SparState.teamB[0].entity : null;
     if (botEntity && typeof this._hasLOS === 'function') {
-      const hasLos = this._hasLOS(player.x, player.y - 20, botEntity.x, botEntity.y - 20);
+      const _hbY = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
+      const hasLos = this._hasLOS(player.x, player.y + _hbY, botEntity.x, botEntity.y + _hbY);
       const rpVx = player.vx || 0, rpVy = player.vy || 0;
       const rpSpeed = Math.sqrt(rpVx * rpVx + rpVy * rpVy);
       const rdx = botEntity.x - player.x, rdy = botEntity.y - player.y;
@@ -5524,7 +5525,8 @@ const SparSystem = {
 
     // LOS blocked tracking
     if (!isOpening && dist > 1 && modifierLevel < 2) {
-      const hasLOS = this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20);
+      const _hbY2 = GAME_CONFIG.PLAYER_HITBOX_Y || -25;
+      const hasLOS = this._hasLOS(bot.x, bot.y + _hbY2, tgt.x, tgt.y + _hbY2);
       if (!hasLOS) {
         ai._losBlockedFrames++;
         if (ai._losBlockedFrames > 60) {
@@ -5992,7 +5994,7 @@ const SparSystem = {
         ai._shotMode = 'held';
         ai._shotTimingPolicy = null;
         ai._shotTimingFamily = null;
-      } else if (nearAnyWall && !this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20)) {
+      } else if (nearAnyWall && !this._hasLOS(bot.x, bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25), tgt.x, tgt.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25))) {
         ai._shotMode = 'prefire';
         ai._shotTimingPolicy = null;
         ai._shotTimingFamily = null;
@@ -6028,7 +6030,7 @@ const SparSystem = {
     }
 
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
-      const hasLOS = this._hasLOS(bot.x, bot.y - 20, tgt.x, tgt.y - 20);
+      const hasLOS = this._hasLOS(bot.x, bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25), tgt.x, tgt.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25));
       // --- OPENING FIRE GATE ---
       // During the bottom race (first ~90 frames), only shoot if truly free:
       // - bot already reached bottom (y > 80% of arena)
