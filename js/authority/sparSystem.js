@@ -455,9 +455,9 @@ const SparSystem = {
         if (pReward > 0.62) score += (pReward - 0.5) * 8;  // bonus for proven winners
       }
 
-      // Fail streak suppression (strengthened)
+      // Fail streak suppression — scales with streak length (streak 35 >> streak 5)
       const fs = failStreaks && failStreaks[key] ? failStreaks[key] : 0;
-      if (fs >= 5) score -= 20;
+      if (fs >= 5) score -= 20 + (fs - 5) * 2;
       else if (fs >= 4) score -= 13;
       else if (fs >= 3) score -= 7;
       // Family-level suppression: if 2+ policies in same family have streaks, penalize family
@@ -1991,8 +1991,11 @@ const SparSystem = {
         const totalPlayerStylePlays = this._sumBucketPlays(pStyleBuckets);
         const totalGeneralStylePlays = this._sumBucketPlays(gStyleBuckets);
         const totalSelfPlayStylePlays = this._sumBucketPlays(sStyleBuckets);
-        // Pick style with best win rate, 10% exploration
-        if (Math.random() < 0.1) {
+        // Pick style with best win rate — higher exploration during self-play training
+        // to prevent style diversity collapse (bait got 91% of 300k+ matches)
+        const _isSPTraining = typeof _isSparSelfPlay === 'function' && _isSparSelfPlay();
+        const _styleExploreRate = _isSPTraining ? 0.40 : 0.10;
+        if (Math.random() < _styleExploreRate) {
           const styleNames = Object.keys(SPAR_DUEL_STYLES);
           style = styleNames[Math.floor(Math.random() * styleNames.length)];
         } else {
@@ -5043,6 +5046,7 @@ const SparSystem = {
         ai._abLastY = bot.y;
         ai._abDirFlips = 0;      // how many times offset direction flipped
         ai._abMaxClearance = 0;  // max lateral clearance achieved
+        ai._abBulletWallFrames = 0; // consecutive frames bullet wall blocked descent
         ai._abStartCtx = _snapEngagementCtx(bot, tgt, ai);
         ai._abStartCtx.badGunSide = badGunSide;
         ai._abStartCtx.posCtx = _abPosCtx; // full position context for learning
@@ -5307,30 +5311,33 @@ const SparSystem = {
       }
 
       // --- BULLET WALL CHECK: don't descend into horizontal bullet streams ---
-      // The reactive dodge (10-frame window) can't see far enough — by the time
-      // it detects a horizontal bullet, the bot is already in the kill zone.
-      // Instead, STRATEGICALLY check: are there enemy bullets between me and bottom?
-      // If yes, don't descend — strafe and wait for a gap.
+      // Relaxed: require 2+ bullets forming a wall (not just 1 stray bullet),
+      // tighter 12-frame lookahead, and urgency bypass after 40 frames of blocking.
       const _abHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
       const _abHitR = this._getSparPerpHitRadius(); // 33px
-      let _bulletWallBelow = false;
+      let _bulletWallCount = 0;
       for (const b of bullets) {
         if (!b.sparTeam || b.sparTeam === team) continue;
         // Bullet Y is between bot hitbox and target? (in the descent path)
         if (b.y > _abHitY - _abHitR && b.y < tgt.y + 50) {
-          // Will bullet reach bot's X within 25 frames?
-          const futMinX = b.x + Math.min(b.vx, 0) * 25;
-          const futMaxX = b.x + Math.max(b.vx, 0) * 25;
+          // Will bullet reach bot's X within 12 frames? (was 25 — too conservative)
+          const futMinX = b.x + Math.min(b.vx, 0) * 12;
+          const futMaxX = b.x + Math.max(b.vx, 0) * 12;
           if (futMinX - _abHitR < bot.x && futMaxX + _abHitR > bot.x) {
-            _bulletWallBelow = true;
-            break;
+            _bulletWallCount++;
           }
         }
       }
+      // Need 2+ bullets for a real wall, and respect urgency bypass
+      const _bulletWallBelow = _bulletWallCount >= 2 && (ai._abBulletWallFrames || 0) < 40;
       if (_bulletWallBelow && moveY > 0) {
         // Bullets blocking descent — don't go down, strafe instead
+        ai._abBulletWallFrames = (ai._abBulletWallFrames || 0) + 1;
         moveY = 0;
         moveX = ai.strafeDir * speed;
+      } else {
+        // Decay bullet wall counter when not blocked (allow re-blocking after gap)
+        ai._abBulletWallFrames = Math.max(0, (ai._abBulletWallFrames || 0) - 2);
       }
 
       // Normalize to full speed — bot must always move at max speed during anti-bottom
@@ -5354,22 +5361,21 @@ const SparSystem = {
       // Full speed strafe + descent toward bottom
       moveX = ai.strafeDir * speed * 0.85;
       moveY = (bot.y < tgt.y) ? speed * 0.53 : speed * 0.1;
-      // Bullet wall check — don't descend into bullet streams during hysteresis
+      // Bullet wall check — relaxed: require 2+ bullets, 12-frame window
       const _hystHitY = bot.y + (GAME_CONFIG.PLAYER_HITBOX_Y || -25);
       const _hystHitR = this._getSparPerpHitRadius();
-      let _hystBulletWall = false;
+      let _hystBulletCount = 0;
       for (const b of bullets) {
         if (!b.sparTeam || b.sparTeam === team) continue;
         if (b.y > _hystHitY - _hystHitR && b.y < tgt.y + 50) {
-          const futMinX = b.x + Math.min(b.vx, 0) * 25;
-          const futMaxX = b.x + Math.max(b.vx, 0) * 25;
+          const futMinX = b.x + Math.min(b.vx, 0) * 12;
+          const futMaxX = b.x + Math.max(b.vx, 0) * 12;
           if (futMinX - _hystHitR < bot.x && futMaxX + _hystHitR > bot.x) {
-            _hystBulletWall = true;
-            break;
+            _hystBulletCount++;
           }
         }
       }
-      if (_hystBulletWall && moveY > 0) {
+      if (_hystBulletCount >= 2 && moveY > 0) {
         moveY = 0;
         moveX = ai.strafeDir * speed;
       }
