@@ -6008,6 +6008,30 @@ const SparSystem = {
       moveY = 0;
     }
 
+    // Direction commitment: real players don't reverse direction every frame.
+    // If the new direction is >90° from last frame's, keep the old direction
+    // for a few frames before allowing the change. This prevents jitter from
+    // competing forces that nearly cancel and flip the resultant each frame.
+    if (moveLen > 1 && ai._lastMoveX !== undefined) {
+      const dotProd = moveX * ai._lastMoveX + moveY * ai._lastMoveY;
+      // dotProd < 0 means >90° turn (direction reversal)
+      if (dotProd < 0 && ai._momentumBreakFrames <= 0) {
+        ai._dirCommitFrames = (ai._dirCommitFrames || 0) + 1;
+        if (ai._dirCommitFrames < 5) {
+          // Keep old direction — don't allow the flip yet
+          moveX = ai._lastMoveX;
+          moveY = ai._lastMoveY;
+        } else {
+          // Committed long enough, allow the direction change
+          ai._dirCommitFrames = 0;
+        }
+      } else {
+        ai._dirCommitFrames = 0;
+      }
+    }
+    ai._lastMoveX = moveX;
+    ai._lastMoveY = moveY;
+
     // Freeze penalty after shooting — applied AFTER normalization (the only valid speed reduction)
     if (ai._freezeTimer > 0) {
       ai._freezeTimer--;
