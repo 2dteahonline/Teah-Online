@@ -2769,12 +2769,17 @@ const SparSystem = {
         // If both sides blocked, keep original — diagonal away component will help
       }
 
-      // Always diagonal: perpendicular clearance + away from bullet source
-      const awayX = dbx >= 0 ? 1 : -1;
-      const awayY = dby >= 0 ? 1 : -1;
+      // Always diagonal: perpendicular clearance + along bullet travel (buys time)
+      // "Along bullet travel" = same direction bullet is going. This works because
+      // the bot can't outrun bullets (7.5 < 9 speed), so moving WITH the bullet
+      // delays impact and gives more frames for perpendicular clearance.
+      // CRITICAL: "away from source" was wrong — it cancelled the perpendicular
+      // component for aligned shots (e.g. straight-down bullet: perp=-1, away=+1 on X → net -0.5)
+      const alongX = bvx / bSpeed; // unit vector along bullet travel
+      const alongY = bvy / bSpeed;
 
-      dodgeX += (perpNormX * 2.0 + awayX * 1.5) * urgency * strength;
-      dodgeY += (perpNormY * 2.0 + awayY * 1.5) * urgency * strength;
+      dodgeX += (perpNormX * 2.5 + alongX * 1.5) * urgency * strength;
+      dodgeY += (perpNormY * 2.5 + alongY * 1.5) * urgency * strength;
     }
 
     const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
