@@ -664,6 +664,8 @@ function spawnTestShootBot(side) {
     fireRate: 17,
     reloadTime: 36, // ~0.6s reload
     damage: 20,     // CT-X damage
+    hp: 500,
+    maxHp: 500,
   };
   chatMessages.push({ name: "SYSTEM", text: "Shoot bot spawned — firing " + side + " (CT-X, ROF 50)", time: Date.now() });
 }
@@ -696,8 +698,8 @@ function tickTestShootBot() {
     id: nextBulletId++,
     x: b.x, y: b.y - 10,
     vx: vx, vy: vy,
-    fromPlayer: true,
-    bulletColor: null, // default bullet color
+    fromPlayer: false,
+    bulletColor: null,
     damage: b.damage,
   });
 
@@ -721,11 +723,18 @@ function drawTestShootBot() {
   ctx.fillStyle = '#3a6a3a';
   if (b.dir === 2) ctx.fillRect(sx - 16, sy - 18, 10, 4);
   else ctx.fillRect(sx + 6, sy - 18, 10, 4);
+  // HP bar
+  const hpW = 30, hpH = 4;
+  const hpPct = Math.max(0, b.hp / b.maxHp);
+  ctx.fillStyle = '#222';
+  ctx.fillRect(sx - hpW / 2, sy - 40, hpW, hpH);
+  ctx.fillStyle = hpPct > 0.5 ? '#4f4' : hpPct > 0.25 ? '#ff4' : '#f44';
+  ctx.fillRect(sx - hpW / 2, sy - 40, hpW * hpPct, hpH);
   // Label
   ctx.font = 'bold 9px monospace';
   ctx.fillStyle = '#88ccff';
   ctx.textAlign = 'center';
-  ctx.fillText('SHOOT BOT', sx, sy - 44);
+  ctx.fillText('SHOOT BOT', sx, sy - 46);
   ctx.textAlign = 'left';
 }
 
