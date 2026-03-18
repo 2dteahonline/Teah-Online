@@ -139,6 +139,26 @@ function _getDinerSeatAccess(booth, seatIdx) {
   };
 }
 
+// Find the closest unoccupied seat in a booth for an NPC
+function _findClosestFreeSeat(booth, npcX, npcY, party) {
+  const takenSeats = new Set();
+  for (const mid of party.members) {
+    const m = _getDinerNPC(mid);
+    if (m && m.claimedSeatIdx >= 0) takenSeats.add(m.claimedSeatIdx);
+  }
+  let bestIdx = -1, bestDist = Infinity;
+  for (let i = 0; i < booth.seats.length; i++) {
+    if (takenSeats.has(i)) continue;
+    const seat = booth.seats[i];
+    const sx = seat.tx * TILE + TILE / 2;
+    const sy = seat.ty * TILE + TILE / 2;
+    const dx = sx - npcX, dy = sy - npcY;
+    const dist = dx * dx + dy * dy;
+    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
 // ===================== ROUTE BUILDERS =====================
 // All legs are horizontal or vertical to prevent clipping through solids.
 //
@@ -170,24 +190,13 @@ function _routeDinerSeatToBoothEntry(boothId, seatIdx) {
   );
 }
 
-// Entry route: from left entrance (tx:27, ty:21) → north to corridor → to booth
+// Entry route: from left entrance (tx:27, ty:21) → north to corridor near booth
+// NPCs stop at the corridor — seating handler picks seat and routes to it directly
 function _routeDinerEntranceToBooth(boothId) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
-  const route = [];
-  // Walk north from entrance to corridor
-  route.push({ tx: 27, ty: 14 });
-  if (booth.tx >= 38) {
-    // Right column booth — east through gap
-    route.push({ tx: booth.entry.tx, ty: 14 });
-    route.push({ tx: booth.entry.tx, ty: booth.entry.ty });
-  } else {
-    // Left column booth — go west to tx:26
-    route.push({ tx: 26, ty: 14 });
-    route.push({ tx: 26, ty: booth.entry.ty });
-    route.push({ tx: booth.entry.tx, ty: booth.entry.ty });
-  }
-  return route;
+  const corridorTx = booth.tx >= 38 ? 37 : 26;
+  return [{ tx: 27, ty: 14 }, { tx: corridorTx, ty: 14 }];
 }
 
 // Exit route: from position → corridor → east → south to exit door
@@ -218,15 +227,15 @@ function _routeDinerToExit(fromTX, fromTY, corridorTX) {
 function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
-  const access = _getDinerSeatAccess(booth, seatIdx);
-  if (!access) return [];
-  // Go from seat → rowAccess → straight south to corridor (skip booth entry to avoid convergence)
-  const corridorX = booth.entry.tx >= 36 ? booth.entry.tx : 26;
+  const seat = booth.seats ? booth.seats[seatIdx] : null;
+  if (!seat) return [];
+  // Exit through the OPPOSITE side (right side of booth) — prevents collision with entering NPCs
+  const exitTx = booth.tx + booth.w; // one tile past right edge of booth
   return _cConcatRoutes(
-    [_cWP(access.rowAccess.tx, access.rowAccess.ty)],
-    [_cWP(corridorX, 14)],
-    [_cWP(44, 14)],
-    [_cWP(44, DINER_SPOTS.customerExit.ty)]
+    [_cWP(exitTx, seat.ty)],                        // slide right out of booth
+    [_cWP(exitTx, 14)],                             // south to corridor
+    [_cWP(44, 14)],                                 // east to exit column
+    [_cWP(44, DINER_SPOTS.customerExit.ty)]          // south to exit door
   );
 }
 
@@ -667,10 +676,7 @@ function spawnDinerGroup() {
   };
 
   // Create NPCs — first is leader
-  // Seat order: far-end seats first so first NPC doesn't body-block second
-  // Seats: [0]=top-near, [1]=top-far, [2]=bottom-near, [3]=bottom-far
-  // Order: far-top, far-bottom, near-top, near-bottom
-  const seatOrder = [1, 3, 0, 2];
+  // Seats assigned dynamically at arrival (closest available)
   const partyCustomerType = typeof pickDinerCustomerType === 'function' ? pickDinerCustomerType() : { tipMult: 1.0 };
   for (let i = 0; i < partySize; i++) {
     const npc = _spawnDinerGroupNPC(partyId, i === 0);
@@ -679,13 +685,13 @@ function spawnDinerGroup() {
     party.members.push(npc.id);
     if (i === 0) party.leaderId = npc.id;
 
-    // Assign seat — far end first to avoid body blocking
-    npc.claimedSeatIdx = seatOrder[i] != null ? seatOrder[i] : (i % booth.seats.length);
+    // Seat NOT pre-assigned — picked at arrival based on closest available
+    npc.claimedSeatIdx = -1;
 
-    // Short stagger — NPCs walk toward table as a group, not one at a time
+    // 2-second stagger between each NPC entering
     if (i > 0) {
       npc.state = 'spawn_wait';
-      npc.stateTimer = i * 15; // ~0.25 sec spacing — walk as a group
+      npc.stateTimer = i * 120; // 2-second intervals between each NPC
     }
   }
 
@@ -716,7 +722,6 @@ function _spawnGroupForBooth(boothIdx) {
     _isGamer: false,
   };
 
-  const seatOrder = [1, 3, 0, 2];
   const partyCustomerType = typeof pickDinerCustomerType === 'function' ? pickDinerCustomerType() : { tipMult: 1.0 };
   for (let i = 0; i < partySize; i++) {
     const npc = _spawnDinerGroupNPC(partyId, i === 0);
@@ -724,10 +729,10 @@ function _spawnGroupForBooth(boothIdx) {
     npc._tableNumber = booth.tableNumber;
     party.members.push(npc.id);
     if (i === 0) party.leaderId = npc.id;
-    npc.claimedSeatIdx = seatOrder[i] != null ? seatOrder[i] : (i % booth.seats.length);
+    npc.claimedSeatIdx = -1; // picked at arrival based on closest available
     if (i > 0) {
       npc.state = 'spawn_wait';
-      npc.stateTimer = i * 15; // ~0.25 sec spacing — walk as a group
+      npc.stateTimer = i * 120; // 2-second intervals between each NPC
     }
   }
 
@@ -771,41 +776,38 @@ const DINER_NPC_AI = {
     npc.state = 'entering';
   },
 
-  // ─── ENTERING: Group NPC walks from entrance to booth ────
+  // ─── ENTERING: Group NPC walks from entrance to corridor near booth (not entry point) ────
   entering: (npc) => {
     if (npc.isWaitress) return;
     const party = _getDinerParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
+    const booth = DINER_BOOTHS[party.boothId];
+    if (!booth) { npc.state = '_despawn'; return; }
 
-    const route = _routeDinerEntranceToBooth(party.boothId);
+    // Route to the corridor near the booth — NOT the entry point
+    // Each NPC then picks their seat and routes directly from the corridor
+    const corridorTx = booth.tx >= 38 ? 37 : 26;
+    const route = [_cWP(27, 14), _cWP(corridorTx, 14)];
     _cStartRoute(npc, route, 'seating', 0, { kind: 'entrance_to_booth', boothId: party.boothId });
   },
 
-  // ─── SEATING: Wait at booth entry until previous member is seated, then walk to seat ─────────
+  // ─── SEATING: Pick closest free seat immediately, route directly from corridor ─────────
   seating: (npc) => {
     const party = _getDinerParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
+    const booth = DINER_BOOTHS[party.boothId];
+    if (!booth) { npc.state = '_despawn'; return; }
 
-    // Followers wait at booth entry until the NPC before them is seated
-    const memberIds = party.members;
-    const myIdx = memberIds.indexOf(npc.id);
-    if (myIdx > 0) {
-      const prevNpc = _getDinerNPC(memberIds[myIdx - 1]);
-      if (prevNpc && prevNpc.state !== 'waiting_at_booth' && prevNpc.state !== 'eating' &&
-          prevNpc.state !== 'post_meal' && prevNpc.state !== '_despawn') {
-        // Previous NPC hasn't sat yet — hold position at booth entry
-        npc.moving = false;
-        const booth = DINER_BOOTHS[party.boothId];
-        if (booth) {
-          npc.x = booth.entry.tx * TILE + TILE / 2;
-          npc.y = booth.entry.ty * TILE + TILE / 2;
-        }
-        return;
-      }
+    // Pick closest available seat if not yet assigned
+    if (npc.claimedSeatIdx < 0) {
+      npc.claimedSeatIdx = _findClosestFreeSeat(booth, npc.x, npc.y, party);
+      if (npc.claimedSeatIdx < 0) { npc.state = '_despawn'; return; }
     }
 
-    const route = _routeDinerBoothToSeat(party.boothId, npc.claimedSeatIdx);
-    if (!route.length) { npc.state = '_despawn'; return; }
+    // Route directly from corridor to seat via row access (no entry point)
+    const seat = booth.seats[npc.claimedSeatIdx];
+    const rowAccess = seat.sitDir === 0 ? booth.topRowAccess : booth.bottomRowAccess;
+    const route = [_cWP(rowAccess.tx, rowAccess.ty), _cWP(seat.tx, seat.ty)];
 
     _cStartRoute(
       npc,
