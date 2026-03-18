@@ -933,6 +933,7 @@ function updateBullets() {
   const B_SHORT = GAME_CONFIG.BULLET_HALF_SHORT;  // half-width perpendicular
   const ENTITY_R = GAME_CONFIG.ENTITY_R;           // entity circle radius
   const ENTITY_R_SQ = ENTITY_R * ENTITY_R;
+  const PLAYER_HB_Y = GAME_CONFIG.PLAYER_HITBOX_Y || 0; // player hitbox Y offset (torso center)
 
   // Rectangle-circle hit test: bullet rect vs entity circle
   function _bulletHitsCircle(bx, by, bvx, bvy, ex, ey, eR) {
@@ -1007,7 +1008,7 @@ function updateBullets() {
         const _boulderTargets = PartySystem.getAliveEntities();
         for (const _bt of _boulderTargets) {
           const dxP = b.x - _bt.x;
-          const dyP = b.y - (_bt.y + 5); // hitbox below feet (Graal-style, biased down)
+          const dyP = b.y - (_bt.y + PLAYER_HB_Y); // hitbox at torso center
           const distP = Math.sqrt(dxP * dxP + dyP * dyP);
           if (distP < 100 && !(_bt === player && playerDead) && !_bt._isDead) {
             const blastDmg = Math.round((distP < 50 ? 20 : 12) * getMobDamageMultiplier());
@@ -1049,7 +1050,7 @@ function updateBullets() {
       for (const p of opponents) {
         if (!p.alive) continue;
         const ent = p.entity;
-        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, ent.x, ent.y + 5, ENTITY_R)) {
+        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, ent.x, ent.y + PLAYER_HB_Y, ENTITY_R)) {
           const dmg = b.damage || (typeof CT_X_GUN !== 'undefined' ? CT_X_GUN.damage : 20);
           ent.hp -= dmg;
           hitEffects.push({ x: b.x, y: b.y - 10, life: 19, type: "hit", dmg: dmg });
@@ -1138,7 +1139,7 @@ function updateBullets() {
         const _arrowTargets = PartySystem.getAliveEntities();
         let _arrowHit = false;
         for (const _at of _arrowTargets) {
-          if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, _at.x, _at.y + 5, ENTITY_R) && !(_at === player && playerDead) && !_at._isDead) {
+          if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, _at.x, _at.y + PLAYER_HB_Y, ENTITY_R) && !(_at === player && playerDead) && !_at._isDead) {
             dealDamageToPlayer(b.damage, "projectile", null, _at);
             // Apply/reset poison — 20 seconds (all entities via _currentDamageTarget)
             _currentDamageTarget = _at;
@@ -1161,7 +1162,7 @@ function updateBullets() {
         let _bdrHit = false;
         for (const _bdt of _bdrTargets) {
           const dxB = b.x - _bdt.x;
-          const dyB = b.y - (_bdt.y + 5); // hitbox below feet (Graal-style, biased down)
+          const dyB = b.y - (_bdt.y + PLAYER_HB_Y); // hitbox at torso center
           const boulderHitR = b.boulderHitRadius || 40;
           if (dxB * dxB + dyB * dyB < boulderHitR * boulderHitR && !(_bdt === player && playerDead) && !_bdt._isDead) {
             hitEffects.push({ x: b.x, y: b.y, life: 30, type: "explosion" });
@@ -1180,7 +1181,7 @@ function updateBullets() {
       const _genTargets = PartySystem.getAliveEntities();
       let _genHit = false;
       for (const _gt of _genTargets) {
-        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, _gt.x, _gt.y + 5, ENTITY_R) && !(_gt === player && playerDead) && !_gt._isDead) {
+        if (_bulletHitsCircle(b.x, b.y, b.vx, b.vy, _gt.x, _gt.y + PLAYER_HB_Y, ENTITY_R) && !(_gt === player && playerDead) && !_gt._isDead) {
           const bDmg = b.damage || gun.damage;
           const dmgDealt = dealDamageToPlayer(bDmg, "projectile", null, _gt);
           hitEffects.push({ x: b.x, y: b.y, life: 19, type: "hit", dmg: dmgDealt });

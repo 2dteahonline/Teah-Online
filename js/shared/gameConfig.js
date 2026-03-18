@@ -20,6 +20,7 @@ const GAME_CONFIG = {
   BULLET_HALF_LONG: 15,         // bullet collision half-length along travel direction
   BULLET_HALF_SHORT: 4,         // bullet collision half-width perpendicular to travel
   ENTITY_R: 29,                 // entity hitbox circle radius (+15%)
+  PLAYER_HITBOX_Y: -25,          // player/spar hitbox Y offset from feet (torso, not feet like Graal)
 
   // --- Mining ---
   ORE_COLLISION_RADIUS: 17,     // ore node collision circle
