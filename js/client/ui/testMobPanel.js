@@ -648,17 +648,14 @@ function spawnTestShootBot(side) {
   if (typeof HazardSystem !== 'undefined') HazardSystem.clear();
   player.hp = player.maxHp;
 
-  // Gunside: which side the bot holds its gun (right or left)
-  // "right gunside" = bot fires left, placed to player's RIGHT
-  // "left gunside" = bot fires right, placed to player's LEFT
-  const dir = side === 'right' ? 2 : 3;
-  // Spar distance: teamA tx:4, teamB tx:19 → 15 tiles × 48px = 720px apart
-  const offsetX = side === 'right' ? 720 : -720;
+  // Bot always spawns directly ahead at spar distance (720px right of player)
+  // Faces left (dir 2) to shoot toward the player. Side param = gunside only.
+  const dir = 2;
   _testShootBot = {
-    x: player.x + offsetX,
+    x: player.x + 720,
     y: player.y,
     dir: dir,
-    gunSide: side, // 'right' or 'left' — matches player gunSide convention
+    gunSide: side, // 'right' or 'left' — which hand holds the gun
     fireTimer: 0,
     reloadTimer: 0,
     ammo: 30,
@@ -721,6 +718,19 @@ function drawTestShootBot() {
   const b = _testShootBot;
   // Canvas is already translated by camera, so use world coords directly
   const sx = b.x, sy = b.y;
+  const _playerHbY = (typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.PLAYER_HITBOX_Y) || -25;
+  const hitboxR = (typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.DEFAULT_HITBOX_R) || 33;
+
+  // Hitbox circle (same style as mobs/spar opponents)
+  if (typeof gameSettings !== 'undefined' && gameSettings.showOtherHitbox) {
+    ctx.strokeStyle = "rgba(220,50,50,0.7)";
+    ctx.fillStyle = "rgba(220,50,50,0.18)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(sx, sy + _playerHbY, hitboxR, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+  }
+
   // Simple player-like silhouette
   ctx.fillStyle = '#4a8aaa';
   ctx.fillRect(sx - 8, sy - 28, 16, 28);
