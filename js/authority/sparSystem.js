@@ -5852,14 +5852,6 @@ const SparSystem = {
 
     // Removed: strafeSpeedMult — real players move at full speed or stop, no fractional speeds
 
-    // Freeze penalty after shooting — same slowdown as player
-    if (ai._freezeTimer > 0) {
-      ai._freezeTimer--;
-      const penalty = ai._freezePenalty || 0.54;
-      moveX *= (1.0 - penalty);
-      moveY *= (1.0 - penalty);
-    }
-
     // Binary movement: full speed or stopped (like a real player)
     // Weights above determine DIRECTION, this enforces full-speed magnitude
     const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
@@ -5869,6 +5861,14 @@ const SparSystem = {
     } else {
       moveX = 0;
       moveY = 0;
+    }
+
+    // Freeze penalty after shooting — applied AFTER normalization (the only valid speed reduction)
+    if (ai._freezeTimer > 0) {
+      ai._freezeTimer--;
+      const penalty = ai._freezePenalty || 0.54;
+      moveX *= (1.0 - penalty);
+      moveY *= (1.0 - penalty);
     }
 
     // --- Idle guard: if near-stationary too long, force a lateral break ---
