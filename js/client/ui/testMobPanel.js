@@ -621,7 +621,7 @@ function _testmobSpawn(typeKey, mode) {
   // Spawn mob
   const mob = createMob(typeKey, player.x + 150, player.y, 1, 1);
   if (mob) {
-    if (mode !== 'live') { mob.speed = 0; mob._specialTimer = 99999; }
+    if (mode !== 'live') { mob.speed = 0; mob._specialTimer = 99999; mob._testDummy = true; }
     mobs.push(mob);
     const label = mode === 'live' ? ' [LIVE]' : ' [FROZEN]';
     chatMessages.push({ name: "SYSTEM", text: "Testing: " + (mob.name || typeKey) + label, time: Date.now() });

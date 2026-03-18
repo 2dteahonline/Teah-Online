@@ -688,6 +688,7 @@ window.addEventListener("keydown", e => {
               m.speed = 0;
               m._specialTimer = 99999;
               m._frozen = true;
+              m._testDummy = true;
             }
             chatMessages.push({ name: "SYSTEM", text: "FREEZE ON — all mobs frozen (move + abilities)", time: Date.now() });
           } else {
@@ -697,6 +698,7 @@ window.addEventListener("keydown", e => {
               m._specialTimer = 0;
               delete m._frozen;
               delete m._savedSpeed;
+              delete m._testDummy;
             }
             chatMessages.push({ name: "SYSTEM", text: "FREEZE OFF — mobs resumed", time: Date.now() });
           }

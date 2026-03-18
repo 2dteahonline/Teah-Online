@@ -478,6 +478,7 @@ function createMob(typeKey, x, y, hpMult, spdMult, opts = {}) {
     mob.speed = 0;
     mob._specialTimer = 99999;
     mob._frozen = true;
+    mob._testDummy = true;
   }
 
   return mob;

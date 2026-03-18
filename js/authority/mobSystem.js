@@ -78,12 +78,14 @@ function updateMobs() {
         const push = (minSep - sDist) * 0.45;
         const px = (sdx / sDist) * push, py = (sdy / sDist) * push;
         // Only push if destination is clear of walls (use actual wall hitbox, not spawn hitbox)
+        // Don't push frozen/test dummy mobs
         const mhwA = a.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
         const mhwB = b.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
-        if (positionClear(a.x + px, a.y + py, mhwA)) { a.x += px; a.y += py; }
-        if (positionClear(b.x - px, b.y - py, mhwB)) { b.x -= px; b.y -= py; }
+        if (!a._testDummy && positionClear(a.x + px, a.y + py, mhwA)) { a.x += px; a.y += py; }
+        if (!b._testDummy && positionClear(b.x - px, b.y - py, mhwB)) { b.x -= px; b.y -= py; }
       } else if (sDist <= 0.1) {
         // Exact overlap — push b in a random direction (8-angle search)
+        if (b._testDummy) continue;
         const _randAng = Math.random() * Math.PI * 2;
         const _pushDist = minSep * 0.6;
         const mhwB = b.wallHW ?? GAME_CONFIG.MOB_WALL_HW;
@@ -106,6 +108,7 @@ function updateMobs() {
       m.speed = 0;
       m._specialTimer = 99999;
       m._frozen = true;
+      m._testDummy = true;
     }
     if (m.boneSwing > 0) m.boneSwing--;
     // Tick despawn timer for summoned minions (e.g. Victor Graves thugs, Macabre skeletons)
