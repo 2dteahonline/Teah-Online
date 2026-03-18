@@ -271,27 +271,31 @@ function _routeBoothToPass(boothId) { return _routeBoothToCounter(boothId); }
 
 // ===================== ARCADE ROUTE BUILDERS =====================
 
-// Gamer entry: from left entrance → north to corridor → around cabinets → to arcade
+// Gamer entry: from left entrance → north to corridor → OUTWARD from both cabinets → to arcade spot
+// Gamer 1 (tx:34) approaches from west (tx:32), Gamer 2 (tx:36) approaches from east (tx:38)
+// This ensures they never cross through the other cabinet
 function _routeDinerEntranceToArcade(arcadeIdx) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  // Route around cabinets (solid at ty:16-17): go to adjacent column, then south, then to spot
-  const avoidTx = arcadeIdx === 0 ? spot.tx - 1 : spot.tx + 1;
+  // Route OUTWARD from both cabinets — Gamer 1 goes west, Gamer 2 goes east
+  const approachTx = arcadeIdx === 0 ? 32 : 38;
   return _cConcatRoutes(
     [_cWP(27, 14)],
-    [_cWP(avoidTx, 14)],
-    [_cWP(avoidTx, spot.ty)],
+    [_cWP(approachTx, 14)],
+    [_cWP(approachTx, spot.ty)],
     [_cWP(spot.tx, spot.ty)]
   );
 }
 
+// Gamer exit: go OUTWARD from both cabinets then to exit corridor
 function _routeDinerArcadeToExit(arcadeIdx) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  const avoidTx = arcadeIdx === 0 ? spot.tx - 1 : spot.tx + 1;
+  // Gamer 1 exits west (tx:32), Gamer 2 exits east (tx:38)
+  const exitTx = arcadeIdx === 0 ? 32 : 38;
   return _cConcatRoutes(
-    [_cWP(avoidTx, spot.ty)],
-    [_cWP(avoidTx, 14)],
+    [_cWP(exitTx, spot.ty)],
+    [_cWP(exitTx, 14)],
     [_cWP(44, 14)],
     [_cWP(44, DINER_SPOTS.customerExit.ty)]
   );
@@ -746,10 +750,25 @@ function initDinerNPCs() {
 
 const DINER_NPC_AI = {
 
-  // ─── SPAWN_WAIT: Staggered delay before entering ───────
+  // ─── SPAWN_WAIT: Wait until the NPC ahead has seated before entering ───────
   spawn_wait: (npc) => {
     npc.moving = false;
+    // Minimum timer still applies for basic spacing
     if (npc.stateTimer > 0) { npc.stateTimer--; return; }
+    // Check if the NPC who enters before us has reached their seat
+    const party = _getDinerParty(npc.partyId);
+    if (party) {
+      const memberIds = party.members;
+      const myIdx = memberIds.indexOf(npc.id);
+      if (myIdx > 0) {
+        const prevNpc = _getDinerNPC(memberIds[myIdx - 1]);
+        // Wait until previous NPC is seated (waiting_at_booth) or eating
+        if (prevNpc && prevNpc.state !== 'waiting_at_booth' && prevNpc.state !== 'eating' &&
+            prevNpc.state !== 'post_meal' && prevNpc.state !== '_despawn') {
+          return; // previous NPC still walking — wait
+        }
+      }
+    }
     npc.state = 'entering';
   },
 
@@ -882,7 +901,13 @@ const DINER_NPC_AI = {
       npc.y = spot.ty * TILE + TILE / 2;
     }
 
-    // Pay arcade fee on first frame of each play session
+    // Show result display (win/lose) before next action
+    if (npc._arcadeResultTimer > 0) {
+      npc._arcadeResultTimer--;
+      return;
+    }
+
+    // Pay arcade fee BEFORE each game starts (visible payment per play)
     if (!npc._arcadeFeePaid) {
       npc._arcadeFeePaid = true;
       npc._arcadePlaysTotal = (npc._arcadePlaysTotal || 0) + 1;
@@ -903,23 +928,23 @@ const DINER_NPC_AI = {
     const won = Math.random() < 0.5;
     const playsLeft = DINER_NPC_CONFIG.gamerMaxPlays - (npc._arcadePlaysTotal || 1);
     npc._arcadeLastResult = won ? 'win' : 'lose';
-    npc._arcadeResultTimer = 120; // show result for 2 seconds
+    npc._arcadeResultTimer = 120; // show result for 2 seconds — will display before next action
 
     if (playsLeft > 0 && Math.random() < 0.5) {
-      // Choose to play again (regardless of win/lose)
+      // Choose to play again — fee will be paid AFTER result display finishes
       npc._arcadeFeePaid = false;
-      npc.stateTimer = 120 + _cRandRange(DINER_NPC_CONFIG.gamerPlayDuration[0], DINER_NPC_CONFIG.gamerPlayDuration[1]);
+      npc.stateTimer = _cRandRange(DINER_NPC_CONFIG.gamerPlayDuration[0], DINER_NPC_CONFIG.gamerPlayDuration[1]);
       return;
     }
-    // Done — release spot and leave
+    // Done — release spot and leave via arcade-specific exit route
+    const exitArcadeIdx = npc._claimedArcadeIdx;
     if (npc._claimedArcadeIdx >= 0) {
       DINER_ARCADE_SPOTS[npc._claimedArcadeIdx].claimedBy = null;
       npc._claimedArcadeIdx = -1;
     }
 
-    const curTX = Math.floor(npc.x / TILE);
-    const curTY = Math.floor(npc.y / TILE);
-    _cStartRoute(npc, _routeDinerToExit(curTX, curTY), '_despawn', 0, { kind: 'tile_to_exit', tx: curTX, ty: curTY });
+    const exitRoute = _routeDinerArcadeToExit(exitArcadeIdx >= 0 ? exitArcadeIdx : 0);
+    _cStartRoute(npc, exitRoute, '_despawn', 0, { kind: 'arcade_to_exit', arcadeIdx: exitArcadeIdx });
   },
 
   // ─── LEAVING: Walking to exit ──────────────────────────

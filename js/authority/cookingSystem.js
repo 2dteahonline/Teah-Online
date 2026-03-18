@@ -877,10 +877,7 @@ function drawCookingHUD() {
 
     // Customer type + timer type label
     ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
-    ctx.fillStyle = order.customer.color || '#80a0c0';
-    const customerLabel = order.customer.name || order.customer.type || 'Customer';
-    ctx.fillText(customerLabel, panelX + 8, panelY + 14);
-    // (Timer type label removed — bar color communicates urgency)
+    // (Customer type label removed — not needed on order panel)
 
     // === Table number in gold (top-right of panel) — diner only ===
     if (cookingState.activeRestaurantId === 'diner' && order._dinerTableNumber) {
@@ -960,9 +957,7 @@ function drawCookingHUD() {
       ctx.fillText((i + 1) + ". " + ing.name, panelX + 22, iy);
     }
 
-    // Assembly progress count
-    ctx.font = "bold 9px monospace"; ctx.fillStyle = '#b0b0b0'; ctx.textAlign = "right";
-    ctx.fillText(cookingState.assembly.length + "/" + ingredients.length + " items", panelX + panelW - 8, panelY + panelH - 6);
+    // (Assembly progress count removed — ingredient checklist is sufficient)
   } else {
     // No active order — show queue status
     ctx.font = "bold 11px monospace"; ctx.textAlign = "left";
