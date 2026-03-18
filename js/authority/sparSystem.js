@@ -2713,7 +2713,7 @@ const SparSystem = {
       const urgency = Math.max(0.6, 1.5 - bDist / maxThreatDist);
 
       if (Math.abs(b.vy) > Math.abs(b.vx)) {
-        // Vertical bullet — dodge LEFT or RIGHT
+        // Vertical bullet — PRIMARY: dodge LEFT or RIGHT, DIAGONAL: also move away vertically
         const isApproaching = (b.vy > 0 && b.y < botHitY) || (b.vy < 0 && b.y > botHitY);
         if (!isApproaching) continue;
         const perpDist = Math.abs(dbx);
@@ -2722,14 +2722,18 @@ const SparSystem = {
         const roomLeft = bot.x - wallM;
         const roomRight = arenaW - wallM - bot.x;
         let dodgeDir;
-        if (roomLeft < 30 && roomRight > 30) dodgeDir = 1;       // near left wall → go right
-        else if (roomRight < 30 && roomLeft > 30) dodgeDir = -1;  // near right wall → go left
-        else dodgeDir = dbx >= 0 ? 1 : -1;                        // default: away from bullet
+        if (roomLeft < 30 && roomRight > 30) dodgeDir = 1;
+        else if (roomRight < 30 && roomLeft > 30) dodgeDir = -1;
+        else dodgeDir = dbx >= 0 ? 1 : -1;
         const willHit = perpDist < hitRadius;
         const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
-        dodgeX += dodgeDir * urgency * strength * 3.5;
+        // Diagonal dodge: perpendicular (X) + away from bullet (Y)
+        dodgeX += dodgeDir * urgency * strength * 3.0;
+        // Move away from bullet's current position on the travel axis
+        const awayY = dby >= 0 ? 1 : -1; // away from bullet vertically
+        dodgeY += awayY * urgency * strength * 1.5;
       } else {
-        // Horizontal bullet — dodge UP or DOWN
+        // Horizontal bullet — PRIMARY: dodge UP or DOWN, DIAGONAL: also move away horizontally
         const isApproaching = (b.vx > 0 && b.x < bot.x) || (b.vx < 0 && b.x > bot.x);
         if (!isApproaching) continue;
         const perpDist = Math.abs(dby);
@@ -2738,12 +2742,16 @@ const SparSystem = {
         const roomUp = bot.y - wallM;
         const roomDown = arenaH - wallM - bot.y;
         let dodgeDir;
-        if (roomUp < 30 && roomDown > 30) dodgeDir = 1;          // near top wall → go down
-        else if (roomDown < 30 && roomUp > 30) dodgeDir = -1;     // near bottom wall → go up
-        else dodgeDir = dby >= 0 ? 1 : -1;                        // default: away from bullet
+        if (roomUp < 30 && roomDown > 30) dodgeDir = 1;
+        else if (roomDown < 30 && roomUp > 30) dodgeDir = -1;
+        else dodgeDir = dby >= 0 ? 1 : -1;
         const willHit = perpDist < hitRadius;
         const strength = willHit ? 1.0 : Math.max(0.3, 1 - (perpDist - hitRadius) / (dodgeLane - hitRadius));
-        dodgeY += dodgeDir * urgency * strength * 3.5;
+        // Diagonal dodge: perpendicular (Y) + away from bullet (X)
+        dodgeY += dodgeDir * urgency * strength * 3.0;
+        // Move away from bullet's current position on the travel axis
+        const awayX = dbx >= 0 ? 1 : -1; // away from bullet horizontally
+        dodgeX += awayX * urgency * strength * 1.5;
       }
     }
 
