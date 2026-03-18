@@ -5306,6 +5306,22 @@ const SparSystem = {
         }
       }
 
+      // --- ANTI-BOTTOM DODGE: dodge bullets while approaching ---
+      // The approach sets moveX/moveY toward bottom. Check for incoming bullets
+      // and override perpendicular component to dodge. This prevents the bot from
+      // blindly descending into bullet streams.
+      const abDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
+      const abDodgeMag = Math.sqrt(abDodge.x * abDodge.x + abDodge.y * abDodge.y);
+      if (abDodgeMag > 0.15) {
+        const abdLen = Math.sqrt(abDodge.x * abDodge.x + abDodge.y * abDodge.y);
+        if (abdLen > 0.01) {
+          const abdx = abDodge.x / abdLen, abdy = abDodge.y / abdLen;
+          const abPC = moveX * abdx + moveY * abdy;
+          moveX = (moveX - abPC * abdx) + abdx * speed;
+          moveY = (moveY - abPC * abdy) + abdy * speed;
+        }
+      }
+
       // Normalize to full speed — bot must always move at max speed during anti-bottom
       const abLen = Math.sqrt(moveX * moveX + moveY * moveY);
       if (abLen > 0.1) {
@@ -5327,6 +5343,18 @@ const SparSystem = {
       // Full speed strafe + descent toward bottom
       moveX = ai.strafeDir * speed * 0.85;
       moveY = (bot.y < tgt.y) ? speed * 0.53 : speed * 0.1;
+      // Dodge bullets even during hysteresis descent
+      const hystDodge = this._getIncomingBulletDodge(bot, team, moveX, moveY);
+      const hystDodgeMag = Math.sqrt(hystDodge.x * hystDodge.x + hystDodge.y * hystDodge.y);
+      if (hystDodgeMag > 0.15) {
+        const hdLen = Math.sqrt(hystDodge.x * hystDodge.x + hystDodge.y * hystDodge.y);
+        if (hdLen > 0.01) {
+          const hdx = hystDodge.x / hdLen, hdy = hystDodge.y / hdLen;
+          const hPC = moveX * hdx + moveY * hdy;
+          moveX = (moveX - hPC * hdx) + hdx * speed;
+          moveY = (moveY - hPC * hdy) + hdy * speed;
+        }
+      }
 
     } else {
       // Reset engagement if enemy lost bottom (handled by hysteresis above)
