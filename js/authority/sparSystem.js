@@ -2703,7 +2703,7 @@ const SparSystem = {
     const botHitY = bot.y + hbYOff; // match actual combat hitbox (torso center)
     const hitRadius = this._getSparPerpHitRadius(); // 33px
     const margin = 6; // extra clearance beyond hitbox edge
-    const maxReactFrames = 25; // only dodge bullets arriving within 25 frames
+    const maxReactFrames = 10; // only dodge bullets arriving within 10 frames (~90px at bullet speed 9)
     const arenaLevel = typeof levels !== 'undefined' && levels[currentLevel] ? levels[currentLevel] : null;
     const arenaW = arenaLevel ? arenaLevel.widthTiles * TILE : 600;
     const arenaH = arenaLevel ? arenaLevel.heightTiles * TILE : 600;
