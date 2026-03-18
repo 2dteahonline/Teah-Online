@@ -326,7 +326,7 @@ MOB_SPECIALS.cemetery_call = (m, ctx) => {
           mobs.push({
             x: sx, y: sy, type: 'skeleton', ai: 'grunt', id: nextMobId++,
             hp: Math.round(m.maxHp * 0.06), maxHp: Math.round(m.maxHp * 0.06),
-            speed: 1.8, damage: Math.round(m.damage * 0.25),
+            speed: 1.9, damage: Math.round(m.damage * 0.25),
             contactRange: 30, skin: '#ccccbb', hair: '#aaaaaa', shirt: '#888877', pants: '#777766',
             name: 'Skeleton', dir: 0, frame: 0, attackCooldown: 0,
             shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,

@@ -624,7 +624,7 @@ MOB_SPECIALS.decoy_device = (m, ctx) => {
   mobs.push({
     x: sx, y: sy, type: 'decoy_willis', id: nextMobId++,
     hp: 1, maxHp: 1,
-    speed: 4, damage: 0,
+    speed: 4.2, damage: 0,
     contactRange: 0, skin: m.skin || '#c4a882', hair: m.hair || '#444', shirt: m.shirt || '#667788', pants: m.pants || '#445566',
     name: 'Decoy', dir: 0, frame: 0, attackCooldown: 0,
     shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -717,7 +717,7 @@ MOB_SPECIALS.master_plan = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'decoy_willis', id: nextMobId++,
       hp: 1, maxHp: 1,
-      speed: 4, damage: 0,
+      speed: 4.2, damage: 0,
       contactRange: 0, skin: m.skin || '#c4a882', hair: m.hair || '#444', shirt: m.shirt || '#667788', pants: m.pants || '#445566',
       name: 'Decoy', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -2122,7 +2122,7 @@ MOB_SPECIALS.red_herring = (m, ctx) => {
   // Spawn decoy at old position — walks toward player, 1hp
   mobs.push({
     x: oldX, y: oldY, type: 'lady_red_decoy', id: nextMobId++,
-    hp: 1, maxHp: 1, speed: 1.6, damage: 0,
+    hp: 1, maxHp: 1, speed: 1.7, damage: 0,
     contactRange: 0, skin: m.skin || '#ffccaa', hair: m.hair || '#880000', shirt: m.shirt || '#cc0000', pants: m.pants || '#880000',
     name: 'Lady Red?', dir: 0, frame: 0, attackCooldown: 0,
     shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -2263,7 +2263,7 @@ MOB_SPECIALS.call_the_goons = (m, ctx) => {
     mobs.push({
       x: sx, y: sy, type: 'tracksuit_goon', id: nextMobId++,
       hp: Math.round(m.maxHp * 0.1), maxHp: Math.round(m.maxHp * 0.1),
-      speed: 2.2, damage: Math.round(m.damage * 0.35),
+      speed: 2.3, damage: Math.round(m.damage * 0.35),
       contactRange: 30, skin: '#ddb88c', hair: '#222', shirt: '#444455', pants: '#333344',
       name: 'Goon', dir: 0, frame: 0, attackCooldown: 0,
       shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,

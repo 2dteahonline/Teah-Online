@@ -401,7 +401,7 @@ MOB_SPECIALS.brood_call = (m, ctx) => {
           mobs.push({
             x: sx, y: sy, type: 'silk_skitterer', id: nextMobId++,
             hp: Math.round(m.maxHp * 0.08), maxHp: Math.round(m.maxHp * 0.08),
-            speed: 2, damage: Math.round(m.damage * 0.3),
+            speed: 2.1, damage: Math.round(m.damage * 0.3),
             contactRange: 30, skin: '#888899', hair: '#666677', shirt: '#777788', pants: '#666677',
             name: 'Spiderling', dir: 0, frame: 0, attackCooldown: 0,
             shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -613,7 +613,7 @@ MOB_SPECIALS.snake_call = (m, ctx) => {
         mobs.push({
           x: sx, y: sy, type: 'temple_fang_acolyte', id: nextMobId++,
           hp: Math.round(m.maxHp * 0.15), maxHp: Math.round(m.maxHp * 0.15),
-          speed: 2, damage: Math.round(m.damage * 0.4),
+          speed: 2.1, damage: Math.round(m.damage * 0.4),
           contactRange: 30, skin: '#668866', hair: '#446644', shirt: '#557755', pants: '#446644',
           name: 'Serpent', dir: 0, frame: 0, attackCooldown: 0,
           shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,
@@ -880,7 +880,7 @@ MOB_SPECIALS.serpent_swarm = (m, ctx) => {
           mobs.push({
             x: sx, y: sy, type: 'temple_fang_acolyte', id: nextMobId++,
             hp: Math.round(m.maxHp * 0.06), maxHp: Math.round(m.maxHp * 0.06),
-            speed: 2.2, damage: Math.round(m.damage * 0.3),
+            speed: 2.3, damage: Math.round(m.damage * 0.3),
             contactRange: 30, skin: '#668866', hair: '#446644', shirt: '#557755', pants: '#446644',
             name: 'Serpent', dir: 0, frame: 0, attackCooldown: 0,
             shootRange: 0, shootRate: 0, shootTimer: 0, bulletSpeed: 0,

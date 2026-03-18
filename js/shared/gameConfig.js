@@ -5,7 +5,7 @@
 
 const GAME_CONFIG = {
   // --- Player ---
-  PLAYER_BASE_SPEED: 7.08,      // base movement speed (no boots) -> 425 px/sec
+  PLAYER_BASE_SPEED: 7.5,       // base movement speed (no boots) -> 450 px/sec
   PLAYER_WALL_HW: 14,           // player wall collision half-width (AABB)
   PLAYER_RADIUS: 23,            // body-blocking circle radius
 
@@ -29,11 +29,11 @@ const GAME_CONFIG = {
 
   // --- Knockback ---
   KNOCKBACK_DECAY: 0.8,         // velocity multiplier per frame
-  KNOCKBACK_THRESHOLD: 0.57,    // min velocity before clearing
+  KNOCKBACK_THRESHOLD: 0.6,     // min velocity before clearing
 
   // --- Hitbox Indicator ---
   DEFAULT_HITBOX_R: 33,         // hitbox visual radius (BULLET_HALF_SHORT + ENTITY_R)
 
   // --- Version ---
-  GAME_UPDATE: 390,             // increment each deploy - shown on lobby version sign
+  GAME_UPDATE: 391,             // increment each deploy - shown on lobby version sign
 };

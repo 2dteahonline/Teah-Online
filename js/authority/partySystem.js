@@ -85,9 +85,9 @@ function createPartyMember(slotIndex, controlType) {
       cooldownMax: defMelee.cooldown || 28,
       critChance: defMelee.critChance || 0.10,
       special: defMelee.special || null,
-      knockback: 4.76, arcAngle: Math.PI * 0.8,
+      knockback: 5.04, arcAngle: Math.PI * 0.8,
       // Dash fields (ninja katanas) — per-entity, same defaults as gameState.js
-      dashing: false, dashTimer: 0, dashDuration: 14, dashSpeed: 20.63,
+      dashing: false, dashTimer: 0, dashDuration: 14, dashSpeed: 21.85,
       dashDirX: 0, dashDirY: 0, dashTrail: [],
       dashesLeft: 0, dashChainWindow: 0,
       dashCooldown: 0, dashCooldownMax: 240, dashActive: false, dashGap: 0,
