@@ -2769,17 +2769,13 @@ const SparSystem = {
         // If both sides blocked, keep original — diagonal away component will help
       }
 
-      // Always diagonal: perpendicular clearance + along bullet travel (buys time)
-      // "Along bullet travel" = same direction bullet is going. This works because
-      // the bot can't outrun bullets (7.5 < 9 speed), so moving WITH the bullet
-      // delays impact and gives more frames for perpendicular clearance.
-      // CRITICAL: "away from source" was wrong — it cancelled the perpendicular
-      // component for aligned shots (e.g. straight-down bullet: perp=-1, away=+1 on X → net -0.5)
-      const alongX = bvx / bSpeed; // unit vector along bullet travel
-      const alongY = bvy / bSpeed;
-
-      dodgeX += (perpNormX * 2.5 + alongX * 1.5) * urgency * strength;
-      dodgeY += (perpNormY * 2.5 + alongY * 1.5) * urgency * strength;
+      // Pure perpendicular dodge — no along-travel component.
+      // The diagonal comes from KEEPING existing tactical movement (strafe)
+      // at the override site, not from adding a synthetic second axis here.
+      // "Along travel" caused: wall collisions at bottom, reduced perpendicular
+      // clearance speed (6.4 vs 7.5), and wasted movement.
+      dodgeX += perpNormX * urgency * strength;
+      dodgeY += perpNormY * urgency * strength;
     }
 
     const dodgeLen = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
@@ -4770,12 +4766,15 @@ const SparSystem = {
       const _openTankForKill = !member.gun.reloading && member.gun.ammo > 0
         && member.ai.shootCD <= 0 && tgt.hp <= (member.gun.damage || 20);
       if (openDodgeMag > 0.15 && !_openTankForKill) {
-        // 100% commit to diagonal dodge — survival always wins
+        // Perpendicular dodge: keep route movement, replace perp component
         const odLen = Math.sqrt(openDodge.x * openDodge.x + openDodge.y * openDodge.y);
         if (odLen > 0.01) {
           const ondx = openDodge.x / odLen, ondy = openDodge.y / odLen;
-          moveX = ondx * speed;
-          moveY = ondy * speed;
+          const oPC = moveX * ondx + moveY * ondy;
+          moveX = (moveX - oPC * ondx) + ondx * speed;
+          moveY = (moveY - oPC * ondy) + ondy * speed;
+          const oLen = Math.sqrt(moveX * moveX + moveY * moveY);
+          if (oLen > speed) { moveX = (moveX / oLen) * speed; moveY = (moveY / oLen) * speed; }
         }
       }
 
@@ -5007,12 +5006,15 @@ const SparSystem = {
       const _btmTankForTrade = !member.gun.reloading && member.gun.ammo > 0
         && member.ai.shootCD <= 0 && bot.hp > tgt.hp + 40 && dist < 200;
       if (bottomDodgeMag > 0.15 && !_btmTankForKill && !_btmTankForTrade) {
-        // 100% commit to diagonal dodge — survival always wins
+        // Perpendicular dodge: keep strafe movement, replace perp component
         const bdLen = Math.sqrt(bottomDodge.x * bottomDodge.x + bottomDodge.y * bottomDodge.y);
         if (bdLen > 0.01) {
           const bndx = bottomDodge.x / bdLen, bndy = bottomDodge.y / bdLen;
-          moveX = bndx * speed;
-          moveY = bndy * speed;
+          const bPC = moveX * bndx + moveY * bndy;
+          moveX = (moveX - bPC * bndx) + bndx * speed;
+          moveY = (moveY - bPC * bndy) + bndy * speed;
+          const bLen = Math.sqrt(moveX * moveX + moveY * moveY);
+          if (bLen > speed) { moveX = (moveX / bLen) * speed; moveY = (moveY / bLen) * speed; }
         }
       }
       // If recently took a hit, increase strafe speed to be harder to hit
@@ -6247,12 +6249,23 @@ const SparSystem = {
     let _isDodging = false;
     if (dodgeMag > 0.15 && !_shouldTankForTrade) {
       _isDodging = true;
-      // 100% commit to dodge direction — diagonal vector already optimal from detection
+      // Perpendicular dodge: replace ONLY the perpendicular component of movement,
+      // keep the parallel component (existing strafe/tactical movement).
+      // Result: diagonal = strafe + dodge, not a synthetic second axis.
       const dLen = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
       if (dLen > 0.01) {
         const ndx = dodge.x / dLen, ndy = dodge.y / dLen;
-        moveX = ndx * speed;
-        moveY = ndy * speed;
+        // Project existing movement onto dodge direction (perpendicular component)
+        const perpComp = moveX * ndx + moveY * ndy;
+        // Keep parallel component (strafe), replace perpendicular with full-speed dodge
+        moveX = (moveX - perpComp * ndx) + ndx * speed;
+        moveY = (moveY - perpComp * ndy) + ndy * speed;
+        // Normalize to max speed
+        const postLen = Math.sqrt(moveX * moveX + moveY * moveY);
+        if (postLen > speed) {
+          moveX = (moveX / postLen) * speed;
+          moveY = (moveY / postLen) * speed;
+        }
       }
     }
 
