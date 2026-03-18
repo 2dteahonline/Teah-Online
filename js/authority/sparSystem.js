@@ -630,14 +630,44 @@ const SparSystem = {
   },
 
   // v8 hierarchical anti-bottom tactic selector — unified through _pickHierarchicalPolicy
-  _pickAntiBottomTactic(pm, openingLostDir) {
+  _pickAntiBottomTactic(pm, openingLostDir, posCtx) {
     const sl = typeof sparLearning !== 'undefined' ? sparLearning : null;
-    const tactics = typeof SPAR_ANTI_BOTTOM_TACTIC_KEYS !== 'undefined'
+    const allTactics = typeof SPAR_ANTI_BOTTOM_TACTIC_KEYS !== 'undefined'
       ? SPAR_ANTI_BOTTOM_TACTIC_KEYS
       : ['contestDirect', 'contestSprint', 'flankWide', 'flankTight', 'baitRetreat', 'baitFake'];
     const familyMap = typeof SPAR_ANTI_BOTTOM_FAMILY_MAP !== 'undefined'
       ? SPAR_ANTI_BOTTOM_FAMILY_MAP
       : { contestDirect: 'contest', contestSprint: 'contest', flankWide: 'flank', flankTight: 'flank', baitRetreat: 'bait', baitFake: 'bait' };
+
+    // === Context filtering: remove tactics that don't make sense given current position ===
+    let tactics = allTactics.slice(); // copy
+    if (posCtx) {
+      const { nearLeftWall, nearRightWall, alreadyOffset, alreadyBelow, dist, badGunSide } = posCtx;
+      // Near a wall — can't flank wider in that direction
+      if (nearLeftWall || nearRightWall) {
+        // flankWide needs lateral room — bad near walls
+        tactics = tactics.filter(t => t !== 'flankWide');
+      }
+      // Already laterally offset from enemy — no need to flank, contest/sprint is better
+      if (alreadyOffset) {
+        tactics = tactics.filter(t => t !== 'flankWide' && t !== 'flankTight');
+      }
+      // Already below enemy — just need to hold, contest directly
+      if (alreadyBelow) {
+        tactics = tactics.filter(t => t !== 'baitRetreat' && t !== 'doubleFakeRetreat');
+      }
+      // Very close — bait/retreat need space to work
+      if (dist < 120) {
+        tactics = tactics.filter(t => t !== 'baitRetreat' && t !== 'doubleFakeRetreat' && t !== 'baitFake');
+      }
+      // Very far — contest/sprint is wasteful, flank or bait better
+      if (dist > 350) {
+        tactics = tactics.filter(t => t !== 'contestDirect');
+      }
+    }
+    // Safety: always have at least 2 options
+    if (tactics.length < 2) tactics = allTactics.slice();
+
     if (!sl) return tactics[Math.floor(Math.random() * tactics.length)];
 
     const rf = this._ensureReinforcementProfile(sl);
@@ -661,6 +691,24 @@ const SparSystem = {
     for (const tactic of tactics) {
       const family = familyMap[tactic];
       baseScores[tactic] = family === 'flank' ? 7 : (family === 'contest' ? 6 : 5);
+    }
+
+    // Context-based scoring boosts (position-aware)
+    if (posCtx) {
+      // Bad gun side — flanking to fix angle is higher value
+      if (posCtx.badGunSide) {
+        familyBiases.flank += 8;
+        baseScores.lateCrossUnder = (baseScores.lateCrossUnder || 6) + 6;
+      }
+      // Good gun side — contesting directly is stronger (already have angle)
+      if (!posCtx.badGunSide) {
+        familyBiases.contest += 6;
+      }
+      // Already offset — contest/sprint to dive down from current angle
+      if (posCtx.alreadyOffset) {
+        baseScores.contestSprint = (baseScores.contestSprint || 6) + 8;
+        baseScores.contestDirect = (baseScores.contestDirect || 6) + 5;
+      }
     }
 
     // Profile bonuses (mapped to family + specific tactics)
@@ -1487,7 +1535,7 @@ const SparSystem = {
         startCtx: ai._abStartCtx || null,
         endReason: regainedBottom ? 'success'
           : (ai._antiBottomStallCount >= 3) ? 'stallAbandon'
-          : (frames >= 120) ? 'timeout' : 'stateChange',
+          : (frames >= 600) ? 'safetyCap' : 'stateChange',
       });
     }
 
@@ -1495,7 +1543,7 @@ const SparSystem = {
     const hpBase = SPAR_CONFIG.HP_BASELINE || 100;
     const regainR = regainedBottom ? 1 : 0;
     const dmgR = Math.max(0, Math.min(1, 1 - dmgTaken / (hpBase * 0.5)));
-    const speedR = Math.max(0, Math.min(1, 1 - frames / 120));
+    const speedR = Math.max(0, Math.min(1, 1 - frames / 300));
     const phaseReward = regainR * 0.50 + dmgR * 0.28 + speedR * 0.22;
 
     // Update reinforcement buckets — respect training/self-play data separation
@@ -1889,9 +1937,9 @@ const SparSystem = {
         // Movement plan: commit to a direction for N frames (like a real player)
         _movePlanDirX: 0,        // committed direction X (unit)
         _movePlanDirY: 0,        // committed direction Y (unit)
-        _movePlanFrames: 0,      // frames remaining in current plan
+        _movePlanFrames: 0,      // frames remaining in current plan (high cap, break triggers are real exit)
         _movePlanState: null,    // which state set this plan ('neutral','antiBottom','hasBottom','escape','gunSide')
-        _movePlanTookHitFrame: 0, // _lastTookHitFrame when plan was set (to detect new hits)
+        _movePlanDist: 0,        // distance to enemy when plan started (detect rushing)
         // vNext: opening contest policy state
         _openingContestPolicy: null,
         _openingContestFamily: null,
@@ -4886,7 +4934,15 @@ const SparSystem = {
 
       // Initialize engagement if not started
       if (!ai._antiBottomTactic) {
-        const chosen = this._pickAntiBottomTactic(pm, ai._openingLostBottomDir);
+        const _abPosCtx = {
+          nearLeftWall: nearLeftWallBase,
+          nearRightWall: nearRightWallBase,
+          alreadyOffset: alignX > sideOffsetNear,   // already past enemy's aim cone
+          alreadyBelow: bot.y > tgt.y,               // already below enemy
+          dist,
+          badGunSide,
+        };
+        const chosen = this._pickAntiBottomTactic(pm, ai._openingLostBottomDir, _abPosCtx);
         ai._antiBottomTactic = chosen;
         ai._antiBottomFamily = (typeof SPAR_ANTI_BOTTOM_FAMILY_MAP !== 'undefined')
           ? SPAR_ANTI_BOTTOM_FAMILY_MAP[chosen] : 'flank';
@@ -4902,6 +4958,7 @@ const SparSystem = {
         ai._abMaxClearance = 0;  // max lateral clearance achieved
         ai._abStartCtx = _snapEngagementCtx(bot, tgt, ai);
         ai._abStartCtx.badGunSide = badGunSide;
+        ai._abStartCtx.posCtx = _abPosCtx; // full position context for learning
         // Pick offset direction: favorable gun-side for crossing
         const favorableDir = (_botGunSide === 'right') ? 1 : -1;
         ai._antiBottomOffsetDir = favorableDir;
@@ -5171,8 +5228,10 @@ const SparSystem = {
         moveY = (moveY / abLen) * speed;
       }
 
-      // --- Timeout: force re-pick after 120 frames ---
-      if (ai._antiBottomFrames > 120) {
+      // No arbitrary timeout — tactic runs until it succeeds (regained bottom),
+      // gets body-blocked out (3 stalls), or enemy loses bottom (state change).
+      // Only safety cap at 600 frames (10 sec) to prevent infinite loops.
+      if (ai._antiBottomFrames > 600) {
         this._finalizeAntiBottomEngagement(ai, false, c);
         ai._antiBottomCooldown = 10;
         ai._antiBottomHysteresisFrames = 0;
@@ -6017,9 +6076,12 @@ const SparSystem = {
     }
 
     // === MOVEMENT PLAN: commit to a direction like a real player ===
-    // Real players pick a direction and go for 0.5-1 sec. They only change
-    // if a bullet is about to hit them. This replaces per-frame re-evaluation
-    // which causes jitter from competing forces flipping the resultant.
+    // Real players pick a direction and hold it. They only change when:
+    //   1. A bullet will hit them on this trajectory (predictive dodge)
+    //   2. Enemy is rushing them (closing distance fast — context changed)
+    //   3. State changed (entered anti-bottom, escape, etc.)
+    //   4. Momentum/stall break forced
+    // NO time limit — plan runs until one of these triggers fires.
     //
     // Determine current movement state for plan tracking
     const _movePlanCurrentState = isOpening ? 'opening'
@@ -6030,31 +6092,44 @@ const SparSystem = {
       : ai._gunSidePolicy ? 'gunSide'
       : 'neutral';
 
-    // Check if bullet dodge is urgent enough to break the plan
+    // Break trigger 1: bullet will hit me on this trajectory
     const _planDodgeUrgent = dodgeMag > 1.5;
 
-    // Check if state changed (entered a new tactical phase)
+    // Break trigger 2: enemy rushing me (closing distance significantly)
+    const _planEnemyRushing = ai._movePlanDist !== undefined
+      && dist < ai._movePlanDist - 40; // enemy closed 40+ px since plan started
+
+    // Break trigger 3: state changed (entered a new tactical phase)
     const _planStateChanged = ai._movePlanState !== null && ai._movePlanState !== _movePlanCurrentState;
 
-    // Check if momentum break is active (overrides plan)
+    // Break trigger 4: momentum break is active (overrides plan)
     const _planMomentumBreak = ai._momentumBreakFrames > 0;
 
-    if (ai._movePlanFrames > 0 && !_planDodgeUrgent && !_planStateChanged && !_planMomentumBreak && moveLen > 1) {
-      // Active plan, no bullet threat, same state — hold the committed direction
+    const _planShouldBreak = _planDodgeUrgent || _planEnemyRushing || _planStateChanged || _planMomentumBreak;
+
+    if (ai._movePlanFrames > 0 && !_planShouldBreak && moveLen > 1) {
+      // Active plan, no break triggers — hold the committed direction
       moveX = ai._movePlanDirX * speed;
       moveY = ai._movePlanDirY * speed;
       ai._movePlanFrames--;
     } else if (moveLen > 1) {
-      // Set new plan from computed direction
-      // Duration: 25-45 frames (~0.4-0.75 sec at 60fps)
-      // Shorter during anti-bottom (faster re-evaluation needed for phases)
-      const planDuration = (_movePlanCurrentState === 'antiBottom' || _movePlanCurrentState === 'escape')
-        ? 15 + Math.floor(Math.random() * 15)   // 15-30 frames for tactical phases
-        : 25 + Math.floor(Math.random() * 20);   // 25-45 frames for neutral/hasBottom
+      // Track why the previous plan broke (for learning diagnostics)
+      if (ai._movePlanFrames > 0 && _planShouldBreak) {
+        const _sl3 = typeof sparLearning !== 'undefined' ? sparLearning : null;
+        if (_sl3 && _sl3.tactical) {
+          if (!_sl3.tactical.planBreaks) _sl3.tactical.planBreaks = { dodge: 0, rush: 0, stateChange: 0, momentum: 0 };
+          if (_planDodgeUrgent) _sl3.tactical.planBreaks.dodge++;
+          else if (_planEnemyRushing) _sl3.tactical.planBreaks.rush++;
+          else if (_planStateChanged) _sl3.tactical.planBreaks.stateChange++;
+          else if (_planMomentumBreak) _sl3.tactical.planBreaks.momentum++;
+        }
+      }
+      // Set new plan from computed direction — no time limit, runs until break trigger
       ai._movePlanDirX = moveX / speed;
       ai._movePlanDirY = moveY / speed;
-      ai._movePlanFrames = planDuration;
+      ai._movePlanFrames = 9999; // effectively infinite — break triggers are the real exit
       ai._movePlanState = _movePlanCurrentState;
+      ai._movePlanDist = dist; // snapshot distance to detect enemy rushing
     }
 
     // Freeze penalty after shooting — applied AFTER normalization (the only valid speed reduction)
