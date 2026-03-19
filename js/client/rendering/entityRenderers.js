@@ -4959,21 +4959,28 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = "left";
 };
 
-// --- Service counter (decorative) ---
+// --- Service counter (serve interaction point) ---
 ENTITY_RENDERERS.fd_service_counter = (e, ctx, ex, ey, w, h) => {
   const cw = w * TILE, ch = h * TILE;
+  // Dark base
   ctx.fillStyle = '#2a1a14';
   ctx.fillRect(ex, ey, cw, ch);
-  ctx.fillStyle = '#3a2a20';
-  ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
-  ctx.fillStyle = 'rgba(255,215,0,0.08)';
-  ctx.fillRect(ex, ey, cw, 2);
-  // Label
+  // Label bar at bottom
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(ex, ey + ch - 16, cw, 16);
   ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
-  ctx.fillStyle = '#ffd700'; ctx.fillText("Counter", ex + cw/2, ey + ch - 4);
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Serve", ex + cw/2, ey + ch - 4);
   ctx.textAlign = "left";
+  // Gold surface above the label
+  const goldTop = ey + 2;
+  const goldH = ch - 18;
+  ctx.fillStyle = '#c0a000';
+  ctx.fillRect(ex + 2, goldTop, cw - 4, goldH);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(ex + 4, goldTop + 2, cw - 8, goldH - 4);
+  // Shine highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(ex + 4, goldTop + 2, cw - 8, 4);
 };
 
 // --- Teppanyaki table (background visual) ---
@@ -5105,60 +5112,9 @@ ENTITY_RENDERERS.fd_host_stand = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = "left";
 };
 
-// --- Host NPC (player-sized, male in tuxedo, stationary above host stand) ---
+// --- Host NPC (now rendered via drawChar in draw.js, entity is visual placeholder only) ---
 ENTITY_RENDERERS.fd_host_npc = (e, ctx, ex, ey, w, h) => {
-  const cw = w * TILE, ch = h * TILE;
-  // Player sprite is 32×40 — center in the tile
-  const cx = ex + cw / 2, baseY = ey + ch - 4;
-  const bw = 16, bh = 20; // half-body width/height (player-sized: 32×40)
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  ctx.beginPath(); ctx.ellipse(cx, baseY, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-  // Legs
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(cx - 6, baseY - 14, 5, 14);
-  ctx.fillRect(cx + 1, baseY - 14, 5, 14);
-  // Shoes
-  ctx.fillStyle = '#111';
-  ctx.fillRect(cx - 7, baseY - 2, 6, 4);
-  ctx.fillRect(cx + 1, baseY - 2, 6, 4);
-  // Body (black tuxedo) — player-sized torso
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(cx - bw / 2, baseY - 36, bw, 24);
-  // Tuxedo lapels
-  ctx.fillStyle = '#2a2a2a';
-  ctx.beginPath(); ctx.moveTo(cx - bw / 2, baseY - 36); ctx.lineTo(cx - 3, baseY - 22); ctx.lineTo(cx - bw / 2, baseY - 22); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(cx + bw / 2, baseY - 36); ctx.lineTo(cx + 3, baseY - 22); ctx.lineTo(cx + bw / 2, baseY - 22); ctx.closePath(); ctx.fill();
-  // White shirt front
-  ctx.fillStyle = '#f0f0f0';
-  ctx.fillRect(cx - 4, baseY - 34, 8, 20);
-  // Buttons
-  ctx.fillStyle = '#ccc';
-  ctx.beginPath(); ctx.arc(cx, baseY - 26, 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx, baseY - 20, 1.5, 0, Math.PI * 2); ctx.fill();
-  // Bow tie
-  ctx.fillStyle = '#c00020';
-  ctx.beginPath(); ctx.moveTo(cx - 6, baseY - 33); ctx.lineTo(cx, baseY - 31); ctx.lineTo(cx - 6, baseY - 29); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(cx + 6, baseY - 33); ctx.lineTo(cx, baseY - 31); ctx.lineTo(cx + 6, baseY - 29); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#900018';
-  ctx.beginPath(); ctx.arc(cx, baseY - 31, 2, 0, Math.PI * 2); ctx.fill();
-  // Head (player-sized: 16×16 head)
-  ctx.fillStyle = '#d4a574';
-  ctx.beginPath(); ctx.arc(cx, baseY - 44, 10, 0, Math.PI * 2); ctx.fill();
-  // Hair
-  ctx.fillStyle = '#2a1a0a';
-  ctx.beginPath(); ctx.arc(cx, baseY - 48, 9, Math.PI, Math.PI * 2); ctx.fill();
-  // Eyes
-  ctx.fillStyle = '#222';
-  ctx.fillRect(cx - 4, baseY - 45, 2, 2);
-  ctx.fillRect(cx + 2, baseY - 45, 2, 2);
-  // Smile
-  ctx.strokeStyle = '#8a5a3a'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(cx, baseY - 40, 4, 0.1, Math.PI - 0.1); ctx.stroke();
-  // Name label
-  ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-  ctx.fillStyle = '#ffd700'; ctx.fillText("Host", cx, baseY + 10);
-  ctx.textAlign = "left";
+  // No visual — host is rendered as an NPC character by the fine dining system
 };
 
 // --- Enter Restaurant door ---

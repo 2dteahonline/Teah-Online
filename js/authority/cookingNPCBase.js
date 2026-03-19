@@ -196,6 +196,18 @@ function _cMoveNPC(npc, cfg) {
   // Wall/solid entity collision check
   if (typeof positionClear === 'function' && !positionClear(nextX, nextY, 14)) {
     npc._stuckFrames = (npc._stuckFrames || 0) + 1;
+    // Quick unstick: after 15 frames (~0.25s), snap to raw waypoint center and skip it
+    if (npc._stuckFrames >= 15) {
+      npc._stuckFrames = 0;
+      if (positionClear(rawX, rawY, 10)) {
+        npc.x = rawX;
+        npc.y = rawY;
+      }
+      npc.route.shift();
+      if (npc.route.length === 0) {
+        npc.moving = false;
+      }
+    }
     return;
   }
 

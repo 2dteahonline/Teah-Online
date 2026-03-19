@@ -292,9 +292,11 @@ function draw() {
   if (typeof dinerNPCs !== 'undefined' && Scene.inCooking && typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') {
     for (const npc of dinerNPCs) sortedChars.push({ y: npc.y, type: "dinerNPC", npc: npc });
   }
-  // Fine dining customer NPCs
+  // Fine dining customer NPCs + waiter + host
   if (typeof fineDiningNPCs !== 'undefined' && Scene.inCooking && typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'fine_dining') {
     for (const npc of fineDiningNPCs) sortedChars.push({ y: npc.y, type: "fineDiningNPC", npc: npc });
+    if (typeof _fdWaiter !== 'undefined' && _fdWaiter) sortedChars.push({ y: _fdWaiter.y, type: "fineDiningNPC", npc: _fdWaiter });
+    if (typeof _fdHostNPC !== 'undefined' && _fdHostNPC) sortedChars.push({ y: _fdHostNPC.y, type: "fineDiningNPC", npc: _fdHostNPC });
   }
   // Spar bots (member objects — entity is member.entity)
   if (typeof SparState !== 'undefined' && Scene.inSpar && SparState._sparBots) {

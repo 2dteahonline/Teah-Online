@@ -23,7 +23,7 @@ const FD_SPOTS = {
   exit: { tx: 40, ty: 24 },
   hostStand: { tx: 40, ty: 20 },
   passWindow: { tx: 20, ty: 20 },  // kitchen pass window where waiter drops/picks up orders
-  waiterHome: { tx: 20, ty: 19 },  // waiter stationary spot (4 tiles under kitchen door, dining side)
+  waiterHome: { tx: 17, ty: 20 },  // waiter spot — 2 tiles below right corner of service counter
 };
 
 // ===================== TEPPANYAKI TABLES =====================
@@ -59,6 +59,9 @@ const _fdSpawnState = { timer: 0, nextInterval: 600 };
 
 // Waiter NPC — persistent, escorts parties, takes orders, delivers food
 let _fdWaiter = null;
+
+// Host NPC — persistent, stationary at host stand
+let _fdHostNPC = null;
 
 // Order visibility flag — hidden until waiter returns to pass window after order_taking
 let _fdOrderVisible = false;
@@ -567,12 +570,13 @@ function initFineDiningNPCs() {
   _fdWaiterQueue.length = 0;
   for (const t of FD_TABLES) { t.claimedBy = null; t.state = 'empty'; t._exclamationVisible = false; t._foodServed = false; t._serveData = null; }
 
-  // Create persistent waiter NPC at waiter home spot (3 tiles under kitchen entrance)
+  // Create persistent waiter NPC at waiter home spot (2 tiles below counter corner)
   _fdWaiter = {
     id: 'waiter',
     x: FD_SPOTS.waiterHome.tx * TILE + TILE / 2,
     y: FD_SPOTS.waiterHome.ty * TILE + TILE / 2,
     dir: 0, // face down
+    frame: 0,
     speed: 0.98,
     moving: false,
     state: 'idle',
@@ -590,6 +594,28 @@ function initFineDiningNPCs() {
     shirt: '#ffffff',  // white waiter shirt
     pants: '#1a1a1a',  // black pants
     name: 'Waiter',
+    anim: 0,
+  };
+
+  // Create persistent host NPC at host stand (stationary, faces down)
+  _fdHostNPC = {
+    id: 'host',
+    x: 40 * TILE + TILE / 2,  // centered above host stand (tx:39-42)
+    y: 19 * TILE + TILE / 2,  // ty:19, directly above stand at ty:20
+    dir: 0, // face down
+    frame: 0,
+    speed: 0,
+    moving: false,
+    state: 'idle',
+    stateTimer: 0,
+    route: [],
+    isFineDiningNPC: true,
+    isHost: true,
+    skin: '#d4a574',
+    hair: '#2a1a0a',
+    shirt: '#1a1a1a',  // black tuxedo
+    pants: '#1a1a1a',  // black pants
+    name: 'Host',
     anim: 0,
   };
 }
@@ -726,7 +752,7 @@ const FD_WAITER_AI = {
       w.hasFood = true;
 
       // Walk from waiter home through kitchen door to serve counter
-      const routeToPickup = [_cWP(20, 19), _cWP(19, 14), _cWP(19, 12)];
+      const routeToPickup = [_cWP(17, 20), _cWP(17, 18), _cWP(17, 14), _cWP(17, 12)];
       _startWaiterRoute(routeToPickup, 'picking_up', 0);
       return;
     }
@@ -747,9 +773,9 @@ const FD_WAITER_AI = {
     const table = FD_TABLES[party.tableId];
     if (!table) { w.state = 'idle'; return; }
     const isRightCol = (table.grillTX >= 30);
-    // Route: waiterHome(20,19) → main walkway → table grill
+    // Route: waiterHome(17,20) → main walkway → table grill
     const route = [];
-    route.push(_cWP(20, 19));
+    route.push(_cWP(17, 20));
     route.push(_cWP(20, 20));
     if (isRightCol) {
       route.push(_cWP(31, 20));
@@ -874,7 +900,7 @@ const FD_WAITER_AI = {
     }
 
     // Now walk back to waiter home spot
-    const route = [_cWP(20, 20), _cWP(20, 19)];
+    const route = [_cWP(20, 20), _cWP(17, 20)];
     _startWaiterRoute(route, 'idle', 0);
     // Override to returning state during walk
     w.state = 'returning';
@@ -901,9 +927,10 @@ const FD_WAITER_AI = {
       const table = FD_TABLES[w._currentTableId];
       if (!table) { w.state = 'idle'; return; }
       const isRightCol = (table.grillTX >= 30);
-      // Route: pickup counter(19,12) → kitchen door → walkway → table grill
+      // Route: serve counter(17,12) → kitchen door → walkway → table grill
       const route = [];
-      route.push(_cWP(19, 14));
+      route.push(_cWP(17, 14));
+      route.push(_cWP(17, 18));
       route.push(_cWP(20, 20));
       if (isRightCol) {
         route.push(_cWP(31, 20));
@@ -958,7 +985,7 @@ const FD_WAITER_AI = {
         route.push(_cWP(20, table.grillTY));
         route.push(_cWP(20, 20));
       }
-      route.push(_cWP(20, 19));
+      route.push(_cWP(17, 20));
       _startWaiterRoute(route, 'idle', 0);
       w.state = 'returning';
     } else {

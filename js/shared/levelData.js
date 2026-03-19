@@ -1112,9 +1112,6 @@ const LEVELS = {
       // Door gap at ty 14-15 (open space)
       { type: 'fd_service_wall', tx: 18, ty: 16, w: 2, h: 3, solid: true },
 
-      // === SERVE COUNTER ===
-      { type: 'fd_serve_counter', tx: 14, ty: 12, w: 5, h: 2, solid: true },     // serve (submit order)
-
       // === INGREDIENT STATIONS (2x2 each, 3 rows of 4 — 2-tile gaps for easy walking) ===
       // Row 1 (ty: 1)
       { type: 'fding_steak',        tx: 1,  ty: 1, w: 2, h: 2, solid: true },
@@ -1151,8 +1148,8 @@ const LEVELS = {
       // Host NPC directly above stand (stationary, centered)
       { type: 'fd_host_npc', tx: 40, ty: 19, w: 1, h: 1, solid: false },
 
-      // === WAITER (stationary, 4 tiles under kitchen door at ty:14-15, so ty:19) ===
-      { type: 'fd_waiter_spot', tx: 20, ty: 19, w: 1, h: 1, solid: false },
+      // === WAITER (2 tiles below right corner of service counter at tx:17, ty:18) ===
+      { type: 'fd_waiter_spot', tx: 17, ty: 20, w: 1, h: 1, solid: false },
 
       // === ENTER / EXIT DOORS ===
       { type: 'fd_enter_door', tx: 40, ty: 24, w: 3, h: 1, solid: false },   // bottom, vertically from host

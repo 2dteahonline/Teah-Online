@@ -452,7 +452,7 @@ function moveDinerNPC(npc) {
     kitchenCheck: _isDinerKitchenZone,
     kitchenSafe: { tx: 26, ty: 16 },
     kitchenFallback: [{ tx: 27, ty: 16 }, { tx: 27, ty: 21 }],
-    laneMode: 'checked',
+    laneMode: 'none',
     laneDisableStates: new Set(['seating', 'waiting_at_booth', 'eating', 'leaving', 'post_meal', '_despawn_walk']),
     pairBehavior: (npc, other) => {
       // Waitress skips all avoidance — she must never get stuck or slowed going to tables
