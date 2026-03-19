@@ -4913,7 +4913,7 @@ ENTITY_RENDERERS.fd_pickup_counter = (e, ctx, ex, ey, w, h) => {
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(ex, ey + ch - 16, cw, 16);
   ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
-  ctx.fillStyle = '#ffd700'; ctx.fillText("Submit Order", ex + cw/2, ey + ch - 4);
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Serve", ex + cw/2, ey + ch - 4);
   ctx.textAlign = "left";
 };
 
@@ -4927,6 +4927,33 @@ ENTITY_RENDERERS.fd_service_counter = (e, ctx, ex, ey, w, h) => {
   ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
   ctx.fillStyle = 'rgba(255,215,0,0.08)';
   ctx.fillRect(ex, ey, cw, 2);
+  // Label
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(ex, ey + ch - 16, cw, 16);
+  ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Counter", ex + cw/2, ey + ch - 4);
+  ctx.textAlign = "left";
+  // Gold tray with accumulated order items (visible when orders pending)
+  if (typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0) {
+    const trayX = ex + cw / 2 - 20, trayY = ey + 2;
+    // Gold tray base
+    ctx.fillStyle = '#c0a000';
+    ctx.beginPath(); ctx.roundRect(trayX, trayY, 40, 20, 3); ctx.fill();
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.roundRect(trayX + 2, trayY + 2, 36, 16, 2); ctx.fill();
+    // Food items on tray (one circle per pending serve, up to 4)
+    const itemCount = Math.min(_fdPendingServe.length, 4);
+    for (let i = 0; i < itemCount; i++) {
+      const itemX = trayX + 8 + i * 9;
+      const itemY = trayY + 10;
+      const serve = _fdPendingServe[i];
+      const ingColor = serve && serve.recipeIngredients && serve.recipeIngredients[0] &&
+        typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[serve.recipeIngredients[0]]
+        ? FINE_DINING_INGREDIENTS[serve.recipeIngredients[0]].color : '#d4a040';
+      ctx.fillStyle = ingColor;
+      ctx.beginPath(); ctx.arc(itemX, itemY, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
 };
 
 // --- Teppanyaki table (background visual) ---
@@ -4951,6 +4978,21 @@ ENTITY_RENDERERS.fd_teppanyaki_table = (e, ctx, ex, ey, w, h) => {
     ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
     ctx.fillStyle = '#ffd700'; ctx.fillText(String(tableNum), numX, numY + 4);
     ctx.textAlign = "left";
+  }
+  // Gold cushions at seat positions (same size as diner booth seats)
+  if (typeof FD_TABLES !== 'undefined') {
+    const _fdTableIdx = (e._fdTableNum || 1) - 1;
+    const table = FD_TABLES[_fdTableIdx];
+    if (table && table.seats) {
+      for (const seat of table.seats) {
+        const seatPx = (seat.tx - e.tx) * TILE + ex;
+        const seatPy = (seat.ty - e.ty) * TILE + ey;
+        ctx.fillStyle = '#c0a000';
+        ctx.beginPath(); ctx.roundRect(seatPx + 4, seatPy + 4, TILE - 8, TILE - 8, 4); ctx.fill();
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath(); ctx.roundRect(seatPx + 6, seatPy + 6, TILE - 12, TILE - 12, 4); ctx.fill();
+      }
+    }
   }
 };
 
@@ -5015,22 +5057,6 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
         ctx.beginPath(); ctx.arc(fx - 1, fy - 2, 2, 0, Math.PI * 2); ctx.fill();
       }
     }
-  }
-  // Gold cushions on sides of grill (2 left, 2 right on the brown surround)
-  const cushSize = 8;
-  const cushPad = 4;
-  for (let ci = 0; ci < 2; ci++) {
-    const cushY = ey + ch * 0.25 + ci * (ch * 0.35);
-    // Left cushions
-    ctx.fillStyle = '#c0a000';
-    ctx.beginPath(); ctx.roundRect(ex - cushSize - cushPad, cushY, cushSize, cushSize, 2); ctx.fill();
-    ctx.fillStyle = '#ffd700';
-    ctx.beginPath(); ctx.roundRect(ex - cushSize - cushPad + 1, cushY + 1, cushSize - 2, cushSize - 2, 2); ctx.fill();
-    // Right cushions
-    ctx.fillStyle = '#c0a000';
-    ctx.beginPath(); ctx.roundRect(ex + cw + cushPad, cushY, cushSize, cushSize, 2); ctx.fill();
-    ctx.fillStyle = '#ffd700';
-    ctx.beginPath(); ctx.roundRect(ex + cw + cushPad + 1, cushY + 1, cushSize - 2, cushSize - 2, 2); ctx.fill();
   }
 };
 ENTITY_RENDERERS.fd_teppanyaki_grill_0 = _fdGrillRenderer;
