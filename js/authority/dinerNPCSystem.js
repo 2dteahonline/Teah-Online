@@ -198,31 +198,35 @@ function _routeDinerSeatToBoothEntry(boothId, seatIdx) {
 function _routeDinerEntranceToBooth(boothId) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
-  const corridorTx = booth.tx >= 38 ? 37 : 27;
-  return [{ tx: 27, ty: 14 }, { tx: corridorTx, ty: 14 }];
+  if (booth.tx >= 38) {
+    // Right column: go north to ty:16 (below all booths), east to corridor, then north
+    return [{ tx: 27, ty: 16 }, { tx: 37, ty: 16 }, { tx: 37, ty: 14 }];
+  }
+  // Left column: go north along tx:27 to ty:14
+  return [{ tx: 27, ty: 14 }];
 }
 
-// Exit route: from position → corridor → east → south to exit door
+// Exit route: from position → south to ty:16 → east → south to exit door
+// Uses ty:16 (below all booth tables) to avoid solid table collisions at ty:14
 function _routeDinerToExit(fromTX, fromTY, corridorTX) {
   const route = [];
-  // Get to main corridor first
-  if (fromTY < 14) {
+  // Get to below-booth corridor first (ty:16)
+  if (fromTY < 16) {
     if (fromTX >= 35) {
       route.push({ tx: 37, ty: fromTY });
-      route.push({ tx: 37, ty: 14 });
+      route.push({ tx: 37, ty: 16 });
     } else if (fromTX >= 24) {
       route.push({ tx: 27, ty: fromTY });
-      route.push({ tx: 27, ty: 14 });
+      route.push({ tx: 27, ty: 16 });
     } else {
-      route.push({ tx: fromTX, ty: 14 });
+      route.push({ tx: fromTX, ty: 16 });
     }
-  } else if (fromTY > 14 && fromTX < 26) {
+  } else if (fromTY > 16 && fromTX < 26) {
     route.push({ tx: fromTX, ty: 16 });
     route.push({ tx: 26, ty: 16 });
-    route.push({ tx: 26, ty: 14 });
   }
-  // East along corridor to customer exit column
-  route.push({ tx: 44, ty: 14 });
+  // East along below-booth corridor to exit column
+  route.push({ tx: 44, ty: 16 });
   route.push({ tx: 44, ty: DINER_SPOTS.customerExit.ty });
   return route;
 }
@@ -260,17 +264,19 @@ function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
 function _routeCounterToBooth(boothId) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
+  // Route through ty:16 (below all booths) then north through corridor to avoid solid tables
   if (booth.tx >= 38) {
+    // Right column: go east below booths at ty:16, then north through right corridor
     return _cConcatRoutes(
       [_cWP(26, 16)],
-      [_cWP(26, 14)],
-      [_cWP(booth.entry.tx, 14)],
+      [_cWP(booth.entry.tx, 16)],
       [_cWP(booth.entry.tx, booth.entry.ty)]
     );
   } else {
+    // Left column: go to left corridor then north to booth entry
     return _cConcatRoutes(
       [_cWP(26, 16)],
-      [_cWP(26, 14)],
+      [_cWP(booth.entry.tx, 16)],
       [_cWP(booth.entry.tx, booth.entry.ty)]
     );
   }
@@ -280,17 +286,16 @@ function _routeBoothToCounter(boothId) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
   if (booth.tx >= 38) {
+    // Right column: south to ty:16, then west to counter
     return _cConcatRoutes(
-      [_cWP(booth.entry.tx, booth.entry.ty)],
-      [_cWP(booth.entry.tx, 14)],
-      [_cWP(26, 14)],
+      [_cWP(booth.entry.tx, 16)],
       [_cWP(26, 16)],
       [_cWP(DINER_SPOTS.counterWait.tx, DINER_SPOTS.counterWait.ty)]
     );
   } else {
+    // Left column: south to ty:16, then west to counter
     return _cConcatRoutes(
-      [_cWP(26, booth.entry.ty)],
-      [_cWP(26, 14)],
+      [_cWP(booth.entry.tx, 16)],
       [_cWP(26, 16)],
       [_cWP(DINER_SPOTS.counterWait.tx, DINER_SPOTS.counterWait.ty)]
     );
@@ -448,17 +453,16 @@ function moveDinerNPC(npc) {
     kitchenSafe: { tx: 26, ty: 16 },
     kitchenFallback: [{ tx: 27, ty: 16 }, { tx: 27, ty: 21 }],
     laneMode: 'always',
+    laneDisableStates: new Set(['seating', 'waiting_at_booth', 'eating', 'leaving', 'post_meal', '_despawn_walk']),
     pairBehavior: (npc, other) => {
-      // Waitress slows near guests instead of pushing them
-      if (npc.isWaitress && !other.isWaitress) return 'slow';
+      // Waitress skips all avoidance — she must never get stuck or slowed going to tables
+      if (npc.isWaitress) return 'skip';
       // Guests don't react to waitress (no push/nudge from her)
-      if (!npc.isWaitress && other.isWaitress) return 'skip';
+      if (other.isWaitress) return 'skip';
       // Gamer-to-gamer: yield (never phase through each other)
       if (npc._role === 'gamer' && other._role === 'gamer') return 'yield';
-      // NPCs heading to/at seats skip avoidance with ALL other guests — prevents blocking
-      const seatStates = ['seating', 'entering', 'walking', 'waiting_at_booth', 'eating', 'spawn_wait', 'leaving', 'post_meal', '_despawn_walk'];
-      if (seatStates.includes(npc.state) || seatStates.includes(other.state)) return 'skip';
-      return 'yield';
+      // All other NPCs skip avoidance — prevents any blocking/held-back issues
+      return 'skip';
     },
   });
 }
