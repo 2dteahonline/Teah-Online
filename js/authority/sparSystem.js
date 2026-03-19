@@ -28,26 +28,29 @@ const SparState = {
   _engagementLog: null,
   // Neural execution layer — toggle via sparSetNeural(true/false) in console
   _neuralPolicy: null,     // loaded NeuralSparPolicy.Policy instance
-  _neuralEnabled: false,   // false = heuristic (default), true = neural execution
+  _neuralEnabled: false,   // false = heuristic, true/'movement'/'shooting' = neural mode
   _neuralModel: 'final',   // which model to load: 'final' | 'iter1400'
 };
 
 // --- Neural execution layer toggle ---
 // Console commands:
-//   sparSetNeural(true)        — enable neural execution
-//   sparSetNeural(false)       — disable (back to heuristic)
+//   sparSetNeural(true)             — full neural (movement + shooting)
+//   sparSetNeural('movement')       — neural movement, heuristic shooting
+//   sparSetNeural('shooting')       — heuristic movement, neural shooting
+//   sparSetNeural(false)            — disable (back to heuristic)
 //   sparSetNeural(true,'iter1400')  — enable with iter1400 model
 //   sparSetNeural(true,'final')     — enable with final model (default)
 function sparSetNeural(enabled, model) {
-  SparState._neuralEnabled = !!enabled;
+  // Accept true, false, 'movement', 'shooting'
+  SparState._neuralEnabled = enabled === true ? 'full' : (enabled || false);
   if (model) SparState._neuralModel = model;
   if (enabled && !SparState._neuralPolicy) {
     _loadNeuralModel(SparState._neuralModel);
   } else if (enabled && model && SparState._neuralPolicy) {
-    // Reload with different model
     _loadNeuralModel(model);
   }
-  console.log(`[Spar] Neural execution: ${enabled ? 'ON' : 'OFF'} (model: ${SparState._neuralModel})`);
+  const modeDesc = { full: 'FULL (movement+shooting)', movement: 'MOVEMENT only (heuristic shooting)', shooting: 'SHOOTING only (heuristic movement)' };
+  console.log(`[Spar] Neural execution: ${enabled ? modeDesc[SparState._neuralEnabled] || 'ON' : 'OFF'} (model: ${SparState._neuralModel})`);
 }
 
 async function _loadNeuralModel(modelName) {
@@ -2535,6 +2538,17 @@ const SparSystem = {
         // Auto-print engagement telemetry (skip during bulk training for cleaner logs)
         if (SparState._engagementLog && !(typeof _isSparTraining === 'function' && _isSparTraining())) {
           sparEngagementReport();
+        }
+        // Neural action distribution report
+        if (SparState._neuralEnabled) {
+          const AN = ['idle','push','retreat','strfL','strfR','dodgL','dodgR','desc','asc','shoot'];
+          for (const m of SparState._sparBots) {
+            if (m.ai && m.ai._neuralActionCounts) {
+              const total = m.ai._neuralActionCounts.reduce((a, b) => a + b, 0);
+              const dist = m.ai._neuralActionCounts.map((c, i) => `${AN[i]}:${c}(${(100*c/Math.max(1,total)).toFixed(0)}%)`).join(' ');
+              console.log(`[Neural] ${m._sparTeam} action dist (${total} frames): ${dist}`);
+            }
+          }
         }
         const trainTiming = typeof _getSparTrainingTiming === 'function' ? _getSparTrainingTiming() : null;
         SparState.postMatchTimer = trainTiming ? trainTiming.postMatchFrames : SPAR_CONFIG.POST_MATCH_FRAMES;
@@ -5299,10 +5313,12 @@ const SparSystem = {
     ai._wallMode = false;
 
     // === NEURAL EXECUTION BRANCH ===
-    // When enabled, neural policy replaces the entire heuristic movement + shoot tree.
-    // Strategic framework (opening detection, engagement tracking, learning) still runs.
+    // Modes: 'full' = both, 'movement' = neural move + heuristic shoot, 'shooting' = heuristic move + neural shoot
     let _neuralShoot = false;
-    if (SparState._neuralEnabled && SparState._neuralPolicy) {
+    const _neuralMode = SparState._neuralEnabled;  // false, 'full', 'movement', 'shooting'
+    const _neuralActive = _neuralMode && SparState._neuralPolicy;
+    const _neuralMovement = _neuralActive && (_neuralMode === 'full' || _neuralMode === 'movement');
+    if (_neuralMovement) {
       const nPolicy = SparState._neuralPolicy;
 
       // Enemy gun state: read real values, not hardcoded
@@ -5311,10 +5327,10 @@ const SparSystem = {
       // Build observation vector matching Python spar_sim
       const nObs = nPolicy.buildObs(
         { x: bot.x, y: bot.y, hp: bot.hp, speed,
-          team: team === 'teamA' ? 'a' : 'b',
+          sparTeam: member._sparTeam,  // 'teamA' or 'teamB' — must match bullet.sparTeam
           gun: { ammo: member.gun.ammo, magSize: member.gun.magSize || 30,
                  reloading: member.gun.reloading, shootCD: ai.shootCD || 0 },
-          freeze_timer: bot._freezeTimer || 0,
+          freeze_timer: ai._freezeTimer || 0,  // freeze is on ai, not bot
           _neuralVx: bot.vx || 0, _neuralVy: bot.vy || 0 },
         { x: tgt.x, y: tgt.y, hp: tgt.hp,
           gun: { ammo: eGun.ammo || 0, magSize: eGun.magSize || 30,
@@ -5341,10 +5357,23 @@ const SparSystem = {
         moveX = 0; moveY = 0;
       }
 
-      // Debug: log action distribution every 60 frames
+      // --- Diagnostics ---
+      if (!ai._neuralActionCounts) ai._neuralActionCounts = new Array(10).fill(0);
+      ai._neuralActionCounts[nAction]++;
+
+      // Log action + obs every 60 frames
       if (SparState.matchTimer % 60 === 0) {
-        const actionNames = ['idle','push','retreat','strfL','strfR','dodgL','dodgR','desc','asc','shoot'];
-        console.log(`[Neural] f${SparState.matchTimer} action=${actionNames[nAction]} pos=(${bot.x|0},${bot.y|0}) hp=${bot.hp} move=(${moveX.toFixed(1)},${moveY.toFixed(1)}) shoot=${_neuralShoot}`);
+        const AN = ['idle','push','retreat','strfL','strfR','dodgL','dodgR','desc','asc','shoot'];
+        console.log(`[Neural] f${SparState.matchTimer} act=${AN[nAction]} pos=(${bot.x|0},${bot.y|0}) hp=${bot.hp} mv=(${moveX.toFixed(1)},${moveY.toFixed(1)}) sh=${_neuralShoot}`);
+        // Dump obs vector for comparison with Python
+        if (SparState.matchTimer === 60) {
+          console.log('[Neural] obs dump @f60:', Array.from(nObs).map(v => +v.toFixed(4)));
+        }
+      }
+
+      // Print action distribution at match end (checked in post-match)
+      if (SparState.matchTimer === 1 && ai._neuralActionCounts) {
+        ai._neuralActionCounts = new Array(10).fill(0);
       }
 
     } else if (isOpening) {
@@ -6796,7 +6825,7 @@ const SparSystem = {
     const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
 
     // Separation from allies (skip for neural — policy handles its own spacing)
-    if (!SparState._neuralEnabled) {
+    if (!_neuralMovement) {
     for (const a of allies) {
       if (!a.alive || a.entity === bot) continue;
       const adx = bot.x - a.entity.x, ady = bot.y - a.entity.y;
@@ -6818,7 +6847,7 @@ const SparSystem = {
     // --- Baiting: occasionally fake a direction then snap back ---
     // Skip during active anti-bottom / center recovery — don't fake directions while committed
     // Skip for neural — policy handles its own deception
-    if (SparState._neuralEnabled) {
+    if (_neuralMovement) {
       // no-op: neural handles movement
     } else if (ai.baitTimer > 0 && !inActiveAntiBottom && modifierLevel < 2) {
       ai.baitTimer--;
@@ -6885,7 +6914,7 @@ const SparSystem = {
       }
     }
     // vNext: Apply non-reload punish window movement modifier
-    if (!SparState._neuralEnabled && ai._punishWindowPolicy && !enemyReloading && dist > 1 && modifierLevel < 2) {
+    if (!_neuralMovement && ai._punishWindowPolicy && !enemyReloading && dist > 1 && modifierLevel < 2) {
       if (ai._punishWindowPolicy === 'hardConvert') {
         // Only approach if we're far enough — don't stack on top of enemy
         if (dist > 130) {
@@ -6968,7 +6997,7 @@ const SparSystem = {
 
     // Only lock plans in neutral/hasBottom — tactics handle their own direction
     // Neural execution handles its own direction commitment — skip plan locking
-    const _planEligible = !SparState._neuralEnabled && (_movePlanCurrentState === 'neutral' || _movePlanCurrentState === 'hasBottom');
+    const _planEligible = !_neuralMovement && (_movePlanCurrentState === 'neutral' || _movePlanCurrentState === 'hasBottom');
 
     if (_planEligible) {
       // Break trigger 1: bullet coming at me = break and dodge
@@ -7200,16 +7229,38 @@ const SparSystem = {
       bot.dir = moveY > 0 ? 0 : 1;
     }
 
+    // For 'shooting' mode: compute neural shoot intent using heuristic movement
+    if (_neuralActive && _neuralMode === 'shooting' && !_neuralMovement) {
+      const nPolicy = SparState._neuralPolicy;
+      const eGun = enemyMember ? enemyMember.gun : (typeof gun !== 'undefined' ? gun : {});
+      const nObs = nPolicy.buildObs(
+        { x: bot.x, y: bot.y, hp: bot.hp, speed,
+          sparTeam: member._sparTeam,
+          gun: { ammo: member.gun.ammo, magSize: member.gun.magSize || 30,
+                 reloading: member.gun.reloading, shootCD: ai.shootCD || 0 },
+          freeze_timer: ai._freezeTimer || 0,
+          _neuralVx: bot.vx || 0, _neuralVy: bot.vy || 0 },
+        { x: tgt.x, y: tgt.y, hp: tgt.hp,
+          gun: { ammo: eGun.ammo || 0, magSize: eGun.magSize || 30,
+                 reloading: !!eGun.reloading, shootCD: 0 },
+          _neuralVx: tgt.vx || 0, _neuralVy: tgt.vy || 0 },
+        bullets, SparState.matchTimer
+      );
+      const nAction = nPolicy.getAction(nObs, false);
+      _neuralShoot = (nAction === 9);  // action 9 = shoot
+    }
+
     // --- Shooting: fire on cooldown, but NOT during speed-critical moves ---
     // The freeze penalty (54% slow, 15 frames) means shooting costs movement.
     // Hold fire when: (1) bullet incoming during freeze, (2) executing a move
     // that needs full speed (crossing, retaking bottom, escaping, repositioning).
     // Shoot when: stable position (has bottom, neutral strafing).
     if (!member.gun.reloading && member.gun.ammo > 0 && member.ai.shootCD <= 0) {
-      // Neural execution: shoot when the policy says shoot, skip heuristic gates
-      if (SparState._neuralEnabled && _neuralShoot) {
+      // Neural shoot: 'full' or 'shooting' mode = neural controls shooting
+      const _neuralShooting = _neuralActive && (_neuralMode === 'full' || _neuralMode === 'shooting');
+      if (_neuralShooting && _neuralShoot) {
         this._sparBotShoot(member, tgt);
-      } else if (SparState._neuralEnabled) {
+      } else if (_neuralShooting) {
         // Neural says don't shoot — skip heuristic shoot logic
       } else {
       const openingFireGated = isOpening && !hasBottom;
