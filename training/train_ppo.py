@@ -521,7 +521,7 @@ def train(args):
 
         # ---- Periodic model export for browser testing (eval-gated) ----
         if (iteration + 1) % 100 == 0:
-            eval_result = eval_live_start(policy, device)
+            eval_result = eval_live_start(policy, opponent, device)
             _log_eval(eval_result, f"iter{iteration+1}")
             if eval_result['passed']:
                 export_weights(policy, EXPORT_DIR / f"model_iter{iteration+1}.json")
@@ -533,7 +533,7 @@ def train(args):
             recent = list(match_history)[-50:]
             wr = sum(1 for m in recent if m['winner'] == 'a') / max(1, len(recent))
             if wr > best_win_rate and len(recent) >= 20:
-                eval_result = eval_live_start(policy, device)
+                eval_result = eval_live_start(policy, opponent, device)
                 _log_eval(eval_result, "best")
                 if eval_result['passed']:
                     best_win_rate = wr
@@ -544,7 +544,7 @@ def train(args):
     # Final save (handles both normal completion and Ctrl+C)
     final_iter = iteration + 1
     _save_checkpoint(policy, opponent, optimizer, final_iter, best_win_rate)
-    eval_result = eval_live_start(policy, device)
+    eval_result = eval_live_start(policy, opponent, device)
     _log_eval(eval_result, "final")
     if not eval_result['passed']:
         print(f"  WARNING: Final model failed eval: {', '.join(eval_result['fail_reasons'])}")
@@ -608,8 +608,9 @@ def export_weights(policy: SparPolicy, path: str):
 # ============================================================
 # EVAL GATE — reject collapsed policies before export
 # ============================================================
-def eval_live_start(policy: SparPolicy, device=torch.device('cpu')) -> dict:
+def eval_live_start(policy: SparPolicy, opponent: SparPolicy, device=torch.device('cpu')) -> dict:
     """Evaluate policy from exact live deployment start position.
+    Uses lagged opponent on side B to match training conditions.
     Checks for action collapse and degenerate movement patterns.
     Returns dict with pass/fail status and diagnostic stats."""
     AN = ['idle','push','retreat','strafe_left','strafe_right',
@@ -637,7 +638,7 @@ def eval_live_start(policy: SparPolicy, device=torch.device('cpu')) -> dict:
             obs_a_t = torch.tensor([obs['a']], dtype=torch.float32, device=device)
             obs_b_t = torch.tensor([obs['b']], dtype=torch.float32, device=device)
             logits_a, _ = policy(obs_a_t)
-            logits_b, _ = policy(obs_b_t)
+            logits_b, _ = opponent(obs_b_t)
             act_a = logits_a.argmax(dim=-1).item()
             act_b = logits_b.argmax(dim=-1).item()
 
@@ -692,7 +693,7 @@ def eval_live_start(policy: SparPolicy, device=torch.device('cpu')) -> dict:
                 logits_a, _ = policy(obs_a_t)
                 act_a = logits_a.argmax(dim=-1).item()  # deterministic
 
-                logits_b, _ = policy(obs_b_t)
+                logits_b, _ = opponent(obs_b_t)
                 dist_b = Categorical(logits=logits_b)
                 act_b = dist_b.sample().item()  # stochastic
 
