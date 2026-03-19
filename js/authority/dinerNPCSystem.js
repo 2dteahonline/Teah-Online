@@ -867,10 +867,8 @@ const DINER_NPC_AI = {
     const booth = DINER_BOOTHS[party.boothId];
     if (!booth) { npc.state = '_despawn'; return; }
 
-    // Route to the corridor near the booth — NOT the entry point
-    // Each NPC then picks their seat and routes directly from the corridor
-    const corridorTx = booth.tx >= 38 ? 37 : 27;
-    const route = [_cWP(27, 14), _cWP(corridorTx, 14)];
+    // Use safe route that avoids solid tables (ty:16 corridor for right column)
+    const route = _routeDinerEntranceToBooth(party.boothId);
     _cStartRoute(npc, route, 'seating', 0, { kind: 'entrance_to_booth', boothId: party.boothId });
   },
 
