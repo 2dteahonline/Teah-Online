@@ -15,7 +15,7 @@ import math
 from spar_sim import (
     SparSim, Gun, position_clear, is_solid, bullet_hits_circle,
     TILE, ARENA_W, ARENA_H, ARENA_W_TILES, ARENA_H_TILES,
-    PLAYER_WALL_HW, BULLET_SPEED, ENTITY_R, PLAYER_HITBOX_Y,
+    PLAYER_WALL_HW, PLAYER_BASE_SPEED, BULLET_SPEED, ENTITY_R, PLAYER_HITBOX_Y,
     BULLET_HALF_LONG, BULLET_HALF_SHORT, SPAWN_A, SPAWN_B,
     CTX_DAMAGE, HP_BASELINE,
 )
@@ -151,6 +151,83 @@ def test_deterministic_match():
     return trace
 
 
+def test_movement_traces():
+    """Walk into each wall, record final position. Must match JS."""
+    speed = PLAYER_BASE_SPEED
+    hw = PLAYER_WALL_HW
+    results = []
+    tests = [
+        ('walk_right_into_wall', 936, 504, speed, 0, 200),
+        ('walk_left_into_wall', 216, 504, -speed, 0, 200),
+        ('walk_down_into_wall', 576, 504, 0, speed, 200),
+        ('walk_up_into_wall', 576, 504, 0, -speed, 200),
+    ]
+    for label, sx, sy, vx, vy, frames in tests:
+        x, y = float(sx), float(sy)
+        for _ in range(frames):
+            if position_clear(x + vx, y, hw):
+                x += vx
+            if position_clear(x, y + vy, hw):
+                y += vy
+        results.append({
+            'label': label,
+            'final_x': round(x, 2),
+            'final_y': round(y, 2),
+        })
+        print(f"  {label}: final=({x:.2f}, {y:.2f})")
+    return results
+
+
+def test_bullet_travel():
+    """Shoot bullets from center, count frames to wall hit. Must match JS."""
+    results = []
+    tests = [
+        ('bullet_right_from_center', 576, 480, BULLET_SPEED, 0),
+        ('bullet_down_from_center', 576, 480, 0, BULLET_SPEED),
+    ]
+    for label, sx, sy, bvx, bvy in tests:
+        bx, by = float(sx), float(sy)
+        lifetime = 0
+        for _ in range(200):
+            bx += bvx
+            by += bvy
+            lifetime += 1
+            col = math.floor(bx / TILE)
+            row = math.floor(by / TILE)
+            if is_solid(col, row):
+                break
+        results.append({
+            'label': label,
+            'lifetime': lifetime,
+            'final_x': round(bx, 1),
+            'final_y': round(by, 1),
+        })
+        print(f"  {label}: hit wall at frame {lifetime}, pos=({bx:.1f}, {by:.1f})")
+    return results
+
+
+def test_freeze_math():
+    """Verify CT-X stat conversion matches JS."""
+    results = []
+    # 50pts freeze
+    fp50 = 0.90 - 50 * 0.009
+    results.append({'label': '50pts_freeze_penalty', 'value': round(fp50, 4), 'expected': 0.45})
+    # Frozen speed
+    frozen = PLAYER_BASE_SPEED * (1 - fp50)
+    results.append({'label': '50pts_frozen_speed', 'value': round(frozen, 4), 'expected': 4.125})
+    # Fire rate 50pts
+    p = min(100, 50 * 1.2)
+    fr = 11.025 - p * 0.1125 if p <= 50 else 5.4 - (p - 50) * 0.0375
+    cd = round(fr * 4)
+    results.append({'label': '50pts_shoot_cd', 'value': cd, 'expected': 20})
+
+    for r in results:
+        r['pass'] = abs(r['value'] - r['expected']) < 0.001 if isinstance(r['expected'], float) else r['value'] == r['expected']
+        status = 'OK' if r['pass'] else 'FAIL'
+        print(f"  {r['label']}: {r['value']} (expected {r['expected']}) [{status}]")
+    return results
+
+
 def run_all():
     results = {
         'collision_grid': test_collision_grid(),
@@ -159,7 +236,7 @@ def run_all():
         'deterministic_trace': test_deterministic_match(),
     }
 
-    # Summary
+    # Summary of unit tests
     total = 0
     passed = 0
     for category in ['collision_grid', 'position_clear', 'bullet_hit']:
@@ -171,6 +248,25 @@ def run_all():
                 print(f"FAIL: {r.get('label', r['test'])} — expected {r['expected']}, got {r['actual']}")
 
     print(f"\nUnit tests: {passed}/{total} passed")
+
+    # Movement traces (compare output with JS console)
+    print("\n--- Movement Traces (compare with JS) ---")
+    results['movement_traces'] = test_movement_traces()
+
+    # Bullet travel (compare with JS console)
+    print("\n--- Bullet Travel (compare with JS) ---")
+    results['bullet_travel'] = test_bullet_travel()
+
+    # Freeze math
+    print("\n--- Freeze/Gun Math ---")
+    freeze_results = test_freeze_math()
+    results['freeze_math'] = freeze_results
+    for r in freeze_results:
+        total += 1
+        if r['pass']:
+            passed += 1
+
+    print(f"\nTotal validated: {passed}/{total} passed")
     print(f"Deterministic trace: {len(results['deterministic_trace'])} frames recorded")
 
     # Export for JS validation

@@ -1389,5 +1389,61 @@
       "action_a": 9,
       "action_b": 9
     }
+  ],
+  "movement_traces": [
+    {
+      "label": "walk_right_into_wall",
+      "final_x": 1086.0,
+      "final_y": 504.0
+    },
+    {
+      "label": "walk_left_into_wall",
+      "final_x": 66.0,
+      "final_y": 504.0
+    },
+    {
+      "label": "walk_down_into_wall",
+      "final_x": 576.0,
+      "final_y": 894.0
+    },
+    {
+      "label": "walk_up_into_wall",
+      "final_x": 576.0,
+      "final_y": 69.0
+    }
+  ],
+  "bullet_travel": [
+    {
+      "label": "bullet_right_from_center",
+      "lifetime": 59,
+      "final_x": 1107.0,
+      "final_y": 480.0
+    },
+    {
+      "label": "bullet_down_from_center",
+      "lifetime": 48,
+      "final_x": 576.0,
+      "final_y": 912.0
+    }
+  ],
+  "freeze_math": [
+    {
+      "label": "50pts_freeze_penalty",
+      "value": 0.45,
+      "expected": 0.45,
+      "pass": true
+    },
+    {
+      "label": "50pts_frozen_speed",
+      "value": 4.125,
+      "expected": 4.125,
+      "pass": true
+    },
+    {
+      "label": "50pts_shoot_cd",
+      "value": 20,
+      "expected": 20,
+      "pass": true
+    }
   ]
 }
