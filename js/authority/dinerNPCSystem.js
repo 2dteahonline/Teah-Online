@@ -33,9 +33,10 @@ const DINER_SPOTS = {
 // 3 left column (tx: 27-32), 3 right column (tx: 38-43)
 const DINER_BOOTHS = [
   // Left column — tables are h:4 (top seats / 2-tile table / bottom seats), with 1-tile gaps
-  { id: 0, tx: 27, ty: 2,  w: 5, h: 4, entry: { tx: 26, ty: 3 }, topRowAccess: { tx: 26, ty: 2 }, bottomRowAccess: { tx: 26, ty: 5 }, seats: [{ tx: 28, ty: 2, sitDir: 0 }, { tx: 30, ty: 2, sitDir: 0 }, { tx: 28, ty: 5, sitDir: 1 }, { tx: 30, ty: 5, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 1 },
-  { id: 1, tx: 27, ty: 7,  w: 5, h: 4, entry: { tx: 26, ty: 8 }, topRowAccess: { tx: 26, ty: 7 }, bottomRowAccess: { tx: 26, ty: 10 }, seats: [{ tx: 28, ty: 7, sitDir: 0 }, { tx: 30, ty: 7, sitDir: 0 }, { tx: 28, ty: 10, sitDir: 1 }, { tx: 30, ty: 10, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 2 },
-  { id: 2, tx: 27, ty: 12, w: 5, h: 4, entry: { tx: 26, ty: 13 }, topRowAccess: { tx: 26, ty: 12 }, bottomRowAccess: { tx: 26, ty: 15 }, seats: [{ tx: 28, ty: 12, sitDir: 0 }, { tx: 30, ty: 12, sitDir: 0 }, { tx: 28, ty: 15, sitDir: 1 }, { tx: 30, ty: 15, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 3 },
+  // Shifted +1 tx right to clear gamer walkway (tx:28-32)
+  { id: 0, tx: 28, ty: 2,  w: 5, h: 4, entry: { tx: 27, ty: 3 }, topRowAccess: { tx: 27, ty: 2 }, bottomRowAccess: { tx: 27, ty: 5 }, seats: [{ tx: 29, ty: 2, sitDir: 0 }, { tx: 31, ty: 2, sitDir: 0 }, { tx: 29, ty: 5, sitDir: 1 }, { tx: 31, ty: 5, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 1 },
+  { id: 1, tx: 28, ty: 7,  w: 5, h: 4, entry: { tx: 27, ty: 8 }, topRowAccess: { tx: 27, ty: 7 }, bottomRowAccess: { tx: 27, ty: 10 }, seats: [{ tx: 29, ty: 7, sitDir: 0 }, { tx: 31, ty: 7, sitDir: 0 }, { tx: 29, ty: 10, sitDir: 1 }, { tx: 31, ty: 10, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 2 },
+  { id: 2, tx: 28, ty: 12, w: 5, h: 4, entry: { tx: 27, ty: 13 }, topRowAccess: { tx: 27, ty: 12 }, bottomRowAccess: { tx: 27, ty: 15 }, seats: [{ tx: 29, ty: 12, sitDir: 0 }, { tx: 31, ty: 12, sitDir: 0 }, { tx: 29, ty: 15, sitDir: 1 }, { tx: 31, ty: 15, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 3 },
   // Right column
   { id: 3, tx: 38, ty: 2,  w: 5, h: 4, entry: { tx: 37, ty: 3 }, topRowAccess: { tx: 37, ty: 2 }, bottomRowAccess: { tx: 37, ty: 5 }, seats: [{ tx: 39, ty: 2, sitDir: 0 }, { tx: 41, ty: 2, sitDir: 0 }, { tx: 39, ty: 5, sitDir: 1 }, { tx: 41, ty: 5, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 4 },
   { id: 4, tx: 38, ty: 7,  w: 5, h: 4, entry: { tx: 37, ty: 8 }, topRowAccess: { tx: 37, ty: 7 }, bottomRowAccess: { tx: 37, ty: 10 }, seats: [{ tx: 39, ty: 7, sitDir: 0 }, { tx: 41, ty: 7, sitDir: 0 }, { tx: 39, ty: 10, sitDir: 1 }, { tx: 41, ty: 10, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 5 },
@@ -197,7 +198,7 @@ function _routeDinerSeatToBoothEntry(boothId, seatIdx) {
 function _routeDinerEntranceToBooth(boothId) {
   const booth = DINER_BOOTHS[boothId];
   if (!booth) return [];
-  const corridorTx = booth.tx >= 38 ? 37 : 26;
+  const corridorTx = booth.tx >= 38 ? 37 : 27;
   return [{ tx: 27, ty: 14 }, { tx: corridorTx, ty: 14 }];
 }
 
@@ -210,8 +211,8 @@ function _routeDinerToExit(fromTX, fromTY, corridorTX) {
       route.push({ tx: 37, ty: fromTY });
       route.push({ tx: 37, ty: 14 });
     } else if (fromTX >= 24) {
-      route.push({ tx: 26, ty: fromTY });
-      route.push({ tx: 26, ty: 14 });
+      route.push({ tx: 27, ty: fromTY });
+      route.push({ tx: 27, ty: 14 });
     } else {
       route.push({ tx: fromTX, ty: 14 });
     }
@@ -289,34 +290,83 @@ function _routeBoothToPass(boothId) { return _routeBoothToCounter(boothId); }
 
 // ===================== ARCADE ROUTE BUILDERS =====================
 
-// Gamer entry: from left entrance → north to corridor → OUTWARD from both cabinets → to arcade spot
-// Gamer 1 (tx:34) approaches from west (tx:32), Gamer 2 (tx:36) approaches from east (tx:38)
-// This ensures they never cross through the other cabinet
+// Gamer entry: from left entrance → randomized table-aware route to arcade spot
+// Routes go through the center gap (tx:33-37) between booth columns to avoid table collisions
+// Multiple route variants for natural-looking movement
 function _routeDinerEntranceToArcade(arcadeIdx) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  // Route OUTWARD from both cabinets — Gamer 1 goes west, Gamer 2 goes east
-  const approachTx = arcadeIdx === 0 ? 32 : 38;
-  return _cConcatRoutes(
-    [_cWP(27, 14)],
-    [_cWP(approachTx, 14)],
-    [_cWP(approachTx, spot.ty)],
-    [_cWP(spot.tx, spot.ty)]
-  );
+  // Pick a random route variant — all avoid booth table areas
+  const variant = Math.floor(Math.random() * 4);
+  switch (variant) {
+    case 0:
+      // Center gap route: entrance → south of booths → center gap → north to arcade
+      return _cConcatRoutes(
+        [_cWP(35, 21)],
+        [_cWP(35, spot.ty)],
+        [_cWP(spot.tx, spot.ty)]
+      );
+    case 1:
+      // Left corridor → below booths → across to arcade
+      return _cConcatRoutes(
+        [_cWP(27, 17)],
+        [_cWP(spot.tx, 17)],
+        [_cWP(spot.tx, spot.ty)]
+      );
+    case 2:
+      // Direct south path: entrance → east along bottom → up to arcade
+      return _cConcatRoutes(
+        [_cWP(33, 21)],
+        [_cWP(33, 17)],
+        [_cWP(spot.tx, 17)],
+        [_cWP(spot.tx, spot.ty)]
+      );
+    default:
+      // Wide arc: entrance → east → north through right gap → west to arcade
+      return _cConcatRoutes(
+        [_cWP(37, 21)],
+        [_cWP(37, 17)],
+        [_cWP(spot.tx, 17)],
+        [_cWP(spot.tx, spot.ty)]
+      );
+  }
 }
 
-// Gamer exit: go OUTWARD from both cabinets then to exit corridor
+// Gamer exit: randomized table-aware route from arcade to exit door
+// Multiple exit variants through center gap / open dining area
 function _routeDinerArcadeToExit(arcadeIdx) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  // Gamer 1 exits west (tx:32), Gamer 2 exits east (tx:38)
-  const exitTx = arcadeIdx === 0 ? 32 : 38;
-  return _cConcatRoutes(
-    [_cWP(exitTx, spot.ty)],
-    [_cWP(exitTx, 14)],
-    [_cWP(44, 14)],
-    [_cWP(44, DINER_SPOTS.customerExit.ty)]
-  );
+  const variant = Math.floor(Math.random() * 4);
+  switch (variant) {
+    case 0:
+      // Center gap → east to exit
+      return _cConcatRoutes(
+        [_cWP(35, spot.ty)],
+        [_cWP(35, 21)],
+        [_cWP(44, 21)]
+      );
+    case 1:
+      // South then east along bottom
+      return _cConcatRoutes(
+        [_cWP(spot.tx, 21)],
+        [_cWP(44, 21)]
+      );
+    case 2:
+      // East through right gap → south to exit
+      return _cConcatRoutes(
+        [_cWP(37, spot.ty)],
+        [_cWP(37, 21)],
+        [_cWP(44, 21)]
+      );
+    default:
+      // South to bottom → direct east
+      return _cConcatRoutes(
+        [_cWP(spot.tx, 17)],
+        [_cWP(44, 17)],
+        [_cWP(44, DINER_SPOTS.customerExit.ty)]
+      );
+  }
 }
 
 // ===================== ROUTE INTENT SYSTEM =====================
@@ -678,7 +728,7 @@ function spawnDinerGroup() {
   const booth = DINER_BOOTHS[boothIdx];
   booth.claimedBy = partyId;
 
-  const corridorTX = _cRandRange(26, 29);
+  const corridorTX = _cRandRange(27, 30);
 
   const party = {
     id: partyId,
@@ -726,7 +776,7 @@ function _spawnGroupForBooth(boothIdx) {
   const partyId = ++_dinerPartyId;
   booth.claimedBy = partyId;
 
-  const corridorTX = _cRandRange(26, 29);
+  const corridorTX = _cRandRange(27, 30);
   const party = {
     id: partyId,
     members: [],
@@ -802,7 +852,7 @@ const DINER_NPC_AI = {
 
     // Route to the corridor near the booth — NOT the entry point
     // Each NPC then picks their seat and routes directly from the corridor
-    const corridorTx = booth.tx >= 38 ? 37 : 26;
+    const corridorTx = booth.tx >= 38 ? 37 : 27;
     const route = [_cWP(27, 14), _cWP(corridorTx, 14)];
     _cStartRoute(npc, route, 'seating', 0, { kind: 'entrance_to_booth', boothId: party.boothId });
   },
@@ -814,9 +864,13 @@ const DINER_NPC_AI = {
     const booth = DINER_BOOTHS[party.boothId];
     if (!booth) { npc.state = '_despawn'; return; }
 
-    // Pick closest available seat if not yet assigned
+    // Pick farthest available seat from booth ENTRY point (not NPC position)
+    // This matches the plate placement logic which also uses booth.entry,
+    // ensuring NPCs always sit at the seat where their plate is placed
     if (npc.claimedSeatIdx < 0) {
-      npc.claimedSeatIdx = _findFarthestFreeSeat(booth, npc.x, npc.y, party);
+      const entryX = booth.entry.tx * TILE + TILE / 2;
+      const entryY = booth.entry.ty * TILE + TILE / 2;
+      npc.claimedSeatIdx = _findFarthestFreeSeat(booth, entryX, entryY, party);
       if (npc.claimedSeatIdx < 0) { npc.state = '_despawn'; return; }
     }
 

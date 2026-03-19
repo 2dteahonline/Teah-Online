@@ -1549,7 +1549,7 @@ const ENTITY_RENDERERS = {
       ctx.fillRect(ex + 8, by + 4, cw - 16, seatH * 0.3);
 
       // Table number circle — black circle with gold number in center of table
-      const _boothPositionsForNum = [[27,2],[27,7],[27,12],[38,2],[38,7],[38,12]];
+      const _boothPositionsForNum = [[28,2],[28,7],[28,12],[38,2],[38,7],[38,12]];
       let _tableNum = 0;
       for (let _bi = 0; _bi < _boothPositionsForNum.length; _bi++) {
         if (e.tx === _boothPositionsForNum[_bi][0] && e.ty === _boothPositionsForNum[_bi][1]) { _tableNum = _bi + 1; break; }
@@ -1566,7 +1566,7 @@ const ENTITY_RENDERERS = {
       }
 
       // Render plates on table at each seat's X position — disappear one by one as NPCs sit
-      const _boothPositions = [[27,2],[27,7],[27,12],[38,2],[38,7],[38,12]];
+      const _boothPositions = [[28,2],[28,7],[28,12],[38,2],[38,7],[38,12]];
       let _bIdx = -1;
       for (let _bi = 0; _bi < _boothPositions.length; _bi++) {
         if (e.tx === _boothPositions[_bi][0] && e.ty === _boothPositions[_bi][1]) { _bIdx = _bi; break; }
