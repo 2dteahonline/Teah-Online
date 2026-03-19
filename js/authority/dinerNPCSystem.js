@@ -234,6 +234,19 @@ function _routeDinerSeatToExit(boothId, seatIdx, corridorTX) {
   if (!seat) return [];
   // Exit through the OPPOSITE side (right side of booth) — prevents collision with entering NPCs
   const exitTx = booth.tx + booth.w; // one tile past right edge of booth
+
+  // Tables 1, 2, 3 (booths 0-2, left column): exit north over the gap above table 4 (ty:1)
+  // This avoids table 6's solid table blocking the corridor at ty:14
+  if (boothId <= 2) {
+    return _cConcatRoutes(
+      [_cWP(exitTx, seat.ty)],                      // slide right out of booth
+      [_cWP(exitTx, 1)],                            // north to gap above table 4
+      [_cWP(44, 1)],                                // east past all right-column booths
+      [_cWP(44, DINER_SPOTS.customerExit.ty)]        // south to exit door
+    );
+  }
+
+  // Tables 4, 5, 6 (booths 3-5, right column): exit right then south normally
   return _cConcatRoutes(
     [_cWP(exitTx, seat.ty)],                        // slide right out of booth
     [_cWP(exitTx, 14)],                             // south to corridor
@@ -296,37 +309,35 @@ function _routeBoothToPass(boothId) { return _routeBoothToCounter(boothId); }
 function _routeDinerEntranceToArcade(arcadeIdx) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  // Pick a random route variant — all avoid booth table areas
+  // All routes stay BELOW arcades (ty:19+) — arcade cabinets are solid at ty:16-17
   const variant = Math.floor(Math.random() * 4);
   switch (variant) {
     case 0:
-      // Center gap route: entrance → south of booths → center gap → north to arcade
+      // Center gap route: entrance → center → south to arcade row
       return _cConcatRoutes(
         [_cWP(35, 21)],
         [_cWP(35, spot.ty)],
         [_cWP(spot.tx, spot.ty)]
       );
     case 1:
-      // Left corridor → below booths → across to arcade
+      // Left corridor → east along bottom → to arcade
       return _cConcatRoutes(
-        [_cWP(27, 17)],
-        [_cWP(spot.tx, 17)],
+        [_cWP(27, 21)],
+        [_cWP(spot.tx, 21)],
         [_cWP(spot.tx, spot.ty)]
       );
     case 2:
       // Direct south path: entrance → east along bottom → up to arcade
       return _cConcatRoutes(
         [_cWP(33, 21)],
-        [_cWP(33, 17)],
-        [_cWP(spot.tx, 17)],
+        [_cWP(33, spot.ty)],
         [_cWP(spot.tx, spot.ty)]
       );
     default:
-      // Wide arc: entrance → east → north through right gap → west to arcade
+      // Wide arc: entrance → east → north to arcade row
       return _cConcatRoutes(
         [_cWP(37, 21)],
-        [_cWP(37, 17)],
-        [_cWP(spot.tx, 17)],
+        [_cWP(37, spot.ty)],
         [_cWP(spot.tx, spot.ty)]
       );
   }
@@ -337,6 +348,7 @@ function _routeDinerEntranceToArcade(arcadeIdx) {
 function _routeDinerArcadeToExit(arcadeIdx) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
+  // All routes stay BELOW arcades (ty:19+) — arcade cabinets are solid at ty:16-17
   const variant = Math.floor(Math.random() * 4);
   switch (variant) {
     case 0:
@@ -360,11 +372,10 @@ function _routeDinerArcadeToExit(arcadeIdx) {
         [_cWP(44, 21)]
       );
     default:
-      // South to bottom → direct east
+      // South → direct east to exit
       return _cConcatRoutes(
-        [_cWP(spot.tx, 17)],
-        [_cWP(44, 17)],
-        [_cWP(44, DINER_SPOTS.customerExit.ty)]
+        [_cWP(spot.tx, 21)],
+        [_cWP(44, 21)]
       );
   }
 }
