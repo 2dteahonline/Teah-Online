@@ -32,14 +32,14 @@ const DINER_SPOTS = {
 // 6 booths in dining area (right side)
 // 3 left column (tx: 27-32), 3 right column (tx: 38-43)
 const DINER_BOOTHS = [
-  // Left column
-  { id: 0, tx: 27, ty: 2,  w: 5, h: 3, entry: { tx: 26, ty: 3 }, topRowAccess: { tx: 26, ty: 2 }, bottomRowAccess: { tx: 26, ty: 4 }, seats: [{ tx: 28, ty: 2, sitDir: 0 }, { tx: 30, ty: 2, sitDir: 0 }, { tx: 28, ty: 4, sitDir: 1 }, { tx: 30, ty: 4, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 1 },
-  { id: 1, tx: 27, ty: 6,  w: 5, h: 3, entry: { tx: 26, ty: 7 }, topRowAccess: { tx: 26, ty: 6 }, bottomRowAccess: { tx: 26, ty: 8 }, seats: [{ tx: 28, ty: 6, sitDir: 0 }, { tx: 30, ty: 6, sitDir: 0 }, { tx: 28, ty: 8, sitDir: 1 }, { tx: 30, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 2 },
-  { id: 2, tx: 27, ty: 10, w: 5, h: 3, entry: { tx: 26, ty: 11 }, topRowAccess: { tx: 26, ty: 10 }, bottomRowAccess: { tx: 26, ty: 12 }, seats: [{ tx: 28, ty: 10, sitDir: 0 }, { tx: 30, ty: 10, sitDir: 0 }, { tx: 28, ty: 12, sitDir: 1 }, { tx: 30, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 3 },
+  // Left column — tables are h:4 (top seats / 2-tile table / bottom seats), with 1-tile gaps
+  { id: 0, tx: 27, ty: 2,  w: 5, h: 4, entry: { tx: 26, ty: 3 }, topRowAccess: { tx: 26, ty: 2 }, bottomRowAccess: { tx: 26, ty: 5 }, seats: [{ tx: 28, ty: 2, sitDir: 0 }, { tx: 30, ty: 2, sitDir: 0 }, { tx: 28, ty: 5, sitDir: 1 }, { tx: 30, ty: 5, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 1 },
+  { id: 1, tx: 27, ty: 7,  w: 5, h: 4, entry: { tx: 26, ty: 8 }, topRowAccess: { tx: 26, ty: 7 }, bottomRowAccess: { tx: 26, ty: 10 }, seats: [{ tx: 28, ty: 7, sitDir: 0 }, { tx: 30, ty: 7, sitDir: 0 }, { tx: 28, ty: 10, sitDir: 1 }, { tx: 30, ty: 10, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 2 },
+  { id: 2, tx: 27, ty: 12, w: 5, h: 4, entry: { tx: 26, ty: 13 }, topRowAccess: { tx: 26, ty: 12 }, bottomRowAccess: { tx: 26, ty: 15 }, seats: [{ tx: 28, ty: 12, sitDir: 0 }, { tx: 30, ty: 12, sitDir: 0 }, { tx: 28, ty: 15, sitDir: 1 }, { tx: 30, ty: 15, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 3 },
   // Right column
-  { id: 3, tx: 38, ty: 2,  w: 5, h: 3, entry: { tx: 37, ty: 3 }, topRowAccess: { tx: 37, ty: 2 }, bottomRowAccess: { tx: 37, ty: 4 }, seats: [{ tx: 39, ty: 2, sitDir: 0 }, { tx: 41, ty: 2, sitDir: 0 }, { tx: 39, ty: 4, sitDir: 1 }, { tx: 41, ty: 4, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 4 },
-  { id: 4, tx: 38, ty: 6,  w: 5, h: 3, entry: { tx: 37, ty: 7 }, topRowAccess: { tx: 37, ty: 6 }, bottomRowAccess: { tx: 37, ty: 8 }, seats: [{ tx: 39, ty: 6, sitDir: 0 }, { tx: 41, ty: 6, sitDir: 0 }, { tx: 39, ty: 8, sitDir: 1 }, { tx: 41, ty: 8, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 5 },
-  { id: 5, tx: 38, ty: 10, w: 5, h: 3, entry: { tx: 37, ty: 11 }, topRowAccess: { tx: 37, ty: 10 }, bottomRowAccess: { tx: 37, ty: 12 }, seats: [{ tx: 39, ty: 10, sitDir: 0 }, { tx: 41, ty: 10, sitDir: 0 }, { tx: 39, ty: 12, sitDir: 1 }, { tx: 41, ty: 12, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 6 },
+  { id: 3, tx: 38, ty: 2,  w: 5, h: 4, entry: { tx: 37, ty: 3 }, topRowAccess: { tx: 37, ty: 2 }, bottomRowAccess: { tx: 37, ty: 5 }, seats: [{ tx: 39, ty: 2, sitDir: 0 }, { tx: 41, ty: 2, sitDir: 0 }, { tx: 39, ty: 5, sitDir: 1 }, { tx: 41, ty: 5, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 4 },
+  { id: 4, tx: 38, ty: 7,  w: 5, h: 4, entry: { tx: 37, ty: 8 }, topRowAccess: { tx: 37, ty: 7 }, bottomRowAccess: { tx: 37, ty: 10 }, seats: [{ tx: 39, ty: 7, sitDir: 0 }, { tx: 41, ty: 7, sitDir: 0 }, { tx: 39, ty: 10, sitDir: 1 }, { tx: 41, ty: 10, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 5 },
+  { id: 5, tx: 38, ty: 12, w: 5, h: 4, entry: { tx: 37, ty: 13 }, topRowAccess: { tx: 37, ty: 12 }, bottomRowAccess: { tx: 37, ty: 15 }, seats: [{ tx: 39, ty: 12, sitDir: 0 }, { tx: 41, ty: 12, sitDir: 0 }, { tx: 39, ty: 15, sitDir: 1 }, { tx: 41, ty: 15, sitDir: 1 }], capacity: 4, claimedBy: null, tableNumber: 6 },
 ];
 
 // ===================== ARCADE SPOTS (centered in dining area) =====================
@@ -392,11 +392,9 @@ function moveDinerNPC(npc) {
       if (npc.isWaitress && !other.isWaitress) return 'slow';
       // Guests don't react to waitress (no push/nudge from her)
       if (!npc.isWaitress && other.isWaitress) return 'skip';
-      // Same-party NPCs skip avoidance when heading to/at seats — prevents blocking on the way in
-      if (npc.partyId && npc.partyId === other.partyId) {
-        const seatStates = ['seating', 'entering', 'walking', 'waiting_at_booth', 'eating', 'spawn_wait'];
-        if (seatStates.includes(npc.state) || seatStates.includes(other.state)) return 'skip';
-      }
+      // NPCs heading to/at seats skip avoidance with ALL other guests — prevents blocking
+      const seatStates = ['seating', 'entering', 'walking', 'waiting_at_booth', 'eating', 'spawn_wait'];
+      if (seatStates.includes(npc.state) || seatStates.includes(other.state)) return 'skip';
       return 'yield';
     },
   });
@@ -609,14 +607,22 @@ function _updateDinerWaitress() {
       }
       if (w.stateTimer > 0) { w.stateTimer--; return; }
 
-      // Place plates on table — keyed by seat index so each NPC only takes their own plate
+      // Place plates on table — keyed by seat index matching farthest-seat picking order
+      // so each NPC takes the plate at their exact seat position
       if (booth) {
         const items = w._allTrayItems && w._allTrayItems.length > 0
           ? w._allTrayItems
           : (w._recipeIngredients ? [w._recipeIngredients] : []);
         booth._plates = {};
-        for (let pi = 0; pi < Math.min(items.length, booth.seats.length); pi++) {
-          booth._plates[pi] = items[pi];
+        // Simulate farthest-seat assignment (same logic NPCs use)
+        const entryX = booth.entry.tx * TILE + TILE / 2;
+        const entryY = booth.entry.ty * TILE + TILE / 2;
+        const seatsByDist = booth.seats.map((s, i) => ({
+          idx: i,
+          dist: (s.tx * TILE + TILE / 2 - entryX) ** 2 + (s.ty * TILE + TILE / 2 - entryY) ** 2
+        })).sort((a, b) => b.dist - a.dist); // farthest first
+        for (let pi = 0; pi < Math.min(items.length, seatsByDist.length); pi++) {
+          booth._plates[seatsByDist[pi].idx] = items[pi];
         }
       }
 
