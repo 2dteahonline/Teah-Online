@@ -292,6 +292,16 @@ class SparSim:
             'a_shots_hit': 0, 'b_shots_hit': 0,
         }
 
+        # Per-frame tracking for reward shaping
+        self._prev_hp_a = self.a.hp
+        self._prev_hp_b = self.b.hp
+        self._last_action_a = -1
+        self._last_action_b = -1
+        self._action_repeat_a = 0
+        self._action_repeat_b = 0
+        self._no_shoot_frames_a = 0
+        self._no_shoot_frames_b = 0
+
         return self.get_obs()
 
     def _copy_gun(self, template: Gun) -> Gun:
@@ -312,6 +322,33 @@ class SparSim:
             return self.get_obs(), 0.0, 0.0, True
 
         self.frame += 1
+
+        # Track HP before this frame (for damage reward)
+        self._prev_hp_a = self.a.hp
+        self._prev_hp_b = self.b.hp
+
+        # Track action repeats
+        if action_a == self._last_action_a:
+            self._action_repeat_a += 1
+        else:
+            self._action_repeat_a = 0
+        self._last_action_a = action_a
+
+        if action_b == self._last_action_b:
+            self._action_repeat_b += 1
+        else:
+            self._action_repeat_b = 0
+        self._last_action_b = action_b
+
+        # Track frames since last shoot
+        if action_a == 9:
+            self._no_shoot_frames_a = 0
+        else:
+            self._no_shoot_frames_a += 1
+        if action_b == 9:
+            self._no_shoot_frames_b = 0
+        else:
+            self._no_shoot_frames_b += 1
 
         # Convert actions to movement + shoot intent
         mx_a, my_a, shoot_a = action_to_movement(action_a, self.a, self.b)
@@ -499,11 +536,11 @@ class SparSim:
         self.bullets = remaining
 
     def _compute_rewards(self) -> Tuple[float, float]:
-        """Per-frame reward signal. Shaped for learning."""
+        """Per-frame reward signal. Shaped to encourage fighting, not camping."""
         r_a = 0.0
         r_b = 0.0
 
-        # Terminal reward: win/loss
+        # === Terminal reward: win/loss ===
         if self.done:
             if self.winner == 'a':
                 r_a += 1.0
@@ -511,14 +548,53 @@ class SparSim:
             elif self.winner == 'b':
                 r_a -= 1.0
                 r_b += 1.0
-            # draw: 0
+            # draw: slight penalty for both (incentivize decisive play)
+            else:
+                r_a -= 0.1
+                r_b -= 0.1
 
-        # Per-frame shaping (small signals to accelerate learning)
-        # Damage dealt this frame (tracked via HP changes)
-        # Position value: being below enemy is good (bottom advantage)
-        dy = self.a.y - self.b.y  # positive = a is below b = a has bottom
-        r_a += dy * 0.0001   # tiny reward for bottom position
-        r_b -= dy * 0.0001
+        # === Damage rewards (strongest shaping signal) ===
+        # Reward for dealing damage, penalty for taking it
+        dmg_dealt_a = max(0, self._prev_hp_b - self.b.hp)  # A dealt damage to B
+        dmg_dealt_b = max(0, self._prev_hp_a - self.a.hp)  # B dealt damage to A
+        r_a += dmg_dealt_a * 0.01    # +0.2 per hit (20 dmg * 0.01)
+        r_b += dmg_dealt_b * 0.01
+        r_a -= dmg_dealt_b * 0.005   # -0.1 per hit taken (half weight of dealing)
+        r_b -= dmg_dealt_a * 0.005
+
+        # === Anti-camping: penalize action repetition ===
+        # Repeating the same action >10 frames in a row = degenerate
+        if self._action_repeat_a > 10:
+            r_a -= 0.002 * (self._action_repeat_a - 10)
+        if self._action_repeat_b > 10:
+            r_b -= 0.002 * (self._action_repeat_b - 10)
+
+        # === Anti-passivity: penalize never shooting ===
+        # If >120 frames (2 seconds) without attempting to shoot, small penalty
+        if self._no_shoot_frames_a > 120:
+            r_a -= 0.001
+        if self._no_shoot_frames_b > 120:
+            r_b -= 0.001
+
+        # === Engagement range reward ===
+        # Reward being in fighting range (not camping at max distance)
+        dx = self.a.x - self.b.x
+        dy = self.a.y - self.b.y
+        dist = math.sqrt(dx * dx + dy * dy)
+        # Sweet spot: 150-400px (close enough to fight, not stacking)
+        if 150 < dist < 400:
+            r_a += 0.0005
+            r_b += 0.0005
+        elif dist > 500:
+            # Too far apart — both penalized for disengaging
+            r_a -= 0.0003
+            r_b -= 0.0003
+
+        # === Bottom position (small, NOT dominant) ===
+        # Tiny signal — must not dominate over engagement rewards
+        bottom_dy = self.a.y - self.b.y
+        r_a += bottom_dy * 0.00002   # 5x smaller than before
+        r_b -= bottom_dy * 0.00002
 
         return r_a, r_b
 

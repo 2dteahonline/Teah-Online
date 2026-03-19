@@ -41,7 +41,7 @@ LR = 3e-4                 # learning rate
 GAMMA = 0.99              # discount factor
 GAE_LAMBDA = 0.95         # GAE lambda
 CLIP_EPS = 0.2            # PPO clip ratio
-ENTROPY_COEF = 0.01       # entropy bonus for exploration
+ENTROPY_COEF = 0.02       # entropy bonus — higher to prevent action collapse
 VALUE_COEF = 0.5          # value loss weight
 MAX_GRAD_NORM = 0.5       # gradient clipping
 
@@ -323,6 +323,7 @@ def train(args):
         policy.eval()
 
         # ---- Collect rollout ----
+        action_counts = np.zeros(ACT_DIM, dtype=np.int64)  # track action distribution
         for step in range(N_STEPS):
             with torch.no_grad():
                 obs_a_t = torch.tensor(obs_a, dtype=torch.float32)
@@ -332,6 +333,10 @@ def train(args):
                 act_a, lp_a, val_a = policy.get_action(obs_a_t)
                 # Opponent plays side B
                 act_b, _, _ = opponent.get_action(obs_b_t)
+
+            # Track action distribution
+            for a in act_a.numpy():
+                action_counts[a] += 1
 
             # Step environments
             new_obs_a, new_obs_b, rew_a, rew_b, dones = env.step(
@@ -413,14 +418,24 @@ def train(args):
                 a_wins = b_wins = draws = 0
                 avg_frames = avg_hits_a = avg_hits_b = win_rate = 0
 
+            # Action distribution
+            act_total = action_counts.sum()
+            act_pcts = (action_counts / max(1, act_total) * 100).astype(int)
+            AN = ['idl','psh','ret','sL','sR','dL','dR','des','asc','sht']
+            act_str = ' '.join(f"{AN[i]}:{act_pcts[i]}%" for i in range(ACT_DIM))
+
+            # Shots per match (key metric for passivity)
+            avg_shots_a = np.mean([m['a_shots'] for m in recent]) if match_history and recent else 0
+
             print(f"iter {iteration+1:5d} | "
-                  f"pg_loss {total_pg_loss/max(1,n_updates):+.4f} | "
-                  f"v_loss {total_v_loss/max(1,n_updates):.4f} | "
-                  f"entropy {total_entropy/max(1,n_updates):.3f} | "
+                  f"pg {total_pg_loss/max(1,n_updates):+.4f} | "
+                  f"ent {total_entropy/max(1,n_updates):.3f} | "
                   f"fps {fps:.0f} | "
-                  f"wins A:{a_wins} B:{b_wins} D:{draws} ({win_rate:.1%}) | "
-                  f"frames {avg_frames:.0f} | "
-                  f"hits A:{avg_hits_a:.1f} B:{avg_hits_b:.1f}")
+                  f"W {a_wins}-{b_wins}-{draws} ({win_rate:.1%}) | "
+                  f"frm {avg_frames:.0f} | "
+                  f"hit {avg_hits_a:.1f}/{avg_hits_b:.1f} | "
+                  f"sht {avg_shots_a:.0f} | "
+                  f"{act_str}")
 
         # ---- Checkpointing ----
         if (iteration + 1) % 50 == 0:
