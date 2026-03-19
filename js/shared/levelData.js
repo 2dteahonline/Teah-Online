@@ -1108,7 +1108,7 @@ const LEVELS = {
       { type: 'fd_floor_dining', tx: 1, ty: 19, w: 19, h: 6, solid: false },  // widened left walkway
 
       // === SERVICE WALL (tx 18-19, solid with door gap at ty 14-15) ===
-      { type: 'fd_service_wall', tx: 18, ty: 1, w: 2, h: 13, solid: true },
+      { type: 'fd_service_wall', tx: 18, ty: 1, w: 2, h: 12, solid: true },
       // Door gap at ty 14-15 (open space)
       { type: 'fd_service_wall', tx: 18, ty: 16, w: 2, h: 3, solid: true },
 
@@ -1146,7 +1146,7 @@ const LEVELS = {
       // === HOST STAND (moved 1 tile down, wider) ===
       { type: 'fd_host_stand', tx: 39, ty: 20, w: 4, h: 1, solid: true },
       // Host NPC on stand (stationary, slightly right of center)
-      { type: 'fd_host_npc', tx: 41, ty: 20, w: 1, h: 1, solid: false },
+      { type: 'fd_host_npc', tx: 41, ty: 19, w: 1, h: 1, solid: false },
 
       // === WAITER (2 tiles below right corner of service counter at tx:17, ty:18) ===
       { type: 'fd_waiter_spot', tx: 17, ty: 20, w: 1, h: 1, solid: false },

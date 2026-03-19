@@ -960,12 +960,20 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
-      // VIP/Celebrity name tag
-      if (npc.customerType === 'vip' || npc.customerType === 'celebrity') {
-        const tagColor = npc.customerType === 'celebrity' ? '#ff4a8a' : '#ffd700';
+      // Gold name override for Critic/Celebrity names
+      if (npc.name === 'Critic' || npc.name === 'Celebrity') {
+        const ny = npc.y - 55 * 0.9;
+        ctx.font = "bold 13px monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = '#000'; ctx.fillText(npc.name, npc.x + 1, ny + 1);
+        ctx.fillStyle = '#ffd700'; ctx.fillText(npc.name, npc.x, ny);
+        ctx.textAlign = "left";
+      }
+      // VIP/Celebrity/Critic name tag — all gold
+      if (npc.customerType === 'vip' || npc.customerType === 'celebrity' || npc.customerType === 'critic') {
+        const tagLabel = npc.customerType === 'celebrity' ? 'CELEBRITY' : npc.customerType === 'critic' ? 'CRITIC' : 'VIP';
         ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-        ctx.fillStyle = tagColor;
-        ctx.fillText(npc.customerType === 'celebrity' ? 'CELEBRITY' : 'VIP', npc.x, npc.y - 52);
+        ctx.fillStyle = '#ffd700'; // gold for all special types
+        ctx.fillText(tagLabel, npc.x, npc.y - 52);
         // Sparkle effect
         const t = Date.now() / 300;
         for (let si = 0; si < 3; si++) {
