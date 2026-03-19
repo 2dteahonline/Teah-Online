@@ -5305,6 +5305,9 @@ const SparSystem = {
     if (SparState._neuralEnabled && SparState._neuralPolicy) {
       const nPolicy = SparState._neuralPolicy;
 
+      // Enemy gun state: read real values, not hardcoded
+      const eGun = enemyMember ? enemyMember.gun : (typeof gun !== 'undefined' ? gun : {});
+
       // Build observation vector matching Python spar_sim
       const nObs = nPolicy.buildObs(
         { x: bot.x, y: bot.y, hp: bot.hp, speed,
@@ -5314,14 +5317,15 @@ const SparSystem = {
           freeze_timer: bot._freezeTimer || 0,
           _neuralVx: bot.vx || 0, _neuralVy: bot.vy || 0 },
         { x: tgt.x, y: tgt.y, hp: tgt.hp,
-          gun: { ammo: 15, magSize: 30, reloading: false, shootCD: 0 },
+          gun: { ammo: eGun.ammo || 0, magSize: eGun.magSize || 30,
+                 reloading: !!eGun.reloading, shootCD: 0 },
           _neuralVx: tgt.vx || 0, _neuralVy: tgt.vy || 0 },
         bullets,
         SparState.matchTimer
       );
 
-      // Get action from neural policy (deterministic = argmax)
-      const nAction = nPolicy.getAction(nObs, true);
+      // Get action from neural policy (stochastic for variety)
+      const nAction = nPolicy.getAction(nObs, false);
       const nMove = nPolicy.actionToMovement(nAction, { x: bot.x, y: bot.y, speed }, tgt);
 
       moveX = nMove.moveX;
@@ -5335,6 +5339,12 @@ const SparSystem = {
         moveY = (moveY / nMoveLen) * speed;
       } else {
         moveX = 0; moveY = 0;
+      }
+
+      // Debug: log action distribution every 60 frames
+      if (SparState.matchTimer % 60 === 0) {
+        const actionNames = ['idle','push','retreat','strfL','strfR','dodgL','dodgR','desc','asc','shoot'];
+        console.log(`[Neural] f${SparState.matchTimer} action=${actionNames[nAction]} pos=(${bot.x|0},${bot.y|0}) hp=${bot.hp} move=(${moveX.toFixed(1)},${moveY.toFixed(1)}) shoot=${_neuralShoot}`);
       }
 
     } else if (isOpening) {
