@@ -181,12 +181,13 @@ const NeuralSparPolicy = (() => {
       obs[24] = matchProgress;
 
       // Bullet threats: nearest 5 enemy bullets (20 floats)
-      const myTeam = me.team;
+      // Real bullets use b.sparTeam = 'teamA'/'teamB', not b.team
+      const mySparTeam = me.sparTeam || me.team;
       const hitY = me.y + PLAYER_HITBOX_Y;
       const threats = [];
       if (bullets) {
         for (const b of bullets) {
-          if (b.team === myTeam) continue; // skip own bullets
+          if (b.sparTeam === mySparTeam) continue; // skip own team's bullets
           const bdx = b.x - me.x;
           const bdy = b.y - hitY;
           const distSq = bdx * bdx + bdy * bdy;
