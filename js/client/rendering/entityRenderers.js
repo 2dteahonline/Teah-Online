@@ -1573,21 +1573,24 @@ const ENTITY_RENDERERS = {
       for (let _bi = 0; _bi < _boothPositions.length; _bi++) {
         if (e.tx === _boothPositions[_bi][0] && e.ty === _boothPositions[_bi][1]) { _bIdx = _bi; break; }
       }
-      if (_bIdx >= 0 && typeof DINER_BOOTHS !== 'undefined' && DINER_BOOTHS[_bIdx] && DINER_BOOTHS[_bIdx]._plates && DINER_BOOTHS[_bIdx]._plates.length > 0) {
+      if (_bIdx >= 0 && typeof DINER_BOOTHS !== 'undefined' && DINER_BOOTHS[_bIdx] && DINER_BOOTHS[_bIdx]._plates) {
         const plates = DINER_BOOTHS[_bIdx]._plates;
+        const booth = DINER_BOOTHS[_bIdx];
         const tableY = ey + rowH + rowH / 2;
-        // Center plates within the middle of the table
-        const plateMargin = cw * 0.25;
-        const plateSpan = cw - plateMargin * 2;
-        for (let pi = 0; pi < Math.min(plates.length, 4); pi++) {
-          const px = ex + plateMargin + (plates.length > 1 ? pi * (plateSpan / (plates.length - 1)) : plateSpan / 2);
+        // Render a plate at each seat position that still has a plate
+        for (let si = 0; si < booth.seats.length; si++) {
+          if (!plates[si]) continue; // plate already taken by NPC
+          const seat = booth.seats[si];
+          // Position plate relative to booth: seat.tx relative to booth.tx
+          const seatRelX = (seat.tx - booth.tx) * TILE + TILE / 2;
+          const px = ex + seatRelX;
           // Plate
           ctx.fillStyle = '#e8e0d0';
           ctx.beginPath(); ctx.ellipse(px, tableY, 10, 5, 0, 0, Math.PI * 2); ctx.fill();
           ctx.strokeStyle = '#c0b8a0'; ctx.lineWidth = 1;
           ctx.beginPath(); ctx.ellipse(px, tableY, 10, 5, 0, 0, Math.PI * 2); ctx.stroke();
           // Food on plate
-          const ings = plates[pi];
+          const ings = plates[si];
           if (ings && ings[0] && typeof DINER_INGREDIENTS !== 'undefined' && DINER_INGREDIENTS[ings[0]]) {
             ctx.fillStyle = DINER_INGREDIENTS[ings[0]].color;
           } else {

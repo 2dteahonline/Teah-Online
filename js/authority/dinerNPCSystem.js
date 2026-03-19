@@ -140,13 +140,15 @@ function _getDinerSeatAccess(booth, seatIdx) {
 }
 
 // Find the closest unoccupied seat in a booth for an NPC
-function _findClosestFreeSeat(booth, npcX, npcY, party) {
+function _findFarthestFreeSeat(booth, npcX, npcY, party) {
+  // NPCs should sit at the OPPOSITE end of the table from which they entered,
+  // so the first NPC doesn't block others. Pick farthest available seat.
   const takenSeats = new Set();
   for (const mid of party.members) {
     const m = _getDinerNPC(mid);
     if (m && m.claimedSeatIdx >= 0) takenSeats.add(m.claimedSeatIdx);
   }
-  let bestIdx = -1, bestDist = Infinity;
+  let bestIdx = -1, bestDist = -1;
   for (let i = 0; i < booth.seats.length; i++) {
     if (takenSeats.has(i)) continue;
     const seat = booth.seats[i];
@@ -154,7 +156,7 @@ function _findClosestFreeSeat(booth, npcX, npcY, party) {
     const sy = seat.ty * TILE + TILE / 2;
     const dx = sx - npcX, dy = sy - npcY;
     const dist = dx * dx + dy * dy;
-    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+    if (dist > bestDist) { bestDist = dist; bestIdx = i; }
   }
   return bestIdx;
 }
@@ -602,11 +604,14 @@ function _updateDinerWaitress() {
       }
       if (w.stateTimer > 0) { w.stateTimer--; return; }
 
-      // Place plates on table
+      // Place plates on table — keyed by seat index so each NPC only takes their own plate
       if (booth) {
-        booth._plates = w._allTrayItems || [];
-        if (w._recipeIngredients && booth._plates.length === 0) {
-          booth._plates = [w._recipeIngredients];
+        const items = w._allTrayItems && w._allTrayItems.length > 0
+          ? w._allTrayItems
+          : (w._recipeIngredients ? [w._recipeIngredients] : []);
+        booth._plates = {};
+        for (let pi = 0; pi < Math.min(items.length, booth.seats.length); pi++) {
+          booth._plates[pi] = items[pi];
         }
       }
 
@@ -691,7 +696,7 @@ function spawnDinerGroup() {
     // 2-second stagger between each NPC entering
     if (i > 0) {
       npc.state = 'spawn_wait';
-      npc.stateTimer = i * 120; // 2-second intervals between each NPC
+      npc.stateTimer = i * 300; // 5-second intervals between each NPC
     }
   }
 
@@ -704,7 +709,7 @@ function spawnDinerGroup() {
 function _spawnGroupForBooth(boothIdx) {
   const booth = DINER_BOOTHS[boothIdx];
   if (!booth) return null;
-  const plateCount = booth._plates ? booth._plates.length : 2;
+  const plateCount = booth._plates ? Object.keys(booth._plates).length : 2;
   const partySize = Math.max(2, Math.min(4, plateCount));
 
   const partyId = ++_dinerPartyId;
@@ -732,7 +737,7 @@ function _spawnGroupForBooth(boothIdx) {
     npc.claimedSeatIdx = -1; // picked at arrival based on closest available
     if (i > 0) {
       npc.state = 'spawn_wait';
-      npc.stateTimer = i * 120; // 2-second intervals between each NPC
+      npc.stateTimer = i * 300; // 5-second intervals between each NPC
     }
   }
 
@@ -800,7 +805,7 @@ const DINER_NPC_AI = {
 
     // Pick closest available seat if not yet assigned
     if (npc.claimedSeatIdx < 0) {
-      npc.claimedSeatIdx = _findClosestFreeSeat(booth, npc.x, npc.y, party);
+      npc.claimedSeatIdx = _findFarthestFreeSeat(booth, npc.x, npc.y, party);
       if (npc.claimedSeatIdx < 0) { npc.state = '_despawn'; return; }
     }
 
@@ -833,13 +838,14 @@ const DINER_NPC_AI = {
         npc.y = seat.ty * TILE + TILE / 2;
       }
 
-      // If booth has plates (food delivered before NPC arrived), start eating immediately
-      if (booth && booth._plates && booth._plates.length > 0) {
+      // If booth has a plate at THIS NPC's seat, start eating immediately
+      if (booth && booth._plates && npc.claimedSeatIdx >= 0 && booth._plates[npc.claimedSeatIdx]) {
         npc.state = 'eating';
         npc.stateTimer = _cRandRange(DINER_NPC_CONFIG.eatDuration[0], DINER_NPC_CONFIG.eatDuration[1]);
         npc.hasFood = true;
-        // Take a plate from the table (remove it so the table visual updates one by one)
-        npc._recipeIngredients = booth._plates.shift() || null;
+        // Take only THIS NPC's plate (remove it so the table visual updates one by one)
+        npc._recipeIngredients = booth._plates[npc.claimedSeatIdx];
+        delete booth._plates[npc.claimedSeatIdx];
         return;
       }
     }
@@ -924,7 +930,7 @@ const DINER_NPC_AI = {
     // (Last member in array leaves immediately since no one is after them)
     if (myIdx < memberIds.length - 1) {
       npc._exitWaitTimer = (npc._exitWaitTimer || 0) + 1;
-      if (npc._exitWaitTimer < 120) return; // 2-second gap
+      if (npc._exitWaitTimer < 300) return; // 5-second gap
     }
 
     // My turn to leave — each NPC exits independently via their own seat route
