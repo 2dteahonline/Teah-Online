@@ -1145,15 +1145,15 @@ const LEVELS = {
 
       // === HOST STAND (moved 1 tile down, wider) ===
       { type: 'fd_host_stand', tx: 39, ty: 20, w: 4, h: 1, solid: true },
-      // Host NPC directly above stand (stationary, centered)
-      { type: 'fd_host_npc', tx: 40, ty: 19, w: 1, h: 1, solid: false },
+      // Host NPC on stand (stationary, slightly right of center)
+      { type: 'fd_host_npc', tx: 41, ty: 20, w: 1, h: 1, solid: false },
 
       // === WAITER (2 tiles below right corner of service counter at tx:17, ty:18) ===
       { type: 'fd_waiter_spot', tx: 17, ty: 20, w: 1, h: 1, solid: false },
 
       // === ENTER / EXIT DOORS ===
       { type: 'fd_enter_door', tx: 40, ty: 24, w: 3, h: 1, solid: false },   // bottom, vertically from host
-      { type: 'fd_exit_door', tx: 20, ty: 24, w: 3, h: 1, solid: false },     // opposite end
+      { type: 'fd_exit_door', tx: 20, ty: 24, w: 3, h: 1, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 45 },     // opposite end — also a portal
 
       // === DECORATIVE ===
       { type: 'fd_service_counter', tx: 1, ty: 18, w: 17, h: 1, solid: true },

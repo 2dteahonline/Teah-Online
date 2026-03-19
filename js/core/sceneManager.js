@@ -90,7 +90,7 @@ const PORTAL_SCENES = {
   mine_entrance: 'lobby',   mine_exit: 'mine',    mine_door: 'mine',
   deli_entrance: 'lobby',   deli_exit: 'cooking',
   diner_entrance: 'lobby',  diner_exit: 'cooking',
-  fine_dining_entrance: 'lobby', fine_dining_exit: 'cooking',
+  fine_dining_entrance: 'lobby', fine_dining_exit: 'cooking', fd_exit_door: 'cooking',
   house_entrance: 'lobby',  house_exit: 'farm',
   azurine_entrance: 'lobby', azurine_exit: 'azurine',
   gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
