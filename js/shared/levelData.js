@@ -1056,8 +1056,8 @@ const LEVELS = {
       { type: 'diner_booth_seat', tx: 41, ty: 15, solid: false },
 
       // === ARCADE MACHINES (centered in dining area, below booths) ===
-      { type: 'arcade_cabinet', tx: 34, ty: 16, w: 1, h: 2, solid: true },
-      { type: 'arcade_cabinet', tx: 36, ty: 16, w: 1, h: 2, solid: true },
+      { type: 'arcade_cabinet', tx: 34, ty: 18, w: 1, h: 2, solid: true },
+      { type: 'arcade_cabinet', tx: 36, ty: 18, w: 1, h: 2, solid: true },
 
       // === CUSTOMER EXIT ===
       { type: 'diner_customer_exit', tx: 43, ty: 21, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 39, spawnTY: 33 },
@@ -1112,9 +1112,8 @@ const LEVELS = {
       // Door gap at ty 14-15 (open space)
       { type: 'fd_service_wall', tx: 18, ty: 16, w: 2, h: 3, solid: true },
 
-      // === KITCHEN WORK STATIONS (moved 2 tiles down) ===
-      { type: 'fd_counter', tx: 9, ty: 12, w: 4, h: 2, solid: true },           // clear plate
-      { type: 'fd_pickup_counter', tx: 14, ty: 12, w: 5, h: 2, solid: true },    // serve counter
+      // === SERVE COUNTER ===
+      { type: 'fd_serve_counter', tx: 14, ty: 12, w: 5, h: 2, solid: true },     // serve (submit order)
 
       // === INGREDIENT STATIONS (2x2 each, 3 rows of 4 — 2-tile gaps for easy walking) ===
       // Row 1 (ty: 1)
@@ -1134,26 +1133,26 @@ const LEVELS = {
       { type: 'fding_miso',         tx: 13, ty: 9, w: 2, h: 2, solid: true },
 
       // === TEPPANYAKI TABLES (4 tables, each with grill center + surrounding seats) ===
-      // Table 0 (tx 21-28, ty 2-8) — grill at center tx:24, ty:5
-      { type: 'fd_teppanyaki_table', tx: 21, ty: 2, w: 8, h: 7, solid: false, _fdTableNum: 1 },
-      { type: 'fd_teppanyaki_grill_0', tx: 23, ty: 4, w: 3, h: 3, solid: true },
+      // Table 0 (tx 22-29, ty 2-8) — grill at center tx:25, ty:5
+      { type: 'fd_teppanyaki_table', tx: 22, ty: 2, w: 8, h: 7, solid: false, _fdTableNum: 1 },
+      { type: 'fd_teppanyaki_grill_0', tx: 24, ty: 4, w: 3, h: 3, solid: true },
       // Table 1 (tx 32-39, ty 2-8) — grill at center tx:35, ty:5
       { type: 'fd_teppanyaki_table', tx: 32, ty: 2, w: 8, h: 7, solid: false, _fdTableNum: 2 },
       { type: 'fd_teppanyaki_grill_1', tx: 34, ty: 4, w: 3, h: 3, solid: true },
-      // Table 2 (tx 21-28, ty 11-17) — grill at center tx:24, ty:14
-      { type: 'fd_teppanyaki_table', tx: 21, ty: 11, w: 8, h: 7, solid: false, _fdTableNum: 3 },
-      { type: 'fd_teppanyaki_grill_2', tx: 23, ty: 13, w: 3, h: 3, solid: true },
+      // Table 2 (tx 22-29, ty 11-17) — grill at center tx:25, ty:14
+      { type: 'fd_teppanyaki_table', tx: 22, ty: 11, w: 8, h: 7, solid: false, _fdTableNum: 3 },
+      { type: 'fd_teppanyaki_grill_2', tx: 24, ty: 13, w: 3, h: 3, solid: true },
       // Table 3 (tx 32-39, ty 11-17) — grill at center tx:35, ty:14
       { type: 'fd_teppanyaki_table', tx: 32, ty: 11, w: 8, h: 7, solid: false, _fdTableNum: 4 },
       { type: 'fd_teppanyaki_grill_3', tx: 34, ty: 13, w: 3, h: 3, solid: true },
 
       // === HOST STAND (moved 1 tile down, wider) ===
       { type: 'fd_host_stand', tx: 39, ty: 20, w: 4, h: 1, solid: true },
-      // Host NPC behind the stand (stationary, in tuxedo)
-      { type: 'fd_host_npc', tx: 41, ty: 19, w: 1, h: 1, solid: false },
+      // Host NPC directly above stand (stationary, centered)
+      { type: 'fd_host_npc', tx: 40, ty: 19, w: 1, h: 1, solid: false },
 
-      // === WAITER (stationary, 3 tiles under kitchen entrance at ty:14-15, so ty:18) ===
-      { type: 'fd_waiter_spot', tx: 20, ty: 17, w: 1, h: 1, solid: false },
+      // === WAITER (stationary, 4 tiles under kitchen door at ty:14-15, so ty:19) ===
+      { type: 'fd_waiter_spot', tx: 20, ty: 19, w: 1, h: 1, solid: false },
 
       // === ENTER / EXIT DOORS ===
       { type: 'fd_enter_door', tx: 40, ty: 24, w: 3, h: 1, solid: false },   // bottom, vertically from host

@@ -4917,7 +4917,48 @@ ENTITY_RENDERERS.fd_pickup_counter = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = "left";
 };
 
-// --- Tip jar ---
+// --- Serve counter (submit order, gold block + Serve label) ---
+ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  // Dark wood base
+  ctx.fillStyle = '#2a1a14';
+  ctx.fillRect(ex, ey, cw, ch);
+  ctx.fillStyle = '#3a2a20';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
+  ctx.fillStyle = '#4a3a30';
+  ctx.fillRect(ex + 2, ey + 2, cw - 4, 4);
+  // Gold block on top (centered)
+  const blockW = Math.min(cw - 16, 60), blockH = ch * 0.5;
+  const blockX = ex + (cw - blockW) / 2, blockY = ey + 4;
+  ctx.fillStyle = '#c0a000';
+  ctx.beginPath(); ctx.roundRect(blockX, blockY, blockW, blockH, 4); ctx.fill();
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath(); ctx.roundRect(blockX + 2, blockY + 2, blockW - 4, blockH - 4, 3); ctx.fill();
+  // Shine highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(blockX + 4, blockY + 2, blockW - 8, 4);
+  // Tray with pending items (visible when orders pending)
+  if (typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0) {
+    const itemCount = Math.min(_fdPendingServe.length, 4);
+    for (let i = 0; i < itemCount; i++) {
+      const itemX = blockX + 8 + i * 12;
+      const itemY = blockY + blockH / 2;
+      const serve = _fdPendingServe[i];
+      const ingColor = serve && serve.recipeIngredients && serve.recipeIngredients[0] &&
+        typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[serve.recipeIngredients[0]]
+        ? FINE_DINING_INGREDIENTS[serve.recipeIngredients[0]].color : '#d4a040';
+      ctx.fillStyle = ingColor;
+      ctx.beginPath(); ctx.arc(itemX, itemY, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Label
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(ex, ey + ch - 16, cw, 16);
+  ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Serve", ex + cw/2, ey + ch - 4);
+  ctx.textAlign = "left";
+};
+
 // --- Service counter (decorative) ---
 ENTITY_RENDERERS.fd_service_counter = (e, ctx, ex, ey, w, h) => {
   const cw = w * TILE, ch = h * TILE;
@@ -4933,27 +4974,6 @@ ENTITY_RENDERERS.fd_service_counter = (e, ctx, ex, ey, w, h) => {
   ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
   ctx.fillStyle = '#ffd700'; ctx.fillText("Counter", ex + cw/2, ey + ch - 4);
   ctx.textAlign = "left";
-  // Gold tray with accumulated order items (visible when orders pending)
-  if (typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0) {
-    const trayX = ex + cw / 2 - 20, trayY = ey + 2;
-    // Gold tray base
-    ctx.fillStyle = '#c0a000';
-    ctx.beginPath(); ctx.roundRect(trayX, trayY, 40, 20, 3); ctx.fill();
-    ctx.fillStyle = '#ffd700';
-    ctx.beginPath(); ctx.roundRect(trayX + 2, trayY + 2, 36, 16, 2); ctx.fill();
-    // Food items on tray (one circle per pending serve, up to 4)
-    const itemCount = Math.min(_fdPendingServe.length, 4);
-    for (let i = 0; i < itemCount; i++) {
-      const itemX = trayX + 8 + i * 9;
-      const itemY = trayY + 10;
-      const serve = _fdPendingServe[i];
-      const ingColor = serve && serve.recipeIngredients && serve.recipeIngredients[0] &&
-        typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[serve.recipeIngredients[0]]
-        ? FINE_DINING_INGREDIENTS[serve.recipeIngredients[0]].color : '#d4a040';
-      ctx.fillStyle = ingColor;
-      ctx.beginPath(); ctx.arc(itemX, itemY, 4, 0, Math.PI * 2); ctx.fill();
-    }
-  }
 };
 
 // --- Teppanyaki table (background visual) ---
@@ -5085,57 +5105,59 @@ ENTITY_RENDERERS.fd_host_stand = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = "left";
 };
 
-// --- Host NPC (male in tuxedo, stationary behind host stand) ---
+// --- Host NPC (player-sized, male in tuxedo, stationary above host stand) ---
 ENTITY_RENDERERS.fd_host_npc = (e, ctx, ex, ey, w, h) => {
   const cw = w * TILE, ch = h * TILE;
-  const cx = ex + cw / 2, cy = ey + ch / 2;
+  // Player sprite is 32×40 — center in the tile
+  const cx = ex + cw / 2, baseY = ey + ch - 4;
+  const bw = 16, bh = 20; // half-body width/height (player-sized: 32×40)
   // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  ctx.beginPath(); ctx.ellipse(cx, cy + 18, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, baseY, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
   // Legs
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(cx - 6, cy + 8, 5, 12);
-  ctx.fillRect(cx + 1, cy + 8, 5, 12);
+  ctx.fillRect(cx - 6, baseY - 14, 5, 14);
+  ctx.fillRect(cx + 1, baseY - 14, 5, 14);
   // Shoes
   ctx.fillStyle = '#111';
-  ctx.fillRect(cx - 7, cy + 18, 6, 3);
-  ctx.fillRect(cx + 1, cy + 18, 6, 3);
-  // Body (black tuxedo)
+  ctx.fillRect(cx - 7, baseY - 2, 6, 4);
+  ctx.fillRect(cx + 1, baseY - 2, 6, 4);
+  // Body (black tuxedo) — player-sized torso
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(cx - 12, cy - 10, 24, 22);
+  ctx.fillRect(cx - bw / 2, baseY - 36, bw, 24);
   // Tuxedo lapels
   ctx.fillStyle = '#2a2a2a';
-  ctx.beginPath(); ctx.moveTo(cx - 12, cy - 10); ctx.lineTo(cx - 3, cy + 2); ctx.lineTo(cx - 12, cy + 2); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(cx + 12, cy - 10); ctx.lineTo(cx + 3, cy + 2); ctx.lineTo(cx + 12, cy + 2); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - bw / 2, baseY - 36); ctx.lineTo(cx - 3, baseY - 22); ctx.lineTo(cx - bw / 2, baseY - 22); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + bw / 2, baseY - 36); ctx.lineTo(cx + 3, baseY - 22); ctx.lineTo(cx + bw / 2, baseY - 22); ctx.closePath(); ctx.fill();
   // White shirt front
   ctx.fillStyle = '#f0f0f0';
-  ctx.fillRect(cx - 4, cy - 8, 8, 18);
+  ctx.fillRect(cx - 4, baseY - 34, 8, 20);
   // Buttons
   ctx.fillStyle = '#ccc';
-  ctx.beginPath(); ctx.arc(cx, cy - 2, 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx, cy + 4, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, baseY - 26, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, baseY - 20, 1.5, 0, Math.PI * 2); ctx.fill();
   // Bow tie
   ctx.fillStyle = '#c00020';
-  ctx.beginPath(); ctx.moveTo(cx - 6, cy - 7); ctx.lineTo(cx, cy - 5); ctx.lineTo(cx - 6, cy - 3); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(cx + 6, cy - 7); ctx.lineTo(cx, cy - 5); ctx.lineTo(cx + 6, cy - 3); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - 6, baseY - 33); ctx.lineTo(cx, baseY - 31); ctx.lineTo(cx - 6, baseY - 29); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + 6, baseY - 33); ctx.lineTo(cx, baseY - 31); ctx.lineTo(cx + 6, baseY - 29); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#900018';
-  ctx.beginPath(); ctx.arc(cx, cy - 5, 2, 0, Math.PI * 2); ctx.fill();
-  // Head
+  ctx.beginPath(); ctx.arc(cx, baseY - 31, 2, 0, Math.PI * 2); ctx.fill();
+  // Head (player-sized: 16×16 head)
   ctx.fillStyle = '#d4a574';
-  ctx.beginPath(); ctx.arc(cx, cy - 18, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, baseY - 44, 10, 0, Math.PI * 2); ctx.fill();
   // Hair
   ctx.fillStyle = '#2a1a0a';
-  ctx.beginPath(); ctx.arc(cx, cy - 22, 9, Math.PI, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, baseY - 48, 9, Math.PI, Math.PI * 2); ctx.fill();
   // Eyes
   ctx.fillStyle = '#222';
-  ctx.fillRect(cx - 4, cy - 19, 2, 2);
-  ctx.fillRect(cx + 2, cy - 19, 2, 2);
+  ctx.fillRect(cx - 4, baseY - 45, 2, 2);
+  ctx.fillRect(cx + 2, baseY - 45, 2, 2);
   // Smile
   ctx.strokeStyle = '#8a5a3a'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(cx, cy - 14, 4, 0.1, Math.PI - 0.1); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, baseY - 40, 4, 0.1, Math.PI - 0.1); ctx.stroke();
   // Name label
   ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-  ctx.fillStyle = '#ffd700'; ctx.fillText("Host", cx, cy + 26);
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Host", cx, baseY + 10);
   ctx.textAlign = "left";
 };
 

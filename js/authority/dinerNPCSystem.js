@@ -45,8 +45,8 @@ const DINER_BOOTHS = [
 
 // ===================== ARCADE SPOTS (centered in dining area) =====================
 const DINER_ARCADE_SPOTS = [
-  { tx: 34, ty: 19, claimedBy: null },
-  { tx: 36, ty: 19, claimedBy: null },
+  { tx: 34, ty: 21, claimedBy: null },
+  { tx: 36, ty: 21, claimedBy: null },
 ];
 
 // ===================== CONFIG =====================
@@ -314,7 +314,7 @@ function _routeBoothToPass(boothId) { return _routeBoothToCounter(boothId); }
 function _routeDinerEntranceToArcade(arcadeIdx) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  // All routes stay BELOW arcades (ty:19+) — arcade cabinets are solid at ty:16-17
+  // All routes stay BELOW arcades (ty:21+) — arcade cabinets are solid at ty:18-19
   const variant = Math.floor(Math.random() * 4);
   switch (variant) {
     case 0:
@@ -353,7 +353,7 @@ function _routeDinerEntranceToArcade(arcadeIdx) {
 function _routeDinerArcadeToExit(arcadeIdx) {
   const spot = DINER_ARCADE_SPOTS[arcadeIdx];
   if (!spot) return [];
-  // All routes stay BELOW arcades (ty:19+) — arcade cabinets are solid at ty:16-17
+  // All routes stay BELOW arcades (ty:21+) — arcade cabinets are solid at ty:18-19
   const variant = Math.floor(Math.random() * 4);
   switch (variant) {
     case 0:
