@@ -349,11 +349,6 @@ window.MafiaSystem = {
 
     // End invisibility on kill (Phantom edge case — shouldn't reach here but safety)
     if (mk._roleState.invisible) mk._roleState.invisible = false;
-    // End shapeshift on kill
-    if (mk._roleState.shiftedAs) {
-      mk._roleState.shiftedAs = null;
-      mk._roleState.shiftTimer = 0;
-    }
 
     // Visual feedback
     if (typeof hitEffects !== 'undefined') {
