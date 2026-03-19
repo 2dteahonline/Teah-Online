@@ -1012,27 +1012,27 @@ const LEVELS = {
       // === BOOTHS (6 total, 2 columns of 3) ===
       // Each booth h:4 — top seats (1 tile) / table (2 tiles) / bottom seats (1 tile)
       // 1-tile gaps between booths. Tables 2,3,5,6 moved down so they don't connect.
-      // Booth 0 (Table 1) — ty:2-5, table at ty:3-4
-      { type: 'diner_booth', tx: 27, ty: 2, w: 5, h: 4, solid: false },
-      { type: 'diner_booth_table', tx: 28, ty: 3, w: 3, h: 2, solid: true },
-      { type: 'diner_booth_seat', tx: 28, ty: 2, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 2, solid: false },
-      { type: 'diner_booth_seat', tx: 28, ty: 5, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 5, solid: false },
-      // Booth 1 (Table 2) — ty:7-10, table at ty:8-9 (moved down 1)
-      { type: 'diner_booth', tx: 27, ty: 7, w: 5, h: 4, solid: false },
-      { type: 'diner_booth_table', tx: 28, ty: 8, w: 3, h: 2, solid: true },
-      { type: 'diner_booth_seat', tx: 28, ty: 7, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 7, solid: false },
-      { type: 'diner_booth_seat', tx: 28, ty: 10, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 10, solid: false },
-      // Booth 2 (Table 3) — ty:12-15, table at ty:13-14 (moved down 2)
-      { type: 'diner_booth', tx: 27, ty: 12, w: 5, h: 4, solid: false },
-      { type: 'diner_booth_table', tx: 28, ty: 13, w: 3, h: 2, solid: true },
-      { type: 'diner_booth_seat', tx: 28, ty: 12, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 12, solid: false },
-      { type: 'diner_booth_seat', tx: 28, ty: 15, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 15, solid: false },
+      // Booth 0 (Table 1) — ty:2-5, table at ty:3-4 (shifted +1 tx right)
+      { type: 'diner_booth', tx: 28, ty: 2, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 29, ty: 3, w: 3, h: 2, solid: true },
+      { type: 'diner_booth_seat', tx: 29, ty: 2, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 2, solid: false },
+      { type: 'diner_booth_seat', tx: 29, ty: 5, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 5, solid: false },
+      // Booth 1 (Table 2) — ty:7-10, table at ty:8-9 (shifted +1 tx right)
+      { type: 'diner_booth', tx: 28, ty: 7, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 29, ty: 8, w: 3, h: 2, solid: true },
+      { type: 'diner_booth_seat', tx: 29, ty: 7, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 7, solid: false },
+      { type: 'diner_booth_seat', tx: 29, ty: 10, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 10, solid: false },
+      // Booth 2 (Table 3) — ty:12-15, table at ty:13-14 (shifted +1 tx right)
+      { type: 'diner_booth', tx: 28, ty: 12, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 29, ty: 13, w: 3, h: 2, solid: true },
+      { type: 'diner_booth_seat', tx: 29, ty: 12, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 12, solid: false },
+      { type: 'diner_booth_seat', tx: 29, ty: 15, solid: false },
+      { type: 'diner_booth_seat', tx: 31, ty: 15, solid: false },
       // Booth 3 (Table 4) — ty:2-5, table at ty:3-4
       { type: 'diner_booth', tx: 38, ty: 2, w: 5, h: 4, solid: false },
       { type: 'diner_booth_table', tx: 39, ty: 3, w: 3, h: 2, solid: true },
