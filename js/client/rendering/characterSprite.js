@@ -409,8 +409,13 @@ function drawChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, name, hp
     }
     const isGhost = isPlayer && typeof MafiaState !== 'undefined' && MafiaState.playerIsGhost;
     _drawCrewmateWorld(sx, sy, dir, frame, moving, bodyCol, darkCol, effectiveScale, isGhost);
-    // Name tag below character
-    drawNameTag(sx, sy, sy - 55 * effectiveScale, name, -1, isPlayer, -1);
+    // Name tag below character — red for fellow impostors (visible only to impostors)
+    let _nameCol = null;
+    if (!isPlayer && typeof MafiaState !== 'undefined' && MafiaState.playerRole === 'impostor' && MafiaState.phase === 'playing') {
+      const _p = MafiaState.participants.find(p => p.name === name && p.role === 'impostor');
+      if (_p) _nameCol = '#ff4444';
+    }
+    drawNameTag(sx, sy, sy - 55 * effectiveScale, name, -1, isPlayer, -1, _nameCol);
     return;
   }
 
@@ -4145,7 +4150,7 @@ function drawGenericChar(sx, sy, dir, frame, moving, skin, hair, shirt, pants, n
 }
 
 // === SHARED NAME TAG + HP BAR ===
-function drawNameTag(sx, sy, hy, name, hp, isPlayer, maxHp) {
+function drawNameTag(sx, sy, hy, name, hp, isPlayer, maxHp, nameColorOverride) {
   if (name === "" || name == null) return; // skip for afterimages with no name
   // Health bar ABOVE character (above hair spikes) — skip for deli NPCs (hp < 0)
   if (hp >= 0 && (!isPlayer || gameSettings.playerHpBar) && !(typeof Scene !== 'undefined' && Scene.inSkeld)) {
@@ -4184,7 +4189,7 @@ function drawNameTag(sx, sy, hy, name, hp, isPlayer, maxHp) {
   ctx.strokeStyle = isPlayer ? "rgba(200,0,0,0.5)" : "rgba(80,80,80,0.5)";
   ctx.lineWidth = 1;
   ctx.strokeRect(tagX, tagY, tw, 17);
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = nameColorOverride || "#fff";
   ctx.textAlign = "center";
   ctx.fillText(name, sx, tagY + 13);
 }
