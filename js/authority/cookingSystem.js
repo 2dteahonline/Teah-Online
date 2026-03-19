@@ -748,18 +748,16 @@ function applyOrderResult(result) {
         if (tvEntry) tvEntry.status = 'ready';
       }
     } else if (cookingState.activeRestaurantId === 'fine_dining' &&
-               cookingState.currentOrder._fdTableId != null &&
-               cookingState.currentOrder._fdPartyId != null &&
                typeof _fdPendingServe !== 'undefined') {
-      // Fine dining: push to waiter pending serve queue
+      // Fine dining: push to waiter pending serve queue (waiter picks a free table)
       const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
         ? cookingState.currentOrder.recipe.ingredients.slice()
         : null;
       const allFDTrayItems = cookingState._fdTrayItems ? cookingState._fdTrayItems.slice() : [];
       if (recipeIngredients) allFDTrayItems.push(recipeIngredients);
       _fdPendingServe.push({
-        tableId: cookingState.currentOrder._fdTableId,
-        partyId: cookingState.currentOrder._fdPartyId,
+        tableId: null,  // waiter assigns a free table when picking up
+        partyId: null,
         recipeIngredients: recipeIngredients,
         allTrayItems: allFDTrayItems,
       });

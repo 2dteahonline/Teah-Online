@@ -138,7 +138,7 @@ const LEVELS = {
       { type: 'diner_entrance', tx: 5, ty: 31, w: 3, h: 2, solid: false, target: 'diner_01', spawnTX: 27, spawnTY: 33 },
       // === FINE DINING (below diner) ===
       { type: 'building_fine_dining', tx: 3, ty: 36, w: 7, h: 8, solid: true },
-      { type: 'fine_dining_entrance', tx: 5, ty: 43, w: 3, h: 2, solid: false, target: 'fine_dining_01', spawnTX: 40, spawnTY: 23 },
+      { type: 'fine_dining_entrance', tx: 5, ty: 43, w: 3, h: 2, solid: false, target: 'fine_dining_01', spawnTX: 40, spawnTY: 24 },
       // === CRYSTAL FORMATIONS (replacing trees, 3 variants) ===
       { type: 'tree', tx: 10, ty: 38, solid: true, variant: 1 },
       { type: 'tree', tx: 22, ty: 44, solid: true, variant: 0 },
@@ -1069,7 +1069,7 @@ const LEVELS = {
     widthTiles: 44,
     heightTiles: 26,
     isCooking: true,
-    spawns: { p1: { tx: 40, ty: 23 } },
+    spawns: { p1: { tx: 40, ty: 24 } },
     collisionAscii: [
       "############################################",
       "#..........................................#",  // ty:1  kitchen + dining
@@ -1100,7 +1100,7 @@ const LEVELS = {
     ],
     entities: [
       // Exit door (bottom right)
-      { type: 'fine_dining_exit', tx: 38, ty: 23, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 45 },
+      { type: 'fine_dining_exit', tx: 38, ty: 24, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 45 },
 
       // === FLOOR TILES ===
       { type: 'fd_floor_kitchen', tx: 1, ty: 1, w: 17, h: 18, solid: false },
@@ -1114,7 +1114,7 @@ const LEVELS = {
 
       // === KITCHEN WORK STATIONS (moved 2 tiles down) ===
       { type: 'fd_counter', tx: 7, ty: 12, w: 4, h: 2, solid: true },           // clear plate
-      { type: 'fd_pickup_counter', tx: 12, ty: 12, w: 7, h: 2, solid: true },    // submit order (+3 tiles wider)
+      { type: 'fd_pickup_counter', tx: 12, ty: 12, w: 5, h: 2, solid: true },    // serve counter
 
       // === INGREDIENT STATIONS (2x2 each, 2 rows of 6) ===
       // Row 1 (ty: 1)
@@ -1152,14 +1152,14 @@ const LEVELS = {
       { type: 'fd_host_npc', tx: 40, ty: 19, w: 1, h: 1, solid: false },
 
       // === WAITER (stationary, 3 tiles under kitchen entrance at ty:14-15, so ty:18) ===
-      { type: 'fd_waiter_spot', tx: 19, ty: 18, w: 1, h: 1, solid: false },
+      { type: 'fd_waiter_spot', tx: 20, ty: 17, w: 1, h: 1, solid: false },
 
       // === ENTER / EXIT DOORS ===
-      { type: 'fd_enter_door', tx: 40, ty: 23, w: 3, h: 1, solid: false },   // bottom, vertically from host
-      { type: 'fd_exit_door', tx: 20, ty: 23, w: 3, h: 1, solid: false },     // opposite end
+      { type: 'fd_enter_door', tx: 40, ty: 24, w: 3, h: 1, solid: false },   // bottom, vertically from host
+      { type: 'fd_exit_door', tx: 20, ty: 24, w: 3, h: 1, solid: false },     // opposite end
 
       // === DECORATIVE ===
-      { type: 'fd_service_counter', tx: 1, ty: 16, w: 14, h: 1, solid: true },
+      { type: 'fd_service_counter', tx: 1, ty: 18, w: 17, h: 1, solid: true },
     ]
   },
   // ---- TEST ARENA (dev only) ----

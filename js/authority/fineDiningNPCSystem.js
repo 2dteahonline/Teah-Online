@@ -20,10 +20,10 @@ const FD_NPC_NAMES = ['Guest', 'VIP', 'Patron', 'Connoisseur', 'Foodie', 'Celebr
 
 // ===================== KEY SPOTS =====================
 const FD_SPOTS = {
-  exit: { tx: 40, ty: 23 },
+  exit: { tx: 40, ty: 24 },
   hostStand: { tx: 40, ty: 20 },
   passWindow: { tx: 20, ty: 20 },  // kitchen pass window where waiter drops/picks up orders
-  waiterHome: { tx: 19, ty: 18 },  // waiter stationary spot (3 tiles under kitchen entrance)
+  waiterHome: { tx: 20, ty: 17 },  // waiter stationary spot (2 tiles under kitchen door, dining side)
 };
 
 // ===================== TEPPANYAKI TABLES =====================
@@ -141,8 +141,8 @@ function _pickFDCustomerType() {
 function _routeFDExitToHost(corridorTX) {
   const cx = corridorTX || 40;
   return _cConcatRoutes(
-    [_cWP(cx, 23)],
-    [_cWP(40, 23)],
+    [_cWP(cx, 24)],
+    [_cWP(40, 24)],
     [_cWP(40, 20)]
   );
 }
@@ -285,12 +285,12 @@ function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
 
   // Main walkway west to exit door
   route.push(_cWP(20, 20));
-  route.push(_cWP(20, 23));
+  route.push(_cWP(20, 24));
 
   return route;
 }
 
-// Generic: from any tile position → Exit (through exit door at tx:20, ty:23)
+// Generic: from any tile position → Exit (through exit door at tx:20, ty:24)
 function _routeFDToExit(fromTX, fromTY, corridorTX) {
   const route = [];
 
@@ -299,7 +299,7 @@ function _routeFDToExit(fromTX, fromTY, corridorTX) {
     route.push(_cWP(fromTX, 15));
     route.push(_cWP(18, 15));
     route.push(_cWP(20, 15));
-    route.push(_cWP(20, 23));
+    route.push(_cWP(20, 24));
     return route;
   }
 
@@ -319,7 +319,7 @@ function _routeFDToExit(fromTX, fromTY, corridorTX) {
 
   // On or below walkway — head west to exit door
   route.push(_cWP(20, 20));
-  route.push(_cWP(20, 23));
+  route.push(_cWP(20, 24));
 
   return route;
 }
@@ -375,7 +375,7 @@ function moveFDNPC(npc) {
     skipStates: _fdMoveSkipStates,
     kitchenCheck: _isFDKitchenZone,
     kitchenSafe: { tx: 20, ty: 20 },
-    kitchenFallback: [{ tx: 40, ty: 20 }, { tx: 40, ty: 23 }],
+    kitchenFallback: [{ tx: 40, ty: 20 }, { tx: 40, ty: 24 }],
     laneMode: 'none',
     pairSkip: (npc, other) => other.partyId === npc.partyId,
   });
@@ -514,6 +514,46 @@ function spawnFineDiningParty() {
   return party;
 }
 
+// ===================== SPAWN GROUP FOR TABLE (diner-style) =====================
+function _spawnFDGroupForTable(tableIdx) {
+  const table = FD_TABLES[tableIdx];
+  if (!table) return null;
+  const plateCount = table._serveData && table._serveData.allTrayItems ? table._serveData.allTrayItems.length : 2;
+  const partySize = Math.max(2, Math.min(4, plateCount));
+
+  const partyId = ++_fdPartyId;
+  table.claimedBy = partyId;
+
+  const corridorTX = _cRandRange(39, 41);
+  const party = {
+    id: partyId,
+    members: [],
+    leaderId: -1,
+    tableId: tableIdx,
+    corridorTX: corridorTX,
+    seatAssignments: [],
+    customerType: _pickFDCustomerType(),
+    state: 'entering',
+  };
+
+  for (let i = 0; i < partySize; i++) {
+    const npc = _spawnFDNPC(partyId, i === 0, corridorTX);
+    npc.customerType = party.customerType.type;
+    if (party.customerType.type === 'vip') npc._nameColor = '#ffd700';
+    else if (party.customerType.type === 'critic') npc._nameColor = '#e04040';
+    party.members.push(npc.id);
+    if (i === 0) party.leaderId = npc.id;
+    npc.claimedSeatIdx = i;
+    party.seatAssignments.push(i);
+    // Stagger entry
+    npc.state = 'spawn_wait';
+    npc.stateTimer = i * FD_NPC_CONFIG.entryInterval;
+  }
+
+  fineDiningParties.push(party);
+  return party;
+}
+
 // ===================== INIT =====================
 function initFineDiningNPCs() {
   fineDiningNPCs.length = 0;
@@ -522,7 +562,7 @@ function initFineDiningNPCs() {
   _fdPartyId = 0;
   _fdSpawnState.timer = 0;
   _fdSpawnState.nextInterval = _cRandRange(120, 300);
-  _fdOrderVisible = false;
+  _fdOrderVisible = true;
   _fdPendingServe.length = 0;
   _fdWaiterQueue.length = 0;
   for (const t of FD_TABLES) { t.claimedBy = null; t.state = 'empty'; t._exclamationVisible = false; t._foodServed = false; t._serveData = null; }
@@ -672,28 +712,23 @@ const FD_WAITER_AI = {
 
     // Priority 1: Deliver pending serve (completed orders from submit counter)
     if (_fdPendingServe.length > 0) {
-      const serveEntry = _fdPendingServe.shift();
-      w._currentTableId = serveEntry.tableId;
-      w._currentPartyId = serveEntry.partyId;
+      const serveEntry = _fdPendingServe[0];
+      // Find a free table for this order
+      const freeTableIdx = _findFreeTable(1);
+      if (freeTableIdx < 0) return; // no free table, wait
+      _fdPendingServe.shift();
+      serveEntry.tableId = freeTableIdx;
+      FD_TABLES[freeTableIdx].claimedBy = -1; // mark as claimed by incoming order
+      FD_TABLES[freeTableIdx].state = 'waiting_cook';
+      w._currentTableId = freeTableIdx;
+      w._currentPartyId = null;
       w._serveData = serveEntry;
       w.hasFood = true;
 
-      // Walk from waiter home to pickup counter, then to table
-      const routeToPickup = [_cWP(19, 18), _cWP(19, 12)];
+      // Walk from waiter home through kitchen door to pickup counter
+      const routeToPickup = [_cWP(20, 17), _cWP(19, 14), _cWP(19, 12)];
       _startWaiterRoute(routeToPickup, 'picking_up', 0);
       return;
-    }
-
-    // Priority 2: Admit queued party
-    if (_fdWaiterQueue.length > 0) {
-      const queuedPartyId = _fdWaiterQueue.shift();
-      const party = _getFDParty(queuedPartyId);
-      if (party && party.state !== 'leaving' && party.state !== 'done') {
-        w._currentPartyId = party.id;
-        w.state = 'greeting';
-        w.stateTimer = FD_NPC_CONFIG.waiterGreetDuration;
-        return;
-      }
     }
   },
 
@@ -712,9 +747,9 @@ const FD_WAITER_AI = {
     const table = FD_TABLES[party.tableId];
     if (!table) { w.state = 'idle'; return; }
     const isRightCol = (table.grillTX >= 30);
-    // Route: waiterHome(19,18) → main walkway → table grill
+    // Route: waiterHome(20,17) → main walkway → table grill
     const route = [];
-    route.push(_cWP(19, 18));
+    route.push(_cWP(20, 17));
     route.push(_cWP(20, 20));
     if (isRightCol) {
       route.push(_cWP(31, 20));
@@ -775,8 +810,7 @@ const FD_WAITER_AI = {
             table._exclamationVisible = true;
             table.state = 'waiting_cook';
           }
-          // Order is NOT visible yet — will be set when waiter reaches pass window
-          _fdOrderVisible = false;
+          // Order is always visible now (cooking system generates tickets independently)
         }
       }
       return;
@@ -840,7 +874,7 @@ const FD_WAITER_AI = {
     }
 
     // Now walk back to waiter home spot
-    const route = [_cWP(20, 20), _cWP(19, 18)];
+    const route = [_cWP(20, 20), _cWP(20, 17)];
     _startWaiterRoute(route, 'idle', 0);
     // Override to returning state during walk
     w.state = 'returning';
@@ -867,8 +901,9 @@ const FD_WAITER_AI = {
       const table = FD_TABLES[w._currentTableId];
       if (!table) { w.state = 'idle'; return; }
       const isRightCol = (table.grillTX >= 30);
-      // Route: pickup counter(19,12) → walkway → table grill
+      // Route: pickup counter(19,12) → kitchen door → walkway → table grill
       const route = [];
+      route.push(_cWP(19, 14));
       route.push(_cWP(20, 20));
       if (isRightCol) {
         route.push(_cWP(31, 20));
@@ -892,41 +927,27 @@ const FD_WAITER_AI = {
     }
   },
 
-  // ─── SERVING: At table, place food on grill, fire on, NPCs start eating ─────────────
+  // ─── SERVING: At table, place food on grill, spawn NPCs to eat ─────────────
   serving: (w) => {
     w.moving = false;
     w.hasFood = false;
 
     if (w.stateTimer > 0) { w.stateTimer--; return; }
 
-    // Set party to eating + activate grill visuals (food + fire)
-    const party = _getFDParty(w._currentPartyId);
-    if (party) {
-      const table = FD_TABLES[party.tableId];
-      const members = _getFDPartyMembers(party);
-      // Store food data on table for grill renderer to show food + fire
-      if (table) {
-        table._foodServed = true;
-        table._serveData = w._serveData || null;
-        table.state = 'eating';
-        table._exclamationVisible = false;
-      }
-      for (const m of members) {
-        if (m.state === 'watching_cook' || m.state === 'waiting_cook') {
-          m.state = 'eating';
-          m.hasFood = true;
-          m.stateTimer = FD_NPC_CONFIG.eatDuration[0]; // 15 seconds
-          // Store recipe ingredients for food visual
-          if (w._serveData && w._serveData.recipeIngredients) {
-            m._recipeIngredients = w._serveData.recipeIngredients.slice();
-          }
-        }
-      }
-      party.state = 'eating';
+    // Place food on grill — fire and food visuals activate
+    const tableIdx = w._currentTableId;
+    const table = tableIdx != null ? FD_TABLES[tableIdx] : null;
+    if (table) {
+      table._foodServed = true;
+      table._serveData = w._serveData || null;
+      table.state = 'eating';
+      table._exclamationVisible = false;
+
+      // Spawn NPC group to eat at this table (like diner _spawnGroupForBooth)
+      _spawnFDGroupForTable(tableIdx);
     }
 
     // Return to waiter home
-    const table = FD_TABLES[w._currentTableId];
     if (table) {
       const isRightCol = (table.grillTX >= 30);
       const route = [];
@@ -937,7 +958,7 @@ const FD_WAITER_AI = {
         route.push(_cWP(20, table.grillTY));
         route.push(_cWP(20, 20));
       }
-      route.push(_cWP(19, 18));
+      route.push(_cWP(20, 17));
       _startWaiterRoute(route, 'idle', 0);
       w.state = 'returning';
     } else {
@@ -965,47 +986,33 @@ const FD_NPC_AI = {
     npc.state = 'entering';
   },
 
-  // ─── ENTERING: Walk from exit to host stand area in formation ──────
+  // ─── ENTERING: Walk from exit door directly to table seat (food already on grill) ──────
   entering: (npc) => {
     const party = _getFDParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
 
-    // Determine formation position at host stand
-    // 2 NPCs: side by side. 3: 2 front + 1 behind. 4: 2 front + 2 behind.
-    const members = _getFDPartyMembers(party);
-    const myIdx = members.indexOf(npc);
-    const hostTX = FD_SPOTS.hostStand.tx;
-    const hostTY = FD_SPOTS.hostStand.ty + 2; // stand 2 tiles below host stand
-    let formTX, formTY;
-    if (members.length <= 2) {
-      // Side by side
-      formTX = hostTX + (myIdx === 0 ? -1 : 1);
-      formTY = hostTY;
-    } else if (members.length === 3) {
-      // 2 front, 1 behind
-      if (myIdx < 2) {
-        formTX = hostTX + (myIdx === 0 ? -1 : 1);
-        formTY = hostTY;
-      } else {
-        formTX = hostTX;
-        formTY = hostTY + 1;
-      }
-    } else {
-      // 4: 2 front, 2 behind
-      if (myIdx < 2) {
-        formTX = hostTX + (myIdx === 0 ? -1 : 1);
-        formTY = hostTY;
-      } else {
-        formTX = hostTX + (myIdx === 2 ? -1 : 1);
-        formTY = hostTY + 1;
-      }
-    }
+    const table = FD_TABLES[party.tableId];
+    if (!table) { npc.state = '_despawn'; return; }
 
-    // Route: exit → formation position at host stand
-    const cx = party.corridorTX || 40;
-    const route = [_cWP(cx, 23), _cWP(formTX, 23), _cWP(formTX, formTY)];
-    _cStartRoute(npc, route, 'at_host', FD_NPC_CONFIG.hostPauseDuration[0],
-      { kind: 'exit_to_host' });
+    const seat = table.seats[npc.claimedSeatIdx];
+    if (!seat) { npc.state = '_despawn'; return; }
+
+    // Route: exit door → main walkway → vertical corridor → seat
+    const isRightCol = (table.grillTX >= 30);
+    const route = [];
+    route.push(_cWP(40, 24));
+    route.push(_cWP(40, 20));
+    if (isRightCol) {
+      route.push(_cWP(31, 20));
+      route.push(_cWP(31, seat.ty));
+    } else {
+      route.push(_cWP(20, 20));
+      route.push(_cWP(20, seat.ty));
+    }
+    route.push(_cWP(seat.tx, seat.ty));
+
+    _cStartRoute(npc, route, 'eating', FD_NPC_CONFIG.eatDuration[0],
+      { kind: 'host_to_table', tableId: party.tableId, seatIdx: npc.claimedSeatIdx });
   },
 
   // ─── AT_HOST: 15 sec interaction with host, pay, wait for full group ──
@@ -1349,21 +1356,7 @@ function updateFineDiningNPCs() {
     restaurantId: 'fine_dining',
     spawnState: _fdSpawnState,
     spawnInterval: FD_NPC_CONFIG.spawnInterval,
-    canSpawn: () => {
-      const activeParties = fineDiningParties.filter(p => p.state !== 'done').length;
-      if (activeParties >= FD_NPC_CONFIG.maxParties || fineDiningNPCs.length >= 16) return false;
-
-      // Check if a table is free
-      const freeTable = _findFreeTable(1);
-      if (freeTable < 0) return false;
-
-      // Check if waiter is idle — if not, queue the spawn
-      if (_fdWaiter && _fdWaiter.state !== 'idle') {
-        return false; // spawn will be retried next interval
-      }
-
-      return true;
-    },
+    canSpawn: () => false,
     doSpawn: () => {
       const party = spawnFineDiningParty();
       if (!party && _fdWaiter && _fdWaiter.state !== 'idle') {
