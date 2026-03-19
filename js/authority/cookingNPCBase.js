@@ -193,21 +193,32 @@ function _cMoveNPC(npc, cfg) {
     return;
   }
 
-  // Wall/solid entity collision check
+  // Wall/solid entity collision check — try wall-sliding if diagonal is blocked
   if (typeof positionClear === 'function' && !positionClear(nextX, nextY, 14)) {
-    npc._stuckFrames = (npc._stuckFrames || 0) + 1;
-    // Quick unstick: after 15 frames (~0.25s), snap to raw waypoint center and skip it
-    if (npc._stuckFrames >= 15) {
-      npc._stuckFrames = 0;
-      if (positionClear(rawX, rawY, 10)) {
-        npc.x = rawX;
-        npc.y = rawY;
-      }
-      npc.route.shift();
-      if (npc.route.length === 0) {
-        npc.moving = false;
+    // Try sliding along X axis only (horizontal movement)
+    if (Math.abs(dx) > 0.5) {
+      const slideX = npc.x + (dx > 0 ? 1 : -1) * spd;
+      if (positionClear(slideX, npc.y, 14)) {
+        npc.x = slideX;
+        npc._stuckFrames = 0;
+        if (Math.abs(dx) > Math.abs(dy)) { npc.dir = dx > 0 ? 3 : 2; }
+        npc.frame = (npc.frame + 0.1) % 4;
+        return;
       }
     }
+    // Try sliding along Y axis only (vertical movement)
+    if (Math.abs(dy) > 0.5) {
+      const slideY = npc.y + (dy > 0 ? 1 : -1) * spd;
+      if (positionClear(npc.x, slideY, 14)) {
+        npc.y = slideY;
+        npc._stuckFrames = 0;
+        if (Math.abs(dy) >= Math.abs(dx)) { npc.dir = dy > 0 ? 0 : 1; }
+        npc.frame = (npc.frame + 0.1) % 4;
+        return;
+      }
+    }
+    // Both axes blocked — truly stuck
+    npc._stuckFrames = (npc._stuckFrames || 0) + 1;
     return;
   }
 
