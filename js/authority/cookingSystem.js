@@ -282,11 +282,16 @@ function _activateNextTicket() {
   };
   cookingState.assembly = [];
 
-  // Initialize tray item tracker for diner multi-item orders
+  // Initialize tray item tracker for diner/fine dining multi-item orders
   if (cookingState.activeRestaurantId === 'diner' && ticket.ticketItems.length > 1) {
     cookingState._dinerTrayItems = [];
   } else {
     cookingState._dinerTrayItems = null;
+  }
+  if (cookingState.activeRestaurantId === 'fine_dining' && ticket.ticketItems.length > 1) {
+    cookingState._fdTrayItems = [];
+  } else {
+    cookingState._fdTrayItems = null;
   }
 
   // Try to link an NPC at the counter
@@ -706,6 +711,9 @@ function applyOrderResult(result) {
     if (cookingState._dinerTrayItems && cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients) {
       cookingState._dinerTrayItems.push(cookingState.currentOrder.recipe.ingredients.slice());
     }
+    if (cookingState._fdTrayItems && cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients) {
+      cookingState._fdTrayItems.push(cookingState.currentOrder.recipe.ingredients.slice());
+    }
     cookingState.ticket.completedCount++;
     const nextItem = cookingState.ticket.items[cookingState.ticket.completedCount];
     cookingState.currentOrder.recipe = nextItem.recipe;
@@ -747,10 +755,13 @@ function applyOrderResult(result) {
       const recipeIngredients = cookingState.currentOrder.recipe && cookingState.currentOrder.recipe.ingredients
         ? cookingState.currentOrder.recipe.ingredients.slice()
         : null;
+      const allFDTrayItems = cookingState._fdTrayItems ? cookingState._fdTrayItems.slice() : [];
+      if (recipeIngredients) allFDTrayItems.push(recipeIngredients);
       _fdPendingServe.push({
         tableId: cookingState.currentOrder._fdTableId,
         partyId: cookingState.currentOrder._fdPartyId,
         recipeIngredients: recipeIngredients,
+        allTrayItems: allFDTrayItems,
       });
     } else if (cookingState.activeRestaurantId === 'street_deli') {
       // Deli: push completed order to counter — but NEVER for expired/failed orders (no plate if not completed)
@@ -860,10 +871,7 @@ function drawCookingHUD() {
   // Fine dining: hide order until waiter submits it at pass window
   if (order && cookingState.activeRestaurantId === 'fine_dining' &&
       typeof _fdOrderVisible !== 'undefined' && !_fdOrderVisible) {
-    // Show "Waiter taking order..." placeholder
-    ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
-    ctx.fillStyle = '#a0a0a0';
-    ctx.fillText("Waiter taking order...", BASE_W / 2, 90);
+    // Order hidden until waiter posts it — show nothing
   } else
   if (order) {
     const panelW = 220, panelH = 140;

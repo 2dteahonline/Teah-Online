@@ -4546,6 +4546,10 @@ function drawLevelEntities(camX, camY) {
       typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'diner') {
     _drawDinerTrayOverlay(camX, camY);
   }
+  if (typeof Scene !== 'undefined' && Scene.inCooking &&
+      typeof cookingState !== 'undefined' && cookingState.activeRestaurantId === 'fine_dining') {
+    _drawFDTrayOverlay(camX, camY);
+  }
 }
 
 // ===================== DINER TRAY OVERLAY =====================
@@ -4629,6 +4633,87 @@ function _drawDinerTrayOverlay(camX, camY) {
       const serve = _dinerPendingServe[pi];
       const tableNum = serve.tableNumber || (serve.boothId + 1);
       _drawTray(traySlot, serve.allTrayItems || [], tableNum, true, null);
+      traySlot++;
+    }
+  }
+}
+
+// ===================== FINE DINING TRAY OVERLAY =====================
+// Gold trays on the pickup counter (tx:12-18, ty:12). Like diner but gold.
+function _drawFDTrayOverlay(camX, camY) {
+  const TRAY_TX = 18; // right end of pickup counter (tx:12, w:7 → tx:18)
+  const TRAY_TY = 12; // on the counter row
+  let traySlot = 0;
+
+  function _drawFDTray(slot, items, tableNum, isComplete, progressText) {
+    const trayX = (TRAY_TX - slot) * TILE + TILE / 2 - camX;
+    const trayY = TRAY_TY * TILE + TILE / 2 - camY;
+    const itemCount = items ? items.length : 0;
+    const maxR = TILE / 2 - 4;
+    const trayW = Math.min(maxR, 12 + itemCount * 4);
+    const trayH = Math.min(maxR * 0.45, 6 + itemCount * 2);
+    // Gold tray base
+    ctx.fillStyle = '#c0a000';
+    ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, trayW + 2, trayH + 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.ellipse(trayX, trayY, trayW, trayH, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffe860';
+    ctx.beginPath(); ctx.ellipse(trayX, trayY - 1, trayW * 0.8, trayH * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    // Food items on tray
+    if (items) {
+      for (let fi = 0; fi < Math.min(itemCount, 4); fi++) {
+        const spread = Math.min(itemCount, 4);
+        const fx = trayX - (spread - 1) * 5 + fi * 10;
+        const itemIngs = items[fi];
+        const itemColor = itemIngs && itemIngs[0] && typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[itemIngs[0]]
+          ? FINE_DINING_INGREDIENTS[itemIngs[0]].color : '#d4a040';
+        ctx.fillStyle = itemColor;
+        ctx.beginPath(); ctx.arc(fx, trayY - 2, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath(); ctx.arc(fx - 1, trayY - 4, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Top label: check mark or progress
+    ctx.textAlign = "center";
+    if (isComplete) {
+      ctx.font = "bold 12px monospace"; ctx.fillStyle = '#40ff40';
+      ctx.fillText("\u2713", trayX, trayY - trayH - 4);
+    } else if (progressText) {
+      ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffffff';
+      ctx.fillText(progressText, trayX, trayY - trayH - 4);
+    }
+    // Table number circle underneath
+    if (tableNum > 0) {
+      const circY = trayY + trayH + 10;
+      ctx.fillStyle = '#1a1a2a';
+      ctx.beginPath(); ctx.arc(trayX, circY, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(trayX, circY, 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffd700';
+      ctx.fillText(String(tableNum), trayX, circY + 3);
+    }
+    ctx.textAlign = "left";
+  }
+
+  // In-progress tray (current multi-part order)
+  if (typeof cookingState !== 'undefined' && cookingState.ticket && cookingState.ticket.items) {
+    const completed = cookingState.ticket.completedCount || 0;
+    const total = cookingState.ticket.items.length;
+    if (completed > 0) {
+      const tableNum = cookingState.currentOrder && cookingState.currentOrder._fdTableId !== undefined
+        ? cookingState.currentOrder._fdTableId + 1 : 0;
+      const trayItems = cookingState._fdTrayItems || [];
+      _drawFDTray(traySlot, trayItems, tableNum, false, completed + "/" + total);
+      traySlot++;
+    }
+  }
+
+  // Completed trays waiting for waiter pickup
+  if (typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0) {
+    for (let pi = 0; pi < Math.min(_fdPendingServe.length, 4); pi++) {
+      const serve = _fdPendingServe[pi];
+      const tableNum = serve.tableId !== undefined ? serve.tableId + 1 : 0;
+      _drawFDTray(traySlot, serve.allTrayItems || [], tableNum, true, null);
       traySlot++;
     }
   }
@@ -4854,6 +4939,18 @@ ENTITY_RENDERERS.fd_teppanyaki_table = (e, ctx, ex, ey, w, h) => {
   // Warm ambient glow
   ctx.fillStyle = 'rgba(255,180,60,0.04)';
   ctx.fillRect(ex, ey, cw, ch);
+  // Table number (top-right corner) — black circle with gold number
+  const tableNum = e._fdTableNum || 0;
+  if (tableNum > 0) {
+    const numX = ex + cw - 16, numY = ey + 16;
+    ctx.fillStyle = '#1a1a2a';
+    ctx.beginPath(); ctx.arc(numX, numY, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(numX, numY, 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = '#ffd700'; ctx.fillText(String(tableNum), numX, numY + 4);
+    ctx.textAlign = "left";
+  }
 };
 
 // --- Teppanyaki grill entities (0-3) ---
@@ -4888,21 +4985,51 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
       ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2); ctx.fill();
     }
   }
-  // Waiting indicator — pulsing "!" when table needs cooking
+  // Food + fire when waiter has served (table._foodServed)
   const tableData = typeof FD_TABLES !== 'undefined' ? FD_TABLES[tableId] : null;
-  const isOrderTarget = typeof cookingState !== 'undefined' && cookingState.currentOrder &&
-    cookingState.currentOrder._fdTableId === tableId;
-  if (tableData && tableData.state === 'waiting_cook' && !isActive) {
-    const pulse = 0.5 + Math.sin(t * 3) * 0.5;
-    ctx.font = "bold 18px monospace"; ctx.textAlign = "center";
-    // Brighter gold arrow + "!" for the active order's table
-    if (isOrderTarget) {
-      ctx.fillStyle = `rgba(255,215,0,${0.7 + Math.sin(t * 4) * 0.3})`;
-      ctx.fillText("\u25BC", ex + cw/2, ey - 16);
+  if (tableData && tableData._foodServed && !isActive) {
+    // Fire glow (lower intensity than active cooking)
+    const fireGlow = 0.2 + Math.sin(t * 3) * 0.1;
+    ctx.fillStyle = `rgba(255,100,20,${fireGlow})`;
+    ctx.beginPath(); ctx.roundRect(ex + 6, ey + 6, cw - 12, ch - 12, 3); ctx.fill();
+    // Flickering fire dots
+    for (let fi = 0; fi < 3; fi++) {
+      const fx = ex + cw * 0.25 + fi * cw * 0.25;
+      const fy = ey + ch * 0.5 + Math.sin(t * 5 + fi * 2) * 4;
+      ctx.fillStyle = `rgba(255,180,40,${0.5 + Math.sin(t * 4 + fi) * 0.3})`;
+      ctx.beginPath(); ctx.arc(fx, fy, 3, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.fillStyle = `rgba(255,215,0,${pulse})`;
-    ctx.fillText("!", ex + cw/2, ey - 8);
-    ctx.textAlign = "left";
+    // Food items (small colored circles in front of each occupied seat position)
+    const serveData = tableData._serveData;
+    if (serveData && serveData.allTrayItems) {
+      const items = serveData.allTrayItems;
+      for (let fi = 0; fi < Math.min(items.length, 4); fi++) {
+        const fx = ex + cw * 0.2 + fi * (cw * 0.2);
+        const fy = ey + ch * 0.3;
+        const itemColor = items[fi] && items[fi][0] && typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[items[fi][0]]
+          ? FINE_DINING_INGREDIENTS[items[fi][0]].color : '#d4a040';
+        ctx.fillStyle = itemColor;
+        ctx.beginPath(); ctx.arc(fx, fy, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.arc(fx - 1, fy - 2, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+  // Gold cushions on sides of grill (2 left, 2 right on the brown surround)
+  const cushSize = 8;
+  const cushPad = 4;
+  for (let ci = 0; ci < 2; ci++) {
+    const cushY = ey + ch * 0.25 + ci * (ch * 0.35);
+    // Left cushions
+    ctx.fillStyle = '#c0a000';
+    ctx.beginPath(); ctx.roundRect(ex - cushSize - cushPad, cushY, cushSize, cushSize, 2); ctx.fill();
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.roundRect(ex - cushSize - cushPad + 1, cushY + 1, cushSize - 2, cushSize - 2, 2); ctx.fill();
+    // Right cushions
+    ctx.fillStyle = '#c0a000';
+    ctx.beginPath(); ctx.roundRect(ex + cw + cushPad, cushY, cushSize, cushSize, 2); ctx.fill();
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.roundRect(ex + cw + cushPad + 1, cushY + 1, cushSize - 2, cushSize - 2, 2); ctx.fill();
   }
 };
 ENTITY_RENDERERS.fd_teppanyaki_grill_0 = _fdGrillRenderer;
@@ -4929,6 +5056,78 @@ ENTITY_RENDERERS.fd_host_stand = (e, ctx, ex, ey, w, h) => {
   ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
   ctx.fillStyle = '#ffd700'; ctx.fillText("Host", ex + cw/2, ey + ch + 10);
   ctx.textAlign = "left";
+};
+
+// --- Host NPC (male in tuxedo, stationary behind host stand) ---
+ENTITY_RENDERERS.fd_host_npc = (e, ctx, ex, ey, w, h) => {
+  const cw = w * TILE, ch = h * TILE;
+  const cx = ex + cw / 2, cy = ey + ch / 2;
+  // Body (black tuxedo)
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(cx - 8, cy - 6, 16, 20);
+  // White shirt front
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(cx - 3, cy - 4, 6, 16);
+  // Bow tie
+  ctx.fillStyle = '#c00020';
+  ctx.fillRect(cx - 4, cy - 3, 8, 3);
+  // Head
+  ctx.fillStyle = '#d4a574';
+  ctx.beginPath(); ctx.arc(cx, cy - 12, 8, 0, Math.PI * 2); ctx.fill();
+  // Hair
+  ctx.fillStyle = '#2a1a0a';
+  ctx.beginPath(); ctx.arc(cx, cy - 16, 7, Math.PI, Math.PI * 2); ctx.fill();
+  // Name label
+  ctx.font = "bold 8px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Host", cx, cy + 20);
+  ctx.textAlign = "left";
+};
+
+// --- Enter Restaurant door ---
+ENTITY_RENDERERS.fd_enter_door = (e, ctx, ex, ey, w, h) => {
+  const cw = (w || 3) * TILE, ch = (h || 1) * TILE;
+  // Floor mat
+  ctx.fillStyle = '#3a1a1a';
+  ctx.beginPath(); ctx.roundRect(ex + 4, ey + 2, cw - 8, ch - 4, 4); ctx.fill();
+  ctx.fillStyle = '#4a2a1a';
+  ctx.beginPath(); ctx.roundRect(ex + 8, ey + 4, cw - 16, ch - 8, 3); ctx.fill();
+  // Gold arrow pointing in
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.moveTo(ex + cw / 2, ey + 4);
+  ctx.lineTo(ex + cw / 2 - 8, ey + ch - 4);
+  ctx.lineTo(ex + cw / 2 + 8, ey + ch - 4);
+  ctx.closePath(); ctx.fill();
+  // Label
+  ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Enter Restaurant", ex + cw / 2, ey - 4);
+  ctx.textAlign = "left";
+};
+
+// --- Exit Restaurant door ---
+ENTITY_RENDERERS.fd_exit_door = (e, ctx, ex, ey, w, h) => {
+  const cw = (w || 3) * TILE, ch = (h || 1) * TILE;
+  // Floor mat
+  ctx.fillStyle = '#1a1a3a';
+  ctx.beginPath(); ctx.roundRect(ex + 4, ey + 2, cw - 8, ch - 4, 4); ctx.fill();
+  ctx.fillStyle = '#1a2a4a';
+  ctx.beginPath(); ctx.roundRect(ex + 8, ey + 4, cw - 16, ch - 8, 3); ctx.fill();
+  // Gold arrow pointing out (down)
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.moveTo(ex + cw / 2, ey + ch - 4);
+  ctx.lineTo(ex + cw / 2 - 8, ey + 4);
+  ctx.lineTo(ex + cw / 2 + 8, ey + 4);
+  ctx.closePath(); ctx.fill();
+  // Label
+  ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Exit Restaurant", ex + cw / 2, ey - 4);
+  ctx.textAlign = "left";
+};
+
+// --- Waiter spot (invisible marker, waiter rendered by NPC system) ---
+ENTITY_RENDERERS.fd_waiter_spot = (e, ctx, ex, ey, w, h) => {
+  // No visual — waiter is rendered as an NPC by the fine dining system
 };
 
 // --- Fine dining ingredient renderer ---
