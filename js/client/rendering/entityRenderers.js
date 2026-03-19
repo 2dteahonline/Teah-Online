@@ -4932,7 +4932,7 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
     const itemCount = Math.min(_fdPendingServe.length, 4);
     const trayW = 28, trayH = 20;
     const totalW = itemCount * (trayW + 4);
-    const startX = ex + (cw - totalW) / 2;
+    const startX = ex + cw - totalW - 8; // right-aligned on counter (near waiter pickup)
     for (let i = 0; i < itemCount; i++) {
       const tx = startX + i * (trayW + 4);
       const ty = ey + 6;
@@ -5093,28 +5093,17 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
       ctx.fillStyle = `rgba(255,180,40,${0.5 + Math.sin(t * 4 + fi) * 0.3})`;
       ctx.beginPath(); ctx.arc(fx, fy, 3, 0, Math.PI * 2); ctx.fill();
     }
-    // Food plates in front of each OCCUPIED seat (based on party member count)
-    // Each plate is a small white circle (plate) with colored food on top
-    const partyId = tableData.claimedBy;
-    let memberCount = 0;
-    if (partyId !== null && typeof fineDiningParties !== 'undefined') {
-      const party = fineDiningParties.find(p => p.id === partyId);
-      if (party) memberCount = party.members.length;
-    }
-    // Fallback: use allTrayItems count from serve data
-    if (memberCount === 0 && tableData._serveData && tableData._serveData.allTrayItems) {
-      memberCount = tableData._serveData.allTrayItems.length;
-    }
-    const plateCount = Math.min(memberCount || 1, 4);
+    // Food plates on grill — only show remaining plates (not yet consumed by seated NPCs)
+    // _platesRemaining decrements as each NPC sits and "takes" a plate
+    const plateCount = Math.min(tableData._platesRemaining || 0, 4);
     const seats = tableData.seats;
     for (let si = 0; si < plateCount && si < seats.length; si++) {
       const seat = seats[si];
-      // Compute food plate position between seat and grill center on the grill surface
+      // Compute food plate position — closer to center (40% from center toward seat)
       const seatRelX = (seat.tx - e.tx) * TILE + TILE / 2;
       const seatRelY = (seat.ty - e.ty) * TILE + TILE / 2;
-      // Place food 40% from grill center toward the seat (on the grill edge)
-      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.7;
-      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.7;
+      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.4;
+      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.4;
       // White plate
       ctx.fillStyle = '#f0f0f0';
       ctx.beginPath(); ctx.arc(foodX, foodY, 8, 0, Math.PI * 2); ctx.fill();
