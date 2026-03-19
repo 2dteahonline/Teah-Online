@@ -853,13 +853,7 @@ function drawCookingHUD() {
 
   const order = cookingState.currentOrder;
 
-  // === Combo counter (top-right area) ===
-  if (cookingState.comboCount > 0) {
-    ctx.font = "bold 11px monospace";
-    ctx.fillStyle = cookingState.comboCount >= COOKING_CONFIG.comboThreshold ? '#ffd700' : '#c0c0c0';
-    ctx.textAlign = "left";
-    ctx.fillText("Combo x" + cookingState.comboCount, BASE_W / 2 + 110, 66);
-  }
+  // Combo counter removed — not needed on HUD
 
   // === Grill HUD override ===
   if (typeof grillState !== 'undefined' && grillState.active && typeof drawGrillHUD === 'function') {

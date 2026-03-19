@@ -1521,43 +1521,41 @@ const ENTITY_RENDERERS = {
   },
 
   diner_booth: (e, ctx, ex, ey, w, h) => {
-      const cw = (w || 5) * TILE, ch = (h || 3) * TILE;
-      const rowH = ch / 3;
+      const cw = (w || 5) * TILE, ch = (h || 4) * TILE;
+      const seatH = TILE;       // top/bottom seat rows = 1 tile each
+      const tableH = ch - seatH * 2; // table = remaining middle (2 tiles)
       // Top bench (red vinyl)
       ctx.fillStyle = '#cc2020';
-      ctx.fillRect(ex + 4, ey + 4, cw - 8, rowH - 4);
+      ctx.fillRect(ex + 4, ey + 4, cw - 8, seatH - 4);
       ctx.fillStyle = '#aa1818';
       ctx.fillRect(ex + 4, ey + 4, cw - 8, 4); // seat back shadow
-      // Cushion highlight
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(ex + 8, ey + 8, cw - 16, rowH * 0.3);
-      // Formica table (center row)
-      const ty = ey + rowH;
+      ctx.fillRect(ex + 8, ey + 8, cw - 16, seatH * 0.3);
+      // Formica table (center 2 tiles)
+      const ty = ey + seatH;
       ctx.fillStyle = '#e8e0d0';
-      ctx.fillRect(ex + 12, ty + 2, cw - 24, rowH - 4);
+      ctx.fillRect(ex + 12, ty + 2, cw - 24, tableH - 4);
       ctx.fillStyle = '#f0e8d8';
-      ctx.fillRect(ex + 14, ty + 4, cw - 28, rowH - 8);
-      // Chrome edge on table
+      ctx.fillRect(ex + 14, ty + 4, cw - 28, tableH - 8);
       ctx.strokeStyle = '#c0c0c8'; ctx.lineWidth = 2;
-      ctx.strokeRect(ex + 12, ty + 2, cw - 24, rowH - 4);
+      ctx.strokeRect(ex + 12, ty + 2, cw - 24, tableH - 4);
       // Bottom bench (red vinyl)
-      const by = ey + rowH * 2;
+      const by = ey + seatH + tableH;
       ctx.fillStyle = '#cc2020';
-      ctx.fillRect(ex + 4, by, cw - 8, rowH - 4);
+      ctx.fillRect(ex + 4, by, cw - 8, seatH - 4);
       ctx.fillStyle = '#aa1818';
-      ctx.fillRect(ex + 4, by + rowH - 8, cw - 8, 4); // seat front shadow
-      // Cushion highlight
+      ctx.fillRect(ex + 4, by + seatH - 8, cw - 8, 4);
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(ex + 8, by + 4, cw - 16, rowH * 0.3);
+      ctx.fillRect(ex + 8, by + 4, cw - 16, seatH * 0.3);
 
       // Table number circle — black circle with gold number in center of table
-      const _boothPositionsForNum = [[27,2],[27,6],[27,10],[38,2],[38,6],[38,10]];
+      const _boothPositionsForNum = [[27,2],[27,7],[27,12],[38,2],[38,7],[38,12]];
       let _tableNum = 0;
       for (let _bi = 0; _bi < _boothPositionsForNum.length; _bi++) {
         if (e.tx === _boothPositionsForNum[_bi][0] && e.ty === _boothPositionsForNum[_bi][1]) { _tableNum = _bi + 1; break; }
       }
       if (_tableNum > 0) {
-        const numCX = ex + cw / 2, numCY = ty + rowH / 2;
+        const numCX = ex + cw / 2, numCY = ty + tableH / 2;
         ctx.fillStyle = '#1a1a1a';
         ctx.beginPath(); ctx.arc(numCX, numCY, 10, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5;
@@ -1567,8 +1565,8 @@ const ENTITY_RENDERERS = {
         ctx.textAlign = "left";
       }
 
-      // Render plates on table when food has been delivered
-      const _boothPositions = [[27,2],[27,6],[27,10],[38,2],[38,6],[38,10]];
+      // Render plates on table at each seat's X position — disappear one by one as NPCs sit
+      const _boothPositions = [[27,2],[27,7],[27,12],[38,2],[38,7],[38,12]];
       let _bIdx = -1;
       for (let _bi = 0; _bi < _boothPositions.length; _bi++) {
         if (e.tx === _boothPositions[_bi][0] && e.ty === _boothPositions[_bi][1]) { _bIdx = _bi; break; }
@@ -1576,19 +1574,19 @@ const ENTITY_RENDERERS = {
       if (_bIdx >= 0 && typeof DINER_BOOTHS !== 'undefined' && DINER_BOOTHS[_bIdx] && DINER_BOOTHS[_bIdx]._plates) {
         const plates = DINER_BOOTHS[_bIdx]._plates;
         const booth = DINER_BOOTHS[_bIdx];
-        const tableY = ey + rowH + rowH / 2;
-        // Render a plate at each seat position that still has a plate
+        // Place plates at each seat's tile position on the table
         for (let si = 0; si < booth.seats.length; si++) {
           if (!plates[si]) continue; // plate already taken by NPC
           const seat = booth.seats[si];
-          // Position plate relative to booth: seat.tx relative to booth.tx
           const seatRelX = (seat.tx - booth.tx) * TILE + TILE / 2;
           const px = ex + seatRelX;
+          // Top-row seats: plate on upper half of table; bottom-row: lower half
+          const plateY = seat.sitDir === 0 ? ty + tableH * 0.25 : ty + tableH * 0.75;
           // Plate
           ctx.fillStyle = '#e8e0d0';
-          ctx.beginPath(); ctx.ellipse(px, tableY, 10, 5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(px, plateY, 10, 5, 0, 0, Math.PI * 2); ctx.fill();
           ctx.strokeStyle = '#c0b8a0'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.ellipse(px, tableY, 10, 5, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(px, plateY, 10, 5, 0, 0, Math.PI * 2); ctx.stroke();
           // Food on plate
           const ings = plates[si];
           if (ings && ings[0] && typeof DINER_INGREDIENTS !== 'undefined' && DINER_INGREDIENTS[ings[0]]) {
@@ -1596,7 +1594,7 @@ const ENTITY_RENDERERS = {
           } else {
             ctx.fillStyle = '#d4a040';
           }
-          ctx.beginPath(); ctx.arc(px, tableY - 2, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(px, plateY - 2, 4, 0, Math.PI * 2); ctx.fill();
         }
       }
   },

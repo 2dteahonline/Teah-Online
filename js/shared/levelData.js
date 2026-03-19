@@ -1010,50 +1010,50 @@ const LEVELS = {
       { type: 'diner_floor', tx: 25, ty: 1, w: 22, h: 20, solid: false },
 
       // === BOOTHS (6 total, 2 columns of 3) ===
-      // Table is center row only (solid). Seats are on top/bottom rows (walkable).
-      // NPC system seats: top row sitDir:0 (face down), bottom row sitDir:1 (face up)
-      // Booth 0 — table at ty:3, seats at ty:2 and ty:4
-      { type: 'diner_booth', tx: 27, ty: 2, w: 5, h: 3, solid: false },
-      { type: 'diner_booth_table', tx: 28, ty: 3, w: 3, h: 1, solid: true },
+      // Each booth h:4 — top seats (1 tile) / table (2 tiles) / bottom seats (1 tile)
+      // 1-tile gaps between booths. Tables 2,3,5,6 moved down so they don't connect.
+      // Booth 0 (Table 1) — ty:2-5, table at ty:3-4
+      { type: 'diner_booth', tx: 27, ty: 2, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 28, ty: 3, w: 3, h: 2, solid: true },
       { type: 'diner_booth_seat', tx: 28, ty: 2, solid: false },
       { type: 'diner_booth_seat', tx: 30, ty: 2, solid: false },
-      { type: 'diner_booth_seat', tx: 28, ty: 4, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 4, solid: false },
-      // Booth 1 — table at ty:7, seats at ty:6 and ty:8
-      { type: 'diner_booth', tx: 27, ty: 6, w: 5, h: 3, solid: false },
-      { type: 'diner_booth_table', tx: 28, ty: 7, w: 3, h: 1, solid: true },
-      { type: 'diner_booth_seat', tx: 28, ty: 6, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 6, solid: false },
-      { type: 'diner_booth_seat', tx: 28, ty: 8, solid: false },
-      { type: 'diner_booth_seat', tx: 30, ty: 8, solid: false },
-      // Booth 2 — table at ty:11, seats at ty:10 and ty:12
-      { type: 'diner_booth', tx: 27, ty: 10, w: 5, h: 3, solid: false },
-      { type: 'diner_booth_table', tx: 28, ty: 11, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 28, ty: 5, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 5, solid: false },
+      // Booth 1 (Table 2) — ty:7-10, table at ty:8-9 (moved down 1)
+      { type: 'diner_booth', tx: 27, ty: 7, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 28, ty: 8, w: 3, h: 2, solid: true },
+      { type: 'diner_booth_seat', tx: 28, ty: 7, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 7, solid: false },
       { type: 'diner_booth_seat', tx: 28, ty: 10, solid: false },
       { type: 'diner_booth_seat', tx: 30, ty: 10, solid: false },
+      // Booth 2 (Table 3) — ty:12-15, table at ty:13-14 (moved down 2)
+      { type: 'diner_booth', tx: 27, ty: 12, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 28, ty: 13, w: 3, h: 2, solid: true },
       { type: 'diner_booth_seat', tx: 28, ty: 12, solid: false },
       { type: 'diner_booth_seat', tx: 30, ty: 12, solid: false },
-      // Booth 3 — table at ty:3, seats at ty:2 and ty:4
-      { type: 'diner_booth', tx: 38, ty: 2, w: 5, h: 3, solid: false },
-      { type: 'diner_booth_table', tx: 39, ty: 3, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 28, ty: 15, solid: false },
+      { type: 'diner_booth_seat', tx: 30, ty: 15, solid: false },
+      // Booth 3 (Table 4) — ty:2-5, table at ty:3-4
+      { type: 'diner_booth', tx: 38, ty: 2, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 39, ty: 3, w: 3, h: 2, solid: true },
       { type: 'diner_booth_seat', tx: 39, ty: 2, solid: false },
       { type: 'diner_booth_seat', tx: 41, ty: 2, solid: false },
-      { type: 'diner_booth_seat', tx: 39, ty: 4, solid: false },
-      { type: 'diner_booth_seat', tx: 41, ty: 4, solid: false },
-      // Booth 4 — table at ty:7, seats at ty:6 and ty:8
-      { type: 'diner_booth', tx: 38, ty: 6, w: 5, h: 3, solid: false },
-      { type: 'diner_booth_table', tx: 39, ty: 7, w: 3, h: 1, solid: true },
-      { type: 'diner_booth_seat', tx: 39, ty: 6, solid: false },
-      { type: 'diner_booth_seat', tx: 41, ty: 6, solid: false },
-      { type: 'diner_booth_seat', tx: 39, ty: 8, solid: false },
-      { type: 'diner_booth_seat', tx: 41, ty: 8, solid: false },
-      // Booth 5 — table at ty:11, seats at ty:10 and ty:12
-      { type: 'diner_booth', tx: 38, ty: 10, w: 5, h: 3, solid: false },
-      { type: 'diner_booth_table', tx: 39, ty: 11, w: 3, h: 1, solid: true },
+      { type: 'diner_booth_seat', tx: 39, ty: 5, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 5, solid: false },
+      // Booth 4 (Table 5) — ty:7-10, table at ty:8-9 (moved down 1)
+      { type: 'diner_booth', tx: 38, ty: 7, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 39, ty: 8, w: 3, h: 2, solid: true },
+      { type: 'diner_booth_seat', tx: 39, ty: 7, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 7, solid: false },
       { type: 'diner_booth_seat', tx: 39, ty: 10, solid: false },
       { type: 'diner_booth_seat', tx: 41, ty: 10, solid: false },
+      // Booth 5 (Table 6) — ty:12-15, table at ty:13-14 (moved down 2)
+      { type: 'diner_booth', tx: 38, ty: 12, w: 5, h: 4, solid: false },
+      { type: 'diner_booth_table', tx: 39, ty: 13, w: 3, h: 2, solid: true },
       { type: 'diner_booth_seat', tx: 39, ty: 12, solid: false },
       { type: 'diner_booth_seat', tx: 41, ty: 12, solid: false },
+      { type: 'diner_booth_seat', tx: 39, ty: 15, solid: false },
+      { type: 'diner_booth_seat', tx: 41, ty: 15, solid: false },
 
       // === ARCADE MACHINES (centered in dining area, below booths) ===
       { type: 'arcade_cabinet', tx: 34, ty: 16, w: 1, h: 2, solid: true },
