@@ -1,0 +1,1393 @@
+{
+  "collision_grid": [
+    {
+      "test": "isSolid(0,0)",
+      "label": "top-left corner",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "isSolid(23,0)",
+      "label": "top-right corner",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "isSolid(0,19)",
+      "label": "bottom-left corner",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "isSolid(23,19)",
+      "label": "bottom-right corner",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "isSolid(1,1)",
+      "label": "inner top-left",
+      "expected": false,
+      "actual": false,
+      "pass": true
+    },
+    {
+      "test": "isSolid(22,18)",
+      "label": "inner bottom-right",
+      "expected": false,
+      "actual": false,
+      "pass": true
+    },
+    {
+      "test": "isSolid(12,10)",
+      "label": "center",
+      "expected": false,
+      "actual": false,
+      "pass": true
+    },
+    {
+      "test": "isSolid(-1,5)",
+      "label": "out of bounds left",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "isSolid(24,5)",
+      "label": "out of bounds right",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "isSolid(5,-1)",
+      "label": "out of bounds top",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "isSolid(5,20)",
+      "label": "out of bounds bottom",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    }
+  ],
+  "position_clear": [
+    {
+      "test": "positionClear(576,480,14)",
+      "label": "arena center",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "positionClear(62,480,14)",
+      "label": "just clear of left wall",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "positionClear(61,480,14)",
+      "label": "touching left wall",
+      "expected": false,
+      "actual": false,
+      "pass": true
+    },
+    {
+      "test": "positionClear(576,62,14)",
+      "label": "just clear of top wall",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "positionClear(576,61,14)",
+      "label": "touching top wall",
+      "expected": false,
+      "actual": false,
+      "pass": true
+    },
+    {
+      "test": "positionClear(1089,897,14)",
+      "label": "just clear of bottom-right",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "positionClear(1090,897,14)",
+      "label": "touching right wall",
+      "expected": false,
+      "actual": false,
+      "pass": true
+    }
+  ],
+  "bullet_hit": [
+    {
+      "test": "bullet_at_entity_center_horiz",
+      "bx": 500,
+      "by": 500,
+      "bvx": 9,
+      "bvy": 0,
+      "ex": 500,
+      "ey": 525,
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "bullet_outside_range_horiz",
+      "bx": 500,
+      "by": 500,
+      "bvx": 9,
+      "bvy": 0,
+      "ex": 500,
+      "ey": 559,
+      "expected": false,
+      "actual": false,
+      "pass": true
+    },
+    {
+      "test": "bullet_at_entity_center_vert",
+      "bx": 500,
+      "by": 500,
+      "bvx": 0,
+      "bvy": 9,
+      "ex": 500,
+      "ey": 525,
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "test": "bullet_at_perp_edge",
+      "bx": 500,
+      "by": 500,
+      "bvx": 9,
+      "bvy": 0,
+      "ex": 500,
+      "ey": 557,
+      "expected": true,
+      "actual": true,
+      "pass": true
+    }
+  ],
+  "deterministic_trace": [
+    {
+      "frame": 1,
+      "a": {
+        "x": 223.5,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 30,
+        "reloading": false,
+        "shoot_cd": 0,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 943.5,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 30,
+        "reloading": false,
+        "shoot_cd": 0,
+        "freeze_timer": 0
+      },
+      "bullets": [],
+      "action_a": 1,
+      "action_b": 2
+    },
+    {
+      "frame": 2,
+      "a": {
+        "x": 231.0,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 30,
+        "reloading": false,
+        "shoot_cd": 0,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 936.0,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 30,
+        "reloading": false,
+        "shoot_cd": 0,
+        "freeze_timer": 0
+      },
+      "bullets": [],
+      "action_a": 1,
+      "action_b": 3
+    },
+    {
+      "frame": 3,
+      "a": {
+        "x": 238.5,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 30,
+        "reloading": false,
+        "shoot_cd": 0,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 928.5,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 30,
+        "reloading": false,
+        "shoot_cd": 0,
+        "freeze_timer": 0
+      },
+      "bullets": [],
+      "action_a": 1,
+      "action_b": 3
+    },
+    {
+      "frame": 4,
+      "a": {
+        "x": 240.0,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 20,
+        "freeze_timer": 15
+      },
+      "b": {
+        "x": 927.0,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 20,
+        "freeze_timer": 15
+      },
+      "bullets": [
+        {
+          "x": 249.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 918.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 5,
+      "a": {
+        "x": 244.125,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 19,
+        "freeze_timer": 14
+      },
+      "b": {
+        "x": 922.875,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 19,
+        "freeze_timer": 14
+      },
+      "bullets": [
+        {
+          "x": 258.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 909.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 4,
+      "action_b": 3
+    },
+    {
+      "frame": 6,
+      "a": {
+        "x": 248.25,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 18,
+        "freeze_timer": 13
+      },
+      "b": {
+        "x": 918.75,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 18,
+        "freeze_timer": 13
+      },
+      "bullets": [
+        {
+          "x": 267.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 900.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 4,
+      "action_b": 3
+    },
+    {
+      "frame": 7,
+      "a": {
+        "x": 249.075,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 17,
+        "freeze_timer": 12
+      },
+      "b": {
+        "x": 917.925,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 17,
+        "freeze_timer": 12
+      },
+      "bullets": [
+        {
+          "x": 276.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 891.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 8,
+      "a": {
+        "x": 253.2,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 16,
+        "freeze_timer": 11
+      },
+      "b": {
+        "x": 922.05,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 16,
+        "freeze_timer": 11
+      },
+      "bullets": [
+        {
+          "x": 285.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 882.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 1,
+      "action_b": 2
+    },
+    {
+      "frame": 9,
+      "a": {
+        "x": 257.325,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 15,
+        "freeze_timer": 10
+      },
+      "b": {
+        "x": 926.175,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 15,
+        "freeze_timer": 10
+      },
+      "bullets": [
+        {
+          "x": 294.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 873.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 1,
+      "action_b": 2
+    },
+    {
+      "frame": 10,
+      "a": {
+        "x": 258.15,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 14,
+        "freeze_timer": 9
+      },
+      "b": {
+        "x": 925.3499999999999,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 14,
+        "freeze_timer": 9
+      },
+      "bullets": [
+        {
+          "x": 303.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 864.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 11,
+      "a": {
+        "x": 254.02499999999998,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 13,
+        "freeze_timer": 8
+      },
+      "b": {
+        "x": 929.4749999999999,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 13,
+        "freeze_timer": 8
+      },
+      "bullets": [
+        {
+          "x": 312.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 855.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 3,
+      "action_b": 4
+    },
+    {
+      "frame": 12,
+      "a": {
+        "x": 249.89999999999998,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 12,
+        "freeze_timer": 7
+      },
+      "b": {
+        "x": 933.5999999999999,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 12,
+        "freeze_timer": 7
+      },
+      "bullets": [
+        {
+          "x": 321.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 846.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 3,
+      "action_b": 4
+    },
+    {
+      "frame": 13,
+      "a": {
+        "x": 250.72499999999997,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 11,
+        "freeze_timer": 6
+      },
+      "b": {
+        "x": 932.7749999999999,
+        "y": 504.0,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 11,
+        "freeze_timer": 6
+      },
+      "bullets": [
+        {
+          "x": 330.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 837.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 14,
+      "a": {
+        "x": 250.72499999999997,
+        "y": 508.125,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 10,
+        "freeze_timer": 5
+      },
+      "b": {
+        "x": 932.7749999999999,
+        "y": 499.875,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 10,
+        "freeze_timer": 5
+      },
+      "bullets": [
+        {
+          "x": 339.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 828.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 7,
+      "action_b": 8
+    },
+    {
+      "frame": 15,
+      "a": {
+        "x": 250.72499999999997,
+        "y": 512.25,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 9,
+        "freeze_timer": 4
+      },
+      "b": {
+        "x": 932.7749999999999,
+        "y": 495.75,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 9,
+        "freeze_timer": 4
+      },
+      "bullets": [
+        {
+          "x": 348.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 819.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 7,
+      "action_b": 8
+    },
+    {
+      "frame": 16,
+      "a": {
+        "x": 251.54999999999995,
+        "y": 512.25,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 8,
+        "freeze_timer": 3
+      },
+      "b": {
+        "x": 931.9499999999998,
+        "y": 495.75,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 8,
+        "freeze_timer": 3
+      },
+      "bullets": [
+        {
+          "x": 357.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 810.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 17,
+      "a": {
+        "x": 247.42621238829878,
+        "y": 512.3500036678323,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 7,
+        "freeze_timer": 2
+      },
+      "b": {
+        "x": 927.8262123882986,
+        "y": 495.85000366783225,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 7,
+        "freeze_timer": 2
+      },
+      "bullets": [
+        {
+          "x": 366.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 801.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 2,
+      "action_b": 1
+    },
+    {
+      "frame": 18,
+      "a": {
+        "x": 243.3024247765976,
+        "y": 512.4500073356646,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 6,
+        "freeze_timer": 1
+      },
+      "b": {
+        "x": 923.7024247765974,
+        "y": 495.9500073356645,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 6,
+        "freeze_timer": 1
+      },
+      "bullets": [
+        {
+          "x": 375.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 792.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 2,
+      "action_b": 1
+    },
+    {
+      "frame": 19,
+      "a": {
+        "x": 244.1274247765976,
+        "y": 512.4500073356646,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 5,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 922.8774247765973,
+        "y": 495.9500073356645,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 5,
+        "freeze_timer": 0
+      },
+      "bullets": [
+        {
+          "x": 384.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 783.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 20,
+      "a": {
+        "x": 251.62520970871816,
+        "y": 512.2677407406296,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 4,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 930.3752097087179,
+        "y": 495.7677407406295,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 4,
+        "freeze_timer": 0
+      },
+      "bullets": [
+        {
+          "x": 393.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 774.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 1,
+      "action_b": 2
+    },
+    {
+      "frame": 21,
+      "a": {
+        "x": 259.1229946408387,
+        "y": 512.0854741455946,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 3,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 937.8729946408384,
+        "y": 495.5854741455945,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 3,
+        "freeze_timer": 0
+      },
+      "bullets": [
+        {
+          "x": 402.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 765.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 1,
+      "action_b": 2
+    },
+    {
+      "frame": 22,
+      "a": {
+        "x": 260.6229946408387,
+        "y": 512.0854741455946,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 2,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 936.3729946408384,
+        "y": 495.5854741455945,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 2,
+        "freeze_timer": 0
+      },
+      "bullets": [
+        {
+          "x": 411.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 756.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 23,
+      "a": {
+        "x": 268.1229946408387,
+        "y": 512.0854741455946,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 1,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 928.8729946408384,
+        "y": 495.5854741455945,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 1,
+        "freeze_timer": 0
+      },
+      "bullets": [
+        {
+          "x": 420.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 747.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 4,
+      "action_b": 3
+    },
+    {
+      "frame": 24,
+      "a": {
+        "x": 275.6229946408387,
+        "y": 512.0854741455946,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 0,
+        "freeze_timer": 0
+      },
+      "b": {
+        "x": 921.3729946408384,
+        "y": 495.5854741455945,
+        "hp": 100,
+        "ammo": 29,
+        "reloading": false,
+        "shoot_cd": 0,
+        "freeze_timer": 0
+      },
+      "bullets": [
+        {
+          "x": 429.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 738.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 4,
+      "action_b": 3
+    },
+    {
+      "frame": 25,
+      "a": {
+        "x": 277.1229946408387,
+        "y": 512.0854741455946,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 20,
+        "freeze_timer": 15
+      },
+      "b": {
+        "x": 919.8729946408384,
+        "y": 495.5854741455945,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 20,
+        "freeze_timer": 15
+      },
+      "bullets": [
+        {
+          "x": 438.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 729.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        },
+        {
+          "x": 286.1229946408387,
+          "y": 487.0854741455946,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 910.8729946408384,
+          "y": 470.5854741455945,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 26,
+      "a": {
+        "x": 272.9979946408387,
+        "y": 512.0854741455946,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 19,
+        "freeze_timer": 14
+      },
+      "b": {
+        "x": 923.9979946408384,
+        "y": 495.5854741455945,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 19,
+        "freeze_timer": 14
+      },
+      "bullets": [
+        {
+          "x": 447.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 720.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        },
+        {
+          "x": 295.1229946408387,
+          "y": 487.0854741455946,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 901.8729946408384,
+          "y": 470.5854741455945,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 3,
+      "action_b": 4
+    },
+    {
+      "frame": 27,
+      "a": {
+        "x": 268.8729946408387,
+        "y": 512.0854741455946,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 18,
+        "freeze_timer": 13
+      },
+      "b": {
+        "x": 928.1229946408384,
+        "y": 495.5854741455945,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 18,
+        "freeze_timer": 13
+      },
+      "bullets": [
+        {
+          "x": 456.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 711.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        },
+        {
+          "x": 304.1229946408387,
+          "y": 487.0854741455946,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 892.8729946408384,
+          "y": 470.5854741455945,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 3,
+      "action_b": 4
+    },
+    {
+      "frame": 28,
+      "a": {
+        "x": 269.6979946408387,
+        "y": 512.0854741455946,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 17,
+        "freeze_timer": 12
+      },
+      "b": {
+        "x": 927.2979946408384,
+        "y": 495.5854741455945,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 17,
+        "freeze_timer": 12
+      },
+      "bullets": [
+        {
+          "x": 465.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 702.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        },
+        {
+          "x": 313.1229946408387,
+          "y": 487.0854741455946,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 883.8729946408384,
+          "y": 470.5854741455945,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    },
+    {
+      "frame": 29,
+      "a": {
+        "x": 269.6979946408387,
+        "y": 516.2104741455946,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 16,
+        "freeze_timer": 11
+      },
+      "b": {
+        "x": 927.2979946408384,
+        "y": 491.4604741455945,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 16,
+        "freeze_timer": 11
+      },
+      "bullets": [
+        {
+          "x": 474.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 693.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        },
+        {
+          "x": 322.1229946408387,
+          "y": 487.0854741455946,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 874.8729946408384,
+          "y": 470.5854741455945,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 7,
+      "action_b": 8
+    },
+    {
+      "frame": 30,
+      "a": {
+        "x": 270.5229946408387,
+        "y": 516.2104741455946,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 15,
+        "freeze_timer": 10
+      },
+      "b": {
+        "x": 926.4729946408384,
+        "y": 491.4604741455945,
+        "hp": 100,
+        "ammo": 28,
+        "reloading": false,
+        "shoot_cd": 15,
+        "freeze_timer": 10
+      },
+      "bullets": [
+        {
+          "x": 483.0,
+          "y": 479.0,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 684.0,
+          "y": 479.0,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        },
+        {
+          "x": 331.1229946408387,
+          "y": 487.0854741455946,
+          "vx": 9,
+          "vy": 0.0,
+          "team": "a"
+        },
+        {
+          "x": 865.8729946408384,
+          "y": 470.5854741455945,
+          "vx": -9,
+          "vy": 0.0,
+          "team": "b"
+        }
+      ],
+      "action_a": 9,
+      "action_b": 9
+    }
+  ]
+}
