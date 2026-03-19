@@ -4917,7 +4917,7 @@ ENTITY_RENDERERS.fd_pickup_counter = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = "left";
 };
 
-// --- Serve counter (submit order, gold block + Serve label) ---
+// --- Serve counter (submit order, gold tray with food + table number) ---
 ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   const cw = w * TILE, ch = h * TILE;
   // Dark wood base
@@ -4927,29 +4927,53 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
   ctx.fillStyle = '#4a3a30';
   ctx.fillRect(ex + 2, ey + 2, cw - 4, 4);
-  // Gold block on top (centered)
-  const blockW = Math.min(cw - 16, 60), blockH = ch * 0.5;
-  const blockX = ex + (cw - blockW) / 2, blockY = ey + 4;
-  ctx.fillStyle = '#c0a000';
-  ctx.beginPath(); ctx.roundRect(blockX, blockY, blockW, blockH, 4); ctx.fill();
-  ctx.fillStyle = '#ffd700';
-  ctx.beginPath(); ctx.roundRect(blockX + 2, blockY + 2, blockW - 4, blockH - 4, 3); ctx.fill();
-  // Shine highlight
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
-  ctx.fillRect(blockX + 4, blockY + 2, blockW - 8, 4);
-  // Tray with pending items (visible when orders pending)
+  // Gold trays with food + table number (visible when orders pending)
   if (typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0) {
     const itemCount = Math.min(_fdPendingServe.length, 4);
+    const trayW = 28, trayH = 20;
+    const totalW = itemCount * (trayW + 4);
+    const startX = ex + (cw - totalW) / 2;
     for (let i = 0; i < itemCount; i++) {
-      const itemX = blockX + 8 + i * 12;
-      const itemY = blockY + blockH / 2;
+      const tx = startX + i * (trayW + 4);
+      const ty = ey + 6;
       const serve = _fdPendingServe[i];
-      const ingColor = serve && serve.recipeIngredients && serve.recipeIngredients[0] &&
-        typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[serve.recipeIngredients[0]]
-        ? FINE_DINING_INGREDIENTS[serve.recipeIngredients[0]].color : '#d4a040';
-      ctx.fillStyle = ingColor;
-      ctx.beginPath(); ctx.arc(itemX, itemY, 4, 0, Math.PI * 2); ctx.fill();
+      // Gold tray
+      ctx.fillStyle = '#c0a000';
+      ctx.beginPath(); ctx.roundRect(tx, ty, trayW, trayH, 3); ctx.fill();
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath(); ctx.roundRect(tx + 2, ty + 2, trayW - 4, trayH - 4, 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(tx + 3, ty + 2, trayW - 6, 3);
+      // Food items on tray
+      const items = serve && serve.allTrayItems ? serve.allTrayItems : (serve && serve.recipeIngredients ? [serve.recipeIngredients] : []);
+      const foodCount = Math.min(items.length, 3);
+      for (let fi = 0; fi < foodCount; fi++) {
+        const fx = tx + 6 + fi * 8;
+        const fy = ty + trayH / 2 + 1;
+        const ingColor = items[fi] && items[fi][0] &&
+          typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[items[fi][0]]
+          ? FINE_DINING_INGREDIENTS[items[fi][0]].color : '#d4a040';
+        ctx.fillStyle = ingColor;
+        ctx.beginPath(); ctx.arc(fx, fy, 3.5, 0, Math.PI * 2); ctx.fill();
+      }
+      // Table number below tray
+      const tableId = serve ? serve.tableId : null;
+      if (tableId !== null && tableId !== undefined && tableId >= 0) {
+        ctx.font = "bold 8px monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = '#ffd700'; ctx.fillText("T" + (tableId + 1), tx + trayW / 2, ty + trayH + 9);
+        ctx.textAlign = "left";
+      }
     }
+  } else {
+    // No orders — show empty gold surface
+    const blockW = Math.min(cw - 16, 60), blockH = ch * 0.4;
+    const blockX = ex + (cw - blockW) / 2, blockY = ey + 4;
+    ctx.fillStyle = '#c0a000';
+    ctx.beginPath(); ctx.roundRect(blockX, blockY, blockW, blockH, 4); ctx.fill();
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.roundRect(blockX + 2, blockY + 2, blockW - 4, blockH - 4, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(blockX + 4, blockY + 2, blockW - 8, 4);
   }
   // Label
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -5069,20 +5093,43 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
       ctx.fillStyle = `rgba(255,180,40,${0.5 + Math.sin(t * 4 + fi) * 0.3})`;
       ctx.beginPath(); ctx.arc(fx, fy, 3, 0, Math.PI * 2); ctx.fill();
     }
-    // Food items (small colored circles in front of each occupied seat position)
-    const serveData = tableData._serveData;
-    if (serveData && serveData.allTrayItems) {
-      const items = serveData.allTrayItems;
-      for (let fi = 0; fi < Math.min(items.length, 4); fi++) {
-        const fx = ex + cw * 0.2 + fi * (cw * 0.2);
-        const fy = ey + ch * 0.3;
-        const itemColor = items[fi] && items[fi][0] && typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[items[fi][0]]
-          ? FINE_DINING_INGREDIENTS[items[fi][0]].color : '#d4a040';
-        ctx.fillStyle = itemColor;
-        ctx.beginPath(); ctx.arc(fx, fy, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.beginPath(); ctx.arc(fx - 1, fy - 2, 2, 0, Math.PI * 2); ctx.fill();
-      }
+    // Food plates in front of each OCCUPIED seat (based on party member count)
+    // Each plate is a small white circle (plate) with colored food on top
+    const partyId = tableData.claimedBy;
+    let memberCount = 0;
+    if (partyId !== null && typeof fineDiningParties !== 'undefined') {
+      const party = fineDiningParties.find(p => p.id === partyId);
+      if (party) memberCount = party.members.length;
+    }
+    // Fallback: use allTrayItems count from serve data
+    if (memberCount === 0 && tableData._serveData && tableData._serveData.allTrayItems) {
+      memberCount = tableData._serveData.allTrayItems.length;
+    }
+    const plateCount = Math.min(memberCount || 1, 4);
+    const seats = tableData.seats;
+    for (let si = 0; si < plateCount && si < seats.length; si++) {
+      const seat = seats[si];
+      // Compute food plate position between seat and grill center on the grill surface
+      const seatRelX = (seat.tx - e.tx) * TILE + TILE / 2;
+      const seatRelY = (seat.ty - e.ty) * TILE + TILE / 2;
+      // Place food 40% from grill center toward the seat (on the grill edge)
+      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.7;
+      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.7;
+      // White plate
+      ctx.fillStyle = '#f0f0f0';
+      ctx.beginPath(); ctx.arc(foodX, foodY, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#d0d0d0'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(foodX, foodY, 8, 0, Math.PI * 2); ctx.stroke();
+      // Colored food on plate
+      const serveItems = tableData._serveData && tableData._serveData.allTrayItems;
+      const foodIng = serveItems && serveItems[si] && serveItems[si][0];
+      const itemColor = foodIng && typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[foodIng]
+        ? FINE_DINING_INGREDIENTS[foodIng].color : '#d4a040';
+      ctx.fillStyle = itemColor;
+      ctx.beginPath(); ctx.arc(foodX, foodY, 5, 0, Math.PI * 2); ctx.fill();
+      // Shine highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.beginPath(); ctx.arc(foodX - 1.5, foodY - 2, 2, 0, Math.PI * 2); ctx.fill();
     }
   }
 };

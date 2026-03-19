@@ -23,8 +23,20 @@ const FD_SPOTS = {
   exit: { tx: 40, ty: 24 },
   hostStand: { tx: 40, ty: 20 },
   passWindow: { tx: 20, ty: 20 },  // kitchen pass window where waiter drops/picks up orders
-  waiterHome: { tx: 17, ty: 20 },  // waiter spot — 2 tiles below right corner of service counter
+  waiterHome: { tx: 17, ty: 19 },  // waiter spot — 1 tile below right corner of service counter
+  hostQueue: { tx: 40, ty: 21 },   // NPC queue spot — 1 tile below host stand
 };
+
+// ===================== TABLE APPROACH POINTS =====================
+// Waiter approaches tables from OUTSIDE the grill (never walks on grill).
+// Top row tables: approach from south edge (ty:8, gap between table rows).
+// Bottom row tables: approach from north edge (ty:10, gap between table rows).
+const FD_TABLE_APPROACH = [
+  { tx: 25, ty: 8 },   // table 0 — south of grill
+  { tx: 35, ty: 8 },   // table 1 — south of grill
+  { tx: 25, ty: 10 },  // table 2 — north of grill
+  { tx: 35, ty: 10 },  // table 3 — north of grill
+];
 
 // ===================== TEPPANYAKI TABLES =====================
 const FD_TABLES = [
@@ -140,17 +152,18 @@ function _pickFDCustomerType() {
 //   tx:31  — vertical gap between left and right table columns
 //   tx:42  — vertical corridor to host stand
 
-// Exit(45,35) → Host Stand(42,22)
+// Exit(40,24) → Host queue spot (40,21) — BELOW the host stand
 function _routeFDExitToHost(corridorTX) {
   const cx = corridorTX || 40;
   return _cConcatRoutes(
     [_cWP(cx, 24)],
     [_cWP(40, 24)],
-    [_cWP(40, 20)]
+    [_cWP(40, 21)]  // stop below host stand (ty:20 is the solid stand)
   );
 }
 
-// Host(40,20) → Table seat
+// Host queue (40,21) → Table seat
+// NPCs walk from below host stand (ty:21) AROUND the host stand to their table.
 function _routeFDHostToTable(tableId, seatIdx) {
   const table = FD_TABLES[tableId];
   if (!table) return [];
@@ -158,116 +171,105 @@ function _routeFDHostToTable(tableId, seatIdx) {
   if (!seat) return [];
 
   const route = [];
-  // Host stand to main walkway
-  route.push(_cWP(40, 20));
-
-  // Determine which column the table is in
   const isRightCol = (table.grillTX >= 30);
-  const isBottomRow = (table.grillTY >= 10);
 
+  // Walk west along ty:21 (below host stand) to the vertical corridor, then north to seat
   if (isRightCol) {
-    // Right column tables (1, 3) — go to tx:31 gap, then approach
-    route.push(_cWP(31, 20));
-    if (isBottomRow) {
-      // Table 3: seats at ty:13-15
-      route.push(_cWP(31, seat.ty));
-    } else {
-      // Table 1: seats at ty:4-6, go north
-      route.push(_cWP(31, seat.ty));
-    }
+    route.push(_cWP(31, 21));
+    route.push(_cWP(31, seat.ty));
     route.push(_cWP(seat.tx, seat.ty));
   } else {
-    // Left column tables (0, 2) — go to tx:20 corridor
-    route.push(_cWP(20, 20));
-    if (isBottomRow) {
-      // Table 2: seats at ty:13-15
-      route.push(_cWP(20, seat.ty));
-    } else {
-      // Table 0: seats at ty:4-6, go north
-      route.push(_cWP(20, seat.ty));
-    }
+    route.push(_cWP(20, 21));
+    route.push(_cWP(20, seat.ty));
     route.push(_cWP(seat.tx, seat.ty));
   }
 
   return route;
 }
 
-// Host(40,20) → Table grill center (for waiter, not a seat)
-function _routeFDHostToTableGrill(tableId) {
+// Host area → Table approach point (for waiter — NEVER walk on grill)
+function _routeFDHostToTableApproach(tableId) {
   const table = FD_TABLES[tableId];
   if (!table) return [];
+  const ap = FD_TABLE_APPROACH[tableId];
+  if (!ap) return [];
 
   const route = [];
-  route.push(_cWP(40, 20));
+  route.push(_cWP(40, 19));
 
   const isRightCol = (table.grillTX >= 30);
 
   if (isRightCol) {
-    route.push(_cWP(31, 20));
-    route.push(_cWP(31, table.grillTY));
-    route.push(_cWP(table.grillTX, table.grillTY));
+    route.push(_cWP(31, 19));
+    route.push(_cWP(31, ap.ty));
+    route.push(_cWP(ap.tx, ap.ty));
   } else {
-    route.push(_cWP(20, 20));
-    route.push(_cWP(20, table.grillTY));
-    route.push(_cWP(table.grillTX, table.grillTY));
+    route.push(_cWP(20, 19));
+    route.push(_cWP(20, ap.ty));
+    route.push(_cWP(ap.tx, ap.ty));
   }
 
   return route;
 }
 
-// Table grill → Host stand (waiter return route)
-function _routeFDTableGrillToHost(tableId) {
+// Table approach point → Waiter home (waiter return route)
+function _routeFDTableApproachToHost(tableId) {
   const table = FD_TABLES[tableId];
   if (!table) return [];
+  const ap = FD_TABLE_APPROACH[tableId];
+  if (!ap) return [];
 
   const route = [];
   const isRightCol = (table.grillTX >= 30);
 
   if (isRightCol) {
-    route.push(_cWP(31, table.grillTY));
-    route.push(_cWP(31, 20));
+    route.push(_cWP(31, ap.ty));
+    route.push(_cWP(31, 19));
   } else {
-    route.push(_cWP(20, table.grillTY));
-    route.push(_cWP(20, 20));
+    route.push(_cWP(20, ap.ty));
+    route.push(_cWP(20, 19));
   }
 
-  route.push(_cWP(40, 20));
+  route.push(_cWP(17, 19));
   return route;
 }
 
-// Host stand → Pass window (tx:20, ty:20)
+// Host stand → Pass window (tx:20, ty:19)
 function _routeFDHostToPass() {
-  return [_cWP(40, 20), _cWP(20, 20)];
+  return [_cWP(40, 19), _cWP(20, 19)];
 }
 
 // Pass window → Host stand
 function _routeFDPassToHost() {
-  return [_cWP(20, 20), _cWP(40, 20)];
+  return [_cWP(20, 19), _cWP(40, 19)];
 }
 
-// Pass window → Table grill (for delivering food)
-function _routeFDPassToTableGrill(tableId) {
+// Pass window → Table approach point (for delivering food — NEVER walk on grill)
+function _routeFDPassToTableApproach(tableId) {
   const table = FD_TABLES[tableId];
   if (!table) return [];
+  const ap = FD_TABLE_APPROACH[tableId];
+  if (!ap) return [];
 
   const route = [];
   const isRightCol = (table.grillTX >= 30);
 
   if (isRightCol) {
-    route.push(_cWP(20, 20));
-    route.push(_cWP(31, 20));
-    route.push(_cWP(31, table.grillTY));
-    route.push(_cWP(table.grillTX, table.grillTY));
+    route.push(_cWP(20, 19));
+    route.push(_cWP(31, 19));
+    route.push(_cWP(31, ap.ty));
+    route.push(_cWP(ap.tx, ap.ty));
   } else {
-    route.push(_cWP(20, 20));
-    route.push(_cWP(20, table.grillTY));
-    route.push(_cWP(table.grillTX, table.grillTY));
+    route.push(_cWP(20, 19));
+    route.push(_cWP(20, ap.ty));
+    route.push(_cWP(ap.tx, ap.ty));
   }
 
   return route;
 }
 
-// Table seat → Exit (through exit door at tx:20, ty:23)
+// Table seat → Exit (through exit door at tx:20, ty:24)
+// Uses ty:19 walkway to avoid host stand at ty:20 (tx:39-42)
 function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
   const table = FD_TABLES[tableId];
   if (!table) return [];
@@ -277,23 +279,24 @@ function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
   const route = [];
   const isRightCol = (table.grillTX >= 30);
 
-  // Seat → vertical corridor
+  // Seat → vertical corridor → walkway (ty:19 to avoid host stand)
   if (isRightCol) {
     route.push(_cWP(31, seat.ty));
-    route.push(_cWP(31, 20));
+    route.push(_cWP(31, 19));
   } else {
     route.push(_cWP(20, seat.ty));
-    route.push(_cWP(20, 20));
+    route.push(_cWP(20, 19));
   }
 
   // Main walkway west to exit door
-  route.push(_cWP(20, 20));
+  route.push(_cWP(20, 19));
   route.push(_cWP(20, 24));
 
   return route;
 }
 
 // Generic: from any tile position → Exit (through exit door at tx:20, ty:24)
+// Uses ty:19 walkway to avoid host stand at ty:20 (tx:39-42)
 function _routeFDToExit(fromTX, fromTY, corridorTX) {
   const route = [];
 
@@ -306,22 +309,22 @@ function _routeFDToExit(fromTX, fromTY, corridorTX) {
     return route;
   }
 
-  // In dining area — get to main walkway (ty:20)
-  if (fromTY < 20) {
+  // In dining area — get to walkway (ty:19 to avoid host stand)
+  if (fromTY < 19) {
     // Above walkway: go to nearest vertical corridor first
     if (fromTX >= 30) {
       route.push(_cWP(31, fromTY));
-      route.push(_cWP(31, 20));
+      route.push(_cWP(31, 19));
     } else if (fromTX >= 20) {
       route.push(_cWP(20, fromTY));
-      route.push(_cWP(20, 20));
+      route.push(_cWP(20, 19));
     } else {
-      route.push(_cWP(fromTX, 20));
+      route.push(_cWP(fromTX, 19));
     }
   }
 
   // On or below walkway — head west to exit door
-  route.push(_cWP(20, 20));
+  route.push(_cWP(20, 19));
   route.push(_cWP(20, 24));
 
   return route;
@@ -363,7 +366,7 @@ function _recoverFDNPC(npc) {
     buildRouteFromIntent: (intent, cx) => _buildFDRouteFromIntent(intent, cx),
     getIntentAnchor: (intent, npc) => _getFDIntentAnchor(intent, npc),
     kitchenCheck: _isFDKitchenZone,
-    kitchenSafe: { tx: 20, ty: 20 },
+    kitchenSafe: { tx: 20, ty: 19 },
     routeToExit: (tx, ty, cx) => _routeFDToExit(tx, ty, cx),
     getPartyCX: (npc) => { const p = _getFDParty(npc.partyId); return p ? p.corridorTX : undefined; },
   });
@@ -377,8 +380,8 @@ function moveFDNPC(npc) {
     npcList: fineDiningNPCs,
     skipStates: _fdMoveSkipStates,
     kitchenCheck: _isFDKitchenZone,
-    kitchenSafe: { tx: 20, ty: 20 },
-    kitchenFallback: [{ tx: 40, ty: 20 }, { tx: 40, ty: 24 }],
+    kitchenSafe: { tx: 20, ty: 19 },
+    kitchenFallback: [{ tx: 40, ty: 21 }, { tx: 40, ty: 24 }],
     laneMode: 'none',
     pairSkip: (npc, other) => other.partyId === npc.partyId,
   });
@@ -507,12 +510,8 @@ function spawnFineDiningParty() {
 
   fineDiningParties.push(party);
 
-  // Trigger waiter greeting
-  if (_fdWaiter && _fdWaiter.state === 'idle') {
-    _fdWaiter._currentPartyId = party.id;
-    _fdWaiter.state = 'greeting';
-    _fdWaiter.stateTimer = FD_NPC_CONFIG.waiterGreetDuration;
-  }
+  // Waiter greeting is deferred — triggered by at_host after payment completes
+  // (NPCs must arrive at host stand, pay cover fee, THEN waiter escorts them)
 
   return party;
 }
@@ -597,11 +596,11 @@ function initFineDiningNPCs() {
     anim: 0,
   };
 
-  // Create persistent host NPC at host stand (stationary, faces down)
+  // Create persistent host NPC at host stand (stationary, slightly right of center)
   _fdHostNPC = {
     id: 'host',
-    x: 40 * TILE + TILE / 2,  // centered above host stand (tx:39-42)
-    y: 19 * TILE + TILE / 2,  // ty:19, directly above stand at ty:20
+    x: 41 * TILE + TILE / 2,  // slightly right on host stand
+    y: 20 * TILE + TILE / 2,  // ty:20, on the host stand
     dir: 0, // face down
     frame: 0,
     speed: 0,
@@ -751,8 +750,10 @@ const FD_WAITER_AI = {
       w._serveData = serveEntry;
       w.hasFood = true;
 
-      // Walk from waiter home through kitchen door to serve counter
-      const routeToPickup = [_cWP(17, 20), _cWP(17, 18), _cWP(17, 14), _cWP(17, 12)];
+      // Walk from waiter home through door gap to kitchen pickup area
+      // Route: (17,19) → (20,19) → (20,15) → (17,15) → (17,12)
+      // Avoids service counter at ty:18 and uses door gap at ty:14-15
+      const routeToPickup = [_cWP(17, 19), _cWP(20, 19), _cWP(20, 15), _cWP(17, 15), _cWP(17, 12)];
       _startWaiterRoute(routeToPickup, 'picking_up', 0);
       return;
     }
@@ -768,32 +769,26 @@ const FD_WAITER_AI = {
     const party = _getFDParty(w._currentPartyId);
     if (!party) { w.state = 'idle'; return; }
 
-    // Start escorting — walk from waiter home to the table grill
+    // Start escorting — walk from waiter home to the table approach point (NOT the grill)
     w._currentTableId = party.tableId;
     const table = FD_TABLES[party.tableId];
     if (!table) { w.state = 'idle'; return; }
+    const ap = FD_TABLE_APPROACH[party.tableId];
+    if (!ap) { w.state = 'idle'; return; }
     const isRightCol = (table.grillTX >= 30);
-    // Route: waiterHome(17,20) → main walkway → table grill
+    // Route: waiterHome(17,19) → main walkway → table approach point
     const route = [];
-    route.push(_cWP(17, 20));
-    route.push(_cWP(20, 20));
+    route.push(_cWP(17, 19));
+    route.push(_cWP(20, 19));
     if (isRightCol) {
-      route.push(_cWP(31, 20));
-      route.push(_cWP(31, table.grillTY));
+      route.push(_cWP(31, 19));
+      route.push(_cWP(31, ap.ty));
     } else {
-      route.push(_cWP(20, table.grillTY));
+      route.push(_cWP(20, ap.ty));
     }
-    route.push(_cWP(table.grillTX, table.grillTY));
+    route.push(_cWP(ap.tx, ap.ty));
 
-    // Start party members walking to their table (staggered with intervals)
-    const members = _getFDPartyMembers(party);
-    for (let i = 0; i < members.length; i++) {
-      const m = members[i];
-      if (m.state === 'spawn_wait') {
-        m.stateTimer = i * FD_NPC_CONFIG.walkToTableInterval; // 2s stagger
-      }
-    }
-
+    // Party members are already walking to table from at_host → wait_to_walk → walking_to_table
     _startWaiterRoute(route, 'order_taking', FD_NPC_CONFIG.waiterOrderDuration);
     // Override state to escorting during walk
     w.state = 'escorting';
@@ -815,11 +810,13 @@ const FD_WAITER_AI = {
   order_taking: (w) => {
     w.moving = false;
 
-    // Face toward the table center
+    // Face toward the table center — snap to approach point, not grill
     if (w._currentTableId !== null && FD_TABLES[w._currentTableId]) {
-      const table = FD_TABLES[w._currentTableId];
-      w.x = table.grillTX * TILE + TILE / 2;
-      w.y = table.grillTY * TILE + TILE / 2;
+      const ap = FD_TABLE_APPROACH[w._currentTableId];
+      if (ap) {
+        w.x = ap.tx * TILE + TILE / 2;
+        w.y = ap.ty * TILE + TILE / 2;
+      }
     }
 
     if (w.stateTimer > 0) {
@@ -863,25 +860,24 @@ const FD_WAITER_AI = {
       party.state = 'waiting_cook';
     }
 
-    // Walk back to host stand (via pass window to post the order)
-    const route = _routeFDTableGrillToHost(w._currentTableId);
-    if (route && route.length) {
-      // Route: table → main walkway → pass window → host stand
-      // We go via pass window to make the order visible
-      const tableGrillToPass = [];
-      const table = FD_TABLES[w._currentTableId];
-      if (table) {
-        const isRightCol = (table.grillTX >= 30);
-        if (isRightCol) {
-          tableGrillToPass.push(_cWP(31, table.grillTY));
-          tableGrillToPass.push(_cWP(31, 20));
-          tableGrillToPass.push(_cWP(20, 20));
-        } else {
-          tableGrillToPass.push(_cWP(20, table.grillTY));
-          tableGrillToPass.push(_cWP(20, 20));
-        }
+    // Walk back to waiter home (via pass window to post the order)
+    // Route from approach point → corridor → walkway → waiter home
+    const tableApproachToHome = [];
+    const table = FD_TABLES[w._currentTableId];
+    if (table) {
+      const ap = FD_TABLE_APPROACH[w._currentTableId];
+      const isRightCol = (table.grillTX >= 30);
+      if (isRightCol) {
+        tableApproachToHome.push(_cWP(31, ap ? ap.ty : table.grillTY));
+        tableApproachToHome.push(_cWP(31, 19));
+        tableApproachToHome.push(_cWP(20, 19));
+      } else {
+        tableApproachToHome.push(_cWP(20, ap ? ap.ty : table.grillTY));
+        tableApproachToHome.push(_cWP(20, 19));
       }
-      _startWaiterRoute(tableGrillToPass, 'posting_order', 0);
+    }
+    if (tableApproachToHome.length) {
+      _startWaiterRoute(tableApproachToHome, 'posting_order', 0);
     } else {
       w.state = 'returning';
     }
@@ -900,7 +896,7 @@ const FD_WAITER_AI = {
     }
 
     // Now walk back to waiter home spot
-    const route = [_cWP(20, 20), _cWP(17, 20)];
+    const route = [_cWP(20, 19), _cWP(17, 19)];
     _startWaiterRoute(route, 'idle', 0);
     // Override to returning state during walk
     w.state = 'returning';
@@ -926,19 +922,22 @@ const FD_WAITER_AI = {
       w.hasFood = true;
       const table = FD_TABLES[w._currentTableId];
       if (!table) { w.state = 'idle'; return; }
+      const ap = FD_TABLE_APPROACH[w._currentTableId];
+      if (!ap) { w.state = 'idle'; return; }
       const isRightCol = (table.grillTX >= 30);
-      // Route: serve counter(17,12) → kitchen door → walkway → table grill
+      // Route: kitchen(17,12) → door gap(17,15) → (20,15) → walkway(20,19) → table approach point
+      // Avoids service counter at ty:18 and NEVER walks on grill
       const route = [];
-      route.push(_cWP(17, 14));
-      route.push(_cWP(17, 18));
-      route.push(_cWP(20, 20));
+      route.push(_cWP(17, 15));
+      route.push(_cWP(20, 15));
+      route.push(_cWP(20, 19));
       if (isRightCol) {
-        route.push(_cWP(31, 20));
-        route.push(_cWP(31, table.grillTY));
+        route.push(_cWP(31, 19));
+        route.push(_cWP(31, ap.ty));
       } else {
-        route.push(_cWP(20, table.grillTY));
+        route.push(_cWP(20, ap.ty));
       }
-      route.push(_cWP(table.grillTX, table.grillTY));
+      route.push(_cWP(ap.tx, ap.ty));
       _startWaiterRoute(route, 'serving', 30);
       w.state = 'delivering';
     }
@@ -974,18 +973,19 @@ const FD_WAITER_AI = {
       _spawnFDGroupForTable(tableIdx);
     }
 
-    // Return to waiter home
+    // Return to waiter home from approach point
     if (table) {
+      const ap = FD_TABLE_APPROACH[tableIdx];
       const isRightCol = (table.grillTX >= 30);
       const route = [];
       if (isRightCol) {
-        route.push(_cWP(31, table.grillTY));
-        route.push(_cWP(31, 20));
+        route.push(_cWP(31, ap ? ap.ty : table.grillTY));
+        route.push(_cWP(31, 19));
       } else {
-        route.push(_cWP(20, table.grillTY));
-        route.push(_cWP(20, 20));
+        route.push(_cWP(20, ap ? ap.ty : table.grillTY));
+        route.push(_cWP(20, 19));
       }
-      route.push(_cWP(17, 20));
+      route.push(_cWP(17, 19));
       _startWaiterRoute(route, 'idle', 0);
       w.state = 'returning';
     } else {
@@ -1013,33 +1013,20 @@ const FD_NPC_AI = {
     npc.state = 'entering';
   },
 
-  // ─── ENTERING: Walk from exit door directly to table seat (food already on grill) ──────
+  // ─── ENTERING: Walk from exit door to BELOW the host stand, then wait at host ──────
+  // NPCs must stay below the host table until they pay the reservation fee.
   entering: (npc) => {
     const party = _getFDParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
 
-    const table = FD_TABLES[party.tableId];
-    if (!table) { npc.state = '_despawn'; return; }
-
-    const seat = table.seats[npc.claimedSeatIdx];
-    if (!seat) { npc.state = '_despawn'; return; }
-
-    // Route: exit door → main walkway → vertical corridor → seat
-    const isRightCol = (table.grillTX >= 30);
+    // Route: exit door (40,24) → queue spot below host stand (40,21)
+    // NPCs stop at ty:21 (1 tile below the solid host stand at ty:20)
     const route = [];
     route.push(_cWP(40, 24));
-    route.push(_cWP(40, 20));
-    if (isRightCol) {
-      route.push(_cWP(31, 20));
-      route.push(_cWP(31, seat.ty));
-    } else {
-      route.push(_cWP(20, 20));
-      route.push(_cWP(20, seat.ty));
-    }
-    route.push(_cWP(seat.tx, seat.ty));
+    route.push(_cWP(40, 21));  // stop BELOW host stand
 
-    _cStartRoute(npc, route, 'eating', FD_NPC_CONFIG.eatDuration[0],
-      { kind: 'host_to_table', tableId: party.tableId, seatIdx: npc.claimedSeatIdx });
+    _cStartRoute(npc, route, 'at_host', FD_NPC_CONFIG.hostPauseDuration[0],
+      { kind: 'exit_to_host' });
   },
 
   // ─── AT_HOST: 15 sec interaction with host, pay, wait for full group ──
@@ -1077,8 +1064,17 @@ const FD_NPC_AI = {
       });
     }
 
-    // Transition all members to walk to table with 2-sec intervals
+    // Payment complete — trigger waiter to escort the party to the table
     party.state = 'seating';
+
+    // Trigger waiter greeting (which leads to escorting → order_taking)
+    if (_fdWaiter && _fdWaiter.state === 'idle') {
+      _fdWaiter._currentPartyId = party.id;
+      _fdWaiter.state = 'greeting';
+      _fdWaiter.stateTimer = FD_NPC_CONFIG.waiterGreetDuration;
+    }
+
+    // Stagger NPCs walking to table with 2-sec intervals
     for (let i = 0; i < members.length; i++) {
       members[i].state = 'wait_to_walk';
       members[i].stateTimer = i * FD_NPC_CONFIG.walkToTableInterval; // 2s stagger
@@ -1137,19 +1133,19 @@ const FD_NPC_AI = {
     party.seatAssignments[members.indexOf(npc)] = bestIdx;
 
     // Build route from current position (near host stand) to table seat
+    // Uses ty:21 walkway to go AROUND the host stand (tx:39-42, ty:20)
     const seat = table.seats[bestIdx];
     const curTX = Math.floor(npc.x / TILE);
     const curTY = Math.floor(npc.y / TILE);
     const isRightCol = (table.grillTX >= 30);
     const route = [];
 
-    // Walk to main walkway first
-    route.push(_cWP(curTX, 20));
+    // Walk west along ty:21 (below host stand) to the corridor, then north to table
     if (isRightCol) {
-      route.push(_cWP(31, 20));
+      route.push(_cWP(31, 21));
       route.push(_cWP(31, seat.ty));
     } else {
-      route.push(_cWP(20, 20));
+      route.push(_cWP(20, 21));
       route.push(_cWP(20, seat.ty));
     }
     route.push(_cWP(seat.tx, seat.ty));
@@ -1411,7 +1407,7 @@ function updateFineDiningNPCs() {
       if (!_recoverFDNPC(npc)) {
         if (_isFDKitchenZone(npc.x, npc.y)) {
           npc.x = 20 * TILE + TILE / 2;
-          npc.y = 20 * TILE + TILE / 2;
+          npc.y = 19 * TILE + TILE / 2;
         }
         const curTX = Math.floor(npc.x / TILE);
         const curTY = Math.floor(npc.y / TILE);
