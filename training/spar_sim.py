@@ -47,6 +47,28 @@ ARENA_H = ARENA_H_TILES * TILE  # 960 px
 SPAWN_A = (4 * TILE + 24, 10 * TILE + 24)    # (216, 504)
 SPAWN_B = (19 * TILE + 24, 10 * TILE + 24)   # (936, 504)
 
+# Curated spawn presets: (ax_tile, ay_tile, bx_tile, by_tile)
+# 16 realistic spar starts — varied gaps, Y offsets, diagonals
+# With 50% horizontal flip → 32 effective configurations
+SPAWN_PRESETS = [
+    (4, 10, 19, 10),   # game default
+    (4, 9, 19, 11),    # slight Y offset
+    (4, 11, 19, 9),    # reversed Y offset
+    (4, 8, 19, 12),    # wider Y offset
+    (4, 12, 19, 8),    # reversed wide Y
+    (6, 10, 17, 10),   # closer X, center Y
+    (6, 9, 17, 11),    # closer X, offset Y
+    (6, 11, 17, 9),    # closer X, reversed
+    (3, 10, 20, 10),   # wider X, center Y
+    (3, 9, 20, 11),    # wider X, offset Y
+    (5, 8, 18, 12),    # moderate diagonal
+    (5, 12, 18, 8),    # reversed diagonal
+    (5, 10, 18, 10),   # moderate X, center
+    (4, 7, 19, 13),    # steep diagonal
+    (4, 13, 19, 7),    # reversed steep
+    (6, 7, 17, 13),    # close + steep diagonal
+]
+
 # HP
 HP_BASELINE = 100
 MAX_MATCH_FRAMES = 3600  # 60 seconds
@@ -267,21 +289,42 @@ class SparSim:
         self.winner = None  # 'a', 'b', or 'draw'
         self.bullets: List[Bullet] = []
 
-        # Create fighters at spawn positions
+        # Spawn targeting: A = trained/exported side, must match live deployment
+        # Live: neural bot = teamB at SPAWN_B (936,504), player at SPAWN_A (216,504)
+        # So trained side A should predominantly start at the RIGHT position
+        roll = random.random()
+        if roll < 0.75:
+            # 75%: Exact live deployment — A at right, B at left
+            ax, ay = SPAWN_B  # (936, 504)
+            bx, by = SPAWN_A  # (216, 504)
+        elif roll < 0.85:
+            # 10%: Mirrored — A at left, B at right (generalization)
+            ax, ay = SPAWN_A  # (216, 504)
+            bx, by = SPAWN_B  # (936, 504)
+        else:
+            # 15%: Curated variants, A preferentially on right
+            preset = random.choice(SPAWN_PRESETS[1:])
+            left_x = preset[0] * TILE + 24
+            left_y = preset[1] * TILE + 24
+            right_x = preset[2] * TILE + 24
+            right_y = preset[3] * TILE + 24
+            # A takes rightward position 75% of the time
+            if random.random() < 0.75:
+                ax, ay, bx, by = right_x, right_y, left_x, left_y
+            else:
+                ax, ay, bx, by = left_x, left_y, right_x, right_y
+
         self.a = Fighter(
-            x=SPAWN_A[0], y=SPAWN_A[1],
-            gun=Gun.from_points(
-                self.gun_a_template.freeze_penalty,  # will be overwritten
-                0, 0),
-            team='a', dir=3,  # facing right
+            x=ax, y=ay,
+            gun=Gun.from_points(0, 0, 0),
+            team='a', dir=2 if ax > bx else 3,  # face toward enemy
         )
-        # Properly copy gun template
         self.a.gun = self._copy_gun(self.gun_a_template)
 
         self.b = Fighter(
-            x=SPAWN_B[0], y=SPAWN_B[1],
+            x=bx, y=by,
             gun=Gun.from_points(0, 0, 0),
-            team='b', dir=2,  # facing left
+            team='b', dir=2 if bx > ax else 3,  # face toward enemy
         )
         self.b.gun = self._copy_gun(self.gun_b_template)
 
@@ -340,15 +383,9 @@ class SparSim:
             self._action_repeat_b = 0
         self._last_action_b = action_b
 
-        # Track frames since last shoot
-        if action_a == 9:
-            self._no_shoot_frames_a = 0
-        else:
-            self._no_shoot_frames_a += 1
-        if action_b == 9:
-            self._no_shoot_frames_b = 0
-        else:
-            self._no_shoot_frames_b += 1
+        # Passivity tracking moved to after shooting (check actual shots, not intent)
+        _prev_shots_a = self.stats['a_shots_fired']
+        _prev_shots_b = self.stats['b_shots_fired']
 
         # Convert actions to movement + shoot intent
         mx_a, my_a, shoot_a = action_to_movement(action_a, self.a, self.b)
@@ -378,6 +415,16 @@ class SparSim:
 
         # Move bullets + check collisions
         self._tick_bullets()
+
+        # Track passivity: reset on ACTUAL shot fired, not action intent
+        if self.stats['a_shots_fired'] > _prev_shots_a:
+            self._no_shoot_frames_a = 0
+        else:
+            self._no_shoot_frames_a += 1
+        if self.stats['b_shots_fired'] > _prev_shots_b:
+            self._no_shoot_frames_b = 0
+        else:
+            self._no_shoot_frames_b += 1
 
         # Check match end
         if self.a.hp <= 0 or self.b.hp <= 0 or self.frame >= MAX_MATCH_FRAMES:
@@ -553,21 +600,20 @@ class SparSim:
                 r_a -= 0.1
                 r_b -= 0.1
 
-        # === Damage rewards (strongest shaping signal) ===
-        # Reward for dealing damage, penalty for taking it
-        dmg_dealt_a = max(0, self._prev_hp_b - self.b.hp)  # A dealt damage to B
-        dmg_dealt_b = max(0, self._prev_hp_a - self.a.hp)  # B dealt damage to A
-        r_a += dmg_dealt_a * 0.01    # +0.2 per hit (20 dmg * 0.01)
-        r_b += dmg_dealt_b * 0.01
-        r_a -= dmg_dealt_b * 0.005   # -0.1 per hit taken (half weight of dealing)
-        r_b -= dmg_dealt_a * 0.005
+        # === Damage rewards: zero-sum differential ===
+        # Trades are worth 0; only unanswered hits matter
+        dmg_dealt_a = max(0, self._prev_hp_b - self.b.hp)
+        dmg_dealt_b = max(0, self._prev_hp_a - self.a.hp)
+        dmg_diff = (dmg_dealt_a - dmg_dealt_b) * 0.01  # +0.2 for unanswered hit
+        r_a += dmg_diff
+        r_b -= dmg_diff
 
-        # === Anti-camping: penalize action repetition ===
-        # Repeating the same action >10 frames in a row = degenerate
+        # === Anti-camping: capped repetition penalty ===
+        # Starts after 10 frames, capped at 0.01/frame to never exceed win reward
         if self._action_repeat_a > 10:
-            r_a -= 0.002 * (self._action_repeat_a - 10)
+            r_a -= min(0.01, 0.002 * (self._action_repeat_a - 10))
         if self._action_repeat_b > 10:
-            r_b -= 0.002 * (self._action_repeat_b - 10)
+            r_b -= min(0.01, 0.002 * (self._action_repeat_b - 10))
 
         # === Anti-passivity: penalize never shooting ===
         # If >120 frames (2 seconds) without attempting to shoot, small penalty
@@ -590,11 +636,8 @@ class SparSim:
             r_a -= 0.0003
             r_b -= 0.0003
 
-        # === Bottom position (small, NOT dominant) ===
-        # Tiny signal — must not dominate over engagement rewards
-        bottom_dy = self.a.y - self.b.y
-        r_a += bottom_dy * 0.00002   # 5x smaller than before
-        r_b -= bottom_dy * 0.00002
+        # Bottom position reward REMOVED — caused desc action collapse.
+        # If bottom helps win, the terminal +1.0 reward propagates via GAE.
 
         return r_a, r_b
 
