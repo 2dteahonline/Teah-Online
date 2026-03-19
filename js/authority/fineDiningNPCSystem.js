@@ -23,14 +23,14 @@ const FD_SPOTS = {
   exit: { tx: 40, ty: 24 },
   hostStand: { tx: 40, ty: 20 },
   passWindow: { tx: 20, ty: 20 },  // kitchen pass window where waiter drops/picks up orders
-  waiterHome: { tx: 20, ty: 17 },  // waiter stationary spot (2 tiles under kitchen door, dining side)
+  waiterHome: { tx: 20, ty: 19 },  // waiter stationary spot (4 tiles under kitchen door, dining side)
 };
 
 // ===================== TEPPANYAKI TABLES =====================
 const FD_TABLES = [
-  { id: 0, grillTX: 24, grillTY: 5,  seats: [{ tx: 22, ty: 4, dir: 0 }, { tx: 22, ty: 6, dir: 1 }, { tx: 26, ty: 4, dir: 0 }, { tx: 26, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 0, grillTX: 25, grillTY: 5,  seats: [{ tx: 23, ty: 4, dir: 0 }, { tx: 23, ty: 6, dir: 1 }, { tx: 27, ty: 4, dir: 0 }, { tx: 27, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
   { id: 1, grillTX: 35, grillTY: 5,  seats: [{ tx: 33, ty: 4, dir: 0 }, { tx: 33, ty: 6, dir: 1 }, { tx: 37, ty: 4, dir: 0 }, { tx: 37, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
-  { id: 2, grillTX: 24, grillTY: 14, seats: [{ tx: 22, ty: 13, dir: 0 }, { tx: 22, ty: 15, dir: 1 }, { tx: 26, ty: 13, dir: 0 }, { tx: 26, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 2, grillTX: 25, grillTY: 14, seats: [{ tx: 23, ty: 13, dir: 0 }, { tx: 23, ty: 15, dir: 1 }, { tx: 27, ty: 13, dir: 0 }, { tx: 27, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
   { id: 3, grillTX: 35, grillTY: 14, seats: [{ tx: 33, ty: 13, dir: 0 }, { tx: 33, ty: 15, dir: 1 }, { tx: 37, ty: 13, dir: 0 }, { tx: 37, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
 ];
 
@@ -725,8 +725,8 @@ const FD_WAITER_AI = {
       w._serveData = serveEntry;
       w.hasFood = true;
 
-      // Walk from waiter home through kitchen door to pickup counter
-      const routeToPickup = [_cWP(20, 17), _cWP(19, 14), _cWP(19, 12)];
+      // Walk from waiter home through kitchen door to serve counter
+      const routeToPickup = [_cWP(20, 19), _cWP(19, 14), _cWP(19, 12)];
       _startWaiterRoute(routeToPickup, 'picking_up', 0);
       return;
     }
@@ -747,9 +747,9 @@ const FD_WAITER_AI = {
     const table = FD_TABLES[party.tableId];
     if (!table) { w.state = 'idle'; return; }
     const isRightCol = (table.grillTX >= 30);
-    // Route: waiterHome(20,17) → main walkway → table grill
+    // Route: waiterHome(20,19) → main walkway → table grill
     const route = [];
-    route.push(_cWP(20, 17));
+    route.push(_cWP(20, 19));
     route.push(_cWP(20, 20));
     if (isRightCol) {
       route.push(_cWP(31, 20));
@@ -874,7 +874,7 @@ const FD_WAITER_AI = {
     }
 
     // Now walk back to waiter home spot
-    const route = [_cWP(20, 20), _cWP(20, 17)];
+    const route = [_cWP(20, 20), _cWP(20, 19)];
     _startWaiterRoute(route, 'idle', 0);
     // Override to returning state during walk
     w.state = 'returning';
@@ -958,7 +958,7 @@ const FD_WAITER_AI = {
         route.push(_cWP(20, table.grillTY));
         route.push(_cWP(20, 20));
       }
-      route.push(_cWP(20, 17));
+      route.push(_cWP(20, 19));
       _startWaiterRoute(route, 'idle', 0);
       w.state = 'returning';
     } else {
