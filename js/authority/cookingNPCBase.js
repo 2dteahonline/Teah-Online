@@ -325,8 +325,8 @@ function _cUpdateNPCLoop(loopCfg) {
       loopCfg.onIdleTimeout(npc);
     }
 
-    // Stuck detection — blocked 1+ second
-    if ((npc._stuckFrames || 0) >= 60 && npc.state !== '_despawn' && npc.state !== '_despawn_walk') {
+    // Stuck detection — blocked 3+ seconds
+    if ((npc._stuckFrames || 0) >= 180 && npc.state !== '_despawn' && npc.state !== '_despawn_walk') {
       loopCfg.onStuckTimeout(npc);
     }
 

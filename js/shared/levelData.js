@@ -1113,24 +1113,25 @@ const LEVELS = {
       { type: 'fd_service_wall', tx: 18, ty: 16, w: 2, h: 3, solid: true },
 
       // === KITCHEN WORK STATIONS (moved 2 tiles down) ===
-      { type: 'fd_counter', tx: 7, ty: 12, w: 4, h: 2, solid: true },           // clear plate
-      { type: 'fd_pickup_counter', tx: 12, ty: 12, w: 5, h: 2, solid: true },    // serve counter
+      { type: 'fd_counter', tx: 9, ty: 12, w: 4, h: 2, solid: true },           // clear plate
+      { type: 'fd_pickup_counter', tx: 14, ty: 12, w: 5, h: 2, solid: true },    // serve counter
 
-      // === INGREDIENT STATIONS (2x2 each, 2 rows of 6) ===
+      // === INGREDIENT STATIONS (2x2 each, 3 rows of 4 — 2-tile gaps for easy walking) ===
       // Row 1 (ty: 1)
       { type: 'fding_steak',        tx: 1,  ty: 1, w: 2, h: 2, solid: true },
-      { type: 'fding_shrimp',       tx: 4,  ty: 1, w: 2, h: 2, solid: true },
-      { type: 'fding_chicken',      tx: 7,  ty: 1, w: 2, h: 2, solid: true },
-      { type: 'fding_rice',         tx: 10, ty: 1, w: 2, h: 2, solid: true },
-      { type: 'fding_onion',        tx: 13, ty: 1, w: 2, h: 2, solid: true },
-      { type: 'fding_egg',          tx: 16, ty: 1, w: 2, h: 2, solid: true },
+      { type: 'fding_shrimp',       tx: 5,  ty: 1, w: 2, h: 2, solid: true },
+      { type: 'fding_chicken',      tx: 9,  ty: 1, w: 2, h: 2, solid: true },
+      { type: 'fding_rice',         tx: 13, ty: 1, w: 2, h: 2, solid: true },
       // Row 2 (ty: 5)
-      { type: 'fding_mushroom',     tx: 1,  ty: 5, w: 2, h: 2, solid: true },
-      { type: 'fding_zucchini',     tx: 4,  ty: 5, w: 2, h: 2, solid: true },
-      { type: 'fding_garlic_butter',tx: 7,  ty: 5, w: 2, h: 2, solid: true },
-      { type: 'fding_soy_sauce',    tx: 10, ty: 5, w: 2, h: 2, solid: true },
-      { type: 'fding_sesame_oil',   tx: 13, ty: 5, w: 2, h: 2, solid: true },
-      { type: 'fding_miso',         tx: 16, ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_onion',        tx: 1,  ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_egg',          tx: 5,  ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_mushroom',     tx: 9,  ty: 5, w: 2, h: 2, solid: true },
+      { type: 'fding_zucchini',     tx: 13, ty: 5, w: 2, h: 2, solid: true },
+      // Row 3 (ty: 9)
+      { type: 'fding_garlic_butter',tx: 1,  ty: 9, w: 2, h: 2, solid: true },
+      { type: 'fding_soy_sauce',    tx: 5,  ty: 9, w: 2, h: 2, solid: true },
+      { type: 'fding_sesame_oil',   tx: 9,  ty: 9, w: 2, h: 2, solid: true },
+      { type: 'fding_miso',         tx: 13, ty: 9, w: 2, h: 2, solid: true },
 
       // === TEPPANYAKI TABLES (4 tables, each with grill center + surrounding seats) ===
       // Table 0 (tx 21-28, ty 2-8) — grill at center tx:24, ty:5
@@ -1149,7 +1150,7 @@ const LEVELS = {
       // === HOST STAND (moved 1 tile down, wider) ===
       { type: 'fd_host_stand', tx: 39, ty: 20, w: 4, h: 1, solid: true },
       // Host NPC behind the stand (stationary, in tuxedo)
-      { type: 'fd_host_npc', tx: 40, ty: 19, w: 1, h: 1, solid: false },
+      { type: 'fd_host_npc', tx: 41, ty: 19, w: 1, h: 1, solid: false },
 
       // === WAITER (stationary, 3 tiles under kitchen entrance at ty:14-15, so ty:18) ===
       { type: 'fd_waiter_spot', tx: 20, ty: 17, w: 1, h: 1, solid: false },

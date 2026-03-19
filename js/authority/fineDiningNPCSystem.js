@@ -28,10 +28,10 @@ const FD_SPOTS = {
 
 // ===================== TEPPANYAKI TABLES =====================
 const FD_TABLES = [
-  { id: 0, grillTX: 24, grillTY: 5,  seats: [{ tx: 22, ty: 4, dir: 0 }, { tx: 22, ty: 6, dir: 1 }, { tx: 27, ty: 4, dir: 0 }, { tx: 27, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
-  { id: 1, grillTX: 35, grillTY: 5,  seats: [{ tx: 33, ty: 4, dir: 0 }, { tx: 33, ty: 6, dir: 1 }, { tx: 38, ty: 4, dir: 0 }, { tx: 38, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
-  { id: 2, grillTX: 24, grillTY: 14, seats: [{ tx: 22, ty: 13, dir: 0 }, { tx: 22, ty: 15, dir: 1 }, { tx: 27, ty: 13, dir: 0 }, { tx: 27, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
-  { id: 3, grillTX: 35, grillTY: 14, seats: [{ tx: 33, ty: 13, dir: 0 }, { tx: 33, ty: 15, dir: 1 }, { tx: 38, ty: 13, dir: 0 }, { tx: 38, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 0, grillTX: 24, grillTY: 5,  seats: [{ tx: 22, ty: 4, dir: 0 }, { tx: 22, ty: 6, dir: 1 }, { tx: 26, ty: 4, dir: 0 }, { tx: 26, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 1, grillTX: 35, grillTY: 5,  seats: [{ tx: 33, ty: 4, dir: 0 }, { tx: 33, ty: 6, dir: 1 }, { tx: 37, ty: 4, dir: 0 }, { tx: 37, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 2, grillTX: 24, grillTY: 14, seats: [{ tx: 22, ty: 13, dir: 0 }, { tx: 22, ty: 15, dir: 1 }, { tx: 26, ty: 13, dir: 0 }, { tx: 26, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 3, grillTX: 35, grillTY: 14, seats: [{ tx: 33, ty: 13, dir: 0 }, { tx: 33, ty: 15, dir: 1 }, { tx: 37, ty: 13, dir: 0 }, { tx: 37, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
 ];
 
 // ===================== CONFIG =====================
