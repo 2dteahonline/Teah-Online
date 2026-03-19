@@ -390,7 +390,7 @@ function updateCooking() {
       const isIngredient = activeEntityMap[e.type];
       const isWorkStation = e.type === 'deli_counter' || e.type === 'pickup_counter' ||
                             e.type === 'diner_counter' || e.type === 'diner_pickup_counter' ||
-                            e.type === 'fd_counter' || e.type === 'fd_pickup_counter' || e.type === 'fd_serve_counter' ||
+                            e.type === 'fd_counter' || e.type === 'fd_pickup_counter' || e.type === 'fd_serve_counter' || e.type === 'fd_service_counter' ||
                             e.type.startsWith('fd_teppanyaki_grill_');
       if (!isIngredient && !isWorkStation) continue;
       const ew = (e.w || 1), eh = (e.h || 1);
@@ -542,7 +542,7 @@ function handleStationInteract(entityType) {
     }
   }
 
-  if (entityType === 'pickup_counter' || entityType === 'diner_pickup_counter' || entityType === 'fd_pickup_counter' || entityType === 'fd_serve_counter') {
+  if (entityType === 'pickup_counter' || entityType === 'diner_pickup_counter' || entityType === 'fd_pickup_counter' || entityType === 'fd_serve_counter' || entityType === 'fd_service_counter') {
     // Submit order for grading
     if (cookingState.assembly.length === 0) {
       if (typeof hitEffects !== 'undefined') {
