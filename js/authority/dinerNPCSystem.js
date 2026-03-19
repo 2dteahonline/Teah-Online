@@ -392,6 +392,11 @@ function moveDinerNPC(npc) {
       if (npc.isWaitress && !other.isWaitress) return 'slow';
       // Guests don't react to waitress (no push/nudge from her)
       if (!npc.isWaitress && other.isWaitress) return 'skip';
+      // Same-party NPCs skip avoidance when heading to/at seats — prevents blocking on the way in
+      if (npc.partyId && npc.partyId === other.partyId) {
+        const seatStates = ['seating', 'entering', 'walking', 'waiting_at_booth', 'eating', 'spawn_wait'];
+        if (seatStates.includes(npc.state) || seatStates.includes(other.state)) return 'skip';
+      }
       return 'yield';
     },
   });
