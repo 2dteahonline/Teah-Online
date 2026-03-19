@@ -5089,24 +5089,53 @@ ENTITY_RENDERERS.fd_host_stand = (e, ctx, ex, ey, w, h) => {
 ENTITY_RENDERERS.fd_host_npc = (e, ctx, ex, ey, w, h) => {
   const cw = w * TILE, ch = h * TILE;
   const cx = ex + cw / 2, cy = ey + ch / 2;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(cx, cy + 18, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+  // Legs
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(cx - 6, cy + 8, 5, 12);
+  ctx.fillRect(cx + 1, cy + 8, 5, 12);
+  // Shoes
+  ctx.fillStyle = '#111';
+  ctx.fillRect(cx - 7, cy + 18, 6, 3);
+  ctx.fillRect(cx + 1, cy + 18, 6, 3);
   // Body (black tuxedo)
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(cx - 8, cy - 6, 16, 20);
+  ctx.fillRect(cx - 12, cy - 10, 24, 22);
+  // Tuxedo lapels
+  ctx.fillStyle = '#2a2a2a';
+  ctx.beginPath(); ctx.moveTo(cx - 12, cy - 10); ctx.lineTo(cx - 3, cy + 2); ctx.lineTo(cx - 12, cy + 2); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + 12, cy - 10); ctx.lineTo(cx + 3, cy + 2); ctx.lineTo(cx + 12, cy + 2); ctx.closePath(); ctx.fill();
   // White shirt front
   ctx.fillStyle = '#f0f0f0';
-  ctx.fillRect(cx - 3, cy - 4, 6, 16);
+  ctx.fillRect(cx - 4, cy - 8, 8, 18);
+  // Buttons
+  ctx.fillStyle = '#ccc';
+  ctx.beginPath(); ctx.arc(cx, cy - 2, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy + 4, 1.5, 0, Math.PI * 2); ctx.fill();
   // Bow tie
   ctx.fillStyle = '#c00020';
-  ctx.fillRect(cx - 4, cy - 3, 8, 3);
+  ctx.beginPath(); ctx.moveTo(cx - 6, cy - 7); ctx.lineTo(cx, cy - 5); ctx.lineTo(cx - 6, cy - 3); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + 6, cy - 7); ctx.lineTo(cx, cy - 5); ctx.lineTo(cx + 6, cy - 3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#900018';
+  ctx.beginPath(); ctx.arc(cx, cy - 5, 2, 0, Math.PI * 2); ctx.fill();
   // Head
   ctx.fillStyle = '#d4a574';
-  ctx.beginPath(); ctx.arc(cx, cy - 12, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy - 18, 10, 0, Math.PI * 2); ctx.fill();
   // Hair
   ctx.fillStyle = '#2a1a0a';
-  ctx.beginPath(); ctx.arc(cx, cy - 16, 7, Math.PI, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy - 22, 9, Math.PI, Math.PI * 2); ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#222';
+  ctx.fillRect(cx - 4, cy - 19, 2, 2);
+  ctx.fillRect(cx + 2, cy - 19, 2, 2);
+  // Smile
+  ctx.strokeStyle = '#8a5a3a'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy - 14, 4, 0.1, Math.PI - 0.1); ctx.stroke();
   // Name label
-  ctx.font = "bold 8px monospace"; ctx.textAlign = "center";
-  ctx.fillStyle = '#ffd700'; ctx.fillText("Host", cx, cy + 20);
+  ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = '#ffd700'; ctx.fillText("Host", cx, cy + 26);
   ctx.textAlign = "left";
 };
 
