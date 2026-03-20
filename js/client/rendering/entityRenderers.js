@@ -4927,9 +4927,9 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
   ctx.fillStyle = '#4a3a30';
   ctx.fillRect(ex + 2, ey + 2, cw - 4, 4);
-  // Tray surface area (upper portion of counter)
+  // Tray surface area
   const trayW = 28, trayH = 24;
-  const trayY = ey + 10; // offset down from top for 2-tile counter
+  const trayY = ey + ch - trayH - 10; // bottom end of counter (near waiter)
 
   // --- In-progress tray (left side): shows items filling up during multi-item orders ---
   const hasInProgress = typeof cookingState !== 'undefined' && cookingState.active &&
@@ -4972,12 +4972,12 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
     ctx.textAlign = "left";
   }
 
-  // --- Completed trays (right side): orders waiting for waiter pickup ---
+  // --- Completed trays (bottom-right corner): orders waiting for waiter pickup ---
   const hasPending = typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0;
   if (hasPending) {
     const itemCount = Math.min(_fdPendingServe.length, 4);
     const totalW = itemCount * (trayW + 4);
-    const startX = ex + cw - totalW - 8; // right-aligned (near waiter pickup)
+    const startX = ex + cw - totalW - 4; // far right end (closest to waiter at tx:17)
     for (let i = 0; i < itemCount; i++) {
       const tx = startX + i * (trayW + 4);
       const serve = _fdPendingServe[i];
