@@ -1099,8 +1099,7 @@ const LEVELS = {
       "############################################"
     ],
     entities: [
-      // Exit door (bottom right)
-      { type: 'fine_dining_exit', tx: 38, ty: 24, w: 4, h: 2, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 45 },
+      // Exit door handled by fd_exit_door below (fine_dining_exit removed — it overlapped spawn point)
 
       // === FLOOR TILES ===
       { type: 'fd_floor_kitchen', tx: 1, ty: 1, w: 17, h: 18, solid: false },
@@ -1149,7 +1148,7 @@ const LEVELS = {
       { type: 'fd_host_npc', tx: 41, ty: 19, w: 1, h: 1, solid: false },
 
       // === WAITER (2 tiles below right corner of service counter at tx:17, ty:18) ===
-      { type: 'fd_waiter_spot', tx: 17, ty: 21, w: 1, h: 1, solid: false },
+      { type: 'fd_waiter_spot', tx: 17, ty: 19, w: 1, h: 1, solid: false },
 
       // === ENTER / EXIT DOORS ===
       { type: 'fd_enter_door', tx: 40, ty: 24, w: 3, h: 1, solid: false },   // bottom, vertically from host

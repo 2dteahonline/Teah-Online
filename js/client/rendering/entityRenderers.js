@@ -5120,11 +5120,11 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
     const seats = tableData.seats;
     for (let si = 0; si < plateCount && si < seats.length; si++) {
       const seat = seats[si];
-      // Compute food plate position — closer to center (40% from center toward seat)
+      // Compute food plate position — in front of golden cushions (85% from center toward seat)
       const seatRelX = (seat.tx - e.tx) * TILE + TILE / 2;
       const seatRelY = (seat.ty - e.ty) * TILE + TILE / 2;
-      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.4;
-      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.4;
+      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.85;
+      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.85;
       // White plate
       ctx.fillStyle = '#f0f0f0';
       ctx.beginPath(); ctx.arc(foodX, foodY, 8, 0, Math.PI * 2); ctx.fill();
