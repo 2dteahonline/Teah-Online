@@ -4927,29 +4927,73 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
   ctx.fillStyle = '#4a3a30';
   ctx.fillRect(ex + 2, ey + 2, cw - 4, 4);
-  // Gold trays with food + table number (visible when orders pending)
-  if (typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0) {
+  // Tray surface area (upper portion of counter)
+  const trayW = 28, trayH = 24;
+  const trayY = ey + 10; // offset down from top for 2-tile counter
+
+  // --- In-progress tray (left side): shows items filling up during multi-item orders ---
+  const hasInProgress = typeof cookingState !== 'undefined' && cookingState.active &&
+    cookingState.activeRestaurantId === 'fine_dining' &&
+    cookingState._fdTrayItems && cookingState._fdTrayItems.length > 0 &&
+    cookingState.ticket;
+
+  if (hasInProgress) {
+    const ipX = ex + 8;
+    // Semi-transparent in-progress tray
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = '#a08800';
+    ctx.beginPath(); ctx.roundRect(ipX, trayY, trayW, trayH, 3); ctx.fill();
+    ctx.fillStyle = '#d4b800';
+    ctx.beginPath(); ctx.roundRect(ipX + 2, trayY + 2, trayW - 4, trayH - 4, 2); ctx.fill();
+    ctx.globalAlpha = 1.0;
+    // Dashed outline to indicate in-progress
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.roundRect(ipX, trayY, trayW, trayH, 3); ctx.stroke();
+    ctx.setLineDash([]);
+    // Food items accumulated so far
+    const ipItems = cookingState._fdTrayItems;
+    const ipCount = Math.min(ipItems.length, 4);
+    for (let fi = 0; fi < ipCount; fi++) {
+      const fx = ipX + 5 + fi * 6;
+      const fy = trayY + trayH / 2;
+      const ingColor = ipItems[fi] && ipItems[fi][0] &&
+        typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[ipItems[fi][0]]
+        ? FINE_DINING_INGREDIENTS[ipItems[fi][0]].color : '#d4a040';
+      ctx.fillStyle = ingColor;
+      ctx.beginPath(); ctx.arc(fx, fy, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    // Progress label below tray
+    const done = cookingState.ticket.completedCount || 0;
+    const total = cookingState.ticket.items ? cookingState.ticket.items.length : 0;
+    ctx.font = "bold 8px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = '#ffd700'; ctx.fillText(done + "/" + total, ipX + trayW / 2, trayY + trayH + 10);
+    ctx.textAlign = "left";
+  }
+
+  // --- Completed trays (right side): orders waiting for waiter pickup ---
+  const hasPending = typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0;
+  if (hasPending) {
     const itemCount = Math.min(_fdPendingServe.length, 4);
-    const trayW = 28, trayH = 20;
     const totalW = itemCount * (trayW + 4);
-    const startX = ex + cw - totalW - 8; // right-aligned on counter (near waiter pickup)
+    const startX = ex + cw - totalW - 8; // right-aligned (near waiter pickup)
     for (let i = 0; i < itemCount; i++) {
       const tx = startX + i * (trayW + 4);
-      const ty = ey + 6;
       const serve = _fdPendingServe[i];
-      // Gold tray
+      // Solid gold tray (completed)
       ctx.fillStyle = '#c0a000';
-      ctx.beginPath(); ctx.roundRect(tx, ty, trayW, trayH, 3); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(tx, trayY, trayW, trayH, 3); ctx.fill();
       ctx.fillStyle = '#ffd700';
-      ctx.beginPath(); ctx.roundRect(tx + 2, ty + 2, trayW - 4, trayH - 4, 2); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(tx + 2, trayY + 2, trayW - 4, trayH - 4, 2); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.fillRect(tx + 3, ty + 2, trayW - 6, 3);
+      ctx.fillRect(tx + 3, trayY + 2, trayW - 6, 3);
       // Food items on tray
       const items = serve && serve.allTrayItems ? serve.allTrayItems : (serve && serve.recipeIngredients ? [serve.recipeIngredients] : []);
       const foodCount = Math.min(items.length, 3);
       for (let fi = 0; fi < foodCount; fi++) {
         const fx = tx + 6 + fi * 8;
-        const fy = ty + trayH / 2 + 1;
+        const fy = trayY + trayH / 2 + 1;
         const ingColor = items[fi] && items[fi][0] &&
           typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[items[fi][0]]
           ? FINE_DINING_INGREDIENTS[items[fi][0]].color : '#d4a040';
@@ -4960,14 +5004,14 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
       const tableId = serve ? serve.tableId : null;
       if (tableId !== null && tableId !== undefined && tableId >= 0) {
         ctx.font = "bold 8px monospace"; ctx.textAlign = "center";
-        ctx.fillStyle = '#ffd700'; ctx.fillText("T" + (tableId + 1), tx + trayW / 2, ty + trayH + 9);
+        ctx.fillStyle = '#ffd700'; ctx.fillText("T" + (tableId + 1), tx + trayW / 2, trayY + trayH + 10);
         ctx.textAlign = "left";
       }
     }
-  } else {
-    // No orders — show empty gold surface
-    const blockW = Math.min(cw - 16, 60), blockH = ch * 0.4;
-    const blockX = ex + (cw - blockW) / 2, blockY = ey + 4;
+  } else if (!hasInProgress) {
+    // No orders and no in-progress — show empty gold surface
+    const blockW = Math.min(cw - 16, 60), blockH = Math.min(ch * 0.3, 24);
+    const blockX = ex + (cw - blockW) / 2, blockY = trayY;
     ctx.fillStyle = '#c0a000';
     ctx.beginPath(); ctx.roundRect(blockX, blockY, blockW, blockH, 4); ctx.fill();
     ctx.fillStyle = '#ffd700';
@@ -4983,29 +5027,6 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   ctx.textAlign = "left";
 };
 
-// --- Service counter (serve interaction point) ---
-ENTITY_RENDERERS.fd_service_counter = (e, ctx, ex, ey, w, h) => {
-  const cw = w * TILE, ch = h * TILE;
-  // Dark base
-  ctx.fillStyle = '#2a1a14';
-  ctx.fillRect(ex, ey, cw, ch);
-  // Label bar at bottom
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(ex, ey + ch - 16, cw, 16);
-  ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
-  ctx.fillStyle = '#ffd700'; ctx.fillText("Serve", ex + cw/2, ey + ch - 4);
-  ctx.textAlign = "left";
-  // Gold surface above the label
-  const goldTop = ey + 2;
-  const goldH = ch - 18;
-  ctx.fillStyle = '#c0a000';
-  ctx.fillRect(ex + 2, goldTop, cw - 4, goldH);
-  ctx.fillStyle = '#ffd700';
-  ctx.fillRect(ex + 4, goldTop + 2, cw - 8, goldH - 4);
-  // Shine highlight
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
-  ctx.fillRect(ex + 4, goldTop + 2, cw - 8, 4);
-};
 
 // --- Teppanyaki table (background visual) ---
 ENTITY_RENDERERS.fd_teppanyaki_table = (e, ctx, ex, ey, w, h) => {

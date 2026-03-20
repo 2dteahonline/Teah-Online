@@ -23,7 +23,7 @@ const FD_SPOTS = {
   exit: { tx: 40, ty: 24 },
   hostStand: { tx: 41, ty: 19 },   // host NPC stands behind (above) the solid host stand at ty:20
   passWindow: { tx: 17, ty: 19 },  // waiter picks up from right end of service counter
-  waiterHome: { tx: 17, ty: 19 },  // waiter spot — 1 tile below right corner of service counter
+  waiterHome: { tx: 17, ty: 21 },  // waiter rests here — 2 tiles below passWindow for visible walk
   hostQueue: { tx: 40, ty: 21 },   // NPC queue spot — 1 tile below host stand
 };
 
@@ -703,27 +703,40 @@ const FD_WAITER_AI = {
       // Find a free table for this order
       const freeTableIdx = _findFreeTable(1);
       if (freeTableIdx < 0) return; // no free table, wait
-      _fdPendingServe.shift();
-      serveEntry.tableId = freeTableIdx;
-      FD_TABLES[freeTableIdx].claimedBy = -1; // mark as claimed by incoming order
-      FD_TABLES[freeTableIdx].state = 'waiting_cook';
-      w._currentTableId = freeTableIdx;
-      w._currentPartyId = null;
-      w._serveData = serveEntry;
 
-      // Face counter (up) and pause briefly to pick up tray — NO kitchen entry
-      w.state = 'pickup_wait';
-      w.stateTimer = 60; // 1 second pickup animation
+      // Stash serve data — do NOT remove from queue yet (tray stays visible on counter)
+      w._pendingServe = serveEntry;
+      w._pendingTableIdx = freeTableIdx;
+
+      // Walk to serve counter pickup spot, then enter pickup_wait
+      const route = [_cWP(FD_SPOTS.passWindow.tx, FD_SPOTS.passWindow.ty)];
+      _startWaiterRoute(route, 'pickup_wait', 60);
       return;
     }
   },
 
-  // ─── PICKUP_WAIT: Face serve counter, brief pause, pick up tray ──────
+  // ─── PICKUP_WAIT: Face serve counter, brief pause, then pick up tray ──────
   pickup_wait: (w) => {
     w.moving = false;
-    w.dir = 1; // face UP toward serve counter at ty:18
+    w.dir = 1; // face UP toward serve counter
 
     if (w.stateTimer > 0) { w.stateTimer--; return; }
+
+    // NOW remove from pending serve queue (tray disappears from counter)
+    const serveEntry = w._pendingServe;
+    if (!serveEntry) { w.state = 'idle'; return; }
+    const idx = _fdPendingServe.indexOf(serveEntry);
+    if (idx >= 0) _fdPendingServe.splice(idx, 1);
+
+    // Assign table and set up delivery
+    serveEntry.tableId = w._pendingTableIdx;
+    FD_TABLES[w._pendingTableIdx].claimedBy = -1;
+    FD_TABLES[w._pendingTableIdx].state = 'waiting_cook';
+    w._currentTableId = w._pendingTableIdx;
+    w._currentPartyId = null;
+    w._serveData = serveEntry;
+    w._pendingServe = null;
+    w._pendingTableIdx = null;
 
     // Pick up tray — now carrying food
     w.hasFood = true;
