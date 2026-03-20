@@ -22,8 +22,8 @@ const FD_NPC_NAMES = ['Guest', 'VIP', 'Patron', 'Connoisseur', 'Foodie', 'Celebr
 const FD_SPOTS = {
   exit: { tx: 40, ty: 24 },
   hostStand: { tx: 41, ty: 19 },   // host NPC stands behind (above) the solid host stand at ty:20
-  passWindow: { tx: 17, ty: 18 },  // waiter picks up from right end of service counter (bottom edge of counter)
-  waiterHome: { tx: 17, ty: 19 },  // waiter rests here — 1 tile below counter for visible walk
+  passWindow: { tx: 17, ty: 19 },  // waiter picks up 1 tile below counter (no phasing through)
+  waiterHome: { tx: 17, ty: 20 },  // waiter rests here — 1 tile below passWindow for visible walk
   hostQueue: { tx: 40, ty: 21 },   // NPC queue spot — 1 tile below host stand
 };
 
@@ -194,34 +194,58 @@ function _routeFDWaiterToTableApproach(tableId) {
   const ap = FD_TABLE_APPROACH[tableId];
   if (!ap) return [];
 
-  const route = [];
-  // Direct route from waiter home (17,19) to table approach
-  // Walk east along ty:19 to the table column, then north between seats
-  route.push(_cWP(ap.tx, 19));
-  if (ap.ty < 9) {
-    // Top tables — go through gap between table rows (ty:9-10)
-    route.push(_cWP(ap.tx, 9));
-  }
-  route.push(_cWP(ap.tx, ap.ty));
+  // Safe corridors:
+  //   ty:19 = south walkway (below all tables)
+  //   ty:10 = horizontal gap between top/bottom table rows
+  //   tx:20 = vertical corridor left of tables
+  //   tx:31 = vertical corridor between left/right table columns
+  const isRightCol = (table.grillTX >= 30); // tables 1,3 on right side
+  const isTopRow = (table.grillTY < 10);    // tables 0,1 on top row
+  const corridorTX = isRightCol ? 31 : 20;  // use gap between columns or left aisle
 
+  const route = [];
+  // Step 1: Walk east along ty:19 to the safe vertical corridor
+  route.push(_cWP(corridorTX, 19));
+
+  if (isTopRow) {
+    // Top tables: go north along safe corridor to gap row (ty:10), then east to approach
+    route.push(_cWP(corridorTX, 10));
+    route.push(_cWP(ap.tx, 10));
+  } else {
+    // Bottom tables: go north along safe corridor to approach row directly
+    route.push(_cWP(corridorTX, ap.ty));
+    if (corridorTX !== ap.tx) route.push(_cWP(ap.tx, ap.ty));
+  }
+
+  route.push(_cWP(ap.tx, ap.ty));
   return route;
 }
 
-// Table approach point → Waiter home (direct return route)
+// Table approach point → Waiter home (return route using safe corridors)
 function _routeFDTableApproachToHome(tableId) {
   const table = FD_TABLES[tableId];
   if (!table) return [];
   const ap = FD_TABLE_APPROACH[tableId];
   if (!ap) return [];
 
+  const isRightCol = (table.grillTX >= 30);
+  const isTopRow = (table.grillTY < 10);
+  const corridorTX = isRightCol ? 31 : 20;
+
   const route = [];
-  // Walk south from approach to gap, then west to waiter home
-  if (ap.ty < 9) {
-    // Top tables — go through gap (ty:9)
-    route.push(_cWP(ap.tx, 9));
+
+  if (isTopRow) {
+    // Top tables: south to gap row (ty:10), west along gap to corridor, south to walkway
+    route.push(_cWP(ap.tx, 10));
+    route.push(_cWP(corridorTX, 10));
+  } else {
+    // Bottom tables: west along approach row to corridor
+    if (corridorTX !== ap.tx) route.push(_cWP(corridorTX, ap.ty));
   }
-  route.push(_cWP(ap.tx, 19));
-  route.push(_cWP(17, 19));
+
+  // South to main walkway, then west to waiter home
+  route.push(_cWP(corridorTX, 19));
+  route.push(_cWP(FD_SPOTS.waiterHome.tx, 19));
   return route;
 }
 
@@ -881,7 +905,7 @@ const FD_WAITER_AI = {
     }
 
     // Already at waiter home area — snap to home
-    const route = [_cWP(17, 19)];
+    const route = [_cWP(FD_SPOTS.waiterHome.tx, FD_SPOTS.waiterHome.ty)];
     _startWaiterRoute(route, 'idle', 0);
     // Override to returning state during walk
     w.state = 'returning';
