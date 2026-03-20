@@ -22,8 +22,8 @@ const FD_NPC_NAMES = ['Guest', 'VIP', 'Patron', 'Connoisseur', 'Foodie', 'Celebr
 const FD_SPOTS = {
   exit: { tx: 40, ty: 24 },
   hostStand: { tx: 41, ty: 19 },   // host NPC stands behind (above) the solid host stand at ty:20
-  passWindow: { tx: 17, ty: 19 },  // waiter picks up from right end of service counter
-  waiterHome: { tx: 17, ty: 21 },  // waiter rests here — 2 tiles below passWindow for visible walk
+  passWindow: { tx: 17, ty: 18 },  // waiter picks up from right end of service counter (bottom edge of counter)
+  waiterHome: { tx: 17, ty: 19 },  // waiter rests here — 1 tile below counter for visible walk
   hostQueue: { tx: 40, ty: 21 },   // NPC queue spot — 1 tile below host stand
 };
 
@@ -480,8 +480,7 @@ function spawnFineDiningParty() {
 function _spawnFDGroupForTable(tableIdx) {
   const table = FD_TABLES[tableIdx];
   if (!table) return null;
-  const plateCount = table._serveData && table._serveData.allTrayItems ? table._serveData.allTrayItems.length : 2;
-  const partySize = Math.max(2, Math.min(4, plateCount));
+  const partySize = _cRandRange(2, 4); // 2-4 members per party, independent of recipe items
 
   const partyId = ++_fdPartyId;
   table.claimedBy = partyId;
@@ -514,6 +513,13 @@ function _spawnFDGroupForTable(tableIdx) {
   }
 
   fineDiningParties.push(party);
+
+  // Set plates remaining = party size (one plate per member)
+  if (table._platesDeferred) {
+    table._platesRemaining = partySize;
+    delete table._platesDeferred;
+  }
+
   return party;
 }
 
@@ -697,16 +703,23 @@ const FD_WAITER_AI = {
     w.x = FD_SPOTS.waiterHome.tx * TILE + TILE / 2;
     w.y = FD_SPOTS.waiterHome.ty * TILE + TILE / 2;
 
-    // Priority 1: Deliver pending serve (completed orders from submit counter)
+    // Priority 1: Deliver pending serve (completed orders from submit counter or table cooking)
     if (_fdPendingServe.length > 0) {
       const serveEntry = _fdPendingServe[0];
-      // Find a free table for this order
-      const freeTableIdx = _findFreeTable(1);
-      if (freeTableIdx < 0) return; // no free table, wait
+
+      // If serveEntry already has a tableId (table-cook flow: NPCs already seated), use it
+      // Otherwise (counter-serve flow: no NPCs yet), find a free table
+      let targetTableIdx;
+      if (serveEntry.tableId != null && serveEntry.tableId >= 0) {
+        targetTableIdx = serveEntry.tableId;
+      } else {
+        targetTableIdx = _findFreeTable(1);
+        if (targetTableIdx < 0) return; // no free table, wait
+      }
 
       // Stash serve data — do NOT remove from queue yet (tray stays visible on counter)
       w._pendingServe = serveEntry;
-      w._pendingTableIdx = freeTableIdx;
+      w._pendingTableIdx = targetTableIdx;
 
       // Walk to serve counter pickup spot, then enter pickup_wait
       const route = [_cWP(FD_SPOTS.passWindow.tx, FD_SPOTS.passWindow.ty)];
@@ -729,11 +742,15 @@ const FD_WAITER_AI = {
     if (idx >= 0) _fdPendingServe.splice(idx, 1);
 
     // Assign table and set up delivery
-    serveEntry.tableId = w._pendingTableIdx;
-    FD_TABLES[w._pendingTableIdx].claimedBy = -1;
-    FD_TABLES[w._pendingTableIdx].state = 'waiting_cook';
+    const isTableCookFlow = serveEntry.partyId != null;
+    if (!isTableCookFlow) {
+      // Counter-serve flow: claim a new table
+      serveEntry.tableId = w._pendingTableIdx;
+      FD_TABLES[w._pendingTableIdx].claimedBy = -1;
+      FD_TABLES[w._pendingTableIdx].state = 'waiting_cook';
+    }
     w._currentTableId = w._pendingTableIdx;
-    w._currentPartyId = null;
+    w._currentPartyId = serveEntry.partyId || null;
     w._serveData = serveEntry;
     w._pendingServe = null;
     w._pendingTableIdx = null;
@@ -911,16 +928,34 @@ const FD_WAITER_AI = {
     if (table) {
       table._foodServed = true;
       table._serveData = w._serveData || null;
-      table.state = 'eating';
       table._exclamationVisible = false;
 
-      // Track plates remaining on grill (decremented as NPCs sit to eat)
-      const plateCount = table._serveData && table._serveData.allTrayItems
-        ? table._serveData.allTrayItems.length : 2;
-      table._platesRemaining = Math.min(plateCount, 4);
+      // Check if NPCs are already seated at this table (table-cook flow)
+      const existingParty = table.claimedBy != null && table.claimedBy !== -1
+        ? _getFDParty(table.claimedBy) : null;
+      const existingMembers = existingParty ? _getFDPartyMembers(existingParty) : [];
+      const hasSeatedNPCs = existingMembers.some(m =>
+        m.state === 'seated' || m.state === 'waiting_cook' || m.state === 'watching_cook');
 
-      // Spawn NPC group to eat at this table (like diner _spawnGroupForBooth)
-      _spawnFDGroupForTable(tableIdx);
+      if (hasSeatedNPCs) {
+        // Table-cook flow: NPCs already seated — transition them directly to eating
+        table.state = 'eating';
+        table._platesRemaining = existingMembers.length;
+        for (const m of existingMembers) {
+          if (m.state === 'waiting_cook' || m.state === 'watching_cook' || m.state === 'seated') {
+            m.state = 'eating';
+            m.hasFood = true;
+            m.stateTimer = _cRandRange(FD_NPC_CONFIG.eatDuration[0], FD_NPC_CONFIG.eatDuration[1]);
+            table._platesRemaining--;
+          }
+        }
+        if (table._platesRemaining < 0) table._platesRemaining = 0;
+      } else {
+        // Counter-serve flow: spawn new NPC group
+        table.state = 'eating';
+        table._platesDeferred = true;
+        _spawnFDGroupForTable(tableIdx);
+      }
     }
 
     // Return to waiter home from approach point (direct route)
