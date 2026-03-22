@@ -1114,7 +1114,7 @@ const FD_NPC_AI = {
     npc.state = 'walking_to_table';
   },
 
-  // ─── WALKING_TO_TABLE: Walk to closest available seat ─────
+  // ─── WALKING_TO_TABLE: Walk to pre-assigned seat (no reassignment to prevent overlap) ─────
   walking_to_table: (npc) => {
     const party = _getFDParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
@@ -1122,26 +1122,10 @@ const FD_NPC_AI = {
     const table = FD_TABLES[party.tableId];
     if (!table) { npc.state = '_despawn'; return; }
 
-    // Find closest available seat (not claimed by another party member)
-    const takenSeats = new Set();
-    const members = _getFDPartyMembers(party);
-    for (const m of members) {
-      if (m.id !== npc.id && m.claimedSeatIdx >= 0) takenSeats.add(m.claimedSeatIdx);
-    }
-
-    let bestIdx = -1, bestDist = Infinity;
-    for (let si = 0; si < table.seats.length; si++) {
-      if (takenSeats.has(si)) continue;
-      const seat = table.seats[si];
-      const dx = seat.tx * TILE - npc.x;
-      const dy = seat.ty * TILE - npc.y;
-      const d = dx * dx + dy * dy;
-      if (d < bestDist) { bestDist = d; bestIdx = si; }
-    }
-
-    if (bestIdx < 0) bestIdx = 0; // fallback
-    npc.claimedSeatIdx = bestIdx;
-    party.seatAssignments[members.indexOf(npc)] = bestIdx;
+    // Use the pre-assigned seat from spawn (set in _spawnFDGroupForTable / _spawnFDGroup)
+    // Do NOT reassign by closest distance — that causes two NPCs to claim the same seat
+    let bestIdx = npc.claimedSeatIdx;
+    if (bestIdx < 0 || bestIdx >= table.seats.length) bestIdx = 0; // safety fallback
 
     // Build route from current position (near host stand) to table seat
     // Uses ty:21 walkway to go AROUND the host stand (tx:39-42, ty:20)

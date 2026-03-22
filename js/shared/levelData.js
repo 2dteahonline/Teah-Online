@@ -1155,7 +1155,7 @@ const LEVELS = {
       { type: 'fd_exit_door', tx: 20, ty: 24, w: 3, h: 1, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 45 },     // opposite end — also a portal
 
       // === DECORATIVE ===
-      { type: 'fd_serve_counter', tx: 1, ty: 16, w: 17, h: 3, solid: true },
+      { type: 'fd_serve_counter', tx: 1, ty: 17, w: 17, h: 2, solid: true },
     ]
   },
   // ---- TEST ARENA (dev only) ----
