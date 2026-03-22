@@ -143,11 +143,12 @@ function _pickFDCustomerType() {
   }
   // Fallback if FINE_DINING_CUSTOMER_TYPES not yet defined
   const fallback = [
-    { type: 'regular',  partySize: [2, 4], coverFee: 20,  tipMult: 1.0, patience: 1.2, weight: 0.35 },
-    { type: 'vip',      partySize: [2, 4], coverFee: 50,  tipMult: 2.0, patience: 1.5, weight: 0.20 },
-    { type: 'couple',   partySize: [2, 2], coverFee: 35,  tipMult: 1.5, patience: 1.3, weight: 0.15 },
-    { type: 'group',    partySize: [4, 6], coverFee: 10,  tipMult: 1.0, patience: 1.0, weight: 0.15 },
-    { type: 'critic',   partySize: [2, 3], coverFee: 40,  tipMult: 2.0, patience: 1.0, weight: 0.15 },
+    { type: 'regular',   partySize: [2, 4], coverFee: 10,  tipMult: 1.0, patience: 1.3, weight: 0.44 },
+    { type: 'vip',       partySize: [2, 4], coverFee: 25,  tipMult: 1.8, patience: 1.3, weight: 0.20 },
+    { type: 'group',     partySize: [4, 6], coverFee: 10,  tipMult: 1.0, patience: 1.2, weight: 0.20 },
+    { type: 'couple',    partySize: [2, 2], coverFee: 30,  tipMult: 1.5, patience: 1.3, weight: 0.10 },
+    { type: 'critic',    partySize: [2, 3], coverFee: 40,  tipMult: 2.0, patience: 1.0, weight: 0.01 },
+    { type: 'celebrity', partySize: [2, 4], coverFee: 100, tipMult: 4.0, patience: 1.5, weight: 0.05 },
   ];
   let totalWeight = 0;
   for (const t of fallback) totalWeight += t.weight;
@@ -268,7 +269,7 @@ function _routeFDTableApproachToHome(tableId) {
 // (removed old pass window routes — waiter picks up from serve counter at home position)
 
 // Table seat → Exit (through exit door at tx:20, ty:24)
-// Uses ty:19 walkway to avoid host stand at ty:20 (tx:39-42)
+// Uses correct aisle per seat side — right-side seats exit via right aisle to avoid crossing grill
 function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
   const table = FD_TABLES[tableId];
   if (!table) return [];
@@ -277,14 +278,25 @@ function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
 
   const route = [];
   const isRightCol = (table.grillTX >= 30);
+  const isLeftSeat = (seatIdx <= 2); // seats 0,1,2 left; 3,4,5 right
 
-  // Seat → vertical corridor → walkway (ty:19 to avoid host stand)
+  // Seat → correct aisle → walkway (ty:19 to avoid host stand)
   if (isRightCol) {
-    route.push(_cWP(31, seat.ty));
-    route.push(_cWP(31, 19));
+    if (isLeftSeat) {
+      route.push(_cWP(31, seat.ty)); // left aisle between columns
+      route.push(_cWP(31, 19));
+    } else {
+      route.push(_cWP(40, seat.ty)); // right aisle (right of table)
+      route.push(_cWP(40, 19));
+    }
   } else {
-    route.push(_cWP(20, seat.ty));
-    route.push(_cWP(20, 19));
+    if (isLeftSeat) {
+      route.push(_cWP(21, seat.ty)); // left aisle
+      route.push(_cWP(21, 19));
+    } else {
+      route.push(_cWP(30, seat.ty)); // right aisle between columns
+      route.push(_cWP(30, 19));
+    }
   }
 
   // Main walkway west to exit door
@@ -310,13 +322,22 @@ function _routeFDToExit(fromTX, fromTY, corridorTX) {
 
   // In dining area — get to walkway (ty:19 to avoid host stand)
   if (fromTY < 19) {
-    // Above walkway: go to nearest vertical corridor first
-    if (fromTX >= 30) {
+    // Above walkway: go to nearest vertical corridor that avoids crossing grills
+    if (fromTX >= 38) {
+      // Right of right-column tables: use tx:40 aisle
+      route.push(_cWP(40, fromTY));
+      route.push(_cWP(40, 19));
+    } else if (fromTX >= 30) {
+      // Between or left of right-column table: use tx:31 gap
       route.push(_cWP(31, fromTY));
       route.push(_cWP(31, 19));
+    } else if (fromTX >= 28) {
+      // Right side of left-column table: use tx:30 aisle
+      route.push(_cWP(30, fromTY));
+      route.push(_cWP(30, 19));
     } else if (fromTX >= 20) {
-      route.push(_cWP(20, fromTY));
-      route.push(_cWP(20, 19));
+      route.push(_cWP(21, fromTY));
+      route.push(_cWP(21, 19));
     } else {
       route.push(_cWP(fromTX, 19));
     }
@@ -1232,7 +1253,7 @@ const FD_NPC_AI = {
       }
     }
 
-    // If our seat is already occupied, find the first available seat with a plate
+    // If our seat is already occupied, recalculate and WALK to a new seat (don't snap)
     if (occupiedSeats.has(npc.claimedSeatIdx)) {
       const consumed = table._platesConsumed || new Set();
       let found = false;
@@ -1244,10 +1265,12 @@ const FD_NPC_AI = {
         }
       }
       if (!found) {
-        // No available seat — despawn to avoid overlap
         npc.state = '_despawn';
         return;
       }
+      // Re-enter walking_to_table to properly route to the new seat
+      npc.state = 'walking_to_table';
+      return;
     }
 
     const seat = table.seats[npc.claimedSeatIdx];
