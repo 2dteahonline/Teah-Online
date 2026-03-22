@@ -16,7 +16,20 @@ const FD_NPC_APPEARANCES = [
   { skin: '#f5d0a0', hair: '#d0a060', shirt: '#1a3a2a', pants: '#1a2a1a' },  // forest green
   { skin: '#b5835a', hair: '#1a1010', shirt: '#3a3a3a', pants: '#2a2a2a' },  // charcoal
 ];
-const FD_NPC_NAMES = ['Guest', 'VIP', 'Patron', 'Connoisseur', 'Foodie', 'Celebrity', 'Critic', 'Regular'];
+const FD_NPC_NAMES = [
+  'Alex', 'Jodie', 'Marcus', 'Lena', 'Sam', 'Mia', 'Derek', 'Yuki',
+  'Carlos', 'Priya', 'Jake', 'Aisha', 'Leo', 'Sofia', 'Noah', 'Zara',
+  'Ethan', 'Luna', 'Ryan', 'Chloe', 'Tyler', 'Hana', 'Max', 'Ruby',
+  'Kai', 'Ava', 'Oscar', 'Ivy', 'Dante', 'Nora', 'Felix', 'Iris',
+  'Liam', 'Ella', 'Jace', 'Maya', 'Cole', 'Nina', 'Reid', 'Tara',
+  'Owen', 'Lily', 'Axel', 'Rose', 'Dean', 'Jade', 'Finn', 'Sara',
+  'Troy', 'Dana', 'Ray', 'Faye', 'Kent', 'Beth', 'Vince', 'Gwen',
+  'Hugo', 'Vera', 'Miles', 'Tess', 'Beau', 'Nell', 'Clay', 'June',
+  'Ravi', 'Leah', 'Dion', 'Kira', 'Luis', 'Aria', 'Noel', 'Thea',
+  'Samir', 'Elise', 'Kenji', 'Layla', 'Andre', 'Freya', 'Marco', 'Suki',
+  'Pablo', 'Tina', 'Jude', 'Wren', 'Ali', 'Sage', 'Ian', 'Quinn',
+  'Remy', 'Lola', 'Zane', 'Uma', 'Nico', 'Opal', 'Evan', 'Cora',
+];
 
 // ===================== KEY SPOTS =====================
 const FD_SPOTS = {
@@ -558,7 +571,7 @@ function initFineDiningNPCs() {
   _fdOrderVisible = true;
   _fdPendingServe.length = 0;
   _fdWaiterQueue.length = 0;
-  for (const t of FD_TABLES) { t.claimedBy = null; t.state = 'empty'; t._exclamationVisible = false; t._foodServed = false; t._serveData = null; t._platesRemaining = 0; }
+  for (const t of FD_TABLES) { t.claimedBy = null; t.state = 'empty'; t._exclamationVisible = false; t._foodServed = false; t._serveData = null; t._platesRemaining = 0; t._platesConsumed = new Set(); }
 
   // Create persistent waiter NPC at waiter home spot (2 tiles below counter corner)
   _fdWaiter = {
@@ -965,11 +978,13 @@ const FD_WAITER_AI = {
         // Table-cook flow: NPCs already seated — transition them directly to eating
         table.state = 'eating';
         table._platesRemaining = existingMembers.length;
+        if (!table._platesConsumed) table._platesConsumed = new Set();
         for (const m of existingMembers) {
           if (m.state === 'waiting_cook' || m.state === 'watching_cook' || m.state === 'seated') {
             m.state = 'eating';
             m.hasFood = true;
             m.stateTimer = _cRandRange(FD_NPC_CONFIG.eatDuration[0], FD_NPC_CONFIG.eatDuration[1]);
+            table._platesConsumed.add(m.claimedSeatIdx); // mark this seat's plate as taken
             table._platesRemaining--;
           }
         }
@@ -1165,8 +1180,10 @@ const FD_NPC_AI = {
       npc.y = seat.ty * TILE + TILE / 2;
     }
 
-    // If food is already served on the grill, consume a plate and start eating
+    // If food is already served on the grill, consume the plate at THIS NPC's seat only
     if (table && table._foodServed && table._platesRemaining > 0) {
+      if (!table._platesConsumed) table._platesConsumed = new Set();
+      table._platesConsumed.add(npc.claimedSeatIdx); // mark this seat's plate as taken
       table._platesRemaining--;
       npc.hasFood = true; // plate shown on NPC
       npc.state = 'eating';
@@ -1283,6 +1300,7 @@ const FD_NPC_AI = {
       table._foodServed = false;
       table._serveData = null;
       table._platesRemaining = 0;
+      table._platesConsumed = new Set();
       table.claimedBy = null;
       table.state = 'empty';
       table._exclamationVisible = false;
