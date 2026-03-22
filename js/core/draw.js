@@ -962,8 +962,7 @@ function draw() {
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
       // VIP/Celebrity/Critic — overdraw name tag below NPC in gold (replaces the white name)
       if (npc.customerType === 'vip' || npc.customerType === 'celebrity' || npc.customerType === 'critic') {
-        const tagLabel = npc.customerType === 'celebrity' ? 'Celebrity' : npc.customerType === 'critic' ? 'Critic' : 'VIP';
-        const displayName = tagLabel;
+        const displayName = npc.name || 'Guest';
         ctx.font = "bold 13px monospace";
         const tw = ctx.measureText(displayName).width + 14;
         const tagX = npc.x - tw / 2;

@@ -4977,18 +4977,26 @@ ENTITY_RENDERERS.fd_teppanyaki_table = (e, ctx, ex, ey, w, h) => {
     ctx.fillStyle = '#ffd700'; ctx.fillText(String(tableNum), numX, numY + 4);
     ctx.textAlign = "left";
   }
-  // Gold cushions at seat positions (same size as diner booth seats)
+  // Gold cushions at seat positions — shifted slightly inward toward grill
   if (typeof FD_TABLES !== 'undefined') {
     const _fdTableIdx = (e._fdTableNum || 1) - 1;
     const table = FD_TABLES[_fdTableIdx];
     if (table && table.seats) {
+      const grillCX = (table.grillTX - e.tx) * TILE + TILE * 1.5; // grill center X relative to entity
+      const grillCY = (table.grillTY - e.ty) * TILE + TILE * 1.5; // grill center Y relative to entity
       for (const seat of table.seats) {
         const seatPx = (seat.tx - e.tx) * TILE + ex;
         const seatPy = (seat.ty - e.ty) * TILE + ey;
+        // Offset cushion 10px toward grill center
+        const dx = grillCX - ((seat.tx - e.tx) * TILE + TILE / 2);
+        const dy = grillCY - ((seat.ty - e.ty) * TILE + TILE / 2);
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const offX = (dx / dist) * 10;
+        const offY = (dy / dist) * 10;
         ctx.fillStyle = '#c0a000';
-        ctx.beginPath(); ctx.roundRect(seatPx + 4, seatPy + 4, TILE - 8, TILE - 8, 4); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(seatPx + 4 + offX, seatPy + 4 + offY, TILE - 8, TILE - 8, 4); ctx.fill();
         ctx.fillStyle = '#ffd700';
-        ctx.beginPath(); ctx.roundRect(seatPx + 6, seatPy + 6, TILE - 12, TILE - 12, 4); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(seatPx + 6 + offX, seatPy + 6 + offY, TILE - 12, TILE - 12, 4); ctx.fill();
       }
     }
   }
@@ -5040,17 +5048,18 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
       ctx.fillStyle = `rgba(255,180,40,${0.5 + Math.sin(t * 4 + fi) * 0.3})`;
       ctx.beginPath(); ctx.arc(fx, fy, 3, 0, Math.PI * 2); ctx.fill();
     }
-    // Food plates on grill — only show remaining plates (not yet consumed by seated NPCs)
-    // _platesRemaining decrements as each NPC sits and "takes" a plate
-    const plateCount = Math.min(tableData._platesRemaining || 0, 4);
+    // Food plates on grill — skip plates for seats where NPC has already taken their plate
     const seats = tableData.seats;
-    for (let si = 0; si < plateCount && si < seats.length; si++) {
+    const consumed = tableData._platesConsumed || new Set();
+    const totalPlates = Math.min((tableData._platesRemaining || 0) + consumed.size, seats.length);
+    for (let si = 0; si < totalPlates && si < seats.length; si++) {
+      if (consumed.has(si)) continue; // this seat's plate was already taken by the guest
       const seat = seats[si];
-      // Compute food plate position — 1 tile in front of golden cushions (on grill edge, not on cushion)
+      // Compute food plate position — directly in front of guest (70% from center toward seat)
       const seatRelX = (seat.tx - e.tx) * TILE + TILE / 2;
       const seatRelY = (seat.ty - e.ty) * TILE + TILE / 2;
-      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.5;
-      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.5;
+      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.7;
+      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.7;
       // White plate
       ctx.fillStyle = '#f0f0f0';
       ctx.beginPath(); ctx.arc(foodX, foodY, 8, 0, Math.PI * 2); ctx.fill();
