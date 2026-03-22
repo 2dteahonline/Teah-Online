@@ -274,11 +274,11 @@ const FINE_DINING_RECIPES = [
 
 // ===================== FINE DINING CUSTOMER TYPES =====================
 const FINE_DINING_CUSTOMER_TYPES = {
-  regular:   { type: 'regular',   name: 'Regular',    color: '#80a0c0', partySize: [2, 4], tipMult: 1.0, moodSpeed: 0.6, patience: 1.3, coverFee: 10, weight: 0.35 },
+  regular:   { type: 'regular',   name: 'Regular',    color: '#80a0c0', partySize: [2, 4], tipMult: 1.0, moodSpeed: 0.6, patience: 1.3, coverFee: 10, weight: 0.40 },
   vip:       { type: 'vip',       name: 'VIP',        color: '#ffd700', partySize: [2, 4], tipMult: 1.8, moodSpeed: 0.5, patience: 1.3, coverFee: 25, weight: 0.20 },
-  critic:    { type: 'critic',    name: 'Critic',     color: '#e04040', partySize: [2, 3], tipMult: 2.0, moodSpeed: 0.7, patience: 1.0, coverFee: 40, weight: 0.15 },
-  group:     { type: 'group',     name: 'Group',      color: '#60c080', partySize: [4, 6], tipMult: 1.0, moodSpeed: 0.6, patience: 1.2, coverFee: 10, weight: 0.15 },
-  celebrity: { type: 'celebrity', name: 'Celebrity',  color: '#ffd700', partySize: [2, 4], tipMult: 2.5, moodSpeed: 0.5, patience: 1.5, coverFee: 50, weight: 0.15 },
+  group:     { type: 'group',     name: 'Group',      color: '#60c080', partySize: [4, 6], tipMult: 1.0, moodSpeed: 0.6, patience: 1.2, coverFee: 10, weight: 0.20 },
+  critic:    { type: 'critic',    name: 'Critic',     color: '#e04040', partySize: [2, 3], tipMult: 2.0, moodSpeed: 0.7, patience: 1.0, coverFee: 40, weight: 0.10 },
+  celebrity: { type: 'celebrity', name: 'Celebrity',  color: '#ffd700', partySize: [2, 4], tipMult: 3.5, moodSpeed: 0.4, patience: 1.8, coverFee: 150, weight: 0.05 },
 };
 
 function pickFineDiningCustomerType() {
