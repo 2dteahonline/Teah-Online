@@ -143,11 +143,11 @@ function _pickFDCustomerType() {
   }
   // Fallback if FINE_DINING_CUSTOMER_TYPES not yet defined
   const fallback = [
-    { type: 'regular',    partySize: [2, 4], coverFee: 10,  tipMult: 1.0, patience: 1.3, weight: 0.40 },
-    { type: 'vip',        partySize: [2, 4], coverFee: 25,  tipMult: 1.8, patience: 1.3, weight: 0.20 },
-    { type: 'group',      partySize: [4, 6], coverFee: 10,  tipMult: 1.0, patience: 1.2, weight: 0.20 },
-    { type: 'critic',     partySize: [2, 3], coverFee: 40,  tipMult: 2.0, patience: 1.0, weight: 0.10 },
-    { type: 'celebrity',  partySize: [2, 4], coverFee: 150, tipMult: 3.5, patience: 1.8, weight: 0.05 },
+    { type: 'regular',  partySize: [2, 4], coverFee: 20,  tipMult: 1.0, patience: 1.2, weight: 0.35 },
+    { type: 'vip',      partySize: [2, 4], coverFee: 50,  tipMult: 2.0, patience: 1.5, weight: 0.20 },
+    { type: 'couple',   partySize: [2, 2], coverFee: 35,  tipMult: 1.5, patience: 1.3, weight: 0.15 },
+    { type: 'group',    partySize: [4, 6], coverFee: 10,  tipMult: 1.0, patience: 1.0, weight: 0.15 },
+    { type: 'critic',   partySize: [2, 3], coverFee: 40,  tipMult: 2.0, patience: 1.0, weight: 0.15 },
   ];
   let totalWeight = 0;
   for (const t of fallback) totalWeight += t.weight;
@@ -277,25 +277,14 @@ function _routeFDTableToExit(tableId, seatIdx, corridorTX) {
 
   const route = [];
   const isRightCol = (table.grillTX >= 30);
-  const isLeftSeat = (seatIdx <= 2); // seats 0,1,2 left; 3,4,5 right
 
-  // Seat → correct aisle (left seats go left, right seats go right — never cross grill)
+  // Seat → vertical corridor → walkway (ty:19 to avoid host stand)
   if (isRightCol) {
-    if (isLeftSeat) {
-      route.push(_cWP(31, seat.ty)); // left aisle between table columns
-      route.push(_cWP(31, 19));
-    } else {
-      route.push(_cWP(40, seat.ty)); // right aisle (right of table)
-      route.push(_cWP(40, 19));
-    }
+    route.push(_cWP(31, seat.ty));
+    route.push(_cWP(31, 19));
   } else {
-    if (isLeftSeat) {
-      route.push(_cWP(21, seat.ty)); // left aisle
-      route.push(_cWP(21, 19));
-    } else {
-      route.push(_cWP(30, seat.ty)); // right aisle between table columns
-      route.push(_cWP(30, 19));
-    }
+    route.push(_cWP(20, seat.ty));
+    route.push(_cWP(20, 19));
   }
 
   // Main walkway west to exit door
@@ -886,8 +875,6 @@ const FD_WAITER_AI = {
           if (table) {
             table._exclamationVisible = true;
             table.state = 'waiting_cook';
-            // 25% chance this table requests a grill trick
-            if (typeof _maybeRequestFDTrick === 'function') _maybeRequestFDTrick(party.tableId);
           }
           // Order is always visible now (cooking system generates tickets independently)
         }
@@ -1489,16 +1476,6 @@ function _updateFDWaiter() {
 
 // ===================== MAIN UPDATE =====================
 function updateFineDiningNPCs() {
-  // Skip NPC updates if trick game has frozen restaurant time
-  if (typeof cookingState !== 'undefined' && cookingState._trickFreeze) {
-    // Only update the trick game itself
-    if (typeof updateTrickGame === 'function') updateTrickGame();
-    return;
-  }
-
-  // Update trick timers on tables
-  if (typeof _updateFDTrickTimers === 'function') _updateFDTrickTimers();
-
   // Update waiter first
   _updateFDWaiter();
 
