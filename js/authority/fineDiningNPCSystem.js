@@ -52,11 +52,13 @@ const FD_TABLE_APPROACH = [
 ];
 
 // ===================== TEPPANYAKI TABLES =====================
+// 6 seats per table: indices 0-2 = left side, 3-5 = right side
+// Middle seats (idx 1,4) face toward grill; top/bottom face down/up
 const FD_TABLES = [
-  { id: 0, grillTX: 25, grillTY: 5,  seats: [{ tx: 23, ty: 4, dir: 0 }, { tx: 23, ty: 6, dir: 1 }, { tx: 27, ty: 4, dir: 0 }, { tx: 27, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
-  { id: 1, grillTX: 35, grillTY: 5,  seats: [{ tx: 33, ty: 4, dir: 0 }, { tx: 33, ty: 6, dir: 1 }, { tx: 37, ty: 4, dir: 0 }, { tx: 37, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
-  { id: 2, grillTX: 25, grillTY: 14, seats: [{ tx: 23, ty: 13, dir: 0 }, { tx: 23, ty: 15, dir: 1 }, { tx: 27, ty: 13, dir: 0 }, { tx: 27, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
-  { id: 3, grillTX: 35, grillTY: 14, seats: [{ tx: 33, ty: 13, dir: 0 }, { tx: 33, ty: 15, dir: 1 }, { tx: 37, ty: 13, dir: 0 }, { tx: 37, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 0, grillTX: 25, grillTY: 5,  seats: [{ tx: 23, ty: 4, dir: 0 }, { tx: 23, ty: 5, dir: 3 }, { tx: 23, ty: 6, dir: 1 }, { tx: 27, ty: 4, dir: 0 }, { tx: 27, ty: 5, dir: 2 }, { tx: 27, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 1, grillTX: 35, grillTY: 5,  seats: [{ tx: 33, ty: 4, dir: 0 }, { tx: 33, ty: 5, dir: 3 }, { tx: 33, ty: 6, dir: 1 }, { tx: 37, ty: 4, dir: 0 }, { tx: 37, ty: 5, dir: 2 }, { tx: 37, ty: 6, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 2, grillTX: 25, grillTY: 14, seats: [{ tx: 23, ty: 13, dir: 0 }, { tx: 23, ty: 14, dir: 3 }, { tx: 23, ty: 15, dir: 1 }, { tx: 27, ty: 13, dir: 0 }, { tx: 27, ty: 14, dir: 2 }, { tx: 27, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
+  { id: 3, grillTX: 35, grillTY: 14, seats: [{ tx: 33, ty: 13, dir: 0 }, { tx: 33, ty: 14, dir: 3 }, { tx: 33, ty: 15, dir: 1 }, { tx: 37, ty: 13, dir: 0 }, { tx: 37, ty: 14, dir: 2 }, { tx: 37, ty: 15, dir: 1 }], claimedBy: null, state: 'empty', _exclamationVisible: false },
 ];
 
 // ===================== CONFIG =====================
@@ -141,10 +143,11 @@ function _pickFDCustomerType() {
   }
   // Fallback if FINE_DINING_CUSTOMER_TYPES not yet defined
   const fallback = [
-    { type: 'regular',  partySize: [2, 3], coverFee: 20,  tipMult: 1.0, patience: 1.2, weight: 0.40 },
-    { type: 'vip',      partySize: [2, 2], coverFee: 50,  tipMult: 2.0, patience: 1.5, weight: 0.20 },
-    { type: 'couple',   partySize: [2, 2], coverFee: 35,  tipMult: 1.5, patience: 1.3, weight: 0.20 },
-    { type: 'group',    partySize: [3, 4], coverFee: 15,  tipMult: 1.0, patience: 1.0, weight: 0.20 },
+    { type: 'regular',  partySize: [2, 4], coverFee: 20,  tipMult: 1.0, patience: 1.2, weight: 0.35 },
+    { type: 'vip',      partySize: [2, 4], coverFee: 50,  tipMult: 2.0, patience: 1.5, weight: 0.20 },
+    { type: 'couple',   partySize: [2, 2], coverFee: 35,  tipMult: 1.5, patience: 1.3, weight: 0.15 },
+    { type: 'group',    partySize: [4, 6], coverFee: 10,  tipMult: 1.0, patience: 1.0, weight: 0.15 },
+    { type: 'critic',   partySize: [2, 3], coverFee: 40,  tipMult: 2.0, patience: 1.0, weight: 0.15 },
   ];
   let totalWeight = 0;
   for (const t of fallback) totalWeight += t.weight;
@@ -460,7 +463,7 @@ function spawnFineDiningParty() {
 
   const customerType = _pickFDCustomerType();
   const sizeRange = customerType.partySize || [2, 4];
-  const partySize = Math.max(2, Math.min(4, _cRandRange(sizeRange[0], sizeRange[1])));
+  const partySize = Math.max(2, Math.min(6, _cRandRange(sizeRange[0], sizeRange[1])));
   const tableIdx = _findFreeTable(partySize);
   if (tableIdx < 0) return null; // no free table
 
@@ -517,7 +520,9 @@ function spawnFineDiningParty() {
 function _spawnFDGroupForTable(tableIdx) {
   const table = FD_TABLES[tableIdx];
   if (!table) return null;
-  const partySize = _cRandRange(2, 4); // 2-4 members per party, independent of recipe items
+  // Party size matches tray items (one NPC per dish), fallback to random 2-6
+  const trayCount = table._serveData && table._serveData.allTrayItems ? table._serveData.allTrayItems.length : 0;
+  const partySize = Math.max(2, Math.min(6, trayCount > 0 ? trayCount : _cRandRange(2, 6)));
 
   const partyId = ++_fdPartyId;
   table.claimedBy = partyId;
@@ -710,10 +715,12 @@ function _triggerFDPartyPostMealExit(party) {
 }
 
 // Generate a ticket for this party (called during waiter order_taking)
+// Sets item count hint so the ticket has 1 item per party member (scales with group size)
 function _generateFDTicket(party) {
   if (typeof cookingState === 'undefined' || !cookingState.active) return;
   if (typeof _generateTicket === 'function') {
-    // Use the cooking system's ticket generator
+    // Tell the cooking system how many items this ticket needs (1 per guest)
+    cookingState._fdNextTicketItemCount = party.members.length;
     _generateTicket();
     // Link the ticket to the party's leader
     const leader = _getFDPartyLeader(party);
@@ -1173,7 +1180,7 @@ const FD_NPC_AI = {
     // --- BUILD ROUTE using the correct aisle for this seat ---
     const seat = table.seats[seatIdx];
     const isRightCol = (table.grillTX >= 30); // tables 1,3
-    const isLeftSeat = (seatIdx <= 1);        // seats 0,1 are left side, 2,3 are right side
+    const isLeftSeat = (seatIdx <= 2);        // seats 0,1,2 are left side; 3,4,5 are right side
     const route = [];
 
     // Route NPC via the correct aisle so they NEVER cross the grill or other seats
