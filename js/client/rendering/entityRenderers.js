@@ -5055,23 +5055,31 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
     for (let si = 0; si < totalPlates && si < seats.length; si++) {
       if (consumed.has(si)) continue; // this seat's plate was already taken by the guest
       const seat = seats[si];
-      // Compute food plate position — directly in front of guest (70% from center toward seat)
-      const seatRelX = (seat.tx - e.tx) * TILE + TILE / 2;
-      const seatRelY = (seat.ty - e.ty) * TILE + TILE / 2;
-      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.7;
-      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.7;
-      // White plate
+      // Compute food plate position — aligned to golden cushion center, clamped to grill
+      const seatCX = (seat.tx - e.tx) * TILE + TILE / 2;
+      const seatCY = (seat.ty - e.ty) * TILE + TILE / 2;
+      // Cushion is offset 10px toward grill center (same as table renderer)
+      const gcx = cw / 2, gcy = ch / 2;
+      const sdx = gcx - seatCX, sdy = gcy - seatCY;
+      const sdist = Math.sqrt(sdx * sdx + sdy * sdy) || 1;
+      const cushCX = seatCX + (sdx / sdist) * 10;
+      const cushCY = seatCY + (sdy / sdist) * 10;
+      // Clamp to stay within grill bounds
+      const plateR = 11;
+      const foodX = Math.max(ex + plateR + 2, Math.min(ex + cw - plateR - 2, ex + cushCX));
+      const foodY = Math.max(ey + plateR + 2, Math.min(ey + ch - plateR - 2, ey + cushCY));
+      // White plate (bigger)
       ctx.fillStyle = '#f0f0f0';
-      ctx.beginPath(); ctx.arc(foodX, foodY, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(foodX, foodY, plateR, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#d0d0d0'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(foodX, foodY, 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(foodX, foodY, plateR, 0, Math.PI * 2); ctx.stroke();
       // Colored food on plate
       const serveItems = tableData._serveData && tableData._serveData.allTrayItems;
       const foodIng = serveItems && serveItems[si] && serveItems[si][0];
       const itemColor = foodIng && typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[foodIng]
         ? FINE_DINING_INGREDIENTS[foodIng].color : '#d4a040';
       ctx.fillStyle = itemColor;
-      ctx.beginPath(); ctx.arc(foodX, foodY, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(foodX, foodY, 7, 0, Math.PI * 2); ctx.fill();
       // Shine highlight
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       ctx.beginPath(); ctx.arc(foodX - 1.5, foodY - 2, 2, 0, Math.PI * 2); ctx.fill();

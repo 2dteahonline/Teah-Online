@@ -960,20 +960,21 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
-      // VIP/Celebrity/Critic — overdraw name tag below NPC in gold (replaces the white name)
+      // VIP/Celebrity/Critic — overdraw name tag below NPC with colored text
       if (npc.customerType === 'vip' || npc.customerType === 'celebrity' || npc.customerType === 'critic') {
         const displayName = npc.name || 'Guest';
+        const nameColor = npc.customerType === 'critic' ? '#ff4444' : '#ffd700'; // critics red, others gold
+        const borderColor = npc.customerType === 'critic' ? '#ff4444' : '#ffd700';
         ctx.font = "bold 13px monospace";
         const tw = ctx.measureText(displayName).width + 14;
         const tagX = npc.x - tw / 2;
         const tagY = npc.y + 18;
-        // Redraw name background + gold text (overwrites the white name drawChar placed)
         ctx.fillStyle = 'rgba(0,0,0,0.75)';
         ctx.fillRect(tagX, tagY, tw, 17);
-        ctx.strokeStyle = '#ffd700';
+        ctx.strokeStyle = borderColor;
         ctx.lineWidth = 1;
         ctx.strokeRect(tagX, tagY, tw, 17);
-        ctx.fillStyle = '#ffd700';
+        ctx.fillStyle = nameColor;
         ctx.textAlign = "center";
         ctx.fillText(displayName, npc.x, tagY + 13);
         ctx.textAlign = "left";

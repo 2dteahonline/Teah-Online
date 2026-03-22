@@ -379,7 +379,7 @@ function moveFDNPC(npc) {
     kitchenSafe: { tx: 20, ty: 19 },
     kitchenFallback: [{ tx: 40, ty: 21 }, { tx: 40, ty: 24 }],
     laneMode: 'none',
-    pairSkip: (npc, other) => other.partyId === npc.partyId,
+    pairSkip: (npc, other) => true, // no body blocking between any NPCs — they walk freely
   });
 }
 
@@ -1129,7 +1129,7 @@ const FD_NPC_AI = {
     npc.state = 'walking_to_table';
   },
 
-  // ─── WALKING_TO_TABLE: Walk to pre-assigned seat (no reassignment to prevent overlap) ─────
+  // ─── WALKING_TO_TABLE: Walk to pre-assigned seat using aisle routing (never cross grill or other seats) ─────
   walking_to_table: (npc) => {
     const party = _getFDParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
@@ -1137,28 +1137,43 @@ const FD_NPC_AI = {
     const table = FD_TABLES[party.tableId];
     if (!table) { npc.state = '_despawn'; return; }
 
-    // Use the pre-assigned seat from spawn (set in _spawnFDGroupForTable / _spawnFDGroup)
-    // Do NOT reassign by closest distance — that causes two NPCs to claim the same seat
+    // Use the pre-assigned seat from spawn
     let bestIdx = npc.claimedSeatIdx;
-    if (bestIdx < 0 || bestIdx >= table.seats.length) bestIdx = 0; // safety fallback
+    if (bestIdx < 0 || bestIdx >= table.seats.length) bestIdx = 0;
 
-    // Build route from current position (near host stand) to table seat
-    // Uses ty:21 walkway to go AROUND the host stand (tx:39-42, ty:20)
     const seat = table.seats[bestIdx];
-    const curTX = Math.floor(npc.x / TILE);
-    const curTY = Math.floor(npc.y / TILE);
-    const isRightCol = (table.grillTX >= 30);
+    const isRightCol = (table.grillTX >= 30); // tables 1,3
+    const isLeftSeat = (bestIdx <= 1);        // seats 0,1 are left side, 2,3 are right side
     const route = [];
 
-    // Walk west along ty:21 (below host stand) to the corridor, then north to table
+    // Route NPC via the correct aisle so they NEVER cross the grill or other seats
+    // Left-column tables (0,2): left aisle tx:21, right aisle tx:30
+    // Right-column tables (1,3): left aisle tx:31, right aisle tx:40
     if (isRightCol) {
-      route.push(_cWP(31, 21));
-      route.push(_cWP(31, seat.ty));
+      if (isLeftSeat) {
+        // Left seat on right-column table: go west to tx:31 aisle, north, then east to seat
+        route.push(_cWP(31, 21));
+        route.push(_cWP(31, seat.ty));
+        route.push(_cWP(seat.tx, seat.ty));
+      } else {
+        // Right seat on right-column table: go north at tx:40 (right of table), then west to seat
+        route.push(_cWP(40, 21));
+        route.push(_cWP(40, seat.ty));
+        route.push(_cWP(seat.tx, seat.ty));
+      }
     } else {
-      route.push(_cWP(20, 21));
-      route.push(_cWP(20, seat.ty));
+      if (isLeftSeat) {
+        // Left seat on left-column table: go west to tx:21 aisle, north, then east to seat
+        route.push(_cWP(21, 21));
+        route.push(_cWP(21, seat.ty));
+        route.push(_cWP(seat.tx, seat.ty));
+      } else {
+        // Right seat on left-column table: go west to tx:30 aisle, north, then west to seat
+        route.push(_cWP(30, 21));
+        route.push(_cWP(30, seat.ty));
+        route.push(_cWP(seat.tx, seat.ty));
+      }
     }
-    route.push(_cWP(seat.tx, seat.ty));
 
     _cStartRoute(npc, route, 'seated', 0,
       { kind: 'host_to_table', tableId: party.tableId, seatIdx: bestIdx });
