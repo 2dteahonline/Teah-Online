@@ -654,11 +654,11 @@ function _buildFDExitPlan(npc) {
   const party = _getFDParty(npc.partyId);
   const cx = party ? party.corridorTX : undefined;
 
-  // If seated at a table
+  // If seated at a table (or about to leave from a table seat)
   if (party && npc.claimedSeatIdx >= 0 &&
       (npc.state === 'seated' || npc.state === 'waiting_cook' ||
        npc.state === 'watching_cook' || npc.state === 'eating' ||
-       npc.state === 'post_meal')) {
+       npc.state === 'post_meal' || npc.state === 'wait_to_leave')) {
     return {
       route: _routeFDTableToExit(party.tableId, npc.claimedSeatIdx, cx),
       intent: { kind: 'table_to_exit', tableId: party.tableId, seatIdx: npc.claimedSeatIdx },
