@@ -22,8 +22,8 @@ const FD_NPC_NAMES = ['Guest', 'VIP', 'Patron', 'Connoisseur', 'Foodie', 'Celebr
 const FD_SPOTS = {
   exit: { tx: 40, ty: 24 },
   hostStand: { tx: 41, ty: 19 },   // host NPC stands behind (above) the solid host stand at ty:20
-  passWindow: { tx: 17, ty: 19 },  // waiter picks up 1 tile below counter (no phasing through)
-  waiterHome: { tx: 17, ty: 20 },  // waiter rests here — 1 tile below passWindow for visible walk
+  passWindow: { tx: 17, ty: 19 },  // waiter picks up at bottom-right of counter (1 tile below counter bottom at ty:18)
+  waiterHome: { tx: 18, ty: 19 },  // waiter rests here — 1 tile right of passWindow for visible walk
   hostQueue: { tx: 40, ty: 21 },   // NPC queue spot — 1 tile below host stand
 };
 
@@ -1070,12 +1070,20 @@ const FD_NPC_AI = {
     // Payment complete — trigger waiter to escort the party to the table
     party.state = 'seating';
 
-    // Trigger waiter greeting (which leads to escorting → order_taking)
-    if (_fdWaiter && _fdWaiter.state === 'idle') {
-      _fdWaiter._currentPartyId = party.id;
-      _fdWaiter.state = 'greeting';
-      _fdWaiter.stateTimer = FD_NPC_CONFIG.waiterGreetDuration;
+    // Check if food is already served at this table (counter-serve flow)
+    // If so, skip waiter escort — NPCs walk directly to seats, no order needed
+    const assignedTable = FD_TABLES[party.tableId];
+    const foodAlreadyServed = assignedTable && assignedTable._foodServed;
+
+    if (!foodAlreadyServed) {
+      // Normal flow: trigger waiter greeting (which leads to escorting → order_taking)
+      if (_fdWaiter && _fdWaiter.state === 'idle') {
+        _fdWaiter._currentPartyId = party.id;
+        _fdWaiter.state = 'greeting';
+        _fdWaiter.stateTimer = FD_NPC_CONFIG.waiterGreetDuration;
+      }
     }
+    // If food already served, waiter stays idle — no escort or order_taking needed
 
     // Stagger NPCs walking to table with 2-sec intervals
     for (let i = 0; i < members.length; i++) {

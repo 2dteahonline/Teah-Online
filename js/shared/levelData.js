@@ -1148,14 +1148,14 @@ const LEVELS = {
       { type: 'fd_host_npc', tx: 41, ty: 19, w: 1, h: 1, solid: false },
 
       // === WAITER (2 tiles below right corner of service counter at tx:17, ty:18) ===
-      { type: 'fd_waiter_spot', tx: 17, ty: 20, w: 1, h: 1, solid: false },
+      { type: 'fd_waiter_spot', tx: 18, ty: 19, w: 1, h: 1, solid: false },
 
       // === ENTER / EXIT DOORS ===
       { type: 'fd_enter_door', tx: 40, ty: 24, w: 3, h: 1, solid: false },   // bottom, vertically from host
       { type: 'fd_exit_door', tx: 20, ty: 24, w: 3, h: 1, solid: false, target: 'lobby_01', spawnTX: 6, spawnTY: 45 },     // opposite end — also a portal
 
       // === DECORATIVE ===
-      { type: 'fd_serve_counter', tx: 1, ty: 17, w: 17, h: 2, solid: true },
+      { type: 'fd_serve_counter', tx: 1, ty: 16, w: 17, h: 3, solid: true },
     ]
   },
   // ---- TEST ARENA (dev only) ----
