@@ -215,7 +215,7 @@ function _generateTicket() {
   // Flat 30-second service timer for all orders
   const timerType = { id: 'standard', duration: 1800 };
 
-  // Build ticket (multi-item for diner, single for deli/fine_dining)
+  // Build ticket (multi-item for diner and fine dining, single for deli)
   let ticketItems = [{ recipe: recipe, qty: 1 }];
   if (cookingState.activeRestaurantId === 'diner') {
     const itemCount = _ticketRandRange(2, 4);
@@ -224,7 +224,15 @@ function _generateTicket() {
       ticketItems.push({ recipe: _pickActiveRecipe(), qty: 1 });
     }
   }
-  // Fine dining: single item per ticket (like deli), trick data comes from recipe
+  // Fine dining: multi-item ticket scaled to party size (1 item per guest)
+  if (cookingState.activeRestaurantId === 'fine_dining') {
+    const itemCount = cookingState._fdNextTicketItemCount || _ticketRandRange(2, 6);
+    ticketItems = [];
+    for (let i = 0; i < itemCount; i++) {
+      ticketItems.push({ recipe: _pickActiveRecipe(), qty: 1 });
+    }
+    delete cookingState._fdNextTicketItemCount;
+  }
 
   // Compute per-ingredient pay for deli
   if (cookingState.activeRestaurantId === 'street_deli' && typeof _calcDeliPay === 'function') {
