@@ -1129,7 +1129,7 @@ const FD_NPC_AI = {
     npc.state = 'walking_to_table';
   },
 
-  // ─── WALKING_TO_TABLE: Walk to pre-assigned seat using aisle routing (never cross grill or other seats) ─────
+  // ─── WALKING_TO_TABLE: Validate seat BEFORE routing, then walk via correct aisle ─────
   walking_to_table: (npc) => {
     const party = _getFDParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
@@ -1137,38 +1137,62 @@ const FD_NPC_AI = {
     const table = FD_TABLES[party.tableId];
     if (!table) { npc.state = '_despawn'; return; }
 
-    // Use the pre-assigned seat from spawn
-    let bestIdx = npc.claimedSeatIdx;
-    if (bestIdx < 0 || bestIdx >= table.seats.length) bestIdx = 0;
+    // --- SEAT VALIDATION: ensure this NPC's seat is actually available ---
+    // Build set of seats occupied by other party members (any active state at the table)
+    const members = _getFDPartyMembers(party);
+    const occupiedSeats = new Set();
+    for (const m of members) {
+      if (m.id !== npc.id && m.claimedSeatIdx >= 0 &&
+          (m.state === 'seated' || m.state === 'eating' || m.state === 'waiting_cook' ||
+           m.state === 'watching_cook' || m.state === 'post_meal' || m.state === 'walking_to_table' || m.state === 'wait_to_walk')) {
+        occupiedSeats.add(m.claimedSeatIdx);
+      }
+    }
+    const consumed = table._platesConsumed || new Set();
 
-    const seat = table.seats[bestIdx];
+    let seatIdx = npc.claimedSeatIdx;
+    if (seatIdx < 0 || seatIdx >= table.seats.length) seatIdx = 0;
+
+    // If our seat is occupied OR its plate is already consumed, find the best available seat
+    if (occupiedSeats.has(seatIdx) || (table._foodServed && consumed.has(seatIdx))) {
+      let found = false;
+      for (let si = 0; si < table.seats.length; si++) {
+        if (!occupiedSeats.has(si) && !(table._foodServed && consumed.has(si))) {
+          seatIdx = si;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        npc.state = '_despawn'; // no seat available
+        return;
+      }
+    }
+    npc.claimedSeatIdx = seatIdx;
+
+    // --- BUILD ROUTE using the correct aisle for this seat ---
+    const seat = table.seats[seatIdx];
     const isRightCol = (table.grillTX >= 30); // tables 1,3
-    const isLeftSeat = (bestIdx <= 1);        // seats 0,1 are left side, 2,3 are right side
+    const isLeftSeat = (seatIdx <= 1);        // seats 0,1 are left side, 2,3 are right side
     const route = [];
 
     // Route NPC via the correct aisle so they NEVER cross the grill or other seats
-    // Left-column tables (0,2): left aisle tx:21, right aisle tx:30
-    // Right-column tables (1,3): left aisle tx:31, right aisle tx:40
     if (isRightCol) {
       if (isLeftSeat) {
-        // Left seat on right-column table: go west to tx:31 aisle, north, then east to seat
         route.push(_cWP(31, 21));
         route.push(_cWP(31, seat.ty));
         route.push(_cWP(seat.tx, seat.ty));
       } else {
-        // Right seat on right-column table: go north at tx:40 (right of table), then west to seat
         route.push(_cWP(40, 21));
         route.push(_cWP(40, seat.ty));
         route.push(_cWP(seat.tx, seat.ty));
       }
     } else {
       if (isLeftSeat) {
-        // Left seat on left-column table: go west to tx:21 aisle, north, then east to seat
         route.push(_cWP(21, 21));
         route.push(_cWP(21, seat.ty));
         route.push(_cWP(seat.tx, seat.ty));
       } else {
-        // Right seat on left-column table: go west to tx:30 aisle, north, then west to seat
         route.push(_cWP(30, 21));
         route.push(_cWP(30, seat.ty));
         route.push(_cWP(seat.tx, seat.ty));
@@ -1176,7 +1200,7 @@ const FD_NPC_AI = {
     }
 
     _cStartRoute(npc, route, 'seated', 0,
-      { kind: 'host_to_table', tableId: party.tableId, seatIdx: bestIdx });
+      { kind: 'host_to_table', tableId: party.tableId, seatIdx: seatIdx });
   },
 
   // ─── SEATED: Just arrived at seat ──────
