@@ -960,30 +960,23 @@ function draw() {
       drawChar(npc.x, npc.y, npc.dir, Math.floor(npc.frame), npc.moving,
         npc.skin, npc.hair, npc.shirt, npc.pants,
         npc.name, -1, false, 'deliNPC', 100, 0, 0.9, 0);
-      // Gold name override for Critic/Celebrity names
-      if (npc.name === 'Critic' || npc.name === 'Celebrity') {
-        const ny = npc.y - 55 * 0.9;
-        ctx.font = "bold 13px monospace"; ctx.textAlign = "center";
-        ctx.fillStyle = '#000'; ctx.fillText(npc.name, npc.x + 1, ny + 1);
-        ctx.fillStyle = '#ffd700'; ctx.fillText(npc.name, npc.x, ny);
-        ctx.textAlign = "left";
-      }
-      // VIP/Celebrity/Critic name tag — all gold
+      // VIP/Celebrity/Critic — overdraw name tag below NPC in gold (replaces the white name)
       if (npc.customerType === 'vip' || npc.customerType === 'celebrity' || npc.customerType === 'critic') {
-        const tagLabel = npc.customerType === 'celebrity' ? 'CELEBRITY' : npc.customerType === 'critic' ? 'CRITIC' : 'VIP';
-        ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-        ctx.fillStyle = '#ffd700'; // gold for all special types
-        ctx.fillText(tagLabel, npc.x, npc.y - 52);
-        // Sparkle effect
-        const t = Date.now() / 300;
-        for (let si = 0; si < 3; si++) {
-          const sa = t + si * 2.1;
-          const sx = npc.x + Math.cos(sa) * 16;
-          const sy = npc.y - 30 + Math.sin(sa * 1.3) * 12;
-          const sp = (Math.sin(sa * 2) * 0.5 + 0.5);
-          ctx.fillStyle = `rgba(255,215,0,${sp * 0.6})`;
-          ctx.fillRect(sx - 1, sy - 1, 3, 3);
-        }
+        const tagLabel = npc.customerType === 'celebrity' ? 'Celebrity' : npc.customerType === 'critic' ? 'Critic' : 'VIP';
+        const displayName = tagLabel;
+        ctx.font = "bold 13px monospace";
+        const tw = ctx.measureText(displayName).width + 14;
+        const tagX = npc.x - tw / 2;
+        const tagY = npc.y + 18;
+        // Redraw name background + gold text (overwrites the white name drawChar placed)
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.fillRect(tagX, tagY, tw, 17);
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tagX, tagY, tw, 17);
+        ctx.fillStyle = '#ffd700';
+        ctx.textAlign = "center";
+        ctx.fillText(displayName, npc.x, tagY + 13);
         ctx.textAlign = "left";
       }
       // Food indicator — upscale plate

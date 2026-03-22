@@ -4853,9 +4853,19 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
   ctx.fillStyle = '#4a3a30';
   ctx.fillRect(ex + 2, ey + 2, cw - 4, 4);
-  // Tray surface area — positioned at very bottom of counter (closest to waiter below)
+  // Gold serve surface — spans full counter height (above the Serve label)
+  const goldSurfaceY = ey + 6;
+  const goldSurfaceH = ch - 22; // leave room for Serve label at bottom
+  ctx.fillStyle = '#c0a000';
+  ctx.beginPath(); ctx.roundRect(ex + 6, goldSurfaceY, cw - 12, goldSurfaceH, 4); ctx.fill();
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath(); ctx.roundRect(ex + 8, goldSurfaceY + 2, cw - 16, goldSurfaceH - 4, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(ex + 10, goldSurfaceY + 2, cw - 20, 4);
+
+  // Tray surface area — positioned at bottom of gold surface (closest to waiter below)
   const trayW = 28, trayH = 24;
-  const trayY = ey + ch - trayH - 18; // bottom end of counter, just above the "Serve" label
+  const trayY = goldSurfaceY + goldSurfaceH - trayH - 4; // bottom of gold surface
 
   // --- In-progress tray (left side): shows items filling up during multi-item orders ---
   const hasInProgress = typeof cookingState !== 'undefined' && cookingState.active &&
@@ -4934,16 +4944,6 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
         ctx.textAlign = "left";
       }
     }
-  } else if (!hasInProgress) {
-    // No orders and no in-progress — show empty gold surface
-    const blockW = Math.min(cw - 16, 60), blockH = Math.min(ch * 0.3, 24);
-    const blockX = ex + (cw - blockW) / 2, blockY = trayY;
-    ctx.fillStyle = '#c0a000';
-    ctx.beginPath(); ctx.roundRect(blockX, blockY, blockW, blockH, 4); ctx.fill();
-    ctx.fillStyle = '#ffd700';
-    ctx.beginPath(); ctx.roundRect(blockX + 2, blockY + 2, blockW - 4, blockH - 4, 3); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(blockX + 4, blockY + 2, blockW - 8, 4);
   }
   // Label
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
