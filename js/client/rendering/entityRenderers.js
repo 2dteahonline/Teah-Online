@@ -4640,84 +4640,10 @@ function _drawDinerTrayOverlay(camX, camY) {
 }
 
 // ===================== FINE DINING TRAY OVERLAY =====================
-// Gold trays on the pickup counter (tx:12-18, ty:12). Like diner but gold.
+// Removed — trays now render ONLY inside the fd_serve_counter entity renderer
+// (no more duplicate gold ovals floating in the kitchen area)
 function _drawFDTrayOverlay(camX, camY) {
-  const TRAY_TX = 18; // right end of pickup counter (tx:12, w:7 → tx:18)
-  const TRAY_TY = 12; // on the counter row
-  let traySlot = 0;
-
-  function _drawFDTray(slot, items, tableNum, isComplete, progressText) {
-    const trayX = (TRAY_TX - slot) * TILE + TILE / 2 - camX;
-    const trayY = TRAY_TY * TILE + TILE / 2 - camY;
-    const itemCount = items ? items.length : 0;
-    const maxR = TILE / 2 - 4;
-    const trayW = Math.min(maxR, 12 + itemCount * 4);
-    const trayH = Math.min(maxR * 0.45, 6 + itemCount * 2);
-    // Gold tray base
-    ctx.fillStyle = '#c0a000';
-    ctx.beginPath(); ctx.ellipse(trayX, trayY + 2, trayW + 2, trayH + 2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ffd700';
-    ctx.beginPath(); ctx.ellipse(trayX, trayY, trayW, trayH, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ffe860';
-    ctx.beginPath(); ctx.ellipse(trayX, trayY - 1, trayW * 0.8, trayH * 0.6, 0, 0, Math.PI * 2); ctx.fill();
-    // Food items on tray
-    if (items) {
-      for (let fi = 0; fi < Math.min(itemCount, 4); fi++) {
-        const spread = Math.min(itemCount, 4);
-        const fx = trayX - (spread - 1) * 5 + fi * 10;
-        const itemIngs = items[fi];
-        const itemColor = itemIngs && itemIngs[0] && typeof FINE_DINING_INGREDIENTS !== 'undefined' && FINE_DINING_INGREDIENTS[itemIngs[0]]
-          ? FINE_DINING_INGREDIENTS[itemIngs[0]].color : '#d4a040';
-        ctx.fillStyle = itemColor;
-        ctx.beginPath(); ctx.arc(fx, trayY - 2, 4, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.beginPath(); ctx.arc(fx - 1, trayY - 4, 2, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-    // Top label: check mark or progress
-    ctx.textAlign = "center";
-    if (isComplete) {
-      ctx.font = "bold 12px monospace"; ctx.fillStyle = '#40ff40';
-      ctx.fillText("\u2713", trayX, trayY - trayH - 4);
-    } else if (progressText) {
-      ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffffff';
-      ctx.fillText(progressText, trayX, trayY - trayH - 4);
-    }
-    // Table number circle underneath
-    if (tableNum > 0) {
-      const circY = trayY + trayH + 10;
-      ctx.fillStyle = '#1a1a2a';
-      ctx.beginPath(); ctx.arc(trayX, circY, 8, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(trayX, circY, 8, 0, Math.PI * 2); ctx.stroke();
-      ctx.font = "bold 8px monospace"; ctx.fillStyle = '#ffd700';
-      ctx.fillText(String(tableNum), trayX, circY + 3);
-    }
-    ctx.textAlign = "left";
-  }
-
-  // In-progress tray (current multi-part order)
-  if (typeof cookingState !== 'undefined' && cookingState.ticket && cookingState.ticket.items) {
-    const completed = cookingState.ticket.completedCount || 0;
-    const total = cookingState.ticket.items.length;
-    if (completed > 0) {
-      const tableNum = cookingState.currentOrder && cookingState.currentOrder._fdTableId !== undefined
-        ? cookingState.currentOrder._fdTableId + 1 : 0;
-      const trayItems = cookingState._fdTrayItems || [];
-      _drawFDTray(traySlot, trayItems, tableNum, false, completed + "/" + total);
-      traySlot++;
-    }
-  }
-
-  // Completed trays waiting for waiter pickup
-  if (typeof _fdPendingServe !== 'undefined' && _fdPendingServe.length > 0) {
-    for (let pi = 0; pi < Math.min(_fdPendingServe.length, 4); pi++) {
-      const serve = _fdPendingServe[pi];
-      const tableNum = serve.tableId !== undefined ? serve.tableId + 1 : 0;
-      _drawFDTray(traySlot, serve.allTrayItems || [], tableNum, true, null);
-      traySlot++;
-    }
-  }
+  // No-op: all tray visuals are handled by the fd_serve_counter renderer
 }
 
 // ===================== FINE DINING ENTITY RENDERERS =====================
@@ -4927,9 +4853,9 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   ctx.fillRect(ex + 2, ey + 2, cw - 4, ch - 4);
   ctx.fillStyle = '#4a3a30';
   ctx.fillRect(ex + 2, ey + 2, cw - 4, 4);
-  // Tray surface area
+  // Tray surface area — positioned at very bottom of counter (closest to waiter below)
   const trayW = 28, trayH = 24;
-  const trayY = ey + ch - trayH - 10; // bottom end of counter (near waiter)
+  const trayY = ey + ch - trayH - 18; // bottom end of counter, just above the "Serve" label
 
   // --- In-progress tray (left side): shows items filling up during multi-item orders ---
   const hasInProgress = typeof cookingState !== 'undefined' && cookingState.active &&
@@ -5120,11 +5046,11 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
     const seats = tableData.seats;
     for (let si = 0; si < plateCount && si < seats.length; si++) {
       const seat = seats[si];
-      // Compute food plate position — in front of golden cushions (85% from center toward seat)
+      // Compute food plate position — 1 tile in front of golden cushions (on grill edge, not on cushion)
       const seatRelX = (seat.tx - e.tx) * TILE + TILE / 2;
       const seatRelY = (seat.ty - e.ty) * TILE + TILE / 2;
-      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.85;
-      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.85;
+      const foodX = ex + cw / 2 + (seatRelX - cw / 2) * 0.5;
+      const foodY = ey + ch / 2 + (seatRelY - ch / 2) * 0.5;
       // White plate
       ctx.fillStyle = '#f0f0f0';
       ctx.beginPath(); ctx.arc(foodX, foodY, 8, 0, Math.PI * 2); ctx.fill();
