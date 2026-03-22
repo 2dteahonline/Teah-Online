@@ -4867,14 +4867,14 @@ ENTITY_RENDERERS.fd_serve_counter = (e, ctx, ex, ey, w, h) => {
   const trayW = 28, trayH = 24;
   const trayY = goldSurfaceY + goldSurfaceH - trayH - 4; // bottom of gold surface
 
-  // --- In-progress tray (right side, same spot as completed): no teleporting on completion ---
+  // --- In-progress tray (left side): shows items filling up during multi-item orders ---
   const hasInProgress = typeof cookingState !== 'undefined' && cookingState.active &&
     cookingState.activeRestaurantId === 'fine_dining' &&
     cookingState._fdTrayItems && cookingState._fdTrayItems.length > 0 &&
     cookingState.ticket;
 
   if (hasInProgress) {
-    const ipX = ex + cw - trayW - 4; // right-aligned (same position as completed trays)
+    const ipX = ex + 8;
     // Semi-transparent in-progress tray
     ctx.globalAlpha = 0.7;
     ctx.fillStyle = '#a08800';
@@ -5084,23 +5084,6 @@ const _fdGrillRenderer = (e, ctx, ex, ey, w, h) => {
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       ctx.beginPath(); ctx.arc(foodX - 1.5, foodY - 2, 2, 0, Math.PI * 2); ctx.fill();
     }
-  }
-  // Trick request: gold "!" and countdown timer above grill
-  if (tableData && tableData._trickRequested && tableData._trickTimer > 0) {
-    const centerX = ex + cw / 2;
-    const aboveY = ey - 12;
-    // Pulsing gold exclamation
-    const pulse = 0.8 + Math.sin(t * 6) * 0.2;
-    ctx.font = 'bold 20px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = `rgba(255,215,0,${pulse})`;
-    ctx.fillText('!', centerX, aboveY);
-    // Timer countdown
-    const secsLeft = Math.ceil(tableData._trickTimer / 60);
-    ctx.font = 'bold 10px monospace';
-    ctx.fillStyle = secsLeft <= 10 ? '#ff4040' : '#ffd700';
-    ctx.fillText(secsLeft + 's', centerX, aboveY + 14);
-    ctx.textAlign = 'left';
   }
 };
 ENTITY_RENDERERS.fd_teppanyaki_grill_0 = _fdGrillRenderer;

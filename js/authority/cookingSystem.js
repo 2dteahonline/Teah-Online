@@ -380,11 +380,6 @@ function updateCooking() {
   // === Spatula melee hit detection — swing near a station/ingredient to interact ===
   if (melee.swinging && melee.special === 'spatula' && !cookingState._swingHandled) {
     cookingState._swingHandled = true;
-    // Trick game intercept — if trick mini-game is active, swing = bar hit
-    if (typeof trickGameState !== 'undefined' && trickGameState.active && trickGameState.phase === 'playing') {
-      if (typeof trickGameHit === 'function') trickGameHit();
-      return;
-    }
     // Grill mode intercept — if grill is active, swing = trick hit attempt
     if (typeof grillState !== 'undefined' && grillState.active && grillState.phase === 'active') {
       if (typeof _checkTrickHit === 'function') _checkTrickHit();
@@ -518,15 +513,6 @@ function handleStationInteract(entityType) {
       }
     }
     return;
-  }
-
-  // Teppanyaki grill — check for trick request first
-  if (entityType.startsWith('fd_teppanyaki_grill_')) {
-    const _trickTableId = parseInt(entityType.split('_').pop());
-    if (typeof canStartTrickAtTable === 'function' && canStartTrickAtTable(_trickTableId)) {
-      if (typeof startTrickGame === 'function') startTrickGame(_trickTableId);
-      return;
-    }
   }
 
   // Teppanyaki grill — start grill sequence when assembly is complete
@@ -874,12 +860,6 @@ function drawCookingHUD() {
   const order = cookingState.currentOrder;
 
   // Combo counter removed — not needed on HUD
-
-  // === Trick game HUD override ===
-  if (typeof trickGameState !== 'undefined' && trickGameState.active && typeof drawTrickGameHUD === 'function') {
-    drawTrickGameHUD();
-    return; // trick game takes over entire HUD
-  }
 
   // === Grill HUD override ===
   if (typeof grillState !== 'undefined' && grillState.active && typeof drawGrillHUD === 'function') {
