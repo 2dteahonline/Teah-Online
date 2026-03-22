@@ -1182,12 +1182,43 @@ const FD_NPC_AI = {
   // ─── SEATED: Just arrived at seat ──────
   // If food is already on grill (waiter served before NPC arrived),
   // consume a plate from grill and start eating immediately.
+  // Safety: verify no other NPC already occupies this seat; if so, find an open one.
   seated: (npc) => {
     npc.moving = false;
     const party = _getFDParty(npc.partyId);
     if (!party) { npc.state = '_despawn'; return; }
 
     const table = FD_TABLES[party.tableId];
+
+    // Safety: check if another NPC from the same party is already sitting/eating at this seat
+    const members = _getFDPartyMembers(party);
+    const occupiedSeats = new Set();
+    for (const m of members) {
+      if (m.id !== npc.id && m.claimedSeatIdx >= 0 &&
+          (m.state === 'seated' || m.state === 'eating' || m.state === 'waiting_cook' ||
+           m.state === 'watching_cook' || m.state === 'post_meal')) {
+        occupiedSeats.add(m.claimedSeatIdx);
+      }
+    }
+
+    // If our seat is already occupied, find the first available seat with a plate
+    if (occupiedSeats.has(npc.claimedSeatIdx)) {
+      const consumed = table._platesConsumed || new Set();
+      let found = false;
+      for (let si = 0; si < table.seats.length; si++) {
+        if (!occupiedSeats.has(si) && !consumed.has(si)) {
+          npc.claimedSeatIdx = si;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // No available seat — despawn to avoid overlap
+        npc.state = '_despawn';
+        return;
+      }
+    }
+
     const seat = table.seats[npc.claimedSeatIdx];
     if (seat) {
       npc.dir = seat.dir;
@@ -1195,19 +1226,21 @@ const FD_NPC_AI = {
       npc.y = seat.ty * TILE + TILE / 2;
     }
 
-    // If food is already served on the grill, consume the plate at THIS NPC's seat only
+    // If food is already served, only take the plate at THIS NPC's specific seat
     if (table && table._foodServed && table._platesRemaining > 0) {
       if (!table._platesConsumed) table._platesConsumed = new Set();
-      table._platesConsumed.add(npc.claimedSeatIdx); // mark this seat's plate as taken
-      table._platesRemaining--;
-      npc.hasFood = true; // plate shown on NPC
-      npc.state = 'eating';
-      npc.stateTimer = _cRandRange(FD_NPC_CONFIG.eatDuration[0], FD_NPC_CONFIG.eatDuration[1]);
-      return;
+      // Only take plate if this seat's plate hasn't been consumed yet
+      if (!table._platesConsumed.has(npc.claimedSeatIdx)) {
+        table._platesConsumed.add(npc.claimedSeatIdx);
+        table._platesRemaining--;
+        npc.hasFood = true;
+        npc.state = 'eating';
+        npc.stateTimer = _cRandRange(FD_NPC_CONFIG.eatDuration[0], FD_NPC_CONFIG.eatDuration[1]);
+        return;
+      }
     }
 
     // Otherwise wait for waiter to transition them to waiting_cook via order_taking
-    // (waiter AI handles the state change)
   },
 
   // ─── WAITING_COOK: Order active, waiting for player to cook ──
