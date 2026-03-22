@@ -323,19 +323,21 @@ function _routeFDToExit(fromTX, fromTY, corridorTX) {
   // In dining area — get to walkway (ty:19 to avoid host stand)
   if (fromTY < 19) {
     // Above walkway: go to nearest vertical corridor that avoids crossing grills
-    if (fromTX >= 38) {
-      // Right of right-column tables: use tx:40 aisle
+    // Right-side seats at tx:37 must go RIGHT to tx:40, never LEFT through grill to tx:31
+    if (fromTX >= 37) {
+      // Right side of right-column table or right of it: use tx:40 aisle
       route.push(_cWP(40, fromTY));
       route.push(_cWP(40, 19));
     } else if (fromTX >= 30) {
-      // Between or left of right-column table: use tx:31 gap
+      // Left side of right-column table or between columns: use tx:31 gap
       route.push(_cWP(31, fromTY));
       route.push(_cWP(31, 19));
-    } else if (fromTX >= 28) {
-      // Right side of left-column table: use tx:30 aisle
+    } else if (fromTX >= 27) {
+      // Right side of left-column table: use tx:30 aisle (not through grill)
       route.push(_cWP(30, fromTY));
       route.push(_cWP(30, 19));
     } else if (fromTX >= 20) {
+      // Left side of left-column table or left corridor
       route.push(_cWP(21, fromTY));
       route.push(_cWP(21, 19));
     } else {
