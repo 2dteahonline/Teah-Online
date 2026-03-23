@@ -1633,6 +1633,8 @@ function drawHotbar() {
 
     // Check if this slot has a quickslot override (skip default visuals if so)
     const hasQS = i < 4 && quickSlots[i];
+    const _qsGunOverride = hasQS && quickSlots[i].equipType === 'gun';
+    const _qsMeleeOverride = hasQS && quickSlots[i].equipType === 'melee';
 
     // Tier color bar at top of slot
     if ((!hasQS && slot.type === "gun" || _qsGunOverride) && playerEquip.gun) {
@@ -1658,8 +1660,6 @@ function drawHotbar() {
     // === SLOT ICONS ===
     // For gun/melee quickslots, draw the actual weapon art using the quickslot's item id.
     // For non-weapon quickslots (hoe/seed/potion/bucket), show type label.
-    const _qsGunOverride = hasQS && quickSlots[i].equipType === 'gun';
-    const _qsMeleeOverride = hasQS && quickSlots[i].equipType === 'melee';
     if (hasQS && !_qsGunOverride && !_qsMeleeOverride) {
       // Non-weapon quickslot: draw type label
       const qs = quickSlots[i];
