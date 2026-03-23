@@ -586,7 +586,7 @@ function drawCustomizeScreen() {
   ctx.save();
   ctx.translate(prevX, prevY);
   ctx.scale(7, 7);
-  drawGenericChar(0, 0, 0, 0, false, player.skin, player.hair, player.shirt, player.pants, null, null, "preview");
+  drawChoso(20, 68, 0, 0, false, null, null);
   ctx.restore();
 
   ctx.font = "bold 18px 'Segoe UI', sans-serif";
@@ -902,11 +902,11 @@ function drawProfilePanel() {
   ctx.fillStyle = "rgba(40,100,70,0.2)";
   ctx.fillRect(px + 2, py + 2, pw - 4, 44);
 
-  // Player icon + name in title
+  // Player icon + name in title (uses drawChoso for full cosmetics)
   ctx.save();
   ctx.translate(px + 34, py + 24);
   ctx.scale(0.55, 0.55);
-  drawGenericChar(0, 0, 0, 0, false, player.skin, player.hair, player.shirt, player.pants, null, null, "preview");
+  drawChoso(20, 68, 0, 0, false, null, null);
   ctx.restore();
   ctx.font = "bold 20px monospace";
   ctx.fillStyle = PALETTE.accent;

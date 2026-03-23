@@ -185,13 +185,14 @@ function drawIdentityPanel() {
   }
 
   // === Character preview (shifted further right and lower) ===
+  // Uses drawChoso for full cosmetics (head, hat, shoes, equipment, etc.)
   const charCenterX = px + leftW / 2 + 140;
   const charY = py + 360;
   ctx.save();
   ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.clip();
   ctx.translate(charCenterX, charY);
   ctx.scale(3, 3);
-  drawGenericChar(0, 0, 0, 0, false, player.skin, player.hair, player.shirt, player.pants, null, null, "preview");
+  drawChoso(20, 68, 0, 0, false, null, null);
   ctx.restore();
 
   // === INVENTORY (3 slots, pushed down more) ===
