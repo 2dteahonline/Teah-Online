@@ -306,6 +306,10 @@ function draw() {
   }
   sortedChars.sort((a, b) => a.y - b.y);
 
+  // Farm tiles (ground layer — under characters)
+  if (typeof drawFarmTiles === 'function') drawFarmTiles();
+  if (typeof drawFarmCountdownBubble === 'function') drawFarmCountdownBubble();
+
   // Ore nodes (under characters)
   if (typeof drawOreNodes === 'function') drawOreNodes();
   if (typeof drawOrePickups === 'function') drawOrePickups();
@@ -1757,10 +1761,6 @@ function draw() {
 
   // Katana swing effect (in world space)
   drawKatanaSwing(cx, cy);
-
-  // Farm tiles (world space — tilled soil, crops, countdown bubble)
-  if (typeof drawFarmTiles === 'function') drawFarmTiles();
-  if (typeof drawFarmCountdownBubble === 'function') drawFarmCountdownBubble();
 
   // Fishing world effects (line, bobber, fish) — in world space
   if (typeof drawFishingWorldEffects === 'function') drawFishingWorldEffects();

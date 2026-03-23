@@ -1629,7 +1629,7 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     if (activeSlot < 0) return; // empty hands — no weapon
     if (activeSlot === 1) {
       // Farm scene: draw hoe instead of katana
-      const _isFarmHoe = typeof Scene !== 'undefined' && Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe;
+      const _isFarmHoe = typeof Scene !== 'undefined' && Scene.inFarm && typeof farmingState !== 'undefined' && !!farmingState.equippedHoe;
       // Katana/hoe slash animation — rotate blade during swing
       if (melee.swinging) {
         const progress = 1 - (melee.swingTimer / melee.swingDuration);
