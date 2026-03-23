@@ -67,6 +67,15 @@ const ITEM_STAT_RENDERERS = {
     if (d.statusReduce) drawStat("Status Resist", Math.round(d.statusReduce * 100) + "%", "#cccc44");
     if (d.absorb) drawStat("Absorb", Math.round(d.absorb * 100) + "% → Heal", "#ff88ff");
   },
+  resource: (d, drawStat) => {
+    if (d.cropId) {
+      const _crop = typeof CROP_TYPES !== 'undefined' ? CROP_TYPES[d.cropId] : null;
+      if (_crop) {
+        drawStat("Grow Time", (_crop.growthFrames / 60).toFixed(0) + "s", "#80c060");
+        drawStat("Sell Price", _crop.sellPrice + "g", "#ffd700");
+      }
+    }
+  },
 };
 
 // Get tier color/name from PALETTE
