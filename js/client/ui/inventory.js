@@ -1862,6 +1862,46 @@ function drawHotbar() {
         // Handle
         ctx.strokeStyle = "#5a4a30"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(sx + 18, sy + 46); ctx.lineTo(sx + 24, sy + 40); ctx.stroke();
+      } else if (mId.includes('_rod') || mId === 'bronze_rod') {
+        // Fishing rod — long flexible pole with reel and line
+        const _rodColors = { bronze_rod: '#8a6a3a', iron_rod: '#8a8a8a', gold_rod: '#ffd700', mythic_rod: '#d4a030' };
+        const _rc = _rodColors[mId] || '#8a6a3a';
+        // Rod pole (curved)
+        ctx.strokeStyle = _rc; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(sx + 18, sy + 52); ctx.quadraticCurveTo(sx + 28, sy + 30, sx + 48, sy + 10); ctx.stroke();
+        // Rod tip highlight
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx + 44, sy + 14); ctx.lineTo(sx + 48, sy + 10); ctx.stroke();
+        // Reel (small circle on handle)
+        ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(sx + 22, sy + 46, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#777'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(sx + 22, sy + 46, 4, 0, Math.PI * 2); ctx.stroke();
+        // Fishing line (thin, from tip downward)
+        ctx.strokeStyle = 'rgba(200,200,255,0.6)'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(sx + 48, sy + 10); ctx.lineTo(sx + 50, sy + 24); ctx.stroke();
+        // Hook
+        ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(sx + 50, sy + 26, 2, 0, Math.PI); ctx.stroke();
+        // Handle grip
+        ctx.fillStyle = '#3a2a18'; ctx.fillRect(sx + 14, sy + 50, 10, 5);
+      } else if (mId.includes('pickaxe')) {
+        // Pickaxe — handle with pointed head
+        const _pickColors = { pickaxe: '#8a6a3a', copper_pickaxe: '#b87333', iron_pickaxe: '#8a8a8a', gold_pickaxe: '#ffd700', amethyst_pickaxe: '#9966cc', ruby_pickaxe: '#e0115f', diamond_pickaxe: '#b9f2ff', emerald_pickaxe: '#50c878' };
+        const _pc = _pickColors[mId] || '#8a6a3a';
+        // Handle (diagonal)
+        ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx + 20, sy + 52); ctx.lineTo(sx + 40, sy + 22); ctx.stroke();
+        // Pickaxe head (two pointed ends)
+        ctx.strokeStyle = _pc; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx + 28, sy + 18); ctx.lineTo(sx + 40, sy + 22); ctx.lineTo(sx + 52, sy + 14); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx + 28, sy + 26); ctx.lineTo(sx + 40, sy + 22); ctx.stroke();
+        // Head highlight
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(sx + 42, sy + 20); ctx.lineTo(sx + 50, sy + 15); ctx.stroke();
+        // Point tips
+        ctx.fillStyle = _pc;
+        ctx.beginPath(); ctx.arc(sx + 52, sy + 14, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx + 28, sy + 18, 1.5, 0, Math.PI * 2); ctx.fill();
       } else {
         // Unknown melee fallback — generic blade
         ctx.strokeStyle = "#ccd8ff"; ctx.lineWidth = 3;
@@ -2013,15 +2053,15 @@ function drawHotbar() {
       ctx.textAlign = "right"; ctx.fillText("T" + playerEquip.melee.tier, sx + slotW - 4, sy + 14);
     }
 
-    // Cooldown overlay for melee
-    if (((!hasQS && slot.type === "melee") || _qsMeleeOverride) && !(Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) && melee.cooldown > 0) {
+    // Cooldown overlay for melee — only on the active hotbar slot to avoid showing on all melee quickslots
+    if (((!hasQS && slot.type === "melee") || _qsMeleeOverride) && i === activeHotbarSlot && !(Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) && melee.cooldown > 0) {
       const cdPct = melee.cooldown / melee.cooldownMax;
       ctx.fillStyle = "rgba(0,0,0,0.5)";
       ctx.fillRect(sx + 2, sy + slotH * (1 - cdPct), slotW - 4, slotH * cdPct);
     }
 
-    // Ammo for gun
-    if ((!hasQS && slot.type === "gun") || _qsGunOverride) {
+    // Ammo for gun — only on the active hotbar slot to avoid showing on all gun quickslots
+    if (((!hasQS && slot.type === "gun") || _qsGunOverride) && i === activeHotbarSlot) {
       ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
       ctx.fillStyle = gun.reloading ? "#fa0" : gun.ammo <= 5 ? "#f44" : "#fff";
       ctx.fillText(gun.reloading ? "R..." : gun.ammo + "/" + gun.magSize, sx + slotW / 2, sy + slotH - 4);
