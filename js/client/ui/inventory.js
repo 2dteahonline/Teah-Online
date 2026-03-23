@@ -1597,11 +1597,11 @@ function drawHotbar() {
   }
 
   const slots = [
-    { type: "gun", key: "1" },
-    { type: "melee", key: "2" },
-    { type: "potion", key: "3" },
-    { type: "item", key: "4" },
-    { type: "grab", key: "5" },
+    { type: "gun", key: (keybinds.slot1 || "1").toUpperCase() },
+    { type: "melee", key: (keybinds.slot2 || "2").toUpperCase() },
+    { type: "potion", key: (keybinds.slot3 || "3").toUpperCase() },
+    { type: "item", key: (keybinds.slot4 || "4").toUpperCase() },
+    { type: "grab", key: (keybinds.slot5 || "5").toUpperCase() },
   ];
 
   for (let i = 0; i < slots.length; i++) {
@@ -1675,7 +1675,9 @@ function drawHotbar() {
       ctx.fillText(typeIcons[qs.equipType] || '???', sx + slotW / 2, sy + 36);
     } else if (slot.type === "gun" || _qsGunOverride) {
       // Draw gun art — use quickslot id if overriding, otherwise equipped gun
-      const gEq = _qsGunOverride ? null : playerEquip.gun;
+      // For default gun slot: if equipped gun is assigned to a different quickslot, show default (pistol)
+      const _gunOnOtherQS = !_qsGunOverride && playerEquip.gun && quickSlots.some((qs, qi) => qs && qi !== i && qs.equipType === 'gun' && qs.id === playerEquip.gun.id);
+      const gEq = _qsGunOverride ? null : (_gunOnOtherQS ? null : playerEquip.gun);
       const gId = _qsGunOverride ? quickSlots[i].id : (gEq ? gEq.id : 'pistol');
       const cx2 = sx + 32, cy2 = sy + 32;
       if (gId === 'inferno_cannon') {
@@ -1799,7 +1801,9 @@ function drawHotbar() {
         ctx.font = 'bold 8px monospace'; ctx.fillStyle = _hoeCol;
         ctx.textAlign = 'center'; ctx.fillText(_fhoe ? _fhoe.name : 'Hoe', sx + slotW / 2, sy + slotH - 4);
       } else {
-      const mEq = _qsMeleeOverride ? null : playerEquip.melee;
+      // For default melee slot: if equipped melee is assigned to a different quickslot, show default (knife)
+      const _meleeOnOtherQS = !_qsMeleeOverride && playerEquip.melee && quickSlots.some((qs, qi) => qs && qi !== i && qs.equipType === 'melee' && qs.id === playerEquip.melee.id);
+      const mEq = _qsMeleeOverride ? null : (_meleeOnOtherQS ? null : playerEquip.melee);
       const mId = _qsMeleeOverride ? quickSlots[i].id : (mEq ? mEq.id : 'knife');
       if (mId === 'war_cleaver') {
         // Trident staff — vertical dark shaft with 3 red prongs
@@ -2103,11 +2107,13 @@ function drawQuickSlotPrompt() {
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(bx, btnY, btnW, btnH, 8); ctx.stroke();
 
-    // Slot number (large)
+    // Slot keybind label (large) — show actual bound key, not hardcoded number
+    const _slotKeys = [keybinds.slot1, keybinds.slot2, keybinds.slot3, keybinds.slot4];
+    const _keyLabel = (_slotKeys[i] || '' + (i + 1)).toUpperCase();
     ctx.font = 'bold 22px monospace';
     ctx.fillStyle = '#4a9eff';
     ctx.textAlign = 'center';
-    ctx.fillText('' + (i + 1), bx + btnW / 2, btnY + 22);
+    ctx.fillText(_keyLabel, bx + btnW / 2, btnY + 22);
 
     // Current assignment (small)
     ctx.font = '8px monospace';
