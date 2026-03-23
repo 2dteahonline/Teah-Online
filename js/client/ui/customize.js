@@ -586,7 +586,9 @@ function drawCustomizeScreen() {
   ctx.save();
   ctx.translate(prevX, prevY);
   ctx.scale(7, 7);
-  drawChoso(20, 68, 0, 0, false, null, null);
+  const _prevSlot = activeSlot; activeSlot = -1;
+  drawChoso(0, 0, 0, 0, false, null, null);
+  activeSlot = _prevSlot;
   ctx.restore();
 
   ctx.font = "bold 18px 'Segoe UI', sans-serif";
@@ -906,7 +908,9 @@ function drawProfilePanel() {
   ctx.save();
   ctx.translate(px + 34, py + 24);
   ctx.scale(0.55, 0.55);
-  drawChoso(20, 68, 0, 0, false, null, null);
+  const _profSlot = activeSlot; activeSlot = -1;
+  drawChoso(0, 0, 0, 0, false, null, null);
+  activeSlot = _profSlot;
   ctx.restore();
   ctx.font = "bold 20px monospace";
   ctx.fillStyle = PALETTE.accent;
