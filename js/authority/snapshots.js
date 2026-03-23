@@ -269,7 +269,7 @@ function applyGameStateSnapshot(snap) {
   GameState.kills = snap.kills;
   GameState.dungeonFloor = snap.dungeonFloor;
   GameState.gold = snap.gold;
-  activeSlot = snap.activeSlot;
+  activeSlot = snap.activeSlot; activeHotbarSlot = snap.activeSlot;
   lives = snap.lives;
   contactCooldown = snap.contactCooldown;
   waveTimer = snap.waveTimer;

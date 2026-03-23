@@ -2062,7 +2062,7 @@ const SparSystem = {
 
     player.hp = SPAR_CONFIG.HP_BASELINE;
     player.maxHp = SPAR_CONFIG.HP_BASELINE;
-    activeSlot = 0;
+    activeSlot = 0; activeHotbarSlot = 0;
     lives = 1;
     playerDead = false;
 
@@ -2826,7 +2826,7 @@ const SparSystem = {
     melee.special = snap.meleeSpecial;
     player.hp = snap.playerHp;
     player.maxHp = snap.playerMaxHp;
-    activeSlot = snap.activeSlot;
+    activeSlot = snap.activeSlot; activeHotbarSlot = snap.activeSlot;
     lives = snap.lives;
     playerDead = snap.playerDead;
     playerEquip.gun = snap.playerEquipGun;

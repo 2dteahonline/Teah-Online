@@ -1614,7 +1614,7 @@ function drawHotbar() {
       sx = startX;
       sy = startY + i * (slotH + gap);
     }
-    const isActive = (i < 4 && i === activeSlot) || (i === 4 && isGrabbing);
+    const isActive = (i < 4 && i === activeHotbarSlot) || (i === 4 && isGrabbing);
     const isGrab = slot.type === "grab";
     const isItem = slot.type === "item";
 
@@ -2531,7 +2531,7 @@ function update() {
   if (typeof MafiaSystem !== 'undefined' && Scene.inSkeld) MafiaSystem.tick();
 
   // Skeld: force no weapon held (activeSlot -1 = empty hands)
-  if (Scene.inSkeld) activeSlot = -1;
+  if (Scene.inSkeld) { activeSlot = -1; activeHotbarSlot = -1; }
 
   // Farm: do NOT force melee slot — let player equip any weapon freely
 
@@ -2780,8 +2780,9 @@ function update() {
         const qs = quickSlots[slot];
         if (qs) {
           // Quickslot assigned — find item in inventory and actually equip it
+          // Visual highlight always tracks the slot that was pressed
+          activeHotbarSlot = slot;
           if (qs.equipType === 'gun') {
-            // Equip this specific gun if not already equipped
             if (!playerEquip.gun || playerEquip.gun.id !== qs.id) {
               const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'gun');
               if (invSlot >= 0) equipItem(invSlot);
@@ -2789,7 +2790,6 @@ function update() {
             activeSlot = 0;
           }
           else if (qs.equipType === 'melee') {
-            // Equip this specific melee if not already equipped
             if (!playerEquip.melee || playerEquip.melee.id !== qs.id) {
               const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'melee');
               if (invSlot >= 0) equipItem(invSlot);
@@ -2809,6 +2809,8 @@ function update() {
           }
         } else {
           // Default behavior — gun/melee/potion/item
+          // Visual highlight matches the slot
+          activeHotbarSlot = slot;
           if (slot < 3 && hotbarSlots[slot].type !== "empty") {
             if (hotbarSlots[slot].type === "potion") {
               usePotion();
