@@ -74,6 +74,9 @@ const ITEM_STAT_RENDERERS = {
         drawStat("Grow Time", (_crop.growthFrames / 60).toFixed(0) + "s", "#80c060");
         drawStat("Sell Price", _crop.sellPrice + "g", "#ffd700");
       }
+    } else if (d.special === 'farming') {
+      if (d.reach) drawStat("Reach", d.reach + " tile" + (d.reach > 1 ? "s" : ""), "#66bbff");
+      if (d.cooldown) drawStat("Cooldown", (d.cooldown / 60).toFixed(1) + "s", "#aaa");
     }
   },
 };

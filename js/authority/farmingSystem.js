@@ -628,10 +628,18 @@ function getFarmVendorSeedItems() {
 function getFarmVendorEquipItems() {
   const farmLevel = typeof skillData !== 'undefined' && skillData['Farming'] ? skillData['Farming'].level : 1;
   const items = [];
-  // Hoe tiers only
+  // Hoe tiers — always purchasable, never "Owned"
   for (const hoe of HOE_TIERS) {
-    const owned = farmingState.equippedHoe === hoe.id;
     const locked = !window._opMode && farmLevel < hoe.levelReq;
+    // Count how many of this hoe the player owns in inventory
+    let invCount = 0;
+    for (let si = 0; si < inventory.length; si++) {
+      if (inventory[si] && inventory[si].id === hoe.id && inventory[si].type === 'resource') {
+        invCount = inventory[si].count || 0;
+        break;
+      }
+    }
+    const isEquipped = farmingState.equippedHoe === hoe.id;
     items.push({
       type: 'hoe',
       id: hoe.id,
@@ -640,9 +648,10 @@ function getFarmVendorEquipItems() {
       cost: hoe.cost,
       color: hoe.color,
       isLocked: locked,
-      isOwned: owned,
       lockReason: locked ? 'Lv.' + hoe.levelReq : '',
       hoeData: hoe,
+      invCount: invCount,
+      isEquipped: isEquipped,
     });
   }
   return items;
@@ -724,17 +733,7 @@ function drawFarmVendorPanel() {
     ctx.fillText(tabNames[i], tx + (tabW - 6) / 2, tabY + 19);
   }
 
-  // Hoe + garden level info line
-  ctx.textAlign = 'left';
-  ctx.font = '11px monospace';
-  const _hoe = getEquippedHoe();
-  ctx.fillStyle = '#80a060';
-  ctx.fillText('Hoe: ' + (_hoe ? _hoe.name : 'None'), px + 20, tabY + 48);
-  ctx.fillStyle = '#a0a060';
-  const _land = getLandExpansion(farmingState.landLevel);
-  ctx.fillText('Garden: ' + _land.name + ' (' + _land.gridW + 'x' + _land.gridH + ')', px + 200, tabY + 48);
-
-  const contentY = tabY + 58;
+  const contentY = tabY + 38;
   const maxY = py + ph - 14;
 
   if (farmVendorTab === 0) {
@@ -784,41 +783,57 @@ function drawFarmVendorPanel() {
       }
     }
   } else if (farmVendorTab === 1) {
-    // EQUIPMENT TAB (hoes only)
+    // EQUIPMENT TAB (hoes only — always purchasable, never "Owned")
     const items = getFarmVendorEquipItems();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const iy = contentY + i * 44;
       if (iy + 40 > maxY) break;
 
-      const canBuy = !item.isLocked && !item.isOwned && gold >= item.cost;
-      ctx.fillStyle = canBuy ? 'rgba(40,60,30,0.6)' : item.isOwned ? 'rgba(20,40,20,0.6)' : 'rgba(20,25,18,0.6)';
+      const canBuy = !item.isLocked && gold >= item.cost;
+      ctx.fillStyle = canBuy ? 'rgba(40,60,30,0.6)' : 'rgba(20,25,18,0.6)';
       ctx.beginPath(); ctx.roundRect(px + 14, iy, pw - 28, 38, 6); ctx.fill();
+
+      // Equipped indicator (green left border)
+      if (item.isEquipped) {
+        ctx.fillStyle = '#5fca80';
+        ctx.fillRect(px + 14, iy, 3, 38);
+      }
 
       // Hoe color dot
       ctx.fillStyle = item.color;
       ctx.beginPath(); ctx.arc(px + 30, iy + 19, 6, 0, Math.PI * 2); ctx.fill();
 
-      // Name
+      // Name + equipped badge
       ctx.textAlign = 'left';
       ctx.font = 'bold 12px monospace';
-      ctx.fillStyle = item.isLocked ? '#505050' : item.isOwned ? '#60a060' : '#d0e8c0';
+      ctx.fillStyle = item.isLocked ? '#505050' : '#d0e8c0';
       ctx.fillText(item.name, px + 44, iy + 16);
+      if (item.isEquipped) {
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = '#5fca80';
+        ctx.fillText('[EQUIPPED]', px + 44 + ctx.measureText(item.name).width + 6, iy + 16);
+      }
 
       // Desc
       ctx.font = '10px monospace';
       ctx.fillStyle = '#607050';
       ctx.fillText(item.desc, px + 44, iy + 30);
 
-      // Price / owned / locked
+      // Inventory count (bottom-right)
+      if (item.invCount > 0) {
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#80c060';
+        ctx.fillText('Owned: ' + item.invCount, px + pw - 22, iy + 34);
+      }
+
+      // Price / locked (always show price, never "Owned")
       ctx.textAlign = 'right';
       ctx.font = 'bold 12px monospace';
       if (item.isLocked) {
         ctx.fillStyle = '#804040';
         ctx.fillText(item.lockReason, px + pw - 22, iy + 22);
-      } else if (item.isOwned) {
-        ctx.fillStyle = '#60a060';
-        ctx.fillText('OWNED', px + pw - 22, iy + 22);
       } else {
         ctx.fillStyle = gold >= item.cost ? '#ffd700' : '#804040';
         ctx.fillText(item.cost + 'g', px + pw - 22, iy + 22);
@@ -934,16 +949,26 @@ function handleFarmVendorClick(mx, my) {
       }
     }
   } else if (farmVendorTab === 1) {
-    // Equipment tab — buy hoes only
+    // Equipment tab — always purchasable, adds to inventory + auto-equips
     const items = getFarmVendorEquipItems();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const iy = contentY + i * 44;
       if (mx >= px + 14 && mx <= px + pw - 14 && my >= iy && my <= iy + 38) {
-        if (item.isLocked || item.isOwned) return true;
+        if (item.isLocked) return true;
         if (gold < item.cost) return true;
-        // Buy hoe — pure tool purchase, no inventory/melee involvement
+        // Buy hoe — add to inventory as resource + auto-equip
         gold -= item.cost;
+        const hoeItem = {
+          id: item.id,
+          name: item.name,
+          type: 'resource',
+          tier: item.hoeData.tier,
+          data: { id: item.id, name: item.name, special: 'farming', color: item.color, reach: item.hoeData.reach, cooldown: item.hoeData.cooldown },
+          stackable: true,
+          count: 1,
+        };
+        addToInventory(hoeItem);
         farmingState.equippedHoe = item.id;
         hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Bought ' + item.name + '!', color: '#ffd700' });
         return true;
