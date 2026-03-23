@@ -17,9 +17,10 @@ let armorInvScroll = 0; // scroll offset for armor inventory grid
 let armorHoverSlot = -1; // slot index of hovered armor card in armor tab
 
 // === QUICKSLOT SYSTEM ===
-// 3 assignable quickslots — player can assign any inventory item to slots 1/2/3
-// null = default behavior (gun/melee/potion); assigned = equip that specific item
-let quickSlots = [null, null, null]; // each: { id, name, equipType, color } or null
+// 4 assignable quickslots — player can assign any inventory item to slots 1/2/3/4
+// null = default behavior (gun/melee/potion/item); assigned = equip that specific item
+// Slot 5 (Grab) is never assignable
+let quickSlots = [null, null, null, null]; // each: { id, name, equipType, color } or null
 let qsPromptItem = null; // item pending quickslot assignment (shown after clicking in inventory)
 
 // Draw pixel art category icons
@@ -1613,7 +1614,7 @@ function drawHotbar() {
       sx = startX;
       sy = startY + i * (slotH + gap);
     }
-    const isActive = (i < 3 && i === activeSlot) || (i === 4 && isGrabbing);
+    const isActive = (i < 4 && i === activeSlot) || (i === 4 && isGrabbing);
     const isGrab = slot.type === "grab";
     const isItem = slot.type === "item";
 
@@ -1941,12 +1942,24 @@ function drawHotbar() {
       ctx.fillText(slot.key, sx + 4, sy + 14);
     }
 
-    // Quickslot assignment label
-    if (i < 3 && quickSlots[i]) {
-      ctx.font = 'bold 8px monospace';
-      ctx.fillStyle = quickSlots[i].color || '#4a9eff';
+    // Quickslot assignment indicator
+    if (i < 4 && quickSlots[i]) {
+      const qs = quickSlots[i];
+      const qsColor = qs.color || '#4a9eff';
+      // Type letter badge (top-right corner)
+      const typeLetters = { gun: 'G', melee: 'M', hoe: 'H', seed: 'S', potion: 'P', bucket: 'B' };
+      const tl = typeLetters[qs.equipType] || '?';
+      ctx.fillStyle = qsColor;
+      ctx.beginPath(); ctx.arc(sx + slotW - 10, sy + 10, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(quickSlots[i].name.substring(0, 7).toUpperCase(), sx + slotW / 2, sy + slotH - 2);
+      ctx.fillText(tl, sx + slotW - 10, sy + 14);
+      // Item name at bottom
+      ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = qsColor;
+      ctx.textAlign = 'center';
+      ctx.fillText(qs.name.substring(0, 7).toUpperCase(), sx + slotW / 2, sy + slotH - 2);
     }
 
     // Grab label
@@ -2029,7 +2042,7 @@ function drawHotbar() {
 // === QUICKSLOT ASSIGNMENT PROMPT ===
 function drawQuickSlotPrompt() {
   if (!qsPromptItem) return;
-  const pw = 260, ph = 100;
+  const pw = 340, ph = 100;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
 
   // Dimmed overlay
@@ -2052,13 +2065,13 @@ function drawQuickSlotPrompt() {
   ctx.fillStyle = '#667';
   ctx.fillText('Choose a hotkey slot:', px + pw / 2, py + 38);
 
-  // 3 large slot buttons
+  // 4 large slot buttons (slots 1-4, never slot 5/Grab)
   const btnW = 64, btnH = 48, btnGap = 12;
-  const totalBtnW = 3 * btnW + 2 * btnGap;
+  const totalBtnW = 4 * btnW + 3 * btnGap;
   const btnStartX = px + pw / 2 - totalBtnW / 2;
   const btnY = py + 46;
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const bx = btnStartX + i * (btnW + btnGap);
     const assigned = quickSlots[i];
 
@@ -2081,7 +2094,7 @@ function drawQuickSlotPrompt() {
     if (assigned) {
       ctx.fillText(assigned.name.substring(0, 8), bx + btnW / 2, btnY + 38);
     } else {
-      const defaults = ['Gun', 'Melee', 'Potion'];
+      const defaults = ['Gun', 'Melee', 'Potion', 'Item'];
       ctx.fillText(defaults[i], bx + btnW / 2, btnY + 38);
     }
   }
@@ -2091,14 +2104,14 @@ function drawQuickSlotPrompt() {
 
 function handleQuickSlotPromptClick(mx, my) {
   if (!qsPromptItem) return false;
-  const pw = 260, ph = 100;
+  const pw = 340, ph = 100;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
   const btnW = 64, btnH = 48, btnGap = 12;
-  const totalBtnW = 3 * btnW + 2 * btnGap;
+  const totalBtnW = 4 * btnW + 3 * btnGap;
   const btnStartX = px + pw / 2 - totalBtnW / 2;
   const btnY = py + 46;
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const bx = btnStartX + i * (btnW + btnGap);
     if (mx >= bx && mx <= bx + btnW && my >= btnY && my <= btnY + btnH) {
       // Assign item to this quickslot
@@ -2729,14 +2742,14 @@ function update() {
         }
       }
     }
-    // Hotbar slot keys (1/2/3) — check quickslots first, then default behavior
-    if (InputIntent.slot1Pressed || InputIntent.slot2Pressed || InputIntent.slot3Pressed) {
+    // Hotbar slot keys (1/2/3/4) — check quickslots first, then default behavior
+    if (InputIntent.slot1Pressed || InputIntent.slot2Pressed || InputIntent.slot3Pressed || InputIntent.slot4Pressed) {
       if (typeof Scene !== 'undefined' && Scene.inSkeld) {
         // In Skeld: no items/weapons
       } else if (typeof Scene !== 'undefined' && Scene.inHideSeek) {
         // In Hide & Seek: ignore slot switching, stay on melee
       } else {
-        const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : 2;
+        const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : InputIntent.slot3Pressed ? 2 : 3;
         const qs = quickSlots[slot];
         if (qs) {
           // Quickslot assigned — equip that specific item
@@ -2755,13 +2768,15 @@ function update() {
             farmingState.bucketOwned = true;
           }
         } else {
-          // Default behavior — gun/melee/potion
-          if (hotbarSlots[slot].type !== "empty") {
+          // Default behavior — gun/melee/potion/item
+          if (slot < 3 && hotbarSlots[slot].type !== "empty") {
             if (hotbarSlots[slot].type === "potion") {
               usePotion();
             } else {
               activeSlot = slot;
             }
+          } else if (slot === 3) {
+            useExtraSlotItem();
           }
         }
       }
@@ -2773,10 +2788,6 @@ function update() {
     // Grab (disabled in Skeld)
     if (!Scene.inSkeld && InputIntent.slot5Pressed) {
       tryGrab();
-    }
-    // Extra item slot
-    if (InputIntent.slot4Pressed) {
-      useExtraSlotItem();
     }
   }
 

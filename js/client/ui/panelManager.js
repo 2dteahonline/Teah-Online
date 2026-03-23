@@ -1097,20 +1097,18 @@ window.addEventListener("keydown", e => {
   }
   // Hotbar keys — set intent flags only (authority applies in update)
   // Block weapon switching in Mafia lobby
-  if ((key === keybinds.slot1 || key === keybinds.slot2 || key === keybinds.slot3) && typeof Scene !== 'undefined' && Scene.inMafiaLobby) {
+  if ((key === keybinds.slot1 || key === keybinds.slot2 || key === keybinds.slot3 || key === keybinds.slot4) && typeof Scene !== 'undefined' && Scene.inMafiaLobby) {
     // No weapons in mafia lobby
-  } else if (key === keybinds.slot1 || key === keybinds.slot2 || key === keybinds.slot3) {
-    const slot = key === keybinds.slot1 ? 0 : key === keybinds.slot2 ? 1 : 2;
+  } else if (key === keybinds.slot1 || key === keybinds.slot2 || key === keybinds.slot3 || key === keybinds.slot4) {
+    const slot = key === keybinds.slot1 ? 0 : key === keybinds.slot2 ? 1 : key === keybinds.slot3 ? 2 : 3;
     if (slot === 0) InputIntent.slot1Pressed = true;
     else if (slot === 1) InputIntent.slot2Pressed = true;
-    else InputIntent.slot3Pressed = true;
-    if (hotbarSlots[slot].type === "potion") InputIntent.potionPressed = true;
+    else if (slot === 2) InputIntent.slot3Pressed = true;
+    else InputIntent.slot4Pressed = true;
+    if (slot < 3 && hotbarSlots[slot].type === "potion") InputIntent.potionPressed = true;
   }
   if (key === keybinds.slot5) {
     InputIntent.slot5Pressed = true;
-  }
-  if (key === keybinds.slot4) {
-    InputIntent.slot4Pressed = true;
   }
   // Farming seed selection — number keys 1-9 when in farm
   if (!chatInputActive && !nameEditActive && !statusEditActive && Scene.inFarm) {
