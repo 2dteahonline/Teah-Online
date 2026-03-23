@@ -434,6 +434,9 @@ window.addEventListener("keydown", e => {
     return;
   }
 
+  // Farm vendor quantity typing (intercept number keys when typing qty)
+  if (typeof handleFarmVendorKey === 'function' && handleFarmVendorKey(e.key)) { e.preventDefault(); return; }
+
   // Profile toggle — only when not typing (blocked in Skeld)
   if (key === keybinds.profile && !chatInputActive && !nameEditActive && !statusEditActive) {
     e.preventDefault();
