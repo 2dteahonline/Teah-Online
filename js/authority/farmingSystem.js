@@ -651,8 +651,6 @@ function handleFarmSeedSelect(keyNum) {
 let farmVendorTab = 0; // 0=Seeds, 1=Equipment, 2=Acres, 3=Sell
 let farmVendorQty = 1; // quantity selector for garden shop purchases
 let farmVendorQtyItem = null; // item currently in quantity selector (null = no selector shown)
-let farmVendorQtyTyping = false; // true when user is typing quantity
-let farmVendorQtyStr = ''; // typed digit string
 const FARM_VENDOR_PW = 540;
 const FARM_VENDOR_PH = 480;
 
@@ -892,16 +890,11 @@ function drawFarmVendorPanel() {
       ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#ff6060';
       ctx.fillText('-', qCenterX - 70 + btnSize / 2, qBtnY + 23);
 
-      // Quantity display (clickable — click to type)
-      ctx.fillStyle = farmVendorQtyTyping ? 'rgba(30,50,30,0.9)' : 'rgba(20,30,20,0.8)';
+      // Quantity display
+      ctx.fillStyle = 'rgba(20,30,20,0.8)';
       ctx.beginPath(); ctx.roundRect(qCenterX - 30, qBtnY, 60, btnSize, 4); ctx.fill();
-      if (farmVendorQtyTyping) {
-        ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.roundRect(qCenterX - 30, qBtnY, 60, btnSize, 4); ctx.stroke();
-      }
       ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#ffd700';
-      const qtyDisplay = farmVendorQtyTyping ? (farmVendorQtyStr || '_') : '' + farmVendorQty;
-      ctx.fillText(qtyDisplay, qCenterX, qBtnY + 22);
+      ctx.fillText('' + farmVendorQty, qCenterX, qBtnY + 22);
 
       // Plus button
       ctx.fillStyle = 'rgba(30,60,30,0.8)';
@@ -1065,7 +1058,6 @@ function handleFarmVendorClick(mx, my) {
       farmVendorTab = i;
       farmVendorQtyItem = null;
       farmVendorQty = 1;
-      farmVendorQtyTyping = false;
       return true;
     }
   }
@@ -1081,21 +1073,13 @@ function handleFarmVendorClick(mx, my) {
       const qCenterX = qX + qW / 2;
       const qBtnY = qY + 26;
 
-      // Quantity display click — enter typing mode
-      if (mx >= qCenterX - 30 && mx <= qCenterX + 30 && my >= qBtnY && my <= qBtnY + btnSize) {
-        farmVendorQtyTyping = true;
-        farmVendorQtyStr = '';
-        return true;
-      }
       // Minus button
       if (mx >= qCenterX - 70 && mx <= qCenterX - 70 + btnSize && my >= qBtnY && my <= qBtnY + btnSize) {
-        farmVendorQtyTyping = false;
         if (farmVendorQty > 1) farmVendorQty--;
         return true;
       }
       // Plus button
       if (mx >= qCenterX + 38 && mx <= qCenterX + 38 + btnSize && my >= qBtnY && my <= qBtnY + btnSize) {
-        farmVendorQtyTyping = false;
         const maxAfford = Math.floor(gold / farmVendorQtyItem.cost);
         if (farmVendorQty < Math.max(1, maxAfford)) farmVendorQty++;
         return true;
@@ -1119,7 +1103,6 @@ function handleFarmVendorClick(mx, my) {
           hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Bought ' + farmVendorQty + 'x ' + farmVendorQtyItem.name + '!', color: farmVendorQtyItem.color });
           farmVendorQtyItem = null;
           farmVendorQty = 1;
-          farmVendorQtyTyping = false;
         }
         return true;
       }
@@ -1127,7 +1110,6 @@ function handleFarmVendorClick(mx, my) {
       if (mx < qX || mx > qX + qW || my < qY || my > qY + qH) {
         farmVendorQtyItem = null;
         farmVendorQty = 1;
-        farmVendorQtyTyping = false;
         return true;
       }
       return true; // consume click when quantity selector is open
@@ -1211,36 +1193,5 @@ function handleFarmVendorClick(mx, my) {
     }
   }
 
-  return false;
-}
-
-// Handle keyboard input when quantity selector is open (typing mode)
-function handleFarmVendorKey(key) {
-  if (!farmVendorQtyItem || !farmVendorQtyTyping) return false;
-
-  if (key >= '0' && key <= '9') {
-    farmVendorQtyStr += key;
-    if (farmVendorQtyStr.length > 4) farmVendorQtyStr = farmVendorQtyStr.substring(0, 4);
-    const parsed = parseInt(farmVendorQtyStr, 10);
-    if (parsed > 0) farmVendorQty = parsed;
-    return true;
-  }
-  if (key === 'Backspace') {
-    farmVendorQtyStr = farmVendorQtyStr.slice(0, -1);
-    const parsed = parseInt(farmVendorQtyStr, 10);
-    farmVendorQty = parsed > 0 ? parsed : 1;
-    return true;
-  }
-  if (key === 'Enter') {
-    farmVendorQtyTyping = false;
-    if (farmVendorQty < 1) farmVendorQty = 1;
-    return true;
-  }
-  if (key === 'Escape') {
-    farmVendorQtyTyping = false;
-    farmVendorQtyItem = null;
-    farmVendorQty = 1;
-    return true;
-  }
   return false;
 }
