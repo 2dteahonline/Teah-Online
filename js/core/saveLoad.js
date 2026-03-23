@@ -359,7 +359,7 @@ const SaveLoad = {
 
       // Quickslots
       if (data.quickSlots && typeof quickSlots !== 'undefined') {
-        for (let qi = 0; qi < 3; qi++) {
+        for (let qi = 0; qi < 4; qi++) {
           quickSlots[qi] = data.quickSlots[qi] || null;
         }
       }

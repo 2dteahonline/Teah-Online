@@ -17,9 +17,9 @@ let armorInvScroll = 0; // scroll offset for armor inventory grid
 let armorHoverSlot = -1; // slot index of hovered armor card in armor tab
 
 // === QUICKSLOT SYSTEM ===
-// 3 assignable quickslots — player can assign any inventory item to slots 1/2/3
-// null = default behavior (gun/melee/potion); assigned = equip that specific item
-let quickSlots = [null, null, null]; // each: { id, name, equipType, color } or null
+// 4 assignable quickslots — player can assign any inventory item to slots 1/2/3/4
+// null = default behavior (gun/melee/potion/item); assigned = equip that specific item
+let quickSlots = [null, null, null, null]; // each: { id, name, equipType, color } or null
 let qsPromptItem = null; // item pending quickslot assignment (shown after clicking in inventory)
 
 // Draw pixel art category icons
@@ -1613,9 +1613,10 @@ function drawHotbar() {
       sx = startX;
       sy = startY + i * (slotH + gap);
     }
-    const isActive = (i < 3 && i === activeSlot) || (i === 4 && isGrabbing);
+    const isActive = (i < 4 && i === activeSlot) || (i === 4 && isGrabbing);
     const isGrab = slot.type === "grab";
     const isItem = slot.type === "item";
+    const hasQS = i < 4 && quickSlots[i]; // this slot has a quickslot assignment
 
     // Slot background
     ctx.fillStyle = isGrab ? (isGrabbing ? "rgba(200,120,40,0.35)" : "rgba(40,30,20,0.6)")
@@ -1630,8 +1631,9 @@ function drawHotbar() {
     ctx.lineWidth = isActive ? 2.5 : 1;
     ctx.beginPath(); ctx.roundRect(sx, sy, slotW, slotH, 6); ctx.stroke();
 
-    // Tier color bar at top of slot
-    if (slot.type === "gun" && playerEquip.gun) {
+    // Tier color bar at top of slot (skip when quickslot assigned — QS draws its own)
+    if (hasQS) { /* quickslot draws its own color bar */ }
+    else if (slot.type === "gun" && playerEquip.gun) {
       ctx.fillStyle = getTierColor(playerEquip.gun.tier);
       ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
     } else if (slot.type === "melee") {
@@ -1651,8 +1653,31 @@ function drawHotbar() {
       ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
     }
 
-    // === SLOT ICONS ===
-    if (slot.type === "gun") {
+    // === QUICKSLOT OVERRIDE ICON ===
+    // When a quickslot is assigned, show that item's icon instead of default
+    if (hasQS) {
+      const qs = quickSlots[i];
+      const qColor = qs.color || '#4a9eff';
+      // Color bar at top
+      ctx.fillStyle = qColor;
+      ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
+      // Item icon — colored circle with type indicator
+      ctx.fillStyle = qColor;
+      ctx.beginPath(); ctx.arc(sx + slotW / 2, sy + slotH / 2 - 2, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(sx + slotW / 2, sy + slotH / 2 - 2, 14, 0, Math.PI * 2); ctx.stroke();
+      // Type symbol inside circle
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      const sym = qs.equipType === 'gun' ? 'G' : qs.equipType === 'melee' ? 'M' : qs.equipType === 'hoe' ? 'H'
+        : qs.equipType === 'seed' ? 'S' : qs.equipType === 'potion' ? 'P' : qs.equipType === 'bucket' ? 'B' : '?';
+      ctx.fillText(sym, sx + slotW / 2, sy + slotH / 2 + 3);
+    }
+
+    // === SLOT ICONS (default — skipped when quickslot assigned) ===
+    else if (slot.type === "gun") {
       const gEq = playerEquip.gun;
       const gId = gEq ? gEq.id : 'pistol';
       const cx2 = sx + 32, cy2 = sy + 32;
@@ -1941,12 +1966,12 @@ function drawHotbar() {
       ctx.fillText(slot.key, sx + 4, sy + 14);
     }
 
-    // Quickslot assignment label
-    if (i < 3 && quickSlots[i]) {
-      ctx.font = 'bold 8px monospace';
+    // Quickslot assignment label (overrides default bottom label for slots 0-3)
+    if (i < 4 && quickSlots[i]) {
+      ctx.font = 'bold 9px monospace';
       ctx.fillStyle = quickSlots[i].color || '#4a9eff';
       ctx.textAlign = 'center';
-      ctx.fillText(quickSlots[i].name.substring(0, 7).toUpperCase(), sx + slotW / 2, sy + slotH - 2);
+      ctx.fillText(quickSlots[i].name.substring(0, 8).toUpperCase(), sx + slotW / 2, sy + slotH - 2);
     }
 
     // Grab label
@@ -1957,61 +1982,64 @@ function drawHotbar() {
       ctx.fillText("GRAB", sx + slotW/2, sy + slotH - 4);
     }
 
-    // Item slot label
-    if (isItem) {
+    // Item slot label (only if no quickslot override)
+    if (isItem && !hasQS) {
       ctx.font = "bold 9px monospace";
       ctx.fillStyle = extraSlotItem ? "#5a8aee" : "#556";
       ctx.textAlign = "center";
       ctx.fillText(extraSlotItem ? extraSlotItem.name.substring(0, 6).toUpperCase() : "ITEM", sx + slotW/2, sy + slotH - 4);
     }
 
-    // Tier label
-    if (slot.type === "gun" && playerEquip.gun) {
-      ctx.font = "bold 9px monospace"; ctx.fillStyle = getTierColor(playerEquip.gun.tier);
-      ctx.textAlign = "right"; ctx.fillText("T" + playerEquip.gun.tier, sx + slotW - 4, sy + 14);
-    }
-    if (slot.type === "melee" && !(Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) && playerEquip.melee) {
-      ctx.font = "bold 9px monospace"; ctx.fillStyle = getTierColor(playerEquip.melee.tier);
-      ctx.textAlign = "right"; ctx.fillText("T" + playerEquip.melee.tier, sx + slotW - 4, sy + 14);
-    }
-
-    // Cooldown overlay for melee (skip in farm scene — hoe has its own cooldown in farmingState)
-    if (slot.type === "melee" && !(Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) && melee.cooldown > 0) {
-      const cdPct = melee.cooldown / melee.cooldownMax;
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(sx + 2, sy + slotH * (1 - cdPct), slotW - 4, slotH * cdPct);
-    }
-
-    // Ammo for gun
-    if (slot.type === "gun") {
-      ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = gun.reloading ? "#fa0" : gun.ammo <= 5 ? "#f44" : "#fff";
-      ctx.fillText(gun.reloading ? "R..." : gun.ammo + "/" + gun.magSize, sx + slotW / 2, sy + slotH - 4);
-    }
-
-    // [F] hint on melee / hoe
-    if (slot.type === "melee") {
-      if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) {
-        ctx.font = "bold 9px monospace"; ctx.fillStyle = "#5a8a40";
-        ctx.textAlign = "right"; ctx.fillText("[F]", sx + slotW - 4, sy + 14);
-      } else {
-        ctx.font = "bold 9px monospace"; ctx.fillStyle = "#666";
-        ctx.textAlign = "right"; ctx.fillText("[F]", sx + slotW - 4, sy + 14);
+    // Default slot overlays — only when no quickslot assigned
+    if (!hasQS) {
+      // Tier label
+      if (slot.type === "gun" && playerEquip.gun) {
+        ctx.font = "bold 9px monospace"; ctx.fillStyle = getTierColor(playerEquip.gun.tier);
+        ctx.textAlign = "right"; ctx.fillText("T" + playerEquip.gun.tier, sx + slotW - 4, sy + 14);
       }
-    }
+      if (slot.type === "melee" && !(Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) && playerEquip.melee) {
+        ctx.font = "bold 9px monospace"; ctx.fillStyle = getTierColor(playerEquip.melee.tier);
+        ctx.textAlign = "right"; ctx.fillText("T" + playerEquip.melee.tier, sx + slotW - 4, sy + 14);
+      }
 
-    // Potion count
-    if (slot.type === "potion") {
-      ctx.font = "bold 13px monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = potion.count > 0 ? PALETTE.accent : "#f44";
-      ctx.fillText("x" + potion.count, sx + slotW / 2, sy + slotH - 4);
-    }
+      // Cooldown overlay for melee
+      if (slot.type === "melee" && !(Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) && melee.cooldown > 0) {
+        const cdPct = melee.cooldown / melee.cooldownMax;
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(sx + 2, sy + slotH * (1 - cdPct), slotW - 4, slotH * cdPct);
+      }
 
-    // Potion cooldown overlay
-    if (slot.type === "potion" && potion.cooldown > 0) {
-      const cdPct = potion.cooldown / potion.cooldownMax;
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(sx + 2, sy + slotH * (1 - cdPct), slotW - 4, slotH * cdPct);
+      // Ammo for gun
+      if (slot.type === "gun") {
+        ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = gun.reloading ? "#fa0" : gun.ammo <= 5 ? "#f44" : "#fff";
+        ctx.fillText(gun.reloading ? "R..." : gun.ammo + "/" + gun.magSize, sx + slotW / 2, sy + slotH - 4);
+      }
+
+      // [F] hint on melee / hoe
+      if (slot.type === "melee") {
+        if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) {
+          ctx.font = "bold 9px monospace"; ctx.fillStyle = "#5a8a40";
+          ctx.textAlign = "right"; ctx.fillText("[F]", sx + slotW - 4, sy + 14);
+        } else {
+          ctx.font = "bold 9px monospace"; ctx.fillStyle = "#666";
+          ctx.textAlign = "right"; ctx.fillText("[F]", sx + slotW - 4, sy + 14);
+        }
+      }
+
+      // Potion count
+      if (slot.type === "potion") {
+        ctx.font = "bold 13px monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = potion.count > 0 ? PALETTE.accent : "#f44";
+        ctx.fillText("x" + potion.count, sx + slotW / 2, sy + slotH - 4);
+      }
+
+      // Potion cooldown overlay
+      if (slot.type === "potion" && potion.cooldown > 0) {
+        const cdPct = potion.cooldown / potion.cooldownMax;
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(sx + 2, sy + slotH * (1 - cdPct), slotW - 4, slotH * cdPct);
+      }
     }
 
     // Hold-to-inspect progress bar
@@ -2029,7 +2057,7 @@ function drawHotbar() {
 // === QUICKSLOT ASSIGNMENT PROMPT ===
 function drawQuickSlotPrompt() {
   if (!qsPromptItem) return;
-  const pw = 260, ph = 100;
+  const pw = 340, ph = 100;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
 
   // Dimmed overlay
@@ -2052,13 +2080,13 @@ function drawQuickSlotPrompt() {
   ctx.fillStyle = '#667';
   ctx.fillText('Choose a hotkey slot:', px + pw / 2, py + 38);
 
-  // 3 large slot buttons
-  const btnW = 64, btnH = 48, btnGap = 12;
-  const totalBtnW = 3 * btnW + 2 * btnGap;
+  // 4 large slot buttons
+  const btnW = 64, btnH = 48, btnGap = 10;
+  const totalBtnW = 4 * btnW + 3 * btnGap;
   const btnStartX = px + pw / 2 - totalBtnW / 2;
   const btnY = py + 46;
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const bx = btnStartX + i * (btnW + btnGap);
     const assigned = quickSlots[i];
 
@@ -2081,7 +2109,7 @@ function drawQuickSlotPrompt() {
     if (assigned) {
       ctx.fillText(assigned.name.substring(0, 8), bx + btnW / 2, btnY + 38);
     } else {
-      const defaults = ['Gun', 'Melee', 'Potion'];
+      const defaults = ['Gun', 'Melee', 'Potion', 'Item'];
       ctx.fillText(defaults[i], bx + btnW / 2, btnY + 38);
     }
   }
@@ -2091,14 +2119,14 @@ function drawQuickSlotPrompt() {
 
 function handleQuickSlotPromptClick(mx, my) {
   if (!qsPromptItem) return false;
-  const pw = 260, ph = 100;
+  const pw = 340, ph = 100;
   const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
-  const btnW = 64, btnH = 48, btnGap = 12;
-  const totalBtnW = 3 * btnW + 2 * btnGap;
+  const btnW = 64, btnH = 48, btnGap = 10;
+  const totalBtnW = 4 * btnW + 3 * btnGap;
   const btnStartX = px + pw / 2 - totalBtnW / 2;
   const btnY = py + 46;
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const bx = btnStartX + i * (btnW + btnGap);
     if (mx >= bx && mx <= bx + btnW && my >= btnY && my <= btnY + btnH) {
       // Assign item to this quickslot
@@ -2729,14 +2757,14 @@ function update() {
         }
       }
     }
-    // Hotbar slot keys (1/2/3) — check quickslots first, then default behavior
-    if (InputIntent.slot1Pressed || InputIntent.slot2Pressed || InputIntent.slot3Pressed) {
+    // Hotbar slot keys (1/2/3/4) — check quickslots first, then default behavior
+    if (InputIntent.slot1Pressed || InputIntent.slot2Pressed || InputIntent.slot3Pressed || InputIntent.slot4Pressed) {
       if (typeof Scene !== 'undefined' && Scene.inSkeld) {
         // In Skeld: no items/weapons
       } else if (typeof Scene !== 'undefined' && Scene.inHideSeek) {
         // In Hide & Seek: ignore slot switching, stay on melee
       } else {
-        const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : 2;
+        const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : InputIntent.slot3Pressed ? 2 : 3;
         const qs = quickSlots[slot];
         if (qs) {
           // Quickslot assigned — equip that specific item
@@ -2751,17 +2779,18 @@ function update() {
           }
           else if (qs.equipType === 'potion') { usePotion(); }
           else if (qs.equipType === 'bucket' && typeof farmingState !== 'undefined') {
-            // Bucket equip — just set owned flag visible
             farmingState.bucketOwned = true;
           }
         } else {
-          // Default behavior — gun/melee/potion
-          if (hotbarSlots[slot].type !== "empty") {
+          // Default behavior — gun/melee/potion/item
+          if (slot < 3 && hotbarSlots[slot].type !== "empty") {
             if (hotbarSlots[slot].type === "potion") {
               usePotion();
             } else {
               activeSlot = slot;
             }
+          } else if (slot === 3) {
+            useExtraSlotItem();
           }
         }
       }
@@ -2773,10 +2802,6 @@ function update() {
     // Grab (disabled in Skeld)
     if (!Scene.inSkeld && InputIntent.slot5Pressed) {
       tryGrab();
-    }
-    // Extra item slot
-    if (InputIntent.slot4Pressed) {
-      useExtraSlotItem();
     }
   }
 
