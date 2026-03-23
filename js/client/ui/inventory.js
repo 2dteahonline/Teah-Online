@@ -2779,9 +2779,23 @@ function update() {
         const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : InputIntent.slot3Pressed ? 2 : 3;
         const qs = quickSlots[slot];
         if (qs) {
-          // Quickslot assigned — equip that specific item
-          if (qs.equipType === 'gun') { activeSlot = 0; }
-          else if (qs.equipType === 'melee') { activeSlot = 1; }
+          // Quickslot assigned — find item in inventory and actually equip it
+          if (qs.equipType === 'gun') {
+            // Equip this specific gun if not already equipped
+            if (!playerEquip.gun || playerEquip.gun.id !== qs.id) {
+              const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'gun');
+              if (invSlot >= 0) equipItem(invSlot);
+            }
+            activeSlot = 0;
+          }
+          else if (qs.equipType === 'melee') {
+            // Equip this specific melee if not already equipped
+            if (!playerEquip.melee || playerEquip.melee.id !== qs.id) {
+              const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'melee');
+              if (invSlot >= 0) equipItem(invSlot);
+            }
+            activeSlot = 1;
+          }
           else if (qs.equipType === 'hoe' && typeof farmingState !== 'undefined') {
             farmingState.equippedHoe = qs.id;
             activeSlot = 1;
@@ -2791,7 +2805,6 @@ function update() {
           }
           else if (qs.equipType === 'potion') { usePotion(); }
           else if (qs.equipType === 'bucket' && typeof farmingState !== 'undefined') {
-            // Bucket equip — just set owned flag visible
             farmingState.bucketOwned = true;
           }
         } else {
