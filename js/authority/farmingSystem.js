@@ -72,17 +72,7 @@ function initFarmState() {
     }
   }
 
-  // Auto-equip bronze hoe if player has no hoe
-  if (!farmingState.equippedHoe) {
-    farmingState.equippedHoe = 'bronze_hoe';
-  }
-
-  // Auto-select first unlocked seed
-  const farmLevel = typeof skillData !== 'undefined' && skillData['Farming'] ? skillData['Farming'].level : 1;
-  const crops = getUnlockedCrops(farmLevel);
-  if (crops.length > 0) {
-    farmingState.selectedSeed = crops[0].id;
-  }
+  // Don't auto-equip hoe or auto-select seed — let player choose from inventory
 }
 
 // Called on scene exit / state reset
@@ -140,12 +130,6 @@ function _getNearbyFarmTiles(primary, count) {
 function handleFarmAction(fromClick) {
   if (farmingState.actionCooldown > 0) return;
 
-  const hoe = getEquippedHoe();
-  if (!hoe) {
-    hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'No hoe equipped!', color: '#ff6060' });
-    return;
-  }
-
   // Check if near the well with bucket — fill bucket instead of farming
   if (farmingState.bucketOwned && !farmingState.bucketFilled) {
     const well = levelEntities.find(e => e.type === 'farm_well');
@@ -163,30 +147,24 @@ function handleFarmAction(fromClick) {
   }
 
   const tile = getFarmTileAtAction(fromClick);
-  if (!tile) {
-    hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Walk to the garden plot!', color: '#a08060' });
-    farmingState.actionCooldown = 15;
-    return;
-  }
+  if (!tile) return; // silently fail — no popup spam
 
-  // Use the real melee swing — handles facing, arrow keys, animation
-  if (typeof meleeSwing === 'function') meleeSwing();
-
+  const hoe = getEquippedHoe();
   const cfg = FARMING_CONFIG;
-  const swingCount = hoe.swingTiles || 1;
+  const swingCount = hoe ? (hoe.swingTiles || 1) : 1;
 
   switch (tile.state) {
     case FARM_TILE_STATES.EMPTY: {
-      // Till — multi-tile: till all nearby EMPTY tiles
+      // TILL — requires hoe, uses swing animation
+      if (!hoe) {
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Equip a hoe to till!', color: '#ff6060' });
+        return;
+      }
+      if (typeof meleeSwing === 'function') meleeSwing();
       const targets = _getNearbyFarmTiles(tile, swingCount);
-      let tilled = 0;
       for (const t of targets) {
         if (t.state === FARM_TILE_STATES.EMPTY) {
           t.state = FARM_TILE_STATES.TILLED;
-          tilled++;
-          const cx = t.tx * TILE + PLOT_SIZE * TILE / 2;
-          const cy = t.ty * TILE + PLOT_SIZE * TILE / 2;
-          hitEffects.push({ x: cx, y: cy - 10, life: 20, type: 'text_popup', text: 'Tilled!', color: '#c0a060' });
         }
       }
       farmingState.actionCooldown = cfg.tillCooldown;
@@ -194,9 +172,9 @@ function handleFarmAction(fromClick) {
     }
 
     case FARM_TILE_STATES.TILLED: {
-      // Plant seed — single tile only (consumes 1 seed)
+      // PLANT — requires selected seed in inventory, NO hoe swing
       if (!farmingState.selectedSeed) {
-        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'No seed selected!', color: '#ff6060' });
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Select seeds first! [1-9]', color: '#ff6060' });
         return;
       }
       const crop = CROP_TYPES[farmingState.selectedSeed];
@@ -220,64 +198,50 @@ function handleFarmAction(fromClick) {
         }
       }
       if (seedSlot === -1) {
-        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'No ' + crop.name + ' seeds! Buy from shop.', color: '#ff6060' });
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'No ' + crop.name + ' seeds!', color: '#ff6060' });
         return;
       }
+      // Consume seed and plant — no hoe swing animation
       inventory[seedSlot].count--;
       if (inventory[seedSlot].count <= 0) inventory.splice(seedSlot, 1);
       tile.state = FARM_TILE_STATES.PLANTED;
       tile.cropId = farmingState.selectedSeed;
       tile.growthTimer = 0;
       farmingState.actionCooldown = cfg.plantCooldown;
-      const plotCX = tile.tx * TILE + PLOT_SIZE * TILE / 2;
-      const plotCY = tile.ty * TILE + PLOT_SIZE * TILE / 2;
-      hitEffects.push({ x: plotCX, y: plotCY - 10, life: 20, type: 'text_popup', text: 'Planted ' + crop.name + '!', color: crop.color });
       break;
     }
 
     case FARM_TILE_STATES.PLANTED: {
-      // Water — multi-tile if bucket is filled, single if hoe
+      // WATER — bucket waters multi-tile, hoe waters single tile
       if (farmingState.bucketFilled) {
         const targets = _getNearbyFarmTiles(tile, swingCount);
-        let watered = 0;
         for (const t of targets) {
           if (t.state === FARM_TILE_STATES.PLANTED) {
             t.state = FARM_TILE_STATES.GROWING;
             t.growthTimer = 0;
-            watered++;
-            const cx = t.tx * TILE + PLOT_SIZE * TILE / 2;
-            const cy = t.ty * TILE + PLOT_SIZE * TILE / 2;
-            hitEffects.push({ x: cx, y: cy - 10, life: 20, type: 'text_popup', text: 'Watered!', color: '#40a0ff' });
           }
         }
-        farmingState.bucketFilled = false; // bucket emptied after use
-        hitEffects.push({ x: player.x, y: player.y - 40, life: 25, type: 'text_popup', text: 'Bucket emptied', color: '#8a8a8a' });
+        farmingState.bucketFilled = false;
       } else {
-        // Hoe water — single tile
         tile.state = FARM_TILE_STATES.GROWING;
         tile.growthTimer = 0;
-        const plotCX2 = tile.tx * TILE + PLOT_SIZE * TILE / 2;
-        const plotCY2 = tile.ty * TILE + PLOT_SIZE * TILE / 2;
-        hitEffects.push({ x: plotCX2, y: plotCY2 - 10, life: 20, type: 'text_popup', text: 'Watered!', color: '#40a0ff' });
       }
       farmingState.actionCooldown = cfg.plantCooldown;
       break;
     }
 
     case FARM_TILE_STATES.GROWING: {
-      const growCrop = CROP_TYPES[tile.cropId];
-      if (growCrop) {
-        const remaining = Math.max(0, growCrop.growthFrames - tile.growthTimer);
-        const secs = Math.ceil(remaining / 60);
-        const plotCX3 = tile.tx * TILE + PLOT_SIZE * TILE / 2;
-        const plotCY3 = tile.ty * TILE + PLOT_SIZE * TILE / 2;
-        hitEffects.push({ x: plotCX3, y: plotCY3 - 10, life: 20, type: 'text_popup', text: 'Growing... ' + secs + 's', color: '#80c060' });
-      }
+      // Just show countdown — no popup spam, the countdown bubble handles it
       break;
     }
 
     case FARM_TILE_STATES.HARVESTABLE: {
-      // Harvest — multi-tile: harvest all nearby HARVESTABLE tiles
+      // HARVEST — requires hoe, uses swing animation
+      if (!hoe) {
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Equip a hoe to harvest!', color: '#ff6060' });
+        return;
+      }
+      if (typeof meleeSwing === 'function') meleeSwing();
       const targets = _getNearbyFarmTiles(tile, swingCount);
       let totalGold = 0, totalXP = 0, harvested = 0;
       for (const t of targets) {
@@ -655,7 +619,7 @@ function drawFarmingHUD() {
   // Instructions
   ctx.font = '11px monospace';
   ctx.fillStyle = '#607050';
-  ctx.fillText('[F] Till/Plant/Water/Harvest  [E] Shop', 22, 68);
+  ctx.fillText('[F] Farm action  [1-9] Seeds  [E] Shop', 22, 68);
 
   // Bucket status (if owned)
   if (farmingState.bucketOwned) {

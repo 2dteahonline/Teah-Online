@@ -2381,8 +2381,7 @@ function update() {
   // Skeld: force no weapon held (activeSlot -1 = empty hands)
   if (Scene.inSkeld) activeSlot = -1;
 
-  // Farm: force melee slot (shows hoe in hotbar + character holds tool)
-  if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) activeSlot = 1;
+  // Farm: do NOT force melee slot — let player equip any weapon freely
 
   if (UI.isOpen('shop') && !isNearInteractable('shop_station')) { UI.close(); }
   if (UI.isOpen('shop') && waveState === "active") { UI.close(); }
@@ -2547,9 +2546,9 @@ function update() {
       gun.reloading = true;
       gun.reloadTimer = getReloadTime();
     }
-    // Melee swing — in farm scene with hoe, melee triggers hoe action instead
+    // Melee swing — in farm scene, F key triggers farm action (till/plant/harvest)
     if (!Scene.inSkeld && !Scene.inLobby && !Scene.inMafiaLobby && !Scene.inCasino && InputIntent.meleePressed) {
-      if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && typeof handleFarmAction === 'function') {
+      if (Scene.inFarm && typeof handleFarmAction === 'function') {
         handleFarmAction(false);
       } else {
         meleeSwing();

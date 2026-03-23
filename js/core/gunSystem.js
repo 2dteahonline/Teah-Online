@@ -607,8 +607,8 @@ function updateGun() {
   // Continuous shooting — authority reads InputIntent.shootHeld (set by mouse/arrow keys)
   if (InputIntent.shootHeld && !InputIntent.chatActive && !nameEditActive && !statusEditActive
       && !Scene.inSkeld && !Scene.inMafiaLobby && !Scene.inCasino) {
-    // Farm: any click/tap uses hoe when equipped (mobile-friendly)
-    if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe && typeof handleFarmAction === 'function') {
+    // Farm: click triggers farm action only when on melee slot (hoe); gun slot shoots normally
+    if (Scene.inFarm && activeSlot === 1 && typeof handleFarmAction === 'function') {
       handleFarmAction(true);
     } else if (activeSlot === 0) shoot();
     else if (activeSlot === 1) meleeSwing();
