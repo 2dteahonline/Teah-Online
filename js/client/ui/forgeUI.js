@@ -328,14 +328,14 @@ function _drawUpgradeSection(px, ay, pw, ah, gunId, prog) {
   if (recipe.ores) {
     for (const oreId in recipe.ores) {
       const ore = ORE_TYPES[oreId];
-      allMats.push({ name: ore ? ore.name : oreId, need: recipe.ores[oreId], have: _countMaterial('ore_' + oreId), color: ore ? ore.color : '#888' });
+      allMats.push({ name: ore ? ore.name : oreId, need: recipe.ores[oreId], have: CraftingSystem.getMaterialCount('ore_' + oreId), color: ore ? ore.color : '#888' });
     }
   }
   // Parts
   if (recipe.parts) {
     for (const partId in recipe.parts) {
       const mat = CRAFT_MATERIALS[partId] || GUN_MATERIALS[partId] || WEAPON_PARTS[partId];
-      allMats.push({ name: mat ? mat.name : partId.replace(/_/g, ' '), need: recipe.parts[partId], have: _countMaterial(partId), color: mat ? mat.color : '#888' });
+      allMats.push({ name: mat ? mat.name : partId.replace(/_/g, ' '), need: recipe.parts[partId], have: CraftingSystem.getMaterialCount(partId), color: mat ? mat.color : '#888' });
     }
   }
 
@@ -375,7 +375,7 @@ function _drawUpgradeSection(px, ay, pw, ah, gunId, prog) {
   }
 
   // Upgrade button
-  const canUpgrade = _canAffordRecipe(recipe);
+  const canUpgrade = CraftingSystem.canUpgrade(gunId, prog.tier, prog.level + 1);
   const btnW = 200, btnH = 40;
   const btnX = px + pw / 2 - btnW / 2;
   const btnY = ay + 26 + Math.ceil(allMats.length / cols) * (cardH + cardGap) + 10;
@@ -443,7 +443,7 @@ function _drawEvolveSection(px, ay, pw, ah, gunId, prog) {
       const oreDef = matId.startsWith('ore_') && typeof ORE_TYPES !== 'undefined' ? ORE_TYPES[matId.replace('ore_', '')] : null;
       const name = mat ? mat.name : (oreDef ? oreDef.name : matId.replace(/_/g, ' '));
       const color = mat ? mat.color : (oreDef ? oreDef.color : '#888');
-      allMats.push({ name, need: evoCost.materials[matId], have: _countMaterial(matId), color });
+      allMats.push({ name, need: evoCost.materials[matId], have: CraftingSystem.getMaterialCount(matId), color });
     }
   }
 
@@ -479,12 +479,7 @@ function _drawEvolveSection(px, ay, pw, ah, gunId, prog) {
   }
 
   // Evolve button (pulsing)
-  let canEvo = gold >= evoCost.gold;
-  if (evoCost.materials) {
-    for (const matId in evoCost.materials) {
-      if (_countMaterial(matId) < evoCost.materials[matId]) canEvo = false;
-    }
-  }
+  const canEvo = CraftingSystem.canEvolve(gunId, prog.tier);
 
   const btnW = 220, btnH = 44;
   const btnX = px + pw / 2 - btnW / 2;
@@ -517,14 +512,14 @@ function _drawMaterialGrid(px, cy, pw, ch) {
   // Dungeon materials
   for (const matId in CRAFT_MATERIALS) {
     const mat = CRAFT_MATERIALS[matId];
-    const count = _countMaterial(matId);
+    const count = CraftingSystem.getMaterialCount(matId);
     allMats.push({ id: matId, name: mat.name, color: mat.color, tier: mat.tier, source: mat.source, count });
   }
   // Ores
   if (typeof ORE_TYPES !== 'undefined') {
     for (const oreId in ORE_TYPES) {
       const ore = ORE_TYPES[oreId];
-      const count = _countMaterial('ore_' + oreId);
+      const count = CraftingSystem.getMaterialCount('ore_' + oreId);
       if (count > 0) {
         allMats.push({ id: 'ore_' + oreId, name: ore.name, color: ore.color, tier: ore.tier, source: 'mine', count });
       }
@@ -655,17 +650,9 @@ function handleForgeClick(mouseX, mouseY) {
   if (_forgeSelectedGun && window._forgeUpgradeBtn) {
     const btn = window._forgeUpgradeBtn;
     if (mouseX >= btn.x && mouseX <= btn.x + btn.w && mouseY >= btn.y && mouseY <= btn.y + btn.h) {
-      // Execute upgrade using existing gunsmith logic
       const gunId = _forgeSelectedGun;
       const prog = _getGunProgress(gunId);
-      if (_canAffordRecipe(btn.recipe)) {
-        _deductRecipe(btn.recipe);
-        _setGunProgress(gunId, prog.tier, prog.level + 1);
-        // Rebuild gun item in inventory
-        if (typeof resetCombatState === 'function') resetCombatState('lobby');
-        if (typeof SaveLoad !== 'undefined') SaveLoad.save();
-        hitEffects.push({ x: player.x, y: player.y - 40, life: 40, maxLife: 40, type: 'heal', dmg: 'LEVEL UP!' });
-      }
+      CraftingSystem.upgrade(gunId, prog.tier, prog.level);
       return true;
     }
   }
@@ -674,24 +661,7 @@ function handleForgeClick(mouseX, mouseY) {
   if (_forgeSelectedGun && window._forgeEvolveBtn) {
     const btn = window._forgeEvolveBtn;
     if (mouseX >= btn.x && mouseX <= btn.x + btn.w && mouseY >= btn.y && mouseY <= btn.y + btn.h) {
-      const gunId = btn.gunId;
-      const evoCost = typeof getEvolutionCost === 'function' ? getEvolutionCost(btn.tier, gunId) : null;
-      if (evoCost) {
-        // Deduct gold
-        gold -= evoCost.gold;
-        // Deduct materials
-        if (evoCost.materials) {
-          for (const matId in evoCost.materials) {
-            _deductMaterial(matId, evoCost.materials[matId]);
-          }
-        }
-        // Evolve
-        _setGunProgress(gunId, btn.tier + 1, 1);
-        if (typeof resetCombatState === 'function') resetCombatState('lobby');
-        if (typeof SaveLoad !== 'undefined') SaveLoad.save();
-        const nextName = PROGRESSION_CONFIG.TIER_NAMES[btn.tier + 1] || '???';
-        hitEffects.push({ x: player.x, y: player.y - 40, life: 60, maxLife: 60, type: 'heal', dmg: 'PRESTIGE: ' + nextName + '!' });
-      }
+      CraftingSystem.evolve(btn.gunId, btn.tier);
       return true;
     }
   }
