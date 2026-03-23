@@ -37,25 +37,25 @@ const FISHING_CONFIG = {
   waitFramesMin: 180,    // 3.0s — shortest wait before bite
   waitFramesMax: 480,    // 8.0s — longest wait before bite
   biteWindowFrames: 120, // 2.0s — time to react to bite
-  reelFramesMin: 60,     // 1.0s — easiest fish reel time
-  reelFramesMax: 120,    // 2.0s — hardest fish reel time
-  resultFrames: 30,      // 0.5s — show result
+  reelFramesMin: 180,    // 3.0s — easiest fish reel time
+  reelFramesMax: 360,    // 6.0s — hardest fish reel time
+  resultFrames: 90,      // 1.5s — show result
   cooldownFrames: 60,    // 1.0s — rest between casts
   // Reel tension: how fast tension decays when not holding reel
-  tensionDecayRate: 0.008,
+  tensionDecayRate: 0.004,
   // Reel tension: how fast tension builds when holding reel
-  tensionFillRate: 0.012,
+  tensionFillRate: 0.006,
   // Reel: progress must reach this to catch
   tensionCatchThreshold: 0.45,
   // Sweet spot: tension range where reel progress increases
   sweetSpotMin: 0.2,
   sweetSpotMax: 0.85,
   // Reel progress: base gain per frame when in sweet spot
-  reelProgressBase: 0.012,
+  reelProgressBase: 0.005,
   // Reel progress: bonus per frame scaled by (1 - difficulty)
-  reelProgressEasyBonus: 0.006,
+  reelProgressEasyBonus: 0.0025,
   // Fish fight-back: progress lost per frame scaled by difficulty
-  fishFightBack: 0.0015,
+  fishFightBack: 0.0006,
   // Level bonus cap
   maxLevelBonus: 0.25,
   levelBonusPerLevel: 0.005,

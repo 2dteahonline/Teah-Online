@@ -298,12 +298,24 @@ function drawFishingWorldEffects() {
 
   // Fishing line: from player to bobber (sagging bezier)
   if (phase !== 'result') {
-    ctx.strokeStyle = 'rgba(200,200,200,0.5)';
-    ctx.lineWidth = 1;
+    // Line color reflects tension during reeling
+    if (phase === 'reeling') {
+      const tension = fishingState.reelTension;
+      const ssMax = FISHING_CONFIG.sweetSpotMax;
+      if (tension > ssMax) ctx.strokeStyle = 'rgba(255,80,60,0.7)';
+      else if (tension > ssMax - 0.1) ctx.strokeStyle = 'rgba(255,180,40,0.6)';
+      else ctx.strokeStyle = 'rgba(200,230,255,0.6)';
+      ctx.lineWidth = 1.5;
+    } else {
+      ctx.strokeStyle = 'rgba(200,200,200,0.5)';
+      ctx.lineWidth = 1;
+    }
     ctx.beginPath();
     ctx.moveTo(player.x, player.y - 20);
     const midX = (player.x + fishingState.bobberX) / 2;
-    const midY = (player.y - 20 + fishingState.bobberY) / 2 + 15; // sag
+    // Less sag when tension is high (line pulls taut)
+    const sagAmount = phase === 'reeling' ? 15 * (1 - fishingState.reelTension * 0.7) : 15;
+    const midY = (player.y - 20 + fishingState.bobberY) / 2 + sagAmount;
     ctx.quadraticCurveTo(midX, midY, fishingState.bobberX, fishingState.bobberY);
     ctx.stroke();
   }
@@ -311,14 +323,26 @@ function drawFishingWorldEffects() {
   // Bobber
   if (phase === 'waiting' || phase === 'bite' || phase === 'reeling') {
     const t = typeof renderTime !== 'undefined' ? renderTime : Date.now();
-    const bob = Math.sin(t * 0.005) * 2;
-    const bx = fishingState.bobberX;
+    const isReeling = phase === 'reeling';
+    // More aggressive bobbing when reeling + high tension
+    const bobIntensity = isReeling ? 2 + fishingState.reelTension * 4 : 2;
+    const bobSpeed = isReeling ? 0.012 : 0.005;
+    const bob = Math.sin(t * bobSpeed) * bobIntensity;
+    // Lateral shake during reel
+    const shake = isReeling ? Math.sin(t * 0.02) * fishingState.reelTension * 3 : 0;
+    const bx = fishingState.bobberX + shake;
     const by = fishingState.bobberY + bob;
-    // Water ripples
-    ctx.strokeStyle = 'rgba(80,160,220,0.25)';
-    ctx.lineWidth = 1;
-    const rippleR = 8 + Math.sin(t * 0.003) * 3;
+    // Water ripples (bigger during reel)
+    ctx.strokeStyle = isReeling ? 'rgba(80,160,220,0.4)' : 'rgba(80,160,220,0.25)';
+    ctx.lineWidth = isReeling ? 1.5 : 1;
+    const rippleR = (isReeling ? 12 : 8) + Math.sin(t * 0.003) * 3;
     ctx.beginPath(); ctx.ellipse(bx, by + 2, rippleR, rippleR * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+    // Second ripple ring during reel
+    if (isReeling) {
+      const rippleR2 = rippleR + 6 + Math.sin(t * 0.005) * 2;
+      ctx.strokeStyle = 'rgba(80,160,220,0.15)';
+      ctx.beginPath(); ctx.ellipse(bx, by + 2, rippleR2, rippleR2 * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+    }
     // Red/white bobber
     ctx.fillStyle = '#ff3020';
     ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI * 2); ctx.fill();
@@ -379,7 +403,8 @@ function drawFishingHUD() {
   if (!fishingState.active) return;
 
   const cx = BASE_W / 2;
-  const panelW = 320, panelH = 120;
+  const isReeling = fishingState.phase === 'reeling';
+  const panelW = isReeling ? 360 : 320, panelH = isReeling ? 160 : 120;
   const px = cx - panelW / 2, py = BASE_H / 2 - panelH / 2;
   const baseY = py + 10;
 
@@ -427,41 +452,115 @@ function drawFishingHUD() {
     case 'reeling': {
       const fish = fishingState.targetFish;
       if (!fish) break;
-      ctx.fillStyle = '#60d0ff';
-      ctx.fillText('Reeling: ' + fish.name, cx, baseY + 12);
-
-      // Tension bar (vertical thermometer style)
-      ctx.font = '10px monospace';
-      ctx.fillStyle = '#aaa';
-      ctx.fillText('TENSION', cx, baseY + 28);
-      const t = fishingState.reelTension;
+      const t = typeof renderTime !== 'undefined' ? renderTime : Date.now();
+      const tension = fishingState.reelTension;
       const ssMin = FISHING_CONFIG.sweetSpotMin;
       const ssMax = FISHING_CONFIG.sweetSpotMax;
-      let tensionColor = '#40c040'; // green = safe
-      if (t > ssMax) tensionColor = '#ff4040'; // red = danger (snap!)
-      else if (t > ssMax - 0.15) tensionColor = '#ffaa20'; // orange = risky
-      else if (t < ssMin) tensionColor = '#6060a0'; // blue = too low
-      drawFishingBar(cx - 80, baseY + 33, 160, 14, t, tensionColor, '#1a2a3a');
+      const inSweet = tension >= ssMin && tension <= ssMax;
 
-      // Sweet spot indicators on tension bar
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      const barX = cx - 80;
-      ctx.fillRect(barX + 160 * ssMin, baseY + 33, 160 * (ssMax - ssMin), 14);
+      // Fish name header
+      ctx.fillStyle = '#60d0ff';
+      ctx.font = 'bold 15px monospace';
+      ctx.fillText('Reeling: ' + fish.name, cx, baseY + 14);
 
-      // Reel progress bar
-      ctx.fillStyle = '#aaa';
-      ctx.font = '10px monospace';
-      ctx.fillText('REEL PROGRESS', cx, baseY + 62);
-      drawFishingBar(cx - 80, baseY + 67, 160, 14, fishingState.reelProgress, '#30a0e0', '#0a2040');
+      // --- TENSION BAR ---
+      const barW = 260, barH = 22;
+      const barX = cx - barW / 2;
+      const tensionY = baseY + 30;
 
-      // Catch threshold marker
+      // Label
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#c0c0c0';
+      ctx.fillText('TENSION', cx, tensionY);
+
+      const tensionBarY = tensionY + 5;
+
+      // Background
+      ctx.fillStyle = '#0a1520';
+      ctx.beginPath(); ctx.roundRect(barX, tensionBarY, barW, barH, barH / 2); ctx.fill();
+
+      // Sweet spot zone (green tint)
+      ctx.fillStyle = 'rgba(60,180,80,0.2)';
+      const ssStartX = barX + barW * ssMin;
+      const ssEndX = barX + barW * ssMax;
+      ctx.fillRect(ssStartX, tensionBarY, ssEndX - ssStartX, barH);
+
+      // Zone boundary lines
+      ctx.strokeStyle = 'rgba(60,180,80,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(ssStartX, tensionBarY); ctx.lineTo(ssStartX, tensionBarY + barH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ssEndX, tensionBarY); ctx.lineTo(ssEndX, tensionBarY + barH); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Danger zone (red tint beyond sweet max)
+      ctx.fillStyle = 'rgba(255,60,40,0.15)';
+      ctx.fillRect(ssEndX, tensionBarY, barX + barW - ssEndX, barH);
+
+      // Tension fill
+      let tensionColor = '#40c040'; // green = in sweet spot
+      if (tension > ssMax) tensionColor = '#ff4040'; // red = danger
+      else if (tension > ssMax - 0.1) tensionColor = '#ff8800'; // orange = risky
+      else if (tension < ssMin) tensionColor = '#4060a0'; // blue = too low
+      if (tension > 0.01) {
+        ctx.fillStyle = tensionColor;
+        ctx.beginPath(); ctx.roundRect(barX, tensionBarY, Math.max(barH, barW * tension), barH, barH / 2); ctx.fill();
+      }
+
+      // Needle indicator (white triangle pointing down at current tension)
+      const needleX = barX + barW * tension;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(needleX, tensionBarY - 2);
+      ctx.lineTo(needleX - 5, tensionBarY - 8);
+      ctx.lineTo(needleX + 5, tensionBarY - 8);
+      ctx.closePath(); ctx.fill();
+
+      // Zone labels
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#4060a0';
+      ctx.fillText('LOW', barX + barW * ssMin * 0.5, tensionBarY + barH + 10);
+      ctx.fillStyle = '#50b050';
+      ctx.fillText('SWEET SPOT', cx, tensionBarY + barH + 10);
+      ctx.fillStyle = '#cc4040';
+      ctx.fillText('SNAP!', barX + barW * (ssMax + 1) * 0.5, tensionBarY + barH + 10);
+
+      // Pulse glow when in sweet spot
+      if (inSweet) {
+        const pulse = 0.15 + Math.sin(t * 0.008) * 0.1;
+        ctx.strokeStyle = 'rgba(80,220,100,' + pulse.toFixed(2) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(barX - 1, tensionBarY - 1, barW + 2, barH + 2, barH / 2 + 1); ctx.stroke();
+      }
+
+      // --- REEL PROGRESS BAR ---
+      const progY = tensionBarY + barH + 20;
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#c0c0c0';
+      ctx.fillText('REEL PROGRESS', cx, progY);
+
+      const progBarY = progY + 5;
+      drawFishingBar(barX, progBarY, barW, barH, fishingState.reelProgress, '#30a0e0', '#0a2040');
+
+      // Catch threshold marker (gold line with label)
+      const threshX = barX + barW * FISHING_CONFIG.tensionCatchThreshold;
       ctx.fillStyle = '#ffd700';
-      const threshX = barX + 160 * FISHING_CONFIG.tensionCatchThreshold;
-      ctx.fillRect(threshX - 1, baseY + 67, 2, 14);
+      ctx.fillRect(threshX - 1, progBarY, 2, barH);
+      // Small "CATCH" label at threshold
+      ctx.font = '8px monospace';
+      ctx.fillStyle = '#ffd700';
+      ctx.fillText('CATCH', threshX, progBarY + barH + 9);
 
+      // Progress percentage
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#e0f0ff';
+      ctx.fillText(Math.floor(fishingState.reelProgress * 100) + '%', cx, progBarY + barH / 2 + 4);
+
+      // --- INSTRUCTIONS ---
       ctx.font = '10px monospace';
-      ctx.fillStyle = '#90a0b0';
-      ctx.fillText('Hold SPACE to reel - keep tension in green zone', cx, baseY + 95);
+      ctx.fillStyle = inSweet ? '#80e090' : '#90a0b0';
+      const instrText = inSweet ? 'Reeling! Keep it in the green zone' : (tension < ssMin ? 'Hold SPACE — tension too low!' : 'Release SPACE — tension too high!');
+      ctx.fillText(instrText, cx, progBarY + barH + 22);
       break;
     }
 
