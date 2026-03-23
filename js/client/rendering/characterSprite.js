@@ -1628,15 +1628,21 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
     ctx.fillStyle = skin; ctx.fillRect(hx, hy, 5, 5);
     if (activeSlot < 0) return; // empty hands — no weapon
     if (activeSlot === 1) {
-      // Katana slash animation — rotate blade during swing
+      // Farm scene: draw hoe instead of katana
+      const _isFarmHoe = typeof Scene !== 'undefined' && Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe;
+      // Katana/hoe slash animation — rotate blade during swing
       if (melee.swinging) {
         const progress = 1 - (melee.swingTimer / melee.swingDuration);
-        const swingAngle = (progress - 0.5) * 2.2; // -1.1 to 1.1 radians swing arc
+        const swingAngle = (progress - 0.5) * 2.2;
         ctx.save();
         ctx.translate(rifleX, rifleY);
         ctx.rotate(swingAngle);
         ctx.translate(-rifleX, -rifleY);
-        drawKatanaBlade(rifleX, rifleY, rifleDir);
+        if (_isFarmHoe) {
+          _drawHoeBlade(rifleX, rifleY, rifleDir);
+        } else {
+          drawKatanaBlade(rifleX, rifleY, rifleDir);
+        }
         // Slash trail
         const alpha = 0.6 * (1 - progress);
         ctx.strokeStyle = `rgba(200,220,255,${alpha})`;
@@ -1707,9 +1713,13 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         }
         ctx.restore();
       } else {
-        // Idle katana with gentle bob
+        // Idle weapon with gentle bob
         const idleBob = Math.sin(renderTime / 400) * 1.5;
-        drawKatanaBlade(rifleX, rifleY + idleBob, rifleDir);
+        if (_isFarmHoe) {
+          _drawHoeBlade(rifleX, rifleY + idleBob, rifleDir);
+        } else {
+          drawKatanaBlade(rifleX, rifleY + idleBob, rifleDir);
+        }
       }
     } else {
       // Gun with recoil kick + muzzle flash
@@ -1735,6 +1745,18 @@ function drawChoso(sx, sy, dir, frame, moving, name, hp) {
         ctx.beginPath(); ctx.arc(fx, fy, fs * 0.4, 0, Math.PI * 2); ctx.fill();
       }
     }
+  };
+
+  // Hoe held in hand (farm scene)
+  const _drawHoeBlade = (rx, ry, pointDir) => {
+    const _hoeData = typeof farmingState !== 'undefined' ? HOE_TIERS.find(h => h.id === farmingState.equippedHoe) : null;
+    const hoeCol = _hoeData ? _hoeData.color : '#8a6a3a';
+    // Wooden handle
+    ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 2;
+    if (pointDir === 2) { ctx.beginPath(); ctx.moveTo(rx + 4, ry + 8); ctx.lineTo(rx - 20, ry - 14); ctx.stroke(); ctx.fillStyle = hoeCol; ctx.fillRect(rx - 24, ry - 18, 10, 6); }
+    else if (pointDir === 3) { ctx.beginPath(); ctx.moveTo(rx - 4, ry + 8); ctx.lineTo(rx + 20, ry - 14); ctx.stroke(); ctx.fillStyle = hoeCol; ctx.fillRect(rx + 14, ry - 18, 10, 6); }
+    else if (pointDir === 0) { ctx.beginPath(); ctx.moveTo(rx, ry - 4); ctx.lineTo(rx, ry + 22); ctx.stroke(); ctx.fillStyle = hoeCol; ctx.fillRect(rx - 5, ry + 18, 10, 6); }
+    else { ctx.beginPath(); ctx.moveTo(rx, ry + 4); ctx.lineTo(rx, ry - 22); ctx.stroke(); ctx.fillStyle = hoeCol; ctx.fillRect(rx - 5, ry - 24, 10, 6); }
   };
 
   // Katana blade held in hand

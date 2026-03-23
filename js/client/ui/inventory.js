@@ -2381,6 +2381,9 @@ function update() {
   // Skeld: force no weapon held (activeSlot -1 = empty hands)
   if (Scene.inSkeld) activeSlot = -1;
 
+  // Farm: force melee slot (shows hoe in hotbar + character holds tool)
+  if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) activeSlot = 1;
+
   if (UI.isOpen('shop') && !isNearInteractable('shop_station')) { UI.close(); }
   if (UI.isOpen('shop') && waveState === "active") { UI.close(); }
 
