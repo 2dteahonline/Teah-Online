@@ -3878,6 +3878,101 @@ ENTITY_RENDERERS.anvil = (e, ctx, ex, ey, w, h) => {
     ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(cx - 16, cy - 9, 32, 3);
 };
 
+// ===================== FORGE NPC =====================
+ENTITY_RENDERERS.forge_npc = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const cx = ex + cw / 2, cy = ey + ch / 2;
+    const t = Date.now() / 1000;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.ellipse(cx, cy + 28, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+    // Body (stocky blacksmith)
+    ctx.fillStyle = '#5a4030';
+    ctx.fillRect(cx - 10, cy - 14, 20, 30);
+    // Apron
+    ctx.fillStyle = '#3a3028';
+    ctx.fillRect(cx - 8, cy - 4, 16, 24);
+    // Head
+    ctx.fillStyle = '#b89878';
+    ctx.beginPath(); ctx.arc(cx, cy - 22, 10, 0, Math.PI * 2); ctx.fill();
+    // Beard
+    ctx.fillStyle = '#5a4030';
+    ctx.beginPath(); ctx.arc(cx, cy - 14, 6, 0, Math.PI); ctx.fill();
+    // Hammer (held, bobbing)
+    const hammerBob = Math.sin(t * 2) * 2;
+    ctx.fillStyle = '#8a7a60';
+    ctx.fillRect(cx + 12, cy - 18 + hammerBob, 4, 22);
+    ctx.fillStyle = '#6a6a70';
+    ctx.fillRect(cx + 8, cy - 22 + hammerBob, 12, 6);
+    // Glow effect (forge heat)
+    const glow = 0.1 + 0.05 * Math.sin(t * 3);
+    ctx.fillStyle = `rgba(255,140,40,${glow})`;
+    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI * 2); ctx.fill();
+};
+
+// ===================== FORGE ANVIL =====================
+ENTITY_RENDERERS.forge_anvil = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const cx = ex + cw / 2, cy = ey + ch / 2;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.ellipse(cx, cy + 22, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+    // Base (wider, darker)
+    ctx.fillStyle = '#3a3a42'; ctx.fillRect(cx - 16, cy + 6, 32, 16);
+    // Waist
+    ctx.fillStyle = '#4a4a52'; ctx.fillRect(cx - 10, cy - 2, 20, 10);
+    // Top face (wide working surface)
+    ctx.fillStyle = '#5a5a65'; ctx.fillRect(cx - 20, cy - 12, 40, 12);
+    // Horn
+    ctx.fillStyle = '#4a4a52';
+    ctx.beginPath(); ctx.moveTo(cx + 20, cy - 10); ctx.lineTo(cx + 34, cy - 5); ctx.lineTo(cx + 20, cy); ctx.fill();
+    // Hot metal glow on top
+    const t = Date.now() / 1000;
+    const heatPulse = 0.15 + 0.1 * Math.sin(t * 2.5);
+    ctx.fillStyle = `rgba(255,120,30,${heatPulse})`;
+    ctx.fillRect(cx - 10, cy - 10, 18, 6);
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(cx - 18, cy - 11, 36, 3);
+};
+
+// ===================== FORGE FURNACE =====================
+ENTITY_RENDERERS.forge_furnace = (e, ctx, ex, ey, w, h) => {
+    const cw = w * TILE, ch = h * TILE;
+    const cx = ex + cw / 2, cy = ey + ch / 2;
+    const t = Date.now() / 1000;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.ellipse(cx, cy + ch / 2 - 4, cw * 0.4, 6, 0, 0, Math.PI * 2); ctx.fill();
+    // Stone body
+    ctx.fillStyle = '#4a4040';
+    ctx.beginPath(); ctx.roundRect(ex + 4, ey + 4, cw - 8, ch - 6, 6); ctx.fill();
+    // Darker front
+    ctx.fillStyle = '#3a3030';
+    ctx.fillRect(ex + 8, ey + ch * 0.4, cw - 16, ch * 0.4);
+    // Fire opening
+    ctx.fillStyle = '#1a0a00';
+    ctx.beginPath(); ctx.roundRect(cx - 10, cy + 2, 20, 16, 4); ctx.fill();
+    // Fire glow
+    const firePulse = 0.6 + 0.3 * Math.sin(t * 4);
+    ctx.fillStyle = `rgba(255,100,20,${firePulse})`;
+    ctx.beginPath(); ctx.roundRect(cx - 8, cy + 4, 16, 12, 3); ctx.fill();
+    ctx.fillStyle = `rgba(255,200,60,${firePulse * 0.6})`;
+    ctx.beginPath(); ctx.roundRect(cx - 5, cy + 7, 10, 6, 2); ctx.fill();
+    // Chimney
+    ctx.fillStyle = '#3a3030';
+    ctx.fillRect(cx - 6, ey - 4, 12, 10);
+    // Smoke particles
+    for (let s = 0; s < 3; s++) {
+      const smokeY = ey - 8 - s * 8 - ((t * 20 + s * 7) % 30);
+      const smokeX = cx + Math.sin(t * 2 + s * 2) * 3;
+      const smokeA = 0.15 - s * 0.04;
+      if (smokeA > 0) {
+        ctx.fillStyle = `rgba(100,100,110,${smokeA})`;
+        ctx.beginPath(); ctx.arc(smokeX, smokeY, 3 + s, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+};
+
 // ===================== CRATE (generic prop) =====================
 ENTITY_RENDERERS.crate = (e, ctx, ex, ey, w, h) => {
     const cw = w * TILE, ch = h * TILE;

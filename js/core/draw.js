@@ -309,6 +309,7 @@ function draw() {
   // Ore nodes (under characters)
   if (typeof drawOreNodes === 'function') drawOreNodes();
   if (typeof drawOrePickups === 'function') drawOrePickups();
+  if (typeof drawGroundDrops === 'function') drawGroundDrops();
 
   // Telegraph ground markers (under characters, over ground)
   if (typeof TelegraphSystem !== 'undefined') TelegraphSystem.draw(ctx, 0, 0);
@@ -2261,6 +2262,7 @@ function draw() {
   if (typeof drawFarmVendorPanel === 'function') drawFarmVendorPanel();
   if (typeof drawGunsmithPanel === 'function') drawGunsmithPanel();
   if (typeof drawMiningShopPanel === 'function') drawMiningShopPanel();
+  if (typeof drawForgePanel === 'function') drawForgePanel();
   if (typeof drawCasinoPanel === 'function') drawCasinoPanel();
   if (typeof SparState !== 'undefined' && Scene.inSpar && SparState.phase !== 'idle' && SparState.phase !== 'hub') drawSparHUD();
   if (typeof CameraSystem !== 'undefined' && CameraSystem.isActive()) CameraSystem.drawOverlay();

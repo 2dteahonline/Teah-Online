@@ -96,6 +96,18 @@ registerInteractable({
   onInteract() { UI.open('gunsmith'); },
 });
 
+// Register forge NPC interactable (gunsmith room only)
+registerInteractable({
+  id: 'forge_npc',
+  get x() { return 34 * TILE + TILE; },   // center of 2x2 entity at tx:33
+  get y() { return 15 * TILE + TILE; },   // center of 2x2 entity at ty:14
+  range: 120,
+  get label() { return '[' + getKeyDisplayName(keybinds.interact) + '] Forge'; },
+  type: 'forge',
+  canInteract() { return Scene.inGunsmith; },
+  onInteract() { UI.open('forge'); },
+});
+
 // Register mining shop NPC interactable (mine rooms only)
 registerInteractable({
   id: 'mining_npc',

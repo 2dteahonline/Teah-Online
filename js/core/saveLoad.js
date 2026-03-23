@@ -6,7 +6,7 @@
 // Persists keybinds, settings, cosmetics, and identity to localStorage.
 // Auto-saves on changes. Auto-loads on startup.
 const SAVE_KEY = 'dungeon_game_save';
-const SAVE_VERSION = 9;
+const SAVE_VERSION = 10;
 
 // Cooking progression — persists across sessions
 const cookingProgress = {
@@ -83,6 +83,15 @@ const SaveLoad = {
       if (typeof _ctxFreeze !== 'undefined') {
         data.ctxSliders = { freeze: _ctxFreeze, rof: _ctxRof, spread: _ctxSpread };
       }
+      // Materials (v10+) — extract stackable materials from inventory
+      const mats = {};
+      for (let i = 0; i < inventory.length; i++) {
+        const item = inventory[i];
+        if (item && item.type === 'material') {
+          mats[item.id] = (mats[item.id] || 0) + (item.count || 1);
+        }
+      }
+      data.materials = mats;
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('Save failed:', e);
@@ -294,6 +303,16 @@ const SaveLoad = {
         if (typeof data.ctxSliders.freeze === 'number') _mgSliders.freeze.set(data.ctxSliders.freeze);
         if (typeof data.ctxSliders.rof === 'number') _mgSliders.rof.set(data.ctxSliders.rof);
         if (typeof data.ctxSliders.spread === 'number') _mgSliders.spread.set(data.ctxSliders.spread);
+      }
+
+      // Materials (v10+) — restore stackable materials into inventory
+      if (data.materials && typeof createMaterialItem === 'function') {
+        for (const matId in data.materials) {
+          const count = data.materials[matId];
+          if (count > 0) {
+            addToInventory(createMaterialItem(matId, count));
+          }
+        }
       }
 
       // Farming state (v5+)
