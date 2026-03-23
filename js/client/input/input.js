@@ -569,10 +569,12 @@ canvas.addEventListener("mousedown", e => {
         } else if (i === 3) {
           InputIntent.slot4Pressed = true;
         } else if (i === 2) {
+          InputIntent.slot3Pressed = true;
           InputIntent.potionPressed = true;
-        } else {
-          if (i === 0) InputIntent.slot1Pressed = true;
-          else if (i === 1) InputIntent.slot2Pressed = true;
+        } else if (i === 1) {
+          InputIntent.slot2Pressed = true;
+        } else if (i === 0) {
+          InputIntent.slot1Pressed = true;
         }
         // Start hold timer for weapon stats
         hotbarHoldSlot = i;
@@ -1197,8 +1199,8 @@ canvas.addEventListener("mousedown", e => {
     if (handleTestMobClick(mx, my)) return;
   }
 
-  // Inventory panel clicks
-  if (UI.isOpen('inventory') && handleInventoryClick(mx, my)) return;
+  // Inventory panel clicks (left-click only — right-click shows card popup via contextmenu)
+  if (e.button === 0 && UI.isOpen('inventory') && handleInventoryClick(mx, my)) return;
 
   // Fish vendor panel clicks
   if (UI.isOpen('fishVendor') && typeof handleFishVendorClick === 'function') {

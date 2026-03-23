@@ -2142,6 +2142,12 @@ function handleQuickSlotPromptClick(mx, my) {
       else if (item.data && item.data.special === 'bucket') equipType = 'bucket';
       else if (item.type === 'consumable' && item.id === 'potion') equipType = 'potion';
 
+      // Remove this item from any other quickslot first (no duplicates)
+      for (let j = 0; j < 4; j++) {
+        if (j !== i && quickSlots[j] && quickSlots[j].id === item.id && quickSlots[j].equipType === equipType) {
+          quickSlots[j] = null;
+        }
+      }
       quickSlots[i] = {
         id: item.id,
         name: item.name || item.id,
@@ -2150,6 +2156,9 @@ function handleQuickSlotPromptClick(mx, my) {
         cropId: item.data ? item.data.cropId : null,
       };
       qsPromptItem = null;
+      // Close inventory so player can use the slot immediately
+      UI.close();
+      SaveLoad.autoSave();
       return true;
     }
   }
