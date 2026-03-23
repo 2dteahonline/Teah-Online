@@ -16,6 +16,12 @@ let invPage = 0; // current page for item grid pagination
 let armorInvScroll = 0; // scroll offset for armor inventory grid
 let armorHoverSlot = -1; // slot index of hovered armor card in armor tab
 
+// === QUICKSLOT SYSTEM ===
+// 3 assignable quickslots — player can assign any inventory item to slots 1/2/3
+// null = default behavior (gun/melee/potion); assigned = equip that specific item
+let quickSlots = [null, null, null]; // each: { id, name, equipType, color } or null
+let qsPromptItem = null; // item pending quickslot assignment (shown after clicking in inventory)
+
 // Draw pixel art category icons
 function drawItemCard(item) {
   const d = item.data || {};
@@ -623,7 +629,7 @@ function getInvLayout() {
 
   const cols = 6;
   const slotGap = Math.round(BASE_W * 0.006);
-  const slotS = Math.min(Math.round(BASE_W * 0.06), Math.floor((BASE_W - pad * 2 - contentPad * 2 - (cols - 1) * slotGap) / cols));
+  const slotS = Math.min(Math.round(BASE_W * 0.075), Math.floor((BASE_W - pad * 2 - contentPad * 2 - (cols - 1) * slotGap) / cols));
   const gridW = cols * (slotS + slotGap) - slotGap;
   const gridX = Math.round((BASE_W - gridW) / 2);
   const gridY = contentY + Math.round(BASE_H * 0.015);
@@ -1281,11 +1287,15 @@ function drawInventoryPanel() {
   ctx.fillText("Search Items", BASE_W - L.pad - 164, barCy + 5);
 
   ctx.textAlign = "left";
+
+  drawQuickSlotPrompt();
 }
 
 // Inventory click handler
 function handleInventoryClick(mx, my) {
   if (!UI.isOpen('inventory')) return false;
+  // Quickslot assignment prompt intercepts all clicks when visible
+  if (qsPromptItem) return handleQuickSlotPromptClick(mx, my);
   const L = getInvLayout();
 
   // Back button (bottom bar)
@@ -1443,24 +1453,16 @@ function handleInventoryClick(mx, my) {
     const sx = L.gridX + col * (L.slotS + L.slotGap);
     const sy = L.gridY + row * (L.slotS + L.slotGap);
     if (mx >= sx && mx <= sx + L.slotS && my >= sy && my <= sy + L.slotS) {
-      if (ITEM_CATEGORIES.equipment.includes(item.type)) {
-        equipItem(slot);
-      } else if (item.data && item.data.special === 'farming' && typeof farmingState !== 'undefined') {
-        // Click hoe in inventory → equip/unequip as farming tool
-        if (farmingState.equippedHoe === item.data.id) {
-          farmingState.equippedHoe = 'bronze_hoe'; // revert to default
-        } else {
-          farmingState.equippedHoe = item.data.id;
-        }
-      } else if (item.type === 'consumable' && item.id === 'potion') {
-        if (item.count > 0 && potion.cooldown <= 0 && player.hp < (player.maxHp || 100)) {
-          item.count--;
-          if (item.count <= 0) inventory[slot] = null;
-          player.hp = Math.min(player.maxHp || 100, player.hp + potion.healAmount);
-          potion.cooldown = potion.cooldownMax;
-        }
+      // Show quickslot assignment prompt for assignable items
+      const _isAssignable = ITEM_CATEGORIES.equipment.includes(item.type)
+        || (item.data && item.data.special === 'farming')
+        || (item.data && item.data.cropId)
+        || (item.data && item.data.special === 'bucket')
+        || (item.type === 'consumable' && item.id === 'potion');
+      if (_isAssignable) {
+        qsPromptItem = item;
       } else {
-        // All other items → equip to extra hotbar slot 4
+        // Non-assignable items: direct equip to extra slot
         equipItem(slot);
       }
       return true;
@@ -1939,6 +1941,14 @@ function drawHotbar() {
       ctx.fillText(slot.key, sx + 4, sy + 14);
     }
 
+    // Quickslot assignment label
+    if (i < 3 && quickSlots[i]) {
+      ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = quickSlots[i].color || '#4a9eff';
+      ctx.textAlign = 'center';
+      ctx.fillText(quickSlots[i].name.substring(0, 7).toUpperCase(), sx + slotW / 2, sy + slotH - 2);
+    }
+
     // Grab label
     if (isGrab) {
       ctx.font = "bold 9px monospace";
@@ -2014,6 +2024,108 @@ function drawHotbar() {
     }
   }
   ctx.textAlign = "left";
+}
+
+// === QUICKSLOT ASSIGNMENT PROMPT ===
+function drawQuickSlotPrompt() {
+  if (!qsPromptItem) return;
+  const pw = 260, ph = 100;
+  const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
+
+  // Dimmed overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  // Panel
+  ctx.fillStyle = 'rgba(10,14,20,0.95)';
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.fill();
+  ctx.strokeStyle = 'rgba(80,160,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.stroke();
+
+  // Title
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 13px monospace';
+  ctx.fillStyle = '#c0d8ff';
+  ctx.fillText('Assign ' + qsPromptItem.name, px + pw / 2, py + 22);
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#667';
+  ctx.fillText('Choose a hotkey slot:', px + pw / 2, py + 38);
+
+  // 3 large slot buttons
+  const btnW = 64, btnH = 48, btnGap = 12;
+  const totalBtnW = 3 * btnW + 2 * btnGap;
+  const btnStartX = px + pw / 2 - totalBtnW / 2;
+  const btnY = py + 46;
+
+  for (let i = 0; i < 3; i++) {
+    const bx = btnStartX + i * (btnW + btnGap);
+    const assigned = quickSlots[i];
+
+    // Button bg
+    ctx.fillStyle = assigned ? 'rgba(40,50,70,0.8)' : 'rgba(30,40,60,0.8)';
+    ctx.beginPath(); ctx.roundRect(bx, btnY, btnW, btnH, 8); ctx.fill();
+    ctx.strokeStyle = 'rgba(80,160,255,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(bx, btnY, btnW, btnH, 8); ctx.stroke();
+
+    // Slot number (large)
+    ctx.font = 'bold 22px monospace';
+    ctx.fillStyle = '#4a9eff';
+    ctx.textAlign = 'center';
+    ctx.fillText('' + (i + 1), bx + btnW / 2, btnY + 22);
+
+    // Current assignment (small)
+    ctx.font = '8px monospace';
+    ctx.fillStyle = '#667';
+    if (assigned) {
+      ctx.fillText(assigned.name.substring(0, 8), bx + btnW / 2, btnY + 38);
+    } else {
+      const defaults = ['Gun', 'Melee', 'Potion'];
+      ctx.fillText(defaults[i], bx + btnW / 2, btnY + 38);
+    }
+  }
+
+  ctx.textAlign = 'left';
+}
+
+function handleQuickSlotPromptClick(mx, my) {
+  if (!qsPromptItem) return false;
+  const pw = 260, ph = 100;
+  const px = BASE_W / 2 - pw / 2, py = BASE_H / 2 - ph / 2;
+  const btnW = 64, btnH = 48, btnGap = 12;
+  const totalBtnW = 3 * btnW + 2 * btnGap;
+  const btnStartX = px + pw / 2 - totalBtnW / 2;
+  const btnY = py + 46;
+
+  for (let i = 0; i < 3; i++) {
+    const bx = btnStartX + i * (btnW + btnGap);
+    if (mx >= bx && mx <= bx + btnW && my >= btnY && my <= btnY + btnH) {
+      // Assign item to this quickslot
+      const item = qsPromptItem;
+      let equipType = 'item';
+      if (item.type === 'gun') equipType = 'gun';
+      else if (item.type === 'melee') equipType = 'melee';
+      else if (item.data && item.data.special === 'farming') equipType = 'hoe';
+      else if (item.data && item.data.cropId) equipType = 'seed';
+      else if (item.data && item.data.special === 'bucket') equipType = 'bucket';
+      else if (item.type === 'consumable' && item.id === 'potion') equipType = 'potion';
+
+      quickSlots[i] = {
+        id: item.id,
+        name: item.name || item.id,
+        equipType: equipType,
+        color: item.data ? item.data.color : null,
+        cropId: item.data ? item.data.cropId : null,
+      };
+      qsPromptItem = null;
+      return true;
+    }
+  }
+
+  // Click outside buttons = cancel
+  qsPromptItem = null;
+  return true;
 }
 
 function drawGunHUD() {
@@ -2617,7 +2729,7 @@ function update() {
         }
       }
     }
-    // Hotbar slot keys (1/2/3) — blocked during hide & seek (only Seeking Baton allowed)
+    // Hotbar slot keys (1/2/3) — check quickslots first, then default behavior
     if (InputIntent.slot1Pressed || InputIntent.slot2Pressed || InputIntent.slot3Pressed) {
       if (typeof Scene !== 'undefined' && Scene.inSkeld) {
         // In Skeld: no items/weapons
@@ -2625,11 +2737,31 @@ function update() {
         // In Hide & Seek: ignore slot switching, stay on melee
       } else {
         const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : 2;
-        if (hotbarSlots[slot].type !== "empty") {
-          if (hotbarSlots[slot].type === "potion") {
-            usePotion();
-          } else {
-            activeSlot = slot;
+        const qs = quickSlots[slot];
+        if (qs) {
+          // Quickslot assigned — equip that specific item
+          if (qs.equipType === 'gun') { activeSlot = 0; }
+          else if (qs.equipType === 'melee') { activeSlot = 1; }
+          else if (qs.equipType === 'hoe' && typeof farmingState !== 'undefined') {
+            farmingState.equippedHoe = qs.id;
+            activeSlot = 1;
+          }
+          else if (qs.equipType === 'seed' && typeof farmingState !== 'undefined' && qs.cropId) {
+            farmingState.selectedSeed = qs.cropId;
+          }
+          else if (qs.equipType === 'potion') { usePotion(); }
+          else if (qs.equipType === 'bucket' && typeof farmingState !== 'undefined') {
+            // Bucket equip — just set owned flag visible
+            farmingState.bucketOwned = true;
+          }
+        } else {
+          // Default behavior — gun/melee/potion
+          if (hotbarSlots[slot].type !== "empty") {
+            if (hotbarSlots[slot].type === "potion") {
+              usePotion();
+            } else {
+              activeSlot = slot;
+            }
           }
         }
       }

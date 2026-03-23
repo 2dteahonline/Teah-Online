@@ -649,6 +649,8 @@ function handleFarmSeedSelect(keyNum) {
 
 // ===================== FARM VENDOR =====================
 let farmVendorTab = 0; // 0=Seeds, 1=Equipment, 2=Acres, 3=Sell
+let farmVendorQty = 1; // quantity selector for garden shop purchases
+let farmVendorQtyItem = null; // item currently in quantity selector (null = no selector shown)
 const FARM_VENDOR_PW = 540;
 const FARM_VENDOR_PH = 480;
 
@@ -711,17 +713,11 @@ function getFarmVendorEquipItems() {
       isEquipped: isEquipped,
     });
   }
-  // Metal Bucket
+  // Metal Bucket — one-time purchase
   const bData = typeof BUCKET_DATA !== 'undefined' ? BUCKET_DATA : null;
   if (bData) {
     const bLocked = !window._opMode && farmLevel < bData.levelReq;
-    let bInvCount = 0;
-    for (let si = 0; si < inventory.length; si++) {
-      if (inventory[si] && inventory[si].id === bData.id && inventory[si].type === 'resource') {
-        bInvCount = inventory[si].count || 0;
-        break;
-      }
-    }
+    const bOwned = farmingState.bucketOwned;
     items.push({
       type: 'bucket',
       id: bData.id,
@@ -731,8 +727,9 @@ function getFarmVendorEquipItems() {
       color: bData.color,
       isLocked: bLocked,
       lockReason: bLocked ? 'Lv.' + bData.levelReq : '',
-      invCount: bInvCount,
+      invCount: bOwned ? 1 : 0,
       isEquipped: false,
+      isOwned: bOwned,
     });
   }
   return items;
@@ -863,6 +860,66 @@ function drawFarmVendorPanel() {
         ctx.fillText(item.cost + 'g', px + pw - 22, iy + 22);
       }
     }
+
+    // Quantity selector overlay (shown when an item is selected)
+    if (farmVendorQtyItem) {
+      const qItem = farmVendorQtyItem;
+      const qW = 280, qH = 90;
+      const qX = px + pw / 2 - qW / 2, qY = py + ph - qH - 20;
+      ctx.fillStyle = 'rgba(8,12,6,0.96)';
+      ctx.beginPath(); ctx.roundRect(qX, qY, qW, qH, 8); ctx.fill();
+      ctx.strokeStyle = '#8ac060';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(qX, qY, qW, qH, 8); ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#d0e8c0';
+      ctx.fillText('Buy ' + qItem.name, qX + qW / 2, qY + 18);
+
+      // Quantity controls: [-] [qty] [+]
+      const btnSize = 32;
+      const qCenterX = qX + qW / 2;
+      const qBtnY = qY + 26;
+
+      // Minus button
+      ctx.fillStyle = 'rgba(60,30,30,0.8)';
+      ctx.beginPath(); ctx.roundRect(qCenterX - 70, qBtnY, btnSize, btnSize, 6); ctx.fill();
+      ctx.strokeStyle = '#ff6060'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(qCenterX - 70, qBtnY, btnSize, btnSize, 6); ctx.stroke();
+      ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#ff6060';
+      ctx.fillText('-', qCenterX - 70 + btnSize / 2, qBtnY + 23);
+
+      // Quantity display
+      ctx.fillStyle = 'rgba(20,30,20,0.8)';
+      ctx.beginPath(); ctx.roundRect(qCenterX - 30, qBtnY, 60, btnSize, 4); ctx.fill();
+      ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#ffd700';
+      ctx.fillText('' + farmVendorQty, qCenterX, qBtnY + 22);
+
+      // Plus button
+      ctx.fillStyle = 'rgba(30,60,30,0.8)';
+      ctx.beginPath(); ctx.roundRect(qCenterX + 38, qBtnY, btnSize, btnSize, 6); ctx.fill();
+      ctx.strokeStyle = '#80c060'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(qCenterX + 38, qBtnY, btnSize, btnSize, 6); ctx.stroke();
+      ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#80c060';
+      ctx.fillText('+', qCenterX + 38 + btnSize / 2, qBtnY + 23);
+
+      // Total price + Buy button
+      const totalCost = qItem.cost * farmVendorQty;
+      const canAfford = gold >= totalCost;
+      ctx.font = '11px monospace';
+      ctx.fillStyle = canAfford ? '#ffd700' : '#804040';
+      ctx.fillText('Total: ' + totalCost + 'g', qCenterX - 40, qY + qH - 10);
+
+      // Buy button
+      ctx.fillStyle = canAfford ? 'rgba(40,80,30,0.9)' : 'rgba(40,30,30,0.6)';
+      ctx.beginPath(); ctx.roundRect(qCenterX + 30, qY + qH - 26, 60, 22, 5); ctx.fill();
+      ctx.strokeStyle = canAfford ? '#80c060' : '#804040'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(qCenterX + 30, qY + qH - 26, 60, 22, 5); ctx.stroke();
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = canAfford ? '#c0e8a0' : '#666';
+      ctx.fillText('BUY', qCenterX + 60, qY + qH - 11);
+    }
   } else if (farmVendorTab === 1) {
     // EQUIPMENT TAB (hoes only — always purchasable, never "Owned")
     const items = getFarmVendorEquipItems();
@@ -909,12 +966,15 @@ function drawFarmVendorPanel() {
         ctx.fillText('Owned: ' + item.invCount, px + pw - 22, iy + 34);
       }
 
-      // Price / locked (always show price, never "Owned")
+      // Price / locked / owned (bucket is one-time purchase)
       ctx.textAlign = 'right';
       ctx.font = 'bold 12px monospace';
       if (item.isLocked) {
         ctx.fillStyle = '#804040';
         ctx.fillText(item.lockReason, px + pw - 22, iy + 22);
+      } else if (item.isOwned) {
+        ctx.fillStyle = '#60a060';
+        ctx.fillText('OWNED', px + pw - 22, iy + 22);
       } else {
         ctx.fillStyle = gold >= item.cost ? '#ffd700' : '#804040';
         ctx.fillText(item.cost + 'g', px + pw - 22, iy + 22);
@@ -996,6 +1056,8 @@ function handleFarmVendorClick(mx, my) {
     const tx = px + 20 + i * tabW;
     if (mx >= tx && mx <= tx + tabW - 6 && my >= tabY && my <= tabY + 28) {
       farmVendorTab = i;
+      farmVendorQtyItem = null;
+      farmVendorQty = 1;
       return true;
     }
   }
@@ -1003,7 +1065,57 @@ function handleFarmVendorClick(mx, my) {
   const contentY = tabY + 38;
 
   if (farmVendorTab === 0) {
-    // Seeds tab — buy seeds → add to Resources inventory
+    // Quantity selector click handling (if visible)
+    if (farmVendorQtyItem) {
+      const qW = 280, qH = 90;
+      const qX = px + pw / 2 - qW / 2, qY = py + ph - qH - 20;
+      const btnSize = 32;
+      const qCenterX = qX + qW / 2;
+      const qBtnY = qY + 26;
+
+      // Minus button
+      if (mx >= qCenterX - 70 && mx <= qCenterX - 70 + btnSize && my >= qBtnY && my <= qBtnY + btnSize) {
+        if (farmVendorQty > 1) farmVendorQty--;
+        return true;
+      }
+      // Plus button
+      if (mx >= qCenterX + 38 && mx <= qCenterX + 38 + btnSize && my >= qBtnY && my <= qBtnY + btnSize) {
+        const maxAfford = Math.floor(gold / farmVendorQtyItem.cost);
+        if (farmVendorQty < Math.max(1, maxAfford)) farmVendorQty++;
+        return true;
+      }
+      // Buy button
+      if (mx >= qCenterX + 30 && mx <= qCenterX + 90 && my >= qY + qH - 26 && my <= qY + qH - 4) {
+        const totalCost = farmVendorQtyItem.cost * farmVendorQty;
+        if (gold >= totalCost) {
+          gold -= totalCost;
+          const seedItem = {
+            id: 'seed_' + farmVendorQtyItem.id,
+            name: farmVendorQtyItem.name,
+            type: 'resource',
+            tier: 0,
+            data: { id: 'seed_' + farmVendorQtyItem.id, name: farmVendorQtyItem.name, cropId: farmVendorQtyItem.id, color: farmVendorQtyItem.color },
+            stackable: true,
+            count: farmVendorQty,
+          };
+          addToInventory(seedItem);
+          farmingState.selectedSeed = farmVendorQtyItem.id;
+          hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Bought ' + farmVendorQty + 'x ' + farmVendorQtyItem.name + '!', color: farmVendorQtyItem.color });
+          farmVendorQtyItem = null;
+          farmVendorQty = 1;
+        }
+        return true;
+      }
+      // Click outside quantity selector = close it
+      if (mx < qX || mx > qX + qW || my < qY || my > qY + qH) {
+        farmVendorQtyItem = null;
+        farmVendorQty = 1;
+        return true;
+      }
+      return true; // consume click when quantity selector is open
+    }
+
+    // Seeds tab — click opens quantity selector instead of instant buy
     const items = getFarmVendorSeedItems();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -1011,21 +1123,9 @@ function handleFarmVendorClick(mx, my) {
       if (mx >= px + 14 && mx <= px + pw - 14 && my >= iy && my <= iy + 38) {
         if (item.isLocked) return true;
         if (gold < item.cost) return true;
-        // Buy seed — add to inventory as stackable resource
-        gold -= item.cost;
-        const seedItem = {
-          id: 'seed_' + item.id,
-          name: item.name,
-          type: 'resource',
-          tier: 0,
-          data: { id: 'seed_' + item.id, name: item.name, cropId: item.id, color: item.color },
-          stackable: true,
-          count: 1,
-        };
-        addToInventory(seedItem);
-        // Also select this seed for planting
-        farmingState.selectedSeed = item.id;
-        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Bought ' + item.name + '!', color: item.color });
+        // Open quantity selector instead of instant buy
+        farmVendorQtyItem = item;
+        farmVendorQty = 1;
         return true;
       }
     }
@@ -1037,6 +1137,7 @@ function handleFarmVendorClick(mx, my) {
       const iy = contentY + i * 44;
       if (mx >= px + 14 && mx <= px + pw - 14 && my >= iy && my <= iy + 38) {
         if (item.isLocked) return true;
+        if (item.isOwned) return true; // one-time purchase items
         if (gold < item.cost) return true;
         gold -= item.cost;
         if (item.type === 'hoe') {
