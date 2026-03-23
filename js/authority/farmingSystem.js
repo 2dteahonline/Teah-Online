@@ -145,7 +145,7 @@ function handleFarmAction(fromClick) {
       break;
 
     case FARM_TILE_STATES.TILLED:
-      // Plant seed
+      // Plant seed — consumes from inventory (resource type)
       if (!farmingState.selectedSeed) {
         hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'No seed selected!', color: '#ff6060' });
         return;
@@ -164,12 +164,24 @@ function handleFarmAction(fromClick) {
         hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Requires ' + (reqExp ? reqExp.name : 'Garden Lv.' + crop.gardenReq) + '!', color: '#ff6060' });
         return;
       }
-      // Check gold for seed
-      if (gold < crop.seedCost) {
-        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Need ' + crop.seedCost + 'g!', color: '#ff6060' });
+      // Check inventory for seed (resource type)
+      const seedId = 'seed_' + farmingState.selectedSeed;
+      let seedSlot = -1;
+      for (let si = 0; si < inventory.length; si++) {
+        if (inventory[si] && inventory[si].id === seedId && inventory[si].type === 'resource') {
+          seedSlot = si;
+          break;
+        }
+      }
+      if (seedSlot === -1) {
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'No ' + crop.name + ' seeds! Buy from shop.', color: '#ff6060' });
         return;
       }
-      gold -= crop.seedCost;
+      // Consume 1 seed from inventory
+      inventory[seedSlot].count--;
+      if (inventory[seedSlot].count <= 0) {
+        inventory.splice(seedSlot, 1);
+      }
       tile.state = FARM_TILE_STATES.PLANTED;
       tile.cropId = farmingState.selectedSeed;
       tile.growthTimer = 0;
@@ -489,16 +501,33 @@ function drawFarmingHUD() {
     ctx.lineWidth = 1;
     ctx.strokeRect(panelX + 10, panelY + 10, 52, 52);
 
+    // Seed count badge on the crop square
+    const _seedInvId = 'seed_' + farmingState.selectedSeed;
+    let _seedCount = 0;
+    for (let _si = 0; _si < inventory.length; _si++) {
+      if (inventory[_si] && inventory[_si].id === _seedInvId && inventory[_si].type === 'resource') {
+        _seedCount = inventory[_si].count || 0;
+        break;
+      }
+    }
+    ctx.fillStyle = _seedCount > 0 ? 'rgba(0,0,0,0.7)' : 'rgba(80,0,0,0.8)';
+    ctx.beginPath(); ctx.roundRect(panelX + 36, panelY + 40, 28, 16, 4); ctx.fill();
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = _seedCount > 0 ? '#ffd700' : '#ff4040';
+    ctx.textAlign = 'center';
+    ctx.fillText('x' + _seedCount, panelX + 50, panelY + 53);
+    ctx.textAlign = 'left';
+
     // Crop name (large)
     ctx.font = 'bold 18px monospace';
     ctx.fillStyle = '#d0ffa0';
     ctx.textAlign = 'left';
     ctx.fillText(selCrop.name, panelX + 72, panelY + 28);
 
-    // Seed cost + grow time
+    // Seed count + grow time
     ctx.font = '13px monospace';
-    ctx.fillStyle = gold >= selCrop.seedCost ? '#ffd700' : '#aa4444';
-    ctx.fillText('Cost: ' + selCrop.seedCost + 'g', panelX + 72, panelY + 46);
+    ctx.fillStyle = _seedCount > 0 ? '#ffd700' : '#aa4444';
+    ctx.fillText('Seeds: ' + _seedCount, panelX + 72, panelY + 46);
     ctx.fillStyle = '#8a8a8a';
     ctx.fillText('Grows: ' + (selCrop.growthFrames / 60).toFixed(0) + 's', panelX + 170, panelY + 46);
 
@@ -561,7 +590,7 @@ function handleFarmSeedSelect(keyNum) {
 }
 
 // ===================== FARM VENDOR =====================
-let farmVendorTab = 0; // 0=Seeds, 1=Equipment, 2=Sell
+let farmVendorTab = 0; // 0=Seeds, 1=Equipment, 2=Acres, 3=Sell
 const FARM_VENDOR_PW = 540;
 const FARM_VENDOR_PH = 480;
 
@@ -572,6 +601,15 @@ function getFarmVendorSeedItems() {
     const crop = CROP_TYPES[id];
     const locked = !window._opMode && farmLevel < crop.levelReq;
     const gardenLocked = !window._opMode && crop.gardenReq > farmingState.landLevel;
+    // Count seeds in inventory
+    const seedInvId = 'seed_' + crop.id;
+    let owned = 0;
+    for (let si = 0; si < inventory.length; si++) {
+      if (inventory[si] && inventory[si].id === seedInvId && inventory[si].type === 'resource') {
+        owned = inventory[si].count || 0;
+        break;
+      }
+    }
     items.push({
       type: 'seed',
       id: crop.id,
@@ -581,6 +619,7 @@ function getFarmVendorSeedItems() {
       color: crop.color,
       isLocked: locked || gardenLocked,
       lockReason: locked ? 'Lv.' + crop.levelReq : gardenLocked ? LAND_EXPANSIONS[crop.gardenReq].name : '',
+      ownedCount: owned,
     });
   }
   return items;
@@ -589,7 +628,7 @@ function getFarmVendorSeedItems() {
 function getFarmVendorEquipItems() {
   const farmLevel = typeof skillData !== 'undefined' && skillData['Farming'] ? skillData['Farming'].level : 1;
   const items = [];
-  // Hoe tiers
+  // Hoe tiers only
   for (const hoe of HOE_TIERS) {
     const owned = farmingState.equippedHoe === hoe.id;
     const locked = !window._opMode && farmLevel < hoe.levelReq;
@@ -597,7 +636,7 @@ function getFarmVendorEquipItems() {
       type: 'hoe',
       id: hoe.id,
       name: hoe.name,
-      desc: hoe.desc,
+      desc: hoe.desc + ' · Reach: ' + hoe.reach + ' · CD: ' + (hoe.cooldown / 60).toFixed(1) + 's',
       cost: hoe.cost,
       color: hoe.color,
       isLocked: locked,
@@ -606,7 +645,12 @@ function getFarmVendorEquipItems() {
       hoeData: hoe,
     });
   }
-  // Land expansions
+  return items;
+}
+
+function getFarmVendorAcreItems() {
+  const farmLevel = typeof skillData !== 'undefined' && skillData['Farming'] ? skillData['Farming'].level : 1;
+  const items = [];
   for (let i = 1; i < LAND_EXPANSIONS.length; i++) {
     const exp = LAND_EXPANSIONS[i];
     const owned = farmingState.landLevel >= i;
@@ -615,7 +659,7 @@ function getFarmVendorEquipItems() {
       type: 'land',
       id: 'land_' + i,
       name: exp.name + ' (' + exp.gridW + 'x' + exp.gridH + ')',
-      desc: 'Expand your garden plot',
+      desc: (exp.gridW * exp.gridH) + ' plots total',
       cost: exp.cost,
       color: '#8a7040',
       isLocked: locked,
@@ -664,9 +708,9 @@ function drawFarmVendorPanel() {
 
   // Tabs
   const tabY = py + 44;
-  const tabNames = ['Seeds', 'Equipment', 'Sell'];
-  const tabW = (pw - 40) / 3;
-  for (let i = 0; i < 3; i++) {
+  const tabNames = ['Seeds', 'Equipment', 'Acres', 'Sell'];
+  const tabW = (pw - 40) / 4;
+  for (let i = 0; i < 4; i++) {
     const tx = px + 20 + i * tabW;
     ctx.fillStyle = farmVendorTab === i ? 'rgba(80,160,60,0.25)' : 'rgba(20,30,20,0.6)';
     ctx.beginPath(); ctx.roundRect(tx, tabY, tabW - 6, 28, 5); ctx.fill();
@@ -720,6 +764,14 @@ function drawFarmVendorPanel() {
       ctx.fillStyle = '#607050';
       ctx.fillText(item.desc, px + 44, iy + 30);
 
+      // Owned count badge
+      if (item.ownedCount > 0) {
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#80c060';
+        ctx.fillText('x' + item.ownedCount, px + pw - 22, iy + 34);
+      }
+
       // Price / locked
       ctx.textAlign = 'right';
       ctx.font = 'bold 12px monospace';
@@ -732,7 +784,7 @@ function drawFarmVendorPanel() {
       }
     }
   } else if (farmVendorTab === 1) {
-    // EQUIPMENT TAB (hoes + land)
+    // EQUIPMENT TAB (hoes only)
     const items = getFarmVendorEquipItems();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -743,16 +795,63 @@ function drawFarmVendorPanel() {
       ctx.fillStyle = canBuy ? 'rgba(40,60,30,0.6)' : item.isOwned ? 'rgba(20,40,20,0.6)' : 'rgba(20,25,18,0.6)';
       ctx.beginPath(); ctx.roundRect(px + 14, iy, pw - 28, 38, 6); ctx.fill();
 
+      // Hoe color dot
+      ctx.fillStyle = item.color;
+      ctx.beginPath(); ctx.arc(px + 30, iy + 19, 6, 0, Math.PI * 2); ctx.fill();
+
       // Name
       ctx.textAlign = 'left';
       ctx.font = 'bold 12px monospace';
       ctx.fillStyle = item.isLocked ? '#505050' : item.isOwned ? '#60a060' : '#d0e8c0';
-      ctx.fillText(item.name, px + 22, iy + 16);
+      ctx.fillText(item.name, px + 44, iy + 16);
 
       // Desc
       ctx.font = '10px monospace';
       ctx.fillStyle = '#607050';
-      ctx.fillText(item.desc, px + 22, iy + 30);
+      ctx.fillText(item.desc, px + 44, iy + 30);
+
+      // Price / owned / locked
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 12px monospace';
+      if (item.isLocked) {
+        ctx.fillStyle = '#804040';
+        ctx.fillText(item.lockReason, px + pw - 22, iy + 22);
+      } else if (item.isOwned) {
+        ctx.fillStyle = '#60a060';
+        ctx.fillText('OWNED', px + pw - 22, iy + 22);
+      } else {
+        ctx.fillStyle = gold >= item.cost ? '#ffd700' : '#804040';
+        ctx.fillText(item.cost + 'g', px + pw - 22, iy + 22);
+      }
+    }
+  } else if (farmVendorTab === 2) {
+    // ACRES TAB (land expansions)
+    const items = getFarmVendorAcreItems();
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const iy = contentY + i * 44;
+      if (iy + 40 > maxY) break;
+
+      const canBuy = !item.isLocked && !item.isOwned && gold >= item.cost;
+      ctx.fillStyle = canBuy ? 'rgba(40,60,30,0.6)' : item.isOwned ? 'rgba(20,40,20,0.6)' : 'rgba(20,25,18,0.6)';
+      ctx.beginPath(); ctx.roundRect(px + 14, iy, pw - 28, 38, 6); ctx.fill();
+
+      // Land icon
+      ctx.fillStyle = item.color;
+      ctx.fillRect(px + 24, iy + 12, 12, 12);
+      ctx.strokeStyle = '#5a4020'; ctx.lineWidth = 1;
+      ctx.strokeRect(px + 24, iy + 12, 12, 12);
+
+      // Name
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = item.isLocked ? '#505050' : item.isOwned ? '#60a060' : '#d0e8c0';
+      ctx.fillText(item.name, px + 44, iy + 16);
+
+      // Desc
+      ctx.font = '10px monospace';
+      ctx.fillStyle = '#607050';
+      ctx.fillText(item.desc, px + 44, iy + 30);
 
       // Price / owned / locked
       ctx.textAlign = 'right';
@@ -796,8 +895,8 @@ function handleFarmVendorClick(mx, my) {
 
   // Tab clicks
   const tabY = py + 44;
-  const tabW = (pw - 40) / 3;
-  for (let i = 0; i < 3; i++) {
+  const tabW = (pw - 40) / 4;
+  for (let i = 0; i < 4; i++) {
     const tx = px + 20 + i * tabW;
     if (mx >= tx && mx <= tx + tabW - 6 && my >= tabY && my <= tabY + 28) {
       farmVendorTab = i;
@@ -808,22 +907,34 @@ function handleFarmVendorClick(mx, my) {
   const contentY = tabY + 58;
 
   if (farmVendorTab === 0) {
-    // Seeds tab — buy seed = select that seed type
+    // Seeds tab — buy seeds → add to Resources inventory
     const items = getFarmVendorSeedItems();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const iy = contentY + i * 44;
       if (mx >= px + 14 && mx <= px + pw - 14 && my >= iy && my <= iy + 38) {
-        if (!item.isLocked) {
-          // Select this seed
-          farmingState.selectedSeed = item.id;
-          hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Selected: ' + item.name, color: item.color });
-        }
+        if (item.isLocked) return true;
+        if (gold < item.cost) return true;
+        // Buy seed — add to inventory as stackable resource
+        gold -= item.cost;
+        const seedItem = {
+          id: 'seed_' + item.id,
+          name: item.name,
+          type: 'resource',
+          tier: 0,
+          data: { id: 'seed_' + item.id, name: item.name, cropId: item.id, color: item.color },
+          stackable: true,
+          count: 1,
+        };
+        addToInventory(seedItem);
+        // Also select this seed for planting
+        farmingState.selectedSeed = item.id;
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 25, type: 'text_popup', text: 'Bought ' + item.name + '!', color: item.color });
         return true;
       }
     }
   } else if (farmVendorTab === 1) {
-    // Equipment tab — buy hoe or land expansion
+    // Equipment tab — buy hoes only
     const items = getFarmVendorEquipItems();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -831,28 +942,35 @@ function handleFarmVendorClick(mx, my) {
       if (mx >= px + 14 && mx <= px + pw - 14 && my >= iy && my <= iy + 38) {
         if (item.isLocked || item.isOwned) return true;
         if (gold < item.cost) return true;
-
-        if (item.type === 'hoe') {
-          // Buy hoe — pure tool purchase, no inventory/melee involvement
-          gold -= item.cost;
-          farmingState.equippedHoe = item.id;
-          hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Bought ' + item.name + '!', color: '#ffd700' });
-        } else if (item.type === 'land') {
-          // Check if any tile has active crops
-          const hasActiveCrops = farmingState.tiles.some(t =>
-            t.state !== FARM_TILE_STATES.EMPTY && t.state !== FARM_TILE_STATES.TILLED
-          );
-          if (hasActiveCrops) {
-            hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Harvest your garden first!', color: '#ff6060' });
-            return true;
-          }
-          // Buy land expansion
-          gold -= item.cost;
-          farmingState.landLevel = item.landLevel;
-          hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Expanded to ' + item.name + '!', color: '#ffd700' });
-          // Expand farm grid preserving existing tiles
-          expandFarmGrid(item.landLevel);
+        // Buy hoe — pure tool purchase, no inventory/melee involvement
+        gold -= item.cost;
+        farmingState.equippedHoe = item.id;
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Bought ' + item.name + '!', color: '#ffd700' });
+        return true;
+      }
+    }
+  } else if (farmVendorTab === 2) {
+    // Acres tab — buy land expansions
+    const items = getFarmVendorAcreItems();
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const iy = contentY + i * 44;
+      if (mx >= px + 14 && mx <= px + pw - 14 && my >= iy && my <= iy + 38) {
+        if (item.isLocked || item.isOwned) return true;
+        if (gold < item.cost) return true;
+        // Check if any tile has active crops
+        const hasActiveCrops = farmingState.tiles.some(t =>
+          t.state !== FARM_TILE_STATES.EMPTY && t.state !== FARM_TILE_STATES.TILLED
+        );
+        if (hasActiveCrops) {
+          hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Harvest your garden first!', color: '#ff6060' });
+          return true;
         }
+        // Buy land expansion
+        gold -= item.cost;
+        farmingState.landLevel = item.landLevel;
+        hitEffects.push({ x: player.x, y: player.y - 30, life: 30, type: 'text_popup', text: 'Expanded to ' + item.name + '!', color: '#ffd700' });
+        expandFarmGrid(item.landLevel);
         return true;
       }
     }

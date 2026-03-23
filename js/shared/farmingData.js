@@ -45,12 +45,17 @@ const FARMING_CONFIG = {
 };
 
 // --- LAND EXPANSIONS ---
-// 4 tiers. gridW/gridH = plot count (each plot is 1 tile = 48x48px).
+// 8 tiers. gridW/gridH = plot count (each plot is 1 tile = 48x48px).
+// Farm zone is 12x12 tiles — max usable garden is 10x10 with 1-tile border.
 const LAND_EXPANSIONS = [
-  { level: 0, name: 'Starter Garden', gridW: 3,  gridH: 3,  cost: 0,    levelReq: 1  },
-  { level: 1, name: 'Small Garden',   gridW: 4,  gridH: 4,  cost: 250,  levelReq: 10 },
-  { level: 2, name: 'Medium Garden',  gridW: 5,  gridH: 5,  cost: 1000, levelReq: 25 },
-  { level: 3, name: 'Large Garden',   gridW: 6,  gridH: 6,  cost: 3000, levelReq: 50 },
+  { level: 0, name: 'Starter Garden',    gridW: 3,  gridH: 3,  cost: 0,     levelReq: 1  },
+  { level: 1, name: 'Small Garden',      gridW: 4,  gridH: 4,  cost: 250,   levelReq: 10 },
+  { level: 2, name: 'Medium Garden',     gridW: 5,  gridH: 5,  cost: 1000,  levelReq: 25 },
+  { level: 3, name: 'Large Garden',      gridW: 6,  gridH: 6,  cost: 3000,  levelReq: 50 },
+  { level: 4, name: 'Grand Garden',      gridW: 7,  gridH: 7,  cost: 5000,  levelReq: 65 },
+  { level: 5, name: 'Vast Garden',       gridW: 8,  gridH: 8,  cost: 8000,  levelReq: 80 },
+  { level: 6, name: 'Expansive Garden',  gridW: 9,  gridH: 9,  cost: 12000, levelReq: 95 },
+  { level: 7, name: 'Maximum Garden',    gridW: 10, gridH: 10, cost: 18000, levelReq: 110 },
 ];
 
 // --- HELPERS ---

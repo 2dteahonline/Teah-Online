@@ -9,6 +9,7 @@ const INV_CATEGORIES = [
   { name: "Melees", filter: t => t === "melee" },
   { name: "Armor", filter: t => ITEM_CATEGORIES.armor.includes(t) },
   { name: "Consumables", filter: t => t === "consumable" || t === "food" },
+  { name: "Resources", filter: t => t === "resource" },
 ];
 let invCategory = 0;
 let invPage = 0; // current page for item grid pagination
@@ -1617,9 +1618,18 @@ function drawHotbar() {
     if (slot.type === "gun" && playerEquip.gun) {
       ctx.fillStyle = getTierColor(playerEquip.gun.tier);
       ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
-    } else if (slot.type === "melee" && playerEquip.melee) {
-      ctx.fillStyle = getTierColor(playerEquip.melee.tier);
-      ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
+    } else if (slot.type === "melee") {
+      // In farm scene, show hoe tier color; otherwise show melee weapon
+      if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) {
+        const _hoe = HOE_TIERS.find(h => h.id === farmingState.equippedHoe);
+        if (_hoe) {
+          ctx.fillStyle = _hoe.color || '#8a6a3a';
+          ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
+        }
+      } else if (playerEquip.melee) {
+        ctx.fillStyle = getTierColor(playerEquip.melee.tier);
+        ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
+      }
     } else if (isGrab && isGrabbing) {
       ctx.fillStyle = "#ffa040";
       ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
@@ -1735,6 +1745,22 @@ function drawHotbar() {
         ctx.fillStyle = "#666"; ctx.fillRect(sx + 26, sy + 34, 5, 10);
       }
     } else if (slot.type === "melee") {
+      // In farm scene, show equipped hoe icon instead of melee weapon
+      if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) {
+        const _fhoe = HOE_TIERS.find(h => h.id === farmingState.equippedHoe);
+        const _hoeCol = _fhoe ? _fhoe.color : '#8a6a3a';
+        // Hoe icon — handle + head
+        ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx + 20, sy + 52); ctx.lineTo(sx + 42, sy + 18); ctx.stroke();
+        // Hoe head
+        ctx.fillStyle = _hoeCol;
+        ctx.beginPath(); ctx.moveTo(sx + 38, sy + 22); ctx.lineTo(sx + 52, sy + 16); ctx.lineTo(sx + 50, sy + 10); ctx.lineTo(sx + 36, sy + 16); ctx.fill();
+        ctx.strokeStyle = _hoeCol; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx + 38, sy + 22); ctx.lineTo(sx + 52, sy + 16); ctx.lineTo(sx + 50, sy + 10); ctx.lineTo(sx + 36, sy + 16); ctx.closePath(); ctx.stroke();
+        // Hoe name
+        ctx.font = 'bold 8px monospace'; ctx.fillStyle = _hoeCol;
+        ctx.textAlign = 'center'; ctx.fillText(_fhoe ? _fhoe.name : 'Hoe', sx + slotW / 2, sy + slotH - 4);
+      } else {
       const mEq = playerEquip.melee;
       const mId = mEq ? mEq.id : 'knife';
       if (mId === 'war_cleaver') {
@@ -1803,6 +1829,7 @@ function drawHotbar() {
         ctx.strokeStyle = "#bbb"; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(sx + 17, sy + 42); ctx.lineTo(sx + 25, sy + 50); ctx.stroke();
       }
+      } // close farm-scene else block
     } else if (slot.type === "potion") {
       const px2 = sx + 22, py2 = sy + 12;
       ctx.fillStyle = "#8a7a60"; ctx.fillRect(px2 + 5, py2, 8, 6);
@@ -1919,13 +1946,13 @@ function drawHotbar() {
       ctx.font = "bold 9px monospace"; ctx.fillStyle = getTierColor(playerEquip.gun.tier);
       ctx.textAlign = "right"; ctx.fillText("T" + playerEquip.gun.tier, sx + slotW - 4, sy + 14);
     }
-    if (slot.type === "melee" && playerEquip.melee) {
+    if (slot.type === "melee" && !(Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) && playerEquip.melee) {
       ctx.font = "bold 9px monospace"; ctx.fillStyle = getTierColor(playerEquip.melee.tier);
       ctx.textAlign = "right"; ctx.fillText("T" + playerEquip.melee.tier, sx + slotW - 4, sy + 14);
     }
 
-    // Cooldown overlay for melee
-    if (slot.type === "melee" && melee.cooldown > 0) {
+    // Cooldown overlay for melee (skip in farm scene — hoe has its own cooldown in farmingState)
+    if (slot.type === "melee" && !(Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) && melee.cooldown > 0) {
       const cdPct = melee.cooldown / melee.cooldownMax;
       ctx.fillStyle = "rgba(0,0,0,0.5)";
       ctx.fillRect(sx + 2, sy + slotH * (1 - cdPct), slotW - 4, slotH * cdPct);
@@ -1938,10 +1965,15 @@ function drawHotbar() {
       ctx.fillText(gun.reloading ? "R..." : gun.ammo + "/" + gun.magSize, sx + slotW / 2, sy + slotH - 4);
     }
 
-    // [F] hint on melee
+    // [F] hint on melee / hoe
     if (slot.type === "melee") {
-      ctx.font = "bold 9px monospace"; ctx.fillStyle = "#666";
-      ctx.textAlign = "right"; ctx.fillText("[F]", sx + slotW - 4, sy + 14);
+      if (Scene.inFarm && typeof farmingState !== 'undefined' && farmingState.equippedHoe) {
+        ctx.font = "bold 9px monospace"; ctx.fillStyle = "#5a8a40";
+        ctx.textAlign = "right"; ctx.fillText("[F]", sx + slotW - 4, sy + 14);
+      } else {
+        ctx.font = "bold 9px monospace"; ctx.fillStyle = "#666";
+        ctx.textAlign = "right"; ctx.fillText("[F]", sx + slotW - 4, sy + 14);
+      }
     }
 
     // Potion count
