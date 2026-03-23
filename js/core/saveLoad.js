@@ -58,6 +58,7 @@ const SaveLoad = {
         data.farming = {
           landLevel: farmingState.landLevel,
           equippedHoe: farmingState.equippedHoe,
+          bucketOwned: farmingState.bucketOwned,
           stats: { ...farmingState.stats },
         };
       }
@@ -320,6 +321,7 @@ const SaveLoad = {
         const fm = data.farming;
         if (fm.landLevel !== undefined) farmingState.landLevel = fm.landLevel;
         if (fm.equippedHoe) farmingState.equippedHoe = fm.equippedHoe;
+        if (fm.bucketOwned) farmingState.bucketOwned = fm.bucketOwned;
         if (fm.stats) {
           farmingState.stats.totalHarvested = fm.stats.totalHarvested || 0;
           farmingState.stats.totalEarned = fm.stats.totalEarned || 0;

@@ -6,12 +6,19 @@
 // --- HOE TIERS ---
 // Pure tools — no combat stats. Unlocked by Farming skill level.
 // reach = tile range in facing direction (1 = adjacent tile, 2 = 2 tiles out).
+// swingTiles = number of garden tiles affected per action (multi-tile upgrade).
 const HOE_TIERS = [
-  { id: 'bronze_hoe', name: 'Bronze Hoe', tier: 0, levelReq: 1,  cost: 20,   reach: 1, cooldown: 36, special: 'farming', color: '#8a6a3a', desc: 'Basic farming hoe' },
-  { id: 'iron_hoe',   name: 'Iron Hoe',   tier: 1, levelReq: 5,  cost: 80,   reach: 1, cooldown: 30, special: 'farming', color: '#8a8a8a', desc: 'Sturdy iron hoe' },
-  { id: 'gold_hoe',   name: 'Gold Hoe',   tier: 2, levelReq: 12, cost: 200,  reach: 2, cooldown: 24, special: 'farming', color: '#ffd700', desc: 'Extended reach hoe' },
-  { id: 'mythic_hoe', name: 'Mythic Hoe', tier: 3, levelReq: 25, cost: 500,  reach: 2, cooldown: 20, special: 'farming', color: '#d4a030', desc: 'Master farming hoe' },
+  { id: 'bronze_hoe', name: 'Bronze Hoe', tier: 0, levelReq: 1,  cost: 20,   reach: 1, cooldown: 36, swingTiles: 2, special: 'farming', color: '#8a6a3a', desc: 'Hits 2 tiles' },
+  { id: 'iron_hoe',   name: 'Iron Hoe',   tier: 1, levelReq: 5,  cost: 80,   reach: 1, cooldown: 30, swingTiles: 3, special: 'farming', color: '#8a8a8a', desc: 'Hits 3 tiles' },
+  { id: 'gold_hoe',   name: 'Gold Hoe',   tier: 2, levelReq: 12, cost: 200,  reach: 2, cooldown: 24, swingTiles: 5, special: 'farming', color: '#ffd700', desc: 'Hits 5 tiles' },
+  { id: 'mythic_hoe', name: 'Mythic Hoe', tier: 3, levelReq: 25, cost: 500,  reach: 2, cooldown: 20, swingTiles: 8, special: 'farming', color: '#d4a030', desc: 'Hits 8 tiles' },
 ];
+
+// --- BUCKET ---
+const BUCKET_DATA = {
+  id: 'metal_bucket', name: 'Metal Bucket', cost: 50, levelReq: 1,
+  color: '#7a8a9a', desc: 'Fill at the well to water crops',
+};
 
 // --- CROP TYPES ---
 // All crops have exactly 4 visual stages: seed → sprout → medium → mature.
@@ -45,19 +52,18 @@ const FARMING_CONFIG = {
 };
 
 // --- LAND EXPANSIONS ---
-// 10 tiers. gridW/gridH = plot count (each plot is 1 tile = 48x48px).
-// Farm zone is 12x12 tiles — final tier fills the entire zone.
+// 8 tiers. Farm zone is 36x16 tiles (rows 2-17, cols 2-37 of house_01).
+// Final tier fills the entire zone exactly: 36×16 = 576 plots.
+// Camera follows player so large gardens scroll naturally.
 const LAND_EXPANSIONS = [
-  { level: 0, name: 'Starter Garden',    gridW: 3,  gridH: 3,  cost: 0,     levelReq: 1  },
-  { level: 1, name: 'Small Garden',      gridW: 4,  gridH: 4,  cost: 250,   levelReq: 10 },
-  { level: 2, name: 'Medium Garden',     gridW: 5,  gridH: 5,  cost: 1000,  levelReq: 20 },
-  { level: 3, name: 'Large Garden',      gridW: 6,  gridH: 6,  cost: 2000,  levelReq: 30 },
-  { level: 4, name: 'Grand Garden',      gridW: 7,  gridH: 7,  cost: 3500,  levelReq: 40 },
-  { level: 5, name: 'Vast Garden',       gridW: 8,  gridH: 8,  cost: 5000,  levelReq: 50 },
-  { level: 6, name: 'Expansive Garden',  gridW: 9,  gridH: 9,  cost: 7500,  levelReq: 60 },
-  { level: 7, name: 'Massive Garden',    gridW: 10, gridH: 10, cost: 10000, levelReq: 70 },
-  { level: 8, name: 'Colossal Garden',   gridW: 11, gridH: 11, cost: 15000, levelReq: 85 },
-  { level: 9, name: 'Maximum Garden',    gridW: 12, gridH: 12, cost: 20000, levelReq: 100 },
+  { level: 0, name: 'Starter Garden',  gridW: 3,  gridH: 3,  cost: 0,     levelReq: 1  },
+  { level: 1, name: 'Small Garden',    gridW: 5,  gridH: 4,  cost: 250,   levelReq: 5  },
+  { level: 2, name: 'Medium Garden',   gridW: 8,  gridH: 5,  cost: 800,   levelReq: 12 },
+  { level: 3, name: 'Large Garden',    gridW: 11, gridH: 7,  cost: 2000,  levelReq: 20 },
+  { level: 4, name: 'Grand Garden',    gridW: 16, gridH: 9,  cost: 4000,  levelReq: 30 },
+  { level: 5, name: 'Vast Garden',     gridW: 22, gridH: 11, cost: 7000,  levelReq: 45 },
+  { level: 6, name: 'Huge Garden',     gridW: 28, gridH: 14, cost: 12000, levelReq: 65 },
+  { level: 7, name: 'Maximum Garden',  gridW: 36, gridH: 16, cost: 20000, levelReq: 85 },
 ];
 
 // --- HELPERS ---

@@ -251,8 +251,8 @@ const LEVELS = {
     entities: [
       // === EXIT (bottom center, back to lobby) ===
       { type: 'house_exit', tx: 8, ty: 27, w: 4, h: 3, solid: false, target: 'lobby_01', spawnTX: 15, spawnTY: 9 },
-      // === FARM ZONE (centered upper area, 12x12 zone fits max 10x10 garden with 1-tile border) ===
-      { type: 'farm_zone', tx: 14, ty: 4, w: 12, h: 12, solid: false },
+      // === FARM ZONE (full upper area: rows 2-17, cols 2-37 = 36x16 = 576 tiles max) ===
+      { type: 'farm_zone', tx: 2, ty: 2, w: 36, h: 16, solid: false },
       // === INDOOR AREA ENTITIES (rows 20-28) ===
       { type: 'farm_vendor', tx: 30, ty: 21, w: 2, h: 2, solid: true },
       // Furniture (cosmetic / solid)
