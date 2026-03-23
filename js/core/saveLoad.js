@@ -62,6 +62,10 @@ const SaveLoad = {
           stats: { ...farmingState.stats },
         };
       }
+      // Quickslots (persist assigned items)
+      if (typeof quickSlots !== 'undefined') {
+        data.quickSlots = quickSlots;
+      }
       // Cooking progression (v8+)
       data.cookingProgress = {
         lifetimeOrdersTotal: cookingProgress.lifetimeOrdersTotal,
@@ -350,6 +354,13 @@ const SaveLoad = {
               }
             }
           }
+        }
+      }
+
+      // Quickslots
+      if (data.quickSlots && typeof quickSlots !== 'undefined') {
+        for (let qi = 0; qi < 3; qi++) {
+          quickSlots[qi] = data.quickSlots[qi] || null;
         }
       }
 
