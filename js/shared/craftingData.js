@@ -146,18 +146,53 @@ const DROP_TABLES = {
     ]
   },
 
-  // ---- Vortalis Regular Mobs ----
-  bilge_rat:          { dropChance: 0.15, items: null },
-  powder_keg:         { dropChance: 0.12, items: null },
-  deckhand_shooter:   { dropChance: 0.15, items: null },
-  anchor_hauler:      { dropChance: 0.18, items: null },
+  // ---- Vortalis Bosses ----
+  captain_husa:       { dropChance: 1.0, items: [{ materialId: 'ironwood_limb', weight: 60, countMin: 1, countMax: 3 }, { materialId: 'sinew_string', weight: 40, countMin: 1, countMax: 2 }] },
+  admiral_von_kael:   { dropChance: 1.0, items: [{ materialId: 'ironwood_limb', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'fletching_kit', weight: 40, countMin: 1, countMax: 2 }, { materialId: 'sinew_string', weight: 20, countMin: 1, countMax: 3 }] },
+  zongo:              { dropChance: 1.0, items: [{ materialId: 'sinew_string', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'ironwood_limb', weight: 50, countMin: 1, countMax: 3 }] },
+  bloodborne_marlon:  { dropChance: 1.0, items: [{ materialId: 'sinew_string', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'fletching_kit', weight: 40, countMin: 1, countMax: 3 }, { materialId: 'ironwood_limb', weight: 20, countMin: 2, countMax: 3 }] },
+  wolfbeard:          { dropChance: 1.0, items: [{ materialId: 'fletching_kit', weight: 50, countMin: 1, countMax: 3 }, { materialId: 'sinew_string', weight: 50, countMin: 2, countMax: 4 }] },
+  ghostbeard:         { dropChance: 1.0, items: [{ materialId: 'fletching_kit', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'ironwood_limb', weight: 50, countMin: 1, countMax: 3 }] },
+  kraken_jim:         { dropChance: 1.0, items: [{ materialId: 'fletching_kit', weight: 40, countMin: 2, countMax: 5 }, { materialId: 'sinew_string', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'ironwood_limb', weight: 20, countMin: 1, countMax: 3 }] },
+  king_requill:       { dropChance: 1.0, items: [{ materialId: 'fletching_kit', weight: 50, countMin: 3, countMax: 5 }, { materialId: 'sinew_string', weight: 50, countMin: 2, countMax: 4 }] },
+  queen_siralyth:     { dropChance: 1.0, items: [{ materialId: 'fletching_kit', weight: 40, countMin: 3, countMax: 6 }, { materialId: 'ironwood_limb', weight: 30, countMin: 2, countMax: 4 }, { materialId: 'sinew_string', weight: 30, countMin: 2, countMax: 4 }] },
+  mami_wata:          { dropChance: 1.0, items: [{ materialId: 'fletching_kit', weight: 40, countMin: 4, countMax: 6 }, { materialId: 'sinew_string', weight: 30, countMin: 3, countMax: 5 }, { materialId: 'ironwood_limb', weight: 30, countMin: 2, countMax: 4 }] },
 
-  // ---- Earth-205 Regular Mobs (use default pool) ----
-  // Added generically — any mob without a table uses dungeon pool if dropChance rolls
+  // ---- Earth-205 Bosses ----
+  willis:             { dropChance: 1.0, items: [{ materialId: 'heavy_barrel_liner', weight: 60, countMin: 1, countMax: 3 }, { materialId: 'blast_powder', weight: 40, countMin: 1, countMax: 2 }] },
+  puppedrill:         { dropChance: 1.0, items: [{ materialId: 'heavy_barrel_liner', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'blast_powder', weight: 50, countMin: 1, countMax: 3 }] },
+  sackhead:           { dropChance: 1.0, items: [{ materialId: 'blast_powder', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'heavy_barrel_liner', weight: 50, countMin: 1, countMax: 3 }] },
+  mr_schwallie:       { dropChance: 1.0, items: [{ materialId: 'blast_powder', weight: 40, countMin: 2, countMax: 5 }, { materialId: 'heavy_barrel_liner', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'rare_gun_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  killer_mime:        { dropChance: 1.0, items: [{ materialId: 'heavy_barrel_liner', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'blast_powder', weight: 50, countMin: 2, countMax: 4 }] },
+  major_phantom:      { dropChance: 1.0, items: [{ materialId: 'blast_powder', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'heavy_barrel_liner', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'epic_gun_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  lady_red:           { dropChance: 1.0, items: [{ materialId: 'heavy_barrel_liner', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'blast_powder', weight: 40, countMin: 2, countMax: 5 }, { materialId: 'epic_weapon_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  the_boss_e205:      { dropChance: 1.0, items: [{ materialId: 'blast_powder', weight: 40, countMin: 3, countMax: 6 }, { materialId: 'heavy_barrel_liner', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'epic_gun_parts', weight: 20, countMin: 1, countMax: 3 }] },
+  lady_elixir:        { dropChance: 1.0, items: [{ materialId: 'heavy_barrel_liner', weight: 40, countMin: 4, countMax: 6 }, { materialId: 'blast_powder', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'legendary_gun_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  nofaux:             { dropChance: 1.0, items: [{ materialId: 'blast_powder', weight: 35, countMin: 4, countMax: 7 }, { materialId: 'heavy_barrel_liner', weight: 35, countMin: 3, countMax: 6 }, { materialId: 'legendary_weapon_parts', weight: 30, countMin: 1, countMax: 3 }] },
 
-  // ---- Wagashi Regular Mobs (use default pool) ----
+  // ---- Wagashi Bosses ----
+  sichou:             { dropChance: 1.0, items: [{ materialId: 'scatter_core', weight: 60, countMin: 1, countMax: 3 }, { materialId: 'gunpowder_charge', weight: 40, countMin: 1, countMax: 2 }] },
+  tongya:             { dropChance: 1.0, items: [{ materialId: 'scatter_core', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'gunpowder_charge', weight: 50, countMin: 1, countMax: 3 }] },
+  jade_serpent:       { dropChance: 1.0, items: [{ materialId: 'gunpowder_charge', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'buckshot_mold', weight: 50, countMin: 1, countMax: 2 }] },
+  stone_golem_guardian:{ dropChance: 1.0, items: [{ materialId: 'buckshot_mold', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'scatter_core', weight: 40, countMin: 2, countMax: 3 }, { materialId: 'gunpowder_charge', weight: 20, countMin: 1, countMax: 3 }] },
+  azure_dragon:       { dropChance: 1.0, items: [{ materialId: 'buckshot_mold', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'gunpowder_charge', weight: 50, countMin: 2, countMax: 4 }] },
+  jaja:               { dropChance: 1.0, items: [{ materialId: 'gunpowder_charge', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'buckshot_mold', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'scatter_core', weight: 20, countMin: 2, countMax: 3 }] },
+  gensai:             { dropChance: 1.0, items: [{ materialId: 'buckshot_mold', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'scatter_core', weight: 30, countMin: 2, countMax: 4 }, { materialId: 'gunpowder_charge', weight: 30, countMin: 2, countMax: 4 }] },
+  moon_rabbit:        { dropChance: 1.0, items: [{ materialId: 'buckshot_mold', weight: 40, countMin: 3, countMax: 6 }, { materialId: 'gunpowder_charge', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'epic_gun_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  celestial_toad:     { dropChance: 1.0, items: [{ materialId: 'scatter_core', weight: 35, countMin: 4, countMax: 6 }, { materialId: 'buckshot_mold', weight: 35, countMin: 3, countMax: 5 }, { materialId: 'legendary_gun_parts', weight: 30, countMin: 1, countMax: 2 }] },
+  lord_sarugami:      { dropChance: 1.0, items: [{ materialId: 'buckshot_mold', weight: 30, countMin: 4, countMax: 7 }, { materialId: 'gunpowder_charge', weight: 30, countMin: 4, countMax: 6 }, { materialId: 'scatter_core', weight: 20, countMin: 3, countMax: 5 }, { materialId: 'legendary_weapon_parts', weight: 20, countMin: 1, countMax: 3 }] },
 
-  // ---- Earth-216 Regular Mobs (use default pool) ----
+  // ---- Earth-216 Bosses ----
+  victor_graves:      { dropChance: 1.0, items: [{ materialId: 'shadow_alloy', weight: 60, countMin: 1, countMax: 3 }, { materialId: 'common_weapon_parts', weight: 40, countMin: 2, countMax: 4 }] },
+  madame_midas:       { dropChance: 1.0, items: [{ materialId: 'shadow_alloy', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'neon_filament', weight: 50, countMin: 1, countMax: 2 }] },
+  slasher_e216:       { dropChance: 1.0, items: [{ materialId: 'shadow_alloy', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'neon_filament', weight: 50, countMin: 1, countMax: 3 }] },
+  blackout_belle:     { dropChance: 1.0, items: [{ materialId: 'neon_filament', weight: 50, countMin: 2, countMax: 4 }, { materialId: 'shadow_alloy', weight: 50, countMin: 2, countMax: 4 }] },
+  macabre_e216:       { dropChance: 1.0, items: [{ materialId: 'shadow_alloy', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'neon_filament', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'epic_weapon_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  rosa_calavera:      { dropChance: 1.0, items: [{ materialId: 'neon_filament', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'shadow_alloy', weight: 40, countMin: 2, countMax: 4 }, { materialId: 'epic_gun_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  motor_demon:        { dropChance: 1.0, items: [{ materialId: 'shadow_alloy', weight: 40, countMin: 3, countMax: 6 }, { materialId: 'neon_filament', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'legendary_weapon_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  nitro_wraith:       { dropChance: 1.0, items: [{ materialId: 'neon_filament', weight: 40, countMin: 4, countMax: 6 }, { materialId: 'shadow_alloy', weight: 40, countMin: 3, countMax: 5 }, { materialId: 'legendary_gun_parts', weight: 20, countMin: 1, countMax: 2 }] },
+  hollow_ace:         { dropChance: 1.0, items: [{ materialId: 'shadow_alloy', weight: 35, countMin: 4, countMax: 7 }, { materialId: 'neon_filament', weight: 35, countMin: 4, countMax: 6 }, { materialId: 'legendary_weapon_parts', weight: 30, countMin: 1, countMax: 3 }] },
+  alcazar:            { dropChance: 1.0, items: [{ materialId: 'neon_filament', weight: 35, countMin: 5, countMax: 8 }, { materialId: 'shadow_alloy', weight: 35, countMin: 4, countMax: 7 }, { materialId: 'legendary_gun_parts', weight: 30, countMin: 2, countMax: 4 }] }
 };
 
 // Default drop chance for mobs NOT in DROP_TABLES
