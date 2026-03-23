@@ -1210,6 +1210,10 @@ canvas.addEventListener("mousedown", e => {
     if (handleFarmVendorClick(mx, my)) return;
   }
 
+  // Forge panel clicks
+  if (UI.isOpen('forge') && typeof handleForgeClick === 'function') {
+    if (handleForgeClick(mx, my)) return;
+  }
   // Gunsmith panel clicks
   if (UI.isOpen('gunsmith') && typeof handleGunsmithClick === 'function') {
     if (handleGunsmithClick(mx, my)) return;
@@ -1420,6 +1424,11 @@ canvas.addEventListener("wheel", e => {
   }
   if (UI.isOpen('testmob') && typeof handleTestMobScroll === 'function') {
     handleTestMobScroll(e.deltaY);
+    e.preventDefault();
+    return;
+  }
+  if (UI.isOpen('forge') && typeof handleForgeScroll === 'function') {
+    handleForgeScroll(e.deltaY);
     e.preventDefault();
     return;
   }

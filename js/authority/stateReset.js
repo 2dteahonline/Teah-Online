@@ -18,6 +18,7 @@ function resetCombatState(mode) {
   deathEffects.length = 0; mobParticles.length = 0; medpacks.length = 0;
   oreNodes.length = 0;
   if (typeof _orePickups !== 'undefined') _orePickups.length = 0;
+  if (typeof clearGroundDrops === 'function') clearGroundDrops();
   waveState = "waiting"; waveTimer = 0;
   resetPhaseState();
   StatusFX.clearPoison();

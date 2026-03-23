@@ -2773,6 +2773,7 @@ function update() {
   updateBullets();
   if (typeof updateMining === 'function') updateMining();
   if (typeof updateOrePickups === 'function') updateOrePickups();
+  if (typeof updateGroundDrops === 'function') updateGroundDrops();
   if (typeof updateFishing === 'function') updateFishing();
   if (typeof updateCooking === 'function') updateCooking();
   if (typeof updateFarming === 'function') updateFarming();

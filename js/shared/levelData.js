@@ -1268,6 +1268,10 @@ const LEVELS = {
       { type: 'barrel', tx: 30, ty: 4, w: 1, h: 1, solid: true },
       { type: 'barrel', tx: 15, ty: 22, w: 1, h: 1, solid: true },
       { type: 'barrel', tx: 25, ty: 22, w: 1, h: 1, solid: true },
+      // Forge area (right side of workshop)
+      { type: 'forge_npc', tx: 33, ty: 14, w: 2, h: 2, solid: true },
+      { type: 'forge_anvil', tx: 30, ty: 14, w: 2, h: 2, solid: true },
+      { type: 'forge_furnace', tx: 36, ty: 14, w: 2, h: 2, solid: true },
       // Torches (spread evenly for lighting)
       { type: 'torch', tx: 2, ty: 2, solid: false },
       { type: 'torch', tx: 41, ty: 2, solid: false },

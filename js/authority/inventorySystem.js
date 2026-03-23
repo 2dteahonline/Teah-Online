@@ -45,7 +45,7 @@ function createConsumable(id, name, count) {
   };
 }
 
-const MAX_INVENTORY_SLOTS = 100;
+const MAX_INVENTORY_SLOTS = 200;
 
 // Add item to inventory, returns true on success, false if full
 function addToInventory(item) {
@@ -86,6 +86,41 @@ function removeFromInventory(slot) {
   const item = inventory[slot];
   inventory.splice(slot, 1);
   return item;
+}
+
+// Count total of a material in inventory (by item id, stackable materials)
+function countMaterialInInventory(materialId) {
+  let total = 0;
+  for (let i = 0; i < inventory.length; i++) {
+    if (inventory[i] && inventory[i].id === materialId && inventory[i].type === 'material') {
+      total += inventory[i].count || 1;
+    }
+  }
+  // Also count ores (type 'material' with ore_ prefix)
+  if (total === 0 && materialId.startsWith('ore_')) {
+    for (let i = 0; i < inventory.length; i++) {
+      if (inventory[i] && inventory[i].id === materialId) {
+        total += inventory[i].count || 1;
+      }
+    }
+  }
+  return total;
+}
+
+// Remove a quantity of material from inventory (stackable)
+function removeMaterial(materialId, count) {
+  let remaining = count;
+  for (let i = inventory.length - 1; i >= 0 && remaining > 0; i--) {
+    const item = inventory[i];
+    if (!item || item.id !== materialId) continue;
+    if (item.count <= remaining) {
+      remaining -= item.count;
+      inventory.splice(i, 1);
+    } else {
+      item.count -= remaining;
+      remaining = 0;
+    }
+  }
 }
 
 // Centralized stat application — single source of truth for equipping items
