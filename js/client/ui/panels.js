@@ -43,7 +43,9 @@ function drawIdentityPanel() {
     ctx.clip();
     ctx.translate(avX, avY);
     ctx.scale(0.38, 0.38);
+    const _avSlot = activeSlot; activeSlot = -1;
     drawChoso(20, 68, 0, 0, false, null, null);
+    activeSlot = _avSlot;
     ctx.restore();
     // Name
     ctx.fillStyle = PALETTE.accent;
@@ -192,7 +194,9 @@ function drawIdentityPanel() {
   ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.clip();
   ctx.translate(charCenterX, charY);
   ctx.scale(3, 3);
-  drawChoso(20, 68, 0, 0, false, null, null);
+  const _idSlot = activeSlot; activeSlot = -1;
+  drawChoso(0, 0, 0, 0, false, null, null);
+  activeSlot = _idSlot;
   ctx.restore();
 
   // === INVENTORY (3 slots, pushed down more) ===
