@@ -357,9 +357,9 @@ const SaveLoad = {
         }
       }
 
-      // Quickslots
+      // Quickslots (4 assignable slots, backwards-compatible with old 3-slot saves)
       if (data.quickSlots && typeof quickSlots !== 'undefined') {
-        for (let qi = 0; qi < 3; qi++) {
+        for (let qi = 0; qi < 4; qi++) {
           quickSlots[qi] = data.quickSlots[qi] || null;
         }
       }
