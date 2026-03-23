@@ -277,6 +277,7 @@ function getGoldReward(type, waveNum) {
 let contactCooldown = 0; // frames of invulnerability after contact hit
 let lives = 3;
 let activeSlot = 0; // 0 = gun, 1 = katana
+let activeHotbarSlot = 0; // which hotbar slot to visually highlight (can differ from activeSlot when quickslots remap)
 let isGrabbing = false;
 let grabTimer = 0;
 let grabTarget = null; // mob being grabbed

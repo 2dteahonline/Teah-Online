@@ -103,7 +103,7 @@ window.HideSeekSystem = {
     // Equip Seeking Baton for seekers
     if (playerRole === 'seeker' && typeof SEEKING_BATON !== 'undefined' && typeof applyMeleeStats === 'function') {
       applyMeleeStats(SEEKING_BATON);
-      if (typeof activeSlot !== 'undefined') activeSlot = 1; // force melee slot
+      if (typeof activeSlot !== 'undefined') { activeSlot = 1; activeHotbarSlot = 1; } // force melee slot
     }
 
     // Clear existing mobs (don't use mobs[] for the bot)
@@ -267,6 +267,7 @@ window.HideSeekSystem = {
     }
     if (typeof activeSlot !== 'undefined') {
       activeSlot = hs._savedSlot || 0;
+      activeHotbarSlot = activeSlot;
     }
 
     // Bot is not in mobs[] so no need to clear it — just null the reference
