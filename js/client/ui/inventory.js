@@ -1037,7 +1037,11 @@ function drawInventoryPanel() {
       const sx = L.gridX + col * (L.slotS + L.slotGap);
       const sy = L.gridY + row * (L.slotS + L.slotGap);
       const isHover = invHover === slot;
-      const isEquipped = playerEquip[item.type] && playerEquip[item.type].id === item.data.id;
+      // Check equipped state — for farming tools, check farmingState.equippedHoe
+      const _isFarmTool = item.data && item.data.special === 'farming';
+      const isEquipped = _isFarmTool
+        ? (typeof farmingState !== 'undefined' && farmingState.equippedHoe === item.data.id)
+        : (playerEquip[item.type] && playerEquip[item.type].id === item.data.id);
 
       // Slot background — green tint if equipped
       ctx.fillStyle = isEquipped ? "rgba(40,70,40,0.9)" : isHover ? "rgba(60,55,40,0.9)" : "rgba(30,28,22,0.9)";
@@ -1199,6 +1203,9 @@ function drawInventoryPanel() {
       if (ITEM_CATEGORIES.equipment.includes(item.type)) {
         const isEq = playerEquip[item.type] && playerEquip[item.type].id === item.data.id;
         ctx.fillText(isEq ? "Click to unequip" : "Click to equip", ttx + 10, tty + 72);
+      } else if (item.data && item.data.special === 'farming') {
+        const _isHoeEq = typeof farmingState !== 'undefined' && farmingState.equippedHoe === item.data.id;
+        ctx.fillText(_isHoeEq ? "[Equipped]" : "Click to equip", ttx + 10, tty + 72);
       }
       // Right-click hint
       ctx.fillStyle = "#555";
@@ -1438,6 +1445,13 @@ function handleInventoryClick(mx, my) {
     if (mx >= sx && mx <= sx + L.slotS && my >= sy && my <= sy + L.slotS) {
       if (ITEM_CATEGORIES.equipment.includes(item.type)) {
         equipItem(slot);
+      } else if (item.data && item.data.special === 'farming' && typeof farmingState !== 'undefined') {
+        // Click hoe in inventory → equip/unequip as farming tool
+        if (farmingState.equippedHoe === item.data.id) {
+          farmingState.equippedHoe = 'bronze_hoe'; // revert to default
+        } else {
+          farmingState.equippedHoe = item.data.id;
+        }
       } else if (item.type === 'consumable' && item.id === 'potion') {
         if (item.count > 0 && potion.cooldown <= 0 && player.hp < (player.maxHp || 100)) {
           item.count--;
