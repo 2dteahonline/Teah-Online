@@ -21,6 +21,7 @@ function resetCombatState(mode) {
   if (typeof clearGroundDrops === 'function') clearGroundDrops();
   waveState = "waiting"; waveTimer = 0;
   activeSlot = 0; activeHotbarSlot = 0;
+  if (typeof quickSlots !== 'undefined') for (let qi = 0; qi < 4; qi++) quickSlots[qi] = null;
   resetPhaseState();
   StatusFX.clearPoison();
   if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();

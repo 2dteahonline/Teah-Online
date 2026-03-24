@@ -1455,7 +1455,7 @@ function handleInventoryClick(mx, my) {
     const sy = L.gridY + row * (L.slotS + L.slotGap);
     if (mx >= sx && mx <= sx + L.slotS && my >= sy && my <= sy + L.slotS) {
       // Show quickslot assignment prompt for assignable items
-      const _isAssignable = ITEM_CATEGORIES.equipment.includes(item.type)
+      const _isAssignable = ITEM_CATEGORIES.weapons.includes(item.type)
         || (item.data && item.data.special === 'farming')
         || (item.data && item.data.cropId)
         || (item.data && item.data.special === 'bucket')
@@ -1637,7 +1637,7 @@ function drawHotbar() {
     const _qsMeleeOverride = hasQS && quickSlots[i].equipType === 'melee';
 
     // Tier color bar at top of slot
-    if ((!hasQS && slot.type === "gun" || _qsGunOverride) && playerEquip.gun) {
+    if (((!hasQS && slot.type === "gun") || _qsGunOverride) && playerEquip.gun) {
       ctx.fillStyle = getTierColor(playerEquip.gun.tier);
       ctx.fillRect(sx + 2, sy + 2, slotW - 4, 2);
     } else if ((!hasQS && slot.type === "melee") || _qsMeleeOverride) {
@@ -2103,7 +2103,7 @@ function drawHotbar() {
     }
 
     // Tier label (show for default slots + gun/melee quickslots)
-    if ((!hasQS && slot.type === "gun" || _qsGunOverride) && playerEquip.gun) {
+    if (((!hasQS && slot.type === "gun") || _qsGunOverride) && playerEquip.gun) {
       ctx.font = "bold 9px monospace"; ctx.fillStyle = getTierColor(playerEquip.gun.tier);
       ctx.textAlign = "right"; ctx.fillText("T" + playerEquip.gun.tier, sx + slotW - 4, sy + 14);
     }
@@ -2209,7 +2209,7 @@ function drawQuickSlotPrompt() {
 
     // Slot keybind label (large) — show actual bound key, not hardcoded number
     const _slotKeys = [keybinds.slot1, keybinds.slot2, keybinds.slot3, keybinds.slot4];
-    const _keyLabel = (_slotKeys[i] || '' + (i + 1)).toUpperCase();
+    const _keyLabel = (_slotKeys[i] || String(i + 1)).toUpperCase();
     ctx.font = 'bold 22px monospace';
     ctx.fillStyle = '#4a9eff';
     ctx.textAlign = 'center';
