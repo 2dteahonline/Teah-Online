@@ -1207,12 +1207,14 @@ function drawInventoryPanel() {
 
       ctx.fillStyle = PALETTE.accent;
       ctx.font = "bold 10px monospace";
-      if (ITEM_CATEGORIES.equipment.includes(item.type)) {
+      if (ITEM_CATEGORIES.weapons.includes(item.type)) {
+        ctx.fillText("Click to assign slot", ttx + 10, tty + 72);
+      } else if (ITEM_CATEGORIES.armor.includes(item.type)) {
         const isEq = playerEquip[item.type] && playerEquip[item.type].id === item.data.id;
         ctx.fillText(isEq ? "Click to unequip" : "Click to equip", ttx + 10, tty + 72);
-      } else if (item.data && item.data.special === 'farming') {
-        const _isHoeEq = typeof farmingState !== 'undefined' && farmingState.equippedHoe === item.data.id;
-        ctx.fillText(_isHoeEq ? "[Equipped]" : "Click to equip", ttx + 10, tty + 72);
+      } else if (item.data && (item.data.special === 'farming' || item.data.cropId || item.data.special === 'bucket')
+        || (item.type === 'consumable' && item.id === 'potion')) {
+        ctx.fillText("Click to assign slot", ttx + 10, tty + 72);
       }
       // Right-click hint
       ctx.fillStyle = "#555";
@@ -2886,16 +2888,17 @@ function update() {
         // In Hide & Seek: ignore slot switching, stay on melee
       } else {
         const slot = InputIntent.slot1Pressed ? 0 : InputIntent.slot2Pressed ? 1 : InputIntent.slot3Pressed ? 2 : 3;
-        const qs = quickSlots[slot];
+        let qs = quickSlots[slot];
+        let _qsHandled = false;
         if (qs) {
           // Quickslot assigned — find item in inventory and actually equip it
           if (qs.equipType === 'gun') {
-            // Verify item still exists in inventory
             const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'gun');
             if (invSlot >= 0) {
               if (!playerEquip.gun || playerEquip.gun.id !== qs.id) equipItem(invSlot);
               activeHotbarSlot = slot;
               activeSlot = 0;
+              _qsHandled = true;
             } else {
               // Item gone — clear stale quickslot, fall through to default
               quickSlots[slot] = null;
@@ -2908,6 +2911,7 @@ function update() {
               if (!playerEquip.melee || playerEquip.melee.id !== qs.id) equipItem(invSlot);
               activeHotbarSlot = slot;
               activeSlot = 1;
+              _qsHandled = true;
             } else {
               quickSlots[slot] = null;
               SaveLoad.autoSave();
@@ -2917,15 +2921,19 @@ function update() {
             activeHotbarSlot = slot;
             farmingState.equippedHoe = qs.id;
             activeSlot = 1;
+            _qsHandled = true;
           }
           else if (qs.equipType === 'seed' && typeof farmingState !== 'undefined' && qs.cropId) {
             farmingState.selectedSeed = qs.cropId;
+            _qsHandled = true;
           }
-          else if (qs.equipType === 'potion') { usePotion(); }
+          else if (qs.equipType === 'potion') { usePotion(); _qsHandled = true; }
           else if (qs.equipType === 'bucket' && typeof farmingState !== 'undefined') {
             farmingState.bucketOwned = true;
+            _qsHandled = true;
           }
-        } else {
+        }
+        if (!_qsHandled) {
           // Default behavior — gun/melee/potion/item
           if (slot < hotbarSlots.length && hotbarSlots[slot].type !== "empty") {
             if (hotbarSlots[slot].type === "potion") {
