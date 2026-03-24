@@ -1049,12 +1049,15 @@ function drawInventoryPanel() {
       const isEquipped = _isFarmTool
         ? (typeof farmingState !== 'undefined' && farmingState.equippedHoe === item.data.id)
         : (playerEquip[item.type] && playerEquip[item.type].id === item.data.id);
+      // Check if item is assigned to a quickslot
+      const _qsSlotIdx = quickSlots.findIndex(qs => qs && qs.id === item.id);
+      const isAssigned = _qsSlotIdx >= 0;
 
-      // Slot background — green tint if equipped
-      ctx.fillStyle = isEquipped ? "rgba(40,70,40,0.9)" : isHover ? "rgba(60,55,40,0.9)" : "rgba(30,28,22,0.9)";
+      // Slot background — green tint if equipped or assigned to quickslot
+      ctx.fillStyle = isEquipped ? "rgba(40,70,40,0.9)" : isAssigned ? "rgba(30,50,60,0.9)" : isHover ? "rgba(60,55,40,0.9)" : "rgba(30,28,22,0.9)";
       ctx.beginPath(); ctx.roundRect(sx, sy, L.slotS, L.slotS, 6); ctx.fill();
-      ctx.strokeStyle = isEquipped ? PALETTE.accent : isHover ? getTierColor(item.tier) : "rgba(70,60,45,0.4)";
-      ctx.lineWidth = isEquipped ? 2.5 : isHover ? 2 : 1;
+      ctx.strokeStyle = isEquipped ? PALETTE.accent : isAssigned ? "#4a9eff" : isHover ? getTierColor(item.tier) : "rgba(70,60,45,0.4)";
+      ctx.lineWidth = isEquipped ? 2.5 : isAssigned ? 2 : isHover ? 2 : 1;
       ctx.beginPath(); ctx.roundRect(sx, sy, L.slotS, L.slotS, 6); ctx.stroke();
 
       // Tier bar
@@ -1140,6 +1143,12 @@ function drawInventoryPanel() {
         ctx.fillStyle = PALETTE.accent;
         ctx.textAlign = "right";
         ctx.fillText("EQUIPPED", sx + L.slotS - 4, sy + 14);
+      } else if (isAssigned) {
+        // Show which slot this item is assigned to
+        ctx.font = "bold 8px monospace";
+        ctx.fillStyle = "#4a9eff";
+        ctx.textAlign = "right";
+        ctx.fillText("SLOT " + (_qsSlotIdx + 1), sx + L.slotS - 4, sy + 14);
       }
 
       // Stack count
@@ -1619,16 +1628,18 @@ function drawHotbar() {
     const isActive = (i < 4 && i === activeHotbarSlot) || (i === 4 && isGrabbing);
     const isGrab = slot.type === "grab";
     const isItem = slot.type === "item";
+    // Item slot with a quickslot override should render like a weapon slot, not like "item"
+    const _itemHasQS = isItem && i < 4 && quickSlots[i];
 
     // Slot background
     ctx.fillStyle = isGrab ? (isGrabbing ? "rgba(200,120,40,0.35)" : "rgba(40,30,20,0.6)")
-      : isItem ? (extraSlotItem ? "rgba(40,50,80,0.6)" : "rgba(20,20,30,0.6)")
+      : (isItem && !_itemHasQS) ? (extraSlotItem ? "rgba(40,50,80,0.6)" : "rgba(20,20,30,0.6)")
       : isActive ? "rgba(80,200,120,0.25)" : "rgba(0,0,0,0.6)";
     ctx.beginPath(); ctx.roundRect(sx, sy, slotW, slotH, 6); ctx.fill();
 
     // Border
     ctx.strokeStyle = isGrab ? (isGrabbing ? "#ffa040" : "rgba(180,140,80,0.3)")
-      : isItem ? (extraSlotItem ? "#5a8aee" : "rgba(80,80,120,0.3)")
+      : (isItem && !_itemHasQS) ? (extraSlotItem ? "#5a8aee" : "rgba(80,80,120,0.3)")
       : isActive ? PALETTE.accent : "rgba(255,255,255,0.15)";
     ctx.lineWidth = isActive ? 2.5 : 1;
     ctx.beginPath(); ctx.roundRect(sx, sy, slotW, slotH, 6); ctx.stroke();
