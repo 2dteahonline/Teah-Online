@@ -553,7 +553,9 @@ canvas.addEventListener("mousedown", e => {
   if (e.button === 0) {
     // Dismiss card popup on left click
     if (cardPopup) { cardPopup = null; }
-    for (let i = 0; i < slotCount; i++) {
+    // Block weapon switching in Mafia lobby (matches panelManager.js keyboard block)
+    if (typeof Scene !== 'undefined' && Scene.inMafiaLobby) { /* no hotbar clicks in mafia */ }
+    else for (let i = 0; i < slotCount; i++) {
       let sx2, sy2;
       if (isBottom) {
         sx2 = hbStartX + i * (slotW + gap);
@@ -570,7 +572,7 @@ canvas.addEventListener("mousedown", e => {
           InputIntent.slot4Pressed = true;
         } else if (i === 2) {
           InputIntent.slot3Pressed = true;
-          InputIntent.potionPressed = true;
+          if (!quickSlots[2]) InputIntent.potionPressed = true;
         } else if (i === 1) {
           InputIntent.slot2Pressed = true;
         } else if (i === 0) {
