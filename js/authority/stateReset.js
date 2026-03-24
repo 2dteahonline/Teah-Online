@@ -21,7 +21,6 @@ function resetCombatState(mode) {
   if (typeof clearGroundDrops === 'function') clearGroundDrops();
   waveState = "waiting"; waveTimer = 0;
   activeSlot = 0; activeHotbarSlot = 0;
-  if (typeof quickSlots !== 'undefined') for (let qi = 0; qi < 4; qi++) quickSlots[qi] = null;
   resetPhaseState();
   StatusFX.clearPoison();
   if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();
@@ -49,6 +48,7 @@ function resetCombatState(mode) {
 
   // --- Reset inventory + equipment (everything except 'floor', 'mine', and 'cooking') ---
   if (mode !== 'floor' && mode !== 'mine' && mode !== 'cooking' && mode !== 'farm' && mode !== 'hideseek') {
+    if (typeof quickSlots !== 'undefined') for (let qi = 0; qi < 4; qi++) quickSlots[qi] = null;
     inventory.length = 0;
     addToInventory(createItem('gun', DEFAULT_GUN));
     addToInventory(createItem('gun', CT_X_GUN));
