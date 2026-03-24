@@ -1661,18 +1661,74 @@ function drawHotbar() {
     // For gun/melee quickslots, draw the actual weapon art using the quickslot's item id.
     // For non-weapon quickslots (hoe/seed/potion/bucket), show type label.
     if (hasQS && !_qsGunOverride && !_qsMeleeOverride) {
-      // Non-weapon quickslot: draw type label
+      // Non-weapon quickslot: draw actual item icon
       const qs = quickSlots[i];
-      const qsColor = qs.color || '#4a9eff';
-      ctx.globalAlpha = 0.15;
-      ctx.fillStyle = qsColor;
-      ctx.beginPath(); ctx.roundRect(sx + 4, sy + 16, slotW - 8, slotH - 22, 4); ctx.fill();
-      ctx.globalAlpha = 1.0;
-      const typeIcons = { hoe: 'HOE', seed: 'SEED', potion: 'POT', bucket: 'BKT' };
-      ctx.font = 'bold 14px monospace';
-      ctx.fillStyle = qsColor;
-      ctx.textAlign = 'center';
-      ctx.fillText(typeIcons[qs.equipType] || '???', sx + slotW / 2, sy + 36);
+      if (qs.equipType === 'potion') {
+        // Potion bottle (same as default potion slot art)
+        const px2 = sx + 22, py2 = sy + 12;
+        ctx.fillStyle = "#8a7a60"; ctx.fillRect(px2 + 5, py2, 8, 6);
+        ctx.fillStyle = "#a89060"; ctx.fillRect(px2 + 6, py2 - 3, 6, 4);
+        ctx.fillStyle = potion.count > 0 ? "#44aa44" : "#555";
+        ctx.beginPath();
+        ctx.moveTo(px2 + 3, py2 + 6); ctx.lineTo(px2 + 1, py2 + 14);
+        ctx.lineTo(px2 + 1, py2 + 32); ctx.lineTo(px2 + 17, py2 + 32);
+        ctx.lineTo(px2 + 17, py2 + 14); ctx.lineTo(px2 + 15, py2 + 6);
+        ctx.closePath(); ctx.fill();
+        if (potion.count > 0) {
+          ctx.fillStyle = "#33dd55"; ctx.fillRect(px2 + 3, py2 + 18, 12, 13);
+          ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.fillRect(px2 + 4, py2 + 10, 3, 18);
+        }
+        ctx.strokeStyle = potion.count > 0 ? "#2a8a3a" : "#444"; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(px2 + 3, py2 + 6); ctx.lineTo(px2 + 1, py2 + 14);
+        ctx.lineTo(px2 + 1, py2 + 32); ctx.lineTo(px2 + 17, py2 + 32);
+        ctx.lineTo(px2 + 17, py2 + 14); ctx.lineTo(px2 + 15, py2 + 6);
+        ctx.closePath(); ctx.stroke();
+      } else if (qs.equipType === 'bucket') {
+        // Bucket icon
+        ctx.fillStyle = '#6a8aaa';
+        ctx.beginPath();
+        ctx.moveTo(sx + 16, sy + 18); ctx.lineTo(sx + 12, sy + 46);
+        ctx.lineTo(sx + 52, sy + 46); ctx.lineTo(sx + 48, sy + 18);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#4a6a8a'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(sx + 16, sy + 18); ctx.lineTo(sx + 12, sy + 46);
+        ctx.lineTo(sx + 52, sy + 46); ctx.lineTo(sx + 48, sy + 18);
+        ctx.closePath(); ctx.stroke();
+        // Handle
+        ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(sx + 32, sy + 14, 12, Math.PI, 0); ctx.stroke();
+        // Water line
+        ctx.fillStyle = 'rgba(100,180,255,0.4)';
+        ctx.fillRect(sx + 14, sy + 30, 36, 15);
+      } else if (qs.equipType === 'seed') {
+        // Seed packet icon
+        const seedCol = qs.color || '#4a8a40';
+        ctx.fillStyle = seedCol;
+        ctx.beginPath(); ctx.roundRect(sx + 16, sy + 14, 32, 36, 4); ctx.fill();
+        ctx.strokeStyle = '#2a4a20'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(sx + 16, sy + 14, 32, 36, 4); ctx.stroke();
+        // Seed dots
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(sx + 28, sy + 28, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx + 36, sy + 32, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx + 32, sy + 38, 2, 0, Math.PI * 2); ctx.fill();
+      } else if (qs.equipType === 'hoe') {
+        // Hoe icon (same as farm hoe art)
+        const _hoeCol = qs.color || '#8a6a3a';
+        ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx + 20, sy + 52); ctx.lineTo(sx + 42, sy + 18); ctx.stroke();
+        ctx.fillStyle = _hoeCol;
+        ctx.beginPath(); ctx.moveTo(sx + 38, sy + 22); ctx.lineTo(sx + 52, sy + 16); ctx.lineTo(sx + 50, sy + 10); ctx.lineTo(sx + 36, sy + 16); ctx.fill();
+      } else {
+        // Fallback text
+        const qsColor = qs.color || '#4a9eff';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = qsColor;
+        ctx.textAlign = 'center';
+        ctx.fillText(qs.equipType.toUpperCase().substring(0, 4), sx + slotW / 2, sy + 36);
+      }
     } else if (slot.type === "gun" || _qsGunOverride) {
       // Draw gun art — use quickslot id if overriding, otherwise equipped gun
       // For default gun slot: if equipped gun is assigned to a different quickslot, show default (pistol)
@@ -2011,20 +2067,23 @@ function drawHotbar() {
     if (i < 4 && quickSlots[i]) {
       const qs = quickSlots[i];
       const qsColor = qs.color || '#4a9eff';
-      // Type letter badge (top-right corner)
-      const typeLetters = { gun: 'G', melee: 'M', hoe: 'H', seed: 'S', potion: 'P', bucket: 'B' };
-      const tl = typeLetters[qs.equipType] || '?';
-      ctx.fillStyle = qsColor;
-      ctx.beginPath(); ctx.arc(sx + slotW - 10, sy + 10, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 9px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(tl, sx + slotW - 10, sy + 14);
-      // Item name at bottom
-      ctx.font = 'bold 8px monospace';
-      ctx.fillStyle = qsColor;
-      ctx.textAlign = 'center';
-      ctx.fillText(qs.name.substring(0, 7).toUpperCase(), sx + slotW / 2, sy + slotH - 2);
+      if (!_qsGunOverride && !_qsMeleeOverride) {
+        // Non-weapon quickslots: show type badge (top-right) + name at bottom
+        const typeLetters = { hoe: 'H', seed: 'S', potion: 'P', bucket: 'B' };
+        const tl = typeLetters[qs.equipType] || '?';
+        ctx.fillStyle = qsColor;
+        ctx.beginPath(); ctx.arc(sx + slotW - 10, sy + 10, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(tl, sx + slotW - 10, sy + 14);
+        // Item name at bottom
+        ctx.font = 'bold 8px monospace';
+        ctx.fillStyle = qsColor;
+        ctx.textAlign = 'center';
+        ctx.fillText(qs.name.substring(0, 7).toUpperCase(), sx + slotW / 2, sy + slotH - 2);
+      }
+      // Gun/melee quickslots: weapon art + tier/ammo already drawn, no badge needed
     }
 
     // Grab label
@@ -2078,15 +2137,16 @@ function drawHotbar() {
       }
     }
 
-    // Potion count (hide when quickslot assigned)
-    if (!hasQS && slot.type === "potion") {
+    // Potion count (show for default potion slot + potion quickslots)
+    const _isPotionSlot = (!hasQS && slot.type === "potion") || (hasQS && quickSlots[i] && quickSlots[i].equipType === 'potion');
+    if (_isPotionSlot) {
       ctx.font = "bold 13px monospace"; ctx.textAlign = "center";
       ctx.fillStyle = potion.count > 0 ? PALETTE.accent : "#f44";
       ctx.fillText("x" + potion.count, sx + slotW / 2, sy + slotH - 4);
     }
 
-    // Potion cooldown overlay (hide when quickslot assigned)
-    if (!hasQS && slot.type === "potion" && potion.cooldown > 0) {
+    // Potion cooldown overlay
+    if (_isPotionSlot && potion.cooldown > 0) {
       const cdPct = potion.cooldown / potion.cooldownMax;
       ctx.fillStyle = "rgba(0,0,0,0.5)";
       ctx.fillRect(sx + 2, sy + slotH * (1 - cdPct), slotW - 4, slotH * cdPct);
@@ -2829,9 +2889,8 @@ function update() {
         const qs = quickSlots[slot];
         if (qs) {
           // Quickslot assigned — find item in inventory and actually equip it
-          // Visual highlight always tracks the slot that was pressed
-          activeHotbarSlot = slot;
           if (qs.equipType === 'gun') {
+            activeHotbarSlot = slot;
             if (!playerEquip.gun || playerEquip.gun.id !== qs.id) {
               const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'gun');
               if (invSlot >= 0) equipItem(invSlot);
@@ -2839,6 +2898,7 @@ function update() {
             activeSlot = 0;
           }
           else if (qs.equipType === 'melee') {
+            activeHotbarSlot = slot;
             if (!playerEquip.melee || playerEquip.melee.id !== qs.id) {
               const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'melee');
               if (invSlot >= 0) equipItem(invSlot);
@@ -2846,6 +2906,7 @@ function update() {
             activeSlot = 1;
           }
           else if (qs.equipType === 'hoe' && typeof farmingState !== 'undefined') {
+            activeHotbarSlot = slot;
             farmingState.equippedHoe = qs.id;
             activeSlot = 1;
           }
@@ -2858,13 +2919,12 @@ function update() {
           }
         } else {
           // Default behavior — gun/melee/potion/item
-          // Visual highlight matches the slot
-          activeHotbarSlot = slot;
           if (slot < 3 && hotbarSlots[slot].type !== "empty") {
             if (hotbarSlots[slot].type === "potion") {
-              usePotion();
+              usePotion(); // instant use, don't change active slot highlight
             } else {
               activeSlot = slot;
+              activeHotbarSlot = slot;
             }
           } else if (slot === 3) {
             useExtraSlotItem();
