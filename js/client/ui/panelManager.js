@@ -1105,7 +1105,7 @@ window.addEventListener("keydown", e => {
     else if (slot === 1) InputIntent.slot2Pressed = true;
     else if (slot === 2) InputIntent.slot3Pressed = true;
     else InputIntent.slot4Pressed = true;
-    if (slot < 3 && hotbarSlots[slot].type === "potion") InputIntent.potionPressed = true;
+    if (slot < hotbarSlots.length && hotbarSlots[slot].type === "potion") InputIntent.potionPressed = true;
   }
   if (key === keybinds.slot5) {
     InputIntent.slot5Pressed = true;

@@ -20,6 +20,7 @@ function resetCombatState(mode) {
   if (typeof _orePickups !== 'undefined') _orePickups.length = 0;
   if (typeof clearGroundDrops === 'function') clearGroundDrops();
   waveState = "waiting"; waveTimer = 0;
+  activeSlot = 0; activeHotbarSlot = 0;
   resetPhaseState();
   StatusFX.clearPoison();
   if (typeof StatusFX !== 'undefined' && StatusFX.clearPlayer) StatusFX.clearPlayer();

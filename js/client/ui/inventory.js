@@ -2890,20 +2890,28 @@ function update() {
         if (qs) {
           // Quickslot assigned — find item in inventory and actually equip it
           if (qs.equipType === 'gun') {
-            activeHotbarSlot = slot;
-            if (!playerEquip.gun || playerEquip.gun.id !== qs.id) {
-              const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'gun');
-              if (invSlot >= 0) equipItem(invSlot);
+            // Verify item still exists in inventory
+            const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'gun');
+            if (invSlot >= 0) {
+              if (!playerEquip.gun || playerEquip.gun.id !== qs.id) equipItem(invSlot);
+              activeHotbarSlot = slot;
+              activeSlot = 0;
+            } else {
+              // Item gone — clear stale quickslot, fall through to default
+              quickSlots[slot] = null;
+              SaveLoad.autoSave();
             }
-            activeSlot = 0;
           }
           else if (qs.equipType === 'melee') {
-            activeHotbarSlot = slot;
-            if (!playerEquip.melee || playerEquip.melee.id !== qs.id) {
-              const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'melee');
-              if (invSlot >= 0) equipItem(invSlot);
+            const invSlot = inventory.findIndex(it => it && it.id === qs.id && it.type === 'melee');
+            if (invSlot >= 0) {
+              if (!playerEquip.melee || playerEquip.melee.id !== qs.id) equipItem(invSlot);
+              activeHotbarSlot = slot;
+              activeSlot = 1;
+            } else {
+              quickSlots[slot] = null;
+              SaveLoad.autoSave();
             }
-            activeSlot = 1;
           }
           else if (qs.equipType === 'hoe' && typeof farmingState !== 'undefined') {
             activeHotbarSlot = slot;
@@ -2919,7 +2927,7 @@ function update() {
           }
         } else {
           // Default behavior — gun/melee/potion/item
-          if (slot < 3 && hotbarSlots[slot].type !== "empty") {
+          if (slot < hotbarSlots.length && hotbarSlots[slot].type !== "empty") {
             if (hotbarSlots[slot].type === "potion") {
               usePotion(); // instant use, don't change active slot highlight
             } else {
