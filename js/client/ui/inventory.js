@@ -1054,10 +1054,11 @@ function drawInventoryPanel() {
       const isAssigned = _qsSlotIdx >= 0;
 
       // Slot background — green tint if equipped or assigned to quickslot
-      ctx.fillStyle = isEquipped ? "rgba(40,70,40,0.9)" : isAssigned ? "rgba(30,50,60,0.9)" : isHover ? "rgba(60,55,40,0.9)" : "rgba(30,28,22,0.9)";
+      const _highlighted = isEquipped || isAssigned;
+      ctx.fillStyle = _highlighted ? "rgba(40,70,40,0.9)" : isHover ? "rgba(60,55,40,0.9)" : "rgba(30,28,22,0.9)";
       ctx.beginPath(); ctx.roundRect(sx, sy, L.slotS, L.slotS, 6); ctx.fill();
-      ctx.strokeStyle = isEquipped ? PALETTE.accent : isAssigned ? "#4a9eff" : isHover ? getTierColor(item.tier) : "rgba(70,60,45,0.4)";
-      ctx.lineWidth = isEquipped ? 2.5 : isAssigned ? 2 : isHover ? 2 : 1;
+      ctx.strokeStyle = _highlighted ? PALETTE.accent : isHover ? getTierColor(item.tier) : "rgba(70,60,45,0.4)";
+      ctx.lineWidth = _highlighted ? 2.5 : isHover ? 2 : 1;
       ctx.beginPath(); ctx.roundRect(sx, sy, L.slotS, L.slotS, 6); ctx.stroke();
 
       // Tier bar
@@ -1146,7 +1147,7 @@ function drawInventoryPanel() {
       } else if (isAssigned) {
         // Show which slot this item is assigned to
         ctx.font = "bold 8px monospace";
-        ctx.fillStyle = "#4a9eff";
+        ctx.fillStyle = PALETTE.accent;
         ctx.textAlign = "right";
         ctx.fillText("SLOT " + (_qsSlotIdx + 1), sx + L.slotS - 4, sy + 14);
       }
