@@ -28,6 +28,7 @@
 | 19 | [conventions.md](conventions.md) | Coding conventions, gotchas, adding-new-content checklists, backup rules, Skeld map rules |
 | 20 | [casino.md](casino.md) | Casino system — 6 games (Slots, Blackjack, Keno, Cases, Roulette, Hi-Lo), betting, 5% house edge |
 | 21 | [party-system.md](party-system.md) | Party system — bot AI, entity-agnostic design, independent state, equip sync |
+| 22 | [hotbar-and-quickslots.md](hotbar-and-quickslots.md) | Hotbar (5 slots), quickslot assignment, activeSlot vs activeHotbarSlot, keybind routing, save/load |
 
 ## I want to change X — read Y
 
@@ -50,7 +51,8 @@
 | Modify party/bot system | [party-system.md](party-system.md), [conventions.md](conventions.md) |
 | Modify save data | [save-load.md](save-load.md) |
 | Add a debug command | [debug-and-testing.md](debug-and-testing.md) |
-| Change input/keybinds | [input.md](input.md) |
+| Change input/keybinds | [input.md](input.md), [hotbar-and-quickslots.md](hotbar-and-quickslots.md) |
+| Modify hotbar/quickslots | [hotbar-and-quickslots.md](hotbar-and-quickslots.md) |
 | Add a new animation row | [rendering.md](rendering.md), [conventions.md](conventions.md) |
 | Understand the game loop | [architecture.md](architecture.md) |
 | Understand script loading | [architecture.md](architecture.md) |
