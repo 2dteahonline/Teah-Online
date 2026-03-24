@@ -25,7 +25,7 @@ The inventory system manages a 100-slot item bag, 4 equipment slots, and session
 | `findInventoryItemById(id)` | Returns the item object or `null` |
 | `createItem(type, tierData)` | Creates a non-stackable item from tier data |
 | `createConsumable(id, name, count)` | Creates a stackable consumable item |
-| `equipItem(slot)` | Equips item from inventory slot; toggling (re-equip = unequip) |
+| `equipItem(slot)` | Equips item from inventory slot; toggling (re-equip = unequip). Also called by quickslot activation — see [hotbar-and-quickslots.md](hotbar-and-quickslots.md) |
 | `unequipItem(eqType)` | Moves equipped item back to inventory, reverts to defaults |
 
 ### Equipment (`inventorySystem.js`)

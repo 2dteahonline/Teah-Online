@@ -57,12 +57,12 @@ The input system captures keyboard and mouse events from the browser, translates
 | `reloadPressed` | R key pressed |
 | `dashPressed` | Shift pressed (ninja dash) |
 | `interactPressed` | E key pressed |
-| `slot1Pressed` | Hotbar slot 1 keybind |
+| `slot1Pressed` | Hotbar slot 1 keybind (checks quickslot first — see [hotbar-and-quickslots.md](hotbar-and-quickslots.md)) |
 | `slot2Pressed` | Hotbar slot 2 keybind |
 | `slot3Pressed` | Hotbar slot 3 keybind |
-| `slot4Pressed` | Extra item slot keybind |
-| `slot5Pressed` | Grab slot keybind |
-| `potionPressed` | Potion use |
+| `slot4Pressed` | Hotbar slot 4 keybind (quickslot-aware, falls back to `useExtraSlotItem()`) |
+| `slot5Pressed` | Grab slot keybind (never assignable) |
+| `potionPressed` | Potion use (only set if default slot type is potion, not for quickslot overrides) |
 | `ultimatePressed` | F key for shrine/godspeed ultimate |
 | `skipWavePressed` | N key (OP mode only) |
 | `readyWavePressed` | G key (skip wave countdown) |

@@ -95,7 +95,14 @@ The save data is a single JSON object stored at `localStorage['dungeon_game_save
     lifetimeOrdersTotal,     // total orders completed across all restaurants
     lifetimeOrdersByShop,    // { shopId: count } per-restaurant totals
     purchasedShops,          // array of unlocked restaurant IDs (starts with 'street_deli')
-  }
+  },
+
+  quickSlots: [              // 4-element array (slots 1-4), each null or { id, name, equipType, color, cropId }
+    null,                    // backwards-compatible: old 3-slot saves load fine (4th defaults to null)
+    null,                    // see hotbar-and-quickslots.md for full details
+    null,
+    null
+  ]
 }
 ```
 
