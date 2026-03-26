@@ -3,7 +3,7 @@
 > Complete mapping of the Teah Online JS prototype → Unity C#.
 > Current state: ~121,200 lines JS, 91 files.
 > Unity project: `C:\Users\jeff\Desktop\Unity Proj\TeahOnline` (Unity 6, 6000.4.0f1)
-> **Phases 0-10 complete + Phase 11 Milestone 1** (103 C# scripts). Networking M2-M4 next.
+> **Phases 0-11 complete** (106 C# scripts). All networking milestones done.
 
 ---
 
@@ -63,10 +63,10 @@
 - **Phase 11 M3**: Dungeon co-op — scene transitions, mob sync from snapshots, wave/floor state, death/respawn
 
 ### Partially Complete
-- **Phase 11 M4**: Lobby polish (cosmetics sync, chat, disconnect cleanup)
+- None — all phases through 11 are complete
 
 ### Not Started
-- Art/sprites/audio
+- Art/sprites/audio (Phase 12)
 
 ---
 
@@ -89,7 +89,7 @@
 | **8** | Skills (fishing, mining, farming, cooking gameplay) | DONE |
 | **9** | Party system + bot AI | DONE |
 | **10** | Game modes (casino, mafia, hide&seek, spar) | DONE |
-| **11** | Networking + multiplayer | **M1-M3 DONE** (M4 remaining) |
+| **11** | Networking + multiplayer | **DONE** (M1-M4 complete) |
 
 ### Remaining Phases
 
@@ -249,9 +249,9 @@
 ##### Milestone 4: Lobby polish
 | Task | Status |
 |------|--------|
-| Player cosmetics sync on connect | TODO |
-| Chat message wiring | TODO |
-| Disconnect cleanup | Partially done (DespawnRemotePlayer works) |
+| Player cosmetics sync on connect | DONE (CosmeticPalette indices → colors, handshake + snapshots) |
+| Chat message wiring | DONE (ChatUI + server rebroadcast + system messages) |
+| Disconnect cleanup | DONE (ServerAuthority cleanup, return-to-lobby on host quit, timer reset) |
 
 **Testing**: Build two Unity instances, Instance 1: Host on port 7777, Instance 2: Join 127.0.0.1:7777. Both should see each other in lobby.
 
@@ -552,9 +552,10 @@ Two players can connect, see each other, and move in lobby.
 ### Debug UI
 - `NetworkDebugUI.cs` — OnGUI overlay (F10 toggle): Host/Join buttons, IP:port field, connected player list, latency display
 
-### Still Needs (Milestone 4)
-- Player cosmetics sync on connect
-- Chat message wiring
+### Milestone 4 (DONE)
+- Player cosmetics sync: CosmeticPalette (Shared/Data), cosmetics in ConnectedPlayer, handshake, snapshots
+- Chat system: ChatUI (Client/UI), server rebroadcast, system join/leave messages
+- Disconnect cleanup: ServerAuthority unregister, timer reset, return-to-lobby on host quit
 - Dash system wiring in HandleInput (deferred — no dash system yet)
 
 ---
