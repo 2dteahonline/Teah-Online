@@ -2,7 +2,7 @@
 
 ## Overview
 
-The save/load system persists player identity, cosmetics, settings, keybinds, and permanent progression to `localStorage`. It uses a versioned schema (currently v8) with backward-compatible migrations from v1 through v7. Gold, inventory, equipment, and dungeon progress are intentionally NOT saved -- the game follows a session-based roguelike design where each run starts fresh.
+The save/load system persists player identity, cosmetics, settings, keybinds, and permanent progression to `localStorage`. It uses a versioned schema (currently v10) with backward-compatible migrations from v1 through v9. Gold, inventory, equipment, and dungeon progress are intentionally NOT saved -- the game follows a session-based roguelike design where each run starts fresh.
 
 ## Files
 
@@ -13,7 +13,7 @@ The save/load system persists player identity, cosmetics, settings, keybinds, an
 | Name | Type | Description |
 |------|------|-------------|
 | `SAVE_KEY` | const `'dungeon_game_save'` | localStorage key |
-| `SAVE_VERSION` | const `8` | Current schema version |
+| `SAVE_VERSION` | const `10` | Current schema version |
 | `SaveLoad.save()` | method | Serializes all persistent data to localStorage |
 | `SaveLoad.load()` | method | Reads from localStorage, applies migrations, restores state. Returns `true` on success |
 | `SaveLoad.clear()` | method | Removes the save key from localStorage |
@@ -21,13 +21,13 @@ The save/load system persists player identity, cosmetics, settings, keybinds, an
 
 ## How It Works
 
-### Save Schema (v8)
+### Save Schema (v10)
 
 The save data is a single JSON object stored at `localStorage['dungeon_game_save']`:
 
 ```
 {
-  version: 8,
+  version: 10,
 
   keybinds: {
     moveUp, moveDown, moveLeft, moveRight,
@@ -141,6 +141,8 @@ On load, owned guns/pickaxes are re-created as inventory items via `createMainGu
 | v6 | Added `gunLevels` to progression (permanent gun progression with tier/level objects) |
 | v7 | Added `pickaxeLevels` and `discoveredOres` to progression |
 | v8 | Added `cookingProgress` block (lifetimeOrdersTotal, lifetimeOrdersByShop, purchasedShops) |
+| v9 | Added spar learning profile (Elo, match history, bot training data) |
+| v10 | Materials stored as separate data (decoupled from inventory for persistence across sessions) |
 
 Migration is implicit: the `load()` method checks for each block's existence and applies defaults for missing fields. The v3-to-v4 fishing rod migration explicitly checks `data.version < 4` and converts old `rodTier` to an inventory item.
 
@@ -174,7 +176,7 @@ One notable settings migration: old saves with `playerIndicator` (single boolean
 ## Gotchas & Rules
 
 - **Do not save session data**: Gold, inventory, equipment, and dungeon progress are intentionally excluded. The roguelike design means each run starts fresh.
-- **Backward compatibility is required**: The `load()` method must handle saves from any version (v1 through current). Always check for existence of blocks/fields before reading.
+- **Backward compatibility is required**: The `load()` method must handle saves from any version (v1 through v10). Always check for existence of blocks/fields before reading.
 - **Gun level format ambiguity**: Always handle both integer and `{ tier, level }` formats when reading `gunLevels` or `pickaxeLevels`. Use `typeof saved === 'number'` to detect old format.
 - **autoSave is debounced**: Do not call `save()` directly for frequent changes; use `autoSave()` to avoid excessive localStorage writes.
 - **Cosmetics use explicit save**: The customize panel has Save/Cancel buttons. `applyCosmetic()` does NOT trigger autoSave -- the caller decides when to persist.

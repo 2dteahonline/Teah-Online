@@ -2,29 +2,29 @@
 
 ## Overview
 
-Teah Online is a top-down dungeon crawler built with vanilla JS and HTML5 Canvas 2D. There are no frameworks, no build tools, and no npm dependencies. The entire game loads from a single `index.html` that pulls in 83 script files, and all game logic is organized around a future-multiplayer authority/client split. The codebase totals ~84,400 lines of JavaScript.
+Teah Online is a top-down dungeon crawler built with vanilla JS and HTML5 Canvas 2D. There are no frameworks, no build tools, and no npm dependencies. The entire game loads from a single `index.html` that pulls in 93 script files, and all game logic is organized around a future-multiplayer authority/client split. The codebase totals ~98,600 lines of JavaScript across 91 non-backup files.
 
 ## Files
 
 - `index.html` -- entry point; loads all scripts in dependency order with cache-busting query params
-- `js/shared/` -- pure data registries (no logic); loaded first (19 files)
-- `js/authority/` -- server-authoritative systems: combat, damage, waves, mobs, inventory, party, bots, casino, cooking (36 files)
+- `js/shared/` -- pure data registries (no logic); loaded first (21 files)
+- `js/authority/` -- server-authoritative systems: combat, damage, waves, mobs, inventory, party, bots, casino, cooking, spar (40 files)
 - `js/client/rendering/` -- canvas drawing: sprites, entities, effects, FOV (5 files)
 - `js/client/input/` -- mouse/keyboard capture, InputIntent flags, command translation (2 files)
-- `js/client/ui/` -- panel system: inventory, gunsmith, settings, shop, customization, casino (10 files)
+- `js/client/ui/` -- panel system: inventory, gunsmith, settings, shop, customization, casino, testmob (11 files)
 - `js/core/` -- bridge layer: save/load, scene management, weapons, interactables, camera, draw loop (10 files)
-- `js/testing/` -- test harness for automated checks (1 file)
+- `js/testing/` -- test harness + spar training (2 files)
 
 ## Project Structure
 
 ```
 Teah Online/
-  index.html              -- entry point, canvas setup, script loading (83 scripts)
+  index.html              -- entry point, canvas setup, script loading (93 scripts)
   assets/
     manifest.json          -- sprite asset manifest
     sprites/               -- body/head/hat sprite templates
   js/
-    shared/                -- data registries (loaded first, no logic) — 19 files
+    shared/                -- data registries (loaded first, no logic) — 21 files
       gameConfig.js          physics & collision constants, GAME_UPDATE version
       levelData.js           tile maps, room definitions, TILE constant
       mobTypes.js            mob type definitions
@@ -44,7 +44,7 @@ Teah Online/
       mafiaRoleData.js       Mafia role definitions (impostor abilities, etc.)
       casinoData.js          casino game configs, payouts, house edge
       partyData.js           party system constants, bot equipment data
-    authority/               -- server-authoritative game logic — 36 files
+    authority/               -- server-authoritative game logic — 40 files
       eventBus.js            Events pub/sub
       gameState.js           GameState + global aliases
       combatSystem.js        StatusFX, MOB_AI (13 patterns), MOB_SPECIALS (91 base abilities)
@@ -104,7 +104,7 @@ Teah Online/
         casinoUI.js            casino game UI (all 10 games)
     core/                    -- 10 files
       assetLoader.js         AssetLoader (sprite loading from manifest)
-      sceneManager.js        Scene state machine (17 scenes)
+      sceneManager.js        Scene state machine (18 scenes, including spar)
       tileRenderer.js        tile map rendering
       gunSystem.js           gun firing, reloading, bullet logic
       meleeSystem.js         melee swing, dash, hit detection
@@ -384,21 +384,23 @@ All physics and collision tuning lives in `js/shared/gameConfig.js`. Every syste
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `PLAYER_BASE_SPEED` | 6.25 | Base movement speed (no boots); 375 px/sec at 60 FPS |
-| `PLAYER_WALL_HW` | 16 | Player wall collision half-width (AABB) |
-| `PLAYER_RADIUS` | 27 | Player body-blocking circle radius |
-| `MOB_WALL_HW` | 14 | Mob wall collision half-width (AABB) |
-| `MOB_RADIUS` | 27 | Mob body-blocking circle radius |
-| `POS_HW` | 12 | Spawn/position clearance half-width (default for `positionClear`) |
-| `MOB_CROWD_RADIUS` | 55 | Crowding detection radius |
+| `PLAYER_BASE_SPEED` | 7.5 | Base movement speed (no boots); 450 px/sec at 60 FPS |
+| `PLAYER_WALL_HW` | 14 | Player wall collision half-width (AABB) |
+| `PLAYER_RADIUS` | 23 | Player body-blocking circle radius |
+| `MOB_WALL_HW` | 11 | Mob wall collision half-width (AABB) |
+| `MOB_RADIUS` | 23 | Mob body-blocking circle radius |
+| `POS_HW` | 10 | Spawn/position clearance half-width (default for `positionClear`) |
+| `MOB_CROWD_RADIUS` | 46 | Crowding detection radius |
 | `BULLET_SPEED` | 9 | Default bullet speed in px/frame |
-| `BULLET_R` | 6 | Projectile collision radius |
-| `ENTITY_R` | 15 | Entity hit detection radius (bullet vs entity) |
-| `ORE_COLLISION_RADIUS` | 20 | Ore node collision circle radius |
-| `MINING_PLAYER_R` | 12 | Player half-width for ore push-out |
+| `BULLET_HALF_LONG` | 15 | Bullet collision half-length along travel direction |
+| `BULLET_HALF_SHORT` | 4 | Bullet collision half-width perpendicular to travel |
+| `ENTITY_R` | 29 | Entity hitbox circle radius (bullet vs entity) |
+| `PLAYER_HITBOX_Y` | -25 | Player/spar hitbox Y offset from feet (torso center) |
+| `ORE_COLLISION_RADIUS` | 17 | Ore node collision circle radius |
+| `MINING_PLAYER_R` | 10 | Player half-width for ore push-out |
 | `KNOCKBACK_DECAY` | 0.8 | Knockback velocity multiplier per frame |
-| `KNOCKBACK_THRESHOLD` | 0.5 | Minimum knockback velocity before clearing |
-| `DEFAULT_HITBOX_RADIUS` | 27 | Debug green circle radius (matches PLAYER_RADIUS) |
+| `KNOCKBACK_THRESHOLD` | 0.6 | Minimum knockback velocity before clearing |
+| `DEFAULT_HITBOX_R` | 33 | Hitbox visual radius (BULLET_HALF_SHORT + ENTITY_R) |
 
 ## Connections to Other Systems
 

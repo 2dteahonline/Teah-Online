@@ -176,8 +176,8 @@ The `HIT_EFFECT_RENDERERS` registry maps effect type strings to render functions
 Characters use a Graal-style 3-layer compositing system. Each layer is a separate spritesheet:
 
 1. **Body** (base layer) -- torso, arms, legs, feet
-   - Frame size: 32x40 cells (but rendered as 48x64 in-game via `LAYER_SIZES`)
-   - Sheet layout: 4 columns x 32 rows = 128x1280 total
+   - Frame size: 32x32 cells (same size as head/hat, Graal-style)
+   - Sheet layout: 4 columns x 32 rows = 128x1024 total
    - Columns: Idle, Walk1, Walk2, Walk3
    - Rows: 32 animation states (idle, walk, swing, shoot, dash, grab, push, pull, lift, hold, fish, mine, farm, cook, hurt, dead)
 

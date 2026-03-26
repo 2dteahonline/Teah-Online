@@ -68,15 +68,15 @@ Grid-based AABB collision check. Returns `true` if the position is not inside an
 
 | Constant | Value | Used For |
 |----------|-------|----------|
-| `PLAYER_WALL_HW` | 16 | Player wall collision half-width |
-| `PLAYER_RADIUS` | 27 | Player body-blocking circle |
-| `MOB_WALL_HW` | 14 | Mob wall collision half-width |
-| `MOB_RADIUS` | 27 | Mob body-blocking circle |
-| `POS_HW` | 12 | Default `positionClear` half-width (spawn clearance) |
+| `PLAYER_WALL_HW` | 14 | Player wall collision half-width |
+| `PLAYER_RADIUS` | 23 | Player body-blocking circle |
+| `MOB_WALL_HW` | 11 | Mob wall collision half-width |
+| `MOB_RADIUS` | 23 | Mob body-blocking circle |
+| `POS_HW` | 10 | Default `positionClear` half-width (spawn clearance) |
 
 ### Common Pitfall: `positionClear` Default `hw`
 
-If you call `positionClear(px, py)` without the third argument, it uses `POS_HW` (12), which is smaller than `PLAYER_WALL_HW` (16) or `MOB_WALL_HW` (14). A position that passes `positionClear` may still cause wall clipping for the player or mobs. Always pass the appropriate `hw` for the entity you are checking.
+If you call `positionClear(px, py)` without the third argument, it uses `POS_HW` (10), which is smaller than `PLAYER_WALL_HW` (14) or `MOB_WALL_HW` (11). A position that passes `positionClear` may still cause wall clipping for the player or mobs. Always pass the appropriate `hw` for the entity you are checking.
 
 ## Adding Mobs Checklist
 
