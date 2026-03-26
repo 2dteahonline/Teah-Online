@@ -59,9 +59,11 @@
 - **Phase 9**: Party system + bot AI (4-member party, FSM bots, multi-target mobs)
 - **Phase 10**: Game modes (casino 10 games, mafia 9-phase, hide&seek, spar arena)
 - **Phase 11 M1**: Networking foundation — TCP transport, serializer, handshake, input routing, snapshot broadcast, remote player spawning, debug UI
+- **Phase 11 M2**: Combat sync — bullets in snapshots, reload routing, gun/melee on remote players
+- **Phase 11 M3**: Dungeon co-op — scene transitions, mob sync from snapshots, wave/floor state, death/respawn
 
 ### Partially Complete
-- **Phase 11 M2-M4**: Multiplayer combat sync, dungeon co-op, lobby polish
+- **Phase 11 M4**: Lobby polish (cosmetics sync, chat, disconnect cleanup)
 
 ### Not Started
 - Art/sprites/audio
@@ -87,7 +89,7 @@
 | **8** | Skills (fishing, mining, farming, cooking gameplay) | DONE |
 | **9** | Party system + bot AI | DONE |
 | **10** | Game modes (casino, mafia, hide&seek, spar) | DONE |
-| **11** | Networking + multiplayer | **M1 DONE** (M2-M4 remaining) |
+| **11** | Networking + multiplayer | **M1-M3 DONE** (M4 remaining) |
 
 ### Remaining Phases
 
@@ -226,20 +228,23 @@
 **Host = authority + client**: host's PlayerController/WaveSystem run normally, remote inputs via HandleInput()
 **Remote on HOST**: full PlayerController (collision, physics). **Remote on CLIENT**: interpolation-only shell.
 
-##### Milestone 2: Shooting and melee in multiplayer
+##### Milestone 2: Shooting and melee in multiplayer ✅ DONE
 | Task | Status |
 |------|--------|
-| Extend HandleInput() for ShootHeld, MeleePressed, Reload, Dash, Potion | Partially done (shoot+melee+potion wired, dash TODO) |
+| Extend HandleInput() for ShootHeld, MeleePressed, Reload, Dash, Potion | DONE (shoot+melee+potion+reload wired, dash deferred) |
 | Add gun/melee state to snapshots | DONE (RefreshPlayerState reads GunSystem/MeleeSystem) |
-| Register/sync bullets in snapshots | TODO |
+| Register/sync bullets in snapshots | DONE (BulletSystem.ActiveBullets, client SyncRemoteBullets) |
+| GunSystem+MeleeSystem on remote players (host) | DONE |
+| RemotePlayerController syncs gun/melee visual state | DONE |
 
-##### Milestone 3: Dungeon co-op
+##### Milestone 3: Dungeon co-op ✅ DONE
 | Task | Status |
 |------|--------|
-| Scene transition sync (host broadcasts StartGame) | TODO |
-| Remote mob rendering from snapshots | TODO |
-| Death/respawn sync | TODO |
-| Floor progression sync | TODO |
+| Scene transition sync (host broadcasts StartGame) | DONE (BroadcastSceneChange + OnSceneChangeReceived) |
+| Remote mob rendering from snapshots | DONE (SyncRemoteMobs: create/update/destroy from snapshot) |
+| BuildSnapshot reads live MobControllers + WaveSystem | DONE |
+| Death/respawn sync (reposition+heal on scene change) | DONE |
+| Floor progression sync (wave/floor state in snapshots) | DONE |
 
 ##### Milestone 4: Lobby polish
 | Task | Status |
@@ -547,15 +552,10 @@ Two players can connect, see each other, and move in lobby.
 ### Debug UI
 - `NetworkDebugUI.cs` — OnGUI overlay (F10 toggle): Host/Join buttons, IP:port field, connected player list, latency display
 
-### Still Needs (Milestones 2-4)
-- Bullet sync in snapshots
-- Scene transition sync (host broadcasts dungeon start)
-- Remote mob rendering from snapshots
-- Death/respawn sync
-- Floor progression sync
-- Player cosmetics sync
+### Still Needs (Milestone 4)
+- Player cosmetics sync on connect
 - Chat message wiring
-- Dash system wiring in HandleInput
+- Dash system wiring in HandleInput (deferred — no dash system yet)
 
 ---
 
