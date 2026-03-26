@@ -82,6 +82,7 @@
 | **S** | Scaffolding: all data registries, ability stubs, game mode skeletons, network architecture | DONE (data only) |
 | **3** | Inventory + equipment + items | DONE |
 | **4** | UI panels (inventory, shop, forge, settings, HUD, hotbar) | DONE |
+| **5** | Save/load + progression persistence | DONE |
 
 ### Remaining Phases
 
