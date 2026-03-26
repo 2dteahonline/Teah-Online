@@ -4,7 +4,7 @@
   "entities": {},
   "frameSize": {
     "default": [48, 48],
-    "body": [32, 40],
+    "body": [32, 32],
     "head": [32, 32],
     "hat": [32, 32],
     "tile": [48, 48]

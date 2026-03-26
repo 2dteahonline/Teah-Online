@@ -98,7 +98,7 @@ Every mob type is an object in `MOB_TYPES` with these fields:
   boulderRange: 1000,         // max boulder throw range
 
   // Optional: per-mob physics overrides (all default to GAME_CONFIG values)
-  radius: 27,                 // body-blocking collision circle (default: MOB_RADIUS=27)
+  radius: 23,                 // body-blocking collision circle (default: MOB_RADIUS=23)
   wallHW: 14,                 // wall collision AABB half-width (default: MOB_WALL_HW=14)
   hitboxR: 15,                // bullet hit-detection radius (default: 15)
   kiteRange: 160,             // ideal kiting distance for ranged AI

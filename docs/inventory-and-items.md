@@ -2,7 +2,7 @@
 
 ## Overview
 
-The inventory system manages a 100-slot item bag, 4 equipment slots, and session-scoped dungeon shop gear. Items follow a uniform structure with 6 types. Armor is roguelike -- purchased from shops during dungeon runs and lost on exit. The interactable system connects NPCs and shop stations to the UI panel manager, and the shop framework provides reusable drawing and click helpers for all vendor panels.
+The inventory system manages a 200-slot item bag, 4 equipment slots, and session-scoped dungeon shop gear. Items follow a uniform structure with 6 types. Armor is roguelike -- purchased from shops during dungeon runs and lost on exit. The interactable system connects NPCs and shop stations to the UI panel manager, and the shop framework provides reusable drawing and click helpers for all vendor panels.
 
 ## Files
 
@@ -18,7 +18,7 @@ The inventory system manages a 100-slot item bag, 4 equipment slots, and session
 
 | Function / Constant | Purpose |
 |---|---|
-| `MAX_INVENTORY_SLOTS` | Constant: `100` |
+| `MAX_INVENTORY_SLOTS` | Constant: `200` |
 | `addToInventory(item)` | Adds item; stacks if `stackable`, returns `false` if full |
 | `removeFromInventory(slot)` | Splices and returns the item at the given index |
 | `isInInventory(id)` | Returns `true` if any slot contains an item with matching `id` |

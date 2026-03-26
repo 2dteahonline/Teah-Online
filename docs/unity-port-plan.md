@@ -3,7 +3,7 @@
 > Complete mapping of the Teah Online JS prototype → Unity C#.
 > Current state: ~121,200 lines JS, 91 files.
 > Unity project: `C:\Users\jeff\Desktop\Unity Proj\TeahOnline` (Unity 6, 6000.4.0f1)
-> **Foundation complete** (68 C# scripts, 13,537 lines). Core gameplay systems next.
+> **Phases 0-5 complete** (80 C# scripts). Character rendering (Phase 6) next.
 
 ---
 
@@ -55,11 +55,12 @@
 - Server input handling (empty handler)
 - Casino/Mafia/HideSeek/Spar systems (data + lifecycle, bots don't work)
 
+### Completed Since Foundation
+- **Phase 3**: Inventory system (200 slots, equipment, quickslots, potions, loot drops)
+- **Phase 4**: UI panels (PanelManager, GameHUD, HotbarUI, InventoryPanel, ShopPanel, ForgePanel, SettingsPanel, tooltips)
+- **Phase 5**: Save/load (JSON persistence, schema versioning, auto-save, progression tracking)
+
 ### Not Started At All
-- Inventory system
-- Equipment swapping
-- UI panels (inventory, shop, forge, settings, etc.)
-- Save/load
 - Character rendering (using cyan placeholder square)
 - Scene management (only lobby ↔ cave dungeon works)
 - Party system
@@ -249,7 +250,7 @@ Assets/
 │   │   ├── Mobs/            ← MobController, MobAIPatterns, MobStatusEffects, Pathfinding
 │   │   ├── Waves/           ← WaveSystem
 │   │   ├── Party/           ← (empty — Phase 9)
-│   │   ├── Inventory/       ← (empty — Phase 3)
+│   │   ├── Inventory/       ← InventorySystem, LootDropSystem
 │   │   ├── Skills/          ← SkillXPSystem, CraftingSystem
 │   │   ├── GameModes/       ← SparSystem, MafiaSystem, CasinoSystem, HideSeekSystem
 │   │   ├── Network/         ← ServerAuthority
@@ -258,14 +259,14 @@ Assets/
 │   ├── Client/              ← js/client/ (client-side only)
 │   │   ├── Input/           ← InputIntent, PlayerInputHandler
 │   │   ├── Rendering/       ← (empty — Phase 6)
-│   │   ├── UI/              ← GameHUD (only file so far)
+│   │   ├── UI/              ← PanelManager, UIFactory, UIColors, GameHUD, HotbarUI, InventoryPanelUI, ItemTooltip, ShopPanelUI, ForgePanelUI, SettingsPanelUI
 │   │   ├── Camera/          ← CameraController
 │   │   └── Network/         ← ClientPrediction, RemoteEntityInterpolator
 │   │
 │   ├── Core/                ← js/core/ (bridge layer)
 │   │   ├── Events/          ← EventBus
 │   │   ├── Network/         ← NetworkManager, NetworkLobby
-│   │   ├── SaveLoad/        ← (empty — Phase 5)
+│   │   ├── SaveLoad/        ← SaveData, SaveManager
 │   │   └── SceneManagement/ ← (empty — Phase 7)
 │   │
 │   └── Editor/              ← CreateGameConfigAsset, SetInputBoth
@@ -320,9 +321,13 @@ Assets/ScriptableObjects/
 ### Save/Load
 | JS | Unity | Status |
 |----|-------|--------|
-| `localStorage` schema v10 | Not started | Phase 5 |
-| Schema versioning + migrations | Not started | Phase 5 |
-| Keybinds persistence | Not started | Phase 5 |
+| `localStorage` schema v10 | `SaveData.cs` (schema v1) + `SaveManager.cs` | DONE |
+| Schema versioning + migrations | Version field + Migrate() framework | DONE |
+| Keybinds persistence | Via `SettingsPanelUI.LoadFromSaveData()` | DONE |
+| Progression (level, XP, skills) | Via `SkillXPSystem` ↔ `SaveManager` | DONE |
+| Gun/pickaxe levels | `SaveManager.SetGunLevel()` / `GetGunLevel()` | DONE |
+| Materials persistence | Extracted from inventory on save, restored on load | DONE |
+| Settings + audio levels | Toggles, keybinds, sliders all saved | DONE |
 
 ### UI
 | JS | Unity | Status |
@@ -456,8 +461,12 @@ NOT Persisted (session-only, roguelike design):
   - Farm tiles (only landLevel persists)
 ```
 
-### Unity Approach: JSON file with same schema versioning pattern
-- Single-player: JSON file in Application.persistentDataPath
+### Unity Approach: DONE (Phase 5)
+- `SaveData.cs` — serializable structure (schema v1), `SerializableDict<K,V>` for Dictionary support
+- `SaveManager.cs` — JSON to `Application.persistentDataPath/teah_save.json`
+- Auto-save with 1-second debounce on lobby return
+- Schema versioning with migration framework
+- Settings, keybinds, audio, progression, materials, gun/pickaxe levels all persist
 - Multiplayer (future): Server-side DB + local cache for settings
 
 ---
@@ -500,6 +509,8 @@ The JS codebase has full networking-ready architecture:
 | Networking architecture | Custom CommandQueue → AuthorityTick → Snapshot |
 | Coordinate system | PPU=48, 1 tile = 1 Unity world unit |
 | Fixed timestep | 60Hz |
+| UI framework | Canvas uGUI |
+| Save/load format | JSON to persistentDataPath |
 
 ### Still Open
 | Decision | When |

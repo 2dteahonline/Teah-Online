@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Teah Online is a top-down dungeon crawler (inspired by GraalOnline Era) built with vanilla JS + HTML5 Canvas 2D. No frameworks, no build tools, no npm dependencies.
 
-- **Entry point**: `index.html` loads 83 JS files via `<script>` tags with cache-busting (`?v=70` to `?v=137`)
+- **Entry point**: `index.html` loads 93 JS files via `<script>` tags with cache-busting (`?v=70` to `?v=137`)
 - **Dev server**: `python -m http.server 8080` (configured in `.claude/launch.json`)
-- **Total codebase**: ~84,400 lines of JavaScript across 83 non-backup files
+- **Total codebase**: ~121,200 lines of JavaScript across 91 non-backup files
 - **Comprehensive reference**: `docs/README.md` — modular docs index (one file per system)
 
 ## Architecture: Authority/Client Split
@@ -17,9 +17,9 @@ The codebase is organized for future multiplayer. All game logic runs through an
 
 ```
 js/
-├── shared/       # Pure data registries (loaded first) — no logic (19 files)
-├── authority/    # Server-authoritative: combat, damage, waves, mobs, inventory, party, bots, casino (36 files)
-├── client/       # Presentation only: rendering, input, UI panels (17 files)
+├── shared/       # Pure data registries (loaded first) — no logic (21 files)
+├── authority/    # Server-authoritative: combat, damage, waves, mobs, inventory, party, bots, casino, spar (40 files)
+├── client/       # Presentation only: rendering, input, UI panels (18 files)
 │   ├── rendering/  # Canvas drawing (sprites, entities, effects)
 │   ├── input/      # Mouse/keyboard → InputIntent flags
 │   └── ui/         # Panel system (inventory, gunsmith, settings, casino)
@@ -34,7 +34,7 @@ js/
 - `ctx` — global Canvas 2D rendering context
 - `TILE` — constant tile size (48px)
 - `player`, `mobs`, `bullets`, `gold` — GameState properties aliased to `window` via defineProperty
-- `Scene` — scene state machine (lobby, dungeon, cave, mine, cooking, farm, azurine, gunsmith, test_arena, hideseek, mafia_lobby, skeld, vortalis, earth205, wagashi, earth216, casino)
+- `Scene` — scene state machine (lobby, dungeon, cave, mine, cooking, farm, azurine, gunsmith, test_arena, hideseek, mafia_lobby, skeld, vortalis, earth205, wagashi, earth216, casino, spar)
 - `Events.on()/emit()` — pub/sub event bus (`js/authority/eventBus.js`)
 - `GAME_CONFIG` — physics & collision constants (`js/shared/gameConfig.js`)
 - `PartySystem` — always-on party system for player + bots (`js/authority/partySystem.js`)
@@ -55,6 +55,14 @@ js/
 ## Casino
 
 `CasinoSystem` (`js/authority/casinoSystem.js`) provides 10 gambling games (Blackjack, Roulette, Coinflip, Cases, Mines, Dice, RPS, Baccarat, Slots, Keno) with a uniform 5% house edge. Data in `js/shared/casinoData.js`, UI in `js/client/ui/casinoUI.js`. Casino is a separate scene (`Scene.inCasino`).
+
+## Spar System
+
+`sparSystem.js` (`js/authority/sparSystem.js`) — PvP sparring arena with ranked matches, Elo tracking, and neural network-driven bot opponent. Data in `js/shared/sparData.js`, inference in `js/authority/neuralSparInference.js`, training pipeline in `training/`. The spar bot uses a learning system with self-play; see `docs/spar-learning.md` for details. Spar is a separate scene (`Scene.inSpar`).
+
+## Crafting System
+
+`craftingSystem.js` (`js/authority/craftingSystem.js`) — recipe-based crafting with resource costs. Data in `js/shared/craftingData.js`, UI via forge panel (`js/client/ui/forgeUI.js`).
 
 ## Game Loop
 
@@ -78,7 +86,7 @@ When modifying The Skeld map in `js/shared/levelData.js`:
 
 ## Save/Load
 
-`js/core/saveLoad.js` — localStorage with schema version 7. Supports migrations from v1-v6. Saved data includes keybinds, settings, identity, cosmetics, progression, skill XP. Gun levels can be old integer format or new `{tier, level}` object.
+`js/core/saveLoad.js` — localStorage with schema version 10. Supports migrations from v1-v9. Saved data includes keybinds, settings, identity, cosmetics, progression, skill XP, cooking progress, quickslots. Gun levels can be old integer format or new `{tier, level}` object.
 
 ## Progression System
 
@@ -89,7 +97,7 @@ When modifying The Skeld map in `js/shared/levelData.js`:
 `AssetLoader` (`js/core/assetLoader.js`) loads sprites from `assets/manifest.json`. Renderers check `AssetLoader.get(key)` first, fall back to procedural if null.
 
 **Layer system** (Graal-style, for mix-and-match cosmetics):
-- Body: 32×40 cells, 4 cols (dirs) × 32 rows (anims) = 128×1280
+- Body: 32×32 cells, 4 cols (dirs) × 32 rows (anims) = 128×1024
 - Head: 32×32 cells, 4 cols × 4 rows = 128×128
 - Hat: 32×32 cells, 5 cols × 5 rows = 160×160
 
@@ -110,7 +118,7 @@ Templates in `assets/sprites/` — clean grids for artists + labeled references.
 
 - **`let` in `<script>` tags** are in global lexical scope — accessible from other scripts and `eval()`, but NOT on `window`
 - **Backup before major changes**: create `*_backup_pre_<feature>.js` copies
-- **Collision**: grid-based AABB via `positionClear(px, py, hw)`; mobs use `MOB_WALL_HW=14` and `MOB_RADIUS=27`
+- **Collision**: grid-based AABB via `positionClear(px, py, hw)`; mobs use `MOB_WALL_HW=11` and `MOB_RADIUS=23`
 - **Adding mobs**: define in `MOB_TYPES`, add AI pattern to `MOB_AI`, add specials to `MOB_SPECIALS`, add renderer entry if custom
 - **Adding entities**: add renderer function to `ENTITY_RENDERERS` registry
 - **Debug commands**: `/gun`, `/tp`, `/heal`, `/mob`, `/freeze` — defined in `commands.js`

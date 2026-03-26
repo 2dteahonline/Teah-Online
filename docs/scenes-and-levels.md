@@ -56,7 +56,8 @@ The scene system controls which level the player is in and what gameplay rules a
 | `'earth205'` | `isEarth205` | Earth-205 dungeon hub |
 | `'wagashi'` | `isWagashi` | Wagashi dungeon hub |
 | `'earth216'` | `isEarth216` | Earth-216 dungeon hub |
-| `'casino'` | `isCasino` | Casino interior (6 minigames) |
+| `'casino'` | `isCasino` | Casino interior (10 minigames) |
+| `'spar'` | `isSpar` | PvP sparring arena (ranked/casual matches with AI opponent) |
 
 **Scene flags:** Each value has a corresponding getter (`Scene.inDungeon`, `Scene.inLobby`, `Scene.inCave`, etc.) for convenient boolean checks.
 
@@ -89,7 +90,7 @@ Each entry in `LEVELS` is an object with:
 - `.` (dot) = floor (0) -- walkable
 - `#` or `@` = wall (1) -- solid, blocks movement
 
-**All level IDs in `LEVELS`:** `lobby_01`, `house_01`, `cave_01`, `azurine_01`, `warehouse_01`, `mine_01` through `mine_04`, `deli_01`, `diner_01`, `fine_dining_01`, `test_arena`, `gunsmith_01`, `hide_01`, `skeld_01`, `mafia_lobby`, `casino_01`
+**All level IDs in `LEVELS`:** `lobby_01`, `house_01`, `cave_01`, `azurine_01`, `warehouse_01`, `mine_01` through `mine_04`, `deli_01`, `diner_01`, `fine_dining_01`, `test_arena`, `gunsmith_01`, `hide_01`, `skeld_01`, `mafia_lobby`, `casino_01`, `spar_hub_01`
 
 ### Portal System
 
@@ -169,7 +170,7 @@ This is the foundation for all movement collision -- player AABB checks, mob `po
 3. `startTransition()` to the return level (if provided)
 4. Push system chat message
 
-Scenes with `/leave` support: `test_arena`, `mine`, `cooking`, `farm`, `cave`, `azurine`, `vortalis`, `earth205`, `wagashi`, `earth216`, `gunsmith`, `casino`, `dungeon`, `hideseek`, `mafia_lobby`, `skeld`.
+Scenes with `/leave` support: `test_arena`, `mine`, `cooking`, `farm`, `cave`, `azurine`, `vortalis`, `earth205`, `wagashi`, `earth216`, `gunsmith`, `casino`, `dungeon`, `hideseek`, `mafia_lobby`, `skeld`, `spar`.
 
 ### LEAVE_HANDLER Auto-Cleanup
 
