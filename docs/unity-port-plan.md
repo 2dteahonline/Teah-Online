@@ -3,7 +3,7 @@
 > Complete mapping of the Teah Online JS prototype → Unity C#.
 > Current state: ~121,200 lines JS, 91 files.
 > Unity project: `C:\Users\jeff\Desktop\Unity Proj\TeahOnline` (Unity 6, 6000.4.0f1)
-> **Phases 0-5 complete** (80 C# scripts). Character rendering (Phase 6) next.
+> **Phases 0-10 complete + Phase 11 Milestone 1** (103 C# scripts). Networking M2-M4 next.
 
 ---
 
@@ -49,24 +49,22 @@
 - Fishing/mining/farming/cooking data (all registries)
 - Casino data (10 games), Mafia data (7 roles), Spar data, Hide&Seek data
 
-### Scaffolding Only (Architecture Exists, No Working Logic)
-- Network infrastructure (no transport layer, no actual send/receive)
-- Client prediction (empty replay method)
-- Server input handling (empty handler)
-- Casino/Mafia/HideSeek/Spar systems (data + lifecycle, bots don't work)
-
 ### Completed Since Foundation
 - **Phase 3**: Inventory system (200 slots, equipment, quickslots, potions, loot drops)
 - **Phase 4**: UI panels (PanelManager, GameHUD, HotbarUI, InventoryPanel, ShopPanel, ForgePanel, SettingsPanel, tooltips)
 - **Phase 5**: Save/load (JSON persistence, schema versioning, auto-save, progression tracking)
+- **Phase 6**: Character rendering (3-layer sprites, mob rendering, Y-sort depth)
+- **Phase 7**: Scene management (all 6 dungeons, floor progression, fade transitions)
+- **Phase 8**: Skills (fishing, mining, farming, cooking gameplay + crafting wiring)
+- **Phase 9**: Party system + bot AI (4-member party, FSM bots, multi-target mobs)
+- **Phase 10**: Game modes (casino 10 games, mafia 9-phase, hide&seek, spar arena)
+- **Phase 11 M1**: Networking foundation — TCP transport, serializer, handshake, input routing, snapshot broadcast, remote player spawning, debug UI
 
-### Not Started At All
-- Character rendering (using cyan placeholder square)
-- Scene management (only lobby ↔ cave dungeon works)
-- Party system
-- Bot AI
+### Partially Complete
+- **Phase 11 M2-M4**: Multiplayer combat sync, dungeon co-op, lobby polish
+
+### Not Started
 - Art/sprites/audio
-- Multiple dungeon portals
 
 ---
 
@@ -84,6 +82,12 @@
 | **3** | Inventory + equipment + items | DONE |
 | **4** | UI panels (inventory, shop, forge, settings, HUD, hotbar) | DONE |
 | **5** | Save/load + progression persistence | DONE |
+| **6** | Character rendering (3-layer sprites, mobs, Y-sort) | DONE |
+| **7** | Scene management + all dungeons + floor progression | DONE |
+| **8** | Skills (fishing, mining, farming, cooking gameplay) | DONE |
+| **9** | Party system + bot AI | DONE |
+| **10** | Game modes (casino, mafia, hide&seek, spar) | DONE |
+| **11** | Networking + multiplayer | **M1 DONE** (M2-M4 remaining) |
 
 ### Remaining Phases
 
@@ -199,19 +203,54 @@
 
 #### Phase 11: Networking + Multiplayer
 **Goal**: Multiple players can play together online.
+**Architecture**: Raw TCP + length-prefixed JSON via `ITransport` interface. Testing-only player-hosted setup — dedicated server replaces only the transport implementation later.
 
-| Task | Scope |
-|------|-------|
-| Choose + implement transport (WebSocket/UDP) | Large |
-| Wire ServerAuthority.HandleInput() | Medium |
-| Complete ClientPrediction reconciliation | Medium |
-| Lobby broadcasting (ready/start/settings sync) | Medium |
-| Delta compression for bandwidth | Medium |
-| Interest management (spatial filtering) | Medium |
-| Server hosting decision + deployment | Large |
-| Account system + persistence backend | Large |
+##### Milestone 1: Two players see each other move ✅ DONE
+| Task | File(s) | Status |
+|------|---------|--------|
+| Transport interface | `ITransport.cs` (Shared/Network) | DONE |
+| TCP transport (background threads + ConcurrentQueue) | `TcpTransport.cs` (Core/Network) | DONE |
+| Length-prefix + JSON serializer | `NetworkSerializer.cs` (Core/Network) | DONE |
+| Wire NetworkManager (inject transport, send/receive, handshake) | `NetworkManager.cs` | DONE |
+| Wire ServerAuthority.HandleInput() → PlayerController | `ServerAuthority.cs` | DONE |
+| Wire ServerAuthority.BuildSnapshot() with real state | `ServerAuthority.cs` | DONE |
+| SpawnRemotePlayer / DespawnRemotePlayer | `GameManager.cs` | DONE |
+| GameState players dictionary | `GameState.cs` | DONE |
+| Client snapshot application (local→prediction, remote→interpolator) | `GameManager.cs` | DONE |
+| NetworkDebugUI (Host/Join, IP:port, player list) | `NetworkDebugUI.cs` (Client/UI) | DONE |
+| PlayerInputHandler sends InputFrame when online | `PlayerInputHandler.cs` | DONE |
+| Guard GunSystem/MeleeSystem direct Input reads | `GunSystem.cs`, `MeleeSystem.cs` | DONE |
+| RemotePlayerController (interpolation shell) | `RemotePlayerController.cs` (Client/Network) | DONE |
 
-**Milestone**: 2+ players in same dungeon, fighting together.
+**Wire format**: `[4 bytes: length][1 byte: MessageType][N bytes: UTF-8 JSON]`
+**Host = authority + client**: host's PlayerController/WaveSystem run normally, remote inputs via HandleInput()
+**Remote on HOST**: full PlayerController (collision, physics). **Remote on CLIENT**: interpolation-only shell.
+
+##### Milestone 2: Shooting and melee in multiplayer
+| Task | Status |
+|------|--------|
+| Extend HandleInput() for ShootHeld, MeleePressed, Reload, Dash, Potion | Partially done (shoot+melee+potion wired, dash TODO) |
+| Add gun/melee state to snapshots | DONE (RefreshPlayerState reads GunSystem/MeleeSystem) |
+| Register/sync bullets in snapshots | TODO |
+
+##### Milestone 3: Dungeon co-op
+| Task | Status |
+|------|--------|
+| Scene transition sync (host broadcasts StartGame) | TODO |
+| Remote mob rendering from snapshots | TODO |
+| Death/respawn sync | TODO |
+| Floor progression sync | TODO |
+
+##### Milestone 4: Lobby polish
+| Task | Status |
+|------|--------|
+| Player cosmetics sync on connect | TODO |
+| Chat message wiring | TODO |
+| Disconnect cleanup | Partially done (DespawnRemotePlayer works) |
+
+**Testing**: Build two Unity instances, Instance 1: Host on port 7777, Instance 2: Join 127.0.0.1:7777. Both should see each other in lobby.
+
+**NOTE**: TCP transport, debug UI, direct IP connection are placeholders. Real server will use proper transport, matchmaking, dedicated processes, binary serialization, auth/anti-cheat.
 
 #### Phase 12: Art, Audio, Polish
 **Goal**: Production-quality visuals and sound.
@@ -242,14 +281,14 @@ Assets/
 │   │   ├── Data/            ← MobType.cs, ItemData, etc.
 │   │   ├── Config/          ← GameConfig.cs (ScriptableObject)
 │   │   ├── Registries/      ← Runtime lookup tables (JSON + C#)
-│   │   └── Network/         ← NetworkConstants.cs, NetworkMessages.cs
+│   │   └── Network/         ← NetworkConstants.cs, NetworkMessages.cs, ITransport.cs
 │   │
 │   ├── Authority/           ← js/authority/ (server-side logic)
 │   │   ├── Combat/          ← DamageSystem, GunSystem, MeleeSystem, BulletSystem
 │   │   │   └── Abilities/   ← LegacyAbilities, dungeon ability files
 │   │   ├── Mobs/            ← MobController, MobAIPatterns, MobStatusEffects, Pathfinding
 │   │   ├── Waves/           ← WaveSystem
-│   │   ├── Party/           ← (empty — Phase 9)
+│   │   ├── Party/           ← PartySystem, BotAI
 │   │   ├── Inventory/       ← InventorySystem, LootDropSystem
 │   │   ├── Skills/          ← SkillXPSystem, CraftingSystem
 │   │   ├── GameModes/       ← SparSystem, MafiaSystem, CasinoSystem, HideSeekSystem
@@ -258,16 +297,16 @@ Assets/
 │   │
 │   ├── Client/              ← js/client/ (client-side only)
 │   │   ├── Input/           ← InputIntent, PlayerInputHandler
-│   │   ├── Rendering/       ← (empty — Phase 6)
-│   │   ├── UI/              ← PanelManager, UIFactory, UIColors, GameHUD, HotbarUI, InventoryPanelUI, ItemTooltip, ShopPanelUI, ForgePanelUI, SettingsPanelUI
+│   │   ├── Rendering/       ← CharacterRenderer, CharacterAnimator, MobRenderer, SpriteFactory, YSortRenderer, NameTagRenderer
+│   │   ├── UI/              ← PanelManager, UIFactory, UIColors, GameHUD, HotbarUI, InventoryPanelUI, ItemTooltip, ShopPanelUI, ForgePanelUI, SettingsPanelUI, NetworkDebugUI
 │   │   ├── Camera/          ← CameraController
-│   │   └── Network/         ← ClientPrediction, RemoteEntityInterpolator
+│   │   └── Network/         ← ClientPrediction, RemoteEntityInterpolator, RemotePlayerController
 │   │
 │   ├── Core/                ← js/core/ (bridge layer)
 │   │   ├── Events/          ← EventBus
-│   │   ├── Network/         ← NetworkManager, NetworkLobby
+│   │   ├── Network/         ← NetworkManager, NetworkLobby, TcpTransport, NetworkSerializer
 │   │   ├── SaveLoad/        ← SaveData, SaveManager
-│   │   └── SceneManagement/ ← (empty — Phase 7)
+│   │   └── SceneManagement/ ← SceneManager
 │   │
 │   └── Editor/              ← CreateGameConfigAsset, SetInputBoth
 
@@ -313,10 +352,10 @@ Assets/ScriptableObjects/
 ### Scene Management
 | JS | Unity | Status |
 |----|-------|--------|
-| `Scene._current` string | `GameScene` enum in `GameManager.cs` | Lobby+Dungeon only |
-| `PORTAL_SCENES` registry | Hardcoded portal positions | Phase 7 |
-| `LEAVE_HANDLERS` | Not started | Phase 7 |
-| `enterLevel()` auto-cleanup | `ReturnToLobby()` in GameManager | Partial |
+| `Scene._current` string | `SceneManager.cs` SceneType enum | DONE |
+| `PORTAL_SCENES` registry | Portal positions in `GameManager.cs` | DONE |
+| `LEAVE_HANDLERS` | Teardown methods in `GameManager.cs` | DONE |
+| `enterLevel()` auto-cleanup | `ReturnToLobby()` + `TeardownGameMode()` | DONE |
 
 ### Save/Load
 | JS | Unity | Status |
@@ -343,10 +382,12 @@ Assets/ScriptableObjects/
 ### Rendering
 | JS | Unity | Status |
 |----|-------|--------|
-| `characterSprite.js` 3-layer | Not started (cyan square placeholder) | Phase 6 |
-| `entityRenderers.js` (143 types) | Not started | Phase 6 |
-| `hitEffects.js` (73 types) | Not started | Phase 6 |
-| Y-sorted entity drawing | Not started | Phase 6 |
+| `characterSprite.js` 3-layer | `CharacterRenderer.cs` + `CharacterAnimator.cs` | DONE |
+| `entityRenderers.js` (143 types) | Not started (procedural placeholders) | Phase 12 |
+| `hitEffects.js` (73 types) | Not started | Phase 12 |
+| Y-sorted entity drawing | `YSortRenderer.cs` | DONE |
+| Mob rendering | `MobRenderer.cs` + `SpriteFactory.cs` | DONE |
+| HP bars | `NameTagRenderer.cs` | DONE |
 
 ---
 
@@ -473,27 +514,48 @@ NOT Persisted (session-only, roguelike design):
 
 ## 9. Networking Architecture
 
-### Current State
-The JS codebase has full networking-ready architecture:
-- `CommandQueue` — FIFO command buffer
-- `authorityTick()` — processes commands → updates state
-- `InputIntent` — one-frame vs held flags
-- Authority/client split throughout
+### Current State — Phase 11 Milestone 1 Complete
+Two players can connect, see each other, and move in lobby.
 
-### Unity Networking — DONE (infrastructure only)
-- `NetworkManager.cs` — Offline/Host/Client modes, 60Hz tick, 20Hz snapshots
-- `NetworkMessages.cs` — Wire protocol (InputFrame, GameSnapshot, entity snapshots)
-- `ServerAuthority.cs` — Entity registration, snapshot builder
-- `ClientPrediction.cs` — Local prediction framework
-- `RemoteEntityInterpolator.cs` — Remote entity smoothing
-- `NetworkLobby.cs` — Room management
+### Transport: Raw TCP + ITransport Interface
+- `ITransport.cs` — abstract interface (StartServer, Connect, SendTo, SendToAll, Poll, events)
+- `TcpTransport.cs` — concrete TCP implementation: background threads, ConcurrentQueue for main-thread safety
+- Wire format: `[4 bytes: length (big-endian int32)][1 byte: MessageType enum][N bytes: UTF-8 JSON]`
+- When dedicated server comes: write new ITransport implementation, swap it in. Everything above unchanged.
 
-### Still Needs
-- Transport layer implementation (WebSocket/UDP)
-- ServerAuthority.HandleInput() wiring
-- ClientPrediction reconciliation completion
-- Lobby broadcast implementation
-- Server hosting decision
+### Core Network Stack (all wired and working)
+- `NetworkManager.cs` — Offline/Host/Client modes, 60Hz server tick, 20Hz snapshot broadcast, handshake flow, heartbeat/timeout, input routing
+- `NetworkSerializer.cs` — type-tag + JsonUtility serialize/deserialize convenience methods
+- `NetworkMessages.cs` — Wire protocol (InputFrame, GameSnapshot, entity snapshots, lobby, chat)
+- `NetworkConstants.cs` — PORT=7777, MAX_PLAYERS=10, tick rates, buffer sizes
+
+### Server Authority (host-side, wired)
+- `ServerAuthority.cs` — HandleInput() maps playerId → PlayerController (movement, shoot, melee, potion), RefreshPlayerState() reads real HP/gun/melee state, BuildSnapshot() returns full game state
+- Host = authority + client. Remote inputs arrive via HandleInput(). Identical to how a dedicated server works.
+
+### Client Systems (all working)
+- `ClientPrediction.cs` — input recording, reconciliation framework (replay stub)
+- `RemoteEntityInterpolator.cs` — 100ms buffer, lerp between snapshots, extrapolation, snap threshold
+- `RemotePlayerController.cs` — lightweight component on client-side remote player GOs
+
+### Player Management (all wired)
+- `GameManager.cs` — SpawnRemotePlayer (full PlayerController on host, interpolation shell on client), DespawnRemotePlayer, network event subscriptions
+- `GameState.cs` — `Dictionary<int, GameObject> players` for multi-player tracking
+- `PlayerInputHandler.cs` — builds InputFrame from local input, sends via NetworkManager when online
+- `GunSystem.cs` / `MeleeSystem.cs` — guarded direct Input reads behind isOnline check
+
+### Debug UI
+- `NetworkDebugUI.cs` — OnGUI overlay (F10 toggle): Host/Join buttons, IP:port field, connected player list, latency display
+
+### Still Needs (Milestones 2-4)
+- Bullet sync in snapshots
+- Scene transition sync (host broadcasts dungeon start)
+- Remote mob rendering from snapshots
+- Death/respawn sync
+- Floor progression sync
+- Player cosmetics sync
+- Chat message wiring
+- Dash system wiring in HandleInput
 
 ---
 
@@ -512,15 +574,22 @@ The JS codebase has full networking-ready architecture:
 | UI framework | Canvas uGUI |
 | Save/load format | JSON to persistentDataPath |
 
+### Decided (Phase 11)
+| Decision | Answer |
+|----------|--------|
+| Transport (testing) | Raw TCP + ITransport interface (TcpTransport.cs) |
+| Transport (production) | TBD — swap ITransport impl (WebSocket/ENet/Steam Networking) |
+| Server hosting (testing) | Player-hosted via NetworkDebugUI (Host/Join, direct IP) |
+| Server hosting (production) | Dedicated server processes + matchmaking (TBD) |
+| Wire format | [4B length][1B MessageType][NB UTF-8 JSON] |
+| Serialization | JsonUtility (zero deps, ~5-10KB/snapshot at 20Hz) |
+
 ### Still Open
 | Decision | When |
 |----------|------|
-| Transport (WebSocket vs UDP) | Phase 11 |
-| Server hosting (dedicated/player-hosted/relay) | Phase 11 |
-| Persistence backend (local JSON/Firebase/custom DB) | Phase 11 |
-| Animation method (frame vs skeletal) | Phase 6 |
-| UI framework | Canvas uGUI (decided) |
-| Anti-cheat approach | Phase 11 |
+| Production transport (WebSocket/ENet/Steam) | Phase 11 production |
+| Persistence backend (local JSON/Firebase/custom DB) | Phase 11 production |
+| Anti-cheat approach | Phase 11 production |
 | Audio implementation | Phase 12 |
 
 ---
