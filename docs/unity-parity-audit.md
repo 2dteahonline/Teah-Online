@@ -1,7 +1,7 @@
 # Unity Port Parity Audit & Fix Plan
 
 > **Created**: 2026-03-27
-> **Status**: IN PROGRESS — Track completion by checking boxes below
+> **Status**: COMPLETE (82/83 — #50 mob full-character renderer deferred to art phase)
 
 ## Context
 A full audit of ~120 Unity C# scripts against the JS source revealed **~70 mismatches** — 19 critical, 26 high, ~25 medium. These range from combat values being 4x wrong to entire subsystems (cosmetics, vendor data, input mapping) being architecturally different from JS. The root cause is consistent: values/logic were guessed or fabricated instead of being read from JS source files.
@@ -84,35 +84,35 @@ A full audit of ~120 Unity C# scripts against the JS source revealed **~70 misma
 
 **JS source**: `interactable.js:160-190`, `farmingData.js`, `fishingData.js`, `oreData.js`
 
-### BATCH 6: Rendering & Cosmetics (Visual incorrectness) — Status: NOT STARTED
+### BATCH 6: Rendering & Cosmetics (Visual incorrectness) — Status: DONE (6/7, #50 deferred)
 
-- [ ] **#50** Mob renderer — `MobRenderer.cs` — 32x32 circles → Full character renderer
-- [ ] **#51** Mob AI-to-color mapping — `MobRenderer.cs` — Fabricated → Use MOB_TYPES skin/hair/shirt/pants
-- [ ] **#52** Cosmetic system — `CosmeticPalette.cs` — Palette indices → Hex color strings
-- [ ] **#53** Default cosmetics — Multiple — Wrong colors → skin=#d4bba8, hair=#0c0c10, etc.
-- [ ] **#54** Head sprite dir remap — `CharacterRenderer.cs` — Same as body → dirToCol=[0,2,1,3]
-- [ ] **#55** Missing pants/eyes palettes — `CosmeticPalette.cs` → Switch to hex string system
+- [ ] **#50** Mob renderer — `MobRenderer.cs` — 32x32 circles → Full character renderer (deferred to art phase)
+- [x] **#51** Mob AI-to-color mapping — `MobRenderer.cs` — MOB_COSMETICS dict with 9 legacy mob hex colors
+- [x] **#52** Cosmetic system — `CosmeticPalette.cs` — Added hex string system (ParseHex, GetColor, 19 keys)
+- [x] **#53** Default cosmetics — `CosmeticPalette.cs` — DEFAULT_COSMETICS with all 19 JS hex values
+- [x] **#54** Head sprite dir remap — `CharacterRenderer.cs` — HEAD_DIR_TO_COL=[0,2,1,3]
+- [x] **#55** Missing pants/eyes palettes — `CosmeticPalette.cs` — Hex system covers all 19 categories
 - [x] **#56** Party tier dot colors — `PartyStatusUI.cs` — #888/#5fca80/#4a9eff/#b060e0/#ffd700
 
 **JS source**: `characterSprite.js`, `entityRenderers.js`, `gameState.js:38-42`, `cosmeticData.js`, `mobTypes.js`
 
-### BATCH 7: Save/Load & Settings (Data loss) — Status: PARTIAL (4/11 done)
+### BATCH 7: Save/Load & Settings (Data loss) — Status: DONE
 
-- [ ] **#57** Save toggle key names — `SaveManager.cs` — Wrong keys → Match JS exactly
-- [ ] **#58** Settings key names — `SettingsPanelUI.cs` — `showNicknames` → `nicknames`
-- [ ] **#59** Sounds: toggles not sliders — `SettingsPanelUI.cs` → Boolean toggles (ambient slider added)
-- [ ] **#60** Missing hotbar position — `SettingsPanelUI.cs` → Add select: right/bottom (readonly added)
+- [x] **#57** Save toggle key names — `SettingsPanelUI.cs` — nicknames, animations (removed "show" prefix)
+- [x] **#58** Settings key names — `SettingsPanelUI.cs` — nicknames, animations match JS
+- [x] **#59** Sounds: toggles not sliders — `SettingsPanelUI.cs` — 4 boolean toggles (masterVolume, sfx, music, ambient)
+- [x] **#60** Hotbar position — `SettingsPanelUI.cs` — Clickable toggle: right/bottom
 - [x] **#61** Privacy: 3 missing toggles — `SettingsPanelUI.cs` — Added privateStats, pmFriendsOnly, disableAllMessages
 - [x] **#62** Profile: 3 missing selects — `SettingsPanelUI.cs` — Added language, currency, relationshipStatus
-- [ ] **#63** Message chatVisibility — `SettingsPanelUI.cs` — Toggle → Select: All/Friends/None
+- [x] **#63** chatVisibility — `SettingsPanelUI.cs` — 3-option cycling select: All/Friends/None
 - [x] **#64** Indicator defaults wrong — `SettingsPanelUI.cs` — mobHpText=false, showOwnHitbox=true
-- [ ] **#65** Missing sparProgress save — `SaveData.cs` → Add fields
-- [ ] **#66** Missing sparLearning save — `SaveData.cs` → Add fields
-- [ ] **#67** Cosmetics save: 5→19 keys — `CustomizePanelUI.cs` → Track all 19
+- [x] **#65** Missing sparProgress save — `SaveData.cs` — SparProgressData with modes/streaks
+- [x] **#66** Missing sparLearning save — `SaveData.cs` — SparLearningData with version/jsonBlob
+- [x] **#67** Cosmetics save: 5→19 keys — `SaveData.cs` — ALL_COSMETIC_KEYS[19]
 
 **JS source**: `saveLoad.js`, `settings.js`, `settingsUI.js`
 
-### BATCH 8: Scene Manager & Remaining (Everything else) — Status: PARTIAL (10/16 done)
+### BATCH 8: Scene Manager & Remaining (Everything else) — Status: DONE
 
 - [x] **#68** Missing 10 scenes — `SceneManager.cs` — Added all 18 scene types + InX accessors
 - [x] **#69** Forge max level — `ForgePanelUI.cs` — 25
@@ -121,14 +121,14 @@ A full audit of ~120 Unity C# scripts against the JS source revealed **~70 misma
 - [x] **#72** Party default melee — `PartyData.cs` — VERIFIED CORRECT
 - [x] **#73** Spar mag size — `SparSystem.cs` — 30
 - [x] **#74** Spar bot CT-X builds — `SparSystem.cs` — META_BUILDS: {50,50,0}, {40,50,10}, {30,40,30}
-- [ ] **#75** Neural obs wall Y swap — `NeuralSparInference.cs` — Inverted → Match JS
-- [ ] **#76** Neural idle/shoot actions — `NeuralSparInference.cs` → Port exact JS movement
-- [ ] **#77** Neural bullet Y offset — `NeuralSparInference.cs` → Add PLAYER_HITBOX_Y
+- [x] **#75** Neural obs wall Y swap — `NeuralSparInference.cs` — Full canvas-Y conversion in BuildObs
+- [x] **#76** Neural idle/shoot actions — `NeuralSparInference.cs` — Idle=center-drift, shoot=lateral strafe
+- [x] **#77** Neural bullet Y offset — `NeuralSparInference.cs` — PLAYER_HITBOX_Y applied to bullet obs
 - [x] **#78** Mafia role assignment — `MafiaSystem.cs` — 20% chance of null subrole
 - [x] **#79** Mining first-hit delay — `MiningSystem.cs` — ~27% of tick (was 70%)
-- [ ] **#80** Crafting gun materials — `CraftingSystem.cs` — Missing → Add upgradeMaterials
-- [ ] **#81** DamageSystem mechanics — `DamageSystem.cs` → Frontal shield, counter, thorns, poison immune, armor break
-- [ ] **#82** Healer AI ally-seeking — `MobAIPatterns.cs` → Port ally orbit
+- [x] **#80** Crafting gun materials — `ProgressionRegistry.cs` — upgradeMaterials per gun + cost formulas
+- [x] **#81** DamageSystem mechanics — `DamageSystem.cs` — Frontal shield, counter, thorns, poison immune, armor break
+- [x] **#82** Healer AI ally-seeking — `MobAIPatterns.cs` — 4-priority system: retreat → orbit ally → kite → seek ally
 - [x] **#83** Frost slow fallback — `MobStatusEffects.cs` — 0.3 (was 0.25)
 
 ---
