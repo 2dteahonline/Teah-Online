@@ -70,17 +70,17 @@ A full audit of ~120 Unity C# scripts against the JS source revealed **~70 misma
 
 **JS source**: `casinoSystem.js`, `casinoData.js`
 
-### BATCH 5: Vendor Panel Data (All fabricated) — Status: NOT STARTED
+### BATCH 5: Vendor Panel Data (All fabricated) — Status: DONE
 
-- [ ] **#41** Pickaxe damage values — `MiningShopUI.cs` — All wrong (1-18) → (10-40) from interactable.js
-- [ ] **#42** Pickaxe unlock system — `MiningShopUI.cs` — Gold+level → Ore-discovery unlock
-- [ ] **#43** All crop sell prices — `FarmVendorUI.cs` — All wrong → Read farmingData.js
-- [ ] **#44** All seed costs — `FarmVendorUI.cs` — Several wrong → Read farmingData.js
-- [ ] **#45** Growth times — `FarmVendorUI.cs` — 2x too long → frames/60 from farmingData.js
-- [ ] **#46** Land expansions — `FarmVendorUI.cs` — 7 wrong entries → Port all 8 from JS
-- [ ] **#47** Hoe tier stats — `FarmVendorUI.cs` — Missing gameplay stats → Add from JS
-- [ ] **#48** Rod combat stats — `FishVendorUI.cs` — Missing → Add damage/range/cooldown/etc
-- [ ] **#49** Shop stock — `ShopPanelUI.cs` — Hardcoded → Build from PROG_ITEMS
+- [x] **#41** Pickaxe damage values — `MiningShopUI.cs` — 10,14,18,22,26,30,35,40 from JS
+- [x] **#42** Pickaxe unlock system — `MiningShopUI.cs` — Ore-discovery unlock (unlockedAfterOre)
+- [x] **#43** All crop sell prices — `FarmVendorUI.cs` — 12,18,25,35,50,70,95,140,220
+- [x] **#44** All seed costs — `FarmVendorUI.cs` — 5,8,12,15,20,30,40,60,100
+- [x] **#45** Growth times — `FarmVendorUI.cs` — 15,20,25,30,40,50,60,80,100 seconds
+- [x] **#46** Land expansions — `FarmVendorUI.cs` — All 8 from JS (3×3 free → 36×16 20000g)
+- [x] **#47** Hoe tier stats — `FarmVendorUI.cs` — reach/cooldown/swingTiles added
+- [x] **#48** Rod combat stats — `FishVendorUI.cs` — damage/range/cooldown/crit/catchBonus added
+- [x] **#49** Shop stock — `ShopPanelUI.cs` — 20 items from interactable.js (4 guns, 4 melee, 16 armor)
 
 **JS source**: `interactable.js:160-190`, `farmingData.js`, `fishingData.js`, `oreData.js`
 
@@ -112,24 +112,24 @@ A full audit of ~120 Unity C# scripts against the JS source revealed **~70 misma
 
 **JS source**: `saveLoad.js`, `settings.js`, `settingsUI.js`
 
-### BATCH 8: Scene Manager & Remaining (Everything else) — Status: PARTIAL (5/16 done)
+### BATCH 8: Scene Manager & Remaining (Everything else) — Status: PARTIAL (10/16 done)
 
 - [x] **#68** Missing 10 scenes — `SceneManager.cs` — Added all 18 scene types + InX accessors
 - [x] **#69** Forge max level — `ForgePanelUI.cs` — 25
-- [ ] **#70** Forge upgrade cost — `ForgePanelUI.cs` — Simplified → Port from PROG_ITEMS
-- [ ] **#71** Forge stat scaling — `ForgePanelUI.cs` — +2% damage → getProgressedStats() interpolation
-- [x] **#72** Party default melee — `PartyData.cs` — VERIFIED CORRECT: Combat Blade (24/110/24/0.15) matches current JS DEFAULT_MELEE. Audit agent found old backup fallback values.
+- [x] **#70** Forge upgrade cost — `ForgePanelUI.cs` — JS baseCosts[tier] * (1 + level*0.4), evolve [100,300,800,2000,0]
+- [x] **#71** Forge stat scaling — `ForgePanelUI.cs` — Interpolation: t=(level-1)/24, stat=base+(max-base)*t
+- [x] **#72** Party default melee — `PartyData.cs` — VERIFIED CORRECT
 - [x] **#73** Spar mag size — `SparSystem.cs` — 30
 - [x] **#74** Spar bot CT-X builds — `SparSystem.cs` — META_BUILDS: {50,50,0}, {40,50,10}, {30,40,30}
 - [ ] **#75** Neural obs wall Y swap — `NeuralSparInference.cs` — Inverted → Match JS
 - [ ] **#76** Neural idle/shoot actions — `NeuralSparInference.cs` → Port exact JS movement
 - [ ] **#77** Neural bullet Y offset — `NeuralSparInference.cs` → Add PLAYER_HITBOX_Y
-- [ ] **#78** Mafia role assignment — `MafiaSystem.cs` — Always subrole → Allow null (10-30%)
-- [ ] **#79** Mining first-hit delay — `MiningSystem.cs` — 70% → ~27% of tick
+- [x] **#78** Mafia role assignment — `MafiaSystem.cs` — 20% chance of null subrole
+- [x] **#79** Mining first-hit delay — `MiningSystem.cs` — ~27% of tick (was 70%)
 - [ ] **#80** Crafting gun materials — `CraftingSystem.cs` — Missing → Add upgradeMaterials
 - [ ] **#81** DamageSystem mechanics — `DamageSystem.cs` → Frontal shield, counter, thorns, poison immune, armor break
 - [ ] **#82** Healer AI ally-seeking — `MobAIPatterns.cs` → Port ally orbit
-- [ ] **#83** Frost slow fallback — `MobStatusEffects.cs` — 0.25 → 0.3 in getter
+- [x] **#83** Frost slow fallback — `MobStatusEffects.cs` — 0.3 (was 0.25)
 
 ---
 
