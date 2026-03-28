@@ -7,7 +7,7 @@ The rendering system draws every visual element of the game onto an HTML5 Canvas
 - `js/core/draw.js` -- Main `draw()` function, game loop, camera, minimap, HUD, debug overlays, death/respawn screens
 - `js/core/tileRenderer.js` -- `drawLevelBackground()` with per-scene tile styles (lobby, cave, dungeon, mine, farm, skeld, etc.)
 - `js/core/cameraSystem.js` -- Among Us-style security camera overlay (4 live feeds in 2x2 grid, scan lines, REC indicators)
-- `js/client/rendering/entityRenderers.js` -- `ENTITY_RENDERERS` registry (~130 entity types including 16 grocery shelf variants) and `drawLevelEntities()` dispatch
+- `js/client/rendering/entityRenderers.js` -- `ENTITY_RENDERERS` registry (148 entity types including 16 grocery shelf variants) and `drawLevelEntities()` dispatch
 - `js/client/rendering/characterSprite.js` -- Color utilities, 3-layer spritesheet system, `drawChar()`, `drawChoso()` (player), `drawGenericChar()` (mobs), `_charEquipOverride`/`_charColorOverride` for bot rendering
 - `js/client/rendering/hitEffects.js` -- `HIT_EFFECT_RENDERERS` registry (73 effect types) and hit effect dispatch
 - `js/client/rendering/mafiaFOV.js` -- Wall-aware raycasting FOV overlay, dead body rendering, Mafia HUD, meeting UI, sabotage fix panels, role ability buttons
@@ -144,7 +144,7 @@ Wall tiles (`collisionGrid[ty][tx] === 1`) get distinct wall/border treatment pe
 ### Entity Renderers
 The `ENTITY_RENDERERS` registry maps entity type strings to render functions with signature `(entity, ctx, screenX, screenY, widthTiles, heightTiles)`. The dispatch function `drawLevelEntities()` iterates `levelEntities` and calls the matching renderer for each.
 
-There are currently ~130 entity types including:
+There are currently 148 entity types including:
 - **Structural**: `spawnPad`, `barrierH`, `barrierV`, `zone`, `path_v`, `path_h`, `fountain`, `version_sign`
 - **Nature**: `tree`, `flower`, `bush`, `rock`
 - **Buildings**: `building_shop`, `building_house`, `building_tavern`, `building_mine`, `building_chapel`, `building_azurine`, `building_deli`, `building_diner`, `building_hideseek`, `building_skeld`, `building_fine_dining`, `building_casino`
@@ -183,8 +183,8 @@ Characters use a Graal-style 3-layer compositing system. Each layer is a separat
 
 2. **Head** (middle layer) -- face, hair, skin
    - Frame size: 32x32 cells (rendered as 48x48)
-   - Sheet layout: 4 columns x 5 rows = 128x160 total
-   - Rows: Walk/Idle, Attack, Shoot, Hurt/Dying, Skill
+   - Sheet layout: 4 columns x 4 rows = 128x128 total
+   - Rows: Walk/Idle, Push, Pull, Hurt/Dying
 
 3. **Hat** (top layer) -- headwear, accessories
    - Frame size: 32x32 cells (rendered as 48x48)

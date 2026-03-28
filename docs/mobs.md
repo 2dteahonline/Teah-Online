@@ -2,11 +2,11 @@
 
 ## Overview
 
-Mobs are the enemy combatants in Teah Online's dungeon system. They are defined data-first in `MOB_TYPES` (334 entries), with AI movement patterns in `MOB_AI` (13 patterns), special attacks in `MOB_SPECIALS` (434 unique abilities across 9 files), and per-frame logic in `updateMobs()`. The system supports legacy mobs (Floor 0 cave dungeon), 8 themed dungeon sets across 6 dungeons with 4 mob types per subfloor, mini-bosses, and final bosses -- including duo boss fights. Mobs use BFS pathfinding, body-blocking separation, AABB wall collision with wall-sliding, and a stuck-detection safety net.
+Mobs are the enemy combatants in Teah Online's dungeon system. They are defined data-first in `MOB_TYPES` (255 entries), with AI movement patterns in `MOB_AI` (13 patterns), special attacks in `MOB_SPECIALS` (435 unique abilities across 9 files), and per-frame logic in `updateMobs()`. The system supports legacy mobs (Floor 0 cave dungeon), 8 themed dungeon sets across 6 dungeons with 4 mob types per subfloor, mini-bosses, and final bosses -- including duo boss fights. Mobs use BFS pathfinding, body-blocking separation, AABB wall collision with wall-sliding, and a stuck-detection safety net.
 
 ## Files
 
-- `js/shared/mobTypes.js` -- `MOB_TYPES` registry (334 mob stat definitions), `MOB_CAPS`, `CROWD_EXEMPT_TYPES`, `MOB_ENTITY_ARRAYS`
+- `js/shared/mobTypes.js` -- `MOB_TYPES` registry (255 mob stat definitions), `MOB_CAPS`, `CROWD_EXEMPT_TYPES`, `MOB_ENTITY_ARRAYS`
 - `js/authority/combatSystem.js` -- `StatusFX`, `MOB_AI` (13 movement patterns), `MOB_SPECIALS` (91 base + cave/azurine/tech/junkyard/traphouse/waste ability handlers)
 - `js/authority/vortalisSpecials.js` -- 106 Vortalis dungeon ability handlers
 - `js/authority/earth205Specials.js` -- 98 Earth-205 dungeon ability handlers
@@ -18,11 +18,11 @@ Mobs are the enemy combatants in Teah Online's dungeon system. They are defined 
 
 | Symbol | Purpose |
 |--------|---------|
-| `MOB_TYPES` | Registry of all 334 mob definitions (stats, AI type, specials, per-type physics) |
+| `MOB_TYPES` | Registry of all 255 mob definitions (stats, AI type, specials, per-type physics) |
 | `MOB_CAPS` | Per-type max count per wave (e.g., grunt: 12, golem: 1) |
 | `CROWD_EXEMPT_TYPES` | Set of types that skip crowded-AI override (ranged/special mobs) |
 | `MOB_AI` | Registry of 13 movement targeting functions |
-| `MOB_SPECIALS` | Registry of 434 special ability update functions (across 9 files) |
+| `MOB_SPECIALS` | Registry of 435 special ability update functions (across 9 files) |
 | `MOB_ENTITY_ARRAYS` | List of sub-array keys on mobs (`_bombs`, `_mines`, `_turrets`, etc.) for cleanup |
 | `updateMobs()` | Per-frame mob logic: separation, movement, collision, specials, contact damage |
 | `positionClear(px, py, hw)` | AABB wall-free check at pixel position (4-corner tile test) |
@@ -307,7 +307,7 @@ After movement, the system handles:
 | `findClearPosition(targetX, targetY, fallbackX, fallbackY)` | Tries target, then 8 compass offsets at 1-tile distance, then fallback. For teleport/spawn validation. |
 | `sanitizeAITarget(m, targetX, targetY)` | 1-tile wall check in target direction. If blocked, tries perpendicular slide (both directions). Cost: 1-3 `positionClear` calls. |
 
-### MOB_SPECIALS: 434 Abilities Across 9 Files
+### MOB_SPECIALS: 435 Abilities Across 9 Files
 
 **Specials file organization:**
 

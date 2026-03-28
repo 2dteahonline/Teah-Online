@@ -83,6 +83,7 @@ The save data is a single JSON object stored at `localStorage['dungeon_game_save
   farming: {
     landLevel,       // farm land upgrade level
     equippedHoe,     // current hoe tier
+    bucketOwned,     // whether watering bucket has been purchased
     stats: {
       totalHarvested,
       totalEarned,

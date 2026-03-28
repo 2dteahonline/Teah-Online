@@ -226,20 +226,23 @@ Pay formula override: `8 + (ingredientCount * 2)` (replaces static basePay).
 | Steak & Zucchini | steak, zucchini, garlic butter, soy sauce | 48 | 60 | 2 | 4 | 2 |
 | Mushroom Fried Rice | rice, mushroom, egg, soy sauce, sesame oil | 42 | 55 | 2 | 5 | 2 |
 
-**3 Customer Types:**
+**6 Customer Types:**
 
 | Type | Party Size | Tip Mult | Mood Speed | Patience | Cover Fee | Weight |
 |------|-----------|----------|-----------|----------|----------|--------|
-| Regular | 1-3 | 1.0x | 0.6x | 1.3x | $10 | 50% |
-| VIP | 1-3 | 1.8x | 0.5x | 1.3x | $25 | 35% |
-| Critic | 1-2 | 2.0x | 0.7x | 1.0x | $40 | 15% |
+| Regular | 2-4 | 1.0x | 0.6x | 1.3x | $10 | 44% |
+| VIP | 2-4 | 1.8x | 0.5x | 1.3x | $25 | 20% |
+| Group | 4-6 | 1.0x | 0.6x | 1.2x | $10 | 20% |
+| Couple | 2-2 | 1.5x | 0.5x | 1.3x | $30 | 10% |
+| Critic | 2-3 | 2.0x | 0.7x | 1.0x | $40 | 1% |
+| Celebrity | 2-4 | 4.0x | 0.5x | 1.5x | $100 | 5% |
 
 **Service Timer Types:** Calm (60s, 40%), Feisty (45s, 35%), Rowdy (30s, 25%).
 
 **Unique Mechanics:**
 
-- **Cover fee:** Each party pays a cover fee on seating (Regular $10, VIP $25, Critic $40), added directly to player gold.
-- **Party system:** Customers arrive in groups of 1-4, assigned to a teppanyaki table.
+- **Cover fee:** Each party pays a cover fee on seating (Regular/Group $10, VIP $25, Couple $30, Critic $40, Celebrity $100), added directly to player gold.
+- **Party system:** Customers arrive in groups of 2-6 (varies by type), assigned to a teppanyaki table.
 - **4 teppanyaki tables:** Each with a grill entity and 4 seats. Tables have state tracking (`empty`, `seated`, `cooking`, `eating`).
 - **Persistent waiter NPC:** Escorts parties from host stand to tables, takes orders, delivers food. Manages a waiter queue for multiple waiting parties.
 - **Order visibility gating:** The order HUD shows "Waiter taking order..." until the waiter returns to the pass window. Controlled by `_fdOrderVisible` flag.

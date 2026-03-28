@@ -41,7 +41,6 @@ The input system captures keyboard and mouse events from the browser, translates
 | `moveX` | -1 (left), 0 (none), 1 (right) |
 | `moveY` | -1 (up), 0 (none), 1 (down) |
 | `mouseX`, `mouseY` | Screen-space mouse position |
-| `mouseWorldX`, `mouseWorldY` | World-space mouse position (computed from camera) |
 | `mouseDown` | Left mouse button held |
 | `shootHeld` | Mouse or arrow keys held (continuous fire) |
 | `arrowAimDir` | 0=down, 1=up, 2=left, 3=right (arrow-key aim direction) |
