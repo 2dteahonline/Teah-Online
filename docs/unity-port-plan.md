@@ -52,7 +52,7 @@
 | H8 | Combat | BulletSystem.cs | Boulder bullets (wall explode, blast damage) missing | meleeSystem.js:1004-1019 |
 | H9 | Combat | DamageSystem.cs | `DealDamageToMob` returns int (damage dealt), JS returns bool (mob died) — all death-check callers broken | damageSystem.js:30 |
 | H10 | Combat | DamageSystem.cs | Core Guardian split mechanic missing (split into 2 at 50% HP) | damageSystem.js:96-139 |
-| H11 | Mobs | MobController.cs | Mob separation/body-blocking not implemented — mobs stack on top of each other | mobSystem.js:68-100 |
+| H11 | Mobs | MobController.cs | ~~Mob separation/body-blocking not implemented — mobs stack on top of each other~~ | **FIXED** |
 | H12 | Casino | CasinoSystem.cs | ~~BJ double: no hand length check or gold deduct~~ | **FIXED** |
 | H13 | Casino | CasinoSystem.cs | ~~BJ split: no gold deduct~~ | **FIXED** |
 | H14 | Mafia | MafiaSystem.cs | Subrole probability wrong: flat 20% no-subrole vs JS varying 10-30% by role set | mafiaRoleData.js |
@@ -64,8 +64,8 @@
 | H20 | BotAI | BotAI.cs | Missing telegraph dodging — bots stand in AoEs | botAI.js |
 | H21 | BotAI | BotAI.cs | Missing status effect processing (root, stun, fear, slow) — bots ignore CC | botAI.js |
 | H22 | Core | GameConfig.cs | ~~WorldPlayerHitboxY not Y-flipped~~ now negates sign | **FIXED** |
-| H23 | Core | PlayerController.cs | Boots speed bonus missing — player always at base speed | inventory.js:3018 |
-| H24 | Core | PlayerController.cs | Speed multiplier system (freeze/slow/root/hazard) missing entirely | inventory.js:2745-2776 |
+| H23 | Core | PlayerController.cs | ~~Boots speed bonus missing~~ now reads InventorySystem.GetBootsSpeedBonus() and adds to base speed | **FIXED** |
+| H24 | Core | PlayerController.cs | ~~Speed multiplier system missing~~ now computes speedMult from gun freeze + statusFX root/slow + hazard zones | **FIXED** |
 | H25 | Core | SceneManager.cs | ~~InDungeon includes hub areas~~ now Dungeon-only + InAnyCombatArea helper | **FIXED** |
 | H26 | UI | ForgePanelUI.cs | Costs fabricated (`baseCost * (1 + level*0.4)`), material requirements missing, shows ALL weapons instead of 5 forge guns, `ApplyProgressedStats()` is a no-op | forgeUI.js, progressionData.js |
 
@@ -82,14 +82,14 @@
 | M5 | Combat | Thorns doesn't apply stagger to attacker |
 | M6 | Combat | AttackShapes cone API: `arcAngle` (full) vs JS `halfAngleRad` — callers may pass wrong value |
 | M7 | Mobs | ~~Frost slow default **0.3** vs JS **0.25**~~ **FIXED** |
-| M8 | Mobs | Shooter fire range missing 1.2x multiplier |
-| M9 | Mobs | Crowded AI detection always false — mobs never flank |
-| M10 | Mobs | `sanitizeAITarget` wall-avoidance for retreat vectors missing |
+| M8 | Mobs | ~~Shooter fire range missing 1.2x multiplier~~ **FIXED** — added `* 1.2f` to shoot range check |
+| M9 | Mobs | ~~Crowded AI detection always false — mobs never flank~~ **FIXED** — implemented crowd detection + crowded AI override |
+| M10 | Mobs | ~~`sanitizeAITarget` wall-avoidance for retreat vectors missing~~ **FIXED** — ported SanitizeAITarget with perpendicular slide |
 | M11 | Mobs | ~~Visual scale priority order~~ bossScale now checked first **FIXED** |
 | M12 | Mobs | ~~Fabricated bossScale=1.5~~ removed default **FIXED** |
-| M13 | Mobs | Show Must Go On passive (30% speed at low HP) missing |
-| M14 | Mobs | Intimidating Presence passive (ally damage aura) missing |
-| M15 | Mobs | Contact Damage Aura passive (DoT to nearby player) missing |
+| M13 | Mobs | ~~Show Must Go On passive (30% speed at low HP) missing~~ **FIXED** — 1.3x speed boost at <30% HP, one-time |
+| M14 | Mobs | ~~Intimidating Presence passive (ally damage aura) missing~~ **FIXED** — 15% damage boost to allies within 200px every 60f |
+| M15 | Mobs | ~~Contact Damage Aura passive (DoT to nearby player) missing~~ **FIXED** — DoT every 30f, range=60px, dmg=30% mob damage |
 | M16 | Casino | BJ bust on split goes to dealer phase instead of direct resolution; insurance double-count risk |
 | M17 | Casino | ~~Keno default risk Low vs JS Medium~~ **FIXED** |
 | M18 | Mafia | PostMatch phase never entered — no results screen |
