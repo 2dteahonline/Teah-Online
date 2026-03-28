@@ -50,8 +50,8 @@
 | H6 | Combat | MeleeSystem.cs | ~~Melee crit chance **0.15** vs JS **0.20**~~ | **FIXED** |
 | H7 | Combat | BulletSystem.cs | Arrow bullets (bounce, lifetime, poison) missing | meleeSystem.js:967-975,1150-1173 |
 | H8 | Combat | BulletSystem.cs | Boulder bullets (wall explode, blast damage) missing | meleeSystem.js:1004-1019 |
-| H9 | Combat | DamageSystem.cs | `DealDamageToMob` returns int (damage dealt), JS returns bool (mob died) — all death-check callers broken | damageSystem.js:30 |
-| H10 | Combat | DamageSystem.cs | Core Guardian split mechanic missing (split into 2 at 50% HP) | damageSystem.js:96-139 |
+| H9 | Combat | DamageSystem.cs | ~~`DealDamageToMob` returns int (damage dealt), JS returns bool (mob died) — all death-check callers broken~~ | **FIXED** |
+| H10 | Combat | DamageSystem.cs | ~~Core Guardian split mechanic missing (split into 2 at 50% HP)~~ | **FIXED** |
 | H11 | Mobs | MobController.cs | ~~Mob separation/body-blocking not implemented — mobs stack on top of each other~~ | **FIXED** |
 | H12 | Casino | CasinoSystem.cs | ~~BJ double: no hand length check or gold deduct~~ | **FIXED** |
 | H13 | Casino | CasinoSystem.cs | ~~BJ split: no gold deduct~~ | **FIXED** |
@@ -90,12 +90,12 @@
 | M13 | Mobs | ~~Show Must Go On passive (30% speed at low HP) missing~~ **FIXED** — 1.3x speed boost at <30% HP, one-time |
 | M14 | Mobs | ~~Intimidating Presence passive (ally damage aura) missing~~ **FIXED** — 15% damage boost to allies within 200px every 60f |
 | M15 | Mobs | ~~Contact Damage Aura passive (DoT to nearby player) missing~~ **FIXED** — DoT every 30f, range=60px, dmg=30% mob damage |
-| M16 | Casino | BJ bust on split goes to dealer phase instead of direct resolution; insurance double-count risk |
+| M16 | Casino | ~~BJ bust on split goes to dealer phase instead of direct resolution; insurance double-count risk~~ **FIXED** — split bust now resolves directly (both bust=lose, main alive=player phase); removed insurance double-count in BJResolve; added gold deduction in BJTakeInsurance; added BJDeclineInsurance; skip insurance offer when player has BJ |
 | M17 | Casino | ~~Keno default risk Low vs JS Medium~~ **FIXED** |
-| M18 | Mafia | PostMatch phase never entered — no results screen |
-| M19 | HideSeek | Spawn positions hardcoded differently from JS defaults; hider bot random placement |
-| M20 | Party | Wave clear gives +2 potions (not in JS) |
-| M21 | BotAI | Melee DPS preference threshold **1.2x** vs JS **0.8x** — bots prefer guns too much |
+| M18 | Mafia | ~~PostMatch phase never entered — no results screen~~ **FIXED** — CheckWinConditions now sets ejection state with win/defeat message + timer; ejection end matches JS _endEjection (message-prefix check); SabotageWin sets defeat message |
+| M19 | HideSeek | ~~Spawn positions hardcoded differently from JS defaults; hider bot random placement~~ **FIXED** — Spawns match JS level data (5,4 / 45,38); hider bot now picks spots far from seeker spawn instead of fully random |
+| M20 | Party | ~~Wave clear gives +2 potions (not in JS)~~ **FIXED** — Removed +2 potion award; JS healAll() only heals HP |
+| M21 | BotAI | ~~Melee DPS preference threshold 1.2x vs JS 0.8x~~ **FIXED** — `meleeDPS >= gunDPS * 0.8f || gunEmpty` matching JS botAI.js:714 |
 | M22 | Spar | NeuralSparInference model format expects `weights_flat` vs JS 2D arrays |
 | M23 | Mining | ~~ORE_COLLISION_RADIUS 11 vs JS 17~~ **FIXED** |
 | M24 | Mining | ~~MINING_PLAYER_R 14 vs JS 10~~ **FIXED** |
@@ -105,10 +105,10 @@
 | M28 | Core | ~~Transition fade speeds 17-20% slower~~ now 7.2/sec and 4.8/sec **FIXED** |
 | M29 | Core | Arrow-key shooting captured in PlayerInputHandler but never passed to any system |
 | M30 | Core | N/G key inputs (wave skip/ready) not captured; shoot-face direction override missing |
-| M31 | UI | Forge panel dimensions 650x480 vs JS 820x580 |
-| M32 | UI | Hotbar missing "right side" position mode (JS default); quickslot overrides partial |
-| M33 | UI | ItemTooltip speedBonus displayed as percentage instead of absolute value |
-| M34 | UI | ChatUI uses Enter key vs JS Tab key |
+| M31 | UI | ~~Forge panel dimensions 650x480 vs JS 820x580~~ **FIXED** — 820x580 |
+| M32 | UI | ~~Hotbar missing "right side" position mode (JS default); quickslot overrides partial~~ **FIXED** — dual layout + all QS overrides |
+| M33 | UI | ~~ItemTooltip speedBonus displayed as percentage instead of absolute value~~ **FIXED** — absolute +N.N |
+| M34 | UI | ~~ChatUI uses Enter key vs JS Tab key~~ **FIXED** — Tab to toggle, Enter to send |
 
 ---
 
