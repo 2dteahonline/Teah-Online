@@ -2981,6 +2981,8 @@ function gameLoop(timestamp) {
     // === SERVER-AUTHORITY LOOP ===
     // 1. Client: gather input → produce commands
     translateIntentsToCommands();
+    // 1b. Trace recorder: capture input state after commands are produced
+    if (typeof TraceRecorder !== 'undefined' && TraceRecorder.isRecording) TraceRecorder.recordTick();
     // 2. Authority: consume commands → run simulation → snapshot
     authorityTick();
     // (In real multiplayer, step 3 would be: apply snapshot from server.

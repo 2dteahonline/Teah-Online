@@ -555,6 +555,30 @@ window.addEventListener("keydown", e => {
               chatMessages.push({ name: "SYSTEM", text: "Teleported to " + _dEntry.name + " (Floor 1)", time: Date.now() });
             }
           }
+        } else if (cmdLower.startsWith("/trace")) {
+          const _traceArg = cmdLower.split(" ")[1];
+          if (_traceArg === "start") {
+            if (typeof TraceRecorder !== 'undefined') {
+              TraceRecorder.start();
+              chatMessages.push({ name: "SYSTEM", text: "Trace recording started.", time: Date.now() });
+            } else {
+              chatMessages.push({ name: "SYSTEM", text: "TraceRecorder not loaded.", time: Date.now() });
+            }
+          } else if (_traceArg === "stop") {
+            if (typeof TraceRecorder !== 'undefined') {
+              const _tr = TraceRecorder.stop();
+              if (_tr) {
+                TraceRecorder.save('trace_' + Date.now());
+                chatMessages.push({ name: "SYSTEM", text: "Trace stopped & saved (" + _tr.entries.length + " ticks).", time: Date.now() });
+              } else {
+                chatMessages.push({ name: "SYSTEM", text: "No active trace.", time: Date.now() });
+              }
+            } else {
+              chatMessages.push({ name: "SYSTEM", text: "TraceRecorder not loaded.", time: Date.now() });
+            }
+          } else {
+            chatMessages.push({ name: "SYSTEM", text: "Usage: /trace start | /trace stop", time: Date.now() });
+          }
         } else if (cmdLower === "/leave") {
           if (!handleLeave()) {
             chatMessages.push({ name: "SYSTEM", text: "Nothing to leave.", time: Date.now() });
