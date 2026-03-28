@@ -7,7 +7,8 @@ The scene system controls which level the player is in and what gameplay rules a
 ## Files
 
 - `js/core/sceneManager.js` -- Scene state machine, portal registry, /leave system, queue system, collision, zone transitions
-- `js/shared/levelData.js` -- `TILE` constant (48px), `LEVELS` registry (all level definitions), `collisionFromAscii()` helper
+- `js/shared/levelData.js` -- `TILE` constant (48px), `LEVELS` registry (all 27 level definitions), `collisionFromAscii()` helper, portal spawn resolver IIFE
+- `js/shared/dungeonRegistry.js` -- `DUNGEON_REGISTRY` (6 dungeon types), `FLOOR_CONFIG`, `validateDungeonType()`
 - `js/authority/stateReset.js` -- `resetCombatState(mode)` for inventory/equipment/combat cleanup between runs
 
 ## Key Functions & Globals
@@ -59,7 +60,7 @@ The scene system controls which level the player is in and what gameplay rules a
 | `'casino'` | `isCasino` | Casino interior (10 minigames) |
 | `'spar'` | `isSpar` | PvP sparring arena (ranked/casual matches with AI opponent) |
 
-**Scene flags:** Each value has a corresponding getter (`Scene.inDungeon`, `Scene.inLobby`, `Scene.inCave`, etc.) for convenient boolean checks.
+**Scene flags (18 total):** `isLobby`, `isFarm`, `isCave`, `isAzurine`, `isMine`, `isCooking`, `isTestArena`, `isGunsmith`, `isHideSeek`, `isSkeld`, `isMafiaLobby`, `isVortalis`, `isEarth205`, `isWagashi`, `isEarth216`, `isCasino`, `isSpar`, `isSparArena`. Each scene value has a corresponding getter (`Scene.inDungeon`, `Scene.inLobby`, `Scene.inCave`, etc.) for convenient boolean checks. Note: `isSparArena` is a supplementary flag on spar arena levels (used alongside `isSpar`), not its own Scene.current value.
 
 ### Level Data Format
 
@@ -90,7 +91,38 @@ Each entry in `LEVELS` is an object with:
 - `.` (dot) = floor (0) -- walkable
 - `#` or `@` = wall (1) -- solid, blocks movement
 
-**All level IDs in `LEVELS`:** `lobby_01`, `house_01`, `cave_01`, `azurine_01`, `azurine_dungeon_01`, `warehouse_01`, `mine_01` through `mine_04`, `deli_01`, `diner_01`, `fine_dining_01`, `test_arena`, `gunsmith_01`, `hide_01`, `skeld_01`, `mafia_lobby`, `casino_01`, `spar_hub_01`, `vortalis_01`, `earth205_01`, `wagashi_01`, `earth216_01`, `spar_1v1_01`, `spar_2v2_01`, `spar_3v3_01`, `spar_4v4_01`
+**All 27 level IDs in `LEVELS`:**
+
+| Level ID | Size (WxH) | Scene Flag | Spawn / Notes |
+|----------|-----------|------------|---------------|
+| `lobby_01` | 80x64 | `isLobby` | spawn 40,42 |
+| `house_01` | 40x30 | `isFarm` | spawn 10,26 |
+| `cave_01` | 40x24 | `isCave` | spawn 20,19 |
+| `azurine_01` | 40x24 | `isAzurine` | spawn 20,19 |
+| `warehouse_01` | 40x40 | _(none)_ | p1: 5,20 / p2: 34,20 (dungeon combat room) |
+| `azurine_dungeon_01` | 36x36 | _(none)_ | p1: 3,18 / p2: 32,18 (Azurine dungeon combat room) |
+| `mine_01` | 70x48 | `isMine` | spawn 35,44 |
+| `mine_02` | 70x48 | `isMine` | spawn 35,44 |
+| `mine_03` | 70x48 | `isMine` | spawn 35,44 |
+| `mine_04` | 70x48 | `isMine` | spawn 35,44 |
+| `deli_01` | 40x36 | `isCooking` | spawn 14,34 |
+| `diner_01` | 48x24 | `isCooking` | spawn 27,21 |
+| `fine_dining_01` | 44x26 | `isCooking` | spawn 40,24 |
+| `test_arena` | 36x28 | `isTestArena` | spawn 18,10 |
+| `gunsmith_01` | 44x30 | `isGunsmith` | spawn 22,26 |
+| `hide_01` | 55x42 | `isHideSeek` | seeker: 5,4 / hider: 45,38 / p1: 5,4 |
+| `skeld_01` | 135x80 | `isSkeld` | p1: 74,18 / XO=4 offset |
+| `mafia_lobby` | 50x30 | `isMafiaLobby` | spawn 25,20 |
+| `vortalis_01` | 40x24 | `isVortalis` | spawn 20,19 |
+| `earth205_01` | 40x24 | `isEarth205` | spawn 20,19 |
+| `wagashi_01` | 40x24 | `isWagashi` | no explicit spawns |
+| `earth216_01` | 40x24 | `isEarth216` | no explicit spawns |
+| `casino_01` | 56x40 | `isCasino` | spawn 28,38 |
+| `spar_hub_01` | 30x20 | `isSpar` | spawn 15,18 |
+| `spar_1v1_01` | 24x20 | `isSpar` + `isSparArena` | |
+| `spar_2v2_01` | 24x20 | `isSpar` + `isSparArena` | |
+| `spar_3v3_01` | 36x28 | `isSpar` + `isSparArena` | |
+| `spar_4v4_01` | 36x28 | `isSpar` + `isSparArena` | |
 
 ### Portal System
 
@@ -116,6 +148,29 @@ casino_entrance: 'lobby',   casino_exit: 'casino',
 spar_entrance: 'lobby',     spar_exit: 'spar',
 ```
 
+**16 lobby portals with coordinates (tile positions in lobby_01):**
+
+| Portal Entity | Position (tx,ty) | Target Level | Portal spawnTX,spawnTY |
+|---------------|-----------------|--------------|----------------------|
+| `cave_entrance` | 37,8 | `cave_01` | 15,19 |
+| `house_entrance` | 14,7 | `house_01` | 10,26 |
+| `mine_entrance` | 52,7 | `mine_01` | 35,44 |
+| `azurine_entrance` | 71,7 | `azurine_01` | 20,19 |
+| `deli_entrance` | 5,19 | `deli_01` | 14,30 |
+| `hideseek_entrance` | 16,19 | `hide_01` | 5,5 |
+| `skeld_entrance` | 27,19 | `mafia_lobby` | 25,20 |
+| `gunsmith_entrance` | 71,19 | `gunsmith_01` | 22,26 |
+| `vortalis_entrance` | 52,19 | `vortalis_01` | 20,19 |
+| `casino_entrance` | 71,31 | `casino_01` | 28,37 |
+| `earth205_entrance` | 52,31 | `earth205_01` | 20,19 |
+| `diner_entrance` | 5,31 | `diner_01` | 27,33 |
+| `wagashi_entrance` | 52,43 | `wagashi_01` | 20,19 |
+| `fine_dining_entrance` | 5,43 | `fine_dining_01` | 40,24 |
+| `earth216_entrance` | 52,55 | `earth216_01` | 20,19 |
+| `spar_entrance` | 16,31 | `spar_hub_01` | 15,18 |
+
+**Portal Spawn Resolver:** An IIFE at the bottom of `levelData.js` auto-computes `spawnTX`/`spawnTY` for exit portals. For each entity with a `target`, it finds the partner portal in the target level (the portal that leads back), then sets spawnTX to the center of the partner zone and spawnTY to 1 tile on the interior side (above if partner is near bottom, below if near top).
+
 `checkPortals()` runs every frame, scanning `levelEntities` for portal overlap. When the player's tile position falls inside a portal zone and the current scene matches `PORTAL_SCENES[type]`, it calls `startTransition()`.
 
 **Spawn alignment:** Player is positioned at `spawnTX * TILE + TILE/2, spawnTY * TILE + TILE/2` (center of the spawn tile).
@@ -135,7 +190,7 @@ Dungeon entry uses a queue mechanic:
 - Pressing interact calls `joinQueue()`, locking the player on a sigil position
 - `queueTimer` counts down from `QUEUE_DURATION` (600 frames = 10s)
 - When timer hits 0, `enterLevel()` is called with the queued dungeon ID
-- Queue tracks `queueDungeonType` ('cave' or 'azurine') and `queueFloorStart` for the starting floor
+- Queue tracks `queueDungeonType` (one of the 6 registered dungeon types: `cave`, `azurine`, `vortalis`, `earth205`, `wagashi`, `earth216`) and `queueFloorStart` for the starting floor
 
 ### State Reset Between Runs
 
@@ -185,10 +240,46 @@ Scenes with `/leave` support: `test_arena`, `mine`, `cooking`, `farm`, `cave`, `
 - Final floor shows "EXIT DUNGEON" instead of floor number
 - `Events.emit('floor_changed', { floor })` notifies subscribers
 
+### DUNGEON_REGISTRY
+
+Defined in `js/shared/dungeonRegistry.js`. Maps dungeon type keys to configuration objects. All dungeons have `hasHazards: false`, `tileset: ''`, `music: ''`.
+
+| Key | Name | Level ID | Floors | Return Level | Req. Level | Reward Mult | Difficulty | Spawn |
+|-----|------|----------|--------|-------------|-----------|-------------|-----------|-------|
+| `cave` | Cave Dungeon | `warehouse_01` | 5 | `cave_01` | 0 | 1.0 | 1 | 20,20 |
+| `azurine` | Azurine City | `azurine_dungeon_01` | 5 | `azurine_01` | 10 | 1.5 | 2 | 18,18 |
+| `vortalis` | Vortalis | `warehouse_01` | 5 | `vortalis_01` | 20 | 2.0 | 3 | 20,20 |
+| `earth205` | Earth-205: Marble City | `warehouse_01` | 5 | `earth205_01` | 30 | 2.8 | 4 | 20,20 |
+| `wagashi` | Wagashi: Heavenly Realm | `warehouse_01` | 5 | `wagashi_01` | 40 | 3.5 | 5 | 20,20 |
+| `earth216` | Earth-216: Sin City | `warehouse_01` | 5 | `earth216_01` | 50 | 4.5 | 5 | 20,20 |
+
+Note: Azurine is the only dungeon using `azurine_dungeon_01` (36x36). All others use `warehouse_01` (40x40). Both `wagashi` and `earth216` share difficulty 5.
+
+### The Skeld Room Coordinates
+
+All coordinates are in virtual space. Add `XO=4` to get actual grid coordinates. Minimap labels in `draw.js` use actual (virtual + XO).
+
+| Room | Virtual (x1,y1)-(x2,y2) | Size (WxH) |
+|------|-------------------------|------------|
+| Cafeteria | (57,1)-(84,34) | 28x34 |
+| Upper Engine | (1,1)-(23,17) | 23x17 |
+| Reactor | (-3,23)-(8,46) | 12x24 |
+| Security | (24,24)-(36,41) | 13x18 |
+| MedBay | (38,18)-(53,32) | 16x15 |
+| Electrical | (37,42)-(55,62) | 19x21 |
+| Admin | (78,37)-(96,54) | 19x18 |
+| Storage | (58,53)-(75,78) | 18x26 |
+| Shields | (99,54)-(117,70) | 19x17 |
+| Communications | (80,67)-(97,78) | 18x12 |
+| Lower Engine | (1,52)-(23,68) | 23x17 |
+| Weapons | (95,1)-(115,17) | 21x17 |
+| O2 | (86,22)-(99,35) | 14x14 |
+| Navigation | (117,24)-(129,44) | 13x21 |
+
 ## Connections to Other Systems
 
 - **Wave system** (`waveSystem.js`) -- controls `stairsOpen`, `waveState`, mob spawning per floor
-- **Dungeon registry** (`dungeonRegistry.js`) -- `DUNGEON_REGISTRY` maps dungeon types to floor configs, max floors, return levels
+- **Dungeon registry** (`js/shared/dungeonRegistry.js`) -- `DUNGEON_REGISTRY` maps 6 dungeon types to level IDs, floor counts, return levels, difficulty, reward multipliers
 - **Event bus** (`eventBus.js`) -- `scene_changed` and `floor_changed` events
 - **Game state** (`gameState.js`) -- `player`, `mobs`, `bullets`, `hitEffects`, `gold`, `dungeonFloor`
 - **Panel manager** (`panelManager.js`) -- `UI.close()` called on every level transition

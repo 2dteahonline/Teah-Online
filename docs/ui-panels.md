@@ -52,7 +52,7 @@ UI.active                 -- getter for current panel id string (or null)
 - `drawGunsmithPanel()` -- gunsmith upgrade/evolution panel
 - `drawInventoryPanel()` -- full inventory grid with categories, pagination, item cards
 - `drawShopPanel()` -- in-dungeon shop (buy items between waves)
-- `drawCustomizeScreen()` -- full-screen character creator with 18 color pickers
+- `drawCustomizeScreen()` -- full-screen character creator with 19 customization categories (18 color pickers + head selection)
 - `drawSettingsPanel()` -- 7-tab settings (General, Keybinds, Sounds, Indicators, Profile, Message, Privacy)
 - `drawToolboxPanel()` -- world builder tile/object palette
 - `drawChatPanel()` -- chat message display and input
@@ -122,8 +122,8 @@ Each panel has intentionally different styling -- different title bar heights, c
 
 ### Customize Panel
 - Full-screen character creator (`drawCustomizeScreen()`)
-- Left sidebar: 18 customization categories in scrollable icon strip, each with custom pixel art icon:
-  - Hair, Facial Hair, Skin, Eyes, Shirt, Pants, Shoes, Hat, Glasses, Gloves, Belt, Cape, Tattoo, Scars, Earring, Necklace, Backpack, Warpaint
+- Left sidebar: 19 customization categories in scrollable icon strip, each with custom pixel art icon:
+  - Head, Hair, Facial Hair, Skin, Eyes, Shirt, Pants, Shoes, Hat, Glasses, Gloves, Belt, Cape, Tattoo, Scars, Earring, Necklace, Backpack, Warpaint
 - Categories defined in `CUSTOMIZE_CATS` array (in `panelManager.js`)
 - Color picker: HSV model with hue bar + saturation/value 2D picker
   - `hsvToHex(h, s, v)` converts HSV to hex color
@@ -161,7 +161,7 @@ Each panel has intentionally different styling -- different title bar heights, c
 - Lists all mobs for the selected dungeon and floor
 - Click a mob to spawn it; shows ability descriptions in popup (`testMobAbilityPopup`)
 - `MOB_ABILITY_DESCRIPTIONS` contains human-readable descriptions for every mob special ability (100+ entries covering all dungeons)
-- `TESTMOB_DUNGEONS` maps 7 dungeons (Cave, Azurine City, Vortalis, Earth-205, Wagashi, Earth-216) to floor/mob lists
+- `TESTMOB_DUNGEONS` maps 6 dungeons (Cave, Azurine City, Vortalis, Earth-205, Wagashi, Earth-216) to floor/mob lists
 - Validates floor counts against `DUNGEON_REGISTRY` at load time
 
 ## Connections to Other Systems

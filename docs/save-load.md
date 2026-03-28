@@ -2,7 +2,7 @@
 
 ## Overview
 
-The save/load system persists player identity, cosmetics, settings, keybinds, and permanent progression to `localStorage`. It uses a versioned schema (currently v10) with backward-compatible migrations from v1 through v9. Gold, inventory, equipment, and dungeon progress are intentionally NOT saved -- the game follows a session-based roguelike design where each run starts fresh.
+The save/load system persists player identity, cosmetics, settings, keybinds, permanent progression, materials, and spar data to `localStorage`. It uses a versioned schema (currently v10) with backward-compatible migrations from v1 through v9. Gold, most inventory items, equipment, and dungeon progress are intentionally NOT saved -- the game follows a session-based roguelike design where each run starts fresh. Materials and main gun/pickaxe progression are the exceptions that persist across sessions.
 
 ## Files
 
@@ -18,6 +18,9 @@ The save/load system persists player identity, cosmetics, settings, keybinds, an
 | `SaveLoad.load()` | method | Reads from localStorage, applies migrations, restores state. Returns `true` on success |
 | `SaveLoad.clear()` | method | Removes the save key from localStorage |
 | `SaveLoad.autoSave()` | method | Debounced save (1-second delay). Use after incremental changes |
+| `SETTINGS_DATA` | const | Settings panel layout: maps tab names to arrays of `{ label, key, type, options? }` |
+| `drawSettingsPanel()` | function | Renders the settings UI (toggles, selectors, keybinds) |
+| `cookingProgress` | const | Persistent cooking state: `lifetimeOrdersTotal`, `lifetimeOrdersByShop`, `purchasedShops` |
 
 ## How It Works
 
@@ -58,7 +61,7 @@ The save data is a single JSON object stored at `localStorage['dungeon_game_save
   cosmetics: {
     skin, hair, shirt, pants, shoes, hat, glasses,
     gloves, belt, cape, tattoo, scars, earring, necklace,
-    backpack, warpaint, eyes, facialHair
+    backpack, warpaint, eyes, facialHair, headId
   },
 
   progression: {
@@ -103,7 +106,31 @@ The save data is a single JSON object stored at `localStorage['dungeon_game_save
     null,                    // see hotbar-and-quickslots.md for full details
     null,
     null
-  ]
+  ],
+
+  sparProgress: {            // v9+: spar win/loss stats
+    totals: { wins, losses, draws },
+    byMode: { ... },
+    streak: { ... }
+  },
+
+  sparLearning: {            // v9+: spar bot learning profile (Elo, history, tactics)
+    version,                 // currently 8 (older versions wiped on load)
+    history: [...],          // last 20 match records
+    ...                      // hierarchical anti-bottom tactics, trap zones, phase rewards
+  },
+
+  gunSettings: {             // per-gun side preferences
+    [gunId]: { ... }
+  },
+
+  ctxSliders: {              // CT-X weapon slider values
+    freeze, rof, spread
+  },
+
+  materials: {               // v10+: persistent material counts (extracted from inventory)
+    [materialId]: count,     // e.g. { ore_iron: 5, ore_gold: 2 }
+  }
 }
 ```
 
@@ -112,7 +139,7 @@ The save data is a single JSON object stored at `localStorage['dungeon_game_save
 The following are session-only (reset each page load / dungeon run):
 
 - **Gold** -- earned fresh each dungeon run
-- **Inventory items** -- found/purchased during a run
+- **Inventory items** -- found/purchased during a run (except materials, which are persisted since v10, and main guns/pickaxes which are re-created from gunLevels/pickaxeLevels)
 - **Equipment** -- gun/melee/armor equipped during a run
 - **Dungeon progress** -- floor, wave, kills, stairs state
 - **Combat state** -- HP (reset to base), bullets, mobs, effects
@@ -138,14 +165,14 @@ On load, owned guns/pickaxes are re-created as inventory items via `createMainGu
 | v2 | Added `progression` block (playerLevel, playerXP, skillData) |
 | v3 | Added `fishing` block (rodTier, rodDurability, baitCount, stats) |
 | v4 | Fishing rod moved to inventory item; fishing save now only stores baitCount + stats. Old `rodTier` migrated to an inventory rod item |
-| v5 | Added `farming` block (landLevel, stats) |
+| v5 | Added `farming` block (landLevel, equippedHoe, bucketOwned, stats). Includes migration: old saves with hoe as melee weapon get hoe moved to `farmingState.equippedHoe` and removed from inventory |
 | v6 | Added `gunLevels` to progression (permanent gun progression with tier/level objects) |
 | v7 | Added `pickaxeLevels` and `discoveredOres` to progression |
 | v8 | Added `cookingProgress` block (lifetimeOrdersTotal, lifetimeOrdersByShop, purchasedShops) |
-| v9 | Added spar learning profile (Elo, match history, bot training data) |
+| v9 | Added `sparProgress` (win/loss/streak stats) and `sparLearning` (Elo, match history, bot training data). Also added `gunSettings` (per-gun side prefs) and `ctxSliders` (CT-X weapon sliders) |
 | v10 | Materials stored as separate data (decoupled from inventory for persistence across sessions) |
 
-Migration is implicit: the `load()` method checks for each block's existence and applies defaults for missing fields. The v3-to-v4 fishing rod migration explicitly checks `data.version < 4` and converts old `rodTier` to an inventory item.
+Migration is implicit: the `load()` method checks for each block's existence and applies defaults for missing fields. The v3-to-v4 fishing rod migration explicitly checks `data.version < 4` and converts old `rodTier` to an inventory item. The spar learning profile (`sparLearning`) has its own internal version (currently 8) — saves with `sparLearning.version < 8` are wiped and replaced with fresh defaults, since older data is structurally incompatible.
 
 ### Settings Migration
 
@@ -171,12 +198,12 @@ One notable settings migration: old saves with `playerIndicator` (single boolean
 - **Progression** (`progressionData.js`, `inventorySystem.js`): Gun/pickaxe levels restored from save; items re-created via `createMainGun()` / `createPickaxe()`.
 - **Fishing** (`fishingSystem.js`): Bait count and stats restored; old rod tiers migrated to inventory items.
 - **Farming**: Land level and stats restored; tiles are session-only.
-- **Settings Panel** (`saveLoad.js`): The settings UI (`drawSettingsPanel`) is defined in the same file. Renders tabs (General, Sounds, Indicators, Profile, Message, Privacy, Keybinds) with toggles and selectors.
+- **Settings Panel** (`saveLoad.js`): The settings UI (`drawSettingsPanel`) is defined in the same file. Renders tabs (General, Keybinds, Sounds, Indicators, Profile, Message, Privacy) with toggles and selectors. Tab definitions are in `settings.js` (`SETTINGS_TABS`), data layout in `SETTINGS_DATA` within `saveLoad.js`.
 - **Chat Commands**: `/save` triggers `SaveLoad.save()`, `/resetsave` triggers `SaveLoad.clear()`.
 
 ## Gotchas & Rules
 
-- **Do not save session data**: Gold, inventory, equipment, and dungeon progress are intentionally excluded. The roguelike design means each run starts fresh.
+- **Do not save session data**: Gold, dungeon equipment, and dungeon progress are intentionally excluded. The roguelike design means each run starts fresh. Materials and permanent gun/pickaxe progression are exceptions that persist via dedicated save blocks.
 - **Backward compatibility is required**: The `load()` method must handle saves from any version (v1 through v10). Always check for existence of blocks/fields before reading.
 - **Gun level format ambiguity**: Always handle both integer and `{ tier, level }` formats when reading `gunLevels` or `pickaxeLevels`. Use `typeof saved === 'number'` to detect old format.
 - **autoSave is debounced**: Do not call `save()` directly for frequent changes; use `autoSave()` to avoid excessive localStorage writes.

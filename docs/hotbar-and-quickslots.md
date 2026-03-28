@@ -171,7 +171,7 @@ Other sync points:
 | Constant | Location | Value | Purpose |
 |----------|----------|-------|---------|
 | `hotbarSlots` | `damageSystem.js` | 3-element array | Default slot types (gun/melee/potion). **Only 3 elements** — never access index 3+ |
-| `HOTBAR_HOLD_THRESHOLD` | `inventory.js` | ~30 frames | Hold-to-inspect timer for weapon stats popup |
+| `HOTBAR_HOLD_THRESHOLD` | `waveSystem.js` | 180 frames (3 seconds at 60fps) | Hold-to-inspect timer for weapon stats popup |
 | `quickSlots` | `inventory.js` | 4-element array | Quickslot assignments |
 | `activeSlot` | `waveSystem.js` | 0 or 1 | Weapon mode (gun/melee) |
 | `activeHotbarSlot` | `waveSystem.js` | 0-4 | Visual highlight slot |

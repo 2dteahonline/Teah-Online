@@ -6,7 +6,7 @@ Teah Online includes a suite of debug slash commands (entered via in-game chat),
 
 ## Files
 
-- `js/client/ui/panelManager.js` -- Chat command parsing and slash command implementations (lines ~478-790).
+- `js/client/ui/panelManager.js` -- Chat command parsing and slash command implementations (lines ~505-875).
 - `js/client/ui/testMobPanel.js` -- Test mob GUI panel (`/testmob`), mob card rendering, `TESTMOB_DUNGEONS` registry, `MOB_ABILITY_DESCRIPTIONS`.
 - `js/authority/snapshots.js` -- `serializeGameState()`, `applyGameStateSnapshot()`, `DEBUG_dumpSnapshot()`, `DEBUG_roundTripSnapshot()`.
 - `js/authority/commands.js` -- `DEBUG_dumpCommands()` (command history ring buffer).
@@ -38,10 +38,10 @@ All commands are entered in the chat input (Tab to open, type command, Enter to 
 | Command | Arguments | Description |
 |---------|-----------|-------------|
 | `/help` | -- | Lists all available commands |
-| `/gold` | `[amount]` | Adds gold (default 500) |
-| `/wave` | `<n>` | Jump to wave N (auto-calculates floor) |
+| `/gold` (or `/addgold`) | `[amount]` | Adds gold (default 500) |
+| `/wave` | `<n>` | Jump to wave N (auto-calculates floor, spawns wave, resets HP) |
 | `/heal` | -- | Restore player HP to max |
-| `/hp` | `<amount\|max>` | Set player HP to specific value or max. If amount exceeds maxHp, maxHp is raised |
+| `/hp` | `<amount\|max\|full>` | Set player HP to specific value or max. If amount exceeds maxHp, maxHp is raised |
 | `/op` | -- | Toggle OP mode (infinite gold, 10000 HP, all items unlocked) |
 | `/god` | -- | Toggle god mode (player invincibility) |
 | `/freeze` | -- | Toggle freeze all mobs (speed=0, abilities disabled) |
@@ -51,7 +51,7 @@ All commands are entered in the chat input (Tab to open, type command, Enter to 
 | `/killall` | -- | Kill all mobs and clear bullets |
 | `/test` | `[mobType] [live]` | Enter test arena; spawn mob frozen (or live). No args = enter arena + show help |
 | `/testmob` | -- | Open the graphical mob tester panel |
-| `/dung` | `<type>` | Teleport to a dungeon (cave, azurine, etc.) |
+| `/dung` | `<type>` | Teleport to a dungeon (cave, azurine, etc.). Level-gated unless OP mode is on |
 | `/floor` | `<n>` | Set dungeon floor number |
 | `/stairs` | -- | Force open the staircase |
 | `/skipw` | -- | Clear current wave and advance to next |
@@ -65,8 +65,9 @@ All commands are entered in the chat input (Tab to open, type command, Enter to 
 | `/save` | -- | Force save to localStorage |
 | `/resetsave` | -- | Clear all save data (requires page refresh) |
 | `/grunt` | -- | Legacy: spawn a test grunt |
+| `/testmob bot` | `[right]` | Spawn a test shoot bot (left side default, or right) |
 | `/ghost` | -- | Toggle alive/dead (ghost mode) in Mafia |
-| `/role` | `<impostor\|crewmate>` | Change Mafia role (debug, must be in Skeld) |
+| `/role` | `<impostor\|crewmate\|...>` | Change Mafia role (debug, must be in Skeld). Accepts team names, sub-roles from `MAFIA_ROLES`, and "imposter" spelling |
 | `/sabo` | `<reactor\|o2\|lights>` | Trigger a sabotage event (must be in Skeld, playing phase) |
 | `/fix` | -- | Instantly resolve the active sabotage |
 | `/party` | `<1-4\|reset>` | Set party size (2-4 spawns bots), or reset to solo. No args shows status |
@@ -84,9 +85,8 @@ Opened via `/testmob`. A full GUI panel for spawning and testing any mob in the 
 - Previous mobs/bullets/effects are cleared before each spawn
 
 **Data structures**:
-- `TESTMOB_DUNGEONS` -- maps dungeon key -> floor -> mob type list
+- `TESTMOB_DUNGEONS` -- maps 6 dungeon keys (cave, azurine, vortalis, earth205, wagashi, earth216) to floor -> mob type lists
 - `MOB_ABILITY_DESCRIPTIONS` -- human-readable descriptions for all 100+ mob special abilities
-- `TESTMOB_DUNGEONS` -- maps 7 dungeons to floor/mob lists
 - Panel validates floor counts against `DUNGEON_REGISTRY` at load time
 - When adding new dungeons/mobs, always update both `TESTMOB_DUNGEONS` and `MOB_ABILITY_DESCRIPTIONS`
 
@@ -145,6 +145,8 @@ These functions use the test arena, automatically entering it and setting up OP 
 | `window._gameSpeed` | `1` | Game tick speed multiplier |
 | `window.DEBUG_pauseAuthority` | `false` | Freezes the entire authority tick (game is completely paused) |
 
+**Reset behavior:** `_godMode`, `_mobsFrozen`, `_mobsNoFire`, and `_gameSpeed` are all reset to defaults by `resetCombatState()` on every scene transition. `_opMode` and `DEBUG_pauseAuthority` are NOT reset -- they persist until manually toggled off.
+
 The debug overlay (toggled via Settings > General > Debug Overlay, or `gameSettings.showDebugOverlay`) shows zoom/scale/tile info. Active flags (OP, GOD, FROZEN, NOFIRE) are rendered as colored badges in the HUD.
 
 ### Development Server
@@ -180,7 +182,7 @@ Since Teah Online renders entirely to a Canvas element, DOM inspection and scree
 
 - **All slash commands are client-side only**: In a future multiplayer setup, these would need to be gated server-side. Currently there is no authentication or access control.
 - **Test arena is a separate level**: `/test` and `/testmob` spawn enter `test_arena` -- a dedicated small level. This sets `_opMode = true` and `gold = 999999` automatically.
-- **Frozen vs. Live mobs**: Frozen mobs have `speed = 0` and `_specialTimer = 99999` (effectively disabling abilities). Live mobs run full AI. The `/freeze` command toggles all existing mobs; `/test <type>` defaults to frozen unless you pass `live`.
+- **Frozen vs. Live mobs**: Frozen mobs have `speed = 0`, `_specialTimer = 99999` (effectively disabling abilities), `_frozen = true`, and `_testDummy = true`. Original speed is saved to `_savedSpeed` for restoration on unfreeze. Live mobs run full AI. The `/freeze` command toggles all existing mobs; `/test <type>` defaults to frozen unless you pass `live`.
 - **Snapshots exclude rendering state**: Hit effects, death effects, particles, camera, and panel state are not in snapshots. A snapshot round-trip will lose all visual effects.
 - **OP mode flag is shown in HUD**: When `_opMode` is true, an "OP" badge appears in the debug flags area of the HUD. Same for GOD, FROZEN, and NOFIRE.
 - **Command history is a ring buffer**: Only the last 200 commands are retained. Older commands are silently dropped.

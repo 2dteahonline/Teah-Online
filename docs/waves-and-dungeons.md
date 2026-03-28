@@ -29,28 +29,46 @@ The wave system drives all dungeon combat. Each dungeon floor runs 10 waves of i
 | `checkPhaseAdvance(deadMobPhase)` | Called on mob death; triggers next phase when 75% of current phase killed |
 | `createMob(typeKey, x, y, hpMult, spdMult, opts)` | Factory that builds a fully initialized mob object from `MOB_TYPES` |
 | `getWaveComposition(w)` | Looks up `FLOOR_CONFIG[currentDungeon][dungeonFloor]` for the wave's mob mix |
-| `getMobCountForWave(w)` | Base 5-14 mobs scaling with wave number, +2 per floor, cap 22. Multiplied by party mob count scale. |
-| `getWaveHPMultiplier(w)` | Exponential floor scaling (floor 1 = 1x, floor 5 = 25x) + 12% per wave. Multiplied by party HP scale. |
-| `getWaveSpeedMultiplier(w)` | Floor speed scaling + 6% per wave |
-| `getMobDamageMultiplier()` | Floor 1 = 1x, scales up to ~4.5x on floor 5 |
+| `getMobCountForWave(w)` | `min(5 + floor(w), 14) + floor((dungeonFloor-1) * 2)`, cap 22. Multiplied by party mob count scale. |
+| `getWaveHPMultiplier(w)` | `pow(2.2, floor-1) * (1 + (w-1)*0.12)`. Multiplied by party HP scale (bosses exempt). |
+| `getWaveSpeedMultiplier(w)` | `(1 + (w-1)*0.06) * (1 + (floor-1)*0.15)` |
+| `getMobDamageMultiplier()` | `1 + f*0.7 + pow(f, 1.5)*0.2` where f = floor-1. Floor 1=1x, 2=1.5x, 3=2.2x, 4=3.2x, 5=4.5x |
 | `capMobSpeed(type, speed)` | Runners capped at 1.1x player speed, everything else at 0.85x |
-| `getGoldReward(type, waveNum)` | Base from `MOB_TYPES.goldReward`, scales with global wave + floor bonus |
-| `getQuickKillBonus(mob)` | 20% bonus gold/HP if killed within 5 seconds (300 frames) of spawning |
+| `getGoldReward(type, waveNum)` | `round(base * (1 + (globalWave-1)*0.07) * floorBonus * 0.5 * dungeonMult)`. floorBonus: F1=1.8, F2=1.3, F3=1.1, F4-5=1.0 |
+| `getQuickKillBonus(mob)` | 1.2x multiplier if killed within 300 frames (5s) of spawning |
 | `pickFromWeighted(entries)` | Weighted random selection from `[{type, weight}]` arrays |
 | `getSpawnPos()` | Picks a random walkable edge tile, falls back to scanning |
+| `xpForLevel(lvl)` | `floor(50 * pow(1.08, lvl-1))` — XP needed per player level |
+| `skillXpForLevel(lvl)` | `floor(80 * pow(1.12, lvl-1))` — XP needed per skill level |
+| `getDungeonLevel()` | Weighted: `gunScore*0.4 + killsLevel*0.35 + playerLevel*0.25`, clamped 1-100 |
 | `WAVES_PER_FLOOR` | Constant: `10` |
+| `MAX_FLOORS` | Legacy constant: `5` (use `getDungeonMaxFloors()` for multi-dungeon) |
 | `getDungeonMaxFloors()` | Reads from `DUNGEON_REGISTRY[currentDungeon].maxFloors` |
+| `PLAYER_MAX_LEVEL` | Constant: `1000` |
+| `MEDPACK_HEAL` | Constant: `30` |
+| `MEDPACK_PICKUP_RANGE` | Constant: `40` |
+| `GRAB_RANGE` | Constant: `60` |
+| `GRAB_DURATION` | Constant: `40` frames |
+| `GRAB_COOLDOWN` | Constant: `0` (no wait between grabs) |
+| `HOTBAR_HOLD_THRESHOLD` | Constant: `180` frames (3 seconds) |
+| `lives` | Starts at `3` per dungeon run |
+| `activeSlot` | `0` = gun, `1` = katana |
+| `nextMobId` | Global incrementing mob ID counter (never reset mid-session) |
+| `dungeonComplete` | `true` after clearing final floor wave 10 |
+| `victoryTimer` | Frames since dungeon complete (for celebration animation) |
+| `contactCooldown` | Frames of invulnerability after contact hit |
+| `hotbarHoldSlot` | Currently held hotbar slot (`-1` when not holding) |
 
 ### Floor Config (`floorConfig.js`)
 
 | Item | Purpose |
 |---|---|
-| `WAVE_TEMPLATES` | Reusable wave compositions (e.g. `grunt_rush`, `archer_ambush`, `elite_wave`) |
+| `WAVE_TEMPLATES` | 12 reusable wave compositions in 3 groups: Cave early (4), Cave late (4), Vortalis Floor 1 Pirates (4) |
 | `SUBFLOOR_BLUEPRINTS` | Reusable subfloor structures referencing templates by name |
 | `_buildFloor(floorDef)` | Resolves templates into concrete floor config |
 | `_resolveSubFloor(subFloor)` | Expands `waveTemplates` names into `waveComps` objects (deep-cloned) |
 | `getFloorWaveComposition(floorConfig, waveNum)` | Finds the matching subfloor for a wave number and returns its composition |
-| `FLOOR_CONFIG` | Final assembled config: `FLOOR_CONFIG[dungeonType][floorNum]` |
+| `FLOOR_CONFIG` | Final assembled config: `FLOOR_CONFIG[dungeonType][floorNum]` — 6 dungeons x 5 floors = 30 floor configs |
 
 ### Dungeon Registry (`dungeonRegistry.js`)
 
@@ -61,31 +79,68 @@ The wave system drives all dungeon combat. Each dungeon floor runs 10 waves of i
 
 Each entry contains: `name`, `combatLevelId`, `maxFloors`, `returnLevel`, `hasHazards`, `spawnTX/TY`, `requiredLevel`, `rewardMult`, `tileset`, `difficulty`, `music`.
 
+### Wave System Variables (`waveSystem.js`)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `waveTimer` | `0` | Countdown/countup timer between waves |
+| `currentPhase` | `1` | Current phase within wave (1, 2, or 3) |
+| `phaseMaxMobs` | `0` | How many mobs were in the current phase's spawn |
+| `phaseMobsKilled` | `0` | How many of this phase's mobs have been killed |
+| `phaseTriggered` | `[false, false, false]` | Tracks which phases have spawned |
+| `playerLevel` | `1` | Player experience level |
+| `playerXP` | `0` | Current XP toward next level |
+| `stairsOpen` | `false` | `true` after completing WAVES_PER_FLOOR on current floor |
+
+### WAVE_TEMPLATES (12 templates in 3 groups)
+
+**Cave early waves (1-4):** `grunt_rush`, `archer_ambush`, `speed_swarm`, `heavy_assault`
+**Cave late waves (6-9):** `mummy_ambush`, `witch_coven`, `blitz_wave`, `elite_wave`
+**Vortalis Floor 1 Pirates:** `pirate_rush`, `pirate_gunners`, `pirate_heavy`, `pirate_mixed`
+
+Cave floors use templates via `SUBFLOOR_BLUEPRINTS` (`cave_early`, `cave_late`). Other dungeons define wave compositions inline.
+
+### Dungeon Floor Structures
+
+- **Cave**: 5 identical structure floors. W1-4 early templates, W5 mid-boss golem, W6-9 late templates, W10 final boss golem.
+- **Azurine**: 5 unique floors (City, Tech, Junkyard, Trap House, Waste/Dusk).
+- **Vortalis**: 5 unique floors (Pirate, Jungle/Blood, Werewolf/Ghost, Sea/Deep-Sea, Merfolk/Ocean).
+- **Earth-205**: 5 unique floors (Scrapyard, Butcher, Carnival, Casino, Meltdown).
+- **Wagashi**: 5 unique floors (Silk/Boar, Jade/Ruin, Storm/Inferno, Execution/Void, Maw/Heaven).
+- **Earth-216**: 5 unique floors (Crime/Casino, Flesh/Performance, Spirit/Death, Engines/Speed, Fate/Corruption).
+
 ## How It Works
 
 ### Wave State Machine
 
 ```
-inactive  --[spawnWave()]--> active  --[all mobs dead]--> victory
-                                     --[player dies, 0 lives]--> loss
+waiting --[waveTimer > 1800 (or 36000 OP)]--> spawnWave() --> active
+active  --[mobs.length === 0]--> cleared (full heal, +2 potions, clear effects)
+cleared --[has revivable party members]--> revive_shop (PARTY_CONFIG.REVIVE_SHOP_DURATION = 600 frames)
+revive_shop --[timer expires]--> cleared (waveTimer = 60)
+cleared --[waveTimer <= 0 && !stairsOpen]--> spawnWave()
+cleared --[waveTimer <= 0 && stairsOpen]--> (player descends)
 ```
 
-- `waveState` is one of: `"inactive"`, `"active"`, `"victory"` (checked externally in the game loop)
-- Between waves (inactive), the player can access the shop station and explore
+- `waveState` is one of: `"waiting"`, `"active"`, `"cleared"`, `"revive_shop"` (default: `"waiting"`)
+- **On wave clear**: full heal (all party members via `PartySystem.healAll()`), +2 potions (player + all bots), clear all bullets/poisons/hazards/telegraphs/mob particles
+- **Chest armor regen** during cleared phase: 1 HP per 60 frames
+- Between waves (cleared/waiting), the player can access the shop station and explore
 - After wave 10, `stairsOpen = true` and the player can descend to the next floor
 - After clearing floor 5 wave 10, `dungeonComplete = true` and a victory celebration plays
+- Wave timer between waves: 1800 frames (30s) normal, 36000 frames (10 min) in OP mode
 
 ### 3-Phase Spawning System
 
 Each non-boss wave spawns mobs in up to 3 phases:
 
-1. **Phase 1** -- Spawns immediately when the wave starts.
-2. **Phase 2** -- Triggers when 75% of Phase 1 mobs are killed. +4% HP, +2% speed.
-3. **Phase 3** -- Triggers when 75% of Phase 2 mobs are killed. +8% HP, +4% speed.
+1. **Phase 1** -- Spawns immediately when the wave starts. Tracked via `phaseTriggered[0]`.
+2. **Phase 2** -- Triggers when 75% of phase mobs killed (`phaseMobsKilled >= 0.75 * phaseMaxMobs`). +4% HP, +2% speed.
+3. **Phase 3** -- Triggers when 75% of remaining phase mobs killed. +8% HP, +4% speed.
 
 Boss waves bypass phasing entirely -- all mobs spawn at once and all three phases are marked as triggered.
 
-Each phase also spawns 2 medpacks at random walkable tiles. Medpacks heal 30 HP on pickup (range 40px).
+Each phase spawns 2 medpacks at random walkable tiles. Medpacks heal 30 HP on pickup (range 40px). Medpack pickup checks `PartySystem.getAliveEntities()` so bots can also pick them up.
 
 ### Party Wave Scaling
 
@@ -117,7 +172,11 @@ scale = 1 + (totalMembers - 1) * MOB_HP_SCALE_PER_MEMBER
 - **Damage**: `mt.damage * getMobDamageMultiplier()`
 - **Visual scale**: Bosses use `mt.bossScale`, tanks get 1.3, witch 1.1, golem 1.6
 - **All type-specific fields** are copied: shooter (shootRange/Rate), witch (summonRate/Max), golem (boulderRate/Speed), mummy (explodeRange/Damage/fuse), archer (arrowRate/Speed/Bounces), healer (healRadius/Rate/Amount)
-- **Special abilities**: `_specials` array, cooldown map `_abilityCDs`, plus flags for cloak, bombs, mines, shields, turrets, drones, etc.
+- **Collision fields**: `radius` (default `GAME_CONFIG.MOB_RADIUS`), `wallHW` (default `GAME_CONFIG.MOB_WALL_HW`), `hitboxR` (default `GAME_CONFIG.ENTITY_R`)
+- **Special abilities**: `_specials` array, `_specialTimer`/`_specialCD` (single cooldown), `_abilityCDs` map (multi-ability, staggered initial CDs of 120-240 frames)
+- **Shield/defense fields**: `_shieldHp`, `_shieldExpireFrame`, `_invulnerable`, `_submerged`, `_frontalShield`, `_damageReduction`, `_counterStance`, `_poisonImmune`
+- **Offensive fields**: `_contactDamageAura` ({range, damage}), `_deathExplosion` ({radius, damage}), `_lethalEfficiency`, `_backstabber`, `_intimidatingPresence`
+- **Other fields**: `_showMustGoOn` (30% speed boost below 30% HP), `_canSplit`/`_splitDone` (for core_guardian split), `isBoss`
 - **Phase tag**: `mob.phase = opts.phase || 1`
 - **Freeze support**: If `window._mobsFrozen` is active, new mobs spawn frozen
 
@@ -154,7 +213,7 @@ Each dungeon type defines a config per floor. A floor contains:
     {
       waves: [5],
       boss: 'golem',
-      bossComp: { forceBoss: 'golem', support: [...], theme: 'The Boss' }
+      bossComp: { forceGolem: true, forceBoss: 'golem', support: [...], theme: 'The Boss' }
     },
     ...
   ],
@@ -168,6 +227,7 @@ Each dungeon type defines a config per floor. A floor contains:
 - `support` -- Array of `{type, weight}` for the secondary pool
 - `primaryPct` -- Probability of picking from primary vs support (e.g. 0.7 = 70% primary)
 - `theme` -- Display name for the wave (e.g. "Grunt Rush", "Witch Coven")
+- `forceGolem` -- Boolean flag for golem mid-boss waves
 - `forceBoss` -- Boss type key for boss waves
 - `duoBoss` -- Optional second boss for duo encounters (Floor 5)
 - `support` (on boss comps) -- Guaranteed spawns with `{type, count}`
@@ -272,7 +332,7 @@ TelegraphSystem.create({
 - **Party System** (`partySystem.js`) -- `PartySystem.getMobCountScale()` and `getMobHPScale()` for wave scaling
 - **Inventory System** (`inventorySystem.js`) -- Shop is accessible between waves; armor/weapons are session-scoped to dungeon runs
 - **Save/Load** (`saveLoad.js`) -- Dungeon progress is not saved mid-run (roguelike); only permanent progression persists
-- **Event Bus** (`eventBus.js`) -- `wave_started` and `player_died` events emitted
+- **Event Bus** (`eventBus.js`) -- `wave_started`, `wave_cleared`, and `player_died` events emitted
 
 ## Gotchas & Rules
 

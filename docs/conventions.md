@@ -49,7 +49,7 @@ Backups are untracked (not committed) and serve as a safety net during developme
 When modifying scripts, two version numbers must be incremented:
 
 1. **Query param on `<script>` tags** in `index.html`: `?v=70` (or higher). Increment for the specific file you changed.
-2. **`const _v`** in the inline `<script>` block at the top of `index.html` (currently `const _v = 15`). This is a global cache-bust version.
+2. **`const _v`** in the inline `<script>` block at the top of `index.html`. This is a global cache-bust version — increment it when changing multiple files at once.
 
 Both must be updated or browsers may serve stale cached versions of your changes.
 
@@ -60,7 +60,7 @@ Both must be updated or browsers may serve stale cached versions of your changes
 Grid-based AABB collision check. Returns `true` if the position is not inside any solid tile.
 
 - Defined in `js/authority/mobSystem.js`
-- `hw` defaults to `GAME_CONFIG.POS_HW` (12) if not provided
+- `hw` defaults to `GAME_CONFIG.POS_HW` (10) if not provided
 - Checks the four corner tiles of the bounding box `(px - hw, py - hw)` to `(px + hw, py + hw)`
 - Uses `isSolid(col, row)` for tile lookup
 
@@ -200,7 +200,7 @@ When adding any new player/character animation (new skill, emote, action):
 2. If yes, add the row to the templates and references, update `assets/manifest.json` frameSize
 3. Update `CLAUDE.md` with the new row count
 
-Current body rows: 32 (4 cols x 32 rows = 128x1280)
+Current body rows: 32 (4 cols x 32 rows = 128x1024)
 Current head rows: 4 (4 cols x 4 rows = 128x128)
 Current hat rows: 5 (5 cols x 5 rows = 160x160)
 

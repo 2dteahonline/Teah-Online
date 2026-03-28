@@ -33,15 +33,17 @@ A tile-based farming skill inside `house_01`. The player tills soil, plants seed
    - Hoe affects up to `hoe.swingTiles` tiles per swing
    - Cooldown: 15 frames (0.25s)
 
-2. **TILLED** → plant action (select seed, costs gold, checks levelReq + gardenReq) → **PLANTED**
-   - Consumes 1 seed from inventory
-   - Sets `tile.cropId` and `tile.growthTimer = 0`
+2. **TILLED** → plant action (select seed, checks levelReq + gardenReq) → **PLANTED**
+   - Requires selected seed in inventory; consumes 1 seed
+   - Level gate: `skillData['Farming'].level >= crop.levelReq`
+   - Garden gate: `crop.gardenReq <= farmingState.landLevel`
+   - Sets `tile.cropId`
    - Cooldown: 10 frames (0.17s)
 
 3. **PLANTED** → water action → **GROWING**
-   - Bucket mode: waters up to `hoe.swingTiles` adjacent tiles at once
+   - Bucket mode: waters up to `hoe.swingTiles` adjacent tiles at once, empties bucket
    - No-bucket mode: waters only single tile
-   - Sets `bucketFilled = false` after use
+   - Sets `growthTimer = 0`
    - Cooldown: 10 frames (0.17s)
 
 4. **GROWING** → automatic (growthTimer increments each frame) → **HARVESTABLE**
@@ -105,6 +107,14 @@ One-time purchase from the vendor: `Metal Bucket` — 50g, level req 1.
 - **Without bucket**: Water action only affects single tile
 - **State**: `farmingState.bucketOwned` (persisted), `farmingState.bucketFilled` (session only)
 
+## Tile Targeting
+
+Two input modes for selecting which tile to act on:
+- **Click mode** — closest tile to mouse cursor within hoe reach
+- **F key** — closest tile in facing direction
+
+**Multi-tile actions** (till, harvest, bucket water): selects adjacent tiles within Manhattan distance 2, sorted by distance, up to `hoe.swingTiles` count.
+
 ## Garden Expansions (8 levels)
 
 | Level | Name | Grid (W×H) | Total Plots | Cost | Farming Lv |
@@ -130,7 +140,8 @@ One-time purchase from the vendor: `Metal Bucket` — 50g, level req 1.
 | `plantCooldown` | 10 frames | 0.17s cooldown after planting |
 | `harvestCooldown` | 15 frames | 0.25s cooldown after harvesting |
 | `growthCheckInterval` | 1 frame | Check every frame |
-| `tileInteractRange` | 60px | Not enforced; reach determined by hoe |
+| `tileInteractRange` | 60px | Max distance to interact with a tile |
+| `PLOT_SIZE` | 1 | 1×1 tile = 48×48px per plot |
 
 ## Crop Rendering (4 visual stages)
 

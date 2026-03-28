@@ -34,12 +34,14 @@
   - `_roleState`: Per-role ability state (tracker, scientist, shapeshifter, phantom, noisemaker timers/cooldowns)
 
 - **`MAFIA_GAME`** (const) -- Mode-level constants and per-map data:
-  - `BOT_COUNT` (8), `IMPOSTOR_COUNT` (1), `BOT_SPEED` (6.25)
-  - `FOV_BASE_RADIUS` (9 tiles), `KILL_RANGE` (120px), `REPORT_RANGE` (150px)
-  - Timers: `KILL_COOLDOWN`, `DISCUSSION_TIME`, `VOTING_TIME`, `EJECTION_TIME`, `VOTE_RESULTS_TIME`
-  - `SABOTAGE_TYPES`: reactor_meltdown, o2_depletion, lights_out (with fix panel configs)
-  - `SABOTAGE_PANELS`: tile positions for fix panels
-  - `COLORS[]`: 10 Among Us colors (Red, Blue, Green, Pink, Orange, Yellow, Black, White, Purple, Cyan)
+  - `BOT_COUNT` (8 — 8 bots + 1 player = 9 total), `IMPOSTOR_COUNT` (1), `BOT_SPEED` (`PLAYER_BASE_SPEED` = 7.5)
+  - `FOV_BASE_RADIUS` (4.5 tiles), `KILL_RANGE` (120px), `REPORT_RANGE` (150px), `EMERGENCY_RANGE` (120px)
+  - Timers (frames @ 60fps): `KILL_COOLDOWN` (1800 = 30s), `DISCUSSION_TIME` (900 = 15s), `VOTING_TIME` (1800 = 30s), `EJECTION_TIME` (300 = 5s), `VOTE_RESULTS_TIME` (900 = 15s), `SABOTAGE_COOLDOWN` (1800 = 30s), `REACTOR_TIMER` (1800 = 30s), `O2_TIMER` (1800 = 30s)
+  - Bot timing: `BOT_TASK_PAUSE_MIN` (180 = 3s), `BOT_TASK_PAUSE_MAX` (300 = 5s), `BOT_PATH_LIMIT` (8000)
+  - Return: `RETURN_LEVEL` = `'mafia_lobby'`, `RETURN_TX` = 25, `RETURN_TY` = 20
+  - `SABOTAGE_TYPES`: reactor_meltdown (timer 1800, panels [reactor_p1, reactor_p2], simultaneous=true), o2_depletion (timer 1800, panels [o2_o2, o2_admin], simultaneous=false — each independent keypad), lights_out (timer 0, panels [lights_electrical], simultaneous=false — flip switches)
+  - `SABOTAGE_PANELS`: reactor_p1 (tx6,ty25), reactor_p2 (tx6,ty44), o2_o2 (tx99,ty32), o2_admin (tx92,ty38), lights_electrical (tx41,ty55)
+  - `COLORS[]`: 10 Among Us colors — Red (#c51111), Blue (#132ed1), Green (#127f2d), Pink (#ed54ba), Orange (#ef7d0e), Yellow (#f5f557), Black (#3f474e), White (#d6e0f0), Purple (#6b2fbb), Cyan (#38fedb)
   - `SETTINGS_DEFAULTS`: Full lobby settings defaults
   - `MAPS.skeld_01`: `SPAWN` and `ROOM_CENTERS` (14 rooms)
 
@@ -144,7 +146,7 @@ Roles are split into base team (`crewmate`/`impostor`) and optional subroles tha
 
 ### Role Assignment
 
-Default chance percentages (`MAFIA_ROLE_DEFAULTS`): Engineer 30%, Tracker 20%, Noisemaker 20%, Scientist 20%, Shapeshifter 30%, Phantom 20%, Viper 20%. Chance values are configurable from the lobby settings panel. A roll against total chance determines whether a participant gets any subrole vs. staying base crewmate/impostor.
+Default chance percentages (`MAFIA_ROLE_DEFAULTS`): Engineer 30%, Tracker 20%, Noisemaker 20%, Scientist 20%, Shapeshifter 30%, Phantom 20%, Viper 20%. Chance values are configurable from the lobby settings panel. A roll against total chance determines whether a participant gets any subrole vs. staying base crewmate/impostor. **Player is always crewmate** (single-player constraint) — only bots can be impostor. Subroles are assigned via weighted random roll.
 
 ### Role State (`MafiaState._roleState`)
 
@@ -286,7 +288,7 @@ The FOV system creates Among Us-style fog-of-war using wall-boundary vertex rayc
 - **Raycast origin is lerped** (0.35 blend factor) toward player position for smooth shadow movement without per-pixel jitter.
 - **Dark overlay** (`rgba(0,0,0,0.93)`) with blurred polygon cutout (`blur(12px)`) for soft shadow edges.
 - **Performance**: Cached `Uint8Array` flat grid + boundary vertex list (rebuilt per level), pre-allocated offscreen buffer. ~200-500 rays/frame.
-- **Vision radius** = `FOV_BASE_RADIUS * visionMultiplier * lightsMult * TILE`.
+- **Vision radius** = `FOV_BASE_RADIUS (4.5) * visionMultiplier * lightsMult * TILE`.
 - **Vision multiplier**: Crewmates use `crewVision` (default 1x), impostors use `impostorVision` (default 1.5x).
 - **Lights sabotage dimming**: Crewmate FOV smoothly shrinks to 35% of normal radius over 3 seconds (`_lightsDimProgress` 0 to 1, `_LIGHTS_FADE_FRAMES = 180`). Fades back up over 3 seconds when fixed. Impostors completely unaffected.
 - **Ghost players** see full map (no FOV overlay).
@@ -317,7 +319,22 @@ The FOV system creates Among Us-style fog-of-war using wall-boundary vertex rayc
 
 14 rooms defined in `MAFIA_GAME.MAPS.skeld_01.ROOM_CENTERS`:
 
-Cafeteria (spawn), Upper Engine, Reactor, Security, MedBay, Electrical, Admin, Storage, Shields, Communications, Lower Engine, Weapons, O2, Navigation.
+| Room | Tile Coords |
+|------|-------------|
+| Cafeteria (spawn) | (74, 17) |
+| Upper Engine | (16, 9) |
+| Reactor | (6, 35) |
+| Security | (34, 33) |
+| MedBay | (49, 25) |
+| Electrical | (50, 52) |
+| Admin | (91, 46) |
+| Storage | (70, 66) |
+| Shields | (112, 62) |
+| Communications | (92, 73) |
+| Lower Engine | (16, 60) |
+| Weapons | (109, 9) |
+| O2 | (96, 29) |
+| Navigation | (127, 34) |
 
 Map grid: 135 wide x 80 tall tiles, with `XO=4` offset for virtual-to-actual coordinates.
 
@@ -385,7 +402,7 @@ Role-specific settings are also configurable per subrole (e.g., vent cooldown fo
 
 ## Gotchas & Rules
 
-- Player always starts as crewmate (with possible subrole from weighted random assignment). Use `/role impostor` or `/role <subrole>` to test.
+- Player always starts as crewmate (single-player constraint — only bots can be impostor). Player may get a crewmate subrole from weighted random assignment. Use `/role impostor` or `/role <subrole>` to test.
 - Bots are NOT in the `mobs[]` array -- they are tracked in `MafiaState.participants[].entity`. This means standard mob rendering/collision does not apply; they have custom rendering.
 - Bot `hp` is set to `-1` so HP bars are skipped by the standard draw pipeline.
 - Kill cooldown and sabotage cooldown are stored in frames (multiply seconds by 60).

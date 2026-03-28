@@ -80,7 +80,7 @@ Rods are dual-purpose: melee weapons AND fishing tools. `special: 'fishing'` ide
 | Salmon | 18 | 15g | 0.50 | Iron (1) | 18 | 2 | #d08060 |
 | Tuna | 10 | 25g | 0.65 | Iron (1) | 30 | 3 | #4060a0 |
 | Swordfish | 5 | 50g | 0.80 | Gold (2) | 50 | 4 | #607090 |
-| Golden Leviathan | 2 | 120g | 0.95 | Mythic (3) | 100 | 5 | #d4a030 |
+| Leviathan | 2 | 120g | 0.95 | Mythic (3) | 100 | 5 | #d4a030 |
 
 Rarity is spawn weight for weighted random selection. Higher rarity = more common.
 

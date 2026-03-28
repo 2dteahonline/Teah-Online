@@ -2,7 +2,7 @@
 
 ## Overview
 
-The progression system provides 125 power steps per weapon through a 5-tier by 25-level grid. Weapons start at Common Lv.1 and can be upgraded through ore-gated recipes and evolved at Lv.25 to advance to the next tier. This system covers main guns, fishing rods, farming hoes, and pickaxes. Dungeon shop items (session-scoped armor, weapons) are NOT part of this system. A parallel skill XP system tracks player proficiency across 6 categories.
+The progression system provides 125 power steps per weapon through a 5-tier by 25-level grid. Weapons start at Common Lv.1 and can be upgraded through ore-gated recipes and evolved at Lv.25 to advance to the next tier. This system covers main guns, fishing rods, and pickaxes (17 items total). Dungeon shop items (session-scoped armor, weapons) are NOT part of this system. A parallel skill XP system tracks player proficiency across 6 categories.
 
 ## Files
 
@@ -87,7 +87,7 @@ Each item in `PROG_ITEMS` defines:
 {
   id: 'storm_ar',
   name: 'Storm AR',
-  category: 'main_gun',       // main_gun, fishing_rod, farming_hoe, pickaxe
+  category: 'main_gun',       // main_gun, fishing_rod, pickaxe
   type: 'gun',                 // gun or melee
   subtype: 'assault_rifle',    // weapon subtype
   desc: 'Fast, reliable full-auto workhorse',
@@ -115,7 +115,7 @@ Each item in `PROG_ITEMS` defines:
 | `ironwood_bow` | Ironwood Bow | Bow | 60 | 950 | Pierce through mobs |
 | `volt_9` | Volt-9 | SMG | 12 | 200 | Bullet hose, random spread |
 
-Additional categories: 4 fishing rods, 4 farming hoes, 8 pickaxes.
+Additional categories: 4 fishing rods (type: melee, flags: `{special:'fishing'}`), 8 pickaxes (type: melee, flags: `{special:'pickaxe'}`).
 
 ### Stat Interpolation Formula
 
@@ -126,7 +126,7 @@ t = (level - 1) / 24          // 0 at L1, 1 at L25
 stat = round(base + (max - base) * t)
 ```
 
-All numeric fields in `base`/`max` are interpolated. Non-numeric flags (pierce, isArrow) are applied directly from `def.flags`.
+All numeric fields in `base`/`max` are interpolated. Fractional stats (`critChance`, `miningSpeed`, `fireRate`, `bulletSpeed`, `catchBonus`) are rounded to 2 decimal places; all other stats are rounded to integers. Non-numeric flags (pierce, isArrow, special) are applied directly from `def.flags`.
 
 ### Evolution Mechanics
 

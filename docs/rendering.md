@@ -7,9 +7,9 @@ The rendering system draws every visual element of the game onto an HTML5 Canvas
 - `js/core/draw.js` -- Main `draw()` function, game loop, camera, minimap, HUD, debug overlays, death/respawn screens
 - `js/core/tileRenderer.js` -- `drawLevelBackground()` with per-scene tile styles (lobby, cave, dungeon, mine, farm, skeld, etc.)
 - `js/core/cameraSystem.js` -- Among Us-style security camera overlay (4 live feeds in 2x2 grid, scan lines, REC indicators)
-- `js/client/rendering/entityRenderers.js` -- `ENTITY_RENDERERS` registry (148 entity types including 16 grocery shelf variants) and `drawLevelEntities()` dispatch
+- `js/client/rendering/entityRenderers.js` -- `ENTITY_RENDERERS` registry (172 static entity types including 16 grocery shelf variants, plus dynamic ingredient types) and `drawLevelEntities()` dispatch
 - `js/client/rendering/characterSprite.js` -- Color utilities, 3-layer spritesheet system, `drawChar()`, `drawChoso()` (player), `drawGenericChar()` (mobs), `_charEquipOverride`/`_charColorOverride` for bot rendering
-- `js/client/rendering/hitEffects.js` -- `HIT_EFFECT_RENDERERS` registry (73 effect types) and hit effect dispatch
+- `js/client/rendering/hitEffects.js` -- `HIT_EFFECT_RENDERERS` registry (72 named effect types + `_default` fallback = 73 entries) and hit effect dispatch
 - `js/client/rendering/mafiaFOV.js` -- Wall-aware raycasting FOV overlay, dead body rendering, Mafia HUD, meeting UI, sabotage fix panels, role ability buttons
 - `js/core/assetLoader.js` -- `AssetLoader` singleton: loads images from `assets/manifest.json`, provides fallback-to-procedural pattern
 
@@ -63,31 +63,44 @@ The `draw()` function renders in this strict order:
 2. **Begin world-space zoom** -- `ctx.save(); ctx.scale(WORLD_ZOOM, WORLD_ZOOM)`
 3. **Tiles** -- `drawLevelBackground(cx, cy)` renders scene-specific floor/wall tiles
 4. **User-placed tiles** -- `drawPlacedTiles(cx, cy)` from the toolbox system
-5. **Entity overlays** -- `drawLevelEntities(cx, cy)` renders barriers, spawn pads, zones, buildings, furniture, task stations, etc.
-6. **Grid overlay** -- optional coordinate grid toggled with G key (every 5th tile labeled)
-7. **World-space characters** (translate to camera offset):
+5. **Mafia FOV cache update** -- `updateMafiaFOVCache()` so `isMafiaWorldPointVisible()` works during entity draws
+6. **Entity overlays** -- `drawLevelEntities(cx, cy)` renders barriers, spawn pads, zones, buildings, furniture, task stations, etc.
+7. **Grid overlay** -- optional coordinate grid toggled with G key (every 5th tile labeled)
+8. **World-space characters** (translate to camera offset):
    - Upgrade station, staircase, victory celebration (dungeon only)
-   - Ore nodes (under characters)
+   - Mafia dead bodies (drawn on ground before Y-sorted characters)
+   - Y-sort list built: player, mobs, party bots, H&S participants, Mafia participants (FOV-gated), deli/diner/fine dining NPCs + waiter + host, spar bots
+   - Farm tiles and countdown bubbles (under characters)
+   - Ore nodes, ore pickups, ground drops (under characters)
    - Telegraph/hazard ground markers (under characters)
    - Mob ground effects and ambient particles (under characters)
-   - **Y-sorted characters** -- player, mobs, Mafia/H&S participants, party bots, deli/diner/fine dining NPCs all sorted by Y coordinate for correct depth
+   - **Y-sorted characters** -- all entries sorted by Y coordinate for correct depth
    - Each character drawn via `drawChar()` with status effect overlays (stun, slow, mark, bleed, confuse, disorient)
    - Melee weapon aura effects (ninja dash trail, storm blade lightning, war cleaver cursed energy)
-8. **Bullets and projectiles**
-9. **Hit effects, damage numbers, kill feed**
-10. **End world-space zoom** -- `ctx.restore()`
-11. **FOV masks** -- Hide & Seek and Mafia field-of-view (screen-space)
-12. **Security camera overlay** -- `CameraSystem.drawOverlay()` when active (full-screen 2x2 camera feed grid)
-13. **HUD** (screen-space, native 1920x1080):
-    - Mode-specific HUDs (Mafia, H&S, cooking, fishing, farming)
-    - Weapon HUD (gun stats or melee stats, right side)
-    - Hotbar (weapon slots)
-    - Skill-specific panels (gunsmith, mining shop, skeld tasks, vent)
+   - Malevolent Shrine domain seal + slashes (world-space overlay when active)
+9. **Bullets and projectiles** -- `drawBullets()` which also draws:
+   - Mob-owned world objects (gas canisters, sticky bombs, smart mines, turrets, drones, static orbs, egg sacs)
+   - Hit effects and damage numbers (rendered at end of `drawBullets()` via `HIT_EFFECT_RENDERERS`)
+10. **Blind vignette overlay** -- radial gradient for blind/flash status effects
+11. **Poison glow overlay** -- green glow on player when poisoned
+12. **Interactable prompts** -- Skeld task/sabotage/vent prompts, Mafia lobby prompts (world-space)
+13. **End world-space zoom** -- `ctx.restore()`
+14. **FOV masks** -- Hide & Seek and Mafia field-of-view (screen-space)
+15. **Security camera overlay** -- `CameraSystem.drawOverlay()` when active (full-screen 2x2 camera feed grid)
+16. **HUD** (screen-space, native 1920x1080):
+    - Mode-specific HUDs (Mafia, Mafia lobby, H&S, cooking, fishing, farming)
+    - Weapon HUD (gun stats or melee stats, right side, hidden in Skeld/MafiaLobby/Casino)
+    - Hotbar (weapon slots, hidden in Skeld/MafiaLobby/Casino)
+    - Skill-specific panels (gunsmith, mining shop, forge, casino, skeld tasks, skeld task list, vent)
+    - Spar HUD (when in spar match)
     - Special ability bars (Malevolent Shrine, Godspeed, Ninja Dash)
-    - Icon buttons (chat, profile, map, toolbox)
-    - All panels (chat, profile, shop, identity, stats, toolbox, test mob, settings)
+    - Icon buttons (chat, profile, map, toolbox, selected toolbar)
+    - Mafia settings gear + panel (Skeld only)
+    - All panels (chat, profile, shop, identity, stats, toolbox, modify gun, test mob, settings)
     - Placement preview (toolbox ghost tile)
-    - Player HP bar (top center, hidden in Skeld)
+    - Player HP bar (top center, hidden in Skeld; gold balance shown instead in Casino)
+    - Lives display (hearts, dungeon only)
+    - Dungeon level indicator (hub areas)
     - Dungeon floor/wave info
     - Kill counter (top right, dungeon only)
     - Debug flags (FROZEN, GOD, NOFIRE, speed multiplier, OP)
@@ -95,10 +108,10 @@ The `draw()` function renders in this strict order:
     - Speed tracker (optional, top right)
     - Debug overlay (zoom/scale info, optional)
     - Death/respawn overlay
-14. **Customize screen** -- drawn last to cover all HUD
-15. **Inventory panel** -- absolute last, full opaque overlay
-16. **Zone transition fade** -- black fade with zone name text
-17. **Minimap overlay** -- drawn above everything when M key is held
+17. **Customize screen** -- drawn last to cover all HUD
+18. **Inventory panel** -- absolute last, full opaque overlay
+19. **Zone transition fade** -- black fade with zone name text
+20. **Minimap overlay** -- drawn above everything when M key is held
 
 ### Camera System
 The camera follows the player with direct centering (no smoothing currently). It is clamped so the viewport never shows beyond the map edges:
@@ -123,7 +136,7 @@ Among Us-style security cameras for The Skeld, implemented as a standalone syste
 - **Visual effects per feed**: Green security tint, scan lines, sparse static noise, blinking REC indicator (top-left), camera name label (bottom-left), real-time timestamp (bottom-right).
 - **Interaction**: Enter by interacting with the camera console entity. Exit via X/Escape key or close button. Player is frozen in place while viewing.
 - **Wall camera mounts** (`skeld_camera_mount` entities) blink red when `CameraState.blinking` is true.
-- Integrated into `draw()` at line ~2153: `if (CameraSystem.isActive()) CameraSystem.drawOverlay()`.
+- Integrated into `draw()` at line ~2268: `if (CameraSystem.isActive()) CameraSystem.drawOverlay()`.
 
 ### Tile Renderer
 `drawLevelBackground()` in `tileRenderer.js` iterates only over visible tiles (viewport-culled). Each scene has its own visual style:
@@ -138,30 +151,39 @@ Among Us-style security cameras for The Skeld, implemented as a standalone syste
 - **Mafia Lobby** -- brownish metal grating
 - **The Skeld** -- spaceship interior with metal hull panels, floor grating, hazard stripes
 - **Azurine City** -- dark blue-gray floor with neon crack accents
+- **Vortalis** -- dark teal stone floors with water stain accents, barnacle-encrusted walls
+- **Earth-205** -- dark cobblestone floors with moss and crack accents, gothic noir walls
+- **Dungeon** (all dungeon scenes) -- palette-driven via `FLOOR_CONFIG`, two-tone floor tiles, blood splatters near center
 
 Wall tiles (`collisionGrid[ty][tx] === 1`) get distinct wall/border treatment per scene. All tiles use deterministic pseudo-random variation based on `(tx, ty)` coordinates for visual noise without runtime randomness.
 
 ### Entity Renderers
 The `ENTITY_RENDERERS` registry maps entity type strings to render functions with signature `(entity, ctx, screenX, screenY, widthTiles, heightTiles)`. The dispatch function `drawLevelEntities()` iterates `levelEntities` and calls the matching renderer for each.
 
-There are currently 148 entity types including:
+There are currently 172 static entity types (plus dynamic ingredient types registered at runtime from data registries) including:
 - **Structural**: `spawnPad`, `barrierH`, `barrierV`, `zone`, `path_v`, `path_h`, `fountain`, `version_sign`
 - **Nature**: `tree`, `flower`, `bush`, `rock`
-- **Buildings**: `building_shop`, `building_house`, `building_tavern`, `building_mine`, `building_chapel`, `building_azurine`, `building_deli`, `building_diner`, `building_hideseek`, `building_skeld`, `building_fine_dining`, `building_casino`
-- **Furniture**: `bench`, `table`, `lamp`, `torch`, `neon_light`, `fence`
+- **Buildings**: `building_shop`, `building_house`, `building_tavern`, `building_mine`, `building_chapel`, `building_azurine`, `building_deli`, `building_diner`, `building_hideseek`, `building_skeld`, `building_fine_dining`, `building_casino`, `building_gunsmith`, `building_vortalis`, `building_earth205`, `building_wagashi`, `building_earth216`, `building_spar`
+- **Furniture**: `bench`, `table`, `lamp`, `torch`, `neon_light`, `fence`, `crate`, `barrel`
 - **Mine/Cave**: `mine_entrance`, `mine_exit`, `mine_door`, `cave_entrance`, `cave_exit`
+- **Gunsmith**: `workbench`, `weapon_rack`, `anvil`, `gunsmith_npc`, `gunsmith_entrance`
+- **Forge**: `forge_npc`, `forge_anvil`, `forge_furnace`
+- **Mining**: `mining_npc`
 - **Deli**: `bread_station`, `meat_station`, `veggie_station`, `sauce_station`, `deli_counter`, `pickup_counter`, `deli_queue_area`, `deli_table`, `deli_chair`, `deli_divider`, `deli_service_counter`, `kitchen_door`, `deli_vending`, `deli_condiment_table`, `deli_kitchen_floor`
 - **Deli Grocery Shelves** (16 variants via `SHELF_TYPES` + `_shelfRenderer`): `deli_shelf_canned`, `deli_shelf_snacks`, `deli_shelf_drinks`, `deli_shelf_cereal`, `deli_shelf_bread`, `deli_shelf_pasta`, `deli_shelf_sauces`, `deli_shelf_dairy`, `deli_shelf_frozen`, `deli_shelf_produce`, `deli_shelf_candy`, `deli_shelf_baking`, `deli_shelf_spices`, `deli_shelf_cleaning`, `deli_shelf_cookies`, `deli_shelf_soups`
-- **Diner**: `diner_booth`, `diner_booth_table`, `diner_booth_seat`, `arcade_cabinet`, `diner_jukebox`, `diner_floor`, `diner_counter`, `diner_pickup_counter`, `diner_service_counter`, `diner_kitchen_floor`, `kitchen_door_diner`
-- **Fine Dining**: `fine_dining_entrance`, `fine_dining_exit`
+- **Diner**: `diner_booth`, `diner_booth_table`, `diner_booth_seat`, `arcade_cabinet`, `diner_jukebox`, `diner_floor`, `diner_counter`, `diner_pickup_counter`, `diner_service_counter`, `diner_kitchen_floor`, `kitchen_door_diner`, `diner_tv`, `diner_customer_exit`
+- **Fine Dining**: `building_fine_dining`, `fine_dining_entrance`, `fine_dining_exit`, `fd_floor_kitchen`, `fd_floor_dining`, `fd_service_wall`, `fd_counter`, `fd_pickup_counter`, `fd_serve_counter`, `fd_teppanyaki_table`, `fd_teppanyaki_grill_0` through `_3`, `fd_host_stand`, `fd_host_npc`, `fd_enter_door`, `fd_exit_door`, `fd_waiter_spot`
 - **Casino**: `casino_carpet`, `casino_bar`, `casino_pillar`, `casino_blackjack`, `casino_roulette`, `casino_coinflip`, `casino_cases`, `casino_mines`, `casino_dice`, `casino_rps`, `casino_baccarat`, `casino_slots`, `casino_keno`
-- **Skeld/Mafia**: `skeld_entrance`, `skeld_task`, `skeld_vent`, `skeld_emergency_table`, `skeld_sabotage`, `skeld_electrical_box`, `skeld_camera_mount`, `skeld_cameras`
-- **Dungeon**: `dungeon_door`, `queue_zone`, `tower_exterior`
+- **Spar**: `building_spar`, `spar_hub_floor`, `spar_room_door`, `spar_arena_floor`
+- **Skeld/Mafia**: `skeld_entrance`, `skeld_task`, `skeld_vent`, `skeld_emergency_table`, `skeld_sabotage`, `skeld_electrical_box`, `skeld_camera_mount`, `skeld_cameras`, `mafia_lobby_laptop`, `mafia_lobby_customize`, `mafia_lobby_start`, `mafia_lobby_crate`, `mafia_lobby_crate_sm`, `mafia_lobby_exit`
+- **Dungeon**: `dungeon_door`, `queue_zone`, `tower_exterior`, `ocean_lantern`, `paper_lantern`, `gas_lamp`, `neon_sign_e216`
+- **Vortalis/Earth**: `vortalis_entrance`, `vortalis_exit`, `earth205_entrance`, `earth205_exit`, `wagashi_entrance`, `wagashi_exit`, `earth216_entrance`, `earth216_exit`
 - **Farm**: `farm_vendor`, `farm_well`, `farm_table`, `farm_bed`, `farm_chest`, `farm_zone`
-- **Entrances/Exits**: `azurine_entrance`, `azurine_exit`, `deli_entrance`, `deli_exit`, `diner_entrance`, `diner_exit`, `house_entrance`, `house_exit`, `skeld_entrance`
+- **Fishing**: `fishing_spot`, `fish_vendor`
+- **Entrances/Exits**: `azurine_entrance`, `azurine_exit`, `deli_entrance`, `deli_exit`, `diner_entrance`, `diner_exit`, `house_entrance`, `house_exit`
 
 ### Hit Effect Renderers
-The `HIT_EFFECT_RENDERERS` registry maps effect type strings to render functions with signature `(h, ctx, alpha)`. There are currently 73 effect types including:
+The `HIT_EFFECT_RENDERERS` registry maps effect type strings to render functions with signature `(h, ctx, alpha)`. There are currently 72 named effect types plus `_default` fallback (73 total entries) including:
 - **Core combat**: `kill`, `hit`, `crit`, `explosion`, `cleave_hit`
 - **Elemental**: `frost_hit`, `frost_nova`, `burn_hit`, `burn_tick`, `inferno_explode`, `lightning`, `ground_lightning`
 - **Status**: `poison_hit`, `poison_tick`, `heal`, `heal_zone`, `heal_beam`, `mob_heal`, `stun`, `buff`
@@ -176,22 +198,25 @@ The `HIT_EFFECT_RENDERERS` registry maps effect type strings to render functions
 Characters use a Graal-style 3-layer compositing system. Each layer is a separate spritesheet:
 
 1. **Body** (base layer) -- torso, arms, legs, feet
-   - Frame size: 32x32 cells (same size as head/hat, Graal-style)
-   - Sheet layout: 4 columns x 32 rows = 128x1024 total
-   - Columns: Idle, Walk1, Walk2, Walk3
-   - Rows: 32 animation states (idle, walk, swing, shoot, dash, grab, push, pull, lift, hold, fish, mine, farm, cook, hurt, dead)
+   - Runtime frame size: 48x64 pixels (`LAYER_SIZES.body`)
+   - Sheet layout: 4 columns x 4 rows (SPRITE_COLS x SPRITE_ROWS)
+   - Columns: Idle (0), Walk1 (1), Walk2 (2), Walk3 (3)
+   - Rows: Down (0), Up (1), Left (2), Right (3)
 
 2. **Head** (middle layer) -- face, hair, skin
-   - Frame size: 32x32 cells (rendered as 48x48)
-   - Sheet layout: 4 columns x 4 rows = 128x128 total
-   - Rows: Walk/Idle, Push, Pull, Hurt/Dying
+   - Runtime frame size: 48x48 pixels (`LAYER_SIZES.head`)
+   - Sheet layout: 4 columns x 4 rows
+   - Head spritesheets (HEAD_REGISTRY) use 32x32 cells in 128x128 PNGs, scaled to 40x40 for display
+   - Head column mapping differs from body: `dirToCol = [0, 2, 1, 3]` (Down=col0, Up=col2, Left=col1, Right=col3)
+   - Rows: Walk/Idle (0), Push (1), Pull (2), Hurt/Dying (3)
 
 3. **Hat** (top layer) -- headwear, accessories
-   - Frame size: 32x32 cells (rendered as 48x48)
-   - Sheet layout: 5 columns x 5 rows = 160x160 total
-   - Same row mapping as head
+   - Runtime frame size: 48x48 pixels (`LAYER_SIZES.hat`)
+   - Sheet layout: 4 columns x 4 rows
 
-All three layers align at center-bottom of the character. Row direction mapping: 0=Down, 1=Up, 2=Left, 3=Right. Column selection: col 0 for idle, cols 1-3 cycle for walking.
+**Note:** The art pipeline templates (described in CLAUDE.md) use different dimensions -- body templates are 32x32 cells with 4 cols x 32 rows for all animation states; head templates are 4 cols x 4 rows of 32x32 cells; hat templates are 5 cols x 5 rows. These templates are for creating art assets, not for the runtime spritesheet system.
+
+All three layers align at center-bottom of the character. Row direction mapping: 0=Down, 1=Up, 2=Left, 3=Right. Column selection: col 0 for idle, cols 1-3 cycle for walking (`1 + (Math.floor(frame) % 3)`).
 
 The `drawChar()` function is the unified entry point. It first tries `useSpriteMode` (toggled via `/sprites` command), which calls `drawLayeredSprite()` to composite the three sheets. If sprites are unavailable, it falls back to the procedural canvas drawing functions `drawChoso()` (for the player) and `drawGenericChar()` (for mobs/NPCs). Characters are drawn at `CHAR_SCALE = 1.1` with optional per-mob scale.
 
@@ -224,7 +249,7 @@ gun.recoilTimer = _savedRecoil;
 
 This pattern ensures `drawChoso()` renders the bot's armor, weapon, and colors without modifying any permanent player state. The overrides are checked inside `drawChoso()` and used in place of `playerEquip`/player colors when non-null.
 
-### Party Bot Rendering Pipeline (draw.js ~lines 934-980)
+### Party Bot Rendering Pipeline
 
 Party bots are rendered within the Y-sorted character loop alongside mobs, the player, and NPCs. The rendering pipeline:
 
@@ -241,11 +266,10 @@ Party bots are rendered within the Y-sorted character loop alongside mobs, the p
 
 The Mafia FOV uses a raycasting polygon approach, not a simple circle gradient. This is critical -- the old circle approach allowed players to see through walls.
 
-- **`buildFOVOccluderCache()`**: Builds flat `Uint8Array` collision grid + extracts wall-boundary vertices. Cached per level.
-- **Boundary vertex extraction**: Grid points where at least one adjacent tile is solid AND at least one is empty.
-- **Ray generation**: 3 rays per boundary vertex (center +/- epsilon) + 72 fill rays (every 5 degrees). Total ~200-500 rays/frame.
+- **`buildFOVOccluderCache()`**: Builds flat `Uint8Array` collision grid + extracts wall-boundary vertices (`_fovBoundaryVerts`). Cached per level. Boundary vertices are stored but not used for ray generation (uniform ring is used instead).
+- **Ray generation**: 120 uniform rays (every 3 degrees) -- no boundary vertex precision needed thanks to heavy blur. Total 120 rays/frame.
 - **DDA raycasting**: Each ray walks through the collision grid until hitting a wall tile or exceeding FOV radius.
-- **Visibility polygon**: Sorted ray endpoints form a polygon cutout in a dark overlay (`rgba(0,0,0,0.93)` with `blur(12px)`).
+- **Visibility polygon**: Sorted ray endpoints form a polygon cutout in a dark overlay (`rgba(0,0,0,0.92)` with `blur(36px)`).
 - **Raycast origin lerped** (0.35 blend) toward player position for smooth shadow movement.
 - **Lights sabotage dimming**: `_lightsDimProgress` smoothly fades 0 to 1 over 180 frames (3s), shrinking FOV to 35% of normal. Impostors unaffected.
 - **O2 sabotage fog**: Progressive darkening overlay for crewmates as timer runs down.

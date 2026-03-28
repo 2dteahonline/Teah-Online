@@ -2,17 +2,51 @@
 
 ## Overview
 
-A continuous restaurant minigame where the player assembles orders for NPC customers by swinging a spatula at ingredient stations. Orders are graded on ingredient accuracy and speed (S/A/B/C/F), awarding gold, tips, and Cooking XP. The system supports three restaurant tiers, each with unique mechanics, customer types, and NPC behaviors. Sessions run continuously until the player leaves the scene (no shift timer).
+A continuous restaurant minigame where the player assembles orders for NPC customers by swinging a spatula at ingredient stations. Orders are graded on ingredient accuracy and speed (S/A/B/C/F), awarding gold, tips, and Cooking XP. The system supports five restaurant tiers (three currently implemented), each with unique mechanics, customer types, and NPC behaviors. Sessions run continuously until the player leaves the scene (no shift timer).
 
 ### Restaurant Tiers
 
-| Shop ID | Name | Tier | Level Req | Orders Req | Cost Req | Max Orders | Status |
-|---------|------|------|-----------|-----------|----------|-----------|--------|
-| `street_deli` | Street Deli | 1 | 1 | 0 | 0 | 20 | Implemented |
-| `diner` | Diner | 2 | 10 | 500 | 5,000 | 35 | Implemented |
-| `fine_dining` | Fine Dining | 3 | 20 | 2,000 | 25,000 | 75 | Implemented |
-| `luxury` | Luxury Restaurant | 4 | 35 | 5,000 | 100,000 | 100 | Future |
-| `five_star` | 5 Star Elite | 5 | 50 | 10,000 | 500,000 | 150 | Future |
+| Shop ID | Name | Tier | Level Req | Orders Req | Cost Req | Max Orders | Level ID | Status |
+|---------|------|------|-----------|-----------|----------|-----------|----------|--------|
+| `street_deli` | Street Deli | 1 | 1 | 0 | 0 | 20 | `deli_01` | Implemented |
+| `diner` | Diner | 2 | 10 | 500 | 5,000 | 35 | `diner_01` | Implemented |
+| `fine_dining` | Fine Dining | 3 | 20 | 2,000 | 25,000 | 75 | `fine_dining_01` | Implemented |
+| `luxury` | Luxury Restaurant | 4 | 35 | 5,000 | 100,000 | 100 | null | Future |
+| `five_star` | 5 Star Elite | 5 | 50 | 10,000 | 500,000 | 150 | null | Future |
+
+### COOKING_CONFIG
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `orderSpawnDelay` | 30 | Frames before first order spawns |
+| `comboThreshold` | 3 | Consecutive S/A grades needed before combo tip bonus activates |
+| `comboTipBonus` | 0.2 | Tip bonus per combo step (20%) |
+| `comboMaxBonus` | 1.0 | Maximum combo tip bonus (100%, i.e., 2x tips at 5+ combo) |
+| `ticketQueueMax` | 3 | Maximum queued tickets |
+| `ticketSpawnInterval` | 60 | Frames between ticket auto-generation (1 second) |
+
+### Mood Stages
+
+NPCs cycle through 3 mood stages while waiting for their order:
+
+| Stage | Mood | Color | Duration |
+|-------|------|-------|----------|
+| Patient | Happy | `#60c060` | 3600 frames (60s) |
+| Concerned | Neutral | `#e0c040` | 2400 frames (+40s) |
+| Furious | Angry | `#e04040` | 3000 frames (+50s, then leaves) |
+
+### Spatula Weapon
+
+The spatula is auto-equipped during cooking sessions:
+
+| Field | Value |
+|-------|-------|
+| `id` | `'spatula'` |
+| `damage` | 1 |
+| `range` | 80 |
+| `cooldown` | 20 |
+| `critChance` | 0 |
+| `special` | `'spatula'` |
 
 ## Files
 
@@ -177,13 +211,13 @@ Pay formula override: `8 + (ingredientCount * 2)` (replaces static basePay).
 
 **5 Customer Types:**
 
-| Type | Party Size | Tip Mult | Mood Speed | Patience | Weight |
-|------|-----------|----------|-----------|----------|--------|
-| Regular | 1-2 | 1.0x | 0.7x | 1.2x | 35% |
-| Family | 2-3 | 1.2x | 0.5x | 1.5x | 25% |
-| Couple | 2 | 1.3x | 0.6x | 1.3x | 15% |
-| Business | 1 | 1.5x | 0.9x | 1.0x | 15% |
-| Kids | 2-3 | 0.8x | 1.0x | 0.9x | 10% |
+| Type | Party Size | Tip Mult | Weight |
+|------|-----------|----------|--------|
+| Regular | 1-2 | 1.0x | 35% |
+| Family | 2-3 | 1.2x | 25% |
+| Couple | 2 | 1.3x | 15% |
+| Business | 1 | 1.5x | 15% |
+| Kids | 2-3 | 0.8x | 10% |
 
 **Service Timer Types:** Calm (90s, 40%), Feisty (60s, 40%), Rowdy (45s, 20%).
 
@@ -196,6 +230,8 @@ Pay formula override: `8 + (ingredientCount * 2)` (replaces static basePay).
 - **6 booths:** 3 left column (tx:27-32), 3 right column (tx:38-43), 4 seats each.
 - **Arcade corner:** 2 arcade spots. 20% of spawns are arcade-only visitors who pay a fee (5 gold) and leave. Post-meal parties have a 20% chance to send 1-2 members to play.
 - **20% arcade-only visitors:** Single NPCs who walk to the arcade, play, pay 5 gold, and leave without ordering food.
+
+**Name Pool:** 40 names.
 
 **Config:** Max 5 parties, max 8 customer NPCs, spawn every 5-12 sec, eat 15-20 sec, menu read 3-5 sec.
 
@@ -228,14 +264,14 @@ Pay formula override: `8 + (ingredientCount * 2)` (replaces static basePay).
 
 **6 Customer Types:**
 
-| Type | Party Size | Tip Mult | Mood Speed | Patience | Cover Fee | Weight |
-|------|-----------|----------|-----------|----------|----------|--------|
-| Regular | 2-4 | 1.0x | 0.6x | 1.3x | $10 | 44% |
-| VIP | 2-4 | 1.8x | 0.5x | 1.3x | $25 | 20% |
-| Group | 4-6 | 1.0x | 0.6x | 1.2x | $10 | 20% |
-| Couple | 2-2 | 1.5x | 0.5x | 1.3x | $30 | 10% |
-| Critic | 2-3 | 2.0x | 0.7x | 1.0x | $40 | 1% |
-| Celebrity | 2-4 | 4.0x | 0.5x | 1.5x | $100 | 5% |
+| Type | Party Size | Tip Mult | Cover Fee | Weight |
+|------|-----------|----------|----------|--------|
+| Regular | 2-4 | 1.0x | $10 | 44% |
+| VIP | 2-4 | 1.8x | $25 | 20% |
+| Group | 4-6 | 1.0x | $10 | 20% |
+| Couple | 2-2 | 1.5x | $30 | 10% |
+| Critic | 2-3 | 2.0x | $40 | 1% |
+| Celebrity | 2-4 | 4.0x | $100 | 5% |
 
 **Service Timer Types:** Calm (60s, 40%), Feisty (45s, 35%), Rowdy (30s, 25%).
 
@@ -352,6 +388,7 @@ Gold (pay + tips combined) is awarded directly on submission. No separate tip ja
 ## Combo System
 
 - Consecutive S or A grades increment `comboCount`.
+- Combo tip bonus only activates after reaching `comboThreshold` (3 consecutive S/A grades).
 - Tip bonus: `1.0 + min(comboCount * 0.2, 1.0)` (max 2x tips at 5+ combo).
 - An F grade resets the combo to 0.
 - B and C grades do NOT reset the combo (they just don't increment it).
@@ -360,6 +397,7 @@ Gold (pay + tips combined) is awarded directly on submission. No separate tip ja
 
 Orders auto-generate independently of NPC behavior via a ticket queue:
 
+- `orderSpawnDelay`: 30 frames (0.5 second) initial delay before first order spawns.
 - `ticketSpawnInterval`: 60 frames (1 second) between ticket generations.
 - `ticketQueueMax`: 3 maximum queued tickets.
 - When no active order exists, the next ticket pops from the queue and becomes the current order.
@@ -544,7 +582,7 @@ Orders award Cooking XP via `addSkillXP('Cooking', xp)`. XP is calculated as `re
 ## Gotchas & Rules
 
 - **`tipMult` not `tipMultiplier`**: Customer type objects use the field name `tipMult`. Grade thresholds also use `tipMult`. Using `tipMultiplier` anywhere will silently produce `undefined`. Always check field name consistency.
-- **Equip sync**: The spatula is a real melee weapon (1 damage, 80 range) added to inventory. Leaving a restaurant without `resetCookingState()` would leave the player holding a spatula. The system saves/restores `_savedMeleeEquip` and `_savedActiveSlot`.
+- **Equip sync**: The spatula is a real melee weapon (1 damage, 80 range, 20 cooldown, 0 critChance) added to inventory. Leaving a restaurant without `resetCookingState()` would leave the player holding a spatula. The system saves/restores `_savedMeleeEquip` and `_savedActiveSlot`.
 - **Grill auto-submit**: Fine dining orders auto-submit after the grill bar finishes. The player does NOT need to swing at the pickup counter. Swinging at `fd_pickup_counter` also works as a fallback.
 - **Grill trick score bleed**: `grillState.trickScore` is reset to 0 after `applyOrderResult()` to prevent the previous order's trick score from affecting the next order's grade.
 - **Table validation**: In fine dining, swinging at a grill entity checks `_fdTableId` on the current order. Wrong table shows an error message.
