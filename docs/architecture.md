@@ -10,7 +10,7 @@ Teah Online is a top-down dungeon crawler built with vanilla JS and HTML5 Canvas
 - `js/shared/` -- pure data registries (no logic); loaded first (21 files)
 - `js/authority/` -- server-authoritative systems: combat, damage, waves, mobs, inventory, party, bots, casino, cooking, spar (40 files)
 - `js/client/rendering/` -- canvas drawing: sprites, entities, effects, FOV (5 files)
-- `js/client/input/` -- mouse/keyboard capture, InputIntent flags, command translation (2 files)
+- `js/client/input/` -- mouse/keyboard capture, InputIntent flags, click routing (2 files)
 - `js/client/ui/` -- panel system: inventory, gunsmith, settings, shop, customization, casino, testmob (11 files)
 - `js/core/` -- bridge layer: save/load, scene management, weapons, interactables, camera, draw loop (10 files)
 - `js/testing/` -- test harness + spar training (2 files)
@@ -44,6 +44,8 @@ Teah Online/
       mafiaRoleData.js       Mafia role definitions (impostor abilities, etc.)
       casinoData.js          casino game configs, payouts, house edge
       partyData.js           party system constants, bot equipment data
+      sparData.js            spar system constants
+      craftingData.js        crafting recipes, materials, drop tables
     authority/               -- server-authoritative game logic — 40 files
       eventBus.js            Events pub/sub
       gameState.js           GameState + global aliases
@@ -70,11 +72,15 @@ Teah Online/
       partySystem.js         always-on party system, bot member management
       botAI.js               bot combat/movement AI, equipment buying, auto-respawn
       snapshots.js           game state serialization
-      commands.js            debug slash commands
+      commands.js            CommandQueue, command translation, enqueueCommand()
       authorityTick.js       per-frame authority simulation wrapper
       hideSeekSystem.js      Hide & Seek game mode
       mafiaSystem.js         Mafia (Among Us-style) game mode
       casinoSystem.js        casino game logic (10 games, 5% house edge)
+      lootDropSystem.js      loot drop rolls on mob kill
+      craftingSystem.js      recipe-based crafting with resource costs
+      neuralSparInference.js neural network inference for spar bot
+      sparSystem.js          PvP spar arena, Elo tracking, ranked matches
       cookingSystem.js       cooking logic
       cookingNPCBase.js      shared base module for all restaurant NPC systems
       deliNPCSystem.js       deli NPC interaction
@@ -90,7 +96,7 @@ Teah Online/
         mafiaFOV.js            Mafia FOV + HUD rendering
       input/                 -- 2 files
         inputIntent.js         InputIntent flag object
-        input.js               keyboard/mouse listeners, command translation
+        input.js               mouse handlers, click routing
       ui/                    -- 11 files
         panelManager.js        panel open/close state machine
         chatProfile.js         chat and profile UI
@@ -114,8 +120,9 @@ Teah Online/
       cameraSystem.js        camera follow, shake, zoom
       interactable.js        entity interaction, death handling
       draw.js                main draw loop, gameLoop(), HUD
-    testing/                 -- 1 file
+    testing/                 -- 2 files
       testHarness.js         automated test utilities
+      sparTraining.js        spar bot training harness
 ```
 
 ## Script Loading Order
@@ -199,6 +206,8 @@ Dungeon-specific specials, wave spawning, damage, inventory, mob movement, and g
 | `js/authority/waveSystem.js` | `createMob()`, wave spawning |
 | `js/authority/damageSystem.js` | damage calculation, mob death |
 | `js/authority/inventorySystem.js` | inventory management |
+| `js/authority/lootDropSystem.js` | loot drop rolls on mob kill |
+| `js/authority/craftingSystem.js` | recipe-based crafting |
 | `js/authority/mobSystem.js` | `positionClear()`, mob movement |
 | `js/authority/stateReset.js` | state cleanup |
 | `js/authority/miningSystem.js` | mining logic |
@@ -207,11 +216,14 @@ Dungeon-specific specials, wave spawning, damage, inventory, mob movement, and g
 | `js/authority/partySystem.js` | `PartySystem` (always-on party management) |
 | `js/authority/botAI.js` | `BotAI` (bot combat/movement AI) |
 | `js/authority/snapshots.js` | `serializeGameState()` |
-| `js/authority/commands.js` | debug commands |
+| `js/authority/commands.js` | `CommandQueue`, `enqueueCommand()`, `translateIntentsToCommands()` |
 | `js/authority/authorityTick.js` | `authorityTick()` |
 | `js/authority/hideSeekSystem.js` | `HideSeekSystem` |
 | `js/authority/mafiaSystem.js` | `MafiaSystem` |
 | `js/authority/casinoSystem.js` | `CasinoSystem` (10 games, 5% house edge) |
+| `js/authority/neuralSparInference.js` | Neural net inference for spar bot |
+| `js/authority/sparSystem.js` | `SparSystem` (PvP spar, Elo, ranked) |
+| `js/testing/sparTraining.js` | spar bot training harness |
 
 ### Phase C (continued): Client Rendering (Part 2)
 
@@ -246,7 +258,7 @@ Final phase. Wires input, weapon systems, persistence, and the main draw loop.
 
 | File | Key Export |
 |------|-----------|
-| `js/client/input/input.js` | keyboard/mouse listeners |
+| `js/client/input/input.js` | mouse handlers, click routing |
 | `js/core/gunSystem.js` | gun firing logic |
 | `js/core/meleeSystem.js` | melee combat logic |
 | `js/core/saveLoad.js` | localStorage save/load |
@@ -281,7 +293,7 @@ Keyboard/Mouse
 InputIntent flags  (client/input/)
     |
     v
-translateIntentsToCommands()  (client/input/input.js)
+translateIntentsToCommands()  (authority/commands.js)
     |
     v
 CommandQueue  (array of {t: 'move'|'shoot'|'melee'|..., data: {...}})
@@ -310,7 +322,7 @@ requestAnimationFrame(gameLoop)
   |-- Accumulate time
   |
   |-- while (accumulator >= FIXED_DT && updates < 4):
-  |     |-- translateIntentsToCommands()    // client: input -> commands
+  |     |-- translateIntentsToCommands()    // authority/commands.js: input -> commands
   |     |-- authorityTick()                 // authority: commands -> simulation
   |     |-- accumulator -= FIXED_DT
   |
@@ -347,12 +359,13 @@ Key constants:
 | `Events` | `object` | `js/authority/eventBus.js` | Pub/sub event bus |
 | `levelEntities` | `array` | `js/core/sceneManager.js` | Current level's interactive entity array |
 | `InputIntent` | `object` | `js/client/input/inputIntent.js` | Per-frame input flags (moveX, moveY, shootHeld, etc.) |
-| `CommandQueue` | `array` | `js/client/input/input.js` | Queued commands for authorityTick to consume |
+| `CommandQueue` | `array` | `js/authority/commands.js` | Queued commands for authorityTick to consume |
 | `LEVELS` | `object` | `js/shared/levelData.js` | Level/map definitions (tile grids, entity spawn points) |
 | `PROG_ITEMS` | `object` | `js/shared/progressionData.js` | Unified 5-tier x 25-level weapon progression data |
 | `PartySystem` | `object` | `js/authority/partySystem.js` | Always-on party management (player + bots) |
 | `BotAI` | `object` | `js/authority/botAI.js` | Bot combat/movement AI |
 | `CasinoSystem` | `object` | `js/authority/casinoSystem.js` | Casino game logic (10 games) |
+| `SparSystem` | `object` | `js/authority/sparSystem.js` | PvP spar arena, Elo tracking, ranked matches |
 
 Global aliases are created in `gameState.js` using `Object.defineProperty` on `window`. Every key of `GameState` (player, mobs, gold, bullets, etc.) gets a getter/setter so that `player.x = 5` transparently reads/writes `GameState.player.x`.
 
@@ -375,12 +388,13 @@ Error handling: each handler is wrapped in try/catch so one failing listener doe
 
 | Event | Emitted By | Payload | Subscribers |
 |-------|-----------|---------|-------------|
-| `mob_killed` | `damageSystem.js` | `{ mob, source, goldEarned, heal, qkb }` | Kill streak tracking, skill XP, wave completion checks |
+| `mob_killed` | `damageSystem.js` | `{ mob, source, goldEarned, heal, qkb, killerId, killerMember }` | Kill streak tracking, skill XP, loot drops |
 | `wave_cleared` | `mobSystem.js` | `{ wave, floor, stairsOpen, dungeonComplete }` | Floor transition, UI updates |
 | `wave_started` | `waveSystem.js` | `{ wave, floor, isBoss, mobCount }` | HUD wave counter, music triggers |
-| `player_damaged` | `damageSystem.js` | `{ amount, raw, source, attacker }` | Screen shake, damage flash, HP bar update |
+| `player_damaged` | `damageSystem.js` | `{ amount, raw, source, attacker, target }` | Screen shake, damage flash, HP bar update |
 | `player_died` | `interactable.js` | `{ lives, gameOver, x, y }` | Death screen, respawn logic |
 | `floor_changed` | `sceneManager.js` | `{ floor }` | Floor indicator update, mob scaling |
+| `scene_changed` | `sceneManager.js` | `{ from, to }` | Spar door registration, scene-specific setup |
 
 ## GAME_CONFIG Constants
 

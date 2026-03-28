@@ -23,8 +23,12 @@ The inventory system manages a 200-slot item bag, 4 equipment slots, and session
 | `removeFromInventory(slot)` | Splices and returns the item at the given index |
 | `isInInventory(id)` | Returns `true` if any slot contains an item with matching `id` |
 | `findInventoryItemById(id)` | Returns the item object or `null` |
+| `countMaterialInInventory(materialId)` | Returns total count of a material across all stacks |
+| `removeMaterial(materialId, count)` | Removes a quantity of material from inventory (handles stacks) |
 | `createItem(type, tierData)` | Creates a non-stackable item from tier data |
 | `createConsumable(id, name, count)` | Creates a stackable consumable item |
+| `createMainGun(gunId, tier, level)` | Creates a main gun item from PROG_ITEMS progression data |
+| `createPickaxe(pickId, tier, level)` | Creates a pickaxe item from PROG_ITEMS progression data |
 | `equipItem(slot)` | Equips item from inventory slot; toggling (re-equip = unequip). Also called by quickslot activation — see [hotbar-and-quickslots.md](hotbar-and-quickslots.md) |
 | `unequipItem(eqType)` | Moves equipped item back to inventory, reverts to defaults |
 
@@ -34,8 +38,8 @@ The inventory system manages a 200-slot item bag, 4 equipment slots, and session
 |---|---|
 | `applyGunStats(data)` | Sets `playerEquip.gun` and updates `gun.*` fields |
 | `applyMeleeStats(data)` | Sets `playerEquip.melee` and updates `melee.*` fields |
-| `applyDefaultGun()` | Reverts to the starter Pistol |
-| `applyDefaultMelee()` | Reverts to the starter Knife |
+| `applyDefaultGun()` | Reverts to the starter Sidearm |
+| `applyDefaultMelee()` | Reverts to the starter Combat Blade |
 
 ### Armor Stat Functions (`interactable.js`)
 
@@ -64,7 +68,7 @@ The inventory system manages a 200-slot item bag, 4 equipment slots, and session
 |---|---|
 | `ITEM_CATEGORIES` | `{ equipment: [...], armor: [...], weapons: [...] }` |
 | `PALETTE` | Centralized UI colors: accent, panelBg, panelBorder, gold, tierColors, tierNames |
-| `ITEM_STAT_RENDERERS` | Per-type stat display functions: gun, melee, boots, pants, chest, helmet |
+| `ITEM_STAT_RENDERERS` | Per-type stat display functions: gun, melee, boots, pants, chest, helmet, resource |
 | `getTierColor(tier)` | Returns hex color from `PALETTE.tierColors` |
 | `getTierName(tier)` | Returns name from `PALETTE.tierNames` |
 
@@ -128,10 +132,10 @@ Armor is purchased from the dungeon shop during a run. All armor resets when lea
 
 | Tier | Name | Cost | Speed | Dodge | Special |
 |---|---|---|---|---|---|
-| 1 | Leather Boots | 15g | +0.7 | -- | -- |
-| 2 | Swift Boots | 60g | +1.9 | 15% | -- |
-| 3 | Shadow Boots | 280g | +2.3 | 20% | Shadow Step (crit after dodge) |
-| 4 | Phantom Boots | 550g | +2.6 | 25% | Phase Through (ignore mob collision) |
+| 1 | Leather Boots | 15g | +0.59 | -- | -- |
+| 2 | Swift Boots | 60g | +1.6 | 15% | -- |
+| 3 | Shadow Boots | 280g | +1.94 | 20% | Shadow Step (crit after dodge) |
+| 4 | Phantom Boots | 550g | +2.18 | 25% | Phase Through (ignore mob collision) |
 
 **Pants** (`PANTS_TIERS`):
 
@@ -148,8 +152,8 @@ Armor is purchased from the dungeon shop during a run. All armor resets when lea
 |---|---|---|---|---|---|
 | 1 | Chain Mail | 25g | +25 | 5% | -- |
 | 2 | Plate Armor | 90g | +100 | 10% | +15% heals |
-| 3 | Dragon Plate | 400g | +150 | 15% | Regen 1.5 HP/s |
-| 4 | Eternal Aegis | 800g | +200 | 20% | Auto-Revive (once per run) |
+| 3 | Dragon Plate | 400g | +150 | 15% | +12% heals, Regen 1.5 HP/s |
+| 4 | Eternal Aegis | 800g | +200 | 20% | +12% heals, Regen 2 HP/s, Auto-Revive (once per run) |
 
 **Helmet** (`HELMET_TIERS`):
 
@@ -162,12 +166,12 @@ Armor is purchased from the dungeon shop during a run. All armor resets when lea
 
 **Session guns** (also wave-gated, not part of progression):
 
-| Tier | Name | Cost | Damage | Fire Rate | Special |
-|---|---|---|---|---|---|
-| 1 | SMG | 40g | 38 | 3 | -- |
-| 2 | Rifle | 120g | 92 | 6 | -- |
-| 3 | Frost Rifle | 480g | 122 | 4 | Frost Slow + Frost Nova |
-| 4 | Inferno Cannon | 900g | 169 | 3 | Burn DOT + Chain Explosions |
+| Tier | Name | Cost | Damage | Fire Rate | Mag Size | Special |
+|---|---|---|---|---|---|---|
+| 1 | SMG | 40g | 38 | 3 | 45 | -- |
+| 2 | Rifle | 120g | 92 | 6 | 36 | -- |
+| 3 | Frost Rifle | 480g | 122 | 4 | 50 | Frost Slow + Frost Nova |
+| 4 | Inferno Cannon | 900g | 169 | 3 | 63 | Burn DOT + Chain Explosions |
 
 **Session melee** (also wave-gated):
 
@@ -226,12 +230,13 @@ Registry mapping item types to stat display functions. Each renderer receives th
 
 | Type | Stats Displayed |
 |---|---|
-| `gun` | Damage, Pellets, Fire Rate, Mag Size, Pierce, Spread, Range, Special |
+| `gun` | Damage, Pellets, Fire Rate, Ammo/Mag Size, Pierce, Spread, Range, Special |
 | `melee` | Damage, Crit Chance, Range, Cooldown, Special |
 | `boots` | Speed, Dodge, Special |
 | `pants` | Dmg Reduce, Proj Reduce, Thorns, Stagger |
 | `chest` | Max HP, Dmg Reduce, Heal Boost, Regen, Special |
 | `helmet` | Poison Resist, Status Resist, Absorb |
+| `resource` | Grow Time + Sell Price (if crop), or Reach + Cooldown (if farming tool) |
 
 ### Interactable System
 
@@ -255,9 +260,18 @@ registerInteractable({
 |---|---|---|
 | `shop_station` | Dungeon floors (between waves) | Shop panel |
 | `fish_vendor` | Lobby (near dock) | Fish Vendor panel |
-| `farm_vendor` | Farm/house | Farm Shop panel |
+| `farm_vendor` | Farm/house | Garden Shop panel |
 | `gunsmith_npc` | Gunsmith room | Gunsmith panel |
+| `forge_npc` | Gunsmith room | Forge panel |
 | `mining_npc` | Mine rooms | Mining Shop panel |
+| `casino_*` (10) | Casino (one per game table) | Casino panel (sets active game) |
+| `skeld_*` (dynamic) | The Skeld map | Task panels, sabotage fix panels |
+| `skeld_vent_*` | The Skeld map (vents) | Vent travel (impostors/engineers only) |
+| `skeld_emergency_table` | The Skeld (cafeteria) | Emergency meeting popup |
+| `skeld_cameras_console` | The Skeld (security) | Security camera view |
+| `mafia_lobby_settings` | Mafia lobby (laptop) | Game settings panel |
+| `mafia_lobby_customize` | Mafia lobby | Color picker |
+| `mafia_lobby_start` | Mafia lobby | Starts mafia game |
 
 `getNearestInteractable()` finds the closest valid interactable within range. The input system checks this each frame to show the E prompt and handle interaction.
 
@@ -300,7 +314,7 @@ When the party system is active (`PartySystem`), bot members need independent eq
 - **Max HP scales with floor**: Base HP is 100/125/150/200/250 for floors 1-5. `recalcMaxHp()` must be called whenever chest armor changes.
 - **Stacking behavior**: Only `consumable` and `material` items stack. Weapons, armor, and keys always occupy individual slots.
 - **`equipItem()` toggles**: Calling `equipItem()` on an already-equipped item unequips it and reverts to default weapon. This is the intended UX.
-- **Default weapons cannot be unequipped**: `unequipItem()` returns `false` for the starter Pistol and Knife.
+- **Default weapons cannot be unequipped**: `unequipItem()` returns `false` for the starter Sidearm and Combat Blade.
 - **Shop availability**: The dungeon shop station only activates when `Scene.inDungeon && waveState !== 'active'`. Other vendors check their respective scene states.
 - **`ITEM_STAT_RENDERERS` is extensible**: Adding a new armor slot type means adding a new renderer entry here.
 - **Shop framework is opt-in**: Existing shop panels can migrate incrementally to use `shopDraw*` helpers. No changes required until they choose to adopt.

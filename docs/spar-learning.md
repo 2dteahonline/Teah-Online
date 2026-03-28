@@ -85,26 +85,28 @@ When debugging: diagnose which layer is wrong FIRST. Don't tune parameters when 
 
 When making decisions, player scope gets highest weight (28x base), general gets 12x, selfPlay gets 5x.
 
-### 12 Policy Dimensions
+### 13 Policy Dimensions (23 Bucket Types per Scope)
 
-Each scope tracks these independently:
+Each scope tracks these independently. Every policy dimension has both a **policy-level** bucket (individual tactics) and a **family-level** bucket (grouped), except `style` and `opening` which have no family grouping.
 
-| Dimension | What It Decides | Example Options |
-|-----------|----------------|-----------------|
-| `style` | Overall duel approach | aggressive, defensive, balanced, spacing, rush |
-| `opening` | First ~2 seconds route | slantFast, slantSlow, centerDrop, wallHug, lateralFirst |
-| `antiBottomTactic` | How to retake bottom | contestDirect, contestSprint, flankWide, flankTight, baitRetreat, etc. (11 tactics) |
-| `antiBottomFamily` | Tactic family grouping | contest, flank, bait, angle |
-| `gunSidePolicy` | How to get/use gun-side | directCross, wideArc, fadeAway, holdAndShoot, etc. |
-| `escapePolicy` | How to escape bad positions | cornerBreak, highReset, wideDisengage, baitPullout |
-| `shotTimingPolicy` | When/how aggressively to shoot | aggressive, conservative, reactive, burstAndMove |
-| `reloadPolicy` | How to handle reload windows | aggressive, conservative, punishOnly |
-| `midPressurePolicy` | Mid-fight pressure tactics | pushDirect, anglePressure, wallTrap |
-| `wallPressurePolicy` | Wall-based pressure | wallPin, wallBounce, wallTrap |
-| `openingContestPolicy` | How to contest the opening | rushContest, mirrorContest, delayedContest |
-| `centerRecoveryPolicy` | How to recover from center/top | directDrop, lateralFirst, baitAndDrop |
+| Dimension | Keys | Families | What It Decides |
+|-----------|------|----------|-----------------|
+| `style` | pressure, control, bait (3) | — | Overall duel approach |
+| `opening` | bottomLeft, bottomRight, bottomCenter, topHold, midFlank, mirrorPlayer (6) | — | First ~2 seconds route |
+| `antiBottomTactic` | contestDirect, contestSprint, lateCrossUnder, flankWide, flankTight, forceMirrorThenBreak, baitRetreat, baitFake, doubleFakeRetreat, angleStrafe, angleWait (11) | contest, flank, bait, angle | How to retake bottom |
+| `gunSidePolicy` | forcePeek, holdAngle, preAimLaneHold, reAngleWide, yieldLane, peekPressure (6) | hold, reposition, pressure | How to get/use gun-side |
+| `escapePolicy` | cornerBreak, highReset, wideDisengage, baitPullout (4) | break, reset, bait | How to escape bad positions |
+| `shotTimingPolicy` | shootImmediate, delayShot, baitShot (3) | aggressive, patient | When/how aggressively to shoot |
+| `reloadPolicy` | hardReloadPunish, safeReloadPunish, reloadBait, reloadBaitPeek (4) | punish, bait | How to handle reload windows |
+| `midPressurePolicy` | pressureHard, pressureSoft, holdLane (3) | press, hold | Mid-fight pressure tactics |
+| `wallPressurePolicy` | wallPinHold, pressureWiden, prefireCorner (3) | pin, widen | Wall-based pressure |
+| `openingContestPolicy` | hardRace, denyLane, delayedDrop, mirrorThenBreak, fakeCommit (5) | race, deny, bait | How to contest the opening |
+| `punishWindowPolicy` | hardConvert, angleConvert, baitConvert (3) | rush, angle, bait | How to capitalize on small mistakes |
+| `centerRecoveryPolicy` | crossCommit, fakeCrossBreak, baitShotDrop, wideUnderEntry (4) | cross, bait, under | How to escape losing center exposure |
 
-Plus `punishWindowPolicy` for reload punish timing.
+Also tracked: `antiBottom` (3 legacy keys: directContest, sideFlank, baitPull) kept for migration.
+
+Lane shapes (for repeek tracking): center, left, right, topLeft, topRight (5).
 
 ### Hierarchical Picker (`_pickHierarchicalPolicy`)
 

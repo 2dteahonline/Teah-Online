@@ -21,11 +21,13 @@ Hide & Seek is a 1v1 game mode where the player picks either the hider or seeker
   - `phaseTimer`: frames remaining in current phase
   - `matchStartFrame`: frame when seek phase started (for timing stats)
   - `tagFrame`: frame when tag happened (0 = no tag)
+  - `_postMatchFrame`: frame when post_match phase began
   - `seekerWon`: true if seeker tagged hider before time ran out
   - `botMob`: the bot entity object (NOT in `mobs[]`)
   - `participants[]`: `[{ id, role, entity, isBot, isLocal }]` -- multiplayer-ready registry
   - Bot AI state: `_botTarget`, `_botPath`, `_botPathIdx`, `_botHideSpot`, `_seekerWaypoints`, `_seekerWPIdx`, `_chasing`, `_botStuckTimer`, `_botLastX`, `_botLastY`
   - `_savedMelee`, `_savedSlot`: weapon state saved before match, restored after
+  - `_mapId`: current map ID for the match
 
 - **`HIDESEEK`** (const) -- Mode constants:
   - `HIDE_TIME`: 1800 frames (30s)
@@ -34,7 +36,7 @@ Hide & Seek is a 1v1 game mode where the player picks either the hider or seeker
   - `TAG_RANGE`: 90px (matches default melee range)
   - `FOV_RADIUS`: 4.5 tiles
   - `BOT_SPEED`: 5.625 (`PLAYER_BASE_SPEED * 0.75` = 7.5 * 0.75)
-  - `BOT_DETECT_RANGE`: 3 tiles
+  - `BOT_DETECT_RANGE`: 3 tiles (unused)
   - `MAP_ID`: `'hide_01'`
   - `RETURN_LEVEL`: `'lobby_01'`, `RETURN_TX`: 17, `RETURN_TY`: 22
 
@@ -44,7 +46,7 @@ Hide & Seek is a 1v1 game mode where the player picks either the hider or seeker
 
 | Method | Purpose |
 |--------|---------|
-| `startMatch(playerRole)` | Assign roles, spawn bot, save weapon state, equip Seeking Baton (if seeker), enter hide phase |
+| `startMatch(playerRole)` | Assign roles, spawn bot (speed=`BOT_SPEED`, type=`'hideseek_bot'`, hp=999, hitboxR=15), save weapon state, equip Seeking Baton (if seeker), enter hide phase |
 | `tick()` | Main per-frame tick: decrement timer, handle phase transitions, run bot AI |
 | `onTag()` | Seeker caught hider: set `seekerWon`, enter post_match, show stun_stars effect |
 | `isPlayerFrozen(participantId?)` | Returns true when participant should not move (seeker during hide, hider during seek, role_select, post_match) |
@@ -65,14 +67,14 @@ Hide & Seek is a 1v1 game mode where the player picks either the hider or seeker
 ### Phases
 
 ```
-idle --> role_select --> hide (30s) --> seek (30s) --> post_match (10s) --> endMatch() --> lobby
-                                            |
-                                            +--> (tag!) --> post_match
+idle --> role_select --> startMatch() --> hide (30s) --> seek (30s) --> post_match (10s) --> endMatch() --> idle
+                                                             |
+                                                             +--> onTag() --> post_match
 ```
 
 1. **idle**: No match running. Portal entry triggers role_select.
 2. **role_select**: Full-screen overlay with two clickable buttons (Hider / Seeker). Player picks a role.
-3. **hide** (30s): The hider moves freely to find a hiding spot. The seeker is frozen and shown a full map overview (can study layout, optionally toggle "Show Hider" debug). Hider bot gets 2x speed boost to reach distant spots.
+3. **hide** (30s): The hider moves freely to find a hiding spot. The seeker is frozen and shown a full map overview (can study layout, optionally toggle "Show Hider" debug). Hider bot gets `BOT_SPEED * 2.0` speed boost to reach distant spots.
 4. **seek** (30s): Roles swap movement -- seeker moves with FOV-limited vision, hider is frozen in place. Seeker has circular FOV cutout. Tag detection active.
 5. **post_match** (10s): Results screen showing win/lose, time taken (if seeker won), or "Time ran out" (if hider won). If seeker lost, minimap reveals where the hider was hiding. "RETURN TO LOBBY" button or auto-return after timer.
 
@@ -100,12 +102,12 @@ On tag: `seekerWon = true`, `tagFrame` recorded for timing, `stun_stars` hit eff
 #### Hider Bot (during hide phase)
 
 1. **Spot selection**: Scores every walkable tile on the map based on:
-   - Number of surrounding walls (8-directional, more = better hiding)
-   - Cardinal openings (dead-ends with 1 opening get +15 bonus, corners +5)
-   - Distance from seeker spawn (farther = better, weighted 0.5x)
+   - Number of surrounding walls in 8 directions, weighted 3x (`walls8 * 3`)
+   - Cardinal openings: dead-ends with 1 opening get +15 bonus, corners with 2 openings get +5
+   - Distance from seeker spawn, weighted 0.5x (`seekerDist * 0.5`)
    - Tiles with 3+ cardinal openings are skipped (too exposed)
-2. **Pathfinding**: Top 20% of scored tiles shuffled, first 20 candidates tested for BFS reachability. First reachable path is committed.
-3. **Speed boost**: 2x normal speed during hide phase so bot can reach distant spots in time. Reset to normal when seek begins.
+2. **Pathfinding**: Top 20% of scored tiles (minimum 10 candidates) tested for BFS reachability (maxNodes=5000). First reachable path is committed.
+3. **Speed boost**: `BOT_SPEED * 2.0` during hide phase so bot can reach distant spots in time. Reset to `BOT_SPEED` when seek begins.
 4. **Frozen during seek**: Bot stops moving once seek phase starts (stays at chosen spot).
 
 #### Seeker Bot (during seek phase)
@@ -113,22 +115,22 @@ On tag: `seekerWon = true`, `tagFrame` recorded for timing, `stun_stars` hit eff
 1. **Waypoint generation** (dynamic, works on any map):
    - Grid sample every 6 tiles, attracted toward locally open areas
    - Junction waypoints (3+ cardinal openings) and dead-end waypoints (1 opening) added
-   - BFS-validated for reachability from seeker spawn
+   - BFS-validated for reachability from seeker spawn (maxNodes=5000)
    - Ordered via nearest-neighbor greedy traversal
    - 25% of adjacent pairs randomly swapped for variety
-2. **Patrol mode**: Navigate through waypoints in order (loop around). BFS pathfind to each waypoint, advance when within 1.5 tiles.
-3. **Detection**: If hider is within `FOV_RADIUS * TILE` and line-of-sight is clear (step-by-step wall check), enter chase mode.
-4. **Chase mode**: BFS pathfind directly to hider's tile. Tag if within `TAG_RANGE`. Lose tracking if hider exceeds 3x detect range.
+2. **Patrol mode**: Navigate through waypoints in order (loop around). BFS pathfind to each waypoint, advance when within `TILE * 1.5` (72px).
+3. **Detection**: If hider is within `FOV_RADIUS * TILE` (216px) and line-of-sight is clear (wall sampling check), enter chase mode.
+4. **Chase mode**: BFS pathfind directly to hider's tile. Tag if within `TAG_RANGE` (90px). Lose tracking if distance exceeds `FOV_RADIUS * TILE * 3` (648px).
 5. **Stuck detection**: If bot moves less than 2px in 60 frames, skip to next waypoint.
 
 #### Movement
 
-Both hider and seeker bots use player-style AABB collision:
-- `PLAYER_WALL_HW` (16px) half-width for wall collision
+Both hider and seeker bots use BFS pathfinding (maxNodes=5000) and player-style AABB collision:
+- `PLAYER_WALL_HW` half-width for wall collision
 - Separate X/Y axis collision resolution
-- 2px corner unsticking nudge when stuck on both axes
+- 2px corner unstick nudge in 4 cardinal directions when stuck on both axes
 - Direction facing based on dominant movement axis
-- `bot.frame += 0.15` for walk animation
+- Float-based walk animation: `bot.frame += 0.15` per tick
 
 ### Score & Win Conditions
 
@@ -148,7 +150,7 @@ Both hider and seeker bots use player-style AABB collision:
 - **Scene Manager** (`sceneManager.js`): `Scene.inHideSeek` gates all Hide & Seek rendering/logic. `enterLevel()` used for map transitions and return to lobby.
 - **Game Loop** (`authorityTick.js`): `HideSeekSystem.tick()` called each frame when `Scene.inHideSeek`.
 - **Mob System** (`mobSystem.js`): `bfsPath()` and `isSolid()` used for bot pathfinding. `positionClear()` available but not directly used (AABB collision done inline).
-- **Melee System** (`meleeSystem.js`): Seeking Baton melee hit on `hideseek_bot` triggers `onTag()`. The Seeking Baton weapon data is defined in `SEEKING_BATON`.
+- **Melee System** (`meleeSystem.js`): Seeking Baton melee hit on `hideseek_bot` triggers `onTag()`. The Seeking Baton is defined in `interactable.js` as `SEEKING_BATON`: `{ id:'seeking_baton', damage:0, range:90, cooldown:18, special:'seeking' }`.
 - **Input** (`input.js`): Click detection for role select buttons, "Show Bot" toggle, and "RETURN TO LOBBY" button. Window globals `_hsRoleButtons`, `_hsShowBotBtn`, `_hsReturnButton` store click regions.
 - **Hit Effects** (`hitEffects.js`): `stun_stars` effect spawned at tag location.
 - **Game Config** (`gameConfig.js`): `PLAYER_BASE_SPEED` and `PLAYER_WALL_HW` used for bot movement and collision.
@@ -159,7 +161,7 @@ Both hider and seeker bots use player-style AABB collision:
 - The bot is NOT in the `mobs[]` array. It is stored as `HideSeekState.botMob` and tracked in `participants[]`. Standard mob rendering and collision do not apply.
 - Weapon state is saved before match and restored after. If `applyMeleeStats` is unavailable, `applyDefaultMelee()` is used as fallback.
 - The hider bot commits to a single hiding spot during the hide phase and does not re-pick. This is intentional -- it simulates a real player's commitment to a spot.
-- Hider bot gets 2x speed during hide phase only. Speed resets to normal (`BOT_SPEED`) when seek phase begins.
+- Hider bot gets `BOT_SPEED * 2.0` speed during hide phase only. Speed resets to `BOT_SPEED` when seek phase begins.
 - Seeker bot waypoints are generated dynamically at match start using the current map's collision grid. They are not hardcoded per map.
 - `isPlayerFrozen()` accepts an optional `participantId` for multiplayer readiness. Without it, defaults to the local player.
 - Portal return coordinates (`RETURN_TX`, `RETURN_TY`) must be set below the portal entrance zone in the lobby to avoid instant re-teleport loops.

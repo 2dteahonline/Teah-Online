@@ -2,11 +2,11 @@
 
 ## Overview
 
-Mobs are the enemy combatants in Teah Online's dungeon system. They are defined data-first in `MOB_TYPES` (255 entries), with AI movement patterns in `MOB_AI` (13 patterns), special attacks in `MOB_SPECIALS` (435 unique abilities across 9 files), and per-frame logic in `updateMobs()`. The system supports legacy mobs (Floor 0 cave dungeon), 8 themed dungeon sets across 6 dungeons with 4 mob types per subfloor, mini-bosses, and final bosses -- including duo boss fights. Mobs use BFS pathfinding, body-blocking separation, AABB wall collision with wall-sliding, and a stuck-detection safety net.
+Mobs are the enemy combatants in Teah Online's dungeon system. They are defined data-first in `MOB_TYPES` (209 entries), with AI movement patterns in `MOB_AI` (13 patterns), special attacks in `MOB_SPECIALS` (435 unique abilities across 9 files), and per-frame logic in `updateMobs()`. The system supports legacy mobs (Floor 0 cave dungeon), 6 dungeons (Azurine, Vortalis, Earth-205, Wagashi, Earth-216, plus the legacy cave) with 4 mob types per subfloor, mini-bosses, and final bosses -- including duo boss fights. Mobs use BFS pathfinding, body-blocking separation, AABB wall collision with wall-sliding, and a stuck-detection safety net.
 
 ## Files
 
-- `js/shared/mobTypes.js` -- `MOB_TYPES` registry (255 mob stat definitions), `MOB_CAPS`, `CROWD_EXEMPT_TYPES`, `MOB_ENTITY_ARRAYS`
+- `js/shared/mobTypes.js` -- `MOB_TYPES` registry (209 mob stat definitions), `MOB_CAPS`, `CROWD_EXEMPT_TYPES` (~80 types), `MOB_ENTITY_ARRAYS` (18+ sub-array keys)
 - `js/authority/combatSystem.js` -- `StatusFX`, `MOB_AI` (13 movement patterns), `MOB_SPECIALS` (91 base + cave/azurine/tech/junkyard/traphouse/waste ability handlers)
 - `js/authority/vortalisSpecials.js` -- 106 Vortalis dungeon ability handlers
 - `js/authority/earth205Specials.js` -- 98 Earth-205 dungeon ability handlers
@@ -18,12 +18,12 @@ Mobs are the enemy combatants in Teah Online's dungeon system. They are defined 
 
 | Symbol | Purpose |
 |--------|---------|
-| `MOB_TYPES` | Registry of all 255 mob definitions (stats, AI type, specials, per-type physics) |
-| `MOB_CAPS` | Per-type max count per wave (e.g., grunt: 12, golem: 1) |
-| `CROWD_EXEMPT_TYPES` | Set of types that skip crowded-AI override (ranged/special mobs) |
+| `MOB_TYPES` | Registry of all 209 mob definitions (stats, AI type, specials, per-type physics) |
+| `MOB_CAPS` | Per-type max count per wave (generic 2-12, dungeon regular 3-8, all bosses: 1) |
+| `CROWD_EXEMPT_TYPES` | Set of ~80 types that skip crowded-AI override (ranged/special mobs) |
 | `MOB_AI` | Registry of 13 movement targeting functions |
 | `MOB_SPECIALS` | Registry of 435 special ability update functions (across 9 files) |
-| `MOB_ENTITY_ARRAYS` | List of sub-array keys on mobs (`_bombs`, `_mines`, `_turrets`, etc.) for cleanup |
+| `MOB_ENTITY_ARRAYS` | List of 18+ sub-array keys on mobs (`_bombs`, `_mines`, `_turrets`, etc.) for cleanup |
 | `updateMobs()` | Per-frame mob logic: separation, movement, collision, specials, contact damage |
 | `positionClear(px, py, hw)` | AABB wall-free check at pixel position (4-corner tile test) |
 | `bfsPath(sx, sy, ex, ey, maxExplore)` | 8-directional BFS pathfinder from tile to tile, capped at 600 tiles |
@@ -42,7 +42,7 @@ Every mob type is an object in `MOB_TYPES` with these fields:
   // Required
   name: "Grunt",              // display name
   hp: 106,                    // base HP (scaled by wave multiplier at spawn)
-  speed: 3.4,                 // base movement speed in px/frame
+  speed: 3.8,                 // base movement speed in px/frame
   damage: 18,                 // contact/attack damage (scaled by getMobDamageMultiplier())
   killHeal: 10,               // HP restored to player on kill
   goldReward: 2,              // base gold dropped
@@ -106,29 +106,60 @@ Every mob type is an object in `MOB_TYPES` with these fields:
 
   // Optional: split mechanic (Core Guardian)
   _canSplit: true,            // splits into 2 smaller copies at 50% HP
+
+  // Optional: special passive flags (see Special Mob Flags section below)
+  _frontalShield: true,       // blocks frontal bullets (ironclad_marine, coral_crusher)
+  _damageReduction: 0.2,      // flat damage reduction multiplier (puppedrill 0.2, sackhead 0.25)
+  _lethalEfficiency: true,    // enhanced kill mechanics (mr_schwallie)
+  _showMustGoOn: true,        // +30% speed below 30% HP (major_phantom)
+  _backstabber: true,         // bonus damage from behind (lady_red)
+  _intimidatingPresence: true,// +15% damage buff to nearby allies every 60 frames (the_boss_e205)
+  _poisonImmune: true,        // immune to poison status (lady_elixir)
+  _contactDamageAura: { range: 45, dmg: 8 }, // passive DoT aura every 30 frames (nofaux)
+  _deathExplosion: { radius: 120, dmg: 60 }, // explodes on death (nofaux)
 }
 ```
 
+### Special Mob Flags
+
+Certain mobs have passive flags that modify combat behavior beyond standard stats:
+
+| Flag | Mobs | Effect |
+|------|------|--------|
+| `_frontalShield` | ironclad_marine, coral_crusher | Blocks bullets hitting from the front |
+| `_canSplit` | core_guardian | Splits into 2 smaller copies at 50% HP |
+| `_damageReduction` | puppedrill (0.2), sackhead (0.25) | Flat damage reduction multiplier |
+| `_lethalEfficiency` | mr_schwallie | Enhanced kill mechanics |
+| `_showMustGoOn` | major_phantom | +30% speed when below 30% HP |
+| `_backstabber` | lady_red | Bonus damage from behind |
+| `_intimidatingPresence` | the_boss_e205 | +15% damage buff to nearby allies every 60 frames |
+| `_poisonImmune` | lady_elixir | Immune to poison status effects |
+| `_contactDamageAura` | nofaux | Passive DoT aura (range 45px, 8 dmg) every 30 frames |
+| `_deathExplosion` | nofaux | Explodes on death (radius 120px, 60 dmg) |
+| `speed: 0` + `ai: 'stationary'` | trench_tentacle, human_statue, dustcore_totem | Immobile turret-style mobs |
+
 ### Floor Breakdown
 
-#### Legacy Mobs (Cave Dungeon, Floor 0)
+#### Legacy Mobs (Cave Dungeon, 10 types)
 
 Direct `MOB_AI` and `MOB_SPECIALS` entries keyed by type name:
 
 | Type | Role | Notable Mechanic |
 |------|------|-----------------|
-| `grunt` | Melee chaser | Basic interceptor with slight flanking |
-| `runner` | Fast melee | Velocity-prediction targeting, intercepts player movement |
-| `tank` | Slow brawler | High HP (375), heavy flanking angles |
-| `witch` | Summoner | Kites at range, summons up to 4 skeletons |
-| `skeleton` | Swarm minion | Summoned by witches, swarms in 8 formation angles |
-| `golem` | Boss-tier | Boulders + stomp + summons mini golems |
-| `mini_golem` | Golem minion | Smaller boulders, relentless pursuit |
-| `mummy` | Suicide bomber | Arms fuse on approach, explodes for 28 damage in 140px |
-| `healer` | Support | Heals nearest ally within 220px, flees player |
-| `archer` | Ranged sniper | Bouncing poison arrows, maintains 350px distance |
+| `grunt` | Melee chaser | HP 106, spd 3.8, dmg 18. Basic interceptor with slight flanking |
+| `runner` | Fast melee | HP 50, spd 4.6, dmg 10. Velocity-prediction targeting, intercepts player movement |
+| `tank` | Slow brawler | HP 375, spd 3.4, dmg 20. Heavy flanking angles |
+| `witch` | Summoner | HP 188, spd 1.8, dmg 6. Kites at range, summons up to 4 skeletons (summonRate 540) |
+| `skeleton` | Swarm minion | HP 38, spd 3.8, dmg 8. Summoned by witches, swarms in 8 formation angles |
+| `golem` | Boss-tier | HP 1000, spd 1.5, dmg 13. Boulders (rate 88) + stomp + summons mini golems |
+| `mini_golem` | Golem minion | HP 120, spd 1.9, dmg 6. Smaller boulders, relentless pursuit |
+| `mummy` | Suicide bomber | HP 56, spd 3.4, dmg 0. Arms fuse on approach, explodes for 28 damage in 140px |
+| `archer` | Ranged sniper | HP 75, spd 2.9, dmg 6. Bouncing poison arrows (4 bounces, rate 80), maintains 350px distance |
+| `healer` | Support | HP 81, spd 2.1, dmg 5. Heals nearest ally within 220px for 10 HP (rate 72), flees player |
 
-#### Floor 1: Azurine City (Levels 1-10)
+#### Azurine City (50 mobs, 10 bosses, Levels 1-50)
+
+**Floor 1: Gangsters & Goons / Renegade (Levels 1-10)**
 
 **Levels 1-4 (Gangsters & Goons):**
 - `neon_pickpocket` -- runner AI, `swipe_blink`
@@ -146,7 +177,7 @@ Direct `MOB_AI` and `MOB_SPECIALS` entries keyed by type name:
 
 **Level 10 Boss:** `velocity` (HP 1500) -- runner AI, 4 abilities: `phase_dash`, `bullet_time_field`, `afterimage_barrage`, `summon_renegades`
 
-#### Floor 2: Tech District / Corporate Core (Levels 11-20)
+**Floor 2: Tech District / Corporate Core (Levels 11-20)**
 
 **Levels 11-14 (Tech District):**
 - `circuit_thief` -- runner AI, `overload_drain`
@@ -164,7 +195,7 @@ Direct `MOB_AI` and `MOB_SPECIALS` entries keyed by type name:
 
 **Level 20 Boss:** `e_mortis` (HP 1800) -- archer AI, 4 abilities: `dividend_barrage`, `hostile_takeover`, `nda_field`, `golden_parachute`
 
-#### Floor 3: Junkyard / Swamp Mutation (Levels 21-30)
+**Floor 3: Junkyard / Swamp Mutation (Levels 21-30)**
 
 **Levels 21-24 (Junkyard Scavengers):**
 - `scrap_rat` -- grunt AI, `scavenge_shield`
@@ -182,7 +213,7 @@ Direct `MOB_AI` and `MOB_SPECIALS` entries keyed by type name:
 
 **Level 30 Boss:** `centipede` (HP 2200) -- witch AI, 4 abilities: `spore_cloud`, `burrow_surge`, `toxic_nursery`, `regrowth`
 
-#### Floor 4: Trap House / R.E.G.I.M.E (Levels 31-40)
+**Floor 4: Trap House / R.E.G.I.M.E (Levels 31-40)**
 
 **Levels 31-34 (Trap House):**
 - `tripwire_tech` -- grunt AI, `tripwire`
@@ -200,7 +231,7 @@ Direct `MOB_AI` and `MOB_SPECIALS` entries keyed by type name:
 
 **Level 40 Boss:** `junz` (HP 2500) -- archer AI, 4 abilities: `pulse_override`, `repulsor_beam`, `nano_armor`, `drone_court`
 
-#### Floor 5: Waste Planet / Slime Dusk (Levels 41-50)
+**Floor 5: Waste Planet / Slime Dusk (Levels 41-50)**
 
 **Levels 41-44 (Waste Planet Beasts):**
 - `rabid_hyenaoid` -- runner AI, `bleed_maul`
@@ -218,21 +249,55 @@ Direct `MOB_AI` and `MOB_SPECIALS` entries keyed by type name:
 
 **Level 50 Duo Boss:** `malric` (HP 3600, tank AI: `ooze_blade_arc`, `slime_rampart`, `melt_floor`, `summon_elite`) + `vale` (HP 2600, witch AI: `shadow_teleport`, `puppet_shot`, `abyss_grasp`, `regen_veil`)
 
-#### Vortalis Dungeon (106 unique specials)
+#### Vortalis Dungeon (50 mobs, 10 bosses, 106 unique specials)
 
-5 floors of pirate/ocean-themed mobs. Specials defined in `js/authority/vortalisSpecials.js`. Features nautical combat mechanics: anchor sweeps, tidal surges, tentacle grabs, ghost ships, kraken calls, ink blasts, coral barriers, spectral crew summons, and leviathan attacks. Includes dual boss encounters with golden gilded reef and wrath of sea mechanics.
+5 floors of pirate/ocean-themed mobs. Specials defined in `js/authority/vortalisSpecials.js`. Each floor has 2 bosses (duo encounters).
 
-#### Earth-205: Marble City (98 unique specials)
+| Floor | Theme | Bosses | Abilities |
+|-------|-------|--------|-----------|
+| 1 | Pirate / Naval | Captain Husa (5), Admiral Von Kael (5) | flintlock_volley, cutlass_cleave, naval_artillery, spectral_chain_binding, etc. |
+| 2 | Jungle / Blood | Zongo (5), Bloodborne Marlon (6) | spear_barrage, vine_snare, chain_grapple, crimson_cleave, demonic_shift, etc. |
+| 3 | Werewolf / Ghost | Wolfbeard (8), Ghostbeard (8) | quick_draw, feral_slash, alpha_rampage, phantom_slash, ghost_ship, soul_drain, etc. |
+| 4 | Sea Creatures / Deep-Sea | Kraken Jim (8), King Requill (8) | tentacle_grab, ink_blast, kraken_call, gilded_maelstrom, abyssal_roar, etc. |
+| 5 | Merfolk / Ocean Deity | Queen Siralyth (8), Mami Wata (7) | golden_shard_volley, sovereigns_cage, leviathans_fang, wrath_of_sea, etc. |
 
-5 floors of urban/gangster-themed mobs. Specials defined in `js/authority/earth205Specials.js`. Features street combat: pipe swings, slingshot snipes, hairspray flamethrowers, stiletto stabs, chemical flasks, glass flurries, crowbar hooks, boomerang cleaves, and theatrical parries. Includes construction site, backstage, and reactor-themed encounters.
+#### Earth-205: Marble City (50 mobs, 10 bosses, 98 unique specials)
 
-#### Wagashi: Heavenly Realm (70 unique specials)
+5 floors of urban/gangster-themed mobs. Specials defined in `js/authority/earth205Specials.js`. Each floor has 2 bosses.
 
-5 floors of Japanese mythology-themed mobs. Specials split across `js/authority/wagashiSpecials.js`, `wagashiSpecials2.js`, `wagashiSpecials3.js`. Features feudal combat: silk needle fans, jade flashes, serpent swarms, boar fury charges, titan charges, war stomps, demon cleavers, shadow steps, tidal waves, gravity wells, and divine form shifts. Includes a void/corruption final boss phase.
+| Floor | Theme | Bosses | Abilities |
+|-------|-------|--------|-----------|
+| 1 | Back Alleys | Willis (7), Puppedrill (6) | jury_rigged_taser, chemical_flask, master_plan, crowbar_hook, brutal_beatdown, etc. |
+| 2 | Syndicate District | Sackhead (5), Mr. Schwallie (6) | barbed_swing, bull_charge, batter_up, cigar_flick, one_man_army, etc. |
+| 3 | Carnival of Dread | Killer Mime (5), Major Phantom (5) | finger_gun, invisible_wall, trapped_in_box, overture_slash, grand_finale, etc. |
+| 4 | Casino / Mob HQ | Lady Red (5), The Boss (5) | concealed_stiletto, toxic_perfume, checkmate, gold_ring_hook, the_hit, etc. |
+| 5 | Chemical Plant | Lady Elixir (5), Nofaux (6) | toxic_stream, maximum_overpressure, caustic_cleave, critical_meltdown, etc. |
 
-#### Earth-216: Sin City (70 unique specials)
+Notable flags: Puppedrill (`_damageReduction: 0.2`), Sackhead (`_damageReduction: 0.25`), Mr. Schwallie (`_lethalEfficiency`), Major Phantom (`_showMustGoOn`), Lady Red (`_backstabber`), The Boss (`_intimidatingPresence`), Lady Elixir (`_poisonImmune`), Nofaux (`_contactDamageAura`, `_deathExplosion`).
 
-5 floors of casino/underworld-themed mobs. Specials split across `js/authority/earth216Specials.js`, `earth216Specials2.js`, `earth216Specials3.js`. Features gambling/dark mechanics: chip tosses, jackpot blooms, velvet slashes, vault leaps, bone walls, funeral rings, ghost mariachis, neon shrieks, phantom splitstreams, card flicks, oracle curses, and unsealing maw attacks. Includes Day of the Dead and occult-themed encounters.
+#### Wagashi: Heavenly Realm (50 mobs, 10 bosses, 70 unique specials)
+
+5 floors of Japanese mythology-themed mobs. Specials split across `js/authority/wagashiSpecials.js`, `wagashiSpecials2.js`, `wagashiSpecials3.js`. Each floor has a mini-boss (L5/15/25/35/45) and a boss (L10/20/30/40/50).
+
+| Floor | Theme | Mini-Boss | Boss | Abilities |
+|-------|-------|-----------|------|-----------|
+| 1 | Silk Nest / Boar Territory | Sichou (3) | Tongya (3) | silk_snare, thread_shot, brood_call, titan_charge, war_stomp, boar_fury |
+| 2 | Jade Temple / Ruined Sanctum | Jade Serpent (3) | Stone Golem Guardian (3) | jade_glare, serpent_swarm, jade_spires, earthbreaker_slam, boulder_hurl, stonehide |
+| 3 | Storm Palace / Inferno Bastion | Azure Dragon (3) | Jaja (3) | lightning_mark, tidal_wave, cyclone_guard, inferno_crash, blazing_advance, ember_mantle |
+| 4 | Execution Grounds / Void Sanctum | Gensai (3) | Moon Rabbit (3) | shadow_step, blood_crescent, demon_cleaver, gravity_well, moon_rift_orb, phase_skip |
+| 5 | Devouring Maw / Unsealed Heaven | Celestial Toad (3) | Lord Sarugami (3) | devouring_pull, void_spit, corruption_mire, black_orb_sentinels, orb_bomb_command, divine_form_shift |
+
+#### Earth-216: Sin City (50 mobs, 10 bosses, 70 unique specials)
+
+5 floors of casino/underworld-themed mobs. Specials split across `js/authority/earth216Specials.js`, `earth216Specials2.js`, `earth216Specials3.js`. Each floor has a mini-boss (L5/15/25/35/45) and a boss (L10/20/30/40/50).
+
+| Floor | Theme | Mini-Boss | Boss | Abilities |
+|-------|-------|-----------|------|-----------|
+| 1 | Crime & Casino | Victor Graves (3) | Madame Midas (3) | tribute_taken, call_collection, iron_debt, jackpot_bloom, crown_of_debt, touch_of_midas |
+| 2 | Cursed Flesh / Dead Performance | Slasher (3) | Blackout Belle (3) | carnage_arm, blood_trail_dash, predator_lock, total_blackout, feedback_kiss, dead_applause |
+| 3 | Spirit & Death | Macabre (3) | Rosa Calavera (3) | cemetery_call, funeral_ring, ofrenda_burst, ghost_mariachi, candle_procession, last_serenade |
+| 4 | Hell Engines & Speed | Motor Demon (3) | Nitro Wraith (3) | redline_e216, hell_exhaust, geargrind_slam, nitro_line, phantom_splitstream, crash_bloom |
+| 5 | Fate & Corruption | Hollow Ace (3) | Alcazar (3) | stacked_deck, cold_read_e216, house_pull, corrupt_vessel, black_benediction, unsealing_maw |
 
 ### 13 AI Patterns (MOB_AI)
 
@@ -261,32 +326,38 @@ Each AI function receives `(m, ctx)` where `ctx` contains `{ player, dist, dx, d
 
 ### AI Dispatch Flow in `mobSystem.js`
 
-The per-mob-per-frame flow in `updateMobs()` is a 10-step pipeline:
+The per-frame flow in `updateMobs()` is a 10-step pipeline:
 
-1. **Mob separation** -- Push overlapping mobs apart (body-blocking). Uses `MOB_RADIUS * 2` as minimum separation distance. For exact overlaps, tries 8 random angles.
+1. **Global ticks** -- Decrement `contactCooldown` for all mobs (30 frames after contact hit). Tick per-entity `_phaseTimer` for boss phase transitions.
 
-2. **Freeze/status check** -- If `_mobsFrozen`, set speed to 0 and skip. Tick despawn timers for summoned minions. Tick all status effects via `StatusFX.tickMob(m)`. If result has `skip: true` (stagger/stun/root), skip this mob's movement.
+2. **Mob separation** -- Push overlapping mobs apart (body-blocking). Uses `MOB_RADIUS * 2` (`minSep`) as minimum separation distance, push factor 0.45. For exact overlaps, tries 8 random angles.
 
-3. **Party-aware targeting** -- `PartySystem.getMobTarget(m)` selects the mob's assigned party target. Sets `_currentDamageTarget` for damage routing in specials.
+3. **Per-mob main loop** (steps 3a-3k for each mob):
+   - **3a. Freeze check** -- If `_mobsFrozen`, set speed to 0 and skip.
+   - **3b. Despawn timer** -- Tick despawn timers for summoned minions.
+   - **3c. StatusFX tick** -- `StatusFX.tickMob(m)`. If result has `skip: true` (stagger/stun/root), skip movement.
+   - **3d. Party-aware targeting** -- `PartySystem.getMobTarget(m)` via `getMobTarget()`. Sets `_currentDamageTarget`.
+   - **3e. AI dispatch** -- Crowding detection, dispatch to `MOB_AI` function, sanitize against walls.
+   - **3f. BFS pathfinding** -- LoS check along direct path. If blocked, use BFS (8-dir, 600-tile cap). Cache refreshes every 5-12 frames (5 if near wall, 12 otherwise). Fallback: best-direction neighbor search.
+   - **3g. AABB movement with sliding** -- Independent X/Y axis testing with wall-slide. If blocked on both, try half-speed per axis.
+   - **3h. Wall repulsion** -- 8-direction sampling, push at 2.5px/frame. Spiral search if still stuck.
+   - **3i. Stuck detection** -- If < 2px movement in 90 frames, teleport to nearest clear tile.
+   - **3j. Animation** -- `frame += speed * 0.015 + 0.01`, modulo 4.
+   - **3k. Passive flag processing** -- `_showMustGoOn` (+30% speed below 30% HP), `_intimidatingPresence` (+15% dmg buff to nearby allies every 60 frames), `_contactDamageAura` (DoT every 30 frames).
+   - **3l. Shooter** -- Fire bullets at target if within range and cooldown expired (60-frame mob attack cooldown).
+   - **3m. MOB_SPECIALS dispatch** -- Legacy mobs by type key, Floor 1+ mobs by `_specials` array. Multi-ability rotation with `stillActive`/`isMultiFrame` tracking.
 
-4. **Distance calculation** -- Compute `dx`, `dy`, `dist` from mob to its target.
+4. **Contact damage** -- Checks `PartySystem.getAliveEntities()`, dodge chance, `dealDamageToPlayer()`. Contact cooldown: 30 frames.
 
-5. **AI targeting** -- Crowding detection (count allies within `MOB_CROWD_RADIUS`). Dispatch to appropriate `MOB_AI` function. Sanitize result against walls.
+5. **Body blocking** -- Mob-mob and mob-player collision resolution.
 
-6. **Speed calculation** -- Cap effective speed based on player base speed (runners: 1.1x, others: 0.85x). Apply frost slow multiplier from status effects.
+6. **clampOutOfWalls** -- Nudge/spiral search to push mobs out of solid tiles.
 
-7. **Pathfinding** -- Line-of-sight check by sampling tiles along the direct path. If any tile is solid, use BFS pathfinding. BFS cache refreshes every 12 frames (5 frames if near a wall). If BFS fails (600-tile cap), fall back to best-direction neighbor search.
+7. **Dead mob cleanup** -- `spawnDeathEffect()`, clean all `MOB_ENTITY_ARRAYS` sub-arrays, filter dead mobs, `checkPhaseAdvance()`.
 
-8. **Movement application** -- AABB tile collision with independent X/Y axis testing. If blocked on one axis, try sliding along the other with a 1.5px nudge. If blocked on both, try half-speed on each axis independently.
+8. **Dead mob bullet cleanup** -- Remove bullets owned by dead mobs.
 
-9. **Wall repulsion** -- If mob overlaps a wall after movement, sample 8 directions to find open space and push outward at 2.5px/frame. If still stuck, spiral-search for nearest clear tile.
-
-10. **Stuck detection** -- If mob hasn't moved > 2px in 90 frames (~1.5s), teleport to nearest clear tile (spiral search radius 1-3 tiles).
-
-After movement, the system handles:
-- **Ranged attacks** (shooters): fire bullets at player if within range and cooldown expired
-- **MOB_SPECIALS dispatch**: legacy mobs by type key, Floor 1+ mobs by `_specials` array
-- **Contact damage**: if player within `contactRange` and `contactCooldown === 0`, deal damage
+9. **Wave state machine transitions** -- Advance wave state based on remaining mob count.
 
 ### BFS Pathfinding
 
@@ -294,7 +365,7 @@ After movement, the system handles:
 - **Diagonal validation**: both adjacent cardinal tiles must be clear (prevents corner-cutting through walls)
 - **600-tile exploration cap** (default, overridable via `maxExplore` param)
 - **Early termination**: accepts tiles adjacent to target (within 1 tile in any direction)
-- **Cached per mob**: stored in `m._pathCache`, refreshed every 12 frames (5 if near wall) or when target tile changes
+- **Cached per mob**: stored in `m._pathCache`, refreshed every 5-12 frames (5 if near wall, 12 otherwise) or when target tile changes
 - **BFS failure fallback**: best-direction neighbor search using dot-product with target direction
 
 ### Key Helper Functions
@@ -357,7 +428,7 @@ Multi-frame abilities (dashes, telegraphs, channeled attacks) need two flag chec
 
 **Why this is critical:** If a new boss ability's flags are missing from both lists, the ability will fire but `_activeAbility` won't be set. The boss will immediately try to fire another ability next frame, causing broken behavior -- abilities overlapping, animations cutting short, or the boss doing nothing. Every new dungeon MUST update BOTH lists with ALL new boss flags.
 
-The lists are duplicated (same checks in both `stillActive` and `isMultiFrame` blocks) and organized by dungeon with comments. Currently covers flags for all 6 dungeons: Cave/Azurine/Tech/Junkyard/Trap House/Waste (base), Vortalis, Wagashi, and Earth-216.
+The lists are duplicated (same checks in both `stillActive` and `isMultiFrame` blocks) and organized by dungeon with comments. Currently covers flags for all 6 dungeons: Cave/Azurine/Tech/Junkyard/Trap House/Waste (base), Vortalis, Earth-205, Wagashi, and Earth-216.
 
 ### Summoned Mob Rules
 
@@ -388,8 +459,9 @@ Some abilities spawn persistent objects (mines, turrets, pillars, drones, oil pu
 - **Adding a new mob requires entries in multiple registries:** define in `MOB_TYPES`, add AI pattern or set `ai` field, add specials to `MOB_SPECIALS`, add renderer entry if custom visuals, add cap in `MOB_CAPS`, add to `CROWD_EXEMPT_TYPES` if ranged/special.
 - **Adding a new dungeon boss requires updating `stillActive` AND `isMultiFrame`** in `mobSystem.js` with ALL new boss flags. Missing flags = broken boss behavior.
 - **Summoned mobs need `ai: 'grunt'`** and their `_despawnTimer` must tick in the global `updateMobs()` loop, not inside the ability handler.
-- **`MOB_CAPS` is per-type per-wave**, not global. Having 12 grunts and 8 runners simultaneously is valid.
+- **`MOB_CAPS` is per-type per-wave**, not global. Generic mobs cap at 2-12, dungeon regulars at 3-8, all bosses at 1.
 - **Speed capping is relative to player base speed.** Runners are capped at 1.1x `PLAYER_BASE_SPEED`, all others at 0.85x. This prevents mobs from being uncatchable or trivially outrunnable regardless of wave multipliers.
+- **Contact cooldown is 30 frames** after a contact hit. **Mob attack cooldown is 60 frames** between ranged shots.
 - **BFS failure is common on large maps.** The 600-tile cap means mobs on the opposite side of a complex maze may not find a path. The fallback (best-direction neighbor) keeps them moving instead of standing still.
 - **`_specials` array vs `MOB_SPECIALS[type]`**: Legacy mobs (grunt, witch, golem, etc.) are dispatched by type name directly. Floor 1+ mobs use the `_specials` array of ability names. Both coexist in the same dispatch block.
 - **Mob entity sub-arrays must be cleaned up.** `MOB_ENTITY_ARRAYS` lists all possible sub-arrays (`_bombs`, `_mines`, `_turrets`, etc.). `resetCombatState()` iterates these and clears them before zeroing the mobs array, preventing orphaned references.

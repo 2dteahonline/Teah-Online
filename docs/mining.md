@@ -18,7 +18,7 @@ A resource-gathering skill where the player equips a pickaxe and mines ore nodes
 | `range` | 90px | Max distance to mine ore |
 | `baseTick` | 44 frames | Base frames between mining hits (before speed scaling) |
 | `nodeSize` | 72px | Visual size of ore nodes |
-| `collisionRadius` | `GAME_CONFIG.ORE_COLLISION_RADIUS` | Circle-circle collision radius |
+| `collisionRadius` | `GAME_CONFIG.ORE_COLLISION_RADIUS` (17) | Circle-circle collision radius |
 | `hitFlashFrames` | 6 | Frames of hit flash per strike |
 | `respawnTime` | 600 frames (10s) | Wait time before regrow starts |
 | `regrowFrames` | 90 frames (1.5s) | Regrow scale-up animation duration |
@@ -51,11 +51,13 @@ A resource-gathering skill where the player equips a pickaxe and mines ore nodes
 | `miningTarget` | int/null | Ore node ID currently being mined |
 | `miningTimer` | int | Frames until next mining hit |
 | `miningProgress` | int | Accumulated hits on current target |
+| `_orePickups` | array | Ground ore pickups (dropped when inventory full) |
 | `window._miningActive` | boolean | True while actively mining (read by characterSprite.js) |
 | `window._miningSwingPhase` | float | 0-1 normalized phase within one swing cycle |
 | `window._miningSwingDir` | int | 1 = winding up, -1 = striking down |
 | `window._miningHitFlash` | int | Frames remaining for hit flash visual |
 | `window._miningLockedNodeId` | int/null | Set when aiming at level-locked ore |
+| `window._miningSwingAngle` | float | Current swing angle for pickaxe animation |
 | `window._miningLockedReq` | int/null | Required mining level for locked ore |
 
 ### Persistent State
@@ -125,15 +127,15 @@ Defined in `interactable.js`. Pickaxes are melee weapons with `special: 'pickaxe
 |---------|------|--------|-------|----------|--------------|------|-------|----------------|
 | Pickaxe | 0 | 10 | 70 | 32 | 1.0 | 0% | #8a6a3a | — (default) |
 | Copper Pickaxe | 1 | 14 | 70 | 30 | 1.15 | 0% | #b87333 | Coal |
-| Iron Pickaxe | 2 | 18 | 70 | 28 | 1.3 | 0% | #8a8a8a | Iron Ore |
-| Gold Pickaxe | 3 | 22 | 75 | 26 | 1.5 | 0% | #ffd700 | Gold Ore |
+| Iron Pickaxe | 2 | 18 | 70 | 28 | 1.3 | 0% | #8a8a8a | Iron |
+| Gold Pickaxe | 3 | 22 | 75 | 26 | 1.5 | 0% | #ffd700 | Gold |
 | Amethyst Pickaxe | 4 | 26 | 75 | 24 | 1.7 | 0% | #9b59b6 | Amethyst |
 | Ruby Pickaxe | 5 | 30 | 80 | 22 | 1.9 | 0% | #e74c3c | Ruby |
 | Diamond Pickaxe | 6 | 35 | 80 | 20 | 2.1 | 0% | #85c1e9 | Diamond |
 | Emerald Pickaxe | 7 | 40 | 85 | 18 | 2.4 | 0% | #2ecc71 | Emerald |
 
-- **Damage**: Used for both combat AND ore mining (`floor(damage / 10)` per tick)
-- **Mining Speed**: Multiplier on baseTick (higher = faster). Tick rate = `floor(44 / miningSpeed)`
+- **Damage**: Used for both combat AND ore mining (`floor(damage / 10)` per tick, minimum 1)
+- **Mining Speed**: Multiplier on baseTick (higher = faster). Tick rate = `max(10, round(44 / miningSpeed))`
 - **Unlocked After**: Must have mined that ore type (in `_discoveredOres`) to purchase
 
 ### Damage & Speed Examples
@@ -141,7 +143,7 @@ Defined in `interactable.js`. Pickaxes are melee weapons with `special: 'pickaxe
 | Pickaxe | Ore Dmg/Tick | Tick Rate | Effective DPS |
 |---------|-------------|-----------|---------------|
 | Pickaxe (10 dmg, 1.0 speed) | 1 | 44 frames | ~1.4/sec |
-| Iron (18 dmg, 1.3 speed) | 1 | 33 frames | ~1.8/sec |
+| Iron (18 dmg, 1.3 speed) | 1 | 34 frames | ~1.8/sec |
 | Gold (22 dmg, 1.5 speed) | 2 | 29 frames | ~4.1/sec |
 | Diamond (35 dmg, 2.1 speed) | 3 | 21 frames | ~8.6/sec |
 | Emerald (40 dmg, 2.4 speed) | 4 | 18 frames | ~13.3/sec |
@@ -187,11 +189,11 @@ If `skillData['Mining'].level < oreType.miningLevelReq`:
 - Do not mine
 
 ### Target Switch
-When target changes, timer initialized to `tickRate - melee.swingDuration` (first hit fires early to align with swing animation).
+When target changes, timer initialized to `tickRate - melee.swingDuration` (first hit fires after swing connects, ~12 frames delay).
 
 ### Damage Tick
 When `miningTimer >= tickRate`:
-1. Calculate `dmgPerTick = floor(pickaxe.damage / 10)`, minimum 1
+1. Calculate `dmgPerTick = max(1, floor(equip.damage / 10))`
 2. Roll crit chance: if hit, dmgPerTick × 2
 3. Apply damage: `ore.hp -= dmgPerTick`
 4. Trigger hit flash effect
@@ -207,7 +209,7 @@ When `miningTimer >= tickRate`:
 | Phase | Duration | Visual |
 |-------|----------|--------|
 | Depleted | 600 frames (10s) | 4 rubble chunks + scattered pebbles |
-| Regrowing | 90 frames (1.5s) | Scale 0.3→1.0, opacity 0.5→1.0 |
+| Regrowing | 90 frames (1.5s) | Scale 0.3→1.0 (`0.3 + (1 - respawnTimer/90) * 0.7`), opacity 0.5→1.0 |
 | Active | — | Full rock body + veins + sparkles + bobbing |
 
 ## Ground Ore Pickups
@@ -221,7 +223,7 @@ When inventory is full, mined ores spawn as floating ground pickups.
 
 ### Behavior
 - Lifetime: 1800 frames (~30s at 60fps)
-- Pickup distance: 40px from player
+- Pickup distance: 40px from `player.x, player.y - 20` (offset upward)
 - Auto-collects on player touch via `addToInventory()`
 - Shows "+1 Ore Name" floating text on collection
 - Bobbing animation: `sin(time × 3 + offset) × 3` px
@@ -255,8 +257,9 @@ All ore nodes rendered in world space. Each active (non-depleted) ore shows:
 `resolveOreCollisions()` — called after player movement each frame.
 
 - Circle-circle collision (NOT grid-based AABB)
-- Player radius: `GAME_CONFIG.MINING_PLAYER_R`
-- Ore radius: `GAME_CONFIG.ORE_COLLISION_RADIUS`
+- Player radius: `GAME_CONFIG.MINING_PLAYER_R` (10)
+- Ore radius: `GAME_CONFIG.ORE_COLLISION_RADIUS` (17)
+- Minimum separation distance: 10 + 17 = 27px
 - Only non-depleted ores collide (player walks through rubble)
 - Resolution: push player out along normal vector
 
@@ -282,8 +285,8 @@ Linear progression: mine_01 → mine_02 → mine_03 → mine_04.
 | `drawOreNodes()` | World-space: ore visuals (rock + veins + sparkle + labels + HP bars) |
 | `resolveOreCollisions()` | Push player out of non-depleted ores (circle-circle) |
 | `getNearestOre()` | Returns nearest non-depleted ore within range |
-| `getMiningTickRate()` | Effective tick rate: `floor(baseTick / miningSpeed)`, min 10 |
-| `getOreDamagePerTick()` | `floor(pickaxe.damage / 10)`, min 1 |
+| `getMiningTickRate()` | Effective tick rate: `max(10, round(baseTick / miningSpeed))` |
+| `getOreDamagePerTick()` | `max(1, floor(equip.damage / 10))` |
 | `createOreItem(oreId)` | Creates stackable material item with tier/value/color/oreId |
 | `spawnOrePickup(oreId, x, y)` | Ground pickup when inventory full |
 | `updateOrePickups()` | Per-frame: lifetime, player pickup collision |
@@ -319,8 +322,8 @@ Linear progression: mine_01 → mine_02 → mine_03 → mine_04.
 
 - Pickaxes are melee weapons — they deal combat damage AND mine ores. `special: 'pickaxe'` enables mining.
 - Mining uses `getAimDir()` (mouse/arrow) not `player.dir` for cone check. `player.dir` reverts after `shootFaceTimer` (~14 frames), but mining tick is 44 frames.
-- Ore damage scales: `floor(damage / 10)`. Bronze (10 dmg) = 1/tick, Gold (22 dmg) = 2/tick, Emerald (40 dmg) = 4/tick.
-- Mining tick rate scales with `miningSpeed`: `baseTick / miningSpeed`. Higher = faster.
+- Ore damage scales: `max(1, floor(damage / 10))`. Pickaxe (10 dmg) = 1/tick, Gold (22 dmg) = 2/tick, Emerald (40 dmg) = 4/tick.
+- Mining tick rate scales with `miningSpeed`: `max(10, round(baseTick / miningSpeed))`. Higher speed = faster.
 - First hit on a new target fires early (`tickRate - melee.swingDuration` frames) to align with swing animation.
 - Ore collision uses circle-circle, not grid-based AABB.
 - Each ore group contains a single ore type (Gold vein won't have Amethyst mixed in).

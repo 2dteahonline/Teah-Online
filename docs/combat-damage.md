@@ -7,7 +7,7 @@ Combat in Teah Online revolves around three weapon classes (guns, melee, potions
 ## Files
 
 - `js/core/gunSystem.js` -- Gun firing, reloading, bullet spawning, CT-X stat sliders, death effects, mob ambient particles
-- `js/core/meleeSystem.js` -- Melee swing, dash, specials (ninja/storm/cleave), ultimates (Malevolent Shrine, Godspeed)
+- `js/core/meleeSystem.js` -- Melee swing, dash, specials (ninja/storm/piercing), ultimates (Malevolent Shrine, Godspeed)
 - `js/authority/damageSystem.js` -- `dealDamageToMob()`, `dealDamageToPlayer()`, `processKill()`, `GUN_BEHAVIORS` registry, kill event subscribers
 - `js/authority/combatSystem.js` -- `StatusFX` system (mob + player effects), `MOB_AI` (13 patterns), `MOB_SPECIALS` (91 abilities in this file)
 - `js/authority/vortalisSpecials.js` -- 106 Vortalis dungeon ability handlers
@@ -61,15 +61,15 @@ The CT-X gun has 3 sliders (Freeze, RoF, Spread) adjustable via `/mg` command. S
 **Main Guns (Progression):**
 5 permanent guns bought from the Gunsmith, leveled 1-25 per tier:
 
-| Gun | Category | Mechanic |
-|-----|----------|----------|
-| Storm AR | Assault Rifle | Fast full-auto, reliable |
-| Heavy AR | Assault Rifle | Slow, high damage |
-| Boomstick | Shotgun | Close-range pellet spread |
-| Ironwood Bow | Bow | Piercing arrows, no reload |
-| Volt-9 | SMG | Very fast fire, slight spread |
+| Gun | Category | Dmg | FR | Mag | Reload | Special |
+|-----|----------|-----|-----|-----|--------|---------|
+| Storm AR | Assault Rifle | 25-85 | 6-3 | 32-55 | 50-30 | Fast full-auto, reliable |
+| Heavy AR | Assault Rifle | 45-140 | 12-7 | 24-40 | 60-35 | Slow, high damage |
+| Boomstick | Shotgun | 18-45 | 20-14 | 6-12 | 70-45 | 3-5 pellets, 15-12 spread, maxRange 200 |
+| Ironwood Bow | Bow | 60-200 | 18-10 | 12-20 | 90-50 | 1-3 pierce |
+| Volt-9 | SMG | 12-35 | 3-2 | 50-80 | 55-30 | 8-5 spread |
 
-Stats interpolated linearly: `stat(level) = Math.round(base + (max - base) * (level - 1) / 24)`
+Stats shown as base(L1)-max(L25). Interpolated linearly: `stat(level) = Math.round(base + (max - base) * (level - 1) / 24)`
 
 ### Melee System
 
@@ -77,37 +77,39 @@ Stats interpolated linearly: `stat(level) = Math.round(base + (max - base) * (le
 
 | Weapon | Special | Ultimate | Mechanic |
 |--------|---------|----------|----------|
-| Sword | _(none)_ | _(none)_ | Basic 120-degree arc swing with knockback |
-| Ninja Katanas | `'ninja'` | _(none)_ | Dual crossing slashes, 30% AOE splash to nearby mobs within 60px, 3-dash chain, 4x damage during dash, lifesteal on hit |
-| Storm Blade | `'storm'` | Godspeed | Shockwave ring (65% damage to mobs within 80px), chain lightning (50% damage, chains 3 times within 160px range), lifesteal on all hits |
-| War Cleaver | `'cleave'` | Malevolent Shrine | 360-degree cleave (hits all mobs in range), piercing blood slash arcs, lifesteal on hit |
+| Sword | `'default'` | _(none)_ | Basic swing with knockback |
+| Ninja Katanas | `'ninja'` | _(none)_ | Dual crossing slashes, AOE splash to nearby mobs, 3-dash chain (14f duration, 21.85 speed, 240f cooldown, 6f gap between dashes), lifesteal on hit |
+| Storm Blade | `'storm'` | Godspeed | Ground slam AoE (range 130, dmg*0.8, 60f stun, 45f CD), chain lightning (dmg*0.5, 3 targets, 160px range), lifesteal on all hits |
+| War Cleaver | `'piercing'` | Malevolent Shrine | Bleed DoT (dmg*0.3 over 180f, tick every 30f), execute (<25% HP = 2x damage), piercing blood slash arcs, lifesteal on hit |
 
 **Melee swing flow:**
 1. `meleeSwing()` checks cooldown, sets swing direction from aim
 2. Iterates all mobs in range, checks arc (or 360 for cleave)
-3. Calculates crit (20% chance normally, 100% during ninja dash or shadow step)
+3. Calculates crit (20% base chance, 2x multiplier)
 4. Applies damage via `dealDamageToMob(m, dmg, "melee")`
 5. Applies weapon-specific effects (splash, shockwave, chain lightning)
 6. Applies knockback
+
+**Dash mechanics:** `clampDashTarget` uses binary search (8 iterations) for wall collision. Dash gap of 6 frames between chain dashes.
 
 **Ultimates:**
 - **Malevolent Shrine** (War Cleaver): 10 kill charges, 3-second duration, slashes every 4 frames (45 total) within 150px range
 - **Godspeed** (Storm Blade): 10 kill charges, 5-second duration, lightning strikes every 8 frames within 180px range
 
-**Lifesteal:** `calcLifesteal(dmg)` = 15% of damage dealt, hard capped at 20 HP per hit. Applied on melee direct hits, splash damage, shockwave, and chain lightning for ninja/storm/cleave weapons.
+**Lifesteal:** Kill heal uses `baseHeal` from `MOB_TYPES.killHeal` (default 5). Applied on melee direct hits, splash damage, shockwave, and chain lightning for ninja/storm/piercing weapons.
 
 ### Damage Pipeline
 
 #### Damage to Mobs: `dealDamageToMob(mob, amount, source, attackerEntity)`
 
-1. Check `mob._invulnerable` (mud_dive, nano_armor) -- if true, return false
-2. **Active shield** (`mob._shielded`): if true and source is not DOT/thorns, block all damage with `shield_block` visual
-3. **Frontal shield** (`mob._frontalShield`): negate damage from within 60-degree arc of mob's facing direction
-4. **Counter stance** (`mob._counterStance`): melee attacks are reflected back to the attacker via `dealDamageToPlayer`
-5. **Passive damage reduction** (`mob._damageReduction`): percentage-based reduction (e.g. 0.3 = 30% less damage, min 1)
-6. **Shield absorb**: if `mob._shieldHp > 0`, damage hits shield first, remainder passes through
+1. **Poison immune** (`mob._poisonImmune`): if true and source is poison/DOT, return false
+2. Check `mob._invulnerable` (mud_dive, nano_armor) -- if true, return false
+3. **Shield absorb** (`mob._shieldHp`): if `_shielded` and `_shieldHp > 0`, damage hits shield first, remainder passes through
+4. **Frontal shield** (`mob._frontalShield`): negate damage from within 60-degree arc of mob's facing direction
+5. **Counter stance** (`mob._counterStance`): melee attacks are reflected back to the attacker via `dealDamageToPlayer`
+6. **Passive damage reduction** (`mob._damageReduction`): percentage-based reduction (e.g. 0.3 = 30% less damage, min 1)
 7. Subtract HP
-8. **Split mechanic:** Core Guardian splits into 2 smaller blobs at 50% HP (`_canSplit` flag)
+8. **Split mechanic:** at 50% HP if `_canSplit`, spawns 2 shards at 35% maxHp, 1.6x speed, 0.7x scale
 9. If HP <= 0: call `processKill(mob, source)`, return true
 
 **Kill sources** (determines heal multiplier and behavior):
@@ -115,8 +117,8 @@ Stats interpolated linearly: `stat(level) = Math.round(base + (max - base) * (le
 | Source | Heal Mult | Notes |
 |--------|-----------|-------|
 | `"gun"` | 2.0x | Direct bullet kill, refills ammo |
-| `"melee"` | 1.0x (2.0x during ninja dash, 1.5x for storm) | Direct melee swing |
-| `"ninja_splash"` | 1.0x (2.0x during dash) | Ninja AOE splash kill |
+| `"melee"` | function (2.0x ninja dash, 1.5x storm, else 1.0x) | Direct melee swing |
+| `"ninja_splash"` | function (varies) | Ninja AOE splash kill |
 | `"ninja_dash_kill"` | 2.0x | Ninja dash-attack direct kill |
 | `"storm_shock"` | 1.5x | Storm Blade shockwave kill |
 | `"storm_chain"` | 1.5x | Chain lightning kill |
@@ -125,31 +127,38 @@ Stats interpolated linearly: `stat(level) = Math.round(base + (max - base) * (le
 | `"burn_dot"` | 1.0x | Burn DOT tick kill |
 | `"inferno_chain"` | 1.0x | Inferno cannon chain explosion |
 | `"thorns"` | 1.0x | Thorns reflect damage |
-| `"witch_skeleton"` | flat 1 HP | Auto-kill skeletons when witch dies |
+| `"piercing_blood"` | 1.5x | Piercing blood slash arc kill |
 
 #### Damage to Player: `dealDamageToPlayer(rawDmg, source, attacker, targetEntity)`
 
 1. **Target resolution**: `targetEntity` param > `_currentDamageTarget` > global `player`. This routes damage to the correct party member.
 2. Check `playerDead` and `_godMode`
-3. **Armor reduction** (all sources except `"dot"`): `reduced *= (1 - getArmorReduction())`
-4. **Projectile/AOE reduction** (for `"projectile"` and `"aoe"` sources): `reduced *= (1 - getProjReduction())`
-5. Round and subtract HP
-6. **Thorns** (on `"contact"` source): reflect `finalDmg * thornsRate` back to attacker, apply stagger
-7. Death check
-8. Emit `player_damaged` event
+3. **Lethal efficiency** (`_lethalEfficiency`): +15% damage if target is below 40% HP
+4. **Backstabber** (`_backstabber`): +30% damage if mob is behind target
+5. **Armor reduction** (all sources except `"dot"`): `reduced *= (1 - getArmorReduction())`
+6. **Projectile/AOE reduction** (for `"projectile"` and `"aoe"` sources): `reduced *= (1 - getProjReduction())`
+7. **Armor break** multiplier: if `_armorBreak` active, applies `_armorBreakMult` to damage
+8. Round and subtract HP
+9. **Thorns** (on `"contact"` source): reflect `finalDmg * thornsRate` back to attacker, apply stagger
+10. Death check: bots via `PartySystem.handleMemberDeath()`, player via `checkPlayerDeath()`
+11. Emit `player_damaged` event
+
+**Damage sources:** `"contact"`, `"projectile"`, `"aoe"`, `"dot"`
 
 **Party damage routing:** `_currentDamageTarget` is set per-mob-per-frame in `updateMobs()` via `PartySystem.getMobTarget(m)`. All `dealDamageToPlayer` calls within mob specials and contact damage automatically route to the correct party member. `processKill` also resolves the killer via `_currentDamageTarget` for proper gold/XP credit.
 
 #### Kill Rewards: `processKill(mob, source)`
 
-1. Increment `kills`, add 5 XP
+1. Increment `kills`, add 5 player XP, add 5 skill XP to "Total Kills"
 2. Calculate quick-kill bonus (`getQuickKillBonus(mob)`)
-3. Award gold: `getGoldReward(mob.type, wave) * quickKillBonus`
-4. Apply kill heal: `baseHeal * quickKillBonus * sourceMultiplier * (1 + chestHealBoost)`, floored by `lifestealPerKill`
-5. Push visual effects (kill burst, heal popup)
-6. Witch death cascades: kill all skeletons with `witchId === mob.id`
-7. Golem death cascades: kill all mini golems with `golemOwnerId === mob.id`
-8. Emit `mob_killed` event
+3. Award gold: `getGoldReward(mob.type, wave) * quickKillBonus * partyMemberCount`, routed via `PartySystem`
+4. Apply kill heal: `baseHeal` from `MOB_TYPES.killHeal` (default 5) `* quickKillBonus * healMult * (1 + chestHealBoost)`, floored by lifesteal
+5. Lifesteal floor, party lifesteal
+6. Push visual effects (kill burst, heal popup)
+7. Witch death cascades: kill all skeletons with `witchId === mob.id`
+8. Golem death cascades: kill all mini golems with `golemOwnerId === mob.id`
+9. Death explosion AoE (if applicable)
+10. Emit `mob_killed` event
 
 **Event subscribers on `mob_killed`:**
 - Ammo refill (skips skeleton kills)
@@ -203,6 +212,36 @@ Data-driven registry -- each gun special defines `onHit` and `onKill` callbacks:
 | `tether` | 180 frames (3s) | Linked to a mob with heavy slow (60% speed reduction via `_tetherSlow`) |
 | `poison` | 180 frames (3s) | DOT: configurable damage per tick |
 
+**Player effect state fields:** `_slow`, `_slowTimer`, `_root`, `_rootTimer`, `_mark`, `_markTimer`, `_markBonus`, `_silence`, `_silenceTimer`, `_bleed`, `_bleedTimer`, `_bleedDmg`, `_bleedTick`, `_confuse`, `_confuseTimer`, `_disorient`, `_disorientTimer`, `_fear`, `_fearTimer`, `_fearDirTimer`, `_fearDirX`, `_fearDirY`, `_blind`, `_blindTimer`, `_blindMode`, `_mobilityLocked`, `_mobilityLockTimer`, `_armorBreak`, `_armorBreakTimer`, `_armorBreakMult`, `_tether`, `_tetherTimer`, `_tetherMobId`, `_tetherSlow` (0.6), `_poisonTimer`, `_poisonTickTimer`
+
+**`tickPlayer` returns:** `{speedMult, rooted, marked, markBonus, silenced, confused, disoriented, bleeding, feared, blind, armorBreak, armorBreakMult, tethered}`
+
+### MOB_AI Patterns (13)
+
+| Pattern | Behavior |
+|---------|----------|
+| `crowded` | Crowd-following movement |
+| `runner` | Runs away from target |
+| `grunt` | Basic chase-and-attack |
+| `tank` | Slow, aggressive push |
+| `witch` | Kite at 160px range |
+| `skeleton` | Swarm at 40px range |
+| `golem` | Heavy melee |
+| `mini_golem` | Smaller golem variant |
+| `mummy` | Melee attacker |
+| `healer` | Flee if <160px, heal allies within 220px radius |
+| `archer` | Kite at 350px range |
+| `stationary` | Does not move |
+| `hover` | Hovering movement |
+
+### Death State
+
+**Death state fields:** `playerDead=false`, `poisonTimer=0`, `deathTimer=0`, `DEATH_ANIM_FRAMES=40`, `RESPAWN_COUNTDOWN=180`, `respawnTimer=0`, `deathX/Y=0`, `deathRotation=0`, `deathGameOver=false`
+
+### Hotbar Slots
+
+**Default hotbar:** `[{name:"RECRUIT", type:"gun", key:"1"}, {name:"KATANA", type:"melee", key:"2"}, {name:"POTION", type:"potion", key:"3"}]`
+
 ### Hit Effects Registry
 
 `HIT_EFFECT_RENDERERS` maps effect type strings to renderer functions `(h, ctx, alpha) => { ... }`.
@@ -215,7 +254,7 @@ Data-driven registry -- each gun special defines `onHit` and `onKill` callbacks:
 | Gun specials | `frost_hit`, `frost_nova`, `burn_hit`, `burn_tick`, `inferno_explode` |
 | Melee: Ninja | `ninja_dash`, `ninja_activate`, `ninja_aoe`, `ninja_slash`, `ninja_dash_end` |
 | Melee: Storm | `shockwave`, `lightning`, `godspeed_activate`, `ground_lightning` |
-| Melee: Cleave | `cleave_hit`, `blood_slash_hit`, `blood_slash_arc`, `shrine_activate`, `shrine_slash` |
+| Melee: Piercing/Shrine | `cleave_hit`, `blood_slash_hit`, `blood_slash_arc`, `shrine_activate`, `shrine_slash` |
 | Mob combat | `poison_hit`, `poison_tick`, `mummy_explode`, `explosion`, `stomp`, `stun` |
 | Mob support | `heal_zone`, `heal_beam`, `mob_heal`, `summon`, `cast`, `smoke`, `buff` |
 | Equipment | `thorns` |
@@ -242,7 +281,7 @@ Each renderer receives the hit effect object `h` (with `x`, `y`, `life`, `maxLif
 - **Ammo refills on non-skeleton kills.** Any kill (except skeleton and witch_skeleton) instantly refills the gun magazine. This is a deliberate design choice, not a bug.
 - **Lifesteal is per-hit, not per-swing.** A cleave hitting 5 mobs calculates lifesteal independently for each one, each capped at 20 HP.
 - **Witch death cascade is recursive.** Killing a witch calls `processKill` on each skeleton, which in turn emits `mob_killed` for each -- all within the same frame.
-- **`dealDamageToMob` has a 6-layer defense pipeline.** Checked in order: invulnerability > active shield > frontal shield > counter stance > damage reduction > shield HP. Only if all layers pass does damage reach mob HP.
+- **`dealDamageToMob` has a 7-layer defense pipeline.** Checked in order: poison immune > invulnerability > shield HP absorb > frontal shield > counter stance > damage reduction > subtract HP. Only if all layers pass does damage reach mob HP.
 - **Freeze timer reduces movement speed, not fire rate.** The post-shot freeze only affects player movement. Higher-tier guns and main guns get reduced freeze multipliers (0.3x-0.5x).
 - **Gun behaviors are additive with kill events.** The `GUN_BEHAVIORS.onKill` callback fires inside a `mob_killed` event subscriber, which means it runs alongside ammo refill and ultimate charge callbacks.
 - **Bullet collision is checked in `mobSystem.js`**, not in `gunSystem.js`. The gun system only creates bullets; the mob system handles hit detection per-frame.

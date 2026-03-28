@@ -19,7 +19,7 @@ The input system captures keyboard and mouse events from the browser, translates
 | `InputIntent` | `window` global object | `inputIntent.js` |
 | `clearOneFrameIntents()` | function | `inputIntent.js` |
 | `mouse` | `{ x, y, down }` | `input.js` |
-| `keysDown` | object (key -> boolean) | `panelManager.js` (keydown/keyup) |
+| `keysDown` | object (key -> boolean) | `gameState.js` (declared), `panelManager.js` (keydown/keyup set) |
 | `CommandQueue` | `window` global array | `commands.js` |
 | `enqueueCommand(cmd)` | `window` function | `commands.js` |
 | `translateIntentsToCommands()` | function | `commands.js` |
@@ -132,12 +132,15 @@ Special routing: when `chatActive` or `nameEditActive` is true, gameplay keys ar
 
 ### Drag Systems
 
-Four drag behaviors are tracked via `mousemove`:
+Seven drag behaviors are tracked via `mousemove`:
 
 | Drag | Flag | Description |
 |------|------|-------------|
 | CT-X Slider | `handleModifyGunDrag()` | Gun modification stat slider |
 | Tile Placement | `isDraggingTile` | Paint tiles on map while mouse held |
+| Inventory Hover | `handleInventoryHover()` | Item hover tracking in inventory grid |
+| Mafia Lobby Scrollbar | `_mafiaLobbyScrollbarDrag` | Settings scrollbar in Mafia lobby |
+| Settings Scrollbar | `settingsScrollbarDrag` | Settings panel scrollbar |
 | Color Picker (SV) | `draggingSV` | Saturation/value picker in customize panel |
 | Color Picker (Hue) | `draggingHue` | Hue bar in customize panel |
 

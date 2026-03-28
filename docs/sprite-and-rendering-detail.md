@@ -23,11 +23,11 @@ Characters are rendered using 3 separate layers composited bottom-to-top:
 2. **HEAD** (middle layer) — face, hair, skin
 3. **HAT** (top layer) — headwear, accessories
 
-Each spritesheet uses **4 columns** (frames) x **4 rows** (directions):
+The runtime `drawLayeredSprite()` system uses **4 columns** (frames) x **4 rows** (directions) for all layers:
 - Row 0 = Down, Row 1 = Up, Row 2 = Left, Row 3 = Right
-- Col 0 = Idle, Col 1-3 = Walk frames
+- Col 0 = Idle, Col 1-3 = Walk frames (selected as `1 + (Math.floor(frame) % 3)`)
 
-### LAYER_SIZES (per-frame dimensions)
+### LAYER_SIZES (per-frame dimensions for runtime rendering)
 
 | Layer | Width | Height |
 |-------|-------|--------|
@@ -42,9 +42,11 @@ SPRITE_ROWS = 4
 DIR_TO_ROW = { 0: 0, 1: 1, 2: 2, 3: 3 }
 ```
 
-### Head Sprite System
+**Note:** Art pipeline templates use different cell sizes (32x32 for body/head/hat) and different row counts (body 32 rows, head 4 rows, hat 5 rows). The runtime system and template system are separate.
 
-Head spritesheets are 128x128 PNGs with 4 cols x 4 rows of 32x32 cells.
+### Head Sprite System (HEAD_REGISTRY)
+
+Head spritesheets are 128x128 PNGs with 4 cols x 4 rows of 32x32 cells. These are loaded into `HEAD_REGISTRY` via `registerHead()` / `loadHeadSprites()`.
 
 Column mapping for heads (different from body):
 ```
@@ -221,7 +223,7 @@ function drawLevelEntities(camX, camY) {
 }
 ```
 
-### Complete Entity Type List (148 types)
+### Complete Entity Type List (172 static types + dynamic ingredient types)
 
 #### Core/Lobby (14 types)
 | Type | Description |
@@ -402,7 +404,7 @@ function drawLevelEntities(camX, camY) {
 |------|-------------|
 | `fishing_spot` | Dock with water, planks, rope railing |
 
-#### Skeld/Mafia (14 types)
+#### Skeld/Mafia (13 types)
 | Type | Description |
 |------|-------------|
 | `skeld_task` | Skeld task terminal |
@@ -447,7 +449,7 @@ Registered at runtime from data registries:
 - **Diner ingredients** — from `DINER_INGREDIENTS`, uses `_dinerIngredientRenderer` (chrome counter `#c0c0c8`)
 - **Fine dining ingredients** — from `FINE_DINING_INGREDIENTS`, uses `_fdIngredientRenderer` (dark marble counter `#2a1a14`)
 
-#### Casino (11 types)
+#### Casino (14 types)
 | Type | Description |
 |------|-------------|
 | `building_casino` | Casino building exterior (purple/maroon, gold trim) |
@@ -520,7 +522,7 @@ const HIT_EFFECT_RENDERERS = {
 3. **Rendering:** The renderer function is called with current alpha
 4. **Removal:** When `life` reaches 0, the effect is removed from the array
 
-### Complete Hit Effect Type List (73 types + _default)
+### Complete Hit Effect Type List (72 named types + _default = 73 entries)
 
 #### Combat — Basic (5 types)
 | Type | Visual | Max Life |
