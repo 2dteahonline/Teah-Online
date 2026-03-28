@@ -33,7 +33,7 @@ Hide & Seek is a 1v1 game mode where the player picks either the hider or seeker
   - `POST_MATCH_TIME`: 600 frames (10s)
   - `TAG_RANGE`: 90px (matches default melee range)
   - `FOV_RADIUS`: 4.5 tiles
-  - `BOT_SPEED`: 6.25 (matches `PLAYER_BASE_SPEED`)
+  - `BOT_SPEED`: 5.625 (`PLAYER_BASE_SPEED * 0.75` = 7.5 * 0.75)
   - `BOT_DETECT_RANGE`: 3 tiles
   - `MAP_ID`: `'hide_01'`
   - `RETURN_LEVEL`: `'lobby_01'`, `RETURN_TX`: 17, `RETURN_TY`: 22

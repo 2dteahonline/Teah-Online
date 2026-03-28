@@ -90,7 +90,7 @@ Each entry in `LEVELS` is an object with:
 - `.` (dot) = floor (0) -- walkable
 - `#` or `@` = wall (1) -- solid, blocks movement
 
-**All level IDs in `LEVELS`:** `lobby_01`, `house_01`, `cave_01`, `azurine_01`, `warehouse_01`, `mine_01` through `mine_04`, `deli_01`, `diner_01`, `fine_dining_01`, `test_arena`, `gunsmith_01`, `hide_01`, `skeld_01`, `mafia_lobby`, `casino_01`, `spar_hub_01`
+**All level IDs in `LEVELS`:** `lobby_01`, `house_01`, `cave_01`, `azurine_01`, `azurine_dungeon_01`, `warehouse_01`, `mine_01` through `mine_04`, `deli_01`, `diner_01`, `fine_dining_01`, `test_arena`, `gunsmith_01`, `hide_01`, `skeld_01`, `mafia_lobby`, `casino_01`, `spar_hub_01`, `vortalis_01`, `earth205_01`, `wagashi_01`, `earth216_01`, `spar_1v1_01`, `spar_2v2_01`, `spar_3v3_01`, `spar_4v4_01`
 
 ### Portal System
 
@@ -101,7 +101,7 @@ cave_entrance: 'lobby',   cave_exit: 'cave',
 mine_entrance: 'lobby',   mine_exit: 'mine',    mine_door: 'mine',
 deli_entrance: 'lobby',   deli_exit: 'cooking',
 diner_entrance: 'lobby',  diner_exit: 'cooking',
-fine_dining_entrance: 'lobby', fine_dining_exit: 'cooking',
+fine_dining_entrance: 'lobby', fd_exit_door: 'cooking',
 house_entrance: 'lobby',  house_exit: 'farm',
 azurine_entrance: 'lobby', azurine_exit: 'azurine',
 gunsmith_entrance: 'lobby', gunsmith_exit: 'gunsmith',
@@ -113,6 +113,7 @@ earth205_entrance: 'lobby', earth205_exit: 'earth205',
 wagashi_entrance: 'lobby',  wagashi_exit: 'wagashi',
 earth216_entrance: 'lobby', earth216_exit: 'earth216',
 casino_entrance: 'lobby',   casino_exit: 'casino',
+spar_entrance: 'lobby',     spar_exit: 'spar',
 ```
 
 `checkPortals()` runs every frame, scanning `levelEntities` for portal overlap. When the player's tile position falls inside a portal zone and the current scene matches `PORTAL_SCENES[type]`, it calls `startTransition()`.

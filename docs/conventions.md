@@ -87,15 +87,15 @@ When adding a new mob type, you must update four registries plus two flag lists:
    - Optionally set `radius`, `wallHW` for custom collision sizes
 
 2. **`MOB_AI`** in `js/authority/combatSystem.js`
-   - Add a movement pattern entry (11 patterns exist: basic, tank, runner, etc.)
+   - Add a movement pattern entry (13 patterns exist: basic, tank, runner, etc.)
    - Controls how the mob moves toward/around the player
 
 3. **`MOB_SPECIALS`** in `js/authority/combatSystem.js`
-   - Add special ability entries if the mob has abilities (38 abilities exist)
+   - Add special ability entries if the mob has abilities (435 abilities across 9 files)
    - Defines cooldowns, ranges, damage, projectile types
 
 4. **`ENTITY_RENDERERS`** in `js/client/rendering/entityRenderers.js`
-   - Add a renderer function if the mob needs custom visuals (54 renderers exist)
+   - Add a renderer function if the mob needs custom visuals (148 renderers exist)
    - If omitted, the mob uses the default procedural renderer
 
 5. **`stillActive` and `isMultiFrame`** in `js/authority/mobSystem.js`
@@ -201,7 +201,8 @@ When adding any new player/character animation (new skill, emote, action):
 3. Update `CLAUDE.md` with the new row count
 
 Current body rows: 32 (4 cols x 32 rows = 128x1280)
-Current head/hat rows: 5 (4 cols x 5 rows = 128x160 for head, 5 cols x 5 rows = 160x160 for hat)
+Current head rows: 4 (4 cols x 4 rows = 128x128)
+Current hat rows: 5 (5 cols x 5 rows = 160x160)
 
 ## Party System Conventions
 
@@ -225,6 +226,6 @@ These 5 rules prevent the most frequently repeated bugs:
 ## Connections to Other Systems
 
 - **Architecture** (`docs/architecture.md`): Script loading order, authority/client split, game loop, key globals
-- **Save/Load**: Schema version 8 in `js/core/saveLoad.js`; adding new saved fields requires a migration
+- **Save/Load**: Schema version 10 in `js/core/saveLoad.js`; adding new saved fields requires a migration
 - **Progression**: 5 tiers x 25 levels in `PROG_ITEMS`; gun upgrades use `[gunId][tier][level]` recipe structure
 - **Debug Commands**: `/gold`, `/heal`, `/gun`, `/freeze`, `/god`, `/nofire`, `/speed`, `/party`, `/sabo`, `/fix` in `js/client/ui/panelManager.js`

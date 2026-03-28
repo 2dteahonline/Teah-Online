@@ -43,7 +43,7 @@ js/
 
 **Registries** (data-driven, replace large if/else chains):
 - `MOB_AI` (13 patterns), `MOB_SPECIALS` (435 abilities across 9 files) — `combatSystem.js` + `vortalisSpecials.js` + `earth205Specials.js` + `wagashiSpecials1-3.js` + `earth216Specials1-3.js`
-- `ENTITY_RENDERERS` (143 types) — `entityRenderers.js`
+- `ENTITY_RENDERERS` (148 types) — `entityRenderers.js`
 - `HIT_EFFECT_RENDERERS` (73 types) — `hitEffects.js`
 - `MOB_TYPES` — `mobTypes.js`, `LEVELS` — `levelData.js`
 - `PROG_ITEMS` — unified 5-tier × 25-level progression — `progressionData.js`

@@ -9,7 +9,7 @@ The wave system drives all dungeon combat. Each dungeon floor runs 10 waves of i
 - `js/authority/waveSystem.js` -- Wave state machine, phase logic, mob factory, scaling functions, medpacks, gold rewards
 - `js/shared/floorConfig.js` -- Per-dungeon per-floor wave compositions, wave templates, subfloor blueprints, builder functions
 - `js/shared/dungeonRegistry.js` -- Single source of truth for all 6 dungeon types (name, max floors, return level, spawn position)
-- `js/shared/mobTypes.js` -- `MOB_TYPES` definitions (334 entries) and `MOB_CAPS` per-type limits
+- `js/shared/mobTypes.js` -- `MOB_TYPES` definitions (265 entries) and `MOB_CAPS` per-type limits
 - `js/authority/hazardSystem.js` -- Zone-based damage areas (poison clouds, sticky bombs)
 - `js/authority/telegraphSystem.js` -- Ground warning markers before attacks resolve
 - `js/authority/combatSystem.js` -- 91 base ability handlers in `MOB_SPECIALS`

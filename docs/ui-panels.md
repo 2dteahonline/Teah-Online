@@ -5,7 +5,7 @@ The UI panel system manages all in-game overlay panels -- inventory, identity, s
 
 ## Files
 - `js/client/ui/panelManager.js` -- `UI` singleton (open/close/toggle), panel registrations, icon buttons, shop panel, toolbox data, customize categories
-- `js/client/ui/panels.js` -- Identity panel (`drawIdentityPanel`), stats/leveling panel (`drawStatsPanel`), gunsmith panel (`drawModifyGunPanel`)
+- `js/client/ui/panels.js` -- Identity panel (`drawIdentityPanel`), stats/leveling panel (`drawStatsPanel`), gunsmith panel (`drawGunsmithPanel`)
 - `js/client/ui/inventory.js` -- Inventory panel (`drawInventoryPanel`), item cards, camera definition, `update()` function
 - `js/client/ui/customize.js` -- Character customization screen (`drawCustomizeScreen`), HSV color picker
 - `js/client/ui/settings.js` -- Settings panel (`drawSettingsPanel`), keybind system, `gameSettings` object
@@ -43,12 +43,13 @@ UI.active                 -- getter for current panel id string (or null)
 | `casino`      | panelManager.js     | --                                            | Resets bet editing state, calls casinoReset()               |
 | `farmVendor`  | panelManager.js     | Resets farmVendorTab to 0                     | --                                                         |
 | `miningShop`  | panelManager.js     | --                                            | --                                                         |
+| `forge`       | forgeUI.js          | --                                            | Forge-specific cleanup                                     |
 | `skeldTask`   | skeldTasks.js       | --                                            | Task-specific cleanup                                      |
 
 ### Panel Drawing Functions
 - `drawIdentityPanel()` -- stats, character preview, mini inventory, faction/country/gender display
 - `drawStatsPanel()` -- sub-panel of identity (player level, skill XP breakdown)
-- `drawModifyGunPanel()` -- gunsmith upgrade/evolution panel
+- `drawGunsmithPanel()` -- gunsmith upgrade/evolution panel
 - `drawInventoryPanel()` -- full inventory grid with categories, pagination, item cards
 - `drawShopPanel()` -- in-dungeon shop (buy items between waves)
 - `drawCustomizeScreen()` -- full-screen character creator with 18 color pickers
@@ -57,7 +58,7 @@ UI.active                 -- getter for current panel id string (or null)
 - `drawChatPanel()` -- chat message display and input
 - `drawProfilePanel()` -- player status card
 - `drawTestMobPanel()` -- mob spawner/tester GUI (opened via `/testmob` command)
-- `drawCasinoPanel()` -- casino game interface (6 games: Slots, Blackjack, Keno, Cases, Roulette, Hi-Lo)
+- `drawCasinoPanel()` -- casino game interface (10 games: Blackjack, Roulette, Heads or Tails, Cases, Mines, Dice, RPS, Baccarat, Slots, Keno)
 
 ### Icon Buttons
 - `drawIconButton(x, y, active, drawContent)` -- base rounded square icon (48x48, dark bg, highlight border when active)

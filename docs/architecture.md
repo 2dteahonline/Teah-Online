@@ -2,7 +2,7 @@
 
 ## Overview
 
-Teah Online is a top-down dungeon crawler built with vanilla JS and HTML5 Canvas 2D. There are no frameworks, no build tools, and no npm dependencies. The entire game loads from a single `index.html` that pulls in 93 script files, and all game logic is organized around a future-multiplayer authority/client split. The codebase totals ~98,600 lines of JavaScript across 91 non-backup files.
+Teah Online is a top-down dungeon crawler built with vanilla JS and HTML5 Canvas 2D. There are no frameworks, no build tools, and no npm dependencies. The entire game loads from a single `index.html` that pulls in 91 script files, and all game logic is organized around a future-multiplayer authority/client split.
 
 ## Files
 
@@ -19,7 +19,7 @@ Teah Online is a top-down dungeon crawler built with vanilla JS and HTML5 Canvas
 
 ```
 Teah Online/
-  index.html              -- entry point, canvas setup, script loading (93 scripts)
+  index.html              -- entry point, canvas setup, script loading (91 scripts)
   assets/
     manifest.json          -- sprite asset manifest
     sprites/               -- body/head/hat sprite templates
@@ -84,14 +84,14 @@ Teah Online/
     client/
       rendering/             -- 5 files
         hitEffects.js          HIT_EFFECT_RENDERERS (73 effect types)
-        entityRenderers.js     ENTITY_RENDERERS (143 entity types)
+        entityRenderers.js     ENTITY_RENDERERS (148 entity types)
         characterSprite.js     player/NPC sprite drawing (Graal-style layers)
         hideSeekFOV.js         Hide & Seek FOV rendering
         mafiaFOV.js            Mafia FOV + HUD rendering
       input/                 -- 2 files
         inputIntent.js         InputIntent flag object
         input.js               keyboard/mouse listeners, command translation
-      ui/                    -- 10 files
+      ui/                    -- 11 files
         panelManager.js        panel open/close state machine
         chatProfile.js         chat and profile UI
         toolbox.js             toolbox icon grid
@@ -102,13 +102,14 @@ Teah Online/
         inventory.js           inventory panel + game loop host
         testMobPanel.js        debug mob spawning panel
         casinoUI.js            casino game UI (all 10 games)
+        forgeUI.js             forge/crafting UI (weapon upgrades, materials)
     core/                    -- 10 files
       assetLoader.js         AssetLoader (sprite loading from manifest)
       sceneManager.js        Scene state machine (18 scenes, including spar)
       tileRenderer.js        tile map rendering
       gunSystem.js           gun firing, reloading, bullet logic
       meleeSystem.js         melee swing, dash, hit detection
-      saveLoad.js            localStorage persistence (schema v7)
+      saveLoad.js            localStorage persistence (schema v10)
       skeldTasks.js          Skeld map task minigames
       cameraSystem.js        camera follow, shake, zoom
       interactable.js        entity interaction, death handling
@@ -147,6 +148,8 @@ Pure data registries with no logic. These define constants and lookup tables tha
 | `js/shared/mafiaRoleData.js` | Mafia role definitions |
 | `js/shared/casinoData.js` | casino game configs, payouts |
 | `js/shared/partyData.js` | party/bot constants |
+| `js/shared/sparData.js` | spar system constants |
+| `js/shared/craftingData.js` | crafting recipes, materials, drop tables |
 
 ### Phase B: Authority Systems (Part 1)
 
@@ -169,7 +172,7 @@ Hit effects and entity renderers load here because dungeon specials files (Phase
 | File | Key Export |
 |------|-----------|
 | `js/client/rendering/hitEffects.js` | `HIT_EFFECT_RENDERERS` (73 types) |
-| `js/client/rendering/entityRenderers.js` | `ENTITY_RENDERERS` (143 types) |
+| `js/client/rendering/entityRenderers.js` | `ENTITY_RENDERERS` (148 types) |
 
 ### Phase A.5: Core Scene Management
 
@@ -177,7 +180,7 @@ Depends on Phase A data + eventBus. Inserted between Phase B halves.
 
 | File | Key Export |
 |------|-----------|
-| `js/core/sceneManager.js` | `Scene` (17 scene types) |
+| `js/core/sceneManager.js` | `Scene` (18 scene types) |
 | `js/core/tileRenderer.js` | tile drawing |
 
 ### Phase B (continued): Authority Systems (Part 2)
@@ -235,6 +238,7 @@ Panel system and input handling.
 | `js/client/ui/inventory.js` | inventory panel |
 | `js/client/ui/testMobPanel.js` | debug mob panel |
 | `js/client/ui/casinoUI.js` | casino game UI |
+| `js/client/ui/forgeUI.js` | forge/crafting UI |
 
 ### Phase E: Input + Core Loop
 
@@ -335,9 +339,9 @@ Key constants:
 | `gun` | `object` | alias for `GameState.gun` | Gun state: ammo, cooldown, damage |
 | `melee` | `object` | alias for `GameState.melee` | Melee state: cooldown, swing, dash |
 | `inventory` | `array` | alias for `GameState.inventory` | Player inventory items |
-| `Scene` | `object` | `js/core/sceneManager.js` | Scene state machine with 17 scene types |
+| `Scene` | `object` | `js/core/sceneManager.js` | Scene state machine with 18 scene types |
 | `GAME_CONFIG` | `object` | `js/shared/gameConfig.js` | Physics and collision constants |
-| `MOB_TYPES` | `object` | `js/shared/mobTypes.js` | Mob type definitions (hp, speed, damage, AI pattern) |
+| `MOB_TYPES` | `object` | `js/shared/mobTypes.js` | Mob type definitions (255 entries: hp, speed, damage, AI pattern) |
 | `MOB_AI` | `object` | `js/authority/combatSystem.js` | 13 mob AI movement patterns |
 | `MOB_SPECIALS` | `object` | `combatSystem.js` + 8 specials files | 435 mob special ability definitions |
 | `Events` | `object` | `js/authority/eventBus.js` | Pub/sub event bus |
@@ -418,5 +422,5 @@ All physics and collision tuning lives in `js/shared/gameConfig.js`. Every syste
 - **Fixed timestep matters.** The game runs exactly 60 physics ticks/sec. On 120Hz+ displays, the fixed timestep prevents double-speed physics. Max 4 steps per frame prevents spiral of death.
 - **`DEBUG_pauseAuthority`** freezes the entire simulation. Commands are discarded while paused. Set via debug tools.
 - **`_gameSpeed`** multiplier affects elapsed time before accumulation. Values: 0.25, 0.5, 1, 2.
-- **MOB_SPECIALS span 9 files.** The base 91 abilities live in `combatSystem.js`. Dungeon-specific abilities are in separate files (`vortalisSpecials.js`, `earth205Specials.js`, `wagashiSpecials1-3.js`, `earth216Specials1-3.js`) that append to the same `MOB_SPECIALS` object.
+- **MOB_SPECIALS span 9 files.** The base 91 abilities live in `combatSystem.js` (435 total). Dungeon-specific abilities are in separate files (`vortalisSpecials.js`, `earth205Specials.js`, `wagashiSpecials1-3.js`, `earth216Specials1-3.js`) that append to the same `MOB_SPECIALS` object.
 - **Party system is always-on.** Every player is a party member. Bots are future multiplayer users -- never special-case bot vs player in system design.
