@@ -37,7 +37,7 @@ Update this section as each phase completes. Mark status: NOT STARTED / IN PROGR
 | 3 | Shared Constants & Data | DONE | 2026-03-28 | 2026-03-28 | `node tools/export_data.js` — 8 files, 293KB, 0 failures. Automated, no manual entry. |
 | 4 | Level Geometry & Collision | DONE | 2026-03-28 | 2026-03-28 | CollisionGrid.cs (isSolid+positionClear+entities), LevelDataLoader.cs, MovementParityTest.cs, verify_collision_parity.js. 3 levels loaded. |
 | 5 | Input & Commands | DONE | 2026-03-28 | 2026-03-28 | CommandQueue, CommandTranslator, AuthorityTick, InputIntent update, PlayerInputHandler rewire, CommandParityTest (17 tests) |
-| 6 | Player Movement | NOT STARTED | | | |
+| 6 | Player Movement | DONE | 2026-03-28 | 2026-03-28 | PlayerController.TickMovement extracted, authority-driven mode, IMovementModifierProvider, MovementParityTest (18 Phase 6 tests + Phase 4 tests) |
 | 7 | Gun & Bullet System | NOT STARTED | | | |
 | 8 | Damage & Status | NOT STARTED | | | |
 | 9 | Melee & Dash | NOT STARTED | | | |
