@@ -99,12 +99,12 @@
 | M22 | Spar | NeuralSparInference model format expects `weights_flat` vs JS 2D arrays |
 | M23 | Mining | ~~ORE_COLLISION_RADIUS 11 vs JS 17~~ **FIXED** |
 | M24 | Mining | ~~MINING_PLAYER_R 14 vs JS 10~~ **FIXED** |
-| M25 | Cooking | Combo increments only on S/A grades; JS increments on any non-F |
-| M26 | Cooking | Missing `_calcDeliPay()` formula; tip formula differs |
-| M27 | Core | Walk animation uses 3 frames (cols 1-3) instead of JS 4 (cols 0-3) |
+| M25 | Cooking | ~~Combo increments only on S/A grades; JS increments on any non-F~~ **VERIFIED OK** — JS cookingSystem.js:651-660 only increments on S/A, resets on F, leaves B/C unchanged. Unity already matches. |
+| M26 | Cooking | ~~Missing `_calcDeliPay()` formula; tip formula differs~~ **FIXED** — Added `CalcDeliPay(recipe) = 8 + ingredients.Length * 2` to CookingRegistry; CookingSystem applies for street_deli. Tip formula already matched JS. |
+| M27 | Core | ~~Walk animation uses 3 frames (cols 1-3) instead of JS 4 (cols 0-3)~~ **FIXED** — SpriteCol now `animFrame % 4` matching JS frame cycle 0-3 |
 | M28 | Core | ~~Transition fade speeds 17-20% slower~~ now 7.2/sec and 4.8/sec **FIXED** |
-| M29 | Core | Arrow-key shooting captured in PlayerInputHandler but never passed to any system |
-| M30 | Core | N/G key inputs (wave skip/ready) not captured; shoot-face direction override missing |
+| M29 | Core | ~~Arrow-key shooting captured in PlayerInputHandler but never passed to any system~~ **FIXED** — Arrow keys now set `arrowShooting`/`arrowAimDir` on GunSystem; GunSystem.Update uses arrow aim for directional shooting |
+| M30 | Core | ~~N/G key inputs (wave skip/ready) not captured; shoot-face direction override missing~~ **FIXED** — N/G keys set `skipWavePressed`/`readyWavePressed` on PlayerController; shootFaceDir/Timer set by GunSystem.ShootAt, applied in PlayerController.FixedUpdate |
 | M31 | UI | ~~Forge panel dimensions 650x480 vs JS 820x580~~ **FIXED** — 820x580 |
 | M32 | UI | ~~Hotbar missing "right side" position mode (JS default); quickslot overrides partial~~ **FIXED** — dual layout + all QS overrides |
 | M33 | UI | ~~ItemTooltip speedBonus displayed as percentage instead of absolute value~~ **FIXED** — absolute +N.N |
