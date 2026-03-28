@@ -35,7 +35,7 @@ Update this section as each phase completes. Mark status: NOT STARTED / IN PROGR
 | 1 | Parity Harness | DONE | 2026-03-28 | 2026-03-28 | ParityHarness.cs, ParitySnapshot.cs, TraceRecorder.js, editor scene setup |
 | 2 | Simulation Skeleton | DONE | 2026-03-28 | 2026-03-28 | Already existed: GameState.cs, InputIntent.cs, EventBus.cs, ServerAuthority.cs, PlayerController.cs. 60Hz timestep confirmed. |
 | 3 | Shared Constants & Data | DONE | 2026-03-28 | 2026-03-28 | `node tools/export_data.js` — 8 files, 293KB, 0 failures. Automated, no manual entry. |
-| 4 | Level Geometry & Collision | NOT STARTED | | | |
+| 4 | Level Geometry & Collision | DONE | 2026-03-28 | 2026-03-28 | CollisionGrid.cs (isSolid+positionClear+entities), LevelDataLoader.cs, MovementParityTest.cs, verify_collision_parity.js. 3 levels loaded. |
 | 5 | Input & Commands | NOT STARTED | | | |
 | 6 | Player Movement | NOT STARTED | | | |
 | 7 | Gun & Bullet System | NOT STARTED | | | |
