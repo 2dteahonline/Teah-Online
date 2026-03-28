@@ -30,20 +30,63 @@ const EXPORTS = [
     src: 'levelData.js',
     out: 'level_data.json',
     globals: ['LEVELS'],
-    // Only export level names and dimensions, not full tile data
+    // Export metadata for all levels, plus full collision data for parity-target levels.
+    // Collision grid: 2D array of 0 (walkable) / 1 (solid), from collisionFromAscii().
+    // Solid entities: array of { tx, ty, w, h } for each entity with solid: true.
     transform(data) {
+      // Levels that need full collision data for Unity parity testing
+      const PARITY_LEVELS = ['cave_01', 'test_arena', 'lobby_01'];
+
       const result = {};
       const levels = data.LEVELS;
       for (const key of Object.keys(levels)) {
         const lv = levels[key];
-        result[key] = {
-          id: lv.id,
+        const entry = {
+          id: lv.id || key,
           widthTiles: lv.widthTiles,
           heightTiles: lv.heightTiles,
           name: lv.name || key,
           spawnX: lv.spawnX,
           spawnY: lv.spawnY,
         };
+
+        // Spawns (if multi-spawn)
+        if (lv.spawns) {
+          entry.spawns = {};
+          for (const sk of Object.keys(lv.spawns)) {
+            entry.spawns[sk] = { tx: lv.spawns[sk].tx, ty: lv.spawns[sk].ty };
+          }
+        }
+
+        // Full collision data for parity levels
+        if (PARITY_LEVELS.includes(key)) {
+          // Collision grid from ASCII
+          if (lv.collisionAscii) {
+            entry.collisionGrid = lv.collisionAscii.map(row =>
+              row.split('').map(ch => (ch === '#' || ch === '@') ? 1 : 0)
+            );
+          } else if (lv.collision) {
+            // Already a 2D array
+            entry.collisionGrid = lv.collision;
+          }
+
+          // Solid entities (for isSolid() entity overlap check)
+          if (lv.entities) {
+            entry.solidEntities = lv.entities
+              .filter(e => e.solid)
+              .map(e => ({ tx: e.tx, ty: e.ty, w: e.w || 1, h: e.h || 1, type: e.type }));
+
+            // Also export portal/zone entities for scene parity
+            entry.portalEntities = lv.entities
+              .filter(e => e.target || e.type === 'queue_zone' || e.type === 'dungeon_door')
+              .map(e => ({
+                type: e.type, tx: e.tx, ty: e.ty, w: e.w || 1, h: e.h || 1,
+                target: e.target || null, spawnTX: e.spawnTX, spawnTY: e.spawnTY,
+              }));
+          }
+        }
+
+        result[key] = entry;
       }
       return { LEVELS: result };
     },

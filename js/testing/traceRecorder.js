@@ -54,8 +54,15 @@ window.TraceRecorder = {
       moveX: I.moveX,
       moveY: I.moveY,
       shootHeld: I.shootHeld,
-      aimX: I.mouseX,
-      aimY: I.mouseY,
+      // Screen-space mouse (what the command wire sends)
+      mouseX: I.mouseX,
+      mouseY: I.mouseY,
+      // World-space mouse (what getAimDir() actually reads)
+      mouseWorldX: I.mouseWorldX || 0,
+      mouseWorldY: I.mouseWorldY || 0,
+      // Arrow-key aim (getAimDir() checks these first, bypasses mouse entirely)
+      arrowAimDir: I.arrowAimDir || 0,
+      arrowShooting: !!I.arrowShooting,
       meleePressed: I.meleePressed,
       dashPressed: I.dashPressed,
       reloadPressed: I.reloadPressed,
@@ -119,8 +126,9 @@ window.TraceRecorder = {
         moveX: 0,
         moveY: 0,
         shootHeld: false,
-        aimX: 0,
-        aimY: 0,
+        mouseX: 0, mouseY: 0,
+        mouseWorldX: 0, mouseWorldY: 0,
+        arrowAimDir: 0, arrowShooting: false,
         meleePressed: false,
         dashPressed: false,
         reloadPressed: false,
@@ -146,7 +154,7 @@ window.TraceRecorder = {
     for (let i = 0; i < 60; i++) {
       trace.entries.push({
         tick: tick++, moveX: 1, moveY: 0,
-        shootHeld: false, aimX: 0, aimY: 0,
+        shootHeld: false, mouseX: 0, mouseY: 0, mouseWorldX: 0, mouseWorldY: 0, arrowAimDir: 0, arrowShooting: false,
         meleePressed: false, dashPressed: false, reloadPressed: false,
         interactPressed: false, usePotionPressed: false, quickslot: 0,
       });
@@ -155,7 +163,7 @@ window.TraceRecorder = {
     for (let i = 0; i < 60; i++) {
       trace.entries.push({
         tick: tick++, moveX: 0, moveY: -1,
-        shootHeld: false, aimX: 0, aimY: 0,
+        shootHeld: false, mouseX: 0, mouseY: 0, mouseWorldX: 0, mouseWorldY: 0, arrowAimDir: 0, arrowShooting: false,
         meleePressed: false, dashPressed: false, reloadPressed: false,
         interactPressed: false, usePotionPressed: false, quickslot: 0,
       });
@@ -164,7 +172,7 @@ window.TraceRecorder = {
     for (let i = 0; i < 60; i++) {
       trace.entries.push({
         tick: tick++, moveX: 1, moveY: -1,
-        shootHeld: false, aimX: 0, aimY: 0,
+        shootHeld: false, mouseX: 0, mouseY: 0, mouseWorldX: 0, mouseWorldY: 0, arrowAimDir: 0, arrowShooting: false,
         meleePressed: false, dashPressed: false, reloadPressed: false,
         interactPressed: false, usePotionPressed: false, quickslot: 0,
       });
@@ -173,7 +181,7 @@ window.TraceRecorder = {
     for (let i = 0; i < 60; i++) {
       trace.entries.push({
         tick: tick++, moveX: 0, moveY: 0,
-        shootHeld: false, aimX: 0, aimY: 0,
+        shootHeld: false, mouseX: 0, mouseY: 0, mouseWorldX: 0, mouseWorldY: 0, arrowAimDir: 0, arrowShooting: false,
         meleePressed: false, dashPressed: false, reloadPressed: false,
         interactPressed: false, usePotionPressed: false, quickslot: 0,
       });
@@ -195,12 +203,17 @@ window.TraceRecorder = {
     // Aim to the right of the player (screen center + offset)
     const aimX = (typeof canvas !== 'undefined' ? canvas.width / 2 : 640) + 200;
     const aimY = typeof canvas !== 'undefined' ? canvas.height / 2 : 360;
+    // World-space aim: player.x + offset to the right (200px / WORLD_ZOOM in world coords)
+    const p = GameState.player;
+    const zoom = typeof WORLD_ZOOM !== 'undefined' ? WORLD_ZOOM : 0.85;
+    const worldAimX = p.x + 200 / zoom;
+    const worldAimY = p.y - 30; // getAimDir uses (player.y - 30) as reference
 
     // 30 ticks: shoot right
     for (let i = 0; i < 30; i++) {
       trace.entries.push({
         tick: tick++, moveX: 0, moveY: 0,
-        shootHeld: true, aimX: aimX, aimY: aimY,
+        shootHeld: true, mouseX: aimX, mouseY: aimY, mouseWorldX: worldAimX, mouseWorldY: worldAimY, arrowAimDir: 0, arrowShooting: false,
         meleePressed: false, dashPressed: false, reloadPressed: false,
         interactPressed: false, usePotionPressed: false, quickslot: 0,
       });
@@ -209,7 +222,7 @@ window.TraceRecorder = {
     for (let i = 0; i < 30; i++) {
       trace.entries.push({
         tick: tick++, moveX: 0, moveY: 0,
-        shootHeld: false, aimX: aimX, aimY: aimY,
+        shootHeld: false, mouseX: aimX, mouseY: aimY, mouseWorldX: worldAimX, mouseWorldY: worldAimY, arrowAimDir: 0, arrowShooting: false,
         meleePressed: false, dashPressed: false, reloadPressed: false,
         interactPressed: false, usePotionPressed: false, quickslot: 0,
       });
