@@ -40,7 +40,7 @@ Update this section as each phase completes. Mark status: NOT STARTED / IN PROGR
 | 6 | Player Movement | DONE | 2026-03-28 | 2026-03-28 | PlayerController.TickMovement extracted, authority-driven mode, IMovementModifierProvider, MovementParityTest (18 Phase 6 tests + Phase 4 tests) |
 | 7 | Gun & Bullet System | DONE | 2026-03-29 | 2026-03-29 | GunSystem frame-based timers, BulletSystem pixel-space sim, GunBulletParityTest (21 tests PLAY MODE VERIFIED), cardinal velocity, rect-vs-circle hitbox, InitForTest wiring |
 | 8 | Damage & Status | DONE | 2026-03-29 | 2026-03-29 | DamageSystem.ProcessKill, frame-based MobStatusEffects+PlayerStatusFX, contact cooldown 30 frames, bullet→DamageSystem path, 14 tests PLAY MODE VERIFIED |
-| 9 | Melee & Dash | NOT STARTED | | | |
+| 9 | Melee & Dash | DONE | 2026-03-29 | 2026-03-29 | MeleeSystem frame-based rewrite, dash chain (14f/21.85px/240f CD), _meleeHitMobs entity-agnostic, all specials (ninja/storm/cleave), lifesteal, knockback, DamageSystem MELEE_HEAL_MULTS, 19 tests PLAY MODE VERIFIED |
 | 10 | Waves & First Mob | NOT STARTED | | | |
 | 11 | Mob Movement & Basic AI | NOT STARTED | | | |
 | 12 | Combat Specials & Telegraphs | NOT STARTED | | | |
