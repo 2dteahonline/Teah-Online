@@ -43,7 +43,7 @@ Update this section as each phase completes. Mark status: NOT STARTED / IN PROGR
 | 9 | Melee & Dash | DONE | 2026-03-29 | 2026-03-29 | MeleeSystem frame-based rewrite, dash chain (14f/21.85px/240f CD), _meleeHitMobs entity-agnostic, all specials (ninja/storm/cleave), lifesteal, knockback, DamageSystem MELEE_HEAL_MULTS, 19 tests PLAY MODE VERIFIED |
 | 10 | Waves & First Mob | DONE | 2026-03-29 | 2026-03-29 | Frame-based wave state machine (waiting/active/cleared/revive_shop), grunt as first mob, full heal+potions on clear, medpack spawning, stairsOpen/dungeonComplete, PlayerReady(G key), WaveSpawnParityTest (19 tests) |
 | 11 | Mob Movement & Basic AI | DONE | 2026-03-29 | 2026-03-29 | Wall collision (slide/nudge/repulsion/half-speed), BFS pathfinding (frame-based cache), facing dir, shooter stop, stuck detection (90 frames/Manhattan), post-movement body blocking (mob-mob + mob-player + clampOutOfWalls), 13 AI patterns verified, MobMovementParityTest (13 tests) |
-| 12 | Combat Specials & Telegraphs | NOT STARTED | | | |
+| 12 | Combat Specials & Telegraphs | DONE | 2026-03-29 | 2026-03-29 | Frame-based TelegraphSystem rewrite (delay/flash/resolve/clearOwner), HazardSystem (zones/tick/slow/damage), AttackShapes complete (9 missing shapes added), CombatSystemsTicker, 4 representative specials (ground_pound/stun_baton/gas_canister/swipe_blink), CombatSpecialsParityTest (21 tests) |
 | 13 | Inventory & Equipment | NOT STARTED | | | |
 | 14 | Scene State & Portals | NOT STARTED | | | |
 | 15 | Progression & Economy | NOT STARTED | | | |
