@@ -38,7 +38,7 @@ Update this section as each phase completes. Mark status: NOT STARTED / IN PROGR
 | 4 | Level Geometry & Collision | DONE | 2026-03-28 | 2026-03-28 | CollisionGrid.cs (isSolid+positionClear+entities), LevelDataLoader.cs, MovementParityTest.cs, verify_collision_parity.js. 3 levels loaded. |
 | 5 | Input & Commands | DONE | 2026-03-28 | 2026-03-28 | CommandQueue, CommandTranslator, AuthorityTick, InputIntent update, PlayerInputHandler rewire, CommandParityTest (17 tests) |
 | 6 | Player Movement | DONE | 2026-03-28 | 2026-03-28 | PlayerController.TickMovement extracted, authority-driven mode, IMovementModifierProvider, MovementParityTest (18 Phase 6 tests + Phase 4 tests) |
-| 7 | Gun & Bullet System | NOT STARTED | | | |
+| 7 | Gun & Bullet System | DONE | 2026-03-29 | 2026-03-29 | GunSystem frame-based timers, BulletSystem pixel-space sim, GunBulletParityTest (21 tests), cardinal velocity, rect-vs-circle hitbox |
 | 8 | Damage & Status | NOT STARTED | | | |
 | 9 | Melee & Dash | NOT STARTED | | | |
 | 10 | Waves & First Mob | NOT STARTED | | | |
