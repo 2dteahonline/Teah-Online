@@ -48,7 +48,7 @@ Update this section as each phase completes. Mark status: NOT STARTED / IN PROGR
 | 14 | Scene State & Portals | DONE | 2026-03-29 | 2026-03-29 | StateReset.cs centralized reset (8 modes), ScenePortalSystem.cs (PORTAL_SCENES 30 entries, LOBBY_RESET_SCENES 11, LEAVE_HANDLERS 16, queue system), SceneManager scene_changed events, GameManager wired to StateReset for dungeon/lobby/floor transitions, ScenePortalParityTest (27 tests) |
 | 15 | Progression & Economy | DONE | 2026-03-29 | 2026-03-29 | ProgressionSystem.cs (getProgressedStats interpolation, _gunLevels storage, tier/level display), GoldRewardSystem.cs (getGoldReward formula with floorBonus/dungeonMult/quickKillBonus/partyMult, WAVES_PER_FLOOR=10), LootDropSystem.cs (mob_killed→getMobDrop→spawnGroundDrop, 1800f life, 40px pickup, ownership), CraftingSystem.cs (upgrade: ore_prefix + parts deduction, evolve: category-specific part swap + gun materials), ProgressionEconomyParityTest.cs (28 tests) |
 | 16 | Secondary Systems | NOT STARTED | | | |
-| 16.5 | Save/Load Parity | NOT STARTED | | | |
+| 16.5 | Save/Load Parity | DONE | 2026-03-29 | 2026-03-29 | SaveManager.cs (SAVE_VERSION=10, JSON schema parity, PlayerPrefs backend), 13 persistent blocks (keybinds/settings/identity/cosmetics/progression/fishing/farming/cookingProgress/quickSlots/sparProgress/sparLearning/gunSettings/materials), session-only exclusions (gold/inventory/equipment/dungeon progress/combat state), gun/pickaxe level format migration (int→{tier,level}), settings migration (playerIndicator→split hitbox), autoSave 1s debounce, startup load, SaveLoadParityTest.cs (24 tests) |
 | 17 | Graphics Parity | NOT STARTED | | | |
 
 ---
