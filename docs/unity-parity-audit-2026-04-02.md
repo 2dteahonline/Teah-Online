@@ -18,10 +18,10 @@
 
 | Status | Count | % |
 |--------|-------|---|
-| **Working** | 69 | 66% |
-| **Partial** | 19 | 18% |
+| **Working** | 68 | 65% |
+| **Partial** | 23 | 22% |
 | **Broken** | 0 | 0% |
-| **Missing** | 16 | 15% |
+| **Missing** | 13 | 13% |
 | **Total features audited** | 104 | |
 
 > **Correction note (2026-04-02 follow-up):** F1/F2/F3 were originally classified as Broken/Missing. Manual code review revealed all three were already fully implemented — they use dynamic GO creation on dungeon entry, not static scene placement. The audit's runtime check only captured the lobby state.
@@ -184,7 +184,7 @@ This audit starts from the project's 35 documentation files, which describe the 
 |---|---------|:------:|:---:|------------|-----|
 | 18 | Panel Manager core | W | R | PanelManager.cs | register/open/close/toggle/exclusive |
 | 19 | Side icons (chat, profile, map) | P | R | SideIconsUI.cs (4 children) | Chat stub; toolbox debug-only |
-| 20 | Profile menu (15-icon grid) | **W** | C | ProfileMenuUI.cs | 5×3 grid, 15 icons, 3 wired (Inventory/Identity/Settings), rest stubbed. |
+| 20 | Profile menu (15-icon grid) | **P** | C | ProfileMenuUI.cs | 9/15 icons wired (incl. Shop, Map, Scores, News, Bounty, Passcode). 6 stubbed (no downstream panels). |
 | 21 | Chat panel | P | R | ChatUI on Main Camera | OnGUI-based. Basic messages. No visual polish. |
 | 22 | Identity panel | W | R | IdentityPanelUI.cs, IdentityCanvas | Stats rows, name edit, faction icons |
 | 23 | Identity sub-panels (faction/country pickers) | M | C | — | No picker popups |
@@ -199,9 +199,9 @@ This audit starts from the project's 35 documentation files, which describe the 
 | 32 | Farm vendor | W | R | FarmVendorUI.cs, FarmVendorCanvas | Full 4-tab layout |
 | 33 | Mining shop | W | R | MiningShopUI.cs, MiningShopCanvas | Full pickaxe tiers |
 | 34 | Stats panel | W | R | StatsPanelUI.cs, StatsCanvas | Player stats display |
-| 35 | **News panel** | **M** | R | — | No canvas, no GO |
-| 36 | **Bounty panel** | **M** | R | — | No canvas, no GO |
-| 37 | **Passcode panel** | **M** | R | — | No canvas, no GO |
+| 35 | News panel | **P** | C | NewsPanelUI.cs | Placeholder panel with stub content. No real news data. |
+| 36 | Bounty panel | **P** | C | BountyPanelUI.cs | Placeholder panel with stub content. No real bounty data. |
+| 37 | Passcode panel | **P** | C | PasscodePanelUI.cs | Placeholder panel with input field. Submit does nothing. |
 | 38 | **Toolbox panel** | **M** | R | — | No canvas, no GO. Tile placement entirely missing. |
 | 39 | **Casino UI (10 game UIs)** | **M** | R | — | Zero casino UI in scene |
 | 40 | **Test mob panel** | **M** | R | — | Debug spawner missing |
@@ -261,7 +261,7 @@ This audit starts from the project's 35 documentation files, which describe the 
 | 79 | Floor config (30 floors) | W | C | FloorConfigRegistry.cs | JSON-loaded, all floors |
 | 80 | Dungeon registry (6 dungeons) | W | C | DungeonRegistry.cs | All 6 |
 | 81 | Wave scaling | W | C | WaveScaling.cs | Formulas verified |
-| 82 | Loot drops | **W** | C | LootDropSystem.cs | Bobbing, glow, fade-out, sparkles, count badge, ownership tracking, pickup feedback. |
+| 82 | Loot drops | **W** | C | LootDropSystem.cs | Full rendering (bobbing/glow/fade/sparkles/badge) + ownership (lastKillerId from DamageSystem, AbandonDropsForOwner). |
 
 ### Inventory, Progression, Save/Load
 
@@ -317,13 +317,13 @@ This audit starts from the project's 35 documentation files, which describe the 
 | **F2** | ~~Player damage pipeline~~ | **STALE — already complete.** DealDamageToPlayer (DamageSystem.cs:329-486) has full pipeline: dodge → lethal efficiency → backstab → armor → proj/AOE reduction → armor break → DOT bypass → absorb → thorns+stagger. Implemented in Phases 13/17. | ~~Player takes raw damage~~ **FIXED** | — | DamageSystem.cs:329-486 |
 | **F3** | ~~Wire PartySystem + BotAI to scene~~ | **STALE — already wired.** `SetupCombatSystems()` creates PartySystem GO, calls Init(4, playerController, config) for player+3 bots, creates BotAI with full 5-state FSM (GameManager.cs:1489-1498). Teardown on lobby return. | ~~Single-player only~~ **FIXED** | — | GameManager.cs:1489-1498, PartySystem.cs, BotAI.cs |
 | **F4** | ~~Player status effect integration~~ | **FIXED (2026-04-03).** New `PlayerStatusFXComponent` MonoBehaviour wraps `PlayerStatusFX`, implements `IMovementModifierProvider`. Fear overrides movement direction, confuse rotates+swaps, disorient adds random drift, slow/root/tether affect speed, armor break syncs to `PlayerController.armorBreakMult`, bleed/poison DOT applied via `DamageSystem`, mobility lock exposed for MeleeSystem dash gating. | **FIXED** | — | PlayerStatusFXComponent.cs, PlayerController.cs |
-| **F5** | ~~Loot drop rendering + ownership~~ | **FIXED (2026-04-03).** Bobbing (sine 4px), tier glow circle, inner highlight, sparkles (tier≥2), fade-out (last 2s), count badge (TextMesh), ownership tracking (ownerId + ownerLeft), pickup feedback text, `AbandonDropsForOwner()` API. | **FIXED** | — | LootDropSystem.cs |
+| **F5** | ~~Loot drop rendering + ownership~~ | **FIXED (2026-04-03).** Rendering: bobbing, glow, fade-out, sparkles, count badge, pickup text. Ownership: `lastKillerId` set by DamageSystem.ProcessKill using `attacker.entityId`, read by LootDropSystem.OnMobKilled. AbandonDropsForOwner API for party leave. | **FIXED** | — | LootDropSystem.cs, DamageSystem.cs, MobController.cs |
 
 ### Tier 2 — HIGH (Blocks secondary gameplay features)
 
 | ID | Fix | Impact | Effort | Files |
 |----|-----|--------|--------|-------|
-| **F6** | ~~Profile menu (15-icon grid)~~ | **FIXED (2026-04-03).** `ProfileMenuUI` creates 5×3 grid with 15 labeled icon buttons (Inventory/Identity/Settings wired, rest stubbed). Registered with PanelManager as "profile". SideIconsUI profile button now toggles this menu. Dim backdrop, close button, Stats footer. GameManager instantiates on startup. | **FIXED** | — | ProfileMenuUI.cs, SideIconsUI.cs, GameManager.cs |
+| **F6** | ~~Profile menu (15-icon grid)~~ | **PARTIAL (2026-04-03).** 9/15 icons wired: Inventory, Identity, Settings, News, Shop, Map (minimap toggle), Scores→stats, Passcode, Bounty. 6 stubbed: Guide, Friends, Gangs, PM History, Career, Challenges (no downstream panels exist). News/Bounty/Passcode are placeholder panels with no real content. | Partial | — | ProfileMenuUI.cs, NewsPanelUI.cs, BountyPanelUI.cs, PasscodePanelUI.cs, GameManager.cs |
 | **F7** | Melee combat verification | Crit calc, knockback application, lifesteal, ninja/storm/piercing specials not verified working | Low | MeleeSystem.cs |
 | **F8** | Crafting feedback + save | No auto-save on upgrade/evolve. No floating text. No combat state reset. Upgrades lost on reload. | Low | CraftingSystem.cs |
 | **F9** | Cooking NPC systems | deliNPCSystem, dinerNPCSystem, fineDiningNPCSystem, cookingNPCBase — all missing. Cooking scene non-functional. | High | 4 new C# files (~3000 lines) |
@@ -347,7 +347,7 @@ This audit starts from the project's 35 documentation files, which describe the 
 
 | ID | Fix | Impact | Effort |
 |----|-----|--------|--------|
-| **F20** | News/Bounty/Passcode panels | Missing UI features | Low |
+| **F20** | ~~News/Bounty/Passcode panels~~ | **PARTIAL (2026-04-03).** Placeholder panels exist and are reachable from profile menu. No real content/data. | — |
 | **F21** | Toolbox panel + tile placement | Level editing dead | High |
 | **F22** | Test mob panel | Debug-only | Med |
 | **F23** | Armor glow animation (T3/T4) | Cosmetic only | Low |
