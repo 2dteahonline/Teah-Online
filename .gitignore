@@ -1,3 +1,6 @@
+# Training / ML (large checkpoints, keep local only)
+training/
+
 # Backups (local only)
 index_2_backup*.html
 
