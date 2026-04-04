@@ -1,68 +1,64 @@
-# CLAUDE.md
+# CLAUDE.md — Teah Online
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## The #1 Rule
 
-## Project Overview
+**The JS game is the source of truth. Unity must be EXACTLY 1:1.**
 
-Teah Online is a top-down dungeon crawler (inspired by GraalOnline Era) built with vanilla JS + HTML5 Canvas 2D. No frameworks, no build tools, no npm dependencies.
+Every system, every mechanic, every interaction — combat, chat, profile menu, inventory, walking, shooting, menus, NPCs, portals, everything — must work in Unity EXACTLY how it works in JS. Not "similar." Not "improved." EXACTLY the same.
 
-- **Entry point**: `index.html` loads 93 JS files via `<script>` tags with cache-busting (`?v=70` to `?v=137`)
-- **Dev server**: `python -m http.server 8080` (configured in `.claude/launch.json`)
-- **Total codebase**: ~121,200 lines of JavaScript across 91 non-backup files
-- **Comprehensive reference**: `docs/README.md` — modular docs index (one file per system)
+- Don't redesign systems. Don't "improve" architecture. Don't skip small features.
+- If JS has it, Unity has it. If JS doesn't have it, Unity doesn't have it.
+- Every value, formula, timer, cooldown, UI behavior, and interaction must match the JS source line-for-line.
+- When in doubt, READ the JS. The answer is always in the JS.
 
-## Architecture: Authority/Client Split
+## Project
 
-The codebase is organized for future multiplayer. All game logic runs through an authority layer; the client only renders and captures input.
+Teah Online — top-down dungeon crawler (GraalOnline Era inspired). Vanilla JS + HTML5 Canvas 2D. No frameworks, no build tools, no npm.
+
+- **Entry point**: `index.html` — 93 JS files via `<script>` tags, cache-busted
+- **Dev server**: `python -m http.server 8080`
+- **Codebase**: ~121,200 lines across 91 non-backup files
+- **Docs**: `docs/README.md` — modular index (one file per system)
+- **Unity port**: `C:\Users\jeff\Desktop\Unity Proj\TeahOnlineUnity` (Unity 6, 6000.4.0f1)
+
+## Architecture
+
+Authority/Client split for future multiplayer. All game logic runs through authority; client only renders and captures input.
 
 ```
 js/
 ├── shared/       # Pure data registries (loaded first) — no logic (21 files)
 ├── authority/    # Server-authoritative: combat, damage, waves, mobs, inventory, party, bots, casino, spar (40 files)
 ├── client/       # Presentation only: rendering, input, UI panels (18 files)
-│   ├── rendering/  # Canvas drawing (sprites, entities, effects)
-│   ├── input/      # Mouse/keyboard → InputIntent flags
-│   └── ui/         # Panel system (inventory, gunsmith, settings, casino)
 ├── core/         # Bridge layer: save/load, scene management, weapons, interactables, camera (10 files)
 └── testing/      # Test harness (1 file)
 ```
 
-**Script loading order matters** — phases A (shared) → B (authority) → C (rendering) → D (UI) → E (core loop). See `index.html` for exact order.
+**Script loading order matters** — phases A (shared) → B (authority) → C (rendering) → D (UI) → E (core loop). See `index.html`.
 
-## Key Globals & Patterns
+## Key Globals
 
-- `ctx` — global Canvas 2D rendering context
-- `TILE` — constant tile size (48px)
-- `player`, `mobs`, `bullets`, `gold` — GameState properties aliased to `window` via defineProperty
-- `Scene` — scene state machine (lobby, dungeon, cave, mine, cooking, farm, azurine, gunsmith, test_arena, hideseek, mafia_lobby, skeld, vortalis, earth205, wagashi, earth216, casino, spar)
-- `Events.on()/emit()` — pub/sub event bus (`js/authority/eventBus.js`)
-- `GAME_CONFIG` — physics & collision constants (`js/shared/gameConfig.js`)
-- `PartySystem` — always-on party system for player + bots (`js/authority/partySystem.js`)
-- `BotAI` — bot combat/movement AI for party members (`js/authority/botAI.js`)
-- `CasinoSystem` — casino game logic with 10 games, 5% house edge (`js/authority/casinoSystem.js`)
+| Global | Purpose |
+|--------|---------|
+| `ctx` | Canvas 2D rendering context |
+| `TILE` | 48px tile size |
+| `player`, `mobs`, `bullets`, `gold` | GameState properties aliased to `window` |
+| `Scene` | Scene state machine (18 scenes) |
+| `Events.on()/emit()` | Pub/sub event bus |
+| `GAME_CONFIG` | Physics & collision constants |
+| `PartySystem` | Always-on party system (player + bots) |
 
-**Registries** (data-driven, replace large if/else chains):
-- `MOB_AI` (13 patterns), `MOB_SPECIALS` (435 abilities across 9 files) — `combatSystem.js` + `vortalisSpecials.js` + `earth205Specials.js` + `wagashiSpecials1-3.js` + `earth216Specials1-3.js`
-- `ENTITY_RENDERERS` (175 types) — `entityRenderers.js`
-- `HIT_EFFECT_RENDERERS` (73 types) — `hitEffects.js`
-- `MOB_TYPES` — `mobTypes.js`, `LEVELS` — `levelData.js`
-- `PROG_ITEMS` — unified 5-tier × 25-level progression — `progressionData.js`
+## Registries (data-driven)
 
-## Party System & Bot AI
-
-`PartySystem` (`js/authority/partySystem.js`) is always-on — the player is always a member. Bots can be added as party members with independent state (gun, melee, equip, gold, potions, statusFX). `BotAI` (`js/authority/botAI.js`) handles combat targeting, movement, weapon usage, equipment buying, and auto-respawn. Design principle: bots = future multiplayer users; every system must be player-agnostic.
-
-## Casino
-
-`CasinoSystem` (`js/authority/casinoSystem.js`) provides 10 gambling games (Blackjack, Roulette, Coinflip, Cases, Mines, Dice, RPS, Baccarat, Slots, Keno) with a uniform 5% house edge. Data in `js/shared/casinoData.js`, UI in `js/client/ui/casinoUI.js`. Casino is a separate scene (`Scene.inCasino`).
-
-## Spar System
-
-`sparSystem.js` (`js/authority/sparSystem.js`) — PvP sparring arena with ranked matches, Elo tracking, and neural network-driven bot opponent. Data in `js/shared/sparData.js`, inference in `js/authority/neuralSparInference.js`, training pipeline in `training/`. The spar bot uses a learning system with self-play; see `docs/spar-learning.md` for details. Spar is a separate scene (`Scene.inSpar`).
-
-## Crafting System
-
-`craftingSystem.js` (`js/authority/craftingSystem.js`) — recipe-based crafting with resource costs. Data in `js/shared/craftingData.js`, UI via forge panel (`js/client/ui/forgeUI.js`).
+| Registry | Count | File(s) |
+|----------|-------|---------|
+| `MOB_AI` | 13 patterns | `combatSystem.js` |
+| `MOB_SPECIALS` | 435 abilities | 9 files (`*Specials*.js`) |
+| `ENTITY_RENDERERS` | 175 types | `entityRenderers.js` |
+| `HIT_EFFECT_RENDERERS` | 73 types | `hitEffects.js` |
+| `MOB_TYPES` | 265 types | `mobTypes.js` |
+| `LEVELS` | 18 scenes | `levelData.js` |
+| `PROG_ITEMS` | 5 tiers × 25 levels | `progressionData.js` |
 
 ## Game Loop
 
@@ -74,52 +70,93 @@ requestAnimationFrame(gameLoop)  [draw.js ~line 2951]
       → tiles → entities (Y-sorted) → mobs → bullets → effects → player → HUD → panels
 ```
 
-## The Skeld Map Rules (MANDATORY)
+## Unity MCP Tools
 
-When modifying The Skeld map in `js/shared/levelData.js`:
+| Tool | Use for |
+|------|---------|
+| `manage_scene` | Load, save, query scene hierarchy |
+| `manage_gameobject` | Create/modify GameObjects and components |
+| `manage_script` | Create/modify C# scripts |
+| `read_console` | Check compilation errors after script changes |
+| `manage_asset` | Search, import, configure assets |
+| `run_tests` | Execute parity tests |
+| `unity_reflect` | Verify Unity API before writing C# |
+| `manage_editor` | Play mode control, editor state |
+
+**After any script change:** Always `read_console` to check compilation before proceeding.
+
+## Mandatory Rules
+
+### GAME_UPDATE Version
+**Increment `GAME_CONFIG.GAME_UPDATE`** in `js/shared/gameConfig.js` on every commit+push. **Always READ first** to get current value, then +1. Tell me the update # after push.
+
+### Sprite Pipeline
+Graal-style 3-layer: Body (32×32, 4×32) + Head (32×32, 4×4) + Hat (32×32, 5×5). Templates in `assets/sprites/`.
+
+**ASK before adding new animation rows.** Current: Body=32 rows, Head=4 rows, Hat=5 rows.
+
+### Skeld Map
 - Do NOT change hallway/corridor positions, widths, or pathing
-- Do NOT let rooms absorb corridor space or overlap each other
-- Only expand rooms outward into dead space (wall tiles)
-- All coordinates use virtual space with `XO=4` offset (actual grid x = virtual x + 4)
-- Map grid: W=135, H=80
-- Minimap labels in `draw.js` use ACTUAL grid coordinates (virtual + XO)
+- Only expand rooms outward into dead space
+- All coordinates use virtual space with `XO=4` offset
+- Grid: W=135, H=80
 
-## Save/Load
-
-`js/core/saveLoad.js` — localStorage with schema version 10. Supports migrations from v1-v9. Saved data includes keybinds, settings, identity, cosmetics, progression, skill XP, cooking progress, quickslots. Gun levels can be old integer format or new `{tier, level}` object.
-
-## Progression System
-
-5 tiers (Common → Uncommon → Rare → Epic → Legendary) × 25 levels = 125 power steps per weapon. Defined in `PROG_ITEMS` (`progressionData.js`). Helpers: `getProgressedStats()`, `_getGunProgress()`, `_setGunProgress()`. Evolution at T(N) L25 → T(N+1) L1.
-
-## Sprite Pipeline
-
-`AssetLoader` (`js/core/assetLoader.js`) loads sprites from `assets/manifest.json`. Renderers check `AssetLoader.get(key)` first, fall back to procedural if null.
-
-**Layer system** (Graal-style, for mix-and-match cosmetics):
-- Body: 32×32 cells, 4 cols (dirs) × 32 rows (anims) = 128×1024
-- Head: 32×32 cells, 4 cols × 4 rows = 128×128
-- Hat: 32×32 cells, 5 cols × 5 rows = 160×160
-
-Templates in `assets/sprites/` — clean grids for artists + labeled references.
-
-**MANDATORY: When adding any new player/character animation** (e.g. new skill, emote, action):
-1. ASK the user if a new spritesheet row is needed for body/head/hat templates
-2. If yes, add the row to the templates and references, update `assets/manifest.json` frameSize
-3. Update this section with the new row count
-
-**Current body rows (32)**: Idle, Walk 1-4, Swing 1-4, Shoot Idle/1/2, Dash, Grab, Push 1-2, Pull, Lift, Idle Hold, Walk Hold 1-2, Fish Cast/Idle/Reel, Mine 1-2, Farm 1-2, Cook 1-2, Hurt, Dead
-
-**Current head rows (4)**: Walk & Idle, Push, Pull, Hurt & Dying
-
-**Current hat rows (5)**: Walk & Idle, Attack, Shoot, Hurt & Dying, Skill (Fish/Mine/etc)
+### Adding Content
+- **Mobs**: `MOB_TYPES` → `MOB_AI` → `MOB_SPECIALS` → renderer if custom → update testMobPanel
+- **Entities**: add renderer to `ENTITY_RENDERERS`
+- **Debug commands**: `/gun`, `/tp`, `/heal`, `/mob`, `/freeze` in `commands.js`
 
 ## Conventions
 
-- **`let` in `<script>` tags** are in global lexical scope — accessible from other scripts and `eval()`, but NOT on `window`
-- **Backup before major changes**: create `*_backup_pre_<feature>.js` copies
-- **Collision**: grid-based AABB via `positionClear(px, py, hw)`; mobs use `MOB_WALL_HW=11` and `MOB_RADIUS=23`
-- **Adding mobs**: define in `MOB_TYPES`, add AI pattern to `MOB_AI`, add specials to `MOB_SPECIALS`, add renderer entry if custom
-- **Adding entities**: add renderer function to `ENTITY_RENDERERS` registry
-- **Debug commands**: `/gun`, `/tp`, `/heal`, `/mob`, `/freeze` — defined in `commands.js`
-- **MANDATORY: Increment `GAME_CONFIG.GAME_UPDATE`** in `js/shared/gameConfig.js` on every commit+push — this is shown on the lobby version sign so the user can verify they're running the latest build. **Always READ the file first** to get the current value, then increment by 1. Never assume what it is — another terminal/session may have already bumped it.
+- **`let` in `<script>` tags** = global lexical scope (accessible from other scripts, NOT on `window`)
+- **Backup before major changes**: `*_backup_pre_<feature>.js` copies
+- **Collision**: grid-based AABB via `positionClear(px, py, hw)`; mobs use `MOB_WALL_HW=11`, `MOB_RADIUS=23`
+- **Design principle**: Bots = future multiplayer users. Every system must be player-agnostic.
+
+## Key Systems Quick Reference
+
+| System | Primary File | Data File |
+|--------|-------------|-----------|
+| Party/Bots | `partySystem.js`, `botAI.js` | — |
+| Casino (10 games, 5% edge) | `casinoSystem.js` | `casinoData.js` |
+| Spar (PvP + neural bot) | `sparSystem.js` | `sparData.js` |
+| Crafting | `craftingSystem.js` | `craftingData.js` |
+| Progression (5T×25L) | `progressionData.js` | — |
+| Save/Load (schema v10) | `saveLoad.js` | — |
+
+## Unity Port Status
+
+**179 C# scripts written, 0% playable.** Scene is empty — no GameObjects wired. All code compiles but nothing runs.
+
+**Living plan:** `docs/superpowers/specs/2026-04-04-unity-port-reboot-design.md` — 11-phase playability-first plan.
+
+**Current phase: 0 (Bootstrap)** — Wire GameManager into scene, get player walking in lobby.
+
+### What Exists (code-complete, not wired)
+- Core: GameManager (2,280 lines), SceneManager, PlayerController, AuthorityTick, PlayerInputHandler
+- Combat: GunSystem (95%), MeleeSystem (90%), DamageSystem (98%), BulletSystem (95%), WaveSystem (98%)
+- Rendering: SceneTileRenderer (98%), CharacterRenderer (90%), MobRenderer (85%), EntityRendererRegistry (90%), YSortRenderer (100%)
+- Abilities: 429 mob abilities across 5 dungeons (Azurine, Vortalis, Earth-205, Earth-216, Wagashi)
+- UI: 23 panel scripts at 35-40% coverage
+- Data: All registries ported
+
+### What's Missing
+- **Scene setup** — no GameObjects, no prefabs, no sprites in scene
+- **Ultimate systems** — Shrine & Godspeed (high-impact combat)
+- **Status effect rendering** — 0/6 visual types
+- **Mob persistent effects** — 0/20+ visual types
+- **Cooking NPC systems** — 5,772 JS lines, 3 restaurants, completely missing
+- **Charge bar HUDs** — Godspeed, Shrine, Ninja Dash
+- **Gun behaviors** — frost/burn on-kill effects
+
+### Unity Port Rules
+1. **Every phase ends with Play mode verification.** "It compiles" is not done. "I can see it" is done.
+2. **Fix forward, don't rewrite.** 179 scripts exist and most are good. Wire them, don't replace them.
+3. **One phase at a time.** Don't jump to Phase 5 before Phase 1 works.
+4. **NEVER guess JS values.** Every number must cite a JS source line.
+5. Trace helper functions. Check both sides of every API. Y-axis: canvas Y-down → Unity Y-up.
+
+**Before ANY Unity port work**, read these memory files:
+- `feedback_unity_port_parity.md` — 20+ wrong values shipped
+- `feedback_unity_port_root_causes.md` — 5 failure patterns
+- `feedback_audit_depth.md` — why audits keep missing issues
