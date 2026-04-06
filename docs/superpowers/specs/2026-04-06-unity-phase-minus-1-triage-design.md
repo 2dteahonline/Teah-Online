@@ -1,7 +1,7 @@
 # Phase -1: Unity C# Triage
 
 **Date:** 2026-04-06
-**Status:** Draft — pending user approval
+**Status:** SUPERSEDED by `2026-04-06-teah-gdd-and-unity-port-design.md` — the GDD-driven plan makes triage of the old C# unnecessary because the old project becomes a read-only reference, not a foundation.
 **Precedes:** Phase 0 (Bootstrap — player walks in lobby)
 
 ## Problem
