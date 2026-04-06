@@ -126,37 +126,45 @@ Graal-style 3-layer: Body (32×32, 4×32) + Head (32×32, 4×4) + Hat (32×32, 5
 
 ## Unity Port Status
 
-**179 C# scripts written, 0% playable.** Scene is empty — no GameObjects wired. All code compiles but nothing runs.
+**179 C# scripts exist. 0 are wired into the scene. The game does not run.** Script count is not progress — Play mode is progress.
 
-**Living plan:** `docs/superpowers/specs/2026-04-04-unity-port-reboot-design.md` — 11-phase playability-first plan.
+**Living plan:** `docs/superpowers/specs/2026-04-04-unity-port-reboot-design.md`
+**Current phase:** **-1 — C# Triage** (audit all 179 scripts into keep/fix/delete before Phase 0)
+**Next phase:** 0 — Bootstrap (player walks in the lobby in Play mode)
 
-**Current phase: 0 (Bootstrap)** — Wire GameManager into scene, get player walking in lobby.
+### Hard Stops (non-negotiable)
 
-### What Exists (code-complete, not wired)
-- Core: GameManager (2,280 lines), SceneManager, PlayerController, AuthorityTick, PlayerInputHandler
-- Combat: GunSystem (95%), MeleeSystem (90%), DamageSystem (98%), BulletSystem (95%), WaveSystem (98%)
-- Rendering: SceneTileRenderer (98%), CharacterRenderer (90%), MobRenderer (85%), EntityRendererRegistry (90%), YSortRenderer (100%)
-- Abilities: 429 mob abilities across 5 dungeons (Azurine, Vortalis, Earth-205, Earth-216, Wagashi)
-- UI: 23 panel scripts at 35-40% coverage
-- Data: All registries ported
+1. **No new C# scripts until Phase 0 ships.** Phase 0 = player walking in the lobby in Play mode, verified by the user. Until that happens, the only allowed C# work is wiring, deleting, or fixing existing scripts. "I found one more system to port" is the trap that got us here.
 
-### What's Missing
-- **Scene setup** — no GameObjects, no prefabs, no sprites in scene
-- **Ultimate systems** — Shrine & Godspeed (high-impact combat)
-- **Status effect rendering** — 0/6 visual types
-- **Mob persistent effects** — 0/20+ visual types
-- **Cooking NPC systems** — 5,772 JS lines, 3 restaurants, completely missing
-- **Charge bar HUDs** — Godspeed, Shrine, Ninja Dash
-- **Gun behaviors** — frost/burn on-kill effects
+2. **A phase is not done until the user sees it in Play mode.** "It compiles" ≠ done. "Tests pass" ≠ done. "I see it running" = done. Every session on Unity work ends with either a Play-mode demo or an honest "still not playable."
 
-### Unity Port Rules
-1. **Every phase ends with Play mode verification.** "It compiles" is not done. "I can see it" is done.
-2. **Fix forward, don't rewrite.** 179 scripts exist and most are good. Wire them, don't replace them.
-3. **One phase at a time.** Don't jump to Phase 5 before Phase 1 works.
-4. **NEVER guess JS values.** Every number must cite a JS source line.
-5. Trace helper functions. Check both sides of every API. Y-axis: canvas Y-down → Unity Y-up.
+3. **Every number, timer, formula, and field name must cite `js/path/file.js:line`** in the commit or the code comment. No citation = not merged. 55% of shipped bugs were invented values (`feedback_unity_port_root_causes.md`). This rule exists to mechanically stop that.
 
-**Before ANY Unity port work**, read these memory files:
-- `feedback_unity_port_parity.md` — 20+ wrong values shipped
-- `feedback_unity_port_root_causes.md` — 5 failure patterns
-- `feedback_audit_depth.md` — why audits keep missing issues
+4. **Fix forward, don't rewrite.** If a script is wrong, fix it in place. If it's unwired duplicate garbage, delete it. Do not start a parallel v2.
+
+5. **One phase at a time.** No jumping ahead. No "while I'm here, I'll also…"
+
+### Status Vocabulary (no percentages)
+
+Every C# script is in exactly one bucket. Percentages like "GunSystem 95%" are banned — they're guesses that sound like progress.
+
+- **WIRED** — referenced by a GameObject in a scene, runs in Play mode, verified by the user
+- **CODE-ONLY** — compiles, not referenced by any scene, never executed
+- **WRONG** — known-bad values, diverged architecture, or duplicates another script
+- **UNKNOWN** — not yet audited
+
+The authoritative list lives in `docs/unity-triage.md` (produced by Phase -1). CLAUDE.md does not track per-script status.
+
+### Before ANY Unity work, read these 3 files (only these)
+
+- `feedback_unity_port_parity.md` — 20+ wrong values shipped. Read the JS.
+- `feedback_unity_port_root_causes.md` — 5 failure patterns that caused 70+ bugs.
+- `feedback_playability_not_compilation.md` — measure by Play mode, not script count.
+
+If you need more context, read the living plan. Do not read 23 memory files before starting work.
+
+### Y-axis / API checklist (quick)
+
+- Canvas is Y-down, Unity is Y-up. Every direction, angle, velocity, and Y-coord needs conversion. Assume every port is wrong until you've checked this.
+- Trace helper functions on both sides of every API. If JS calls `getFoo()`, read `getFoo()`.
+- Field names must match on both sides — grep the C# consumer before renaming.
