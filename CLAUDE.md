@@ -2,14 +2,19 @@
 
 ## The #1 Rule
 
-**The JS game is the source of truth. Unity must be EXACTLY 1:1.**
+**`docs/gdd/` is the source of truth for the Unity port. The JS is the source of truth for the GDD.**
 
-Every system, every mechanic, every interaction — combat, chat, profile menu, inventory, walking, shooting, menus, NPCs, portals, everything — must work in Unity EXACTLY how it works in JS. Not "similar." Not "improved." EXACTLY the same.
+The Game Design Document in `docs/gdd/` is a citation-backed, machine-greppable description of every system, value, formula, and interaction in Teah Online. It was extracted directly from the JS source on 2026-04-06 with mandatory `js/file.js:line` citations for every numeric value (~4,280+ cited values across 18 files). When porting to Unity:
 
-- Don't redesign systems. Don't "improve" architecture. Don't skip small features.
-- If JS has it, Unity has it. If JS doesn't have it, Unity doesn't have it.
-- Every value, formula, timer, cooldown, UI behavior, and interaction must match the JS source line-for-line.
-- When in doubt, READ the JS. The answer is always in the JS.
+1. **Read the GDD first.** Every Unity script must cite the GDD section(s) it implements.
+2. **The GDD is authoritative for values.** Fire rates, damage, timers, HP — use the value in the GDD, not the one you remember. If the GDD has it, copy it. If the GDD marks it UNKNOWN, fix the GDD before porting.
+3. **If the GDD is wrong, fix the GDD first, then the port.** Never port against a value you invented.
+4. **If JS changes, update the GDD in the same commit.** The GDD is code, not docs.
+5. **If a system isn't in the GDD yet, add it to the GDD before touching Unity.** See `docs/gdd/INDEX.md` "Known Gaps" section for systems still needing extraction.
+
+Every system, every mechanic, every interaction — combat, chat, profile menu, inventory, walking, shooting, menus, NPCs, portals, everything — must work in Unity EXACTLY how the GDD says it works, which is EXACTLY how the JS works.
+
+**GDD navigation:** `docs/gdd/INDEX.md` | **GDD schema:** `docs/gdd/README.md`
 
 ## Project
 
@@ -19,7 +24,8 @@ Teah Online — top-down dungeon crawler (GraalOnline Era inspired). Vanilla JS 
 - **Dev server**: `python -m http.server 8080`
 - **Codebase**: ~121,200 lines across 91 non-backup files
 - **Docs**: `docs/README.md` — modular index (one file per system)
-- **Unity port**: `C:\Users\jeff\Desktop\Unity Proj\TeahOnlineUnity` (Unity 6, 6000.4.0f1)
+- **Unity port**: `C:\Users\jeff\Desktop\Unity Proj\TeahOnline` (Unity 6, 6000.4.0f1, 2D Built-in Render Pipeline) — fresh project, Phase 0 in progress
+- **Unity reference (read-only)**: `C:\Users\jeff\Desktop\Unity Proj\TeahOnlineUnity_REFERENCE` — old port, hint material only, never imported
 
 ## Architecture
 
@@ -126,11 +132,12 @@ Graal-style 3-layer: Body (32×32, 4×32) + Head (32×32, 4×4) + Hat (32×32, 5
 
 ## Unity Port Status
 
-**179 C# scripts exist. 0 are wired into the scene. The game does not run.** Script count is not progress — Play mode is progress.
+**Fresh project `TeahOnline/` (2D Built-in).** Old `TeahOnlineUnity_REFERENCE/` is read-only hint material, never imported. Script count is not progress — Play mode is progress.
 
-**Living plan:** `docs/superpowers/specs/2026-04-04-unity-port-reboot-design.md`
-**Current phase:** **-1 — C# Triage** (audit all 179 scripts into keep/fix/delete before Phase 0)
-**Next phase:** 0 — Bootstrap (player walks in the lobby in Play mode)
+**Living plan:** `docs/superpowers/specs/2026-04-06-teah-gdd-and-unity-port-design.md`
+**Implementation plan:** `docs/superpowers/plans/2026-04-06-teah-gdd-and-unity-port-plan.md`
+**Current phase:** **0 — Bootstrap** (walk + walls + camera in new project, port from GDD)
+**GDD status:** Complete (18 files, ~4,280+ cited values) — see `docs/gdd/INDEX.md`
 
 ### Hard Stops (non-negotiable)
 
@@ -155,13 +162,15 @@ Every C# script is in exactly one bucket. Percentages like "GunSystem 95%" are b
 
 The authoritative list lives in `docs/unity-triage.md` (produced by Phase -1). CLAUDE.md does not track per-script status.
 
-### Before ANY Unity work, read these 3 files (only these)
+### Before ANY Unity work, read these (in this order)
 
-- `feedback_unity_port_parity.md` — 20+ wrong values shipped. Read the JS.
-- `feedback_unity_port_root_causes.md` — 5 failure patterns that caused 70+ bugs.
-- `feedback_playability_not_compilation.md` — measure by Play mode, not script count.
+1. `docs/gdd/INDEX.md` — navigate the GDD, find your system
+2. `docs/gdd/<your-system>.md` — the actual values to port
+3. `feedback_unity_port_parity.md` — 20+ wrong values previously shipped (history; GDD prevents this)
+4. `feedback_unity_port_root_causes.md` — 5 failure patterns (history; GDD mechanically prevents most)
+5. `feedback_playability_not_compilation.md` — measure by Play mode, not script count
 
-If you need more context, read the living plan. Do not read 23 memory files before starting work.
+If the GDD is missing a value you need, STOP. Add it to the GDD (with `js/file.js:line` citation) before touching Unity. Do not read 23 memory files before starting work.
 
 ### Y-axis / API checklist (quick)
 
