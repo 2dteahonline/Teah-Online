@@ -505,17 +505,24 @@ Mirrors `DealDamageToPlayer()` but targets a bot:
 6. If hp <= 0: `PartySystem.Instance.HandleMemberDeath(bot)`
 7. Set `bot.contactCD = 0.5f` (30 frames / 60) for contact hits
 
-### Modified: ProcessKill()
+### Modified: ProcessKill() (js/authority/damageSystem.js:359-434)
 
 Currently: gold → player, heal → player, ammo refill → player.
 
 New behavior:
 1. Determine killer via bullet `ownerId` → `PartySystem.GetMemberById(ownerId)`
-2. Gold → killer's wallet: `PartySystem.AddGold(killer.id, goldAmount)`
-3. Heal → killer only (source-based multiplier × heal boost from chest)
-4. Ammo refill → killer only (if gun kill)
-5. **Party lifesteal:** If `ShopSystem.Instance.partyLifesteal > 0`, heal ALL alive members by partyLifesteal amount
-6. `WaveSystem.Instance.OnMobKilled()` (unchanged — counts for phase advance regardless of killer)
+2. **Gold multiplied by party size**: `goldEarned = Round(baseGold × partyMemberCount)` (js:387-388)
+3. Gold → killer's wallet: `PartySystem.AddGold(killer.id, goldEarned)` (js:390)
+4. Heal → killer only (source-based multiplier × heal boost from chest)
+5. Ammo refill → killer only (if gun kill)
+6. **Party lifesteal:** Heal ALL alive members EXCEPT the killer by partyLifesteal amount (js:430-434)
+7. **Death explosion:** If mob has death explosion, damage ALL alive party members in radius (js:470-474)
+8. `WaveSystem.Instance.OnMobKilled()` (unchanged — counts for phase advance regardless of killer)
+
+### Additional DamageSystem Integration
+
+- `dealDamageToPlayer()` must accept optional target entity parameter (js:239) — when target is a bot, look up equipment via `PartySystem.GetMemberByEntity(target)` instead of playerEquip
+- Killer resolution: check `_isBot` flag on attacker entity (js:144-145) to route through party system
 
 ---
 
@@ -562,19 +569,53 @@ Add bot-to-mob body blocking (same push logic as player-to-mob):
 
 ## WaveSystem.cs — Modifications
 
-### Mob Scaling
+### Mob Scaling (js/authority/waveSystem.js:310-323)
 
-In `SpawnWave()`, multiply counts and HP:
+In `SpawnWave()`, multiply counts and HP when party > 1:
 ```csharp
 int scaledCount = Mathf.RoundToInt(baseCount * PartySystem.Instance.GetMobCountScale());
 float hpMult = baseHPMult * PartySystem.Instance.GetMobHPScale();
 ```
 
-### Wave Clear Heal
+### Wave Clear Heal (js/authority/mobSystem.js:1533)
 
 After wave clear (all mobs dead), call:
 ```csharp
 PartySystem.Instance.HealAll();
+```
+
+### Revive Shop Trigger (js/authority/mobSystem.js:1563-1565)
+
+After wave clear, if any dead members have lives remaining:
+```csharp
+if (PartySystem.Instance.HasRevivable() && !stairsOpen)
+{
+    waveState = "revive_shop";
+    betweenWaveTimer = PartyData.REVIVE_SHOP_DURATION; // 10s
+}
+```
+
+### Medpack Pickup (js/authority/waveSystem.js:210-217)
+
+Medpack pickup checks ALL alive party members, not just player:
+```csharp
+foreach (var member in PartySystem.Instance.GetAlive())
+{
+    float dist = Vector2.Distance(medpack.position, member.position);
+    if (dist < 40f) { /* heal member, consume medpack */ }
+}
+```
+
+### Chest Regen Between Waves (js/authority/mobSystem.js:1579-1587)
+
+During cleared/waiting phase, all alive members with chest regen get HP tick:
+```csharp
+foreach (var member in PartySystem.Instance.GetAlive())
+{
+    float regen = ItemData.GetChestRegen(member.equippedChest);
+    if (regen > 0 && member.hp < member.maxHp)
+        member.hp = Mathf.Min(member.maxHp, member.hp + regen);
+}
 ```
 
 ---
