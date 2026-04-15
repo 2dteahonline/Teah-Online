@@ -611,6 +611,116 @@ function draw() {
             }
             ctx.stroke();
           }
+
+          // SILENCE — dark purple X over player + "SILENCED" text
+          if (pe._silenceTimer > 0) {
+            const silPulse = 0.5 + 0.3 * Math.sin(renderTime * 0.1);
+            ctx.strokeStyle = `rgba(120,40,160,${silPulse})`;
+            ctx.lineWidth = 3;
+            // X mark over player
+            ctx.beginPath();
+            ctx.moveTo(px - 12, py - 22); ctx.lineTo(px + 12, py + 2);
+            ctx.moveTo(px + 12, py - 22); ctx.lineTo(px - 12, py + 2);
+            ctx.stroke();
+            // Dark purple ring
+            ctx.strokeStyle = `rgba(120,40,160,${silPulse * 0.5})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(px, py - 10, 26, 0, Math.PI * 2); ctx.stroke();
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(120,40,160,${silPulse})`;
+            ctx.fillText('SILENCED', px, py - 44);
+          }
+
+          // FEAR — pulsing dark red aura + trembling effect + "FEARED" text
+          if (pe._fearTimer > 0) {
+            const fearPulse = 0.4 + 0.4 * Math.sin(renderTime * 0.2);
+            // Dark red pulsing glow
+            ctx.fillStyle = `rgba(140,20,40,${fearPulse * 0.25})`;
+            ctx.beginPath(); ctx.arc(px, py - 10, 28, 0, Math.PI * 2); ctx.fill();
+            // Jagged fear lines radiating outward
+            ctx.strokeStyle = `rgba(140,20,40,${fearPulse * 0.7})`;
+            ctx.lineWidth = 1.5;
+            for (let fi = 0; fi < 4; fi++) {
+              const fa = renderTime * 0.06 + fi * (Math.PI / 2);
+              const ix = px + Math.cos(fa) * 16, iy = py - 10 + Math.sin(fa) * 16;
+              const ox = px + Math.cos(fa) * 30, oy = py - 10 + Math.sin(fa) * 30;
+              ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(ox, oy); ctx.stroke();
+            }
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(140,20,40,${fearPulse})`;
+            ctx.fillText('FEARED', px, py - 44);
+          }
+
+          // MOBILITY_LOCK — grey chain links around feet + "LOCKED" text
+          if (pe._mobilityLocked && pe._mobilityLockTimer > 0) {
+            const lockPulse = 0.5 + 0.2 * Math.sin(renderTime * 0.08);
+            // Grey chain ring around feet
+            ctx.strokeStyle = `rgba(160,160,160,${lockPulse})`;
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath(); ctx.arc(px, py + 4, 18, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            // Chain link dots
+            for (let ci = 0; ci < 6; ci++) {
+              const ca = renderTime * 0.04 + ci * (Math.PI / 3);
+              const cx2 = px + Math.cos(ca) * 18, cy2 = py + 4 + Math.sin(ca) * 10;
+              ctx.fillStyle = `rgba(180,180,180,${lockPulse})`;
+              ctx.beginPath(); ctx.arc(cx2, cy2, 2.5, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(160,160,160,${lockPulse + 0.2})`;
+            ctx.fillText('LOCKED', px, py - 44);
+          }
+
+          // ARMOR_BREAK — cracked orange/red shield icon + "ARMOR BREAK" text
+          if (pe._armorBreakTimer > 0) {
+            const abPulse = 0.5 + 0.3 * Math.sin(renderTime * 0.12);
+            // Cracked shield outline
+            ctx.strokeStyle = `rgba(255,140,40,${abPulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(px, py - 32); ctx.lineTo(px - 14, py - 22);
+            ctx.lineTo(px - 14, py - 8); ctx.lineTo(px, py);
+            ctx.lineTo(px + 14, py - 8); ctx.lineTo(px + 14, py - 22);
+            ctx.closePath(); ctx.stroke();
+            // Crack line through shield
+            ctx.strokeStyle = `rgba(255,80,30,${abPulse + 0.2})`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(px - 2, py - 30); ctx.lineTo(px + 3, py - 20);
+            ctx.lineTo(px - 4, py - 12); ctx.lineTo(px + 2, py - 2);
+            ctx.stroke();
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255,140,40,${abPulse})`;
+            ctx.fillText('ARMOR BREAK', px, py - 44);
+          }
+
+          // TETHER — line to tether source mob + "TETHERED" text
+          if (pe._tether && pe._tetherTimer > 0) {
+            const tethPulse = 0.4 + 0.3 * Math.sin(renderTime * 0.15);
+            // Find tether source mob
+            const tethMob = typeof mobs !== 'undefined' ? mobs.find(m2 => m2.id === pe._tetherMobId) : null;
+            if (tethMob && tethMob.hp > 0) {
+              // Pulsing chain line from mob to player
+              ctx.strokeStyle = `rgba(200,160,60,${tethPulse})`;
+              ctx.lineWidth = 2;
+              ctx.setLineDash([6, 4]);
+              ctx.beginPath(); ctx.moveTo(tethMob.x, tethMob.y - 10); ctx.lineTo(px, py - 10); ctx.stroke();
+              ctx.setLineDash([]);
+              // Anchor points
+              ctx.fillStyle = `rgba(200,160,60,${tethPulse + 0.2})`;
+              ctx.beginPath(); ctx.arc(tethMob.x, tethMob.y - 10, 4, 0, Math.PI * 2); ctx.fill();
+              ctx.beginPath(); ctx.arc(px, py - 10, 4, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(200,160,60,${tethPulse})`;
+            ctx.fillText('TETHERED', px, py - 44);
+          }
         }
       }
       
