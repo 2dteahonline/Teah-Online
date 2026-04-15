@@ -432,8 +432,10 @@ function updateMobs() {
       }
     }
 
-    // Contact damage aura — DoT to player if within range (ticks every 30 frames)
-    if (m._contactDamageAura && !playerDead) {
+    // Contact damage aura — DoT to mob's target if within range (ticks every 30 frames)
+    // Check target alive (not global playerDead) so aura works on bots when player is dead
+    const _auraTargetDead = _mobTarget._isDead || (_mobTarget === player && playerDead);
+    if (m._contactDamageAura && !_auraTargetDead) {
       if (!m._auraTick) m._auraTick = 0;
       m._auraTick++;
       if (m._auraTick >= 30) {
@@ -442,7 +444,7 @@ function updateMobs() {
         const auraRange = m._contactDamageAura.range || 60;
         if (auraDist <= auraRange && typeof dealDamageToPlayer === 'function') {
           const auraDmg = m._contactDamageAura.damage || Math.round(m.damage * 0.3);
-          dealDamageToPlayer(auraDmg, 'dot', m);
+          dealDamageToPlayer(auraDmg, 'dot', m, _mobTarget);
           hitEffects.push({ x: _mobTarget.x, y: _mobTarget.y - 20, life: 15, type: "burn_hit" });
         }
       }
