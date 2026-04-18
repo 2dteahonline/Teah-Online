@@ -183,9 +183,9 @@ When fixing a phase, work through its issues top-down (CRITICAL first). For each
 **I2. ✅ FIXED — ShopSystem.BuyEquipment boot specials preserved**
 - Fixed: removed unequip cycle, directly sets slot + applies special flags
 
-**I3. TelegraphSystem vs HazardSystem Y-axis inconsistency**
-- `TelegraphSystem.cs:462` — `ToVP` negates Y
-- `HazardSystem.cs:234-246` — renders without Y negation. One is wrong.
+**I3. ✅ FIXED — TelegraphSystem ToVP wrongly negated Y**
+- `TelegraphSystem.cs:462` — `ToVP` was negating Y on Unity world coords (callers pass `m.transform.position`). Removed `-wy`.
+- `HazardSystem.cs:234-246` — was correct (renders in world space via camera matrices, callers pass Unity world coords).
 
 **I4. ✅ FIXED — `RemoveItem` returns void (JS returns the removed item)**
 - JS: `inventorySystem.js:85-89` — `return item`
@@ -230,12 +230,12 @@ When fixing a phase, work through its issues top-down (CRITICAL first). For each
 
 ### IMPORTANT
 
-**I1. 3 panels missing** — modifygun, skeldTask, mafiaSettings (sabFix is NOT a panel — it's Mafia sabotage state tracking in mafiaSystem.js)
+**I1. ✅ FIXED — 3 panels created** — ModifyGunPanelUI (CT-X weapon config, 3 sliders + budget), SkeldTaskPanelUI (14 minigames + task list sidebar), MafiaSettingsPanelUI (gear icon + 3 buttons). All wired to GameBootstrap.
 
 **I2. ✅ FIXED — All panels wired to GameObjects** — 17 panel scripts + PanelManager/CombatHUD/PartyHUD/ChatSystem on UI hierarchy
 
-**I3. FarmingSystem Y-axis conversion may be wrong for well interaction**
-- `FarmingSystem.cs:335` vs `:512` — inconsistent Y-flip between well coords and farm tile coords
+**I3. ✅ VERIFIED — FarmingSystem Y-axis is consistent**
+- `FarmingSystem.cs:335` and `:512` both apply identical `-cy` negation (well, tiles, vendor all consistent)
 
 **I4. ✅ FIXED — UltimateSystem caches PlayerController reference**
 - Added `_cachedPC` field with lazy initialization
@@ -281,8 +281,8 @@ When fixing a phase, work through its issues top-down (CRITICAL first). For each
 |-------|-----------------|------------------|-----------|
 | 0-1 | 5/5 ✅ | 6/6 ✅ | M1 ore collision (minor) |
 | 2-3 | 4/4 ✅ | 8/8 ✅ | M1 facing (in progress), M3 quick-kill (in progress), M4 mob velocity (in progress) |
-| 4-5 | 6/6 ✅ | 5/7 ✅ | I3 telegraph Y-axis (needs Play mode), M3 lifesteal (in progress) |
-| 6-7-8a | 3/3 ✅ | 4/6 ✅ | I1 3 panels missing (modifygun/skeldTask/mafiaSettings — complex, low priority) |
+| 4-5 | 6/6 ✅ | 7/7 ✅ | M3 lifesteal (in progress) |
+| 6-7-8a | 3/3 ✅ | 6/6 ✅ | — |
 
 **Update 631:** Cave mob specials (C4 CRITICAL), inventory helpers (I5), pickaxe tiers (I6), default gun special clear (I7), boot specials fix (I2), UltimateSystem perf (I4), compilation fixes.
 **Update 632:** Scene wiring (5→11 GameObjects, 40+ MonoBehaviours wired), ShopFramework helpers (I6), PanelManager inventory key (M2), code fixes in progress via agents.
