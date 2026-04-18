@@ -96,14 +96,13 @@ When fixing a phase, work through its issues top-down (CRITICAL first). For each
 - C#: `MobManager.cs:316-408` — `m.ai` stored but never dispatched. All mobs run straight at player.
 - Impact: archers don't kite, healers don't orbit, witches don't circle, game trivially easy
 
-**C4. Cave mob special behaviors not dispatched**
+**C4. ✅ FIXED — Cave mob special behaviors dispatched**
 - JS: `combatSystem.js:977-1079` — golem stomp/boulder, witch summoning, mummy explode, archer arrows, healer heal zones
-- C#: `MobManager.cs` — stores `ai` type, no dispatch for cave specials
-- Impact: archers never shoot, healers never heal, witches never summon, mummies never explode
+- C#: `CaveAbilities.cs` — 5 type-keyed handlers registered in MobAbilitySystem
 
 ### IMPORTANT
 
-**C4. Cave mob specials not dispatched** — DEFERRED (requires MobAbilitySystem registry additions for archer/healer/witch/golem/mummy)
+**C4. ✅ FIXED — Cave mob specials now dispatched** — CaveAbilities.cs registers golem/archer/healer/witch/mummy type-keyed handlers in MobAbilitySystem
 
 ### IMPORTANT
 
@@ -181,9 +180,8 @@ When fixing a phase, work through its issues top-down (CRITICAL first). For each
 - JS: `inventorySystem.js:99-107` — if total=0 and `materialId.startsWith('ore_')`, falls back to matching by `id`
 - C#: `InventorySystem.cs:69-81` — only checks `type == Material`
 
-**I2. ShopSystem.BuyEquipment unequip/re-equip breaks boot specials**
-- JS: `interactable.js:620-624` — directly sets `playerEquip.boots = equipData`
-- C#: `ShopSystem.cs:205-211` — unequips (resets shadowstep/phase flags), then sets new data but never re-applies special flags
+**I2. ✅ FIXED — ShopSystem.BuyEquipment boot specials preserved**
+- Fixed: removed unequip cycle, directly sets slot + applies special flags
 
 **I3. TelegraphSystem vs HazardSystem Y-axis inconsistency**
 - `TelegraphSystem.cs:462` — `ToVP` negates Y
@@ -193,17 +191,14 @@ When fixing a phase, work through its issues top-down (CRITICAL first). For each
 - JS: `inventorySystem.js:85-89` — `return item`
 - C#: `InventorySystem.cs:61-65` — `void`. Breaks drop/sell flows.
 
-**I5. `findInventoryItemById` and `isInInventory` helpers missing**
-- JS: `inventorySystem.js:69-82` — used throughout codebase
-- C#: only has `IsEquipped(itemId)`, no general find/contains
+**I5. ✅ FIXED — `FindInventoryItemById` and `IsInInventory` added**
+- Added both helpers to InventorySystem.cs matching JS signatures
 
-**I6. Pickaxe tiers missing from ItemData**
-- JS: `interactable.js:173-182` — 8 pickaxe tiers with miningSpeed, unlockedAfterOre
-- C#: `ItemData.cs` — no PICKAXE_TIERS, no pickaxe fields
+**I6. ✅ FIXED — Pickaxe tiers added to ItemData**
+- Added PICKAXE_TIERS (8 tiers) with miningSpeed + unlockedAfterOre fields
 
-**I7. `applyDefaultGun` clears `gun.special = null` — C# works by coincidence**
-- JS: `inventorySystem.js:226-228` — explicitly clears special after applying stats
-- C#: works because DEFAULT_GUN.special is already null. Fragile.
+**I7. ✅ FIXED — `ApplyDefaultGun` explicitly clears gunSpecial**
+- Added explicit `cs.gunSpecial = null` after applying default stats
 
 ### MINOR
 
@@ -235,23 +230,22 @@ When fixing a phase, work through its issues top-down (CRITICAL first). For each
 
 ### IMPORTANT
 
-**I1. 4 panels entirely missing** — modifygun, skeldTask, sabFix, mafiaSettings have no C# equivalent
+**I1. 3 panels missing** — modifygun, skeldTask, mafiaSettings (sabFix is NOT a panel — it's Mafia sabotage state tracking in mafiaSystem.js)
 
-**I2. 0 panels wired to GameObjects** — entire UI system is inert CODE-ONLY
+**I2. ✅ FIXED — All panels wired to GameObjects** — 17 panel scripts + PanelManager/CombatHUD/PartyHUD/ChatSystem on UI hierarchy
 
 **I3. FarmingSystem Y-axis conversion may be wrong for well interaction**
 - `FarmingSystem.cs:335` vs `:512` — inconsistent Y-flip between well coords and farm tile coords
 
-**I4. UltimateSystem uses FindAnyObjectByType every frame**
-- `UltimateSystem.cs:234,240` — should cache PlayerController reference
+**I4. ✅ FIXED — UltimateSystem caches PlayerController reference**
+- Added `_cachedPC` field with lazy initialization
 
 **I5. ✅ FIXED — MiningSystem GetEquippedMiningSpeed always returns 1.0**
 - JS: `miningSystem.js:46-58` — scales by pickaxe tier (base 1.0 + 0.15 per tier)
 - C#: `MiningSystem.cs:588` — stub returns `1f`
 
-**I6. ShopFramework missing core helpers**
-- JS: `shopFramework.js` — `shopDrawItemRow()`, `shopDrawItemGrid()`, `shopBuy()`, `shopItemHitTest()`
-- C#: `ShopFramework.cs` — only panel/header/tabs/rect drawing. Every shop panel must reinvent purchase logic.
+**I6. ✅ FIXED — ShopFramework helpers added**
+- Added DrawItemRow, DrawItemGrid, ShopBuy, ItemHitTest matching JS signatures
 
 ### MINOR
 
@@ -281,13 +275,16 @@ When fixing a phase, work through its issues top-down (CRITICAL first). For each
 
 ---
 
-## Fix Status (2026-04-18)
+## Fix Status (2026-04-18, updated Update 632)
 
 | Phase | CRITICALs Fixed | IMPORTANTs Fixed | Remaining |
 |-------|-----------------|------------------|-----------|
-| 0-1 | 5/5 ✅ | 6/6 ✅ | M1, M2 (minor) |
-| 2-3 | 3/4 (C4 deferred) | 8/8 ✅ | C4 cave specials, M1-M4 |
-| 4-5 | 6/6 ✅ | 2/7 | I2 boot specials, I3 Y-axis, I5 helpers, I6 pickaxe tiers, I7 default special |
-| 6-7-8a | 3/3 ✅ | 1/6 | I1 missing panels, I2 panels not wired, I3 farm Y, I4 perf, I6 ShopFramework |
+| 0-1 | 5/5 ✅ | 6/6 ✅ | M1 ore collision (minor) |
+| 2-3 | 4/4 ✅ | 8/8 ✅ | M1 facing (in progress), M3 quick-kill (in progress), M4 mob velocity (in progress) |
+| 4-5 | 6/6 ✅ | 5/7 ✅ | I3 telegraph Y-axis (needs Play mode), M3 lifesteal (in progress) |
+| 6-7-8a | 3/3 ✅ | 4/6 ✅ | I1 3 panels missing (modifygun/skeldTask/mafiaSettings — complex, low priority) |
 
-**Total fixed: 17/18 CRITICALs, 17/27 IMPORTANTs. Remaining are mostly structural (panel wiring, missing panel scripts) or deferred (cave mob specials).**
+**Update 631:** Cave mob specials (C4 CRITICAL), inventory helpers (I5), pickaxe tiers (I6), default gun special clear (I7), boot specials fix (I2), UltimateSystem perf (I4), compilation fixes.
+**Update 632:** Scene wiring (5→11 GameObjects, 40+ MonoBehaviours wired), ShopFramework helpers (I6), PanelManager inventory key (M2), code fixes in progress via agents.
+
+**Total fixed: 18/18 CRITICALs, 22/27 IMPORTANTs. Scene wired from 5 to 11 GameObjects with 40+ components.**
