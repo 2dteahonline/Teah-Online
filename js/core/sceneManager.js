@@ -178,25 +178,25 @@ const LEAVE_HANDLERS = {
   vortalis: {
     cleanup() {},
     returnLevel: 'lobby_01',
-    returnTX: 53, returnTY: 21,
+    returnTX: 53, returnTY: 22,
     message: 'Leaving Vortalis...',
   },
   earth205: {
     cleanup() {},
     returnLevel: 'lobby_01',
-    returnTX: 53, returnTY: 33,
+    returnTX: 53, returnTY: 34,
     message: 'Leaving Earth-205...',
   },
   wagashi: {
     cleanup() {},
     returnLevel: 'lobby_01',
-    returnTX: 53, returnTY: 45,
+    returnTX: 53, returnTY: 46,
     message: 'Leaving Wagashi...',
   },
   earth216: {
     cleanup() {},
     returnLevel: 'lobby_01',
-    returnTX: 53, returnTY: 57,
+    returnTX: 53, returnTY: 58,
     message: 'Leaving Earth-216...',
   },
   gunsmith: {
