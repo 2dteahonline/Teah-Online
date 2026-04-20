@@ -390,6 +390,61 @@ Role-specific settings are also configurable per subrole (e.g., vent cooldown fo
 
 ### Lobby
 
+The mafia lobby is a pre-game room where the player configures match settings before starting. Three interactable objects are placed in the lobby level (`mafia_lobby` in `levelData.js`), registered as interactables on scene load via `interactable.js:821`:
+
+#### Interactables
+
+| Entity Type | Interact Label | Action | Range |
+|-------------|---------------|--------|-------|
+| `mafia_lobby_laptop` | `[E] Game Settings` | Opens the settings panel | 100px |
+| `mafia_lobby_customize` | `[E] Customize` | Opens the color picker | 100px |
+| `mafia_lobby_start` | `[E] Start Game` | Starts the match (transitions to Skeld map) | 100px |
+
+All three require `Scene.inMafiaLobby` to be true and are triggered via the interact key (default E).
+
+#### Settings Panel (`openMafiaSettingsPanel()`)
+
+A 720×560 centered overlay with two tabs:
+
+**Game Settings tab** — Configures `MAFIA_SETTINGS`:
+- Map selector (currently only "The Skeld")
+- Settings grouped into sections (Impostors, Crewmates, Tasks, Match)
+- Each setting has +/- buttons; numeric values also accept direct input on click
+- Boolean settings (Confirm Ejects, Anonymous Votes) have ON/OFF toggle buttons
+- Enum settings (Kill Distance, Task Bar Updates) cycle through values
+- Scrollable with a draggable scrollbar when content exceeds panel height
+
+**Role Settings tab** — Configures `MAFIA_ROLE_SETTINGS`:
+- Split into Crewmate Roles and Impostor Roles sections
+- Each role shows: name, description, chance percentage (+/- in 10% increments, 0-100%)
+- Per-role specific settings (e.g., Engineer vent cooldown, Shapeshifter shift duration) with +/- buttons using each setting's defined step/min/max
+
+Close via the red X button in the top-right corner. Opening the settings panel auto-closes the color picker (and vice versa).
+
+#### Color Picker (`openMafiaColorPicker()`)
+
+A 400×380 centered overlay titled "CHOOSE YOUR COLOR":
+- 10 Among Us colors displayed in a 5×2 grid of colored circles
+- Each circle shows the color name below it
+- Currently selected color has a white highlight ring
+- Clicking a color sets `mafiaPlayerColorIdx` (persists for the session, not saved to localStorage)
+- The selected color is also shown in the lobby HUD (bottom-left corner with color swatch + name)
+
+#### Start Button (`startMafiaFromLobby()`)
+
+- Blocked if either the settings panel or color picker is currently open
+- Reads `MAFIA_SETTINGS.map` to determine which map to load (defaults to `skeld_01`)
+- Uses `startTransition()` to fade into the Skeld map at the map's spawn point
+
+#### Lobby HUD (`drawMafiaLobbyHUD()`)
+
+Always drawn when `Scene.inMafiaLobby`:
+- **Top banner**: "MAFIA LOBBY" title bar (dark background, white text)
+- **Bottom-left**: Selected player color (circle swatch + color name)
+- **Bottom-right**: Selected map name (e.g., "MAP: The Skeld")
+
+#### Other Lobby Features
+
 - Physical EXIT door at bottom-center of mafia lobby (5-tile gap in collision wall) -- walk south to return to main lobby. No need to use `/leave`.
 - `/leave` also works as a fallback.
 - Combat (melee + shooting) is disabled in both the main lobby and mafia lobby.
