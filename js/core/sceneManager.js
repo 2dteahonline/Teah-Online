@@ -83,8 +83,8 @@ const Scene = {
 
 // ---- PORTAL TYPE REGISTRY ----
 // Maps portal entity type → required scene for the portal to activate.
-// All portal types call startTransition(e.target, e.spawnTX, e.spawnTY).
 // Adding a new portal: just add one entry here + the entity in levelData.
+// Spawn positions are computed dynamically from the partner portal in the target level.
 const PORTAL_SCENES = {
   cave_entrance: 'lobby',   cave_exit: 'cave',
   mine_entrance: 'lobby',   mine_exit: 'mine',    mine_door: 'mine',
@@ -110,6 +110,80 @@ const PORTAL_SCENES = {
   spar_entrance: 'lobby',
   spar_exit: 'spar',
 };
+
+// ---- DYNAMIC SPAWN SYSTEM ----
+// Instead of hardcoding return coordinates, find the partner portal in the
+// target level and spawn adjacent to it. Moving buildings = automatic fix.
+
+// Irregular portal name mappings (most follow *_exit ↔ *_entrance convention)
+const _PORTAL_PARTNER_OVERRIDES = {
+  fd_exit_door: 'fine_dining_entrance',
+  fine_dining_entrance: 'fd_exit_door',
+  mafia_lobby_exit: 'skeld_entrance',
+  skeld_entrance: 'mafia_lobby_exit',
+  diner_customer_exit: 'diner_entrance',
+};
+
+// Scene name → entrance type in lobby (for /leave dynamic spawn)
+const _SCENE_ENTRANCE_OVERRIDES = {
+  farm: 'house_entrance',
+  mafia_lobby: 'skeld_entrance',
+};
+
+function _getPortalPartner(portalType) {
+  if (_PORTAL_PARTNER_OVERRIDES[portalType]) return _PORTAL_PARTNER_OVERRIDES[portalType];
+  if (portalType.endsWith('_exit')) return portalType.replace(/_exit$/, '_entrance');
+  if (portalType.endsWith('_entrance')) return portalType.replace(/_entrance$/, '_exit');
+  return null;
+}
+
+// Returns true if this portal type leads OUT of a building (back to lobby/hub)
+function _isExitPortal(portalType) {
+  return portalType.endsWith('_exit') || portalType === 'fd_exit_door'
+    || portalType === 'mafia_lobby_exit' || portalType === 'diner_customer_exit';
+}
+
+// Find dynamic spawn by looking up partner portal in the target level.
+// Exit portals → spawn 1 tile below partner entrance (player appears outside building)
+// Entrance portals → spawn 1 tile above partner exit (player appears inside building)
+function findPortalSpawn(portalType, targetLevelId) {
+  const partner = _getPortalPartner(portalType);
+  if (!partner) return null;
+  const targetLevel = LEVELS[targetLevelId];
+  if (!targetLevel || !targetLevel.entities) return null;
+  const pe = targetLevel.entities.find(e => e.type === partner);
+  if (!pe) return null;
+  const pw = pe.w || 1, ph = pe.h || 1;
+  const tx = Math.floor(pe.tx + pw / 2);
+  const ty = _isExitPortal(portalType) ? pe.ty + ph : pe.ty - 1;
+  return { tx, ty };
+}
+
+// Find dynamic spawn for /leave command (scene → entrance in return level)
+function findLeaveSpawn(sceneName, returnLevelId) {
+  // Cooking scene: entrance depends on which restaurant
+  if (sceneName === 'cooking' && typeof cookingState !== 'undefined') {
+    const rid = cookingState.activeRestaurantId;
+    const entranceType = rid === 'fine_dining' ? 'fine_dining_entrance'
+      : rid === 'diner' ? 'diner_entrance' : 'deli_entrance';
+    const targetLevel = LEVELS[returnLevelId];
+    if (targetLevel && targetLevel.entities) {
+      const pe = targetLevel.entities.find(e => e.type === entranceType);
+      if (pe) {
+        const pw = pe.w || 1, ph = pe.h || 1;
+        return { tx: Math.floor(pe.tx + pw / 2), ty: pe.ty + ph };
+      }
+    }
+    return null;
+  }
+  const entranceType = _SCENE_ENTRANCE_OVERRIDES[sceneName] || (sceneName + '_entrance');
+  const targetLevel = LEVELS[returnLevelId];
+  if (!targetLevel || !targetLevel.entities) return null;
+  const pe = targetLevel.entities.find(e => e.type === entranceType);
+  if (!pe) return null;
+  const pw = pe.w || 1, ph = pe.h || 1;
+  return { tx: Math.floor(pe.tx + pw / 2), ty: pe.ty + ph };
+}
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
 const LOBBY_RESET_SCENES = new Set(['lobby', 'cave', 'azurine', 'gunsmith', 'skeld', 'mafia_lobby', 'vortalis', 'earth205', 'wagashi', 'earth216', 'casino']);
@@ -270,7 +344,14 @@ function handleLeave() {
   const handler = LEAVE_HANDLERS[Scene.current];
   if (!handler) return false;
   if (handler.cleanup) handler.cleanup();
-  if (handler.returnLevel) startTransition(handler.returnLevel, handler.returnTX || 20, handler.returnTY || 20);
+  const returnLevel = handler.returnLevel; // may be a getter (cooking, dungeon)
+  if (returnLevel) {
+    // Dynamic spawn: find entrance in return level, fall back to hardcoded
+    const _dynSpawn = findLeaveSpawn(Scene.current, returnLevel);
+    const tx = _dynSpawn ? _dynSpawn.tx : (handler.returnTX || 20);
+    const ty = _dynSpawn ? _dynSpawn.ty : (handler.returnTY || 20);
+    startTransition(returnLevel, tx, ty);
+  }
   chatMessages.push({ name: 'SYSTEM', text: handler.message, time: Date.now() });
   return true;
 }
@@ -450,7 +531,9 @@ function checkPortals() {
           }
         }
       }
-      startTransition(e.target, e.spawnTX, e.spawnTY);
+      // Dynamic spawn: find partner portal in target level, fall back to entity coords
+      const _dynSpawn = findPortalSpawn(e.type, e.target);
+      startTransition(e.target, _dynSpawn ? _dynSpawn.tx : e.spawnTX, _dynSpawn ? _dynSpawn.ty : e.spawnTY);
       return;
     }
     if (e.type === 'queue_zone' && (Scene.inCave || Scene.inAzurine || Scene.inVortalis || Scene.inEarth205 || Scene.inWagashi || Scene.inEarth216) && inZone) {
