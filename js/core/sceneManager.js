@@ -155,7 +155,7 @@ function findPortalSpawn(portalType, targetLevelId) {
   if (!pe) return null;
   const pw = pe.w || 1, ph = pe.h || 1;
   const tx = Math.floor(pe.tx + pw / 2);
-  const ty = _isExitPortal(portalType) ? pe.ty + ph : pe.ty - 1;
+  const ty = _isExitPortal(portalType) ? pe.ty + ph + 1 : pe.ty - 1;
   return { tx, ty };
 }
 
@@ -171,7 +171,7 @@ function findLeaveSpawn(sceneName, returnLevelId) {
       const pe = targetLevel.entities.find(e => e.type === entranceType);
       if (pe) {
         const pw = pe.w || 1, ph = pe.h || 1;
-        return { tx: Math.floor(pe.tx + pw / 2), ty: pe.ty + ph };
+        return { tx: Math.floor(pe.tx + pw / 2), ty: pe.ty + ph + 1 };
       }
     }
     return null;
@@ -182,7 +182,7 @@ function findLeaveSpawn(sceneName, returnLevelId) {
   const pe = targetLevel.entities.find(e => e.type === entranceType);
   if (!pe) return null;
   const pw = pe.w || 1, ph = pe.h || 1;
-  return { tx: Math.floor(pe.tx + pw / 2), ty: pe.ty + ph };
+  return { tx: Math.floor(pe.tx + pw / 2), ty: pe.ty + ph + 1 };
 }
 
 // Scenes that reset to 'lobby' state on entry (non-combat, non-dungeon)
